@@ -46,7 +46,6 @@ const DatabaseCacheTimeField = () => {
 const DatabaseCacheTimeDescription = (): JSX.Element => {
   return (
     <div>
-      {/* XXX: Don't replace the application name. This is admin settings */}
       {jt`How long to keep question results. By default, Metabase will use the value you supply on the ${(
         <Link key="link" to="/admin/settings/caching">
           {t`cache settings page`}

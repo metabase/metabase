@@ -9,7 +9,6 @@ import { PermissionHelpDescription } from "metabase/admin/permissions/components
 export const CollectionPermissionsHelp = () => (
   <Flex direction="column" py="1.375rem" px="1.5rem">
     <Title order={4}>{t`Collection permissions`}</Title>
-    {/* XXX: Don't replace the application name. This is admin settings */}
     <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
 
     <Title order={6} my="0.5rem">{t`Collections Permission Levels`}</Title>

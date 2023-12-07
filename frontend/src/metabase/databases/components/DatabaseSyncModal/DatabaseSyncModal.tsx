@@ -31,8 +31,7 @@ const DatabaseSyncModal = ({ sampleUrl, onClose }: DatabaseSyncModalProps) => {
             ? jt`In the meantime, you can take a look at the ${(
                 <strong key="name">{t`Sample Database`}</strong>
               )} if you want to get a head start. Want to explore?`
-            : // XXX: Don't replace the application name. This is admin settings
-              t`Have a look around your Metabase in the meantime if you want to get a head start.`}
+            : t`Have a look around your Metabase in the meantime if you want to get a head start.`}
         </ModalMessage>
         {sampleUrl ? (
           <Link className="Button Button--primary" to={sampleUrl}>

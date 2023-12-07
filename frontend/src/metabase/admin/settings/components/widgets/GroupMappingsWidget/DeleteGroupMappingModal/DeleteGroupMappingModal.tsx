@@ -59,8 +59,7 @@ const DeleteGroupMappingModal = ({
 
   const whatShouldHappenText =
     groupIds.length > 1
-      ? // XXX: Don't replace the application name. This is admin settings
-        t`What should happen with the groups themselves in Metabase?`
+      ? t`What should happen with the groups themselves in Metabase?`
       : t`What should happen with the group itself in Metabase?`;
 
   return (

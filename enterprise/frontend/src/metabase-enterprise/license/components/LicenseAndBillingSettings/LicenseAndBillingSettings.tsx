@@ -116,7 +116,6 @@ const LicenseAndBillingSettings = ({
         {isStoreManagedBilling && (
           <>
             <SectionDescription>
-              {/* XXX: Don't replace the application name. This is admin settings */}
               {t`Manage your Cloud account, including billing preferences, in your Metabase Store account.`}
             </SectionDescription>
 

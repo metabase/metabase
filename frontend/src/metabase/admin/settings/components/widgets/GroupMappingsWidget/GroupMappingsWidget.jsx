@@ -115,7 +115,6 @@ function GroupMappingsWidget({
           </ToggleRoot>
           <About>
             <Tooltip
-              // XXX: Don't replace the application name. This is admin settings
               tooltip={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
               placement="top"
             >

@@ -305,7 +305,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        // XXX: Don't replace the application name. This is admin settings
         note: t`Metabase uses OpenStreetMaps by default.`,
         type: "string",
       },

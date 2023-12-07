@@ -6,7 +6,6 @@ import { Icon } from "metabase/core/components/Icon";
 const OpenInMetabase = ({ ...props }) => (
   <Link {...props} className="link flex align-center" target="_blank">
     <Icon name="external" className="mr1" />
-    {/* XXX: Don't replace the application name. This is admin settings */}
     {t`Open in Metabase`}
   </Link>
 );

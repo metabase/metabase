@@ -38,7 +38,6 @@ export default function VersionUpdateNotice() {
 function CloudCustomers({ currentVersion }) {
   return (
     <div>
-      {/* XXX: Don't replace the application name. This is admin settings */}
       {t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
     </div>
   );

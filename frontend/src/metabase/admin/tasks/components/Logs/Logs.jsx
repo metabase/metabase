@@ -105,7 +105,6 @@ export class Logs extends Component {
     if (processUUIDs.length > 1) {
       processUUIDSelect = (
         <div className="pb1">
-          {/* XXX: Don't replace the application name. This is admin settings */}
           <label>{t`Select Metabase process:`}</label>
           <Select
             defaultValue="ALL"

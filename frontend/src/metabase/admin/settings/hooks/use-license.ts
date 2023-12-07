@@ -5,7 +5,6 @@ import { SettingsApi, StoreApi } from "metabase/services";
 export const LICENSE_ACCEPTED_URL_HASH = "#activated";
 
 const INVALID_TOKEN_ERROR = t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`;
-// XXX: Don't replace the application name. This is admin settings
 const UNABLE_TO_VALIDATE_TOKEN = t`We're having trouble validating your token. Please double-check that your instance can connect to Metabase's servers.`;
 
 export type TokenStatus = {

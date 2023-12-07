@@ -62,7 +62,6 @@ const GoogleAuthForm = ({
           <Breadcrumbs crumbs={BREADCRUMBS} />
           <GoogleFormHeader>{t`Sign in with Google`}</GoogleFormHeader>
           <GoogleFormCaption>
-            {/* XXX: Don't replace the application name. This is admin settings */}
             {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
           </GoogleFormCaption>
           <GoogleFormCaption>

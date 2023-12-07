@@ -7,7 +7,6 @@ export const SettingsCloudStoreLink = () => {
 
   return (
     <div>
-      {/* XXX: Don't replace the application name. This is admin settings */}
       <Description>{t`Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account.`}</Description>
       <Link href={url}>
         {t`Go to the Metabase Store`}

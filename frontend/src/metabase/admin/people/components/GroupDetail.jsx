@@ -28,7 +28,6 @@ const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
     <div className="px2 text-measure">
       <p>
-        {/* XXX: Don't replace the application name. This is admin settings */}
         {t`All users belong to the ${getGroupNameLocalized(
           group,
         )} group and can't be removed from it. Setting permissions for this group is a great way to

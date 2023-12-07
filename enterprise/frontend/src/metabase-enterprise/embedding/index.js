@@ -24,7 +24,6 @@ if (hasPremiumFeature("embedding")) {
           ...sections[SLUG]["settings"],
           {
             key: "embedding-app-origin",
-            /* XXX: Don't replace the application name. This is admin settings */
             display_name: t`Embedding the entire Metabase app`,
             description: <EmbeddingAppOriginDescription />,
             placeholder: "https://*.example.com",

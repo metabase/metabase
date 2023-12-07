@@ -46,7 +46,6 @@ interface SetupHeaderProps {
 const SetupHeader = ({ isBot, isValid }: SetupHeaderProps): JSX.Element => {
   return (
     <HeaderRoot>
-      {/* XXX: Don't replace the application name. This is admin settings */}
       <HeaderTitle>{t`Metabase on Slack`}</HeaderTitle>
       {isBot ? (
         <HeaderMessage>

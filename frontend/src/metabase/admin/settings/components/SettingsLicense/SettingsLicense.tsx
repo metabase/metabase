@@ -28,7 +28,6 @@ const SettingsLicense = ({ upgradeUrl }: SettingsLicenseProps) => {
     <SettingsLicenseContainer>
       <SectionHeader>{t`Looking for more?`}</SectionHeader>
       <SectionDescription>
-        {/* XXX: Don't replace the application name. This is admin settings */}
         {t`Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.`}
       </SectionDescription>
       <SubHeader>{t`Want to know more?`}</SubHeader>
