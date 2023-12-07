@@ -1087,5 +1087,6 @@
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
-                 (= (first legacy-expr) :aggregation-options)
+                 (and (vector? legacy-expr)
+                      (= (first legacy-expr) :aggregation-options))
                  (get 1))))))
