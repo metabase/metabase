@@ -11,7 +11,7 @@ function getDefaultValue() {
 export function getDefaultValues(
   operator: Lib.TimeFilterOperatorName,
   values: TimeValue[] = [],
-): Date[] {
+): TimeValue[] {
   const { valueCount } = OPERATOR_OPTIONS[operator];
 
   return Array(valueCount)
@@ -19,8 +19,12 @@ export function getDefaultValues(
     .map((value, index) => values[index] ?? value);
 }
 
-export function hasValidValues(values: TimeValue[]): values is Date[] {
-  return values.every(isNotNull);
+export function isValidFilter(
+  operator: Lib.TimeFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  values: TimeValue[],
+) {
+  return getFilterParts(operator, column, values) != null;
 }
 
 export function getFilterClause(
@@ -28,27 +32,37 @@ export function getFilterClause(
   column: Lib.ColumnMetadata,
   values: TimeValue[],
 ) {
-  if (!hasValidValues(values)) {
+  const filterParts = getFilterParts(operator, column, values);
+  if (filterParts == null) {
     return undefined;
   }
 
-  return Lib.timeFilterClause({
-    operator,
-    column,
-    values: getCoercedValues(operator, values),
-  });
+  return Lib.timeFilterClause(filterParts);
 }
 
-function getCoercedValues(
+function getFilterParts(
   operator: Lib.TimeFilterOperatorName,
-  values: Date[],
-) {
-  if (operator === "between") {
-    const [startTime, endTime] = values;
-    return dayjs(endTime).isBefore(startTime)
-      ? [endTime, startTime]
-      : [startTime, endTime];
+  column: Lib.ColumnMetadata,
+  values: TimeValue[],
+): Lib.TimeFilterParts | undefined {
+  if (!values.every(isNotNull)) {
+    return undefined;
   }
 
-  return values;
+  if (operator === "between") {
+    const [startTime, endTime] = values;
+    return {
+      operator,
+      column,
+      values: dayjs(endTime).isBefore(startTime)
+        ? [endTime, startTime]
+        : [startTime, endTime],
+    };
+  }
+
+  return {
+    operator,
+    column,
+    values,
+  };
 }

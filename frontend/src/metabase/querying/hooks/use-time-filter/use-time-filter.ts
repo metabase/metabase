@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
+import { getDefaultValues, getFilterClause, isValidFilter } from "./utils";
 import type { TimeValue } from "./types";
 
 interface UseTimeFilterProps {
@@ -29,11 +29,11 @@ export function useTimeFilter({
   );
 
   const [operator, setOperator] = useState(filterParts?.operator ?? "<");
-  const [values, setValues] = useState<TimeValue[]>(() =>
+  const [values, setValues] = useState(() =>
     getDefaultValues(operator, filterParts?.values),
   );
   const { valueCount } = OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(values);
+  const isValid = isValidFilter(operator, column, values);
 
   const setOperatorAndValues = (newOperator: Lib.TimeFilterOperatorName) => {
     setOperator(newOperator);
