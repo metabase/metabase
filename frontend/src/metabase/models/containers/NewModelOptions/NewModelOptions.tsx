@@ -11,8 +11,7 @@ import Databases from "metabase/entities/databases";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
 import { useSelector } from "metabase/lib/redux";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-import { getApplicationName } from "metabase/selectors/whitelabel";
+import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import type Database from "metabase-lib/metadata/Database";
 import {
   OptionsGridItem,
@@ -98,20 +97,6 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
         {t`What's a model?`}
       </EducationalButton>
     </OptionsRoot>
-  );
-};
-const NoDatabasesEmptyState = () => {
-  const applicationName = useSelector(getApplicationName);
-  return (
-    // Screenshot 2023-12-04 at 11.35.00AM
-    <AdminAwareEmptyState
-      title={t`${applicationName} is no fun without any data`}
-      adminMessage={t`Your databases will appear here once you connect one`}
-      message={t`Databases will appear here once your admins have added some`}
-      image="app/assets/img/databases-list"
-      adminAction={t`Connect a database`}
-      adminLink="/admin/databases/create"
-    />
   );
 };
 // eslint-disable-next-line import/no-default-export -- deprecated usage

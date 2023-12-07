@@ -822,6 +822,8 @@ const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
       },
       {
         name: t`mode`,
+        // This is the only place that's not easy to replace the application name.
+        // Screenshot 2023-12-07 at 6.06.05PM
         description: t`Optional. The default is "ISO".
 - ISO: Week 1 starts on the Monday before the first Thursday of January.
 - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
