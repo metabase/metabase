@@ -155,6 +155,13 @@ interface BreakoutClauseOpts {
   binningStrategyName?: string;
 }
 
+interface ExpressionClauseOpts {
+  name: string;
+  operator: Lib.ExpressionOperatorName;
+  args: (Lib.ExpressionArg | Lib.ExpressionClause)[];
+  options?: Lib.ExpressionOptions | null;
+}
+
 interface OrderByClauseOpts {
   columnName: string;
   tableName: string;
@@ -165,6 +172,7 @@ interface QueryWithClausesOpts {
   query?: Lib.Query;
   aggregations?: AggregationClauseOpts[];
   breakouts?: BreakoutClauseOpts[];
+  expressions?: ExpressionClauseOpts[];
   orderBys?: OrderByClauseOpts[];
 }
 
@@ -172,6 +180,7 @@ export function createQueryWithClauses({
   query = createQuery(),
   aggregations = [],
   breakouts = [],
+  expressions = [],
   orderBys = [],
 }: QueryWithClausesOpts) {
   const queryWithAggregations = aggregations.reduce((query, aggregation) => {
@@ -201,13 +210,26 @@ export function createQueryWithClauses({
     );
   }, queryWithAggregations);
 
+  const queryWithExpressions = expressions.reduce((query, expression) => {
+    return Lib.expression(
+      query,
+      -1,
+      expression.name,
+      Lib.expressionClause(
+        expression.operator,
+        expression.args,
+        expression.options,
+      ),
+    );
+  }, queryWithBreakouts);
+
   return orderBys.reduce((query, orderBy) => {
     const orderByColumn = columnFinder(query, Lib.orderableColumns(query, -1))(
       orderBy.tableName,
       orderBy.columnName,
     );
     return Lib.orderBy(query, -1, orderByColumn, orderBy.direction);
-  }, queryWithBreakouts);
+  }, queryWithExpressions);
 }
 
 export const queryDrillThru = (
