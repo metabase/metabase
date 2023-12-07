@@ -91,18 +91,23 @@ describe(
     it("shouldn't be possible to save a non-numeric port (#13313)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
+      cy.findByLabelText("LDAP Port").parent().parent().as("portSection");
+
       enterLdapSettings();
       enterLdapPort("asd");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("That's not a valid port number").should("exist");
+      cy.get("@portSection")
+        .findByText("That's not a valid port number")
+        .should("exist");
 
       enterLdapPort("21.3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("That's not a valid port number").should("exist");
+      cy.get("@portSection")
+        .findByText("That's not a valid port number")
+        .should("exist");
 
       enterLdapPort("389 ");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("That's not a valid port number").should("not.exist");
+      cy.get("@portSection")
+        .findByText("That's not a valid port number")
+        .should("not.exist");
 
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
