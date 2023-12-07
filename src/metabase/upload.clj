@@ -494,16 +494,18 @@
 ;;; |  append to uploaded table
 ;;; +--------------------------
 
-(defn- base-type->upload-type [base-type]
-  (case base-type
+(defn- base-type->upload-type
+  "Returns the most specific upload type for the given base type."
+  [base-type]
+  (condp #(isa? %2 %1) base-type
+    :type/Float                  ::float
     :type/BigInteger             ::int
     :type/Integer                ::int
-    :type/Text                   ::text
     :type/Boolean                ::boolean
-    :type/Date                   ::date
+    :type/DateTimeWithTZ         ::offset-datetime
     :type/DateTime               ::datetime
-    :type/DateTimeWithZoneOffset ::offset-datetime
-    :type/Float                  ::float))
+    :type/Date                   ::date
+    :type/Text                   ::text))
 
 (defn- check-schema
   "Returns a map with two keys:

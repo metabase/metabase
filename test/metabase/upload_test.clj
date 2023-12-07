@@ -1139,7 +1139,7 @@
 (deftest append-csv-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "Happy path"
+      (testing "Append should succeed regardless of CSV column order"
         (doseq [csv-rows [["id,name" "2,Luke Skywalker" "3,Darth Vader"]
                           ["name,id" "Luke Skywalker,2" "Darth Vader,3"]]]
           (mt/dataset (basic-db-definition (mt/random-name))
@@ -1154,8 +1154,56 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
+(defn all-types-db-definition
+  "This creates a table with an auto-incrementing integer ID column, and a name column."
+  []
+  (tx/map->DatabaseDefinition
+   {:database-name     (mt/random-name)
+    :table-definitions [{:table-name        "table_one"
+                         :field-definitions [;; "id,biginteger,float,text,boolean,date,datetime,offset_datetime"
+                                             {:field-name "biginteger", :base-type :type/BigInteger}
+                                             {:field-name "float", :base-type :type/Float}
+                                             {:field-name "text", :base-type :type/Text}
+                                             {:field-name "boolean", :base-type :type/Boolean}
+                                             {:field-name "date", :base-type :type/Date}
+                                             {:field-name "datetime", :base-type :type/DateTime}
+                                             {:field-name "offset_datetime", :base-type :type/DateTimeWithLocalTZ}]
+                         :rows              [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]}]}))
+
+(deftest append-csv-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "Append should succeed for all possible CSV column types"
+        (let [csv-rows ["id,biginteger,float,text,boolean,date,datetime,offset_datetime"
+                        "2,2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
+          (mt/dataset (all-types-db-definition)
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (true? (upload/append-csv! {:file     file
+                                              :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table correctly"
+                (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T02:00:00Z"]
+                        [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T02:02:02Z"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest no-rows-test
+  (mt/test-driver :h2
+    (with-uploads-allowed
+      (testing "Append should succeed with a CSV with only the header"
+        (doseq [csv-rows [["id,name"]]]
+          (mt/dataset (basic-db-definition (mt/random-name))
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (true? (upload/append-csv! {:file     file
+                                              :table-id (:id table)})))
+              (testing "Check the data was not uploaded into the table"
+                (is (= [[1 "Obi-Wan Kenobi"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
 (deftest duplicate-header-csv-test
-  (mt/test-drivers #{:h2}
+  (mt/test-driver :h2
     (with-uploads-allowed
       (testing "Happy path"
         (doseq [csv-rows [["id,id,name" "2,2,Luke Skywalker" "3,3,Darth Vader"]]]
