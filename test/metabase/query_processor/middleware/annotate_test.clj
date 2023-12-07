@@ -336,13 +336,12 @@
 
 ;; test that added information about aggregations looks the way we'd expect
 (defn- aggregation-names
-  ([ag-clause]
-   (aggregation-names {:source-table (meta/id :venues)} ag-clause))
-
-  ([inner-query ag-clause]
-   (binding [driver/*driver* :h2]
-     (qp.store/with-metadata-provider meta/metadata-provider
-       (select-keys (#'annotate/col-info-for-aggregation-clause inner-query ag-clause) [:name :display_name])))))
+  [ag-clause]
+  (binding [driver/*driver* :h2]
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (select-keys (first (#'annotate/cols-for-ags-and-breakouts {:source-table (meta/id :venues)
+                                                           :aggregation [ag-clause]}))
+                   [:name :display_name]))))
 
 (deftest ^:parallel aggregation-names-test
   (testing "basic aggregations"
@@ -409,7 +408,7 @@
 
   ([inner-query clause]
    (binding [driver/*driver* :h2]
-     (#'annotate/col-info-for-aggregation-clause inner-query clause))))
+     (#'annotate/cols-for-ags-and-breakouts (assoc inner-query :aggregation [clause])))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test
   (qp.store/with-metadata-provider meta/metadata-provider
