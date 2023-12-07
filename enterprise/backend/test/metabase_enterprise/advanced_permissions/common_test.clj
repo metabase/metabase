@@ -22,6 +22,8 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- do-with-all-user-data-perms
@@ -730,9 +732,12 @@
                   (is (thrown-with-msg?
                         clojure.lang.ExceptionInfo
                         #"You don't have permissions to do that\."
-                        (upload-csv!)))))
-              (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
-                (is (some? (upload-csv!)))))))))))
+                        (upload-csv!))))))
+            ;; Cal: what is this testing?
+            (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
+              (is (some? (upload-csv!))))
+            ;; Wait for something to finish, otherwise this flakes
+            (Thread/sleep 1000)))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
