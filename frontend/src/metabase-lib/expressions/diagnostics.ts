@@ -189,6 +189,7 @@ function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
   return (
     typeof err === "object" &&
     err != null &&
-    typeof (err as any).message === "string"
+    "message" in err &&
+    typeof err.message === "string"
   );
 }
