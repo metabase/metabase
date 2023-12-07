@@ -353,10 +353,6 @@
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 public interface                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 ;;;; +------------------+
 ;;;; |  Create upload
 ;;;; +------------------+
@@ -404,6 +400,10 @@
   "Returns true if the user can upload to the given database and schema, and false otherwise."
   [db schema-name]
   (nil? (can-upload-error db schema-name)))
+
+;;; +-----------------------------------------
+;;; |  public interface for creating CSV table
+;;; +-----------------------------------------
 
 (mu/defn upload-csv!
   "Main entry point for CSV uploading.
@@ -490,9 +490,9 @@
           (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
         (throw e)))))
 
-;;;; +------------------+
-;;;; |  Appends
-;;;; +------------------+
+;;; +--------------------------
+;;; |  append to uploaded table
+;;; +--------------------------
 
 (defn- base-type->upload-type [base-type]
   (case base-type
@@ -506,23 +506,36 @@
     :type/Float                  ::float))
 
 (defn- check-schema
-  "Returns the normalized header"
+  "Returns a map with two keys:
+    - `parse-rows`, a function that takes a lazy-seq of rows, and returns a lazy-seq of rows. It parses the
+      string values in each row and removes columns that have the same normalized name as the generated columns.
+    - `table-col-names`, a seq of the column names in the table, in the same order as the columns in the CSV file.
+
+  Throws an exception if:
+    - the CSV file contains duplicate column names
+    - the schema of the CSV file does not match the schema of the table"
   [table header]
-  ;; TODO: check for duplicates
+  ;; Assumes table-cols are unique when normalized
   (let [table-cols           (t2/select :model/Field :table_id (:id table))
         table-cols-by-normed (-> (into {}
                                        (map (fn [col]
                                               [(normalize-column-name (:name col)) col]))
                                        table-cols)
                                  (dissoc "_mb_row_id"))
-        normalized-header->header (into (ordered-map/ordered-map)
-                                        (map (fn [col]
-                                               [(normalize-column-name col) col]))
-                                        header)
+        normalized-header+header (into []
+                                       (map (fn [col]
+                                              [(normalize-column-name col) col]))
+                                       header)
         normed first
-        normalized-header (map normed normalized-header->header)
+        normalized-header (map normed normalized-header+header)
+        normalized-table-cols (map normed table-cols-by-normed)
+        ;; check for duplicates
+        _ (when (some #(< 1 %) (vals (frequencies normalized-header)))
+            (throw (ex-info (tru "The CSV file contains duplicate column names.")
+                            {:status-code 422})))
         [extra missing _both] (data/diff (set normalized-header)
-                                        (set (map normed table-cols-by-normed)))]
+                                         (set normalized-table-cols))]
+
     (if (and (nil? extra) (nil? missing))
       {:parse-rows (fn [rows]
                      (let [rows' rows ;; TODO: remove auto-pk columns here
@@ -537,21 +550,23 @@
   (with-open [reader (bom/bom-reader file)]
     (let [[header & rows] (csv/read-csv reader)
           {:keys [parse-rows table-col-names]} (check-schema table header)
-          ;; TODO real
           schema+table-name (if (str/blank? (:schema table))
                               (:name table)
                               (str (:schema table) "." (:name table)))]
-      ;; for row in rows, insert into table, the same way as upload-csv!
       (try
-        (driver/insert-into! (driver.u/database->driver database) (:id database) schema+table-name table-col-names (parse-rows rows))
+        (driver/insert-into! (driver.u/database->driver database)
+                             (:id database)
+                             schema+table-name
+                             table-col-names
+                             (parse-rows rows))
         (catch Throwable e
           ;; TODO: insert rows failure handling
           (throw (ex-info (ex-message e) {:status-code 400}))))))
   true)
 
-;;;; +------------------+
-;;;; |  public interface
-;;;; +------------------+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 public interface                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."

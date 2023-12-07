@@ -1153,3 +1153,20 @@
                         [3 "Darth Vader"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
+
+(deftest duplicate-header-csv-test
+  (mt/test-drivers #{:h2}
+    (with-uploads-allowed
+      (testing "Happy path"
+        (doseq [csv-rows [["id,id,name" "2,2,Luke Skywalker" "3,3,Darth Vader"]]]
+          (mt/dataset (basic-db-definition (mt/random-name))
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:message "The CSV file contains duplicate column names."
+                      :data    {:status-code 422}}
+                     (catch-ex-info (upload/append-csv! {:file     file
+                                                         :table-id (:id table)}))))
+              (testing "Check the data was not uploaded into the table"
+                (is (= [[1 "Obi-Wan Kenobi"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
