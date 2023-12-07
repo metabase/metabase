@@ -17,6 +17,7 @@
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
@@ -1063,3 +1064,64 @@
                         (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                         ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                             first :exists)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           append-csv!                                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- basic-db-definition [database-name]
+  (tx/map->DatabaseDefinition
+   {:database-name     database-name
+    :table-definitions [{:table-name        "baz"
+                         :field-definitions [{:field-name "_mb_row_id", :base-type :type/BigInteger, :semantic-type :type/SerializedJSON}
+                                             {:field-name "first_name", :base-type :type/Text}
+                                             {:field-name "last_name", :base-type :type/Text}]
+                         :rows              [[1, "row_one"]]}]}))
+
+(defn append-csv-with-defaults!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  [& {:keys [uploads-enabled user-id file table-id]
+      :or {uploads-enabled   true
+           user-id           (mt/user->id :crowberto)
+           file              (csv-file-with
+                              ["first_name,last_name"
+                               "Luke,Skywalker"
+                               "Darth,Vader"]
+                              (str "example csv file.csv"))}}]
+  (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+    (mt/with-current-user user-id
+      (mt/dataset (basic-db-definition (mt/random-name))
+        (let [table (t2/select-one :model/Table :db_id (mt/id))]
+          (@#'upload/append-csv! {:table-id (or table-id (:id table))
+                                  :file file}))))))
+
+(defn catch-ex-info* [f]
+  (try
+    (f)
+    (catch Exception e
+      {:message (ex-message e) :data (ex-data e)})))
+
+(defmacro catch-ex-info
+  [& body]
+  `(catch-ex-info* (fn [] ~@body)))
+
+(catch-ex-info
+ (append-csv-with-defaults! :table-id Integer/MAX_VALUE))
+
+(deftest append-csv-test
+  (mt/test-driver :h2
+    (testing "Happy path"
+      (is (some? (append-csv-with-defaults!))))
+    (testing "Uploads must be enabled"
+      (is (= {:message "Uploads are not enabled."
+              :data    {:status-code 422}}
+             (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
+    (testing "The table must exist"
+      (is (= {:message "Not found."
+              :data    {:status-code 404}}
+             (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
+    (testing "Uploads must be supported"
+      (with-redefs [driver/database-supports? (constantly false)]
+        (is (= {:message "Uploads are not supported on H2 databases."
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults!))))))))
