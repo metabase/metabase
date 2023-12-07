@@ -3,7 +3,6 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { getAvailableOperatorOptions } from "../utils";
@@ -109,7 +108,6 @@ export function CoordinateFilterPicker({
           />
         )}
         <CoordinateValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -122,7 +120,6 @@ export function CoordinateFilterPicker({
 }
 
 interface CoordinateValueInputProps {
-  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -130,7 +127,6 @@ interface CoordinateValueInputProps {
 }
 
 function CoordinateValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -141,11 +137,12 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <FilterValuePicker
-          value={values}
-          column={column}
-          hasMultipleValues
-          onChange={onChange}
+        <NumberInput
+          value={values[0]}
+          onChange={(newValue: number) => onChange([newValue])}
+          placeholder={placeholder}
+          autoFocus
+          w="100%"
         />
       </FlexWithScroll>
     );

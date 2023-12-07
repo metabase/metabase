@@ -5,7 +5,6 @@ import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -73,7 +72,6 @@ export function NumberFilterPicker({
       </FilterPickerHeader>
       <div>
         <NumberValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -86,7 +84,6 @@ export function NumberFilterPicker({
 }
 
 interface NumberValueInputProps {
-  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -94,7 +91,6 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -105,11 +101,12 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <FilterValuePicker
-          value={values}
-          column={column}
-          hasMultipleValues
-          onChange={onChange}
+        <NumberInput
+          value={values[0]}
+          onChange={newValue => onChange([newValue])}
+          placeholder={placeholder}
+          autoFocus
+          w="100%"
         />
       </FlexWithScroll>
     );

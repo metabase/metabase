@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -77,7 +76,6 @@ export function StringFilterPicker({
       </FilterPickerHeader>
       <div>
         <StringValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -97,7 +95,6 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
-  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -105,7 +102,6 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -114,11 +110,12 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-        <FilterValuePicker
-          column={column}
-          value={values}
-          hasMultipleValues={hasMultipleValues}
-          onChange={onChange}
+        <TextInput
+          value={values[0]}
+          onChange={event => onChange([event.target.value])}
+          placeholder={t`Enter some text`}
+          autoFocus
+          w="100%"
         />
       </FlexWithScroll>
     );
