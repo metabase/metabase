@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
+   [metabase.formatter :as formatter]
    [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.test-util :as render.tu]))
 
 (use-fixtures :each
@@ -47,8 +47,8 @@
   (set (map (comp count :row) results)))
 
 (defn- number [num-str num-value]
-  (common/map->NumericWrapper {:num-str   (str num-str)
-                               :num-value num-value}))
+  (formatter/map->NumericWrapper {:num-str   (str num-str)
+                                  :num-value num-value}))
 
 (def ^:private default-header-result
   [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name"]
