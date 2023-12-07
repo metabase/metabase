@@ -47,6 +47,13 @@ describe("scenarios > dashboard", () => {
     cy.signInAsAdmin();
   });
 
+  describe("performance", () => {
+    it("should perform", () => {
+      visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.lighthouse();
+    });
+  });
+
   describe("create", () => {
     it("new dashboard UI flow", { tags: "@smoke" }, () => {
       cy.intercept("POST", "/api/dashboard").as("createDashboard");

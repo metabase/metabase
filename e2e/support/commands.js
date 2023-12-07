@@ -34,3 +34,5 @@ import "./commands/overwrites/log";
 import "./commands/percy/createPercySnapshot";
 
 require("./commands/downloads/deleteDownloadsFolder").addCustomCommand();
+
+import "@cypress-audit/lighthouse/commands";

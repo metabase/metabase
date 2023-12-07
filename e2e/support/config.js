@@ -5,6 +5,8 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 
+const { lighthouse, prepareAudit } = require("@cypress-audit/lighthouse");
+
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
@@ -65,6 +67,8 @@ const defaultConfig = {
         launchOptions.args.push("--force-prefers-reduced-motion");
       }
 
+      prepareAudit(launchOptions);
+
       return launchOptions;
     });
 
@@ -78,6 +82,9 @@ const defaultConfig = {
       },
       ...dbTasks,
       ...verifyDownloadTasks,
+      lighthouse: lighthouse(lighthouseReport => {
+        console.log(lighthouseReport);
+      }),
       removeDirectory,
     });
 
