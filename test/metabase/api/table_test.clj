@@ -909,5 +909,6 @@
           (is (= {:status 200, :body nil}
                  (append-csv-via-api!)))))
       (testing "Failure paths return an appropriate status code and a message in the body"
-        nil ;; TODO
-        ))))
+        (mt/with-temporary-setting-values [uploads-enabled false]
+          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                 (append-csv-via-api!))))))))
