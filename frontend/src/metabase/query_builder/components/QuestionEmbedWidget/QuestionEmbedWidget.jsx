@@ -2,14 +2,11 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import { t } from "ttag";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
-import MetabaseSettings from "metabase/lib/settings";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
+import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
 import {
@@ -18,7 +15,6 @@ import {
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../../actions";
-import { TriggerIcon } from "./QuestionEmbedWidget.styled";
 
 const QuestionEmbedWidgetPropTypes = {
   className: PropTypes.string,
@@ -28,10 +24,7 @@ const QuestionEmbedWidgetPropTypes = {
   updateEnableEmbedding: PropTypes.func,
   updateEmbeddingParams: PropTypes.func,
   metadata: PropTypes.object,
-};
-
-const QuestionEmbedWidgetTriggerPropTypes = {
-  onClick: PropTypes.func,
+  onClose: PropTypes.func,
 };
 
 const mapStateToProps = (state, props) => ({
@@ -46,6 +39,22 @@ const mapDispatchToProps = {
 };
 
 class QuestionEmbedWidget extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      embedType: null,
+    };
+  }
+
+  setEmbedType = embedType => {
+    this.setState({ embedType });
+  };
+
+  onModalClose = () => {
+    this.setEmbedType(null);
+    this.props.onClose();
+  };
+
   render() {
     const {
       className,
@@ -55,45 +64,33 @@ class QuestionEmbedWidget extends Component {
       updateEnableEmbedding,
       updateEmbeddingParams,
       metadata,
+      onClose,
       ...props
     } = this.props;
     return (
-      <EmbedModalContent
-        {...props}
-        className={className}
-        resource={card}
-        resourceType="question"
-        resourceParameters={getCardUiParameters(card, metadata)}
-        onCreatePublicLink={() => createPublicLink(card)}
-        onDisablePublicLink={() => deletePublicLink(card)}
-        onUpdateEnableEmbedding={enableEmbedding =>
-          updateEnableEmbedding(card, enableEmbedding)
-        }
-        onUpdateEmbeddingParams={embeddingParams =>
-          updateEmbeddingParams(card, embeddingParams)
-        }
-        getPublicUrl={({ public_uuid }, extension) =>
-          Urls.publicQuestion({ uuid: public_uuid, type: extension })
-        }
-        extensions={Urls.exportFormats}
-      />
-    );
-  }
-
-  static shouldRender({
-    question,
-    isAdmin,
-    // preferably this would come from props
-    isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing"),
-    isEmbeddingEnabled = MetabaseSettings.get("enable-embedding"),
-  }) {
-    if (question.isDataset()) {
-      return false;
-    }
-
-    return (
-      (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
-      (isEmbeddingEnabled && isAdmin)
+      <EmbedModal onClose={this.onModalClose} embedType={this.state.embedType}>
+        <EmbedModalContent
+          {...props}
+          embedType={this.state.embedType}
+          setEmbedType={this.setEmbedType}
+          className={className}
+          resource={card}
+          resourceType="question"
+          resourceParameters={getCardUiParameters(card, metadata)}
+          onCreatePublicLink={() => createPublicLink(card)}
+          onDisablePublicLink={() => deletePublicLink(card)}
+          onUpdateEnableEmbedding={enableEmbedding =>
+            updateEnableEmbedding(card, enableEmbedding)
+          }
+          onUpdateEmbeddingParams={embeddingParams =>
+            updateEmbeddingParams(card, embeddingParams)
+          }
+          getPublicUrl={({ public_uuid }, extension) =>
+            Urls.publicQuestion({ uuid: public_uuid, type: extension })
+          }
+          extensions={Urls.exportFormats}
+        />
+      </EmbedModal>
     );
   }
 }
@@ -103,22 +100,4 @@ export default connect(
   mapDispatchToProps,
 )(QuestionEmbedWidget);
 
-export function QuestionEmbedWidgetTrigger({ onClick }) {
-  return (
-    <TriggerIcon
-      name="share"
-      tooltip={t`Sharing`}
-      onClick={() => {
-        MetabaseAnalytics.trackStructEvent(
-          "Sharing / Embedding",
-          "question",
-          "Sharing Link Clicked",
-        );
-        onClick();
-      }}
-    />
-  );
-}
-
-QuestionEmbedWidgetTrigger.propTypes = QuestionEmbedWidgetTriggerPropTypes;
 QuestionEmbedWidget.propTypes = QuestionEmbedWidgetPropTypes;

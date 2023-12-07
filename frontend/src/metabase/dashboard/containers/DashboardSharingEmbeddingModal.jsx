@@ -2,11 +2,12 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 
+import { t } from "ttag";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
 
-import Modal from "metabase/components/Modal";
+import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
 import {
   createPublicLink,
   deletePublicLink,
@@ -30,6 +31,22 @@ const mapDispatchToProps = {
 };
 
 class DashboardSharingEmbeddingModal extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      embedType: null,
+    };
+  }
+
+  setEmbedType = embedType => {
+    this.setState({ embedType });
+  };
+
+  onModalClose = () => {
+    this.setEmbedType(null);
+    this.props.onClose();
+  };
+
   render() {
     const {
       className,
@@ -50,15 +67,18 @@ class DashboardSharingEmbeddingModal extends Component {
       return null;
     }
     return (
-      <Modal
-        full
-        disabled={!isLinkEnabled}
-        triggerClasses={className}
-        className="scroll-y"
-        onClose={onClose}
+      <EmbedModal
+        isOpen={enabled}
+        onClose={this.onModalClose}
+        embedType={this.state.embedType}
+        fit
+        formModal={false}
+        header={t`Embed Metabase`}
       >
         <EmbedModalContent
           {...props}
+          embedType={this.state.embedType}
+          setEmbedType={this.setEmbedType}
           className={className}
           resource={dashboard}
           resourceParameters={parameters}
@@ -71,10 +91,10 @@ class DashboardSharingEmbeddingModal extends Component {
           onUpdateEmbeddingParams={embeddingParams =>
             updateEmbeddingParams(dashboard, embeddingParams)
           }
-          onClose={onClose}
+          onClose={this.onModalClose}
           getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
         />
-      </Modal>
+      </EmbedModal>
     );
   }
 }

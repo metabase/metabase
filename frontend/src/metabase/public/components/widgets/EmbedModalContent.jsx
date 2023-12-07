@@ -1,19 +1,16 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import { titleize } from "inflection";
 import { t } from "ttag";
 
 import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
-import { color } from "metabase/lib/colors";
 
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
 import SharingPane from "./SharingPane";
 import { EmbedTitleLabel } from "./EmbedModalContent.styled";
@@ -37,7 +34,6 @@ class EmbedModalContent extends Component {
     };
     this.state = {
       pane: "preview",
-      embedType: null,
       embeddingParams: getDefaultEmbeddingParams(props),
       displayOptions,
       parameterValues: {},
@@ -48,8 +44,8 @@ class EmbedModalContent extends Component {
 
   handleSave = async () => {
     try {
-      const { resource } = this.props;
-      const { embeddingParams, embedType } = this.state;
+      const { resource, embedType } = this.props;
+      const { embeddingParams } = this.state;
       if (embedType === "application") {
         if (!resource.enable_embedding) {
           await this.props.onUpdateEnableEmbedding(true);
@@ -106,15 +102,11 @@ class EmbedModalContent extends Component {
       resource,
       resourceType,
       resourceParameters,
-      onClose,
-    } = this.props;
-    const {
-      pane,
       embedType,
-      embeddingParams,
-      parameterValues,
-      displayOptions,
-    } = this.state;
+      setEmbedType,
+    } = this.props;
+    const { pane, embeddingParams, parameterValues, displayOptions } =
+      this.state;
 
     const previewParametersBySlug = this.getPreviewParamsBySlug();
     const previewParameters = this.getPreviewParameters(
@@ -124,42 +116,11 @@ class EmbedModalContent extends Component {
 
     return (
       <div className="flex flex-column full-height">
-        <div
-          className="px2 py1 z1 flex align-center"
-          style={{
-            boxShadow:
-              embedType === "application"
-                ? `0px 8px 15px -9px ${color("text-dark")}`
-                : undefined,
-          }}
-        >
-          <h2 className="ml-auto">
-            <EmbedTitle
-              onClick={() => this.setState({ embedType: null })}
-              type={embedType && titleize(embedType)}
-            />
-          </h2>
-          <Icon
-            className="text-light text-medium-hover cursor-pointer p2 ml-auto"
-            name="close"
-            size={24}
-            onClick={() => {
-              MetabaseAnalytics.trackStructEvent(
-                "Sharing Modal",
-                "Modal Closed",
-              );
-              onClose();
-            }}
-          />
-        </div>
         {embedType == null ? (
           <div className="flex-full">
             {/* Center only using margins because  */}
             <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
-              <SharingPane
-                {...this.props}
-                onChangeEmbedType={embedType => this.setState({ embedType })}
-              />
+              <SharingPane {...this.props} onChangeEmbedType={setEmbedType} />
             </div>
           </div>
         ) : embedType === "application" ? (
@@ -234,7 +195,7 @@ function filterValidResourceParameters(embeddingParams, resourceParameters) {
   return _.pick(embeddingParams, validParameters);
 }
 
-export const EmbedTitle = ({ type, onClick }) => (
+export const EmbedTitle = ({ type, onClick = undefined }) => (
   <a className="flex align-center" onClick={onClick}>
     <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
     {type && <Icon name="chevronright" className="mx1 text-medium" />}
