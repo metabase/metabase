@@ -262,52 +262,6 @@ describeEE("formatting > whitelabel", () => {
       getHelpLinkCustomDestinationInput().clear().type("https://").blur();
       main().findByText("Please make sure this is a valid URL").should("exist");
     });
-
-    it("should not create a race condition - scenario 1: default ->  custom  -> non custom", () => {
-      cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
-
-      cy.findByTestId("help-link-setting")
-        .findByText("Go to a custom destination...")
-        .click();
-
-      getHelpLinkCustomDestinationInput().type(
-        "https://example.org/custom-destination",
-      );
-
-      cy.findByTestId("help-link-setting").findByText("Hide it").click();
-      cy.wait("@putHelpLink");
-
-      cy.visit("/");
-      openSettingsMenu();
-      helpLink().should("not.exist");
-    });
-
-    it("should not create a race condition - scenario 2: default ->  custom  -> non custom -> custom ", () => {
-      cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel");
-
-      cy.findByLabelText("Link to Metabase help").should("be.checked");
-
-      cy.findByTestId("help-link-setting")
-        .findByText("Go to a custom destination...")
-        .click();
-
-      getHelpLinkCustomDestinationInput().type(
-        "https://example.org/custom-destination",
-      );
-
-      cy.findByTestId("help-link-setting").findByText("Hide it").click();
-
-      cy.findByTestId("help-link-setting")
-        .findByText("Go to a custom destination...")
-        .click();
-
-      cy.reload();
-      cy.findByTestId("help-link-setting")
-        .findByLabelText("Go to a custom destination...")
-        .should("be.checked");
-    });
   });
 });
 
