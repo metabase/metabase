@@ -88,8 +88,8 @@ const STEPS: NotebookStepDef[] = [
     active: query => query.hasAggregations() || query.hasBreakouts(),
     revert: (query, stageIndex) => {
       const clauses = [
-        ...Lib.aggregations(query, stageIndex),
         ...Lib.breakouts(query, stageIndex),
+        ...Lib.aggregations(query, stageIndex),
       ];
 
       return clauses.reduce((query, clause) => {
