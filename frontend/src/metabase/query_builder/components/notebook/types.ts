@@ -1,7 +1,6 @@
 import type { Query } from "metabase-lib/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
 
 export type NotebookStepType =
   | "data"
@@ -13,14 +12,6 @@ export type NotebookStepType =
   | "breakout"
   | "sort"
   | "limit";
-
-export type NotebookStepFn<ReturnType> = (
-  legacyQuery: StructuredQuery,
-  index: number | undefined | null,
-  query: Query,
-  stageIndex: number,
-  metadata: Metadata,
-) => ReturnType;
 
 type RevertFn = (
   query: Query,

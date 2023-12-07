@@ -6,7 +6,7 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
+import type { NotebookStep, OpenSteps } from "../types";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -15,7 +15,7 @@ import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
 type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
-  valid: NotebookStepFn<boolean>;
+  valid: (query: Query, metadata: Metadata) => boolean;
   active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
 };
