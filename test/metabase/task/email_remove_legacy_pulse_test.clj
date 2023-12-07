@@ -3,8 +3,11 @@
    [clojure.test :refer :all]
    [metabase.task.email-remove-legacy-pulse :as email-remove-legacy-pulse]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
 (deftest send-emails-to-admins-if-instance-has-legacy-pulse
   (mt/with-temp
     [:model/User  admin  {:is_superuser true :first_name "Ngoc" :last_name "Khuat"}
