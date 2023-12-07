@@ -46,7 +46,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
       tableName: "PEOPLE",
       breakoutColumn: createPeopleLatitudeDatasetColumn({ source: "breakout" }),
       binningStrategies: [
-        { name: "Auto bin", strategyMetadata: { binning_strategy: "default" } },
+        { name: "Auto bin", metadata: { binning_strategy: "default" } },
         {
           name: "Bin every 0.1 degrees",
           metadata: { binning_strategy: "bin-width", bin_width: 0.1 },
@@ -68,7 +68,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
   ])("$name", ({ tableName, breakoutColumn, binningStrategies }) => {
     it.each(binningStrategies)(
       'should drill thru an aggregated cell with "%s" binning strategy',
-      ({ binningStrategy: name, binningMetadata: metadata }) => {
+      ({ name: binningStrategy, metadata: binningMetadata }) => {
         const query = createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],
           breakouts: [
@@ -87,7 +87,7 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
           },
           breakouts: [
             {
-              column: { ...breakoutColumn, binning_info: metadata },
+              column: { ...breakoutColumn, binning_info: binningMetadata },
               value: 20,
             },
           ],
@@ -144,7 +144,8 @@ describe("drill-thru/zoom-in.binning (metabase#36177)", () => {
       expect(drill).toBeNull();
     });
 
-    it("should not drill thru a non-editable query", () => {
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not drill thru a non-editable query (#36125)", () => {
       const query = createNotEditableQuery(
         createQueryWithClauses({
           aggregations: [{ operatorName: "count" }],

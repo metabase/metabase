@@ -30,7 +30,9 @@ export interface DatasetColumn {
   remapped_to?: string;
   effective_type?: string;
   binning_info?: {
+    binning_strategy?: "default" | "bin-width" | "num-bins";
     bin_width?: number;
+    num_bins?: number;
   };
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
