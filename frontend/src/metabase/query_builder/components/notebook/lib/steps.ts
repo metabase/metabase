@@ -25,7 +25,7 @@ const STEPS: NotebookStepDef[] = [
     type: "data",
     valid: query => !query.sourceQuery(),
     active: _query => true,
-    revert: query => query, // this step is non-reversible (i.e. non-removable)
+    revert: null, // this step is non-reversible (i.e. non-removable)
   },
   {
     type: "join",
