@@ -7,13 +7,27 @@
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
+   [metabase.analytics.snowplow :as snowplow]
+   [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.mbql.util :as mbql.u]
    [metabase.models :refer [Database]]
+   [metabase.models.card :as card]
+   [metabase.models.collection :as collection]
+   [metabase.models.humanization :as humanization]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.fields :as sync-fields]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -265,11 +279,7 @@
 ;;;; |  Parsing values  |
 ;;;; +------------------+
 
-;;;; +------------------+
-;;;; | Public Functions |
-;;;; +------------------+
-
-(defn unique-table-name
+(defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
   [driver table-name]
   (let [time-format                 "_yyyyMMddHHmmss"
@@ -295,7 +305,7 @@
   [driver col->upload-type]
   (update-vals col->upload-type (partial driver/upload-type->database-type driver)))
 
-(defn detect-schema
+(defn- detect-schema
   "Consumes a CSV file that *must* have headers as the first row.
 
   Returns a map with three keys:
@@ -317,7 +327,7 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
-(defn load-from-csv!
+(defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
@@ -340,3 +350,136 @@
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 public interface                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- scan-and-sync-table!
+  [database table]
+  (sync-fields/sync-fields-for-table! database table)
+  (future
+    (sync/sync-table! table)))
+
+(defn- can-upload-error
+  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
+  [db schema-name]
+  (let [driver (driver.u/database->driver db)]
+    (cond
+      (not (public-settings/uploads-enabled))
+      (ex-info (tru "Uploads are not enabled.")
+               {:status-code 422})
+      (premium-features/sandboxed-user?)
+      (ex-info (tru "Uploads are not permitted for sandboxed users.")
+               {:status-code 403})
+      (not (driver/database-supports? driver :uploads nil))
+      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
+               {:status-code 422})
+      (and (str/blank? schema-name)
+           (driver/database-supports? driver :schemas db))
+      (ex-info (tru "A schema has not been set.")
+               {:status-code 422})
+      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                            (perms/data-perms-path (u/the-id db) schema-name)))
+      (ex-info (tru "You don''t have permissions to do that.")
+               {:status-code 403})
+      (and (some? schema-name)
+           (not (driver.s/include-schema? db schema-name)))
+      (ex-info (tru "The schema {0} is not syncable." schema-name)
+               {:status-code 422}))))
+
+(defn- check-can-upload
+  "Throws an error if the user cannot upload to the given database and schema."
+  [db schema-name]
+  (when-let [error (can-upload-error db schema-name)]
+    (throw error)))
+
+(defn can-upload?
+  "Returns true if the user can upload to the given database and schema, and false otherwise."
+  [db schema-name]
+  (nil? (can-upload-error db schema-name)))
+
+(mu/defn upload-csv!
+  "Main entry point for CSV uploading.
+
+  What it does:
+  - throws an error if the user cannot upload to the given database and schema (see [[can-upload-error]] for reasons)
+  - throws an error if the user has write permissions to the given collection
+  - detects the schema of the CSV file
+  - inserts the data into a new table with a unique name, along with an extra auto-generated primary key column
+  - syncs and scans the table
+  - creates a model which wraps the table
+
+  Requires that current-user dynamic vars in [[metabase.api.common]] are bound as if by API middleware (this is
+  needed for QP permissions checks).
+  Returns the newly created model. May throw validation, permimissions, or DB errors.
+
+  Args:
+  - `collection-id`: the ID of the collection to create the model in. `nil` means the root collection.
+  - `filename`: the name of the file being uploaded.
+  - `file`: the file being uploaded.
+  - `db-id`: the ID of the database to upload to.
+  - `schema-name`: the name of the schema to create the table in (optional).
+  - `table-prefix`: the prefix to use for the table name (optional)."
+  [{:keys [collection-id filename ^File file db-id schema-name table-prefix]}
+   :- [:map
+       [:collection-id [:maybe ms/PositiveInt]]
+       [:filename :string]
+       [:file (ms/InstanceOfClass File)]
+       [:db-id ms/PositiveInt]
+       [:schema-name {:optional true} [:maybe :string]]
+       [:table-prefix {:optional true} [:maybe :string]]]]
+  (let [database (or (t2/select-one Database :id db-id)
+                     (throw (ex-info (tru "The uploads database does not exist.")
+                                     {:status-code 422})))]
+    (check-can-upload database schema-name)
+    (collection/check-write-perms-for-collection collection-id)
+    (try
+      (let [start-time        (System/currentTimeMillis)
+            driver            (driver.u/database->driver database)
+            filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
+                                  filename)
+            table-name        (->> (str table-prefix filename-prefix)
+                                   (unique-table-name driver)
+                                   (u/lower-case-en))
+            schema+table-name (if (str/blank? schema-name)
+                                table-name
+                                (str schema-name "." table-name))
+            stats             (load-from-csv! driver (:id database) schema+table-name file)
+          ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
+            table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
+            _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+            _sync             (scan-and-sync-table! database table)
+          ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
+          ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
+            auto-pk-field     (t2/select-one :model/Field :table_id (:id table)
+                                             :%lower.name auto-pk-column-name)
+            _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
+            card              (card/create-card!
+                               {:collection_id          collection-id
+                                :dataset                true
+                                :database_id            (:id database)
+                                :dataset_query          {:database (:id database)
+                                                         :query    {:source-table (:id table)}
+                                                         :type     :query}
+                                :display                :table
+                                :name                   (humanization/name->human-readable-name filename-prefix)
+                                :visualization_settings {}}
+                               @api/*current-user*)
+            upload-seconds    (/ (- (System/currentTimeMillis) start-time)
+                                 1000.0)]
+        (snowplow/track-event! ::snowplow/csv-upload-successful
+                               api/*current-user-id*
+                               (merge
+                                {:model-id       (:id card)
+                                 :upload-seconds upload-seconds}
+                                stats))
+        card)
+      (catch Throwable e
+        (let [fail-stats (with-open [reader (bom/bom-reader file)]
+                           (let [rows (csv/read-csv reader)]
+                             {:size-mb     (/ (.length file) 1048576.0)
+                              :num-columns (count (first rows))
+                              :num-rows    (count (rest rows))}))]
+          (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
+        (throw e)))))

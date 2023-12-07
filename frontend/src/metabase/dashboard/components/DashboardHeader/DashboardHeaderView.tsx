@@ -44,7 +44,7 @@ interface DashboardHeaderViewProps {
   setDashboardAttribute: (prop: string, value: string) => null;
 }
 
-export function DashboardHeaderView({
+export function DashboardHeaderComponent({
   editingTitle = "",
   editingSubtitle = "",
   editingButtons = [],

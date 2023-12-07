@@ -358,9 +358,12 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.options/update-options
-   an-expression-clause
+   (if (lib.util/clause? an-expression-clause)
+     an-expression-clause
+     [:value {:effective-type (lib.schema.expression/type-of an-expression-clause)}
+      an-expression-clause])
    (fn [opts]
      (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
        (if (:lib/expression-name opts)
          (assoc opts :lib/expression-name new-name)
-         (assoc opts :display-name new-name))))))
+         (assoc opts :name new-name :display-name new-name))))))

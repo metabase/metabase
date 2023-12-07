@@ -283,6 +283,8 @@ import reference_component from "./reference.svg?component";
 import reference_source from "./reference.svg?source";
 import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
+import refresh_downstream_component from "./refresh_downstream.svg?component";
+import refresh_downstream_source from "./refresh_downstream.svg?source";
 import rocket_component from "./rocket.svg?component";
 import rocket_source from "./rocket.svg?source";
 import ruler_component from "./ruler.svg?component";
@@ -924,6 +926,10 @@ export const Icons = {
   refresh: {
     component: refresh_component,
     source: refresh_source,
+  },
+  refresh_downstream: {
+    component: refresh_downstream_component,
+    source: refresh_downstream_source,
   },
   rocket: {
     component: rocket_component,

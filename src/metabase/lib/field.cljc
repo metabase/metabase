@@ -19,6 +19,7 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -47,10 +48,10 @@
   [[tag opts id-or-name]]
   [(keyword tag) (normalize-field-options opts) id-or-name])
 
-(mu/defn resolve-column-name-in-metadata :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
-   column-metadatas :- [:sequential lib.metadata/ColumnMetadata]]
+   column-metadatas :- [:sequential ::lib.schema.metadata/column]]
   (or (some (fn [k]
               (m/find-first #(= (get % k) column-name)
                             column-metadatas))
@@ -65,7 +66,7 @@
   "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
   false)
 
-(mu/defn ^:private resolve-column-name :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn ^:private resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
@@ -97,7 +98,7 @@
                                       (assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                       (assoc :lib/source :source/previous-stage))))))))
 
-(mu/defn ^:private resolve-field-metadata :- lib.metadata/ColumnMetadata
+(mu/defn ^:private resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                                 :- ::lib.schema/query
@@ -117,17 +118,17 @@
                     {::temporal-unit unit})
                   (cond
                     (integer? id-or-name) (or (lib.equality/resolve-field-id query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name id-or-name})
-                    join-alias            {:lib/type :metadata/column, :name id-or-name}
+                                              {:lib/type :metadata/column, :name (str id-or-name)})
+                    join-alias            {:lib/type :metadata/column, :name (str id-or-name)}
                     :else                 (or (resolve-column-name query stage-number id-or-name)
-                                              {:lib/type :metadata/column, :name id-or-name})))]
+                                              {:lib/type :metadata/column, :name (str id-or-name)})))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
 (mu/defn ^:private add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
-   metadata :- lib.metadata/ColumnMetadata]
+   metadata :- ::lib.schema.metadata/column]
   (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
         {parent-name :name} (cond->> parent-metadata
                               (:parent-id parent-metadata) (add-parent-column-metadata query))]
@@ -451,7 +452,7 @@
     (column-metadata->field-ref metadata)))
 
 (defn- expression-columns
-  "Return the [[lib.metadata/ColumnMetadata]] for all the expressions in a stage of a query."
+  "Return the [[::lib.schema.metadata/column]] for all the expressions in a stage of a query."
   [query stage-number]
   (filter #(= (:lib/source %) :source/expressions)
           (lib.metadata.calculation/visible-columns
@@ -496,7 +497,7 @@
     stage-number :- :int]
    (:fields (lib.util/query-stage query stage-number))))
 
-(mu/defn fieldable-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn fieldable-columns :- [:sequential ::lib.schema.metadata/column]
   "Return a sequence of column metadatas for columns that you can specify in the `:fields` of a query. This is
   basically just the columns returned by the source Table/Saved Question/Model or previous query stage.
 
@@ -523,13 +524,13 @@
 
 (mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
   "Find the field id for something or nil."
-  [field-metadata :- lib.metadata/ColumnMetadata]
+  [field-metadata :- ::lib.schema.metadata/column]
   (:id field-metadata))
 
 (mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
   "Find the legacy card id or table id for a given ColumnMetadata or nil.
    Returns a either `\"card__<id>\"` or integer table id."
-  [{card-id :lib/card-id table-id :table-id} :- lib.metadata/ColumnMetadata]
+  [{card-id :lib/card-id table-id :table-id} :- ::lib.schema.metadata/column]
   (cond
     card-id (str "card__" card-id)
     table-id table-id))
@@ -687,7 +688,7 @@
         query))))
 
 ;; TODO: Refactor this away? The special handling for aggregations is strange.
-(mu/defn find-visible-column-for-ref :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
   "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
   last stage is used. This is currently only meant for use with `:field` clauses."
   ([query field-ref]
@@ -706,7 +707,7 @@
      (lib.equality/find-matching-column query stage-number field-ref columns))))
 
 ;; TODO: Refactor this away - handle legacy refs in lib.js and using `lib.equality` directly from there.
-(mu/defn find-visible-column-for-legacy-ref :- [:maybe lib.metadata/ColumnMetadata]
+(mu/defn find-visible-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
   "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
   only meant for use with `:field` clauses."
   ([query legacy-ref]
