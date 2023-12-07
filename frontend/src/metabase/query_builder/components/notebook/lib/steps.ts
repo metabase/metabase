@@ -234,29 +234,6 @@ function getStageSteps(
               : null
         : null,
       clean: query => STEP.clean(query, itemIndex, topLevelQuery, stageIndex),
-      update: datasetQuery => {
-        let newQuery = stageQuery.setDatasetQuery(datasetQuery);
-        // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
-        // the current step is in a temporarily invalid state
-        let current: NotebookStep | null = step;
-        while ((current = current.next)) {
-          // when switching to the next stage we need to setSourceQuery
-          if (
-            current.previous &&
-            current.previous.stageIndex < current.stageIndex
-          ) {
-            newQuery = current.query.setSourceQuery(newQuery.query());
-          }
-          newQuery = current.clean(
-            newQuery,
-            current.itemIndex,
-            topLevelQuery,
-            current.stageIndex,
-          );
-        }
-        // strip empty source queries
-        return newQuery.cleanNesting();
-      },
       // `actions`, `previewQuery`, `next` and `previous` will be set later
       actions: [],
       previewQuery: null,

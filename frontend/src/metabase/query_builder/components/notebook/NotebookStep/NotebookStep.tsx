@@ -11,7 +11,6 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type {
   NotebookStep as INotebookStep,
@@ -43,7 +42,7 @@ interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
+  updateQuery: (query: Query) => Promise<void>;
 }
 
 function NotebookStep({
@@ -97,7 +96,7 @@ function NotebookStep({
       step.stageIndex,
     );
     if (reverted) {
-      updateQuery(reverted);
+      updateQuery(reverted); // TODO: this will work when step.revert returns Query
     }
   }, [step, updateQuery]);
 

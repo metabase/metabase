@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
@@ -66,21 +66,12 @@ function NotebookSteps({
   }, []);
 
   const handleQueryChange = useCallback(
-    async (step: INotebookStep, query: StructuredQuery | Query) => {
-      // Performs a query update with either metabase-lib v1 or v2
-      // The StructuredQuery block is temporary and will be removed
-      // once all the notebook steps are using metabase-lib v2
-      if (query instanceof StructuredQuery) {
-        const datasetQuery = query.datasetQuery();
-        const updatedQuery = step.update(datasetQuery);
-        await updateQuestion(updatedQuery.question());
-      } else {
-        const updatedLegacyQuery = Lib.toLegacyQuery(query);
-        const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
-        const updatedQuery = updatedQuestion.query() as StructuredQuery;
-        const cleanQuestion = updatedQuery.cleanNesting().question();
-        await updateQuestion(cleanQuestion);
-      }
+    async (step: INotebookStep, query: Query) => {
+      const updatedLegacyQuery = Lib.toLegacyQuery(query);
+      const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
+      const updatedQuery = updatedQuestion.query() as StructuredQuery;
+      const cleanQuestion = updatedQuery.cleanNesting().question();
+      await updateQuestion(cleanQuestion);
 
       // mark the step as "closed" since we can assume
       // it's been added or removed by the updateQuery
@@ -98,8 +89,7 @@ function NotebookSteps({
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
-        const onChange = (query: StructuredQuery | Query) =>
-          handleQueryChange(step, query);
+        const onChange = (query: Query) => handleQueryChange(step, query);
 
         return (
           <NotebookStep
