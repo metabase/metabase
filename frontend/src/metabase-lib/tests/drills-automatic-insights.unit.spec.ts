@@ -22,8 +22,7 @@ import {
   createNotEditableQuery,
 } from "./drills-common";
 
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip("drill-thru/automatic-insights (metabase#33558)", () => {
+describe("drill-thru/automatic-insights (metabase#33558)", () => {
   const drillType = "drill-thru/automatic-insights";
   const stageIndex = 0;
   const metadataWithXraysEnabled = createMockMetadata(
