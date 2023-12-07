@@ -47,7 +47,11 @@ You can customize the colors that Metabase uses throughout the app:
 
 ![Chart colors](./images/chart-colors.png)
 
-You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values.
+You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. Now don't get confused about the order of colors you are selecting and thinking that these will get the same order on the chart. If you want to dive deeper on how metabase decides on selecting such colors. The below is a quick overview:
+
+For chart colors, there’s this function [getColorsForValues](https://github.com/metabase/metabase/blob/b4d8ae8a8b1c77e78984eee2d4bea1f79bdae039/frontend/src/metabase/lib/colors/charts.ts#L5) , where it also use different different colors based on the number of colors in a chart (<=8 and >8). As for how the whole palette is generated, each color is generated from the color above when you press generate chart colors, the logic is defined [here](https://github.com/metabase/metabase/blob/b4d8ae8a8b1c77e78984eee2d4bea1f79bdae039/enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/utils.ts#L41)
+ 
+Also the reason why the color order is not respected is because you define the colors and Metabase generates a lighter and darker variation, but in a chart with series Metabase checks the colors and sees if colors are similar to each other on the color that picked before or after, and then generates a new color. All the code for that is [here](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/metabase-enterprise/whitelabel/components/ChartColorSettings/utils.ts)
 
 Custom colors are unavailable for:
 
