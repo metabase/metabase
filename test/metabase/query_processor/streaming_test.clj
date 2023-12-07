@@ -166,7 +166,17 @@
             (testing "UTC results"
               (test-results
                (case export-format
-                 (:csv :json)
+                 :csv
+                 {:date           "November 1, 2019"
+                  :datetime       "2019-11-01T00:23:18.331"
+                  :datetime-ltz   "2019-11-01T07:23:18.331"
+                  :datetime-tz    "2019-11-01T07:23:18.331"
+                  :datetime-tz-id "2019-11-01T07:23:18.331"
+                  :time           "00:23:18.331"
+                  :time-ltz       "07:23:18.331"
+                  :time-tz        "07:23:18.331"}
+
+                 :json
                  {:date           "2019-11-01"
                   :datetime       "2019-11-01T00:23:18.331"
                   :datetime-ltz   "2019-11-01T07:23:18.331Z"
@@ -200,7 +210,17 @@
             (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
               (test-results
                (case export-format
-                 (:csv :json)
+                 :csv
+                 {:date           "November 1, 2019"
+                  :datetime       "2019-11-01T00:23:18.331"
+                  :datetime-ltz   "2019-11-01T00:23:18.331"
+                  :datetime-tz    "2019-11-01T00:23:18.331"
+                  :datetime-tz-id "2019-11-01T00:23:18.331"
+                  :time            "00:23:18.331"
+                  :time-ltz        "23:23:18.331"
+                  :time-tz         "23:23:18.331"}
+
+                 :json
                  {:date           "2019-11-01"
                   :datetime       "2019-11-01T00:23:18.331"
                   :datetime-ltz   "2019-11-01T00:23:18.331-07:00"
