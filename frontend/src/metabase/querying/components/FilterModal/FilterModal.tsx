@@ -9,6 +9,8 @@ import {
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
 import {
+  appendStageIfAggregated,
+  dropStageIfEmpty,
   findColumnFilters,
   findVisibleFilters,
   getColumnGroupItems,
@@ -37,7 +39,9 @@ export function FilterModal({
   onSubmit,
   onClose,
 }: FilterModalProps) {
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(() =>
+    appendStageIfAggregated(initialQuery),
+  );
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
@@ -61,7 +65,7 @@ export function FilterModal({
   };
 
   const handleSubmit = () => {
-    onSubmit(query);
+    onSubmit(dropStageIfEmpty(query));
     onClose();
   };
 

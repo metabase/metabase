@@ -2,6 +2,19 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import type { GroupItem } from "./types";
 
+export function appendStageIfAggregated(query: Lib.Query) {
+  const aggregations = Lib.aggregations(query, -1);
+  const breakouts = Lib.breakouts(query, -1);
+
+  return aggregations.length > 0 && breakouts.length > 0
+    ? Lib.appendStage(query)
+    : query;
+}
+
+export function dropStageIfEmpty(query: Lib.Query) {
+  return Lib.dropStageIfEmpty(query, -1);
+}
+
 function getStageIndexes(query: Lib.Query) {
   const stageCount = Lib.stageCount(query);
   return stageCount > 1 ? [-2, -1] : [-1];
