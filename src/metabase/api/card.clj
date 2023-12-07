@@ -688,7 +688,8 @@ saved later when it is ready."
 
 (defn- delete-alerts-if-needed! [old-card {card-id :id :as new-card}]
   ;; If there are alerts, we need to check to ensure the card change doesn't invalidate the alert
-  (when-let [alerts (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]}))]
+  (when-let [alerts (binding [pulse/*allow-hydrate-archived-cards* true]
+                      (seq (pulse/retrieve-alerts-for-cards {:card-ids [card-id]})))]
     (cond
 
       (card-archived? old-card new-card)

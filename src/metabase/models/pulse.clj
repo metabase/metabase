@@ -212,6 +212,11 @@
   [notification-or-id]
   (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
 
+(def ^:dynamic *allow-hydrate-archived-cards*
+  "By default the :cards hydration method only return active cards,
+  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
+  false)
+
 (s/defn ^:private cards* :- [HybridPulseCard]
   [notification-or-id]
   (t2/select
@@ -224,7 +229,8 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:= :p.id (u/the-id notification-or-id)]
-                [:= :c.archived false]]
+                (when-not *allow-hydrate-archived-cards*
+                  [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
 (mi/define-simple-hydration-method cards
