@@ -14,4 +14,5 @@ export interface FilterPickerWidgetProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
+  onInput: () => void;
 }

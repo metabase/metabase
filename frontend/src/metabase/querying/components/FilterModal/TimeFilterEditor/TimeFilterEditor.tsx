@@ -15,6 +15,7 @@ export function TimeFilterEditor({
   column,
   filter,
   onChange,
+  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -45,6 +46,11 @@ export function TimeFilterEditor({
     onChange(getFilterClause(newOperator, values));
   };
 
+  const handleInputChange = (values: TimeValue[]) => {
+    setValues(values);
+    onInput();
+  };
+
   const handleInputBlur = () => {
     onChange(getFilterClause(operator, values));
   };
@@ -68,7 +74,7 @@ export function TimeFilterEditor({
         <TimeValueInput
           values={values}
           valueCount={valueCount}
-          onChange={setValues}
+          onChange={handleInputChange}
           onBlur={handleInputBlur}
         />
       </Grid.Col>

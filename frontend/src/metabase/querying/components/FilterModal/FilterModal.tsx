@@ -38,11 +38,23 @@ export function FilterModal({
   onClose,
 }: FilterModalProps) {
   const [query, setQuery] = useState(initialQuery);
+  const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
 
+  const handleInput = () => {
+    if (!isChanged) {
+      setIsChanged(true);
+    }
+  };
+
+  const handleChange = (newQuery: Lib.Query) => {
+    setQuery(newQuery);
+    handleInput();
+  };
+
   const handleRemove = () => {
-    setQuery(removeFilters(query));
+    handleChange(removeFilters(query));
   };
 
   const handleSubmit = () => {
@@ -71,7 +83,8 @@ export function FilterModal({
                   key={groupItem.key}
                   query={query}
                   groupItem={groupItem}
-                  onChange={setQuery}
+                  onChange={handleChange}
+                  onInput={handleInput}
                 />
               ))}
             </Flex>
@@ -86,7 +99,7 @@ export function FilterModal({
           >
             {t`Clear all filters`}
           </Button>
-          <Button variant="filled" onClick={handleSubmit}>
+          <Button variant="filled" disabled={!isChanged} onClick={handleSubmit}>
             {t`Apply filters`}
           </Button>
         </ModalFooter>
@@ -133,9 +146,10 @@ interface TabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
-function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
+function TabPanel({ query, groupItem, onChange, onInput }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
@@ -147,6 +161,7 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
               stageIndex={groupItem.stageIndex}
               column={column}
               onChange={onChange}
+              onInput={onInput}
             />
           );
         })}
@@ -160,6 +175,7 @@ interface TabPanelItemListProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
 function TabPanelItemList({
@@ -167,6 +183,7 @@ function TabPanelItemList({
   stageIndex,
   column,
   onChange,
+  onInput,
 }: TabPanelItemListProps) {
   const currentFilters = findColumnFilters(query, stageIndex, column);
   const [initialFilterCount] = useState(currentFilters.length);
@@ -182,6 +199,7 @@ function TabPanelItemList({
           column={column}
           filter={filter}
           onChange={onChange}
+          onInput={onInput}
         />
       ))}
     </div>
@@ -194,6 +212,7 @@ interface TabPanelItemProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
 function TabPanelItem({
@@ -202,6 +221,7 @@ function TabPanelItem({
   column,
   filter,
   onChange,
+  onInput,
 }: TabPanelItemProps) {
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
@@ -221,6 +241,7 @@ function TabPanelItem({
         column={column}
         filter={filter}
         onChange={handleChange}
+        onInput={onInput}
       />
     </ColumnItemRoot>
   );

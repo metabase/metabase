@@ -14,6 +14,7 @@ export function NumberFilterEditor({
   column,
   filter,
   onChange,
+  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -49,6 +50,11 @@ export function NumberFilterEditor({
     onChange(getFilterClause(newOperator, values));
   };
 
+  const handleInputChange = (values: NumberValue[]) => {
+    setValues(values);
+    onInput();
+  };
+
   const handleInputBlur = () => {
     onChange(getFilterClause(operator, values));
   };
@@ -73,7 +79,7 @@ export function NumberFilterEditor({
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
-          onChange={setValues}
+          onChange={handleInputChange}
           onBlur={handleInputBlur}
         />
       </Grid.Col>

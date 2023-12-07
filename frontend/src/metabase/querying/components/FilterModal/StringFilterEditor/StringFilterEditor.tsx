@@ -14,6 +14,7 @@ export function StringFilterEditor({
   column,
   filter,
   onChange,
+  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -45,6 +46,11 @@ export function StringFilterEditor({
     onChange(getFilterClause(newOperator, values, options));
   };
 
+  const handleInputChange = (values: string[]) => {
+    setValues(values);
+    onInput();
+  };
+
   const handleInputBlur = () => {
     onChange(getFilterClause(operator, values, options));
   };
@@ -69,7 +75,7 @@ export function StringFilterEditor({
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
-          onChange={setValues}
+          onChange={handleInputChange}
           onBlur={handleInputBlur}
         />
       </Grid.Col>

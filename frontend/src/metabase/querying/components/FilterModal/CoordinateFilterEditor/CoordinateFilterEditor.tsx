@@ -14,6 +14,7 @@ export function CoordinateFilterEditor({
   column,
   filter,
   onChange,
+  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -48,6 +49,11 @@ export function CoordinateFilterEditor({
     onChange(getFilterClause(newOperator, secondColumn, values));
   };
 
+  const handleInputChange = (values: NumberValue[]) => {
+    setValues(values);
+    onInput();
+  };
+
   const handleInputBlur = () => {
     onChange(getFilterClause(operator, secondColumn, values));
   };
@@ -72,7 +78,7 @@ export function CoordinateFilterEditor({
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
-          onChange={setValues}
+          onChange={handleInputChange}
           onBlur={handleInputBlur}
         />
       </Grid.Col>
