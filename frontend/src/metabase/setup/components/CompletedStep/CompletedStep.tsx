@@ -28,8 +28,6 @@ export const CompletedStep = (): JSX.Element | null => {
       </StepBody>
       <StepFooter>
         <a className="Button Button--primary" href={baseUrl}>
-          {/* Doesn't make sense to replace the application name because users just set up Metabase
-          probably know they're using Metabase not the white labeled application */}
           {t`Take me to Metabase`}
         </a>
       </StepFooter>

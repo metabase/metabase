@@ -41,8 +41,6 @@ export const NewsletterForm = (): JSX.Element => {
       <EmailFormLabel>
         <EmailFormLabelCard>
           <EmailFormLabelIcon name="mail" />
-          {/* Doesn't make sense to replace the application name because users just set up Metabase
-          probably know they're using Metabase not the white labeled application */}
           <EmailFormLabelText>{t`Metabase Newsletter`}</EmailFormLabelText>
         </EmailFormLabelCard>
       </EmailFormLabel>

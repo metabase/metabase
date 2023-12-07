@@ -71,8 +71,6 @@ export const PreferencesStep = (): JSX.Element => {
       label={4}
     >
       <StepDescription>
-        {/* Doesn't make sense to replace the application name because users just set up Metabase
-          probably know they're using Metabase not the white labeled application */}
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
         <ExternalLink
           href={Settings.docsUrl(

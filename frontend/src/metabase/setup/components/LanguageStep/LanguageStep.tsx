@@ -65,8 +65,6 @@ export const LanguageStep = (): JSX.Element => {
   return (
     <ActiveStep title={t`What's your preferred language?`} label={1}>
       <StepDescription>
-        {/* Doesn't make sense to replace the application name because users just set up Metabase
-          probably know they're using Metabase not the white labeled application */}
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>
       <LocaleGroup role="radiogroup">

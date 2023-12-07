@@ -36,8 +36,6 @@ export const WelcomePage = (): JSX.Element | null => {
     <PageRoot data-testid="welcome-page">
       <PageMain>
         <LogoIcon height={118} />
-        {/* Doesn't make sense to replace the application name because users just set up Metabase
-          probably know they're using Metabase not the white labeled application */}
         <PageTitle>{t`Welcome to Metabase`}</PageTitle>
         <PageBody>
           {t`Looks like everything is working.`}{" "}
