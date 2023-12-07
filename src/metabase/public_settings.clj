@@ -27,7 +27,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    "Metabase")
 
 (defn application-name-for-setting-descriptions
@@ -109,34 +109,6 @@
   :type       :integer
   :visibility :public
   :audit      :getter)
-
-  ;; TODO: the settings on the BE will be done at the end, with help from the backend team
-(defsetting help-link
-  (deferred-tru "TODO")
-  :default    :default
-  :type       :keyword
-  :audit      :getter
-  :visibility :public)
-
-(defn- normalize-help-link-custom-destination [^String s]
-  (let [;; remove trailing slashes
-        s (str/replace s #"/$" "")
-        ;; add protocol if missing
-        s (if (str/starts-with? s "http")
-            s
-            (str "http://" s))]
-    ;; check that the URL is valid
-    (when-not (u/url? s)
-      (throw (ex-info (tru "Invalid URL: {0}" (pr-str s)) {:url (pr-str s)})))
-    s))
-
-(defsetting help-link-custom-destination
-  (deferred-tru "TODO")
-  :type       :string
-  :visibility :public
-  :setter     (fn [new-value]
-                (let [new-value (some-> new-value normalize-help-link-custom-destination)]
-                  (setting/set-value-of-type! :string :help-link-custom-destination new-value))))
 
 (defsetting dismissed-custom-dashboard-toast
   (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
@@ -396,7 +368,7 @@
   (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
   :visibility :internal
   :type       :string
-  :enabled?   premium-features/hide-embed-branding?
+  :feature    :whitelabel
   :audit      :getter)
 
 (defsetting deprecation-notice-version
@@ -408,7 +380,7 @@
 (defsetting loading-message
   (deferred-tru "Message to show while a query is running.")
   :visibility :public
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :type       :keyword
   :default    :doing-science
   :audit      :getter)
@@ -420,7 +392,7 @@
     (application-name-for-setting-descriptions))
   :visibility :public
   :type       :json
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    {}
   :audit      :getter)
 
@@ -429,7 +401,7 @@
   :visibility :public
   :type       :string
   :default    "Lato"
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :audit      :getter
   :setter     (fn [new-value]
                   (when new-value
@@ -442,7 +414,7 @@
   :visibility :public
   :type       :json
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?)
+  :feature    :whitelabel)
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -459,7 +431,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    "app/assets/img/logo.svg")
 
 (defsetting application-favicon-url
@@ -467,7 +439,7 @@
   :visibility :public
   :type       :string
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    "app/assets/img/favicon.ico")
 
 (defsetting show-metabot
@@ -475,7 +447,7 @@
   :visibility :public
   :type       :boolean
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    true)
 
 (defsetting show-lighthouse-illustration
@@ -483,8 +455,53 @@
   :visibility :public
   :type       :boolean
   :audit      :getter
-  :enabled?   premium-features/enable-whitelabeling?
+  :feature    :whitelabel
   :default    true)
+
+(def ^:private help-link-options
+  #{:metabase :hidden :custom})
+
+(defsetting help-link
+  (deferred-tru
+   (str
+    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+    "or be hidden if it is not set."))
+  :default    :default
+  :type       :keyword
+  :audit      :getter
+  :visibility :public
+  :feature    :whitelabel
+  :default    :metabase
+  :setter     (fn [value]
+                (when-not (help-link-options (keyword value))
+                  (throw (ex-info (tru "Invalid help link option")
+                                  {:value value
+                                   :valid-options help-link-options})))
+                (setting/set-value-of-type! :keyword :help-link value)))
+
+(defn- validate-help-url
+  "Checks that the provided URL is either a valid HTTP/HTTPS URL or a `mailto:` link. Returns `nil` if the input is valid;
+  throws an exception if it is not."
+  [url]
+  (let [validation-exception (ex-info (tru "Please make sure this is a valid URL")
+                                      {:url url})]
+   (if-let [matches (re-matches #"^mailto:(.*)" url)]
+     (when-not (u/email? (second matches))
+       (throw validation-exception))
+     (when-not (u/url? url)
+       (throw validation-exception)))))
+
+(defsetting help-link-custom-destination
+  (deferred-tru "Custom URL for the help link.")
+  :visibility :public
+  :type       :string
+  :audit      :getter
+  :feature    :whitelabel
+  :setter     (fn [new-value]
+                (let [new-value-string (str new-value)]
+                 (validate-help-url new-value-string)
+                 (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")
