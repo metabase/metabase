@@ -896,21 +896,16 @@
 (defn data-graph-for-db
   "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
   [db-id]
-  (let [group-id->v1-paths (->> (permissions-by-group-ids
-                                 (into [:or ;; is this needed? [:= :object (h2x/literal "/")]
-                                        ;; we can use like on h2 isn't it?
-                                        [:like :object (h2x/literal (str "%/db/" db-id "/%"))]]))
-                                ->v1-paths)]
+  (let [group-id->permissions (permissions-by-group-ids [:like :object (h2x/literal (str "%/db/" db-id "/%"))])
+        group-id->v1-paths (->v1-paths group-id->permissions)]
     (generate-graph [db-id] group-id->v1-paths)))
 
 (defn data-graph-for-group
   "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
   [group-id]
   (let [db-ids (t2/select-pks-set :model/Database)
-        clause (vec (concat
-                     [:or ;; needed? ;[:= :object (h2x/literal "/")]
-                      [:= :group_id group-id]]))
-        group-id->paths (select-keys (->v1-paths (permissions-by-group-ids clause)) [group-id])]
+        group-id->permissions (permissions-by-group-ids [:= :group_id group-id])
+        group-id->paths (select-keys (->v1-paths group-id->permissions) [group-id])]
     (generate-graph db-ids group-id->paths)))
 
 (defn data-perms-graph-v2

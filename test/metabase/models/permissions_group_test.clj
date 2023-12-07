@@ -105,3 +105,17 @@
       (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
         (t2/update! User user-id {:is_superuser false})
         (is (false? (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
+
+(deftest data-graph-for-group-check-all-groups-test
+  (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
+    (testing (str "testing data perms graph for group graph with group-id: [" group-id "].")
+      (is (= #{group-id} (set (keys (perms/data-graph-for-group group-id))))))))
+
+(deftest data-graph-for-db-check-all-dbs-test
+  (doseq [db-id (t2/select-fn-set :id :model/Database)]
+    (testing (str "testing data perms graph for db graph with db-id: [" db-id "].")
+      (= #{db-id}
+         (->> (perms/data-graph-for-db db-id)
+              vals
+              (mapcat keys)
+              set)))))
