@@ -43,6 +43,10 @@
   (trs "Total number of foreign keys sync''d {0}, {1} updated and {2} tables failed to update"
        total-fks updated-fks total-failed))
 
+(defn- sync-indexes-summary [{:keys [total-indexes added-indexes removed-indexes]}]
+  (format "Total number of indexes sync''d %s, %s added and %s removed"
+          total-indexes added-indexes removed-indexes))
+
 (defn- make-sync-steps [db-metadata]
   [(sync-util/create-sync-step "sync-dbms-version" sync-dbms-ver/sync-dbms-version! sync-dbms-version-summary)
    (sync-util/create-sync-step "sync-timezone" sync-tz/sync-timezone! sync-timezone-summary)
@@ -52,7 +56,7 @@
    (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
-   (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-fks-summary)
+   (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
    ;; finally, sync the metadata metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))
    ;; Now sync the table privileges

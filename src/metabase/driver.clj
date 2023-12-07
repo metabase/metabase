@@ -592,8 +592,7 @@
                               :date-arithmetics                       true
                               :temporal-extract                       true
                               :convert-timezone                       false
-                              :test/jvm-timezone-setting              true
-                              :indexing                               true}]
+                              :test/jvm-timezone-setting              true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias

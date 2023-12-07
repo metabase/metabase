@@ -25,12 +25,17 @@
                           {:database_indexed (if (seq indexes-field-name)
                                                [:case [:in :name indexes-field-name] true :else false]
                                                false)})
-              (+ (count adding) (count removing)))
-          0)))))
+              {:total-indexes   (if (seq indexes-field-name) (t2/count :model/Field :name [:in indexes-field-name]) 0)
+               :added-indexes   (count adding)
+               :removed-indexes (count removing)})
+          {})))))
 
 (defn maybe-sync-indexes!
   "Sync the indexes for all tables in `database` if the kriver supports indexing."
   [database]
   (let [tables (sync-util/db->sync-tables database)]
     (log/infof "Syncing indexes for %s tables" (count tables))
-    (reduce + (map #(maybe-sync-indexes-for-table! database %) tables))))
+    (apply merge-with + {:total-indexes 0
+                         :added-indexes 0
+                         :removed-indexes 0}
+           (map #(maybe-sync-indexes-for-table! database %) tables))))

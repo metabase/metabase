@@ -79,7 +79,8 @@
                               :datetime-diff             true
                               :now                       true
                               :test/jvm-timezone-setting false
-                              :uploads                   true}]
+                              :uploads                   true
+                              :indexing                  true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
