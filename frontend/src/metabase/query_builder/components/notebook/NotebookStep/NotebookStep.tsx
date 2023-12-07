@@ -95,7 +95,7 @@ function NotebookStep({
       step.itemIndex ?? undefined,
     );
     if (reverted) {
-      updateQuery(reverted); // TODO: this will work when step.revert returns Query
+      updateQuery(reverted);
     }
   }, [step, updateQuery]);
 
