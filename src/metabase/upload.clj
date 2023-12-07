@@ -509,7 +509,9 @@
     (cond
       (not (public-settings/uploads-enabled))
       (ex-info (tru "Uploads are not enabled.")
-               {:status-code 422}) (premium-features/sandboxed-user?)
+               {:status-code 422})
+
+      (premium-features/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
@@ -540,9 +542,7 @@
    :- [:map
        [:table-id ms/PositiveInt]
        [:file (ms/InstanceOfClass File)]]]
-  (let [table (or (t2/select-one :model/Table :id table-id)
-                  (throw (ex-info (tru "The uploads database does not exist.")
-                                  {:status-code 422})))
+  (let [table (api/write-check (t2/select-one :model/Table :id table-id))
         database (t2/select-one :model/Database :id (:db_id table))]
     (check-can-append database table)
     (append-csv!* database table file)))
