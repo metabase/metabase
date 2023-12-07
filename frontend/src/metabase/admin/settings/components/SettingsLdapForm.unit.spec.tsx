@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockGroup } from "metabase-types/api/mocks";
 
-import { SettingsLdapForm } from "./SettingsLdapForm";
+import { SettingsLdapFormView } from "./SettingsLdapForm";
 import type { SettingValues } from "./SettingsLdapForm";
 
 const GROUPS = [
@@ -215,7 +215,7 @@ const setup = (settingValues: SettingValues) => {
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
   renderWithProviders(
-    <SettingsLdapForm
+    <SettingsLdapFormView
       elements={elements}
       settingValues={settingValues}
       onSubmit={onSubmit}

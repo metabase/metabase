@@ -57,7 +57,7 @@ type Props = {
   onSubmit: (values: SettingValues) => void;
 };
 
-export const SettingsLdapForm = ({
+export const SettingsLdapFormView = ({
   elements = [],
   settingValues,
   onSubmit,
@@ -208,5 +208,7 @@ const mapDispatchToProps = {
   onSubmit: updateLdapSettings,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(SettingsLdapForm);
+export const SettingsLdapForm = connect(
+  null,
+  mapDispatchToProps,
+)(SettingsLdapFormView);
