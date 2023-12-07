@@ -1,4 +1,34 @@
 (ns metabase.lib.drill-thru.underlying-records
+  "\"View these Orders\" transformation.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Requirements:
+
+  - Not empty `dimensions`, i.e. at least 1 breakout in the query
+
+  Query transformation:
+
+
+  - Drop all query stages where there are no aggregation clauses until the last one.
+
+  - Remove all aggregation, breakout, sort, limit, field clauses
+
+  - Add filters for every breakout `dimensions` using this logic
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
+
+  - If there is a selected column (cell only), extract filters associated with this aggregation column. It could be
+    built-in operators (SumIf) or Metrics with filters. Add these filters to the query.
+
+  Question transformation:
+
+  - Set display \"table\""
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]

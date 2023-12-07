@@ -1,4 +1,48 @@
 (ns metabase.lib.drill-thru.pivot
+  "\"Breakout by\" transform.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Query with at least 1 aggregation
+
+  - Column from the aggregation clause was selected
+
+  For different query types/shapes different breakout columns are allowed:
+
+  - No aggregations and no breakouts - `type/Date`, `type/Address`, and `type/Category` (only which are not also
+    `type/Address`)
+
+  - At least 1 aggregation and exactly 1 breakout based on `Address` column - `Date`, `Category`
+
+  - At least 1 aggregation and 1-2 breakouts based on `Category` columns - `Date`, `Category`
+
+  - At least 1 aggregation and either (1 breakout on a date column OR 1st breakout is `Date` and 2nd is `Category`) -
+    `Address`, `Category`
+
+  - In other cases the drill is not supported
+
+  Query transformation is similar to `zoom-in` but can be simplified because legend items aren't supported:
+
+  - Remove existing breakouts
+
+  - Add filters based on `dimensions`, i.e. filters for all existing breakout
+
+  - Add a breakout based on the selected column
+
+  Question transformation:
+
+  - Set default display
+
+  Other functions:
+
+  - `pivotTypes` function that return available column types for the drill - \"category\" | \"location\" | \"time\"
+
+  - `pivotColumnsForType` returns the list of available columns for the drill and the selected type"
+
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]

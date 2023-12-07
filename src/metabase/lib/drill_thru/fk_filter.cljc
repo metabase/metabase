@@ -1,4 +1,23 @@
 (ns metabase.lib.drill-thru.fk-filter
+  "Adds a simple `=` filter for the selected FK column. Enables option like`View this Product's Reviews`.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Selected column is `type/FK`
+
+  - Return `columnName` and `tableName` for the FK column. On the FE we strip `ID` suffix and turn `Product ID` into
+    `Product's` and pluralize the table name.
+
+  Query transformation:
+
+  - Add a `=` filter for the selected column and value. Make sure to append the query stage when needed.
+
+  Question transformation:
+  - None"
   (:require
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
