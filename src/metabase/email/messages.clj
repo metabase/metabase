@@ -389,14 +389,14 @@
       (no "less than %d rows in results" body/rows-limit))))
 
 (defn- stream-api-results-to-export-format
-  "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
+  "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
   format.
 
-  TODO -- this function is provided mainly because rewriting all of the Pulse/Alert code to stream results directly
+  TODO -- this function is provided mainly because rewriting all the Pulse/Alert code to stream results directly
   was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
   point in the future; for now, this function is a stopgap.
 
-  Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
+  Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
   [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results

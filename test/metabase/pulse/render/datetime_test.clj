@@ -61,7 +61,11 @@
   (testing "Can render time types (#15146)"
     (is (= "08:05:06"
            (datetime/format-temporal-str "UTC" "08:05:06Z"
-                                         {:effective_type :type/Time})))))
+                                         {:effective_type :type/Time}))))
+  (testing "Can render date time types (Part of resolving #36484)"
+    (is (= "2014-04-01T08:30:00"
+           (datetime/format-temporal-str "UTC" "2014-04-01T08:30:00"
+                                         {:effective_type :type/DateTime})))))
 
 (deftest format-temporal-str-column-viz-settings-test
   (testing "Written Date Formatting"
