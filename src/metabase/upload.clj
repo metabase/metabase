@@ -20,7 +20,7 @@
    [metabase.models.permissions :as perms]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.sync :as sync]
+   #_[metabase.sync :as sync]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.upload.parsing :as upload-parsing]
@@ -358,7 +358,7 @@
 (defn- scan-and-sync-table!
   [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (future
+  #_(future
     (sync/sync-table! table)))
 
 (defn- can-upload-error
