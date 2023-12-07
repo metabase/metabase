@@ -4,6 +4,9 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.49.0
+- A new driver method has been added [[driver/describe-table-indexes]] along with a new feature `:indexing`
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
