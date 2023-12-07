@@ -1,11 +1,10 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 /**
- *
- * @TODO: Improve description and chaining
+ * Switch to a notebook editor from a simple query view (aka "chill mode").
  */
 export function openNotebook() {
-  return cy.icon("notebook").click();
+  return cy.findByTestId("qb-header-action-panel").icon("notebook").click();
 }
 
 /**
@@ -178,10 +177,14 @@ export function selectSavedQuestionsToJoin(
   secondQuestionName: string,
 ) {
   cy.intercept("GET", "/api/database/*/schemas").as("loadSchemas");
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText("Saved Questions").click();
-  // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-  cy.findByText(firstQuestionName).click();
+  cy.findAllByTestId("data-bucket-list-item")
+    .contains("Saved Questions")
+    .click();
+
+  cy.findByTestId("select-list")
+    .findAllByRole("menuitem")
+    .contains(firstQuestionName)
+    .click();
   cy.wait("@loadSchemas");
 
   // join to question b
@@ -190,7 +193,9 @@ export function selectSavedQuestionsToJoin(
   popover().within(() => {
     cy.findByText("Sample Database").should("be.visible").click();
     cy.findByText("Raw Data").should("be.visible").click();
-    cy.findByText("Saved Questions").should("be.visible").click();
+    cy.findAllByTestId("data-bucket-list-item")
+      .contains("Saved Questions")
+      .click();
     cy.findByText(secondQuestionName).click();
     cy.button("Save").click();
   });
