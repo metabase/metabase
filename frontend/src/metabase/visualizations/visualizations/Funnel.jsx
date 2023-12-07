@@ -233,13 +233,13 @@ export default class Funnel extends Component {
 
     const { actionButtons, className, onChangeCardAndRun, series } =
       this.props;
-    
+
     let component = <FunnelNormal {...this.props} className="flex-full" />
-    
+
     if (settings["funnel.type"] === "bar") {
       component = <FunnelBar {...this.props} />
     }
-    
+
     return (
       <div className={cx(className, "flex flex-column p1")}>
         {hasTitle && (
