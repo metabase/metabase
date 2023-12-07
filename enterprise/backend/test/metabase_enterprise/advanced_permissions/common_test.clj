@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [metabase.api.card-test :as api.card-test]
    [metabase.api.database :as api.database]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Dashboard DashboardCard Database Field FieldValues
@@ -17,6 +16,7 @@
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -710,24 +710,24 @@
           (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
         (sync/sync-database! (mt/db))
         (let [db-id    (u/the-id (mt/db))
-              table-id (t2/select-one-pk :model/Table :db_id db-id)]
-          (mt/with-temporary-setting-values [uploads-enabled      true
-                                             uploads-database-id  db-id
-                                             uploads-schema-name  "not_public"
-                                             uploads-table-prefix "uploaded_magic_"]
-            (doseq [[schema-perms can-upload?] {:all            true
-                                                :none           false
-                                                {table-id :all} false}]
-              (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
-                                                                                 "not_public" schema-perms}}}}
-                (if can-upload?
-                  (is (some? (api.card-test/upload-example-csv! nil false)))
-                  (is (thrown-with-msg?
-                       clojure.lang.ExceptionInfo
-                       #"You don't have permissions to do that\."
-                       (api.card-test/upload-example-csv! nil false)))))
-              (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
-                (is (some? (api.card-test/upload-example-csv! nil false)))))))))))
+              table-id (t2/select-one-pk :model/Table :db_id db-id)
+              upload-csv! (fn []
+                            (upload-test/upload-example-csv! {:grant-permission? false
+                                                              :schema-name       "not_public"
+                                                              :table-prefix      "uploaded_magic_"}))]
+          (doseq [[schema-perms can-upload?] {:all            true
+                                              :none           false
+                                              {table-id :all} false}]
+            (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
+                                                                               "not_public" schema-perms}}}}
+              (if can-upload?
+                (is (some? (upload-csv!)))
+                (is (thrown-with-msg?
+                      clojure.lang.ExceptionInfo
+                      #"You don't have permissions to do that\."
+                      (upload-csv!)))))
+            (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
+              (is (some? (upload-csv!))))))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas

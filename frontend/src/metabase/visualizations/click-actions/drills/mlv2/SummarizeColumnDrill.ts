@@ -7,7 +7,7 @@ import type { Dispatch } from "metabase-types/store";
 import type * as Lib from "metabase-lib";
 
 const ACTIONS: Record<
-  Lib.SummarizeColumnDrillAggregationOperator,
+  Lib.SummarizeColumnDrillThruOperator,
   Omit<ClickActionBase, "name">
 > = {
   sum: {

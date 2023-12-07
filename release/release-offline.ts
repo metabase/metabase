@@ -11,7 +11,6 @@ import "zx/globals";
 import { $ } from "zx";
 $.verbose = false;
 
-import { latest } from "immer/dist/internal";
 import {
   isValidVersionString,
   hasBeenReleased,
@@ -24,6 +23,7 @@ import {
   closeMilestone,
   openNextMilestones,
   versionRequirements,
+  getChangelog,
 } from "./src";
 
 const {
@@ -467,6 +467,19 @@ async function updateMilestones() {
 
   if (step === "release-notes") {
     await releaseNotes();
+  }
+
+  if (step === "changelog") {
+    // changelog preview only, doesn't publish anything
+    const { GITHUB_OWNER, GITHUB_REPO } = getGithubCredentials();
+    const notes = await getChangelog({
+      version, github,
+      owner: GITHUB_OWNER,
+      repo: GITHUB_REPO
+    });
+    // eslint-disable-next-line no-console -- allows piping to a file
+    console.log(notes);
+    return;
   }
 
   if (step === "update-milestones") {

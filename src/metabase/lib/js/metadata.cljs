@@ -442,8 +442,14 @@
         :when              (and a-segment (= (:table-id a-segment) table-id))]
     a-segment))
 
-(defn- setting [setting-key]
-  (.get js/__metabaseSettings (name setting-key)))
+(defn- setting [setting-key unparsed-metadata]
+  (if (and js/describe js/it)
+    ;; Trust the metadata's settings in tests.
+    (-> unparsed-metadata
+        (.-settings)
+        (aget (name setting-key)))
+    ;; And use the global, async-updated one in prod.
+    (.get js/__metabaseSettings (name setting-key))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
@@ -461,7 +467,7 @@
       (fields   [_this table-id]    (fields   metadata table-id))
       (metrics  [_this table-id]    (metrics  metadata table-id))
       (segments [_this table-id]    (segments metadata table-id))
-      (setting  [_this setting-key] (setting  setting-key))
+      (setting  [_this setting-key] (setting  setting-key unparsed-metadata))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.

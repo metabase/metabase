@@ -12,14 +12,12 @@ interface AddAggregationButtonProps {
   query: Lib.Query;
   legacyQuery: StructuredQuery;
   onAddAggregation: (aggregation: Lib.Aggregable) => void;
-  onLegacyQueryChange: (nextLegacyQuery: StructuredQuery) => void;
 }
 
 export function AddAggregationButton({
   query,
   legacyQuery,
   onAddAggregation,
-  onLegacyQueryChange,
 }: AddAggregationButtonProps) {
   const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
   const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
@@ -51,10 +49,6 @@ export function AddAggregationButton({
           hasExpressionInput={false}
           onSelect={aggregation => {
             onAddAggregation(aggregation);
-            closePopover();
-          }}
-          onSelectLegacy={legacyAggregation => {
-            onLegacyQueryChange(legacyQuery.aggregate(legacyAggregation));
             closePopover();
           }}
         />
