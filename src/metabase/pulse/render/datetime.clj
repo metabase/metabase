@@ -67,12 +67,15 @@
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
   column `:unit`."
   ([timezone-id s col] (format-temporal-str timezone-id s col {}))
-  ([timezone-id s col viz-settings]
+  ([timezone-id s {:keys [effective_type base_type] :as col} viz-settings]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
    (cond
      (str/blank? s) ""
 
-     (isa? (or (:effective_type col) (:base_type col)) :type/Time)
+     (isa? (or effective_type base_type) :type/DateTime)
+     (t/format DateTimeFormatter/ISO_LOCAL_DATE_TIME (u.date/parse s timezone-id))
+
+     (isa? (or effective_type base_type) :type/Time)
      (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
 
      :else
