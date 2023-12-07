@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 import {
+  canPickColumns,
   getAvailableColumns,
   getAvailableOptions,
   getDefaultSecondColumn,
@@ -66,10 +67,11 @@ export function useCoordinateFilter({
     hasMultipleValues,
     availableColumns,
     secondColumn,
+    canPickColumns: canPickColumns(operator, availableColumns),
     isValid,
     getFilterClause: (
       operator: Lib.CoordinateFilterOperatorName,
-      secondColumn: Lib.ColumnMetadata,
+      secondColumn: Lib.ColumnMetadata | undefined,
       values: NumberValue[],
     ) => getFilterClause(operator, column, secondColumn, values),
     setOperator: setOperatorAndValues,

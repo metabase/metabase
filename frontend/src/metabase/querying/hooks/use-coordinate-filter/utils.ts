@@ -43,8 +43,15 @@ export function getAvailableColumns(
 export function getDefaultSecondColumn(
   columns: Lib.ColumnMetadata[],
   longitudeColumn?: Lib.ColumnMetadata,
-) {
+): Lib.ColumnMetadata | undefined {
   return longitudeColumn ?? columns[0];
+}
+
+export function canPickColumns(
+  operator: Lib.CoordinateFilterOperatorName,
+  columns: Lib.ColumnMetadata[],
+) {
+  return operator === "inside" && columns.length > 1;
 }
 
 export function getDefaultValues(
@@ -64,7 +71,7 @@ export function getDefaultValues(
 export function isValidFilter(
   operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
-  secondColumn: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
 ) {
   return getFilterParts(operator, column, secondColumn, values) != null;
@@ -73,7 +80,7 @@ export function isValidFilter(
 export function getFilterClause(
   operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
-  secondColumn: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
 ) {
   const filterParts = getFilterParts(operator, column, secondColumn, values);
@@ -85,12 +92,14 @@ export function getFilterClause(
 function getFilterParts(
   operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
-  secondColumn: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
   values: NumberValue[],
 ): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
       return getBetweenFilterParts(operator, column, values);
+    case "inside":
+      return getInsideFilterParts(operator, column, secondColumn, values);
     default:
       return getSimpleFilterParts(operator, column, values);
   }
@@ -140,5 +149,29 @@ function getBetweenFilterParts(
       column,
       values: [endValue],
     };
+  } else {
+    return undefined;
   }
+}
+
+function getInsideFilterParts(
+  operator: Lib.CoordinateFilterOperatorName,
+  column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata | undefined,
+  values: NumberValue[],
+): Lib.CoordinateFilterParts | undefined {
+  if (!values.every(isNotEmpty)) {
+    return undefined;
+  }
+  if (secondColumn == null) {
+    return undefined;
+  }
+
+  const isLatitude = Lib.isLatitude(column);
+  return {
+    operator,
+    column: isLatitude ? column : secondColumn,
+    longitudeColumn: isLatitude ? secondColumn : column,
+    values,
+  };
 }
