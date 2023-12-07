@@ -34,7 +34,6 @@ export interface NotebookStep {
   visible: boolean;
   testID: string;
   revert: NotebookStepFn<StructuredQuery | null> | null;
-  clean: NotebookStepFn<StructuredQuery>;
   actions: NotebookStepAction[];
   previewQuery: StructuredQuery | null;
   next: NotebookStep | null;

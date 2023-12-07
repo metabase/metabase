@@ -14,7 +14,7 @@ import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
-type NotebookStepDef = Pick<NotebookStep, "type" | "clean" | "revert"> & {
+type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
   valid: NotebookStepFn<boolean>;
   active: NotebookStepFn<boolean>;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
@@ -36,7 +36,6 @@ const STEPS: NotebookStepDef[] = [
     type: "data",
     valid: query => !query.sourceQuery(),
     active: _query => true,
-    clean: query => query,
     revert: null,
   },
   {
@@ -65,7 +64,6 @@ const STEPS: NotebookStepDef[] = [
         stageIndex,
       );
     },
-    clean: query => query,
   },
   {
     type: "expression",
@@ -77,14 +75,12 @@ const STEPS: NotebookStepDef[] = [
     },
     active: query => query.hasExpressions(),
     revert: query => query.clearExpressions(),
-    clean: query => query.cleanExpressions(),
   },
   {
     type: "filter",
     valid: query => query.hasData(),
     active: query => query.hasFilters(),
     revert: query => query.clearFilters(),
-    clean: query => query.cleanFilters(),
   },
   {
     // NOTE: summarize is a combination of aggregate and breakout
@@ -96,7 +92,6 @@ const STEPS: NotebookStepDef[] = [
       query.hasAggregations() || query.hasBreakouts()
         ? query.clearBreakouts().clearAggregations()
         : query,
-    clean: query => query,
   },
   {
     type: "sort",
@@ -114,11 +109,6 @@ const STEPS: NotebookStepDef[] = [
         stageIndex,
       );
     },
-
-    // Order-bys can only be added from the notebook editor with MLv2.
-    // MLv2 guarantees that a query is valid at any given point of time,
-    // so we can skip order-bys cleaning.
-    clean: query => query,
   },
   {
     type: "limit",
@@ -136,7 +126,6 @@ const STEPS: NotebookStepDef[] = [
         stageIndex,
       );
     },
-    clean: query => query,
   },
 ];
 
@@ -269,8 +258,6 @@ function getStageSteps(
                 )
               : null
         : null,
-      clean: query =>
-        STEP.clean(query, itemIndex, topLevelQuery, stageIndex, metadata),
       // `actions`, `previewQuery`, `next` and `previous` will be set later
       actions: [],
       previewQuery: null,

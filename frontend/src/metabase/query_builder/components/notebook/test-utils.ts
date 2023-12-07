@@ -41,7 +41,6 @@ export function createMockNotebookStep({
     next: null,
     previous: null,
     revert: jest.fn(),
-    clean: jest.fn(),
     ...opts,
   };
 }
