@@ -132,6 +132,17 @@ Click on the **pencil** icon to enter dashboard edit mode, hover over the questi
 
 ![Visualization settings](images/visualization-settings.png)
 
+### Hiding a card when it doesn't return results
+
+One neat thing to call out: if you have a question card that rarely returns results, but you still want to include it in your dashboard because you want to know when it _does_ return results, you can tell Metabase to hide the card unless it returns at least one row of data.
+
+When in dashboard edit mode, click on the **Visualization settings** for the card.
+
+- If the card displays a table, the option is in the **Columns** tab.
+- If the card displays a chart, the option is in the **Display** tab.
+
+Toggle the option **Hide this card if there are no results**. When you turn on this option, the query will still run in the background, but the dashboard won't display the card. If the query returns results, the dashboard will display the card, moving the other cards around to make room for it according to how you've arranged the cards in dashboard edit mode.
+
 ## Resetting a card's visualization settings
 
 If you want to revert a dashboard card to its original visualization settings (i.e., the settings on the question when it was _first_ saved to your dashboard):

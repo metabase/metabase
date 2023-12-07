@@ -172,17 +172,19 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Done").click();
 
+    getNotebookStep("filter").contains("Price is greater than 1").click();
+
     // change the corresponding custom expression
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Price is greater than 1").click();
     cy.get(".Icon-chevronleft").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
     cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Price is less than 5/i);
+    getNotebookStep("filter")
+      .contains("Price is greater than 1")
+      .should("exist");
+    getNotebookStep("filter").contains("Price is less than 5").should("exist");
   });
 
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
@@ -302,6 +304,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.button("Done").should("not.be.disabled").click();
 
+      getNotebookStep("expression").contains("Example").should("exist");
+
       visualize();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -356,6 +360,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.contains(/^redundant input/i).should("not.exist");
 
         cy.button("Done").should("not.be.disabled").click();
+
+        cy.findByTestId("aggregate-step").contains(filter).should("exist");
 
         visualize();
 

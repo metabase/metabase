@@ -449,15 +449,17 @@ describe("scenarios > filters > filter types", () => {
 
           popover().findByText(columnName).click();
           selectOperator(operator);
-          popover().within(() => {
-            values.forEach((value, index) => {
-              if (index !== 0) {
-                cy.findByRole("textbox").type("{enter}");
-              }
-              cy.findByRole("textbox").type(value);
+          popover()
+            .first()
+            .within(() => {
+              values.forEach((value, index) => {
+                if (index !== 0) {
+                  cy.findByRole("textbox").type("{enter}");
+                }
+                cy.findByRole("textbox").type(value);
+              });
+              cy.button("Add filter").click();
             });
-            cy.button("Add filter").click();
-          });
 
           assertFilterName(expectedDisplayName);
           visualize();

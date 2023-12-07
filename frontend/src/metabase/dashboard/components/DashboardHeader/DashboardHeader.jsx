@@ -46,7 +46,7 @@ import Link from "metabase/core/components/Link/Link";
 import Collections from "metabase/entities/collections/collections";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { SIDEBAR_NAME } from "../../constants";
-import { DashboardHeaderComponent } from "./DashboardHeaderView";
+import { DashboardHeaderView } from "./DashboardHeaderView";
 import {
   DashboardHeaderButton,
   DashboardHeaderActionDivider,
@@ -565,7 +565,7 @@ class DashboardHeaderContainer extends Component {
 
     return (
       <>
-        <DashboardHeaderComponent
+        <DashboardHeaderView
           headerClassName="wrapper"
           objectType="dashboard"
           analyticsContext="Dashboard"

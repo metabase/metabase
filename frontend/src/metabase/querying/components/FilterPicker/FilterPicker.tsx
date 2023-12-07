@@ -5,11 +5,8 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
-import type { Expression as LegacyExpressionClause } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 
-import { isExpression as isLegacyExpression } from "metabase-lib/expressions";
-import LegacyFilter from "metabase-lib/queries/structured/Filter";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
 import { FilterColumnPicker } from "./FilterColumnPicker";
@@ -23,10 +20,10 @@ export interface FilterPickerProps {
   filterIndex?: number;
 
   legacyQuery: LegacyQuery;
-  legacyFilter?: LegacyFilter;
-  onSelectLegacy: (legacyFilter: LegacyFilter) => void;
 
-  onSelect: (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => void;
+  onSelect: (
+    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
+  ) => void;
   onClose?: () => void;
 }
 
@@ -36,9 +33,7 @@ export function FilterPicker({
   filter: initialFilter,
   filterIndex,
   legacyQuery,
-  legacyFilter,
   onSelect,
-  onSelectLegacy,
   onClose,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
@@ -58,7 +53,9 @@ export function FilterPicker({
     setFilter(initialFilter);
   }, [initialFilter]);
 
-  const handleChange = (filter: Lib.ExpressionClause | Lib.SegmentMetadata) => {
+  const handleChange = (
+    filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
+  ) => {
     onSelect(filter);
     onClose?.();
   };
@@ -77,26 +74,23 @@ export function FilterPicker({
     [filterIndex],
   );
 
-  const handleExpressionChange = useCallback(
-    (name: string, expression: LegacyExpressionClause) => {
-      if (Array.isArray(expression) && isLegacyExpression(expression)) {
-        const baseFilter =
-          legacyFilter || new LegacyFilter([], null, legacyQuery);
-        const nextFilter = baseFilter.set(expression);
-        onSelectLegacy(nextFilter);
-        onClose?.();
-      }
+  const handleClauseChange = useCallback(
+    (_name: string, clause: Lib.ExpressionClause | Lib.FilterClause) => {
+      onSelect(clause);
+      onClose?.();
     },
-    [legacyQuery, legacyFilter, onSelectLegacy, onClose],
+    [onSelect, onClose],
   );
 
   const renderExpressionEditor = () => (
     <ExpressionWidget
       legacyQuery={legacyQuery}
-      expression={legacyFilter?.raw() as LegacyExpressionClause}
+      query={query}
+      stageIndex={stageIndex}
+      clause={filter}
       startRule="boolean"
       header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
-      onChangeExpression={handleExpressionChange}
+      onChangeClause={handleClauseChange}
       onClose={closeExpressionEditor}
     />
   );
