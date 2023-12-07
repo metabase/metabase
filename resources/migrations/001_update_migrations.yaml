@@ -2291,8 +2291,11 @@ databaseChangeLog:
       id: v46.00-090
       author: noahmoss
       comment: Add foreign key constraint on sandboxes.permission_id
-      # This is a revised version of a prior migration (v46.00-075) so it may fail due to the FK constriant already existing
-      failOnError: false
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                - foreignKeyName: fk_sandboxes_ref_permissions
       changes:
         - addForeignKeyConstraint:
             baseTableName: sandboxes
