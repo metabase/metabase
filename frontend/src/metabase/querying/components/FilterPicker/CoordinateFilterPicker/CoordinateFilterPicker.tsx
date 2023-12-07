@@ -166,37 +166,37 @@ function CoordinateValueInput({
         <NumberInput
           label={t`Upper latitude`}
           value={values[0]}
+          placeholder="90"
+          autoFocus
           onChange={(newValue: number) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
-          placeholder="90"
-          autoFocus
         />
         <Flex align="center" justify="center" gap="sm">
           <NumberInput
             label={t`Left longitude`}
             value={values[1]}
+            placeholder="-180"
             onChange={(newValue: number) =>
               onChange([values[0], newValue, values[2], values[3]])
             }
-            placeholder="-180"
           />
           <NumberInput
             label={t`Right longitude`}
             value={values[3]}
+            placeholder="180"
             onChange={(newValue: number) =>
               onChange([values[0], values[1], values[2], newValue])
             }
-            placeholder="180"
           />
         </Flex>
         <NumberInput
           label={t`Lower latitude`}
           value={values[2]}
+          placeholder="-90"
           onChange={(newValue: number) =>
             onChange([values[0], values[1], newValue, values[3]])
           }
-          placeholder="-90"
         />
       </Stack>
     );
