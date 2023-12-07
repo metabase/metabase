@@ -205,3 +205,13 @@
                                    (descend coll [:settings])
                                    (descend coll)))))]
           (storage/store! export "/non-existent"))))))
+
+
+(deftest store-error-test
+  (testing "destination not writable"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (io/make-parents (str dump-dir "/test"))
+      (.setWritable (io/file dump-dir) false)
+      (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                            (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                            dump-dir))))))
