@@ -221,7 +221,7 @@
   []
   (v2.entity-ids/seed-entity-ids!))
 
-(defn drop-entity-hds!
+(defn drop-entity-ids!
   "Drop entity IDs for all instances of serializable models.
 
   This is needed for some cases of migrating from v1 to v2 serdes. v1 doesn't dump `entity_id`, so they may have been

@@ -11,7 +11,7 @@
 
 (comment sql-jdbc.dbms-version/keep-me sql-jdbc.sync.interface/keep-me sql-jdbc.describe-database/keep-me sql-jdbc.describe-table/keep-me)
 
- #_{:clj-kondo/ignore [:deprecated-var]}
+#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [sql-jdbc.sync.interface
   active-tables
