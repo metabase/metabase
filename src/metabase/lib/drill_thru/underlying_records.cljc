@@ -83,27 +83,27 @@
      query
      filter-clauses)))
 
-(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
-  [query _stage-number {:keys [column-ref dimensions]} & _]
-  (let [top-query   (lib.underlying/top-level-query query)
-        ;; Drop all aggregations, breakouts, sort orders, etc. to get the underlying records.
-        ;; Note that the input _stage-number is deliberately ignored. The top-level query may have fewer stages than the
-        ;; input query; all operations are performed on the final stage of the top-level query.
-        base-query  (lib.util/update-query-stage top-query -1
-                                                 dissoc :aggregation :breakout :order-by :limit :fields)
+(defn drill-underlying-records
+  "Drops aggregations, breakouts, orders, limits and field, then applies a filter for each of the dimensions (including
+  for metrics, and aggregations that imply a filter like `:sum-where`).
+
+  Extracted to a helper since it's reused by automatic-insights drill."
+  [query {:keys [column-ref dimensions] :as _context}]
+  (let [;; Drop all aggregations, breakouts, sort orders, etc. to get the underlying records.
+        ;; Note that all operations are performed on the final stage of input query.
+        base-query  (lib.util/update-query-stage query -1 dissoc :aggregation :breakout :order-by :limit :fields)
         ;; Turn any non-aggregation dimensions into filters.
         ;; eg. if we drilled into a temporal bucket, add a filter for the [:= breakout-column that-month].
         filtered    (reduce (fn [q {:keys [column value]}]
                               (drill-filter q -1 column value))
                             base-query
                             (for [dimension dimensions
-                                  :let [top (update dimension :column #(lib.underlying/top-level-column query %))]
-                                  :when (-> top :column :lib/source (not= :source/aggregations))]
-                              top))
+                                  :when (-> dimension :column :lib/source (not= :source/aggregations))]
+                              dimension))
         ;; The column-ref should be an aggregation ref - look up the full aggregation.
         aggregation (when-let [agg-uuid (last column-ref)]
                       (m/find-first #(= (lib.options/uuid %) agg-uuid)
-                                    (lib.aggregation/aggregations top-query -1)))]
+                                    (lib.aggregation/aggregations query -1)))]
     ;; Apply the filters derived from the aggregation.
     (reduce #(lib.filter/filter %1 -1 %2)
             filtered
@@ -125,3 +125,13 @@
 
                 ;; Default: no filters to add.
                 nil)))))
+
+(defmethod lib.drill-thru.common/drill-thru-method :drill-thru/underlying-records
+  [query _stage-number context & _]
+  ;; Note that the input _stage-number is deliberately ignored. The top-level query may have fewer stages than the
+  ;; input query; all operations are performed on the final stage of the top-level query.
+  (drill-underlying-records (lib.underlying/top-level-query query)
+                            (update context :dimensions
+                                    (fn [dims]
+                                      (for [dim dims]
+                                        (update dim :column #(lib.underlying/top-level-column query %)))))))
