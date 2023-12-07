@@ -707,37 +707,36 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  ;; TODO: remove stress test
-  (dotimes [_ 50]
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
-      (testing "Uploads should be blocked without data access"
-        (mt/with-empty-db
-          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+    (testing "Uploads should be blocked without data access"
+      (mt/with-empty-db
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
           ;; Create not_public schema
-            (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
-          (sync/sync-database! (mt/db))
-          (let [db-id    (u/the-id (mt/db))
-                table-id (t2/select-one-pk :model/Table :db_id db-id)
-                upload-csv! (fn []
-                              (upload-test/upload-example-csv! {:grant-permission? false
-                                                                :schema-name       "not_public"
-                                                                :table-prefix      "uploaded_magic_"}))]
-            (doseq [[schema-perms can-upload?] {:all            true
-                                                :none           false
-                                                {table-id :all} false}]
-              (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
-                                                                                 "not_public" schema-perms}}}}
-                (if can-upload?
-                  (is (some? (upload-csv!)))
-                  (is (thrown-with-msg?
-                        clojure.lang.ExceptionInfo
-                        #"You don't have permissions to do that\."
-                        (upload-csv!))))))
-            ;; Cal: what is this testing?
-            (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
-              (is (some? (upload-csv!))))
-            ;; Wait for something to finish, otherwise this flakes
-            (Thread/sleep 1000)))))))
+          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+        (sync/sync-database! (mt/db))
+        (let [db-id    (u/the-id (mt/db))
+              table-id (t2/select-one-pk :model/Table :db_id db-id)
+              upload-csv! (fn []
+                            (upload-test/upload-example-csv! {:grant-permission? false
+                                                              :schema-name       "not_public"
+                                                              :table-prefix      "uploaded_magic_"}))]
+          (doseq [[schema-perms can-upload?] {:all            true
+                                              :none           false
+                                              {table-id :all} false}]
+            (with-all-users-data-perms {db-id {:data {:native :none, :schemas {"public"     :all
+                                                                               "not_public" schema-perms}}}}
+              (if can-upload?
+                (is (some? (upload-csv!)))
+                (is (thrown-with-msg?
+                      clojure.lang.ExceptionInfo
+                      #"You don't have permissions to do that\."
+                      (upload-csv!))))))
+          ;; Cal 2023-12-7: what is this testing?
+          (with-all-users-data-perms {db-id {:data {:native :write, :schemas ["not_public"]}}}
+            (is (some? (upload-csv!))))
+          ;; TODO: this isn't ideal but it fixes the flake for now
+          ;; Wait for sessions to finish, otherwise this test flakes
+          (Thread/sleep 1000))))))
 
 (deftest get-database-can-upload-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
