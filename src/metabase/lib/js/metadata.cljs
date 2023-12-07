@@ -442,7 +442,7 @@
         :when              (and a-segment (= (:table-id a-segment) table-id))]
     a-segment))
 
-(defn- setting [setting-key unparsed-metadata]
+(defn- setting [setting-key ^js unparsed-metadata]
   (if (and js/describe js/it)
     ;; Trust the metadata's settings in tests.
     (-> unparsed-metadata
