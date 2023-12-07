@@ -16,7 +16,7 @@ import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 
 type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
   valid: NotebookStepFn<boolean>;
-  active: NotebookStepFn<boolean>;
+  active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
 };
 
@@ -24,7 +24,7 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "data",
     valid: query => !query.sourceQuery(),
-    active: _query => true,
+    active: () => true,
     revert: null, // this step is non-reversible (i.e. non-removable)
   },
   {
@@ -35,9 +35,13 @@ const STEPS: NotebookStepDef[] = [
     },
     subSteps: (topLevelQuery, stageIndex) =>
       Lib.joins(topLevelQuery, stageIndex).length,
-    active: (legacyQuery, index, topLevelQuery, stageIndex) =>
-      typeof index === "number" &&
-      Lib.joins(topLevelQuery, stageIndex).length > index,
+    active: (query, stageIndex, index) => {
+      if (typeof index !== "number") {
+        return false;
+      }
+
+      return Lib.joins(query, stageIndex).length > index;
+    },
     revert: (query, stageIndex, index) => {
       if (typeof index !== "number") {
         return query;
@@ -60,7 +64,9 @@ const STEPS: NotebookStepDef[] = [
         query.hasData() && database != null && database.supportsExpressions()
       );
     },
-    active: query => query.hasExpressions(),
+    active: (query, stageIndex) => {
+      return Lib.expressions(query, stageIndex).length > 0;
+    },
     revert: (query, stageIndex) => {
       const expressions = Lib.expressions(query, stageIndex);
 
@@ -72,7 +78,9 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "filter",
     valid: query => query.hasData(),
-    active: query => query.hasFilters(),
+    active: (query, stageIndex) => {
+      return Lib.filters(query, stageIndex).length > 0;
+    },
     revert: (query, stageIndex) => {
       const filters = Lib.filters(query, stageIndex);
 
@@ -85,7 +93,14 @@ const STEPS: NotebookStepDef[] = [
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
     valid: query => query.hasData(),
-    active: query => query.hasAggregations() || query.hasBreakouts(),
+    active: (query, stageIndex) => {
+      const clauses = [
+        ...Lib.breakouts(query, stageIndex),
+        ...Lib.aggregations(query, stageIndex),
+      ];
+
+      return clauses.length > 0;
+    },
     revert: (query, stageIndex) => {
       const clauses = [
         ...Lib.breakouts(query, stageIndex),
@@ -103,8 +118,9 @@ const STEPS: NotebookStepDef[] = [
       query.hasData() &&
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
-    active: (legacyQuery, itemIndex, query, stageIndex) =>
-      Lib.orderBys(query, stageIndex).length > 0,
+    active: (query, stageIndex) => {
+      return Lib.orderBys(query, stageIndex).length > 0;
+    },
     revert: (query, stageIndex) => {
       return Lib.clearOrderBys(query, stageIndex);
     },
@@ -115,8 +131,9 @@ const STEPS: NotebookStepDef[] = [
       query.hasData() &&
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
-    active: (legacyQuery, itemIndex, query, stageIndex) =>
-      Lib.hasLimit(query, stageIndex),
+    active: (query, stageIndex) => {
+      return Lib.hasLimit(query, stageIndex);
+    },
     revert: (query, stageIndex) => {
       return Lib.limit(query, stageIndex, null);
     },
@@ -201,6 +218,11 @@ function getStageSteps(
 
   function getStep(STEP: NotebookStepDef, itemIndex: number | null = null) {
     const id = getId(STEP, itemIndex);
+    const active = STEP.active(
+      topLevelQuery,
+      stageIndex,
+      itemIndex ?? undefined,
+    );
     const step: NotebookStep = {
       id: id,
       type: STEP.type,
@@ -215,13 +237,7 @@ function getStageSteps(
         stageIndex,
         metadata,
       ),
-      active: STEP.active(
-        stageQuery,
-        itemIndex,
-        topLevelQuery,
-        stageIndex,
-        metadata,
-      ),
+      active,
       visible:
         STEP.valid(
           stageQuery,
@@ -229,16 +245,7 @@ function getStageSteps(
           topLevelQuery,
           stageIndex,
           metadata,
-        ) &&
-        !!(
-          STEP.active(
-            stageQuery,
-            itemIndex,
-            topLevelQuery,
-            stageIndex,
-            metadata,
-          ) || openSteps[id]
-        ),
+        ) && Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
         ? (query: Lib.Query) =>
