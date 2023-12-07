@@ -2,6 +2,7 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
+  dashboardHeader,
   editDashboard,
   getActionCardDetails,
   getDashboardCard,
@@ -202,6 +203,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       saveDashboard();
 
+      cy.intercept(
+        "GET",
+        "/api/collection/root",
+        cy.spy().as("rootCollection"),
+      );
+      cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
+
       clickLineChartPoint();
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
@@ -209,6 +217,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           expect(search).to.equal("");
         });
       });
+
+      cy.log("Should navigate to question using router (metabase#33379)");
+      dashboardHeader().findByText(TARGET_DASHBOARD.name).should("be.visible");
+      // If the page was reloaded, many API request would have been made and theses
+      // calls are 2 of those.
+      cy.get("@rootCollection").should("not.have.been.called");
+      cy.get("@collections").should("not.have.been.called");
     });
 
     it("allows setting dashboard with single parameter as custom destination", () => {
@@ -576,6 +591,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       saveDashboard();
 
+      cy.intercept(
+        "GET",
+        "/api/collection/root",
+        cy.spy().as("rootCollection"),
+      );
+      cy.intercept("GET", "/api/collection", cy.spy().as("collections"));
+
       clickLineChartPoint();
       cy.location().should(({ hash, pathname }) => {
         expect(pathname).to.equal("/question");
@@ -584,6 +606,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(card.display).to.deep.equal(TARGET_QUESTION.display);
         expect(card.dataset_query.query).to.deep.equal(TARGET_QUESTION.query);
       });
+
+      cy.log("Should navigate to question using router (metabase#33379)");
+      cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
+      // If the page was reloaded, many API request would have been made and theses
+      // calls are 2 of those.
+      cy.get("@rootCollection").should("not.have.been.called");
+      cy.get("@collections").should("not.have.been.called");
 
       cy.go("back");
       testChangingBackToDefaultBehavior();
@@ -1428,6 +1457,52 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         expect(anchor).to.have.attr("target", "_blank");
       });
       clickLineChartPoint();
+    });
+
+    it("allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)", () => {
+      cy.request("PUT", "/api/setting/site-url", {
+        value: "https://localhost:4000/subpath",
+      });
+      const dashboardDetails = {
+        enable_embedding: true,
+      };
+
+      const metabaseInstanceUrl = "http://localhost:4000";
+      cy.createQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: card }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: card.dashboard_id,
+          card_id: card.card_id,
+          card: {
+            id: card.id,
+            visualization_settings: {
+              click_behavior: {
+                type: "link",
+                linkType: "url",
+                linkTemplate: `${metabaseInstanceUrl}/404`,
+              },
+            },
+          },
+        });
+
+        visitEmbeddedPage({
+          resource: { dashboard: card.dashboard_id },
+          params: {},
+        });
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+      });
+
+      clickLineChartPoint();
+
+      cy.log(
+        "This is app 404 page, the embed 404 page will have different copy",
+      );
+      cy.findByRole("main")
+        .findByText("The page you asked for couldn't be found.")
+        .should("be.visible");
     });
 
     it("allows updating multiple dashboard filters", () => {
