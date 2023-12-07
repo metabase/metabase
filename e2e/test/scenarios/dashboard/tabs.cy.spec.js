@@ -62,7 +62,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
     saveDashboard();
-    cy.url().should("include", "2-tab-2");
+    cy.url().should("match", /\d+\-tab\-2/); // id is not stable
 
     // Go back to first tab
     goToTab("Tab 1");
@@ -305,7 +305,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     // Visit first tab and confirm only first card was queried
-    visitDashboard(ORDERS_DASHBOARD_ID, { params: { tab: 1 } });
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
     cy.get("@firstTabQuery").should("have.been.calledOnce");
     cy.get("@secondTabQuery").should("not.have.been.called");
 

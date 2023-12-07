@@ -37,6 +37,16 @@ Returns actions that can be used for QueryActions. By default lists all viewable
 
 *  **`action-id`** value must be an integer greater than zero.
 
+## `GET /api/action/:action-id/execute`
+
+Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
+
+### PARAMS:
+
+*  **`action-id`** value must be an integer greater than zero.
+
+*  **`parameters`** value must be a valid JSON string.
+
 ## `GET /api/action/public`
 
 Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled.

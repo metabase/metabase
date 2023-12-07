@@ -20,8 +20,11 @@ const findMilestone = async ({
     state: "open",
   });
 
-  // our milestones don't have the v prefix
-  const expectedMilestoneName = getOSSVersion(version).replace(/^v/, "");
+  // our milestones don't have the v prefix or a .0 suffix
+  const expectedMilestoneName = getOSSVersion(version)
+    .replace(/^v/, "")
+    .replace(/-rc\d+$/i, "") // RC versions use the major version milestone
+    .replace(/\.0$/, '');
 
   return milestones.data.find(
     (milestone: { title: string; number: number }) =>
@@ -83,14 +86,15 @@ export const getMilestoneIssues = async ({
     return [];
   }
 
-  const milestone = await github.rest.issues.listForRepo({
+  // we have to use paginate function or the issues will be truncated to 100
+  const issues = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
     milestone: milestoneId.toString(),
     state: "closed",
   });
 
-  return (milestone?.data ?? []) as Issue[];
+  return (issues ?? []) as Issue[];
 };
 
 // latest for the purposes of github release notes

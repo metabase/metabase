@@ -17,7 +17,9 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -208,6 +210,32 @@
         y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
+(defn- use-server-side-relative-datetime?
+  "Server side generated timestamp in :relative-datetime should be used with following units. Units gt or eq to :day."
+  [unit]
+  (contains? #{:day :week :month :quarter :year} unit))
+
+(defn- server-side-relative-datetime-honeysql-form
+  "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
+   jdbc driver's timezone adjustments. Use of `qp.timezone/now` ensures correct timezone is used for the calculation.
+   For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]."
+  [amount unit]
+  [:cast
+   (-> (qp.timezone/now)
+       (u.date/truncate unit)
+       (u.date/add unit amount)
+       (u.date/format-sql))
+   :timestamp])
+
+(defmethod sql.qp/->honeysql [:redshift :relative-datetime]
+  [driver [_ amount unit]]
+  (if (use-server-side-relative-datetime? unit)
+    (server-side-relative-datetime-honeysql-form amount unit)
+    (let [now-hsql (sql.qp/current-datetime-honeysql-form driver)]
+      (sql.qp/date driver unit (if (zero? amount)
+                                 now-hsql
+                                 (sql.qp/add-interval-honeysql-form driver now-hsql amount unit))))))
+
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]
   (h2x// (sql.qp/datetime-diff driver :month x y) 12))
@@ -362,7 +390,7 @@
            (into
             #{}
             (sql-jdbc.describe-table/describe-table-fields-xf driver table)
-            (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn schema table-name))))))
+            (sql-jdbc.describe-table/fallback-fields-metadata-from-select-query driver conn db-name-or-nil schema table-name))))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

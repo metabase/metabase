@@ -186,7 +186,7 @@ describe("scenarios > visualizations > bar chart", () => {
       cy.findAllByTestId("legend-item").contains("Gadget").click();
       popover().findByText("See these Orders").click();
       cy.findByTestId("qb-filters-panel")
-        .findByText("Category is Gadget")
+        .findByText("Product → Category is Gadget")
         .should("exist");
     });
 

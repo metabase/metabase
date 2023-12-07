@@ -10,6 +10,12 @@ import type { TableId } from "./table";
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
 
+export type BinningMetadata = {
+  binning_strategy?: "default" | "bin-width" | "num-bins";
+  bin_width?: number;
+  num_bins?: number;
+};
+
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
@@ -29,9 +35,7 @@ export interface DatasetColumn {
   remapped_from?: string;
   remapped_to?: string;
   effective_type?: string;
-  binning_info?: {
-    bin_width?: number;
-  };
+  binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
 
@@ -72,7 +76,7 @@ export interface Dataset {
   status?: string;
 }
 
-export interface PublicDatasetData {
+export interface EmbedDatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
@@ -82,10 +86,18 @@ export interface PublicDatasetData {
   results_timezone?: string;
 }
 
-export interface PublicDataset {
-  data: PublicDatasetData;
-  json_query?: JsonQuery;
-  status?: string;
+export type EmbedDataset = SuccessEmbedDataset | ErrorEmbedDataset;
+
+interface SuccessEmbedDataset {
+  data: EmbedDatasetData;
+  json_query: JsonQuery;
+  status: string;
+}
+
+export interface ErrorEmbedDataset {
+  error_type: string;
+  error: string;
+  status: string;
 }
 
 export interface NativeQueryForm {

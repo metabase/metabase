@@ -7,8 +7,8 @@
    [metabase.lib.drill-thru.sort :as lib.drill-thru.sort]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.test-metadata :as meta]
-   #?@(:clj ([metabase.util.malli.fn :as mu.fn])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -34,10 +34,10 @@
       (lib/drill-thru query drill)
       (lib/drill-thru query -1 drill)
       (lib/drill-thru query -1 drill :asc)
-      (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
+      (mu/disable-enforcement
         (lib/drill-thru query -1 drill "asc")))
     (testing "Handle JS input correctly (#34342)"
-      (binding #?(:clj [mu.fn/*enforce* false] :cljs [])
+      (mu/disable-enforcement
         (is (=? {:query {:source-table (meta/id :orders)
                          :order-by     [[:asc
                                          [:field

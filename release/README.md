@@ -37,6 +37,26 @@ Alternatively, you can put any properly built jar in `target/uberjar` folder and
 
 See also: [Tutorial Video](https://www.loom.com/share/a56f5a6904ff4f48acaa021846c90aeb)
 
-## Totally github-less release
+## Totally Github-less release
 
-Coming soon?
+If Github goes down completely :fire:, you can still build and publish a release to s3 and dockerhub from a local machine. Because we cannot use github to determine whether this release is a "latest" release, we must manually set that option on the command line.
+
+The build step will be exactly the same as the with-github github-action-less release, but the publish step will be different:
+
+```
+yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --publish --without-github --not-latest
+```
+or
+```
+yarn release-offline v0.77.77 1234567890abcdef1234567890abcdef12345678 --publish --without-github --latest
+```
+
+The order of the arguments matters, the script will yell at you if you put the flags in the wrong order. We could make this more robust, but it's probably not worth the effort since hopefully we won't ever have to use this :crossed_fingers:.
+
+## Utilities
+
+In case you want to preview release notes generation, or re-generate them after a release has been built, you can use this command. (the hash doesn't matter, it's just a placeholder)
+
+```sh
+yarn release-offline v0.77.0 1234567890abcdef1234567890abcdef12345678  --changelog > changelog.log
+```

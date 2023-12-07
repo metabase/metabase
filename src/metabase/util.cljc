@@ -156,18 +156,20 @@
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
   conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
-  ^String [^CharSequence s]
-  #?(:clj  (.. s toString (toLowerCase (Locale/US)))
-     :cljs (.toLowerCase s)))
+  ^String [s]
+  (when s
+    #?(:clj  (.toLowerCase (str s) (Locale/US))
+       :cljs (.toLowerCase (str s)))))
 
 (defn upper-case-en
   "Locale-agnostic version of `clojure.string/upper-case`.
   `clojure.string/upper-case` uses the default locale in conversions, turning
   `id` into `İD`, in the Turkish locale. This function always uses the
   `en-US` locale."
-  ^String [^CharSequence s]
-  #?(:clj  (.. s toString (toUpperCase (Locale/US)))
-     :cljs (.toUpperCase s)))
+  ^String [s]
+  (when s
+    #?(:clj  (.toUpperCase (str s) (Locale/US))
+       :cljs (.toUpperCase (str s)))))
 
 (defn capitalize-en
   "Locale-agnostic version of [[clojure.string/capitalize]]."
@@ -852,3 +854,23 @@
   [xs]
   (or (empty? xs)
       (apply distinct? xs)))
+
+(defn traverse
+  "Traverses a graph of nodes using a user-defined function.
+
+  `nodes`: A collection of initial nodes to start the traversal from.
+  `traverse-fn`: A function that, given a node, returns its directly connected nodes.
+
+  The function performs a breadth-first traversal starting from the initial nodes, applying
+  `traverse-fn` to each node to find connected nodes, and continues until all reachable nodes
+  have been visited. Returns a set of all traversed nodes."
+  [nodes traverse-fn]
+  (loop [to-traverse (set nodes)
+         traversed   #{}]
+    (let [item        (first to-traverse)
+          found       (traverse-fn item)
+          traversed   (conj traversed item)
+          to-traverse (set/union (disj to-traverse item) (set/difference found traversed))]
+      (if (empty? to-traverse)
+        traversed
+        (recur to-traverse traversed)))))

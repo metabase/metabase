@@ -1,5 +1,6 @@
 (ns metabase.driver.snowflake-test
   (:require
+   [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -7,8 +8,10 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
@@ -25,6 +28,17 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(defn- query->native [query]
+  (let [check-sql-fn (fn [_ _ sql & _]
+                       (throw (ex-info "done" {::native-query sql})))]
+    (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
+                  sql-jdbc.execute/execute-statement! check-sql-fn]
+      (try
+        (qp/process-query query)
+        (is false "no statement created")
+        (catch Exception e
+          (-> e u/all-ex-data ::native-query))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -74,8 +88,6 @@
                (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
                                                                    (update :database-name #(str "v3_" %))))))))))
 
-;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
-;; bug in the JDBC driver -- Cam
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -120,6 +132,29 @@
             (is (= [{:name "example_view"}]
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
+
+(deftest sync-dynamic-tables-test
+  (testing "Should be able to sync dynamic tables"
+    (mt/test-driver :snowflake
+      (mt/dataset (mt/dataset-definition "dynamic-table"
+                    ["metabase_users"
+                     [{:field-name "name" :base-type :type/Text}]
+                     [["mb_qnkhuat"]]])
+        (let [db-id   (:id (mt/db))
+              details (:details (mt/db))
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (jdbc/execute! spec [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                                       SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
+                                       (:db details) (:db details) (:db details))])
+          (sync/sync-database! (t2/select-one :model/Database db-id))
+          (testing "both base tables and dynamic tables should be synced"
+            (is (= #{"metabase_fan" "metabase_users"}
+                   (t2/select-fn-set :name :model/Table :db_id db-id)))
+            (testing "the fields for dynamic tables are synced correctly"
+              (is (= #{{:name "name" :base_type :type/Text}
+                       {:name "id" :base_type :type/Number}}
+                     (set (t2/select [:model/Field :name :base_type]
+                                     :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id db-id))))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
@@ -298,3 +333,33 @@
     ;; Special characters
     (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
     (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
+
+(deftest remark-test
+  (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
+    (mt/test-driver :snowflake
+      (let [expected-map {"pulseId" nil
+                          "serverId" (public-settings/site-uuid)
+                          "client" "Metabase"
+                          "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+                          "queryType" "query"
+                          "cardId" 1234
+                          "dashboardId" 5678
+                          "context" "ad-hoc"
+                          "userId" 1000
+                          "databaseId" (mt/id)}
+            result-query (driver/prettify-native-form :snowflake
+                           (query->native
+                             (assoc
+                               (mt/mbql-query users {:limit 2000})
+                               :parameters [{:type   "id"
+                                             :target [:dimension [:field (mt/id :users :id) nil]]
+                                             :value  ["1" "2" "3"]}]
+                               :info {:executed-by  1000
+                                      :card-id      1234
+                                      :dashboard-id 5678
+                                      :context      :ad-hoc
+                                      :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                                 93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            result-comment (second (re-find #"-- (\{.*\})" result-query))
+            result-map (json/read-str result-comment)]
+        (is (= expected-map result-map))))))

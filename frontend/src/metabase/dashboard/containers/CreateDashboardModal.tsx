@@ -13,7 +13,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
-import CreateDashboardForm from "./CreateDashboardForm";
+import { CreateDashboardFormConnected } from "./CreateDashboardForm";
 
 interface CreateDashboardModalOwnProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
@@ -52,7 +52,7 @@ function CreateDashboardModal({
     <CreateCollectionOnTheGo>
       {({ resumedValues }) => (
         <ModalContent title={t`New dashboard`} onClose={onClose}>
-          <CreateDashboardForm
+          <CreateDashboardFormConnected
             {...props}
             onCreate={handleCreate}
             onCancel={onClose}
@@ -64,8 +64,7 @@ function CreateDashboardModal({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect<
+export const CreateDashboardModalConnected = connect<
   unknown,
   CreateDashboardModalDispatchProps,
   CreateDashboardModalOwnProps,

@@ -14,7 +14,7 @@ Execute a query and retrieve the results in the usual format. The query will not
 
 ### PARAMS:
 
-*  **`database`** value may be nil, or if non-nil, value must be an integer.
+*  **`database`** nullable integer
 
 *  **`query`**
 
@@ -58,7 +58,7 @@ Return parameter values for cards or dashboards that are being edited. Expects a
 
 ### PARAMS:
 
-*  **`query`** string
+*  **`query`** value must be a non-blank string.
 
 *  **`parameter`** parameter must be a map with :id and :type keys
 

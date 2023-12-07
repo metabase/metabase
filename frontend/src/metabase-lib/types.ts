@@ -1,4 +1,15 @@
 import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  BOOLEAN_FILTER_OPERATORS,
+  COORDINATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
+  EXCLUDE_DATE_BUCKETS,
+  EXCLUDE_DATE_FILTER_OPERATORS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  RELATIVE_DATE_BUCKETS,
+  TIME_FILTER_OPERATORS,
+} from "./constants";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -25,7 +36,7 @@ export type MetricMetadata = unknown & { _opaque: typeof MetricMetadata };
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregatable = AggregationClause | MetricMetadata;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -79,6 +90,26 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
+export type BucketName =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "day-of-week"
+  | "month-of-year"
+  | "quarter-of-year"
+  | "hour-of-day";
+
+export type BucketDisplayInfo = {
+  shortName: BucketName;
+  displayName: string;
+  default?: boolean;
+  selected?: boolean;
+};
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -99,15 +130,27 @@ export type ColumnDisplayInfo = {
   displayName: string;
   longDisplayName: string;
 
-  fkReferenceName?: string;
   isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;
+  filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
+};
+
+export type ColumnGroupDisplayInfo = TableDisplayInfo & {
+  fkReferenceName?: string;
+};
+
+export type SegmentDisplayInfo = {
+  name: string;
+  displayName: string;
+  longDisplayName: string;
+  description: string;
+  filterPositions?: number[];
 };
 
 export type AggregationOperatorDisplayInfo = {
@@ -131,59 +174,46 @@ export type MetricDisplayInfo = {
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
->;
+> & {
+  isNamed?: boolean;
+};
 
 export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
-export type BucketDisplayInfo = {
-  displayName: string;
-  default?: boolean;
-  selected?: boolean;
-};
-
 export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
 
-export type ExpressionOperator =
+export type ExpressionOperatorName =
   | "+"
-  | "-"
-  | "*"
-  | "/"
   | "="
   | "!="
   | ">"
-  | ">="
   | "<"
+  | ">="
   | "<="
+  | "between"
+  | "contains"
+  | "does-not-contain"
   | "is-null"
   | "not-null"
   | "is-empty"
   | "not-empty"
-  | "contains"
-  | "does-not-contain"
   | "starts-with"
-  | "ends-width"
-  | "between"
+  | "ends-with"
+  | "concat"
   | "interval"
   | "time-interval"
-  | "relative-datetime";
-
-export type TemporalUnit =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year";
+  | "relative-datetime"
+  | "inside"
+  | "segment";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
 export type ExpressionParts = {
-  operator: ExpressionOperator;
+  operator: ExpressionOperatorName;
   args: (ExpressionArg | ExpressionParts)[];
   options: ExpressionOptions;
 };
@@ -193,40 +223,122 @@ export type ExpressionOptions = {
   "include-current"?: boolean;
 };
 
-export type TextFilterParts = {
-  operator: ExpressionOperator;
-  column: ColumnMetadata;
-  values: string[];
-  options: TextFilterOptions;
+declare const FilterOperator: unique symbol;
+export type FilterOperator = unknown & { _opaque: typeof FilterOperator };
+
+export type FilterOperatorName =
+  | StringFilterOperatorName
+  | NumberFilterOperatorName
+  | BooleanFilterOperatorName
+  | SpecificDateFilterOperatorName
+  | ExcludeDateFilterOperatorName
+  | CoordinateFilterOperatorName;
+
+export type StringFilterOperatorName = typeof STRING_FILTER_OPERATORS[number];
+
+export type NumberFilterOperatorName = typeof NUMBER_FILTER_OPERATORS[number];
+
+export type CoordinateFilterOperatorName =
+  typeof COORDINATE_FILTER_OPERATORS[number];
+
+export type BooleanFilterOperatorName = typeof BOOLEAN_FILTER_OPERATORS[number];
+
+export type SpecificDateFilterOperatorName =
+  typeof SPECIFIC_DATE_FILTER_OPERATORS[number];
+
+export type ExcludeDateFilterOperatorName =
+  typeof EXCLUDE_DATE_FILTER_OPERATORS[number];
+
+export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
+
+export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
+
+export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
+
+export type FilterOperatorDisplayInfo = {
+  shortName: FilterOperatorName;
+  displayName: string;
+  longDisplayName: string;
+  default?: boolean;
 };
 
-export type TextFilterOptions = {
+export type FilterParts =
+  | StringFilterParts
+  | NumberFilterParts
+  | BooleanFilterParts
+  | SpecificDateFilterParts
+  | RelativeDateFilterParts
+  | ExcludeDateFilterParts
+  | TimeFilterParts
+  | CoordinateFilterParts;
+
+export type StringFilterParts = {
+  operator: StringFilterOperatorName;
+  column: ColumnMetadata;
+  values: string[];
+  options: StringFilterOptions;
+};
+
+export type StringFilterOptions = {
   "case-sensitive"?: boolean;
 };
 
 export type NumberFilterParts = {
-  operator: ExpressionOperator;
+  operator: NumberFilterOperatorName;
   column: ColumnMetadata;
   values: number[];
 };
 
+export type CoordinateFilterParts = {
+  operator: CoordinateFilterOperatorName;
+  column: ColumnMetadata;
+  longitudeColumn?: ColumnMetadata;
+  values: number[];
+};
+
 export type BooleanFilterParts = {
-  operator: ExpressionOperator;
+  operator: BooleanFilterOperatorName;
   column: ColumnMetadata;
   values: boolean[];
 };
 
+export type SpecificDateFilterParts = {
+  operator: SpecificDateFilterOperatorName;
+  column: ColumnMetadata;
+  values: Date[];
+};
+
 export type RelativeDateFilterParts = {
   column: ColumnMetadata;
+  bucket: RelativeDateBucketName;
   value: number | "current";
-  unit: TemporalUnit;
-  offsetValue?: number;
-  offsetUnit?: TemporalUnit;
+  offsetBucket: RelativeDateBucketName | null;
+  offsetValue: number | null;
   options: RelativeDateFilterOptions;
 };
 
 export type RelativeDateFilterOptions = {
   "include-current"?: boolean;
+};
+
+/*
+ * values depend on the bucket
+ * day-of-week => 1-7 (Monday-Sunday)
+ * month-of-year => 0-11 (January-December)
+ * quarter-of-year => 1-4
+ * hour-of-day => 0-23
+ */
+export type ExcludeDateFilterParts = {
+  operator: ExcludeDateFilterOperatorName;
+  column: ColumnMetadata;
+  bucket: ExcludeDateBucketName | null;
+  values: number[];
+};
+
+export type TimeFilterParts = {
+  operator: TimeFilterOperatorName;
+  column: ColumnMetadata;
+  values: Date[];
 };
 
 export type JoinConditionOperatorDisplayInfo = {
@@ -251,25 +363,37 @@ declare const DrillThru: unique symbol;
 export type DrillThru = unknown & { _opaque: typeof DrillThru };
 
 export type DrillThruType =
-  | "drill-thru/quick-filter"
-  | "drill-thru/pk"
-  | "drill-thru/zoom"
-  | "drill-thru/fk-details"
-  | "drill-thru/pivot"
-  | "drill-thru/fk-filter"
-  | "drill-thru/distribution"
-  | "drill-thru/sort"
-  | "drill-thru/summarize-column"
-  | "drill-thru/summarize-column-by-time"
+  | "drill-thru/automatic-insights"
   | "drill-thru/column-filter"
+  | "drill-thru/distribution"
+  | "drill-thru/fk-details"
+  | "drill-thru/fk-filter"
+  | "drill-thru/pivot"
+  | "drill-thru/pk"
+  | "drill-thru/quick-filter"
+  | "drill-thru/sort"
+  | "drill-thru/summarize-column-by-time"
+  | "drill-thru/summarize-column"
   | "drill-thru/underlying-records"
+  | "drill-thru/zoom"
+  | "drill-thru/zoom-in.binning"
+  | "drill-thru/zoom-in.geographic"
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type QuickFilterDrillThruOperator =
+  | "="
+  | "≠"
+  | "<"
+  | ">"
+  | "contains"
+  | "does-not-contain";
+
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
-    operators: Array<"=" | "≠" | "<" | ">">;
+    value: unknown;
+    operators: Array<QuickFilterDrillThruOperator>;
   };
 
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
@@ -284,30 +408,31 @@ export type FKDetailsDrillThruInfo =
 
 export type PivotDrillThruInfo = BaseDrillThruInfo<"drill-thru/pivot">;
 
-export type FKFilterDrillThruInfo = BaseDrillThruInfo<"drill-thru/fk-filter">;
+export type FKFilterDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/fk-filter"> & {
+    tableName: string;
+    columnName: string;
+  };
 export type DistributionDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/distribution">;
 
+export type SortDrillThruDirection = "asc" | "desc";
+
 export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
-  directions: Array<"asc" | "desc">;
+  directions: Array<SortDrillThruDirection>;
 };
 
-export type SummarizeColumnDrillAggregationOperator =
-  | "sum"
-  | "avg"
-  | "distinct";
+export type SummarizeColumnDrillThruOperator = "sum" | "avg" | "distinct";
 
 export type SummarizeColumnDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column"> & {
-    aggregations: Array<SummarizeColumnDrillAggregationOperator>;
+    aggregations: Array<SummarizeColumnDrillThruOperator>;
   };
 export type SummarizeColumnByTimeDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
 
 export type ColumnFilterDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/column-filter"> & {
-    initialOp: { short: string } | null; // null gets returned for date column
-  };
+  BaseDrillThruInfo<"drill-thru/column-filter">;
 
 export type UnderlyingRecordsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/underlying-records"> & {
@@ -335,12 +460,36 @@ export type DrillThruDisplayInfo =
   | UnderlyingRecordsDrillThruInfo
   | ZoomTimeseriesDrillThruInfo;
 
-export interface Dimension {
+export type FilterDrillDetails = {
+  query: Query;
+  stageIndex: number;
+  column: ColumnMetadata;
+};
+
+export type PivotType = "category" | "location" | "time";
+
+export interface ClickObjectDimension {
+  value: RowValue;
   column: DatasetColumn;
-  value?: RowValue;
 }
 
-export type DataRow = Array<{
-  col: DatasetColumn | ColumnMetadata | null;
+export interface ClickObjectDataRow {
+  col: DatasetColumn | null; // can be null for custom columns
   value: RowValue;
-}>;
+}
+
+export interface ClickObject {
+  value?: RowValue;
+  column?: DatasetColumn;
+  dimensions?: ClickObjectDimension[];
+  event?: MouseEvent;
+  element?: Element;
+  seriesIndex?: number;
+  settings?: Record<string, unknown>;
+  origin?: {
+    row: RowValue;
+    cols: DatasetColumn[];
+  };
+  extraData?: Record<string, unknown>;
+  data?: ClickObjectDataRow[];
+}

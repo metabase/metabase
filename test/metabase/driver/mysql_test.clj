@@ -166,13 +166,13 @@
   (mt/test-driver :mysql
     (mt/dataset year-db
       (testing "By default YEAR"
-        (is (= #{{:name "year_column", :base_type :type/Date, :semantic_type nil}
+        (is (= #{{:name "year_column", :base_type :type/Integer, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}}
                (db->fields (mt/db)))))
       (let [table  (t2/select-one Table :db_id (u/id (mt/db)))
             fields (t2/select Field :table_id (u/id table) :name "year_column")]
         (testing "Can select from this table"
-          (is (= [[#t "2001-01-01"] [#t "2002-01-01"] [#t "1999-01-01"]]
+          (is (= [[2001] [2002] [1999]]
                  (metadata-queries/table-rows-sample table fields (constantly conj)))))
         (testing "We can fingerprint this table"
           (is (= 1

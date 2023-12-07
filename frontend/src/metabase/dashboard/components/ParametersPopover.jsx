@@ -16,7 +16,7 @@ const PopoverBody = styled.div`
   max-width: 300px;
 `;
 
-export default class ParametersPopover extends Component {
+export class ParametersPopover extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};

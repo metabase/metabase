@@ -596,9 +596,14 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: | # js
-          const { closeMilestone, openNextMilestones } = require('${{ github.workspace }}/release/dist/index.cjs');
+          const { closeMilestone, openNextMilestones, isRCVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
+
+          if (isRCVersion(version)) {
+            console.log("This is a release candidate, skipping milestone management");
+            return;
+          }
 
           await closeMilestone({
             github,

@@ -5,7 +5,6 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
@@ -13,6 +12,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -39,6 +39,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
@@ -238,7 +239,7 @@
   (let [uploads-db-id (public-settings/uploads-database-id)]
     (for [db dbs]
       (assoc db :can_upload (and (= (:id db) uploads-db-id)
-                                 (api.card/can-upload? db (public-settings/uploads-schema-name)))))))
+                                 (upload/can-upload? db (public-settings/uploads-schema-name)))))))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -335,7 +336,7 @@
   "Add an entry about whether the user can upload to this DB."
   [db]
   (assoc db :can_upload (and (= (u/the-id db) (public-settings/uploads-database-id))
-                             (api.card/can-upload? db (public-settings/uploads-schema-name)))))
+                             (upload/can-upload? db (public-settings/uploads-schema-name)))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -983,10 +984,20 @@
   ;; just wrap this in a future so it happens async
   (let [db (api/write-check (t2/select-one Database :id id))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
-    (future
-      (sync-metadata/sync-db-metadata! db)
-      (analyze/analyze-db! db)))
-  {:status :ok})
+    (if-let [ex (try
+                  ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+                  ;; purposes of creating a new H2 database.
+                  (binding [h2/*allow-testing-h2-connections* true]
+                    (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
+                  nil
+                  (catch Throwable e
+                    e))]
+      (throw (ex-info (ex-message ex) {:status-code 422}))
+      (do
+        (future
+          (sync-metadata/sync-db-metadata! db)
+          (analyze/analyze-db! db))
+        {:status :ok}))))
 
 (api/defendpoint POST "/:id/dismiss_spinner"
   "Manually set the initial sync status of the `Database` and corresponding

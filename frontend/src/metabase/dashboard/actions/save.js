@@ -132,7 +132,11 @@ export const updateDashboardAndCards = createThunkAction(
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(
-        fetchDashboard(dashboard.id, null, { preserveParameters: false }),
+        fetchDashboard({
+          dashId: dashboard.id,
+          queryParams: null,
+          options: { preserveParameters: false },
+        }),
       ); // disable using query parameters when saving
     };
   },
@@ -161,7 +165,11 @@ export const updateDashboard = createThunkAction(
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       dispatch(
-        fetchDashboard(dashboard.id, null, { preserveParameters: true }),
+        fetchDashboard({
+          dashId: dashboard.id,
+          queryParam: null,
+          options: { preserveParameters: true },
+        }),
       );
     };
   },
