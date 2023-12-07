@@ -104,12 +104,12 @@
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))
                 ([type value decimals]
-                 (let [fmt-fn (common/number-formatter {:id 1 :semantic_type type}
-                                                       {::mb.viz/column-settings
-                                                        {{::mb.viz/field-id 1}
-                                                         (merge
-                                                           {:effective_type type}
-                                                           (when decimals {::mb.viz/decimals decimals}))}})]
+                 (let [fmt-fn (formatter/number-formatter {:id 1 :semantic_type type}
+                                                          {::mb.viz/column-settings
+                                                           {{::mb.viz/field-id 1}
+                                                            (merge
+                                                              {:effective_type type}
+                                                              (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "1000" (fmt-with-type :type/PK 1000)))
         (is (= "1000" (fmt-with-type :type/FK 1000)))))
