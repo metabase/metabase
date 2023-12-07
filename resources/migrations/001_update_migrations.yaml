@@ -4173,7 +4173,7 @@ databaseChangeLog:
                   remarks: 'Hash of normalized query, calculated in middleware.cache'
 
   - changeSet:
-      id: v48.00-067
+      id: v49.00-009
       author: adam-james
       comment: Migrate pulse_card.include_csv to 'true' when the joined card.display is 'table'
       changes:
