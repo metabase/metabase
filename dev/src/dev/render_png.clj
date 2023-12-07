@@ -6,6 +6,7 @@
     [clojure.java.shell :as sh]
     [clojure.string :as str]
     [hiccup.core :as hiccup]
+    [metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]
     [metabase.pulse :as pulse]
@@ -138,53 +139,42 @@
         (for [cell row]
           [:td {:style table-style} cell])])]))
 
+(def ^:private result-attachment #'messages/result-attachment)
+
 (defn- render-csv-for-dashcard
-  [{:keys [card dashcard dashboard-id]}]
-  (mt/with-fake-inbox
-    (mt/with-temp [:model/Pulse         {pulse-id :id, :as pulse}  {:name         "temp pulse"
-                                                                    :dashboard_id dashboard-id}
-                   :model/PulseCard     _ {:pulse_id          pulse-id
-                                           :card_id           (:id card)
-                                           :position          0
-                                           :dashboard_card_id (:id dashcard)
-                                           :include_csv       true}
-                   :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                   :model/PulseChannelRecipient _ {:user_id          (mt/user->id :rasta)
-                                                   :pulse_channel_id pc-id}]
-      (pulse/send-pulse! pulse)
-      (-> @mt/inbox
-          (get (:email (mt/fetch-user :rasta)))
-          last
-          :body
-          last
-          :content
-          slurp
-          csv-to-html-table))))
+  [part]
+  (-> part
+      (assoc-in [:card :include_csv] true)
+      result-attachment
+      first
+      :content
+      slurp
+      csv-to-html-table))
 
 (defn- render-one-dashcard
   [{:keys [card dashcard result] :as dashboard-result}]
   [:div {:style (style/style dashcard-style)}
    (if card
-     (let [section-style {:border "1px solid black"
+     (let [section-style {:border  "1px solid black"
                           :padding "10px"}
-           base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
-           html-src    (-> base-render
-                           :content)
-           img-src     (-> base-render
-                           (png/render-html-to-png 1200)
-                           img/render-img-data-uri)
-           csv-src (render-csv-for-dashcard dashboard-result)]
+           base-render   (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+           html-src      (-> base-render
+                             :content)
+           img-src       (-> base-render
+                             (png/render-html-to-png 1200)
+                             img/render-img-data-uri)
+           csv-src       (render-csv-for-dashcard dashboard-result)]
        [:div {:style (style/style (merge section-style {:display "flex"}))}
         [:div {:style (style/style section-style)}
          [:h4 "PNG"]
          [:img {:style (style/style {:max-width "400px"})
                 :src   img-src}]]
         [:div {:style (style/style (merge section-style {:max-width "400px"}))}
-         [:h4 "HTML"]
-         html-src]
+           [:h4 "HTML"]
+           html-src]
         [:div {:style (style/style section-style)}
-         [:h4 "CSV"]
-         csv-src]])
+           [:h4 "CSV"]
+           csv-src]])
      [:div {:style (style/style {:font-family             "Lato"
                                  :font-size               "13px" #_ "0.875em"
                                  :font-weight             "400"
@@ -199,7 +189,7 @@
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
         dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
-        render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
+        render            (->> (map render-one-dashcard (map #(assoc % :dashboard dashboard) dashboard-results))
                                (into [:div]))]
     render))
 

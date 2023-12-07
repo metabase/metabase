@@ -3,7 +3,9 @@
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
+   [clojure.string :as str]
    [hiccup.core :as hiccup]
+   [metabase.email.messages :as messages]
    [metabase.pulse :as pulse]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.render :as render]
@@ -75,29 +77,33 @@
    :margin        "10px"
    :padding       "10px"})
 
+(def ^:private table-style
+  (style/style
+   {:border          "1px solid black"
+    :border-collapse "collapse"}))
+
+(def ^:private csv-row-limit 10)
+
+(defn- csv-to-html-table [csv-string]
+  (let [rows (map #(str/split % #",")
+                  (str/split csv-string #"\n"))]
+    [:table {:style table-style}
+     (for [row (take csv-row-limit rows)]
+       [:tr {:style table-style}
+        (for [cell row]
+          [:td {:style table-style} cell])])]))
+
+(def ^:private result-attachment #'messages/result-attachment)
+
 (defn- render-csv-for-dashcard
-  [{} #_{:keys [card dashcard dashboard-id]}]
-  [:div "WIP"]
-  #_(mt/with-fake-inbox
-      (mt/with-temp [:model/Pulse         {pulse-id :id, :as pulse}  {:name         "temp pulse"
-                                                                      :dashboard_id dashboard-id}
-                     :model/PulseCard     _ {:pulse_id          pulse-id
-                                             :card_id           (:id card)
-                                             :position          0
-                                             :dashboard_card_id (:id dashcard)
-                                             :include_csv       true}
-                     :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
-                     :model/PulseChannelRecipient _ {:user_id          (mt/user->id :rasta)
-                                                     :pulse_channel_id pc-id}]
-        (pulse/send-pulse! pulse)
-        (-> @mt/inbox
-            (get (:email (mt/fetch-user :rasta)))
-            last
-            :body
-            last
-            :content
-            slurp
-            csv-to-html-table))))
+  [part]
+  (-> part
+      (assoc-in [:card :include_csv] true)
+      result-attachment
+      first
+      :content
+      slurp
+      csv-to-html-table))
 
 (defn- render-one-dashcard
   [{:keys [card dashcard result] :as dashboard-result}]

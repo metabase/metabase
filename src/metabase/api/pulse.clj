@@ -283,11 +283,10 @@
   (api/read-check :model/Dashboard id)
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    (do (preview/render-dashboard-to-html-and-open id)
-                (html
-                  [:html
-                   [:body {:style "margin: 0;"}
-                    [:p "opened preview in another tab."]]]))})
+   :body    (html
+               [:html
+                [:body {:style "margin: 0;"}
+                 (preview/render-dashboard-to-html id)]])})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
