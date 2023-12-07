@@ -225,7 +225,7 @@
        (u.date/truncate unit)
        (u.date/add unit amount)
        (u.date/format-sql))
-   :timestamp])
+   :date])
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
