@@ -20,12 +20,35 @@ export function getAvailableOptions(
   );
 }
 
-export function getOptionByOperator(operator: Lib.NumberFilterOperatorName) {
+export function getOptionByOperator(
+  operator: Lib.CoordinateFilterOperatorName,
+) {
   return OPERATOR_OPTIONS[operator];
 }
 
+export function getAvailableColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  const isLatitude = Lib.isLatitude(column);
+  const isLongitude = Lib.isLongitude(column);
+  return Lib.filterableColumns(query, stageIndex).filter(
+    column =>
+      (isLatitude && Lib.isLongitude(column)) ||
+      (isLongitude && Lib.isLatitude(column)),
+  );
+}
+
+export function getDefaultSecondColumn(
+  columns: Lib.ColumnMetadata[],
+  longitudeColumn?: Lib.ColumnMetadata,
+) {
+  return longitudeColumn ?? columns[0];
+}
+
 export function getDefaultValues(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.CoordinateFilterOperatorName,
   values: NumberValue[] = [],
 ): NumberValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
@@ -39,27 +62,32 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata,
   values: NumberValue[],
 ) {
-  return getFilterParts(operator, column, values) != null;
+  return getFilterParts(operator, column, secondColumn, values) != null;
 }
 
 export function getFilterClause(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata,
   values: NumberValue[],
 ) {
-  const filterParts = getFilterParts(operator, column, values);
-  return filterParts != null ? Lib.numberFilterClause(filterParts) : undefined;
+  const filterParts = getFilterParts(operator, column, secondColumn, values);
+  return filterParts != null
+    ? Lib.coordinateFilterClause(filterParts)
+    : undefined;
 }
 
 function getFilterParts(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
+  secondColumn: Lib.ColumnMetadata,
   values: NumberValue[],
-): Lib.NumberFilterParts | undefined {
+): Lib.CoordinateFilterParts | undefined {
   switch (operator) {
     case "between":
       return getBetweenFilterParts(operator, column, values);
@@ -69,10 +97,10 @@ function getFilterParts(
 }
 
 function getSimpleFilterParts(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
-): Lib.NumberFilterParts | undefined {
+): Lib.CoordinateFilterParts | undefined {
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   if (!values.every(isNotEmpty)) {
     return undefined;
@@ -89,10 +117,10 @@ function getSimpleFilterParts(
 }
 
 function getBetweenFilterParts(
-  operator: Lib.NumberFilterOperatorName,
+  operator: Lib.CoordinateFilterOperatorName,
   column: Lib.ColumnMetadata,
   values: NumberValue[],
-): Lib.NumberFilterParts | undefined {
+): Lib.CoordinateFilterParts | undefined {
   const [startValue, endValue] = values;
   if (isNotEmpty(startValue) && isNotEmpty(endValue)) {
     return {

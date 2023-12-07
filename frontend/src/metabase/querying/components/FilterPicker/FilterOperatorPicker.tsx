@@ -1,25 +1,43 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import type { SelectProps } from "metabase/ui";
 import { Select } from "metabase/ui";
-import type { FilterOperatorName } from "metabase-lib";
-import type { PickerOperatorOption } from "./types";
+import { checkNotNull } from "metabase/lib/types";
 
-interface FilterOperatorPickerProps
-  extends Omit<SelectProps, "data" | "withinPortal"> {
-  options: PickerOperatorOption<FilterOperatorName>[];
+type Option<T> = {
+  name: string;
+  operator: T;
+};
+
+interface FilterOperatorPickerProps<T> {
+  value: T;
+  options: Option<T>[];
+  onChange: (operator: T) => void;
 }
 
-export function FilterOperatorPicker({
+export function FilterOperatorPicker<T extends string>({
+  value,
   options,
-  ...props
-}: FilterOperatorPickerProps) {
-  const data = useMemo(() => {
-    return options.map(option => ({
-      label: option.name,
-      value: option.operator,
-    }));
-  }, [options]);
+  onChange,
+}: FilterOperatorPickerProps<T>) {
+  const data = useMemo(
+    () =>
+      options.map(option => ({ name: option.name, value: option.operator })),
+    [options],
+  );
 
-  return <Select data={data} {...props} aria-label={t`Filter operator`} />;
+  const handleChange = (value: string | null) => {
+    const option = checkNotNull(
+      options.find(option => option.operator === value),
+    );
+    onChange(option.operator);
+  };
+
+  return (
+    <Select
+      data={data}
+      value={value}
+      aria-label={t`Filter operator`}
+      onChange={handleChange}
+    />
+  );
 }
