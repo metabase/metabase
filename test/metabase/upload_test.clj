@@ -884,12 +884,13 @@
                                    grant-permission?)]
         (when grant?
           (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-        (u/prog1 (upload/upload-csv! {:collection-id collection-id
-                                      :filename      csv-file-name
-                                      :file          file
-                                      :db-id         db-id
-                                      :schema-name   schema-name
-                                      :table-prefix  table-prefix})
+        (u/prog1 (binding [upload/*sync-synchronously?* true]
+                   (upload/upload-csv! {:collection-id collection-id
+                                        :filename      csv-file-name
+                                        :file          file
+                                        :db-id         db-id
+                                        :schema-name   schema-name
+                                        :table-prefix  table-prefix}))
           (when grant?
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
