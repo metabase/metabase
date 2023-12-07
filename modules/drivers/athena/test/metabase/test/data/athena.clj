@@ -229,7 +229,7 @@
   data into Athena or somehow stomping over existing databases and breaking CI. If you want to create a new dataset,
   change this flag to true and run your code again so the data will be loaded normally. Set it back to false when
   you're done."
-  true)
+  false)
 
 (defmethod tx/create-db! :athena
   [driver {:keys [database-name], :as db-def} & options]
