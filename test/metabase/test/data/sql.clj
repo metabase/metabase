@@ -162,7 +162,6 @@
         (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
                 driver base-type)))))
 
-
 (defmulti pk-sql-type
   "SQL type of a primary key field."
   {:arglists '([driver])}
@@ -193,8 +192,21 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defmulti create-index-sql
+  "Return a `CREATE INDEX` statement."
+  {:arglists '([driver tabledef fielddef])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
 (defn- format-and-quote-field-name [driver field-name]
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
+
+(defmethod create-index-sql :sql/test-extensions
+  [driver table-name field-names]
+  (format "CREATE INDEX %s ON %s (%s);"
+          (str "idx_" table-name "_" (str/join "_" field-names))
+          (qualify-and-quote driver table-name)
+          (str/join ", " (map #(format-and-quote-field-name driver %) field-names))))
 
 (defn- field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
@@ -244,7 +256,6 @@
   "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support it."
   [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s CASCADE;" (qualify-and-quote driver database-name table-name)))
-
 
 (defmulti add-fk-sql
   "Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement."

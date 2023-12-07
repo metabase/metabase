@@ -52,9 +52,11 @@
             (sql.tx/create-table-sql driver dbdef tabledef)))
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions
-            {:keys [fk], :as fielddef}                field-definitions]
+            {:keys [fk indexed?], :as fielddef}                field-definitions]
       (when fk
-        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef))))
+        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))
+      (when indexed?
+        (add! (sql.tx/create-index-sql driver (:table-name tabledef) [(:field-name fielddef)]))))
     ;; Add the SQL for adding table comments
     (doseq [{:keys [table-comment], :as tabledef} table-definitions]
       (when table-comment
