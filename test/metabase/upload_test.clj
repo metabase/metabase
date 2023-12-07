@@ -1108,7 +1108,7 @@
   [& body]
   `(catch-ex-info* (fn [] ~@body)))
 
-(deftest append-csv-test
+(deftest append-early-failure-test
   (mt/test-driver :h2
     (testing "Happy path"
       (is (some? (append-csv-with-defaults!))))
@@ -1136,7 +1136,7 @@
 (defmacro with-uploads-allowed [& body]
   `(do-with-uploads-allowed (fn [] ~@body)))
 
-(deftest append-csv-test-2
+(deftest append-column-order-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should succeed regardless of CSV column order"
@@ -1160,7 +1160,7 @@
   (tx/map->DatabaseDefinition
    {:database-name     (mt/random-name)
     :table-definitions [{:table-name        "table_one"
-                         :field-definitions [;; "id,biginteger,float,text,boolean,date,datetime,offset_datetime"
+                         :field-definitions [;; 'id' is created automatically
                                              {:field-name "biginteger", :base-type :type/BigInteger}
                                              {:field-name "float", :base-type :type/Float}
                                              {:field-name "text", :base-type :type/Text}
@@ -1168,9 +1168,9 @@
                                              {:field-name "date", :base-type :type/Date}
                                              {:field-name "datetime", :base-type :type/DateTime}
                                              {:field-name "offset_datetime", :base-type :type/DateTimeWithLocalTZ}]
-                         :rows              [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]}]}))
+                         :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]}]}))
 
-(deftest append-csv-test-3
+(deftest append-all-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should succeed for all possible CSV column types"
@@ -1182,12 +1182,13 @@
               (is (true? (upload/append-csv! {:file     file
                                               :table-id (:id table)})))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T02:00:00Z"]
-                        [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T02:02:02Z"]]
-                       (rows-for-table table))))
+                (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
+                        [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
+                       (mt/with-report-timezone-id "UTC"
+                         (rows-for-table table)))))
               (io/delete-file file))))))))
 
-(deftest no-rows-test
+(deftest append-no-rows-test
   (mt/test-driver :h2
     (with-uploads-allowed
       (testing "Append should succeed with a CSV with only the header"
@@ -1202,7 +1203,7 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(deftest duplicate-header-csv-test
+(deftest append-duplicate-header-csv-test
   (mt/test-driver :h2
     (with-uploads-allowed
       (testing "Happy path"
