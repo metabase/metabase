@@ -705,7 +705,8 @@
   (perms/revoke-application-permissions! (perms-group/all-users) :setting))
 
 (deftest upload-csv-test
-  (dotimes [_ 20]
+  ;; TODO: remove stress test
+  (dotimes [_ 50]
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
       (testing "Uploads should be blocked without data access"
         (mt/with-empty-db
