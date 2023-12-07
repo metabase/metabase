@@ -25,7 +25,7 @@ export function BooleanFilterEditor({
 
   const {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     isExpanded,
     getFilterClause,
@@ -61,7 +61,7 @@ export function BooleanFilterEditor({
           {isExpanded && (
             <FilterOperatorPicker
               value={operator}
-              options={availableOperators}
+              options={availableOptions}
               onChange={handleOperatorChange}
             />
           )}

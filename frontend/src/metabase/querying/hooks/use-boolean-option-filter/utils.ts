@@ -1,6 +1,20 @@
 import * as Lib from "metabase-lib";
+import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { OptionType } from "./types";
+
+export function getAvailableOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  return getAvailableOperatorOptions(
+    query,
+    stageIndex,
+    column,
+    OPERATOR_OPTIONS,
+  );
+}
 
 export function getOptionByType(optionType: OptionType) {
   return OPERATOR_OPTIONS[optionType];

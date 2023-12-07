@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getFilterClause } from "./utils";
+import {
+  getAvailableOptions,
+  getFilterClause,
+  getOptionByOperator,
+} from "./utils";
 
 interface UseBooleanOperatorFilterProps {
   query: Lib.Query;
@@ -22,15 +24,14 @@ export function useBooleanOperatorFilter({
     [query, stageIndex, filter],
   );
 
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
+  const availableOptions = useMemo(
+    () => getAvailableOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
   const [operator, setOperator] = useState(filterParts?.operator ?? "=");
   const [values, setValues] = useState(() => filterParts?.values ?? []);
-  const { isAdvanced } = OPERATOR_OPTIONS[operator];
+  const { isAdvanced } = getOptionByOperator(operator);
   const [isExpanded] = useState(isAdvanced);
 
   const setOperatorAndValues = (newOperator: Lib.BooleanFilterOperatorName) => {
@@ -40,7 +41,7 @@ export function useBooleanOperatorFilter({
 
   return {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     isExpanded,
     getFilterClause: (

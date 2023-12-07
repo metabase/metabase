@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import type * as Lib from "metabase-lib";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getFilterClause, getOptionByType, getOptionType } from "./utils";
+import {
+  getAvailableOptions,
+  getFilterClause,
+  getOptionByType,
+  getOptionType,
+} from "./utils";
 
 type UseBooleanOptionFilterProps = {
   query: Lib.Query;
@@ -18,8 +21,7 @@ export function useBooleanOptionFilter({
   filter,
 }: UseBooleanOptionFilterProps) {
   const availableOptions = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
+    () => getAvailableOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
