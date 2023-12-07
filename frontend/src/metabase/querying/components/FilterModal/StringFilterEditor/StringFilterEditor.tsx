@@ -25,7 +25,7 @@ export function StringFilterEditor({
 
   const {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     valueCount,
     hasMultipleValues,
@@ -59,7 +59,7 @@ export function StringFilterEditor({
           </Text>
           <FilterOperatorPicker
             value={operator}
-            options={availableOperators}
+            options={availableOptions}
             onChange={handleOperatorChange}
           />
         </Flex>

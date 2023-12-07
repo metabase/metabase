@@ -1,8 +1,26 @@
 import dayjs from "dayjs";
-import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { isNotNull } from "metabase/lib/types";
+import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import { OPERATOR_OPTIONS } from "./constants";
 import type { TimeValue } from "./types";
+
+export function getAvailableOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  return getAvailableOperatorOptions(
+    query,
+    stageIndex,
+    column,
+    OPERATOR_OPTIONS,
+  );
+}
+
+export function getOptionByOperator(operator: Lib.TimeFilterOperatorName) {
+  return OPERATOR_OPTIONS[operator];
+}
 
 function getDefaultValue() {
   return dayjs().startOf("day").toDate(); // 00:00:00

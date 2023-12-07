@@ -1,8 +1,26 @@
 import * as Lib from "metabase-lib";
+import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
 import { OPERATOR_OPTIONS } from "./constants";
 
 function isNotEmpty(value: string) {
   return value.length > 0;
+}
+
+export function getAvailableOptions(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  return getAvailableOperatorOptions(
+    query,
+    stageIndex,
+    column,
+    OPERATOR_OPTIONS,
+  );
+}
+
+export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
+  return OPERATOR_OPTIONS[operator];
 }
 
 export function getDefaultValues(

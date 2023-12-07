@@ -29,7 +29,7 @@ export function TimeFilterEditor({
     operator,
     values,
     valueCount,
-    availableOperators,
+    availableOptions,
     getFilterClause,
     setOperator,
     setValues,
@@ -59,7 +59,7 @@ export function TimeFilterEditor({
           </Text>
           <FilterOperatorPicker
             value={operator}
-            options={availableOperators}
+            options={availableOptions}
             onChange={handleOperatorChange}
           />
         </Flex>

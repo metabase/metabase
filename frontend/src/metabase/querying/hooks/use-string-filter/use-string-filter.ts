@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, isValidFilter } from "./utils";
+import {
+  getAvailableOptions,
+  getDefaultValues,
+  getFilterClause,
+  getOptionByOperator,
+  isValidFilter,
+} from "./utils";
 
 interface UseStringFilterProps {
   query: Lib.Query;
@@ -22,9 +26,8 @@ export function useStringFilter({
     [query, stageIndex, filter],
   );
 
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
+  const availableOptions = useMemo(
+    () => getAvailableOptions(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
@@ -41,7 +44,7 @@ export function useStringFilter({
   );
 
   const { valueCount, hasMultipleValues, hasCaseSensitiveOption } =
-    OPERATOR_OPTIONS[operator];
+    getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
 
   const setOperatorAndValues = (operator: Lib.StringFilterOperatorName) => {
@@ -51,7 +54,7 @@ export function useStringFilter({
 
   return {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     valueCount,
     hasMultipleValues,

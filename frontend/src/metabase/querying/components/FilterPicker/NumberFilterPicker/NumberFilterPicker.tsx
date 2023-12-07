@@ -29,7 +29,7 @@ export function NumberFilterPicker({
 
   const {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     valueCount,
     hasMultipleValues,
@@ -67,7 +67,7 @@ export function NumberFilterPicker({
       >
         <FilterOperatorPicker
           value={operator}
-          options={availableOperators}
+          options={availableOptions}
           onChange={setOperator}
         />
       </FilterPickerHeader>

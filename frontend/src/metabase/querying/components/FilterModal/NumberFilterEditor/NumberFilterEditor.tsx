@@ -29,7 +29,7 @@ export function NumberFilterEditor({
 
   const {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     valueCount,
     hasMultipleValues,
@@ -63,7 +63,7 @@ export function NumberFilterEditor({
           </Text>
           <FilterOperatorPicker
             value={operator}
-            options={availableOperators}
+            options={availableOptions}
             onChange={handleOperatorChange}
           />
         </Flex>

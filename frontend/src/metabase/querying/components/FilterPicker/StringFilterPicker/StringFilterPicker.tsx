@@ -30,7 +30,7 @@ export function StringFilterPicker({
 
   const {
     operator,
-    availableOperators,
+    availableOptions,
     values,
     valueCount,
     hasMultipleValues,
@@ -71,7 +71,7 @@ export function StringFilterPicker({
       >
         <FilterOperatorPicker
           value={operator}
-          options={availableOperators}
+          options={availableOptions}
           onChange={setOperator}
         />
       </FilterPickerHeader>

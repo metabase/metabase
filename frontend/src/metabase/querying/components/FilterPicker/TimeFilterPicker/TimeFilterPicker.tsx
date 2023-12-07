@@ -29,7 +29,7 @@ export function TimeFilterPicker({
     operator,
     values,
     valueCount,
-    availableOperators,
+    availableOptions,
     getFilterClause,
     setOperator,
     setValues,
@@ -63,7 +63,7 @@ export function TimeFilterPicker({
       >
         <FilterOperatorPicker
           value={operator}
-          options={availableOperators}
+          options={availableOptions}
           onChange={setOperator}
         />
       </FilterPickerHeader>
