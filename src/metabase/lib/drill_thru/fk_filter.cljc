@@ -1,5 +1,5 @@
 (ns metabase.lib.drill-thru.fk-filter
-  "Adds a simple `=` filter for the selected FK column. Enables option like`View this Product's Reviews`.
+  "Adds a simple `=` filter for the selected FK column. Enables option like `View this Product's Reviews`.
 
   Entry points:
 
