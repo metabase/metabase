@@ -1,6 +1,8 @@
 (ns metabase.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -109,13 +111,13 @@
 (deftest data-graph-for-group-check-all-groups-test
   (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
     (testing (str "testing data perms graph for group graph with group-id: [" group-id "].")
-      (is (= #{group-id} (set (keys (perms/data-graph-for-group group-id))))))))
+      (let [graph (perms/data-graph-for-group group-id)]
+        (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
+        (is (= #{group-id} (set (keys graph))))))))
 
 (deftest data-graph-for-db-check-all-dbs-test
   (doseq [db-id (t2/select-fn-set :id :model/Database)]
     (testing (str "testing data perms graph for db graph with db-id: [" db-id "].")
-      (= #{db-id}
-         (->> (perms/data-graph-for-db db-id)
-              vals
-              (mapcat keys)
-              set)))))
+      (let [graph (perms/data-graph-for-db db-id)]
+        (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
+        (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))
