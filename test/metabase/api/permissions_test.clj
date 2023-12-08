@@ -2,7 +2,9 @@
   "Tests for `/api/permissions` endpoints."
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [medley.core :as m]
+   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.api.permissions :as api.permissions]
    [metabase.config :as config]
    [metabase.models
@@ -163,6 +165,7 @@
                                Database         db                          {}]
         (perms/grant-permissions! group (perms/data-perms-path db))
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
+          (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
           (is (= #{group-id} (set (keys graph)))))))))
 
 (deftest fetch-perms-graph-by-db-id-test
@@ -172,6 +175,7 @@
                                Database         {db-id :id} {}]
         (perms/grant-permissions! group (perms/data-perms-path db-id))
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
+          (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
           (is (= #{db-id} (->> graph vals (mapcat keys) set))))))))
 
 (deftest fetch-perms-graph-v2-test

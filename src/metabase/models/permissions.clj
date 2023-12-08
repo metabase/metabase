@@ -863,12 +863,10 @@
 
 (defn ->v1-paths
   "keep v1 paths, implicitly remove v2"
-  [pbpi]
+  [group-id->permissions]
   (m/map-vals (fn [paths]
-                (filter (fn [path]
-                          (mc/validate [:re path-regex-v1] path))
-                        paths))
-              pbpi))
+                (filter (fn [path] (mc/validate [:re path-regex-v1] path)) paths))
+              group-id->permissions))
 
 (defn data-perms-graph
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
