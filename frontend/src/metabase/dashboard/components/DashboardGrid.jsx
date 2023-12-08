@@ -289,13 +289,26 @@ class DashboardGrid extends Component {
   }
 
   renderReplaceCardModal() {
-    const { replaceCard } = this.props;
+    const { addUndo, replaceCard, setDashCardAttributes } = this.props;
     const { replaceCardModalDashCard } = this.state;
 
     const isOpen = replaceCardModalDashCard != null;
 
     const handleSelect = nextCardId => {
       replaceCard({ dashcardId: replaceCardModalDashCard.id, nextCardId });
+
+      const hadModelCard = replaceCardModalDashCard.card.dataset;
+      addUndo({
+        message: hadModelCard ? t`Model replaced` : t`Question replaced`,
+        undo: true,
+        action: () =>
+          setDashCardAttributes({
+            id: replaceCardModalDashCard.id,
+            attributes: replaceCardModalDashCard,
+          }),
+      });
+
+      MetabaseAnalytics.trackStructEvent("Dashboard", "Replace Card");
     };
 
     const handleClose = () => {
