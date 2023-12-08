@@ -14,7 +14,7 @@ type SharingOptionProps = {
 };
 
 export const SharingPaneButton = ({
-  illustration: Illustration,
+  illustration,
   children,
   header,
   description,
@@ -24,7 +24,7 @@ export const SharingPaneButton = ({
     <SharingPaneButtonContent disabled={disabled} withBorder>
       <Center h="22.5rem" p="8rem">
         <Stack w="17.5rem" justify="center" align="center">
-          <Illustration disabled={disabled} />
+          {illustration}
           <SharingPaneButtonTitle>{header}</SharingPaneButtonTitle>
           <Text>{description}</Text>
           <Box w="100%">{children}</Box>
