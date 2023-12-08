@@ -97,6 +97,11 @@ export const PublicLinkPopover = ({
           {isAdmin && (
             <Box mt="md">
               <Tooltip
+                py="0.6rem"
+                px="0.75rem"
+                bg="bg.3"
+                withArrow
+                arrowSize={10}
                 label={
                   <Text
                     fw={700}
