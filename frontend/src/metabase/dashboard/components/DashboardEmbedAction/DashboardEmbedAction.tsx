@@ -21,7 +21,7 @@ export const DashboardEmbedAction = ({
       <DashboardSharingEmbeddingModal
         key="dashboard-embed"
         dashboard={dashboard}
-        enabled={isModalOpen}
+        isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         isLinkEnabled={true}
       />

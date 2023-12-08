@@ -5,7 +5,7 @@ import cx from "classnames";
 import ButtonBar from "metabase/components/ButtonBar";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
+import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
 import ViewButton from "./ViewButton";
 

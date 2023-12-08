@@ -10,11 +10,11 @@ type EmbedModalStep = "application" | null;
 
 export const EmbedModal = ({
   children,
-  enabled,
+  isOpen,
   onClose,
   ...modalProps
 }: {
-  enabled?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   children: ({
     embedType,
@@ -27,15 +27,15 @@ export const EmbedModal = ({
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
 
   const onEmbedClose = () => {
-    setEmbedType(null);
     onClose();
+    setEmbedType(null);
   };
 
   const isFullScreen = embedType === "application";
 
   return (
     <Modal
-      isOpen={enabled}
+      isOpen={isOpen}
       onClose={onEmbedClose}
       title={
         embedType ? (

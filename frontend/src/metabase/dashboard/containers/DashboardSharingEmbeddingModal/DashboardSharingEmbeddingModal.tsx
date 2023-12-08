@@ -15,15 +15,16 @@ import {
 
 type DashboardSharingEmbeddingModalProps = {
   isLinkEnabled: boolean;
-  className: string;
+  className?: string;
   dashboard: Dashboard;
+  isOpen: boolean;
   onClose: () => void;
 };
 
 export const DashboardSharingEmbeddingModal = (
   props: DashboardSharingEmbeddingModalProps,
 ) => {
-  const { className, dashboard, onClose, isLinkEnabled } = props;
+  const { className, dashboard, isOpen, onClose, isLinkEnabled } = props;
 
   const parameters = useSelector(state => getParameters(state));
 
@@ -42,7 +43,7 @@ export const DashboardSharingEmbeddingModal = (
     Urls.publicDashboard(public_uuid);
 
   return (
-    <EmbedModal onClose={onClose}>
+    <EmbedModal isOpen={isOpen} onClose={onClose}>
       {({ embedType, setEmbedType }) => (
         <EmbedModalContent
           {...props}
