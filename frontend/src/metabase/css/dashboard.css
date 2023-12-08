@@ -195,7 +195,7 @@
 
 .Dash--editing .react-grid-placeholder {
   z-index: 0;
-  background-color: var(--color-bg-light) !important;
+  background-color: var(--color-brand) !important;
   transition: all 0.15s linear;
 }
 
