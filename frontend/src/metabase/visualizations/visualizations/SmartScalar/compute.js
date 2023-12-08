@@ -11,27 +11,100 @@ import {
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
-const FALLBACK_DATE_UNIT = "day";
-
 export function computeTrend(series, insights, settings) {
+  // get current metric data
+  const currentMetricData = getCurrentMetricData({
+    series,
+    insights,
+    settings,
+  });
+  if (isEmpty(currentMetricData)) {
+    return null;
+  }
+  const { clicked, date, dateUnitSettings, formatOptions, value } =
+    currentMetricData;
+
+  // get comparison data
+  const comparisonData = computeComparison({
+    currentMetricData,
+    series,
+    settings,
+  });
+  const { comparisonDescStr, comparisonValue } = comparisonData ?? {};
+
+  // find percent change in values
+  const percentChange = !isEmpty(comparisonValue)
+    ? computeChange(comparisonValue, value)
+    : null;
+
+  const {
+    changeType,
+    changeArrowIconName,
+    percentChangeStr,
+    comparisonValueStr,
+  } = computeChangeTypeWithOptions({
+    comparisonValue,
+    formatOptions,
+    percentChange,
+  });
+
+  const changeColor = !isEmpty(changeArrowIconName)
+    ? getArrowColor(
+        changeArrowIconName,
+        settings["scalar.switch_positive_negative"],
+      )
+    : null;
+
+  const valueStr = formatValue(value, formatOptions);
+  const dateStr = formatDateStr({ date, dateUnitSettings });
+  return {
+    value,
+    clicked,
+    formatOptions,
+    display: {
+      value: valueStr,
+      date: dateStr,
+    },
+    comparison: {
+      changeArrowIconName,
+      changeColor,
+      changeType,
+      comparisonDescStr,
+      comparisonValue,
+      display: {
+        percentChange: percentChangeStr,
+        comparisonValue: comparisonValueStr,
+      },
+      percentChange,
+    },
+  };
+}
+
+function computeComparison({ currentMetricData, series, settings }) {
   const { type } = settings["scalar.comparisons"];
 
   if (type === COMPARISON_TYPES.PREVIOUS_VALUE) {
-    return computeTrendPreviousValue(series, insights, settings);
+    return computeTrendPreviousValue({
+      currentMetricData,
+      series,
+    });
   }
 
   if (
-    [COMPARISON_TYPES.PREVIOUS_PERIOD, COMPARISON_TYPES.PERIODS_AGO].includes(
-      type,
-    )
+    type === COMPARISON_TYPES.PREVIOUS_PERIOD ||
+    type === COMPARISON_TYPES.PERIODS_AGO
   ) {
-    return computeTrendPeriodsAgo(series, insights, settings);
+    return computeTrendPeriodsAgo({
+      currentMetricData,
+      series,
+      settings,
+    });
   }
 
   return null;
 }
 
-function computeTrendPreviousValue(series, insights, settings) {
+function getCurrentMetricData({ series, insights, settings }) {
   const [
     {
       data: { rows, cols },
@@ -39,344 +112,218 @@ function computeTrendPreviousValue(series, insights, settings) {
   ] = series;
 
   // column locations for date and metric
-  const dimensionIndex = cols.findIndex(col => isDate(col));
-  const metricIndex = cols.findIndex(
+  const dimensionColIndex = cols.findIndex(col => isDate(col));
+  const metricColIndex = cols.findIndex(
     col => col.name === settings["scalar.field"],
   );
 
-  if (dimensionIndex === -1 || metricIndex === -1) {
+  if (dimensionColIndex === -1 || metricColIndex === -1) {
     return null;
   }
 
-  // get metric column metadata
-  const metricColumn = cols[metricIndex];
-  const metricInsight = insights?.find(
-    insight => insight.col === metricColumn.name,
-  );
-
   // get latest value and date
-  const i = rows.length - 1;
-  const date = rows[i][dimensionIndex];
-  const value = rows[i][metricIndex];
-
+  const latestRowIndex = rows.length - 1;
+  const date = rows[latestRowIndex][dimensionColIndex];
+  const value = rows[latestRowIndex][metricColIndex];
   if (isEmpty(value) || isEmpty(date)) {
     return null;
   }
 
-  const insightDateUnit = metricInsight?.unit;
+  // get metric column metadata
+  const metricColumn = cols[metricColIndex];
+  const metricInsight = insights?.find(
+    insight => insight.col === metricColumn.name,
+  );
+  const dateUnit = metricInsight?.unit;
+  const dateColumn = cols[dimensionColIndex];
+  const dateColumnSettings = settings?.column?.(dateColumn) ?? {};
 
-  // format latest value and date
+  const dateUnitSettings = {
+    dateColumn,
+    dateColumnSettings,
+    dateUnit,
+  };
+
   const formatOptions = settings.column?.(metricColumn);
-  const valueStr = formatValue(value, formatOptions);
 
   const clicked = {
     value,
-    column: cols[dimensionIndex],
+    column: cols[dimensionColIndex],
     dimensions: [
       {
-        value: rows[i][dimensionIndex],
-        column: cols[dimensionIndex],
+        value: rows[latestRowIndex][dimensionColIndex],
+        column: cols[dimensionColIndex],
       },
     ],
-    data: rows[i].map((value, index) => ({
+    data: rows[latestRowIndex].map((value, index) => ({
       value,
       col: cols[index],
     })),
     settings,
   };
 
-  const comparison = computeComparisonPreviousValue({
-    rows,
-    dimensionIndex,
-    metricIndex,
-    nextValue: value,
-    nextDate: date,
-    insightDateUnit,
-    formatOptions,
-    settings,
-  });
-
-  // if insightDateUnit is not supplied and there is no previous value to compare
-  // to, we have to set a fallback dateUnit to display for the current value
-  const { dateUnit } = comparison;
-  const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
-    compact: true,
-  });
-
   return {
-    value,
     clicked,
+    date,
+    dateUnitSettings,
     formatOptions,
-    display: {
-      value: valueStr,
-      date: dateStr,
+    indexData: {
+      dimensionColIndex,
+      metricColIndex,
+      latestRowIndex,
     },
-    comparison,
+    value,
   };
+}
+
+function computeTrendPreviousValue({ currentMetricData, series }) {
+  const [
+    {
+      data: { rows },
+    },
+  ] = series;
+
+  const {
+    date,
+    dateUnitSettings,
+    indexData: { dimensionColIndex, metricColIndex, latestRowIndex },
+  } = currentMetricData;
+
+  return computeComparisonPreviousValue({
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex: latestRowIndex,
+    nextDate: date,
+    dateUnitSettings,
+  });
 }
 
 function computeComparisonPreviousValue({
   rows,
-  metricIndex,
-  dimensionIndex,
-  nextValue,
+  dimensionColIndex,
+  metricColIndex,
+  nextValueRowIndex,
   nextDate,
-  insightDateUnit,
-  formatOptions,
-  settings,
+  dateUnitSettings,
 }) {
   const previousRow = rows.findLast(
     (row, i) =>
-      i < rows.length - 1 &&
-      !isEmpty(row[metricIndex]) &&
-      !isEmpty(row[dimensionIndex]),
+      i < nextValueRowIndex &&
+      !isEmpty(row[metricColIndex]) &&
+      !isEmpty(row[dimensionColIndex]),
   );
   // if no row exists with non-null date and non-null value
   if (isEmpty(previousRow)) {
-    const { comparisonType, percentChangeStr, prevValueStr } =
-      computeChangeTypeWithOptions({
-        formatOptions,
-      });
-
-    return {
-      comparisonType,
-      dateUnit: insightDateUnit ?? FALLBACK_DATE_UNIT,
-      display: {
-        percentChange: percentChangeStr,
-        prevValue: prevValueStr,
-      },
-    };
+    return null;
   }
 
-  const prevDate = previousRow[dimensionIndex];
-  const prevValue = previousRow[metricIndex];
-  const percentChange = computeChange(prevValue, nextValue);
-  const {
-    comparisonType,
-    changeArrowIconName,
-    percentChangeStr,
-    prevValueStr,
-  } = computeChangeTypeWithOptions({
-    formatOptions,
-    percentChange,
-    prevValue,
-  });
-  const changeColor = getArrowColor(
-    changeArrowIconName,
-    settings["scalar.switch_positive_negative"],
-  );
+  const prevDate = previousRow[dimensionColIndex];
+  const prevValue = previousRow[metricColIndex];
 
-  const dateUnit = insightDateUnit ?? getDatePrecision(prevDate, nextDate);
-  const comparisonPeriodStr = computeComparisonStrPreviousValue({
+  const comparisonDescStr = computeComparisonStrPreviousValue({
     nextDate,
     prevDate,
-    dateUnit,
+    dateUnitSettings,
   });
 
   return {
-    comparisonType,
-    percentChange,
-    prevValue,
-    comparisonPeriodStr,
-    changeColor,
-    changeArrowIconName,
-    dateUnit,
-    display: {
-      percentChange: percentChangeStr,
-      prevValue: prevValueStr,
-    },
+    comparisonDescStr,
+    comparisonValue: prevValue,
   };
 }
 
-function computeTrendPeriodsAgo(series, insights, settings) {
+function computeTrendPeriodsAgo({ currentMetricData, series, settings }) {
   const [
     {
-      data: { rows, cols },
+      data: { rows },
     },
   ] = series;
 
-  // column locations for date and metric
-  const dimensionIndex = cols.findIndex(col => isDate(col));
-  const metricIndex = cols.findIndex(
-    col => col.name === settings["scalar.field"],
-  );
+  const {
+    date,
+    dateUnitSettings,
+    indexData: { dimensionColIndex, metricColIndex, latestRowIndex },
+  } = currentMetricData;
 
-  if (dimensionIndex === -1 || metricIndex === -1) {
-    return null;
+  if (isEmpty(dateUnitSettings.dateUnit)) {
+    throw new Error("No date unit supplied for periods ago comparison");
   }
 
-  // get metric column metadata
-  const metricColumn = cols[metricIndex];
-  const metricInsight = insights?.find(
-    insight => insight.col === metricColumn.name,
-  );
-
-  const dateUnit = metricInsight?.unit;
-
-  if (isEmpty(dateUnit)) {
+  const { type, value } = settings["scalar.comparisons"];
+  if (type === COMPARISON_TYPES.PERIODS_AGO && !Number.isInteger(value)) {
     return null;
   }
+  const dateUnitsAgo = value ?? 1;
 
-  // get latest value and date
-  const i = rows.length - 1;
-  const date = rows[i][dimensionIndex];
-  const value = rows[i][metricIndex];
-  if (isEmpty(value) || isEmpty(date)) {
-    return null;
-  }
-
-  // format latest value and date
-  const formatOptions = settings.column?.(metricColumn);
-  const valueStr = formatValue(value, formatOptions);
-  const dateStr = formatDateTimeRangeWithUnit([date], dateUnit, {
-    compact: true,
-  });
-
-  const clicked = {
-    value,
-    column: cols[dimensionIndex],
-    dimensions: [
-      {
-        value: rows[i][dimensionIndex],
-        column: cols[dimensionIndex],
-      },
-    ],
-    data: rows[i].map((value, index) => ({
-      value,
-      col: cols[index],
-    })),
-    settings,
-  };
-
-  const comparison = computeComparisonPeriodsAgo({
+  return computeComparisonPeriodsAgo({
     rows,
-    dimensionIndex,
-    metricIndex,
-    nextValue: value,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex: latestRowIndex,
     nextDate: date,
-    dateUnit,
-    formatOptions,
-    settings,
+    dateUnitSettings,
+    dateUnitsAgo,
   });
-
-  return {
-    value,
-    clicked,
-    formatOptions,
-    display: {
-      value: valueStr,
-      date: dateStr,
-    },
-    comparison,
-  };
 }
 
 function computeComparisonPeriodsAgo({
   rows,
-  metricIndex,
-  dimensionIndex,
-  nextValue,
+  dimensionColIndex,
+  metricColIndex,
+  nextValueRowIndex,
   nextDate,
-  dateUnit,
-  formatOptions,
-  settings,
+  dateUnitSettings,
+  dateUnitsAgo,
 }) {
-  const dateUnitDisplay = Lib.describeTemporalUnit(dateUnit).toLowerCase();
-  const dateUnitsAgo = settings["scalar.comparisons"].value ?? 1;
+  const dateUnitDisplay = Lib.describeTemporalUnit(
+    dateUnitSettings.dateUnit,
+  ).toLowerCase();
   const prevDate = dayjs(nextDate)
-    .subtract(dateUnitsAgo, dateUnit)
+    .subtract(dateUnitsAgo, dateUnitSettings.dateUnit)
     .format("YYYY-MM-DDTHH:mm:ssZ");
 
-  const comparisonPeriodStr =
+  const comparisonDescStr =
     dateUnitsAgo === 1
       ? t`vs. previous ${dateUnitDisplay}`
       : computeComparisonStrPreviousValue({
-          dateUnit,
+          dateUnitSettings,
           nextDate,
           prevDate,
         });
 
-  const rowIndexPeriodsAgo = getIndexOfPeriodsAgo({
+  const rowPeriodsAgo = getRowOfPeriodsAgo({
     prevDate,
     dateUnitsAgo,
-    dimensionIndex,
+    dimensionColIndex,
+    nextValueRowIndex,
     rows,
   });
   // if no row exists with date "X periods ago"
-  if (rowIndexPeriodsAgo === -1) {
-    const { comparisonType, percentChangeStr, prevValueStr } =
-      computeChangeTypeWithOptions({
-        formatOptions,
-      });
-
+  if (isEmpty(rowPeriodsAgo)) {
     return {
-      comparisonType,
-      comparisonPeriodStr,
-      display: {
-        percentChange: percentChangeStr,
-        prevValue: prevValueStr,
-      },
+      comparisonDescStr,
     };
   }
 
-  const prevValue = rows[rowIndexPeriodsAgo][metricIndex];
-  // if row "X periods ago" exists but contains null values
-  if (isEmpty(prevValue)) {
-    const { comparisonType, percentChangeStr, prevValueStr } =
-      computeChangeTypeWithOptions({
-        formatOptions,
-      });
-
-    return {
-      comparisonType,
-      comparisonPeriodStr,
-      display: {
-        percentChange: percentChangeStr,
-        prevValue: prevValueStr,
-      },
-    };
-  }
-
-  // if data exists and is non-null, compute change
-  const percentChange = computeChange(prevValue, nextValue);
-  const {
-    comparisonType,
-    changeArrowIconName,
-    percentChangeStr,
-    prevValueStr,
-  } = computeChangeTypeWithOptions({
-    formatOptions,
-    percentChange,
-    prevValue,
-  });
-  const changeColor = getArrowColor(
-    changeArrowIconName,
-    settings["scalar.switch_positive_negative"],
-  );
+  const prevValue = rowPeriodsAgo[metricColIndex];
 
   return {
-    comparisonType,
-    percentChange,
-    prevValue,
-    comparisonPeriodStr,
-    changeColor,
-    changeArrowIconName,
-    display: {
-      percentChange: percentChangeStr,
-      prevValue: prevValueStr,
-    },
+    comparisonDescStr,
+    comparisonValue: prevValue,
   };
 }
 
-function getIndexOfPeriodsAgo({
+function getRowOfPeriodsAgo({
   prevDate,
   dateUnitsAgo,
-  dimensionIndex,
+  dimensionColIndex,
+  nextValueRowIndex,
   rows,
 }) {
   const date = dayjs(prevDate);
-  // skip the last element since that is our current value
-  const searchIndexStart = rows.length - 2;
+  // skip the latest element since that is our current value
+  const searchIndexStart = nextValueRowIndex - 1;
   if (searchIndexStart < 0) {
     return -1;
   }
@@ -385,36 +332,61 @@ function getIndexOfPeriodsAgo({
   // since looking any further would automatically result in a date before
   // X periods ago and any prior dates would be further beyond our desired
   // comparison date
-  const lastSearchCandidate = rows.length - 2 - (dateUnitsAgo - 1);
-  const searchIndexEnd = lastSearchCandidate >= 0 ? lastSearchCandidate : 0;
+  const lastCandidateIndex = nextValueRowIndex - 1 - (dateUnitsAgo - 1);
+  const searchIndexEnd = lastCandidateIndex >= 0 ? lastCandidateIndex : 0;
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const row = rows[i];
-    const rowDate = row[dimensionIndex];
+    const rowDate = row[dimensionColIndex];
 
     if (date.isSame(rowDate)) {
-      return i;
+      return row;
     }
 
     if (date.isAfter(rowDate)) {
-      return -1;
+      return undefined;
     }
   }
 
-  return -1;
+  return undefined;
 }
 
-function computeComparisonStrPreviousValue({ dateUnit, prevDate, nextDate }) {
+function computeComparisonStrPreviousValue({
+  dateUnitSettings,
+  prevDate,
+  nextDate,
+}) {
   const isSameDay = dayjs(prevDate).isSame(nextDate, "day");
   const isSameYear = dayjs(prevDate).isSame(nextDate, "year");
 
-  const formattedDateStr = formatDateTimeRangeWithUnit([prevDate], dateUnit, {
-    compact: true,
+  const options = {
     removeDay: isSameDay,
     removeYear: isSameYear,
+  };
+
+  const formattedDateStr = formatDateStr({
+    date: prevDate,
+    dateUnitSettings,
+    options,
   });
 
   return t`vs. ${formattedDateStr}`;
+}
+
+function formatDateStr({ date, dateUnitSettings, options }) {
+  const { dateColumn, dateColumnSettings, dateUnit } = dateUnitSettings;
+
+  if (isEmpty(dateUnit)) {
+    return formatValue(date, {
+      ...dateColumnSettings,
+      column: dateColumn,
+    });
+  }
+
+  return formatDateTimeRangeWithUnit([date], dateUnit, {
+    ...options,
+    compact: true,
+  });
 }
 
 // compute the percent change between two values (prevVal → nextVal)
@@ -435,31 +407,31 @@ export const PREVIOUS_VALUE_OPTIONS = {
 };
 
 function computeChangeTypeWithOptions({
+  comparisonValue,
   formatOptions,
   percentChange,
-  prevValue,
 }) {
-  if (isEmpty(prevValue)) {
+  if (isEmpty(comparisonValue)) {
     return {
-      comparisonType: PREVIOUS_VALUE_OPTIONS.MISSING,
+      changeType: PREVIOUS_VALUE_OPTIONS.MISSING,
       percentChangeStr: t`N/A`,
-      prevValueStr: t`(No data)`,
+      comparisonValueStr: t`(No data)`,
     };
   }
 
   if (percentChange === 0) {
     return {
-      comparisonType: PREVIOUS_VALUE_OPTIONS.SAME,
+      changeType: PREVIOUS_VALUE_OPTIONS.SAME,
       percentChangeStr: t`No change`,
-      prevValueStr: "",
+      comparisonValueStr: "",
     };
   }
 
   return {
-    comparisonType: PREVIOUS_VALUE_OPTIONS.CHANGED,
+    changeType: PREVIOUS_VALUE_OPTIONS.CHANGED,
     changeArrowIconName: percentChange < 0 ? "arrow_down" : "arrow_up",
     percentChangeStr: formatChange(percentChange),
-    prevValueStr: formatValue(prevValue, formatOptions),
+    comparisonValueStr: formatValue(comparisonValue, formatOptions),
   };
 }
 
@@ -469,31 +441,4 @@ function getArrowColor(changeArrowIconName, shouldSwitchPositiveNegative) {
     : { arrow_down: "error", arrow_up: "success" };
 
   return color(arrowIconColorNames[changeArrowIconName]);
-}
-
-// find the smallest unit different between each date and use that to
-// determine the dateUnit
-function getDatePrecision(prevDateStr, nextDateStr) {
-  const optionsToDiff = ["year", "month", "day", "hour", "minute"];
-
-  const prevDate = dayjs(prevDateStr);
-  const nextDate = dayjs(nextDateStr);
-
-  let dateUnit = "year";
-  let diffDate = nextDate;
-
-  optionsToDiff.forEach(unit => {
-    const diff = diffDate.diff(prevDate, unit);
-
-    // if the dates have the same day of month, hour of day, minute of hour
-    // then it will have a diff 0, so we will still need to check if one
-    // of the dates have a non-zero value there
-    if (diff > 0 || nextDate?.[unit]() > 0) {
-      dateUnit = unit;
-    }
-
-    diffDate = diffDate.subtract(diff, unit);
-  });
-
-  return dateUnit;
 }

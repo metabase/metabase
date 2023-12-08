@@ -79,17 +79,17 @@ function PreviousValueComparison({
   const fontSize = "0.875rem";
 
   const {
-    comparisonType,
+    changeType,
     percentChange,
-    comparisonPeriodStr,
-    prevValue,
+    comparisonDescStr,
+    comparisonValue,
     changeArrowIconName,
     changeColor,
     display,
   } = comparison;
 
   const fittedChangeDisplay =
-    comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
+    changeType === PREVIOUS_VALUE_OPTIONS.CHANGED
       ? formatChangeAutoPrecision(percentChange, {
           fontFamily,
           fontWeight: 900,
@@ -114,22 +114,22 @@ function PreviousValueComparison({
     });
 
   const valueCandidates = [
-    display.prevValue,
-    ...(comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
-      ? [formatValue(prevValue, { ...formatOptions, compact: true })]
+    display.comparisonValue,
+    ...(changeType === PREVIOUS_VALUE_OPTIONS.CHANGED
+      ? [formatValue(comparisonValue, { ...formatOptions, compact: true })]
       : []),
     "",
   ];
   const detailCandidates = valueCandidates.map(valueStr => {
     if (isEmpty(valueStr)) {
-      return jt`${comparisonPeriodStr}`;
+      return jt`${comparisonDescStr}`;
     }
 
-    if (isEmpty(comparisonPeriodStr)) {
+    if (isEmpty(comparisonDescStr)) {
       return jt`${(<PreviousValueNumber>{valueStr}</PreviousValueNumber>)}`;
     }
 
-    return jt`${comparisonPeriodStr}: ${(
+    return jt`${comparisonDescStr}: ${(
       <PreviousValueNumber>{valueStr}</PreviousValueNumber>
     )}`;
   });

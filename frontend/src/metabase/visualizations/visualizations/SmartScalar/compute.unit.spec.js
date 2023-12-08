@@ -48,14 +48,14 @@ describe("SmartScalar > compute", () => {
     const changeArrowIconMap = { arrow_down: "↓", arrow_up: "↑" };
 
     const printComparison = ({
-      comparisonPeriodStr,
+      comparisonDescStr,
       changeArrowIconName,
-      display: { percentChange, prevValue },
+      display: { percentChange, comparisonValue },
     }) =>
       [
         changeArrowIconMap[changeArrowIconName],
         percentChange,
-        [comparisonPeriodStr, prevValue].filter(e => e).join(": "),
+        [comparisonDescStr, comparisonValue].filter(e => e).join(": "),
       ]
         .filter(e => e)
         .join(" ");
