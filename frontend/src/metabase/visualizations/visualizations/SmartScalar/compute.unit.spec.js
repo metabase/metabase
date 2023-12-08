@@ -7,40 +7,48 @@ import { COMPARISON_TYPES } from "./utils";
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {
-    it("should evaluate: 0 → - = -∞%", () => {
-      expect(computeChange(0, -1)).toBe(-Infinity);
-      expect(computeChange(0, -10)).toBe(-Infinity);
+    describe("comparisonVal = 0", () => {
+      it("should evaluate: 0 → < 0 = -∞%", () => {
+        expect(computeChange(0, -1)).toBe(-Infinity);
+        expect(computeChange(0, -10)).toBe(-Infinity);
+      });
+      it("should evaluate: 0 → > 0 = ∞%", () => {
+        expect(computeChange(0, 1)).toBe(Infinity);
+        expect(computeChange(0, 10)).toBe(Infinity);
+      });
+      it("should evaluate: 0 → 0 =  0%", () => {
+        expect(computeChange(0, 0)).toBe(0);
+      });
     });
-    it("should evaluate: 0 → + =  ∞%", () => {
-      expect(computeChange(0, 1)).toBe(Infinity);
-      expect(computeChange(0, 10)).toBe(Infinity);
+
+    describe("comparisonVal < 0", () => {
+      it("should evaluate: - → 0 = 100%", () => {
+        expect(computeChange(-1, 0)).toBe(1);
+        expect(computeChange(-10, 0)).toBe(1);
+      });
+      it("should evaluate: - → - =  (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
+        expect(computeChange(-3, -5)).toBe((-5 - -3) / Math.abs(-3));
+        expect(computeChange(-12, -3)).toBe((-3 - -12) / Math.abs(-12));
+      });
+      it("should evaluate: - → + = (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
+        expect(computeChange(-3, 5)).toBe((5 - -3) / Math.abs(-3));
+        expect(computeChange(-12, 3)).toBe((3 - -12) / Math.abs(-12));
+      });
     });
-    it("should evaluate: 0 → 0 =  0%", () => {
-      expect(computeChange(0, 0)).toBe(0);
-    });
-    it("should evaluate: - → 0 = 100%", () => {
-      expect(computeChange(-1, 0)).toBe(1);
-      expect(computeChange(-10, 0)).toBe(1);
-    });
-    it("should evaluate: + → 0 = -100%", () => {
-      expect(computeChange(1, 0)).toBe(-1);
-      expect(computeChange(10, 0)).toBe(-1);
-    });
-    it("should evaluate: + → + = (nextVal - prevVal) / Math.abs(prevVal)", () => {
-      expect(computeChange(3, 5)).toBe((5 - 3) / Math.abs(3));
-      expect(computeChange(12, 3)).toBe((3 - 12) / Math.abs(12));
-    });
-    it("should evaluate: + → - = (nextVal - prevVal) / Math.abs(prevVal)", () => {
-      expect(computeChange(3, -5)).toBe((-5 - 3) / Math.abs(3));
-      expect(computeChange(12, -3)).toBe((-3 - 12) / Math.abs(12));
-    });
-    it("should evaluate: - → - =  (nextVal - prevVal) / Math.abs(prevVal)", () => {
-      expect(computeChange(-3, -5)).toBe((-5 - -3) / Math.abs(-3));
-      expect(computeChange(-12, -3)).toBe((-3 - -12) / Math.abs(-12));
-    });
-    it("should evaluate: - → + = (nextVal - prevVal) / Math.abs(prevVal)", () => {
-      expect(computeChange(-3, 5)).toBe((5 - -3) / Math.abs(-3));
-      expect(computeChange(-12, 3)).toBe((3 - -12) / Math.abs(-12));
+
+    describe("comparisonVal > 0", () => {
+      it("should evaluate: + → 0 = -100%", () => {
+        expect(computeChange(1, 0)).toBe(-1);
+        expect(computeChange(10, 0)).toBe(-1);
+      });
+      it("should evaluate: + → + = (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
+        expect(computeChange(3, 5)).toBe((5 - 3) / Math.abs(3));
+        expect(computeChange(12, 3)).toBe((3 - 12) / Math.abs(12));
+      });
+      it("should evaluate: + → - = (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
+        expect(computeChange(3, -5)).toBe((-5 - 3) / Math.abs(3));
+        expect(computeChange(12, -3)).toBe((-3 - 12) / Math.abs(12));
+      });
     });
   });
 

@@ -389,15 +389,15 @@ function formatDateStr({ date, dateUnitSettings, options }) {
   });
 }
 
-// compute the percent change between two values (prevVal → nextVal)
-// percentChange = (nextVal - prevVal) / Math.abs(prevVal)
-export function computeChange(prevVal, nextVal) {
-  if (prevVal === 0) {
-    // percentChange = nextVal / 0
-    return nextVal === 0 ? 0 : nextVal > 0 ? Infinity : -Infinity;
+// compute the percent change between two values (comparisonVal → currVal)
+// percentChange = (currVal - comparisonVal) / Math.abs(comparisonVal)
+export function computeChange(comparisonVal, currVal) {
+  if (comparisonVal === 0) {
+    // percentChange = currVal / 0
+    return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
   }
 
-  return (nextVal - prevVal) / Math.abs(prevVal);
+  return (currVal - comparisonVal) / Math.abs(comparisonVal);
 }
 
 export const PREVIOUS_VALUE_OPTIONS = {
