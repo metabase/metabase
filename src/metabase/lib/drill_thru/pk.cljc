@@ -1,5 +1,31 @@
 (ns metabase.lib.drill-thru.pk
-  "A `:pk` drill is a 'View details' (AKA object details) drill that adds filter(s) for the value(s) of a PK(s). It is
+  "Object details drill for cases when there is multiple PK columns.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Selected column is not a FK column
+
+  - There are multiple PK columns in returned columns
+
+  - Select column is a PK column OR the query has no aggregations (in this case the first available PK column and its
+  value are used instead of the selected one)
+
+  - The PK value is not `null`. Make sure to take the previous point into account, e.g. the selected column's value
+  can be `null` but the PK column value in the same row can be not `null`).
+
+  Query transformation:
+
+  - Add `=` filter for the PK column and it's value
+
+  Question transformation:
+
+  - None
+
+  A `:pk` drill is a 'View details' (AKA object details) drill that adds filter(s) for the value(s) of a PK(s). It is
   only presented for Tables that have multiple PKs; for Tables with a single PK you'd instead
   see [[metabase.lib.drill-thru.zoom]].
 
