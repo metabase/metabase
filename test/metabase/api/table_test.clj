@@ -880,7 +880,7 @@
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   []
   (mt/with-current-user (mt/user->id :rasta)
-    (mt/dataset (upload-test/basic-db-definition (mt/random-name))
+    (mt/dataset (upload-test/basic-db-definition)
       (let [file (upload-test/csv-file-with ["id,name" "2,Luke Skywalker" "3,Darth Vader"] (mt/random-name))
             table (t2/select-one :model/Table :db_id (mt/id))]
         (mt/with-current-user (mt/user->id :crowberto)
@@ -898,3 +898,16 @@
         (mt/with-temporary-setting-values [uploads-enabled false]
           (is (= {:status 422, :body {:message "Uploads are not enabled."}}
                  (append-csv-via-api!))))))))
+
+(deftest append-csv-deletes-file-test
+  (testing "File gets deleted after appending"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/dataset (upload-test/basic-db-definition)
+        (let [filename (mt/random-name)
+              file (upload-test/csv-file-with ["id,name" "2,Luke Skywalker" "3,Darth Vader"] filename)
+              table (t2/select-one :model/Table :db_id (mt/id))]
+          (is (.exists file) "File should exist before append-csv!")
+          (mt/with-current-user (mt/user->id :crowberto)
+            (@#'api.table/append-csv! {:id   (:id table)
+                                       :file file}))
+          (is (not (.exists file)) "File should be deleted after append-csv!"))))))

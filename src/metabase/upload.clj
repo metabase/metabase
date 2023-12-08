@@ -18,6 +18,7 @@
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.humanization :as humanization]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.table :as table]
    [metabase.public-settings :as public-settings]
@@ -363,53 +364,62 @@
   (future
     (sync/sync-table! table)))
 
-(defn- can-upload-error
-  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
-  [db schema-name]
+(defn- can-use-uploads-error
+  "Returns an ExceptionInfo object if the user cannot upload to the given database for the subset of reasons common to all uploads
+  entry points. Returns nil otherwise."
+  [db]
   (let [driver (driver.u/database->driver db)]
     (cond
       (not (public-settings/uploads-enabled))
       (ex-info (tru "Uploads are not enabled.")
                {:status-code 422})
+
       (premium-features/sandboxed-user?)
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
+
       (not (driver/database-supports? driver :uploads nil))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
-               {:status-code 422})
-      (and (str/blank? schema-name)
-           (driver/database-supports? driver :schemas db))
-      (ex-info (tru "A schema has not been set.")
-               {:status-code 422})
-      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                            (perms/data-perms-path (u/the-id db) schema-name)))
-      (ex-info (tru "You don''t have permissions to do that.")
-               {:status-code 403})
-      (and (some? schema-name)
-           (not (driver.s/include-schema? db schema-name)))
-      (ex-info (tru "The schema {0} is not syncable." schema-name)
                {:status-code 422}))))
 
-(defn- check-can-upload
+(defn- can-create-upload-error
+  "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
+  [db schema-name]
+  (or (can-use-uploads-error db)
+      (cond
+        (and (str/blank? schema-name)
+             (driver/database-supports? (driver.u/database->driver db) :schemas db))
+        (ex-info (tru "A schema has not been set.")
+                 {:status-code 422})
+        (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                              (perms/data-perms-path (u/the-id db) schema-name)))
+        (ex-info (tru "You don''t have permissions to do that.")
+                 {:status-code 403})
+        (and (some? schema-name)
+             (not (driver.s/include-schema? db schema-name)))
+        (ex-info (tru "The schema {0} is not syncable." schema-name)
+                 {:status-code 422}))))
+
+(defn- check-can-create-upload
   "Throws an error if the user cannot upload to the given database and schema."
   [db schema-name]
-  (when-let [error (can-upload-error db schema-name)]
+  (when-let [error (can-create-upload-error db schema-name)]
     (throw error)))
 
-(defn can-upload?
+(defn can-create-upload?
   "Returns true if the user can upload to the given database and schema, and false otherwise."
   [db schema-name]
-  (nil? (can-upload-error db schema-name)))
+  (nil? (can-create-upload-error db schema-name)))
 
 ;;; +-----------------------------------------
 ;;; |  public interface for creating CSV table
 ;;; +-----------------------------------------
 
-(mu/defn upload-csv!
+(mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
   What it does:
-  - throws an error if the user cannot upload to the given database and schema (see [[can-upload-error]] for reasons)
+  - throws an error if the user cannot upload to the given database and schema (see [[can-create-upload-error]] for reasons)
   - throws an error if the user has write permissions to the given collection
   - detects the schema of the CSV file
   - inserts the data into a new table with a unique name, along with an extra auto-generated primary key column
@@ -438,7 +448,7 @@
   (let [database (or (t2/select-one Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
-    (check-can-upload database schema-name)
+    (check-can-create-upload database schema-name)
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [start-time        (System/currentTimeMillis)
@@ -490,9 +500,9 @@
           (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* fail-stats))
         (throw e)))))
 
-;;; +--------------------------
-;;; |  append to uploaded table
-;;; +--------------------------
+;;; +-----------------------------
+;;; |  appending to uploaded table
+;;; +-----------------------------
 
 (defn- base-type->upload-type
   "Returns the most specific upload type for the given base type."
@@ -567,35 +577,18 @@
           ;; TODO: insert rows failure handling
           (throw (ex-info (ex-message e) {:status-code 400})))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 public interface                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
   [db table]
-  (let [driver (driver.u/database->driver db)]
-    (cond
-      (not (public-settings/uploads-enabled))
-      (ex-info (tru "Uploads are not enabled.")
-               {:status-code 422})
+  (or (can-use-uploads-error db)
+      (cond
+        (not (:is_upload table))
+        (ex-info (tru "The table must be an uploaded table.")
+                 {:status-code 422})
 
-      (premium-features/sandboxed-user?)
-      (ex-info (tru "Uploads are not permitted for sandboxed users.")
-               {:status-code 403})
-
-      (not (driver/database-supports? driver :uploads nil))
-      (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
-               {:status-code 422})
-
-      (not (:is_upload table))
-      (ex-info (tru "The table must be an uploaded table.")
-               {:status-code 422})
-
-      (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                            (perms/data-perms-path (u/the-id db) (:schema table))))
-      (ex-info (tru "You don''t have permissions to do that.")
-               {:status-code 403}))))
+        (not (mi/can-write? table))
+        (ex-info (tru "You don''t have permissions to do that.")
+                 {:status-code 403}))))
 
 (defn- check-can-append
   "Throws an error if the user cannot upload to the given database and schema."
@@ -609,13 +602,17 @@
   [db table]
   (nil? (can-append-error db table)))
 
+;;; +--------------------------------------------------
+;;; |  public interface for appending to uploaded table
+;;; +--------------------------------------------------
+
 (mu/defn append-csv!
   "Main entry point for appending to uploaded tables with a CSV file."
   [{:keys [^File file table-id]}
    :- [:map
        [:table-id ms/PositiveInt]
        [:file (ms/InstanceOfClass File)]]]
-  (let [table    (api/write-check (t2/select-one :model/Table :id table-id))
+  (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)]
     (check-can-append database table)
     (append-csv!* database table file)))

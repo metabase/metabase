@@ -803,7 +803,7 @@
   "This helper function exists to make testing the POST /api/card/from-csv endpoint easier."
   [{:keys [collection-id filename file]}]
   (try
-    (let [model (upload/upload-csv! {:collection-id collection-id
+    (let [model (upload/create-csv-upload! {:collection-id collection-id
                                      :filename      filename
                                      :file          file
                                      :schema-name   (public-settings/uploads-schema-name)

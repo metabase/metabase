@@ -17,7 +17,6 @@
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.util :as u]
@@ -885,7 +884,7 @@
                                    grant-permission?)]
         (when grant?
           (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-        (u/prog1 (upload/upload-csv! {:collection-id collection-id
+        (u/prog1 (upload/create-csv-upload! {:collection-id collection-id
                                       :filename      csv-file-name
                                       :file          file
                                       :db-id         db-id
@@ -1071,12 +1070,13 @@
 
 (defn basic-db-definition
   "This creates a table with an auto-incrementing integer ID column, and a name column."
-  [database-name]
-  (tx/map->DatabaseDefinition
-   {:database-name     database-name
-    :table-definitions [{:table-name        "table_one"
-                         :field-definitions [{:field-name "name", :base-type :type/Text}]
-                         :rows              [["Obi-Wan Kenobi"]]}]}))
+  []
+  (mt/dataset-definition
+   (mt/random-name)
+   ["table_one"
+    [;; 'id' is created automatically
+     {:field-name "name", :base-type :type/Text}]
+    [["Obi-Wan Kenobi"]]]))
 
 (defn append-csv-with-defaults!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
@@ -1092,12 +1092,12 @@
   (try
     (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
       (mt/with-current-user user-id
-        (mt/dataset (basic-db-definition (mt/random-name))
+        (mt/dataset (basic-db-definition)
           (let [tables (t2/select :model/Table :db_id (mt/id))
                 table (first tables)]
             (assert (= (count tables) 1))
             (t2/update! :model/Table (:id table) {:is_upload is-upload})
-            (@#'upload/append-csv! {:table-id (or table-id (:id table))
+            (upload/append-csv! {:table-id (or table-id (:id table))
                                     :file     file})))))
     (finally
       (io/delete-file file))))
@@ -1113,7 +1113,7 @@
   `(catch-ex-info* (fn [] ~@body)))
 
 (deftest can-append-test
-  (mt/test-driver :h2
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Happy path"
       (is (= {:row-count 2}
              (append-csv-with-defaults!))))
@@ -1140,9 +1140,9 @@
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
       (with-redefs [driver/database-supports? (constantly false)]
-        (is (= {:message "Uploads are not supported on H2 databases."
-                :data    {:status-code 422}}
-               (catch-ex-info (append-csv-with-defaults!))))))))
+        (is (=? {:message #"Uploads are not supported on (.*) databases."
+                 :data    {:status-code 422}}
+                (catch-ex-info (append-csv-with-defaults!))))))))
 
 (defn do-with-uploads-allowed
   "Set uploads-enabled to true, and uses an admin user, run the thunk"
@@ -1161,7 +1161,7 @@
         (doseq [csv-rows [["id,name" "2,Luke Skywalker" "3,Darth Vader"]
                           ["Id\t,NAmE " "2,Luke Skywalker" "3,Darth Vader"] ;; the same name when normalized
                           ["name,id" "Luke Skywalker,2" "Darth Vader,3"]]]  ;; different order
-          (mt/dataset (basic-db-definition (mt/random-name))
+          (mt/dataset (basic-db-definition)
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
@@ -1181,7 +1181,7 @@
         (doseq [csv-rows [["id,name,extra_column" "2,Luke Skywalker,so extra"] ;; extra column
                           ["id" "2,Luke Skywalker"]                            ;; missing column
                           ["id,extra_column" "2,so extra"]]]                   ;; extra and missing column
-          (mt/dataset (basic-db-definition (mt/random-name))
+          (mt/dataset (basic-db-definition)
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
@@ -1198,18 +1198,18 @@
 (defn all-types-db-definition
   "This creates a table with an auto-incrementing integer ID column, and a name column."
   []
-  (tx/map->DatabaseDefinition
-   {:database-name     (mt/random-name)
-    :table-definitions [{:table-name        "table_one"
-                         :field-definitions [;; 'id' is created automatically
-                                             {:field-name "biginteger", :base-type :type/BigInteger}
-                                             {:field-name "float", :base-type :type/Float}
-                                             {:field-name "text", :base-type :type/Text}
-                                             {:field-name "boolean", :base-type :type/Boolean}
-                                             {:field-name "date", :base-type :type/Date}
-                                             {:field-name "datetime", :base-type :type/DateTime}
-                                             {:field-name "offset_datetime", :base-type :type/DateTimeWithLocalTZ}]
-                         :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]}]}))
+  (mt/dataset-definition
+   (mt/random-name)
+   ["table_one"
+    [;; 'id' is created automatically
+     {:field-name "biginteger", :base-type :type/BigInteger}
+     {:field-name "float", :base-type :type/Float}
+     {:field-name "text", :base-type :type/Text}
+     {:field-name "boolean", :base-type :type/Boolean}
+     {:field-name "date", :base-type :type/Date}
+     {:field-name "datetime", :base-type :type/DateTime}
+     {:field-name "offset_datetime", :base-type :type/DateTimeWithLocalTZ}]
+    [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]]))
 
 (deftest append-all-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1235,7 +1235,7 @@
     (with-uploads-allowed
       (testing "Append should succeed with a CSV with only the header"
         (doseq [csv-rows [["id,name"]]]
-          (mt/dataset (basic-db-definition (mt/random-name))
+          (mt/dataset (basic-db-definition)
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
@@ -1252,7 +1252,7 @@
     (with-uploads-allowed
       (testing "Happy path"
         (doseq [csv-rows [["id,id,name" "2,2,Luke Skywalker" "3,3,Darth Vader"]]]
-          (mt/dataset (basic-db-definition (mt/random-name))
+          (mt/dataset (basic-db-definition)
             (let [table (t2/select-one :model/Table :db_id (mt/id))
                   _     (t2/update! :model/Table (:id table) {:is_upload true})
                   file  (csv-file-with csv-rows (mt/random-name))]
