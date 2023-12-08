@@ -5,7 +5,6 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.table :as api.table]
    [metabase.config :as config]
@@ -40,6 +39,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.honey-sql-2 :as h2x]
@@ -239,7 +239,7 @@
   (let [uploads-db-id (public-settings/uploads-database-id)]
     (for [db dbs]
       (assoc db :can_upload (and (= (:id db) uploads-db-id)
-                                 (api.card/can-upload? db (public-settings/uploads-schema-name)))))))
+                                 (upload/can-upload? db (public-settings/uploads-schema-name)))))))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -336,7 +336,7 @@
   "Add an entry about whether the user can upload to this DB."
   [db]
   (assoc db :can_upload (and (= (u/the-id db) (public-settings/uploads-database-id))
-                             (api.card/can-upload? db (public-settings/uploads-schema-name)))))
+                             (upload/can-upload? db (public-settings/uploads-schema-name)))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables

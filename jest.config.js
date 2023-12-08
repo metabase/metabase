@@ -38,7 +38,7 @@ const config = {
     "<rootDir>/frontend/test/register-visualizations.js",
   ],
   setupFilesAfterEnv: [
-    "@testing-library/jest-dom/extend-expect",
+    "@testing-library/jest-dom",
     "<rootDir>/frontend/test/jest-setup-env.js",
   ],
   globals: {

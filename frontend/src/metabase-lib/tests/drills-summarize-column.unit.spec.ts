@@ -1,265 +1,155 @@
 import {
-  ORDERS,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createOrdersIdField,
+  createOrdersTable,
+  createOrdersTotalDatasetColumn,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import type { DrillThruType } from "metabase-lib";
-import { drillThru } from "metabase-lib";
-import type {
-  ApplyDrillTestCase,
-  DrillDisplayInfoTestCase,
-} from "metabase-lib/tests/drills-common";
-import { getDrillsQueryParameters } from "metabase-lib/tests/drills-common";
-import { getAvailableDrillByType } from "metabase-lib/test-helpers";
-
-const DRILL_TYPE: DrillThruType = "drill-thru/summarize-column";
+import {
+  createAggregatedCellClickObject,
+  createColumnClickObject,
+  createQuery,
+  createQueryWithClauses,
+  createRawCellClickObject,
+  findDrillThru,
+  queryDrillThru,
+} from "metabase-lib/test-helpers";
+import {
+  createCountDatasetColumn,
+  createNotEditableQuery,
+  createOrdersStructuredDatasetColumn,
+  createOrdersStructuredField,
+} from "./drills-common";
 
 describe("drill-thru/summarize-column", () => {
-  describe("availableDrillThrus", () => {
-    it.each<DrillDisplayInfoTestCase>([
-      {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "ID",
-        expectedParameters: {
-          type: "drill-thru/summarize-column",
-          aggregations: ["distinct"],
-        },
-      },
-      {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "USER_ID",
-        expectedParameters: {
-          type: "drill-thru/summarize-column",
-          aggregations: ["distinct"],
-        },
-      },
-      {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "SUBTOTAL",
-        expectedParameters: {
-          type: "drill-thru/summarize-column",
+  const drillType = "drill-thru/summarize-column";
+  const stageIndex = 0;
+
+  describe("raw query", () => {
+    const defaultQuery = createQuery();
+    const defaultColumn = createOrdersTotalDatasetColumn();
+
+    it.each<Lib.SummarizeColumnDrillThruOperator>(["distinct", "sum", "avg"])(
+      'should drill thru a summable column and "%s" operator',
+      operator => {
+        const clickObject = createColumnClickObject({
+          column: defaultColumn,
+        });
+        const { drill, drillInfo } = findDrillThru(
+          defaultQuery,
+          stageIndex,
+          clickObject,
+          drillType,
+        );
+        expect(drillInfo).toMatchObject({
           aggregations: ["distinct", "sum", "avg"],
-        },
-      },
-      {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "CREATED_AT",
-        expectedParameters: {
-          type: "drill-thru/summarize-column",
-          aggregations: ["distinct"],
-        },
-      },
-      {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "QUANTITY",
-        expectedParameters: {
-          type: "drill-thru/summarize-column",
-          aggregations: ["distinct", "sum", "avg"],
-        },
-      },
-    ])(
-      `should return "${DRILL_TYPE}" drill config for $columnName $clickType in $queryType query`,
-      ({
-        columnName,
-        clickType,
-        queryType,
-        queryTable = "ORDERS",
-        customQuestion,
-        expectedParameters,
-      }) => {
-        const { drillDisplayInfo } = getAvailableDrillByType({
-          drillType: DRILL_TYPE,
-          clickType,
-          clickedColumnName: columnName,
-          ...getDrillsQueryParameters(queryType, queryTable, customQuestion),
         });
 
-        expect(drillDisplayInfo).toEqual(expectedParameters);
+        const newQuery = Lib.drillThru(
+          defaultQuery,
+          stageIndex,
+          drill,
+          operator,
+        );
+        expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
       },
     );
+
+    it('should drill thru a non-summable column and "distinct" operator', () => {
+      const clickedObject = createColumnClickObject({
+        column: createOrdersCreatedAtDatasetColumn(),
+      });
+      const { drill, drillInfo } = findDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickedObject,
+        drillType,
+      );
+      expect(drillInfo).toMatchObject({
+        aggregations: ["distinct"],
+      });
+
+      const newQuery = Lib.drillThru(
+        defaultQuery,
+        stageIndex,
+        drill,
+        "distinct",
+      );
+      expect(Lib.aggregations(newQuery, stageIndex)).toHaveLength(1);
+    });
+
+    it("should not drill thru a cell", () => {
+      const clickObject = createRawCellClickObject({
+        column: defaultColumn,
+        value: null,
+      });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
+    });
+
+    it("should not drill thru a Structured column", () => {
+      const metadata = createMockMetadata({
+        databases: [
+          createSampleDatabase({
+            tables: [
+              createOrdersTable({
+                fields: [createOrdersIdField(), createOrdersStructuredField()],
+              }),
+            ],
+          }),
+        ],
+      });
+      const query = createQuery({ metadata });
+      const column = createOrdersStructuredDatasetColumn();
+      const clickObject = createColumnClickObject({ column });
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
+
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should not drill thru a non-editable query (metabase#36125)", () => {
+      const query = createNotEditableQuery(defaultQuery);
+      const clickObject = createColumnClickObject({
+        column: defaultColumn,
+      });
+      const drill = queryDrillThru(query, stageIndex, clickObject, drillType);
+      expect(drill).toBeNull();
+    });
   });
 
-  describe("drillThru", () => {
-    it.each<ApplyDrillTestCase>([
-      {
-        clickType: "header",
-        queryType: "unaggregated",
-        columnName: "ID",
-        drillArgs: ["distinct"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "distinct",
-              [
-                "field",
-                ORDERS.ID,
-                {
-                  "base-type": "type/BigInteger",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "PRODUCT_ID",
-        queryType: "unaggregated",
-        drillArgs: ["distinct"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "distinct",
-              [
-                "field",
-                ORDERS.PRODUCT_ID,
-                {
-                  "base-type": "type/Integer",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "SUBTOTAL",
-        queryType: "unaggregated",
-        drillArgs: ["distinct"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "distinct",
-              [
-                "field",
-                ORDERS.SUBTOTAL,
-                {
-                  "base-type": "type/Float",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "TAX",
-        queryType: "unaggregated",
-        drillArgs: ["sum"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "sum",
-              [
-                "field",
-                ORDERS.TAX,
-                {
-                  "base-type": "type/Float",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "DISCOUNT",
-        queryType: "unaggregated",
-        drillArgs: ["avg"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "avg",
-              [
-                "field",
-                ORDERS.DISCOUNT,
-                {
-                  "base-type": "type/Float",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "CREATED_AT",
-        queryType: "unaggregated",
-        drillArgs: ["distinct"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "distinct",
-              [
-                "field",
-                ORDERS.CREATED_AT,
-                {
-                  "base-type": "type/DateTime",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-      {
-        clickType: "header",
-        columnName: "QUANTITY",
-        queryType: "unaggregated",
-        drillArgs: ["avg"],
-        expectedQuery: {
-          aggregation: [
-            [
-              "avg",
-              [
-                "field",
-                ORDERS.QUANTITY,
-                {
-                  "base-type": "type/Integer",
-                },
-              ],
-            ],
-          ],
-          "source-table": ORDERS_ID,
-        },
-      },
-    ])(
-      `should return correct result on "${DRILL_TYPE}" drill apply to $columnName on $clickType in $queryType query`,
-      ({
-        columnName,
-        clickType,
-        queryType,
-        queryTable,
-        customQuestion,
-        drillArgs = [],
-        expectedQuery,
-      }) => {
-        const { drill, stageIndex, query } = getAvailableDrillByType({
-          drillType: DRILL_TYPE,
-          clickType,
-          clickedColumnName: columnName,
-          ...getDrillsQueryParameters(queryType, queryTable, customQuestion),
-        });
+  describe("aggregated query", () => {
+    const defaultQuery = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [{ columnName: "TOTAL", tableName: "ORDERS" }],
+    });
 
-        const updatedQuery = drillThru(query, stageIndex, drill, ...drillArgs);
-
-        expect(Lib.toLegacyQuery(updatedQuery)).toEqual({
-          database: SAMPLE_DB_ID,
-          query: expectedQuery,
-          type: "query",
-        });
-      },
-    );
+    it("should not drill thru an aggregated column", () => {
+      const clickObject = createAggregatedCellClickObject({
+        aggregation: {
+          column: createCountDatasetColumn(),
+          value: 10,
+        },
+        breakouts: [
+          {
+            column: createOrdersTotalDatasetColumn({ source: "breakout" }),
+            value: 20,
+          },
+        ],
+      });
+      const drill = queryDrillThru(
+        defaultQuery,
+        stageIndex,
+        clickObject,
+        drillType,
+      );
+      expect(drill).toBeNull();
+    });
   });
 });

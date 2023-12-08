@@ -2,11 +2,9 @@
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.shared.util.i18n :as i18n]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -45,7 +43,7 @@
 
       (field-metadata-name-for-logging table field-metadata) ; -> \"Table 'venues' Field 'name'\""
   [table :- i/TableInstance field-metadata :- TableMetadataFieldWithOptionalID]
-  (format "%s %s '%s'" (sync-util/name-for-logging table) (trs "Field") (:name field-metadata)))
+  (format "%s %s '%s'" (sync-util/name-for-logging table) "Field" (:name field-metadata)))
 
 (defn canonical-name
   "Return the lower-cased 'canonical' name that should be used to uniquely identify `field` -- this is done to ignore
@@ -84,5 +82,5 @@
                            matches)]
         exact
         (do
-          (log/warn (i18n/trs "Found multiple matching field metadata for:") (:name field-metadata) (map :name matches))
+          (log/warn "Found multiple matching field metadata for:" (:name field-metadata) (map :name matches))
           (first matches))))))
