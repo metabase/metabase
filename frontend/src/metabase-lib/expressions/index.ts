@@ -82,11 +82,10 @@ export function parseMetric(
   });
 
   if (metric) {
-    // @uladzimirdev fix a type of the metric
     const legacyExpression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
-      metric as any,
+      metric,
     );
 
     return legacyExpression;
@@ -109,11 +108,10 @@ export function parseSegment(
   });
 
   if (segment) {
-    // @uladzimirdev fix a type of the segment
     const legacyExpression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
-      segment as any,
+      segment,
     );
 
     return legacyExpression;
@@ -125,11 +123,10 @@ export function parseSegment(
   });
 
   if (column && Lib.isBoolean(column)) {
-    // @uladzimirdev fix a type of the column
     const legacyExpression = Lib.legacyExpressionForExpressionClause(
       query,
       stageIndex,
-      column as any,
+      column,
     );
 
     return legacyExpression;

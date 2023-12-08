@@ -9,7 +9,9 @@ import type {
   ExpressionParts,
   FilterClause,
   JoinCondition,
+  MetricMetadata,
   Query,
+  SegmentMetadata,
 } from "./types";
 
 export function expression(
@@ -69,7 +71,13 @@ export function expressionClauseForLegacyExpression(
 export function legacyExpressionForExpressionClause(
   query: Query,
   stageIndex: number,
-  expressionClause: ExpressionClause | AggregationClause | FilterClause,
+  expressionClause:
+    | ExpressionClause
+    | AggregationClause
+    | FilterClause
+    | ColumnMetadata
+    | MetricMetadata
+    | SegmentMetadata,
 ): any {
   return ML.legacy_expression_for_expression_clause(
     query,
