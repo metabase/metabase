@@ -181,11 +181,11 @@ export function getQuestionSteps(
 
   if (question.isStructured()) {
     let legacyQuery = question.query() as StructuredQuery;
-
     let query = legacyQuery.rootQuery().question()._getMLv2Query();
 
-    const database = question.database();
-    const allowsNesting = database && database.hasFeature("nested-queries");
+    const databaseId = Lib.databaseID(query);
+    const database = metadata.database(databaseId);
+    const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
 
     // strip empty source queries
     legacyQuery = legacyQuery.cleanNesting();
