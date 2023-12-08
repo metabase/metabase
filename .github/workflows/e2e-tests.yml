@@ -90,6 +90,8 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
+      COMMIT_INFO_MESSAGE : ${{ github.event.pull_request.title || github.event.head_commit.message || github.even.head.sha }}
+      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
