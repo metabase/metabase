@@ -17,7 +17,7 @@ function getBubbleSizeScale(
   bubbleSizeDataKey: DataKey | undefined,
 ) {
   if (!bubbleSizeDataKey) {
-    return 5; // TODO confirm with design
+    return 8; // TODO confirm with design
   }
 
   const bubbleSizeDomainMax = d3.max(
