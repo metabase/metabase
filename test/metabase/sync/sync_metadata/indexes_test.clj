@@ -2,7 +2,9 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
@@ -19,12 +21,17 @@
 
 (deftest sync-composite-indexed-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :indexing)
-    (mt/test-drivers (mt/dataset-definition "composite-index"
-                       ["table"
-                        [{:field-name "first" :indexed? false :base-type :type/Integer}
-                         {:field-name "second" :indexed? false :base-type :type/Integer}]
-                        [[1 2]]])
-      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                     (sql.tx/create-index-sql "table" ["first" "second"]))
-      (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :single_indexed :first))))
-      (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :single_indexed :second)))))))
+    (mt/dataset (mt/dataset-definition "composite-index"
+                  ["table"
+                   [{:field-name "first" :indexed? false :base-type :type/Integer}
+                    {:field-name "second" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]])
+      (try
+       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                      (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
+       (sync/sync-database! (mt/db))
+       (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
+       (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
+       (finally
+        ;; clean the db so this test is repeatable
+        (t2/delete! :model/Database (mt/id)))))))

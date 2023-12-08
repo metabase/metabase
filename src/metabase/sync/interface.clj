@@ -49,11 +49,6 @@
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
   [:ref ::TableMetadataField])
 
-(mr/def ::TableMetadataIndex
-  [:map
-   [:name ::lib.schema.common/non-blank-string]])
-
-
 (mr/def ::TableMetadata
   [:map
    [:name                         ::lib.schema.common/non-blank-string]

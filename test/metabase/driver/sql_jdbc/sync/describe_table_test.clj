@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table
@@ -17,6 +18,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -465,3 +467,44 @@
                         driver/*driver*
                         (mt/db)
                         (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
+
+(deftest describe-table-indexes-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :indexing)
+    (mt/dataset (mt/dataset-definition "indexes"
+                  ["single_index"
+                   [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                    {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]]
+                  ["unique_index"
+                   [{:field-name "unique_index" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]]
+                  ["composite_index"
+                   [{:field-name "first" :indexed? false :base-type :type/Integer}
+                    {:field-name "second" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]])
+      (try
+       (let [describe-table-indexes (fn [table]
+                                      (into #{} (map u/lower-case-en)
+                                            (sql-jdbc.sync/describe-table-indexes
+                                             driver/*driver*
+                                             (mt/db)
+                                             table)))]
+         (testing "single column indexes are synced correctly"
+           (is (= #{"indexed" "id"}
+                  (describe-table-indexes (t2/select-one Table (mt/id :single_index))))))
+
+         (testing "unique indexed are returned too"
+           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                          (sql.tx/create-index-sql driver/*driver* "unique_index" ["unique_index"]  {:unique true}))
+           (is (= #{"id" "unique_index"}
+                  (describe-table-indexes (t2/select-one Table (mt/id :unique_index))))))
+
+         (testing "for composite indexes, we only care about the 1st column"
+           (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                          (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
+           (sync/sync-database! (mt/db))
+           (is (= #{"id" "first"}
+                  (describe-table-indexes (t2/select-one Table (mt/id :composite_index)))))))
+       (finally
+        ;; clean the db so this test is repeatable
+        (t2/delete! :model/Database (mt/id)))))))

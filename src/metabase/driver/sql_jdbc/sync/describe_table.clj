@@ -282,7 +282,7 @@
    db
    nil
    (fn [^Connection conn]
-     ;; switch to use sql-jdbc.sync.common/reducible-results
+     ;; https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getIndexInfo-java.lang.String-java.lang.String-java.lang.String-boolean-boolean-
      (with-open [index-info-rs (.getIndexInfo (.getMetaData conn)
                                               nil ;; category
                                               (:schema table)
@@ -295,10 +295,11 @@
                                               false)]
 
        (-> (group-by :index_name (into []
-                                       (filter #(and (= (:type %) 3)
-                                                     (nil? (:filter_condition %)))) ;; we only care about other user defined index types
+                                       (filter #(and (= (:type %) DatabaseMetaData/tableIndexOther) ;; we only care about other user defined index types
+                                                     (nil? (:filter_condition %))))
                                        (jdbc/reducible-result-set index-info-rs {})))
            (update-vals (fn [idx-values]
+                          ;; only columns that are single indexed or is the first key in a composite index
                           (first (map :column_name (sort-by :ordinal_position idx-values)))))
            vals
            set)))))

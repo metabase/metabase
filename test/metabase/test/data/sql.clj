@@ -193,8 +193,10 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti create-index-sql
-  "Return a `CREATE INDEX` statement."
-  {:arglists '([driver tabledef fielddef])}
+  "Return a `CREATE INDEX` statement.
+  `options` is a map, currently it only have on key :unique to indicate whether to create an unique index."
+  {:arglists '([driver tabledef fielddef]
+               [driver tabledef fielddef options])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -202,11 +204,14 @@
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
 
 (defmethod create-index-sql :sql/test-extensions
-  [driver table-name field-names]
-  (format "CREATE INDEX %s ON %s (%s);"
-          (str "idx_" table-name "_" (str/join "_" field-names))
-          (qualify-and-quote driver table-name)
-          (str/join ", " (map #(format-and-quote-field-name driver %) field-names))))
+  ([driver table-name field-names]
+   (create-index-sql driver table-name field-names {}))
+  ([driver table-name field-names {:keys [unique]}]
+   (format "CREATE %sINDEX %s ON %s (%s);"
+           (if unique "UNIQUE " "")
+           (str "idx_" table-name "_" (str/join "_" field-names))
+           (qualify-and-quote driver table-name)
+           (str/join ", " (map #(format-and-quote-field-name driver %) field-names)))))
 
 (defn- field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]

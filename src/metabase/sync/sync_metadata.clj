@@ -44,7 +44,7 @@
        total-fks updated-fks total-failed))
 
 (defn- sync-indexes-summary [{:keys [total-indexes added-indexes removed-indexes]}]
-  (format "Total number of indexes sync''d %s, %s added and %s removed"
+  (format "Total number of indexes sync''d %d, %d added and %d removed"
           total-indexes added-indexes removed-indexes))
 
 (defn- make-sync-steps [db-metadata]
@@ -56,6 +56,7 @@
    (sync-util/create-sync-step "sync-fields" sync-fields/sync-fields! sync-fields-summary)
    ;; Now for each table, sync the FKS. This has to be done after syncing all the fields to make sure target fields exist
    (sync-util/create-sync-step "sync-fks" sync-fks/sync-fks! sync-fks-summary)
+   ;; Sync index info if the database supports it
    (sync-util/create-sync-step "sync-indexes" sync-indexes/maybe-sync-indexes! sync-indexes-summary)
    ;; finally, sync the metadata metadata table if it exists.
    (sync-util/create-sync-step "sync-metabase-metadata" #(metabase-metadata/sync-metabase-metadata! % db-metadata))
@@ -76,7 +77,6 @@
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
   [table :- i/TableInstance]
   (let [database (table/database table)]
-  ;; TODO: refactor this to get the db here, so all the sub methods doesn't have to fetch it again
-   (sync-fields/sync-fields-for-table! database table)
-   (sync-fks/sync-fks-for-table! database table)
-   (sync-indexes/maybe-sync-indexes-for-table! database table)))
+    (sync-fields/sync-fields-for-table! database table)
+    (sync-fks/sync-fks-for-table! database table)
+    (sync-indexes/maybe-sync-indexes-for-table! database table)))
