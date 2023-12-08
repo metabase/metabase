@@ -332,6 +332,8 @@
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
+   (api/check (pos-int? id)
+              [400 (tru "Dashboard id should be a positive integer.")])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
