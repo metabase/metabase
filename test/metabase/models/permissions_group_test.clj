@@ -112,12 +112,12 @@
   (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
     (testing (str "testing data perms graph for group graph with group-id: [" group-id "].")
       (let [graph (perms/data-graph-for-group group-id)]
-        (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
+        (is (mc/validate [:map-of api.permission-graph/GroupId api.permission-graph/DbGraph] graph))
         (is (= #{group-id} (set (keys graph))))))))
 
 (deftest data-graph-for-db-check-all-dbs-test
   (doseq [db-id (t2/select-fn-set :id :model/Database)]
     (testing (str "testing data perms graph for db graph with db-id: [" db-id "].")
       (let [graph (perms/data-graph-for-db db-id)]
-        (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
+        (is (mc/validate [:map-of api.permission-graph/GroupId api.permission-graph/DbGraph] graph))
         (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))

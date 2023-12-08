@@ -165,7 +165,7 @@
                                Database         db                          {}]
         (perms/grant-permissions! group (perms/data-perms-path db))
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
-          (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
+          (is (mc/validate [:map-of api.permission-graph/GroupId api.permission-graph/DbGraph] graph))
           (is (= #{group-id} (set (keys graph)))))))))
 
 (deftest fetch-perms-graph-by-db-id-test
@@ -175,7 +175,7 @@
                                Database         {db-id :id} {}]
         (perms/grant-permissions! group (perms/data-perms-path db-id))
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
-          (is (mc/validate api.permission-graph/DataPermissionsGraph graph))
+          (is (mc/validate [:map-of api.permission-graph/GroupId api.permission-graph/DbGraph] graph))
           (is (= #{db-id} (->> graph vals (mapcat keys) set))))))))
 
 (deftest fetch-perms-graph-v2-test
