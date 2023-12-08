@@ -4,6 +4,7 @@
   These tests should build content then mock out distrubution by usual channels (e.g. email) and check the results of
   the distributed content for correctness."
   (:require
+   [clojure.data.csv :as csv]
    [clojure.test :refer :all]
    [hickory.core :as hik]
    [hickory.select :as hik.s]
@@ -80,6 +81,10 @@
   "Is every element in the sequence percent formatted with 2 significant digits?"
   (partial every? (partial re-matches #"\d+\.\d{2}%")))
 
+(def ^:private all-float?
+  "Is every element in the sequence a float with leading digits, a period, and trailing digits"
+  (partial every? (partial re-matches #"\d+\.\d+")))
+
 (deftest result-metadata-preservation-in-html-static-viz-for-dashboard-test
   (testing "In a dashboard, results metadata applied to a model or query based on a model should be used in the HTML rendering of the pulse email."
     #_{:clj-kondo/ignore [:unresolved-symbol]}
@@ -108,15 +113,11 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        ;; NOTE -- (get-in @mt/inbox ["rasta@metabase.com"]) produces the full email to rasta.
-        ;; This test checks the HTML output for formatting only. A TODO is to add tests to check the attached csv and
-        ;; any other result form for consistent formatting as well. As of 2023-12-01, all 2 csvs in this attachment
-        ;; are not formatted as percentages. We need to add an issue and fix this.
         (let [[base-data-row
                model-data-row
                question-data-row] (run-pulse-and-return-last-data-columns pulse)]
           (testing "The data from the first question is just numbers."
-            (is (every? (partial re-matches #"\d+\.\d+") base-data-row)))
+            (is (all-float? base-data-row)))
           (testing "The data from the second question (a model) is percent formatted"
             (is (all-pct-2d? model-data-row)))
           (testing "The data from the last question (based on the above model) is percent formatted"
@@ -139,8 +140,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (every? (partial re-matches #"\d+\.\d+")
-                      (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-float? (first (run-pulse-and-return-last-data-columns pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
@@ -152,7 +152,7 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse))))))
-      (testing "The data from the last question (based ona a model) is percent formatted"
+      (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
                               :as      pulse} {:name "Test Pulse"}
                        PulseCard _ {:pulse_id pulse-id
@@ -163,3 +163,98 @@
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
           (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))
+
+(defn- run-pulse-and-return-attached-csv-data
+  "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
+  attachment name -> column name -> column data"
+  [pulse]
+  (mt/with-fake-inbox
+    (with-redefs [email/bcc-enabled? (constantly false)]
+      (mt/with-test-user nil
+        (metabase.pulse/send-pulse! pulse)))
+    (->>
+      (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+      (keep
+        (fn [{:keys [type content-type file-name content]}]
+          (when (and
+                  (= :attachment type)
+                  (= "text/csv" content-type))
+            [file-name
+             (let [[h & r] (csv/read-csv (slurp content))]
+               (zipmap h (apply mapv vector r)))])))
+      (into {}))))
+
+(deftest apply-formatting-in-csv-dashboard-test
+  (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
+    (with-metadata-data-cards [base-card-id model-card-id question-card-id]
+      (mt/with-temp [Dashboard {dash-id :id} {:name "just dash"}
+                     DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                            :card_id      base-card-id}
+                     DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                             :card_id      model-card-id}
+                     DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
+                                                                :card_id      question-card-id}
+                     Pulse {pulse-id :id
+                            :as      pulse} {:name         "Test Pulse"
+                                             :dashboard_id dash-id}
+                     PulseCard _ {:pulse_id          pulse-id
+                                  :card_id           base-card-id
+                                  :dashboard_card_id base-dash-card-id}
+                     PulseCard _ {:pulse_id          pulse-id
+                                  :card_id           model-card-id
+                                  :dashboard_card_id model-dash-card-id}
+                     PulseCard _ {:pulse_id          pulse-id
+                                  :card_id           question-card-id
+                                  :dashboard_card_id question-dash-card-id}
+                     PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                          :pulse_id     pulse-id
+                                                          :enabled      true}
+                     PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                              :user_id          (mt/user->id :rasta)}]
+        (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (testing "The base model has no special formatting"
+            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
+          (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
+            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))
+          (testing "The query based on the model uses the model's semantic typ information for formatting"
+            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
+
+(deftest apply-formatting-in-csv-no-dashboard-test
+  (testing "Exported cards should preserve the formatting specified in their column metadata (#36320)"
+    (with-metadata-data-cards [base-card-id model-card-id question-card-id]
+      (testing "The attached data from the first question is just numbers."
+        (mt/with-temp [Pulse {pulse-id :id
+                              :as      pulse} {:name "Test Pulse"}
+                       PulseCard _ {:pulse_id pulse-id
+                                    :card_id  base-card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+            (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
+      (testing "The attached data from the second question (a model) is percent formatted"
+        (mt/with-temp [Pulse {pulse-id :id
+                              :as      pulse} {:name "Test Pulse"}
+                       PulseCard _ {:pulse_id pulse-id
+                                    :card_id  model-card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+            (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
+      (testing "The attached data from the last question (based on a a model) is percent formatted"
+        (mt/with-temp [Pulse {pulse-id :id
+                              :as      pulse} {:name "Test Pulse"}
+                       PulseCard _ {:pulse_id pulse-id
+                                    :card_id  question-card-id}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+            (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))

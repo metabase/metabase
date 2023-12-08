@@ -298,6 +298,7 @@
     metabase.driver.sql.parameters.substitution                     sql.params.substitution
     metabase.email-test                                             et
     metabase.email.messages                                         messages
+    metabase.formatter                                              formatter
     metabase.http-client                                            client
     metabase.lib.util                                               lib.util
     metabase.mbql.normalize                                         mbql.normalize
@@ -336,7 +337,6 @@
     metabase.pulse.markdown                                         markdown
     metabase.pulse.render                                           render
     metabase.pulse.render.body                                      body
-    metabase.pulse.render.common                                    common
     metabase.pulse.render.style                                     style
     metabase.pulse.test-util                                        pulse.test-util
     metabase.pulse.parameters                                       pulse-params
