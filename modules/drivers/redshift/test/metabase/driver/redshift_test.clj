@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   #_[java-time.api :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -588,8 +588,7 @@
                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
          (test-thunk))))))
 
-;; Dec 8th 2023, Temporarily skip this to unblock master, QP should fix this soon
-#_(deftest server-side-relative-datetime-truncation-test
+(deftest server-side-relative-datetime-truncation-test
   (mt/test-driver
    :redshift
    (testing "Datetime _truncation_ works correctly over different timezones"
