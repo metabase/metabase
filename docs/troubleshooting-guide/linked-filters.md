@@ -19,7 +19,6 @@ If you are having problems with a regular [filter widget][filter-widget-gloss], 
 **Steps to take**:
 
 1. Update your query to change the variable you're using to connect the card to the dashboard filter to a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type).
-```
 
 See [Limitations of linking filters](../dashboards/filters.md#limitations-of-linking-filters)
 
