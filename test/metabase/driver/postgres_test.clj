@@ -442,7 +442,7 @@
                   "  DATE_TRUNC("
                   "    'month',"
                   "    CAST("
-                  "      (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS timestamp"
+                  "      (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS timestamp"
                   "    )"
                   "  ) AS \"json_alias_test\","
                   "  COUNT(*) AS \"count\""
@@ -468,7 +468,7 @@
                                :query    {:source-table 1
                                           :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
-                  "  (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
+                  "  (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
                   "  \"json_alias_test\""
                   "ORDER BY"
