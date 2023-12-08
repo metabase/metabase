@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
 import _ from "underscore";
+import { Icon } from "metabase/core/components/Icon";
 
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 
@@ -11,6 +13,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import { SharingPane } from "./SharingPane";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
+import { EmbedTitleLabel } from "./EmbedModalContent.styled";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -185,5 +188,13 @@ function filterValidResourceParameters(embeddingParams, resourceParameters) {
 
   return _.pick(embeddingParams, validParameters);
 }
+
+export const EmbedTitle = ({ type, onClick = undefined }) => (
+  <a className="flex align-center" onClick={onClick}>
+    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
+    {type && <Icon name="chevronright" className="mx1 text-medium" />}
+    {type}
+  </a>
+);
 
 export default connect(mapStateToProps)(EmbedModalContent);
