@@ -36,6 +36,7 @@ interface Props {
   hasError: boolean;
   onRemove: () => void;
   onAddSeries: () => void;
+  onReplaceCard: () => void;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   onUpdateVisualizationSettings: (
     settings: Partial<VisualizationSettings>,
@@ -55,6 +56,7 @@ export function DashCardActionsPanel({
   hasError,
   onRemove,
   onAddSeries,
+  onReplaceCard,
   onReplaceAllVisualizationSettings,
   onUpdateVisualizationSettings,
   showClickBehaviorSidebar,
@@ -125,6 +127,20 @@ export function DashCardActionsPanel({
           onClick={showClickBehaviorSidebar}
         >
           <Icon name="click" />
+        </DashCardActionButton>,
+      );
+    }
+
+    if (dashcard && !isVirtualDashCard(dashcard)) {
+      buttons.push(
+        <DashCardActionButton
+          key="replace-question"
+          aria-label={t`Replace`}
+          tooltip={t`Replace`}
+          analyticsEvent="Dashboard;Replace Question"
+          onClick={onReplaceCard}
+        >
+          <Icon name="refresh_downstream" />
         </DashCardActionButton>,
       );
     }
