@@ -165,7 +165,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - Creator
   visualization_settings:
     column_settings: null
 - entity_id: ttTLsz8CSqwKhpabUPhX4
@@ -187,7 +187,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - Creator
   visualization_settings:
     column_settings: null
 - entity_id: KOytsZjicYh1zDDRGbzeM
@@ -209,7 +209,7 @@ dashcards:
         - public
         - v_group_members
         - group_name
-      - join-alias: Question 34
+      - join-alias: Group Members - Creator
   visualization_settings:
     column_settings: null
 - entity_id: GlI9CJywLBzdGgNkmhVWn
@@ -354,16 +354,6 @@ dashcards:
   dashboard_tab_id: null
   parameter_mappings:
   - card_id: p-z74CSp1IOs1rXwAcwcS
-    parameter_id: ab0252fc
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_group_members
-        - group_name
-      - join-alias: Question 34
-  - card_id: p-z74CSp1IOs1rXwAcwcS
     parameter_id: 9112df7d
     target:
     - dimension
@@ -374,6 +364,16 @@ dashcards:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: default
+  - card_id: p-z74CSp1IOs1rXwAcwcS
+    parameter_id: ab0252fc
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - join-alias: Group Members - User
   visualization_settings:
     column_settings: null
 tabs: []

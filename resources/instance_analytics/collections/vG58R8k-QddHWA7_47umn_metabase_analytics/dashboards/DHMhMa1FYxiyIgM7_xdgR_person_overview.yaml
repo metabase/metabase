@@ -94,7 +94,7 @@ dashcards:
       - source-field:
         - Internal Metabase Database
         - public
-        - v_subscriptions
+        - v_alerts
         - creator_id
   - card_id: JPERH6xYVcj3m2Zw0YVY1
     parameter_id: 4a221c3a
@@ -108,7 +108,7 @@ dashcards:
       - source-field:
         - Internal Metabase Database
         - public
-        - v_subscriptions
+        - v_alerts
         - creator_id
   - card_id: JPERH6xYVcj3m2Zw0YVY1
     parameter_id: d53443e8
@@ -122,7 +122,7 @@ dashcards:
       - source-field:
         - Internal Metabase Database
         - public
-        - v_subscriptions
+        - v_alerts
         - creator_id
   - card_id: JPERH6xYVcj3m2Zw0YVY1
     parameter_id: 50670f9e
@@ -136,7 +136,7 @@ dashcards:
       - source-field:
         - Internal Metabase Database
         - public
-        - v_subscriptions
+        - v_alerts
         - creator_id
   visualization_settings:
     column_settings: null
@@ -1030,48 +1030,6 @@ dashcards:
         - user_id
       - null
   - card_id: 7FLoE9kUELG4Ess6DsSEY
-    parameter_id: 4a221c3a
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - source-field:
-        - Internal Metabase Database
-        - public
-        - v_query_log
-        - user_id
-  - card_id: 7FLoE9kUELG4Ess6DsSEY
-    parameter_id: d53443e8
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - email
-      - source-field:
-        - Internal Metabase Database
-        - public
-        - v_query_log
-        - user_id
-  - card_id: 7FLoE9kUELG4Ess6DsSEY
-    parameter_id: 50670f9e
-    target:
-    - dimension
-    - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - is_active
-      - source-field:
-        - Internal Metabase Database
-        - public
-        - v_query_log
-        - user_id
-  - card_id: 7FLoE9kUELG4Ess6DsSEY
     parameter_id: ba4cf986
     target:
     - dimension
@@ -1081,6 +1039,36 @@ dashcards:
         - v_query_log
         - started_at
       - temporal-unit: default
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
   visualization_settings:
     column_settings:
       ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
