@@ -17,7 +17,7 @@ runs:
       if: ${{ inputs.is-replay-browser != 'true' }}
       uses: browser-actions/setup-chrome@v1
       with:
-        chrome-version: 119
+        chrome-version: stable
       id: setup-chrome
     - name: Chrome install feedback
       if: ${{ inputs.is-replay-browser != 'true' }}
