@@ -16,7 +16,6 @@ export function CoordinateFilterEditor({
   column,
   filter,
   onChange,
-  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -51,13 +50,9 @@ export function CoordinateFilterEditor({
     onChange(getFilterClause(newOperator, secondColumn, values));
   };
 
-  const handleInputChange = (values: NumberValue[]) => {
-    setValues(values);
-    onInput();
-  };
-
-  const handleInputBlur = () => {
-    onChange(getFilterClause(operator, secondColumn, values));
+  const handleInputChange = (newValues: NumberValue[]) => {
+    setValues(newValues);
+    onChange(getFilterClause(operator, secondColumn, newValues));
   };
 
   return (
@@ -82,7 +77,6 @@ export function CoordinateFilterEditor({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={handleInputChange}
-          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -95,7 +89,6 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberValue[]) => void;
-  onBlur: () => void;
 }
 
 function NumberValueInput({
@@ -104,7 +97,6 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  onBlur,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -118,7 +110,6 @@ function NumberValueInput({
         value={values[0]}
         placeholder={t`Enter a number`}
         onChange={newValue => onChange([newValue])}
-        onBlur={onBlur}
       />
     );
   }
@@ -130,14 +121,12 @@ function NumberValueInput({
           value={values[0]}
           placeholder={t`Min`}
           onChange={(newValue: number) => onChange([newValue, values[1]])}
-          onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
           onChange={(newValue: number) => onChange([values[0], newValue])}
-          onBlur={onBlur}
         />
       </Flex>
     );
@@ -152,7 +141,6 @@ function NumberValueInput({
           onChange={(newValue: number) =>
             onChange([values[0], values[1], newValue, values[3]])
           }
-          onBlur={onBlur}
         />
         <NumberInput
           value={values[0]}
@@ -160,7 +148,6 @@ function NumberValueInput({
           onChange={(newValue: number) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
-          onBlur={onBlur}
         />
         <NumberInput
           value={values[1]}
@@ -168,7 +155,6 @@ function NumberValueInput({
           onChange={(newValue: number) =>
             onChange([values[0], newValue, values[2], values[3]])
           }
-          onBlur={onBlur}
         />
         <NumberInput
           value={values[3]}
@@ -176,7 +162,6 @@ function NumberValueInput({
           onChange={(newValue: number) =>
             onChange([values[0], values[1], values[2], newValue])
           }
-          onBlur={onBlur}
         />
       </Flex>
     );

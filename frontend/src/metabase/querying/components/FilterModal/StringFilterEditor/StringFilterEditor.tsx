@@ -15,7 +15,6 @@ export function StringFilterEditor({
   column,
   filter,
   onChange,
-  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -47,13 +46,9 @@ export function StringFilterEditor({
     onChange(getFilterClause(newOperator, values, options));
   };
 
-  const handleInputChange = (values: string[]) => {
-    setValues(values);
-    onInput();
-  };
-
-  const handleInputBlur = () => {
-    onChange(getFilterClause(operator, values, options));
+  const handleInputChange = (newValues: string[]) => {
+    setValues(newValues);
+    onChange(getFilterClause(operator, newValues, options));
   };
 
   return (
@@ -78,7 +73,6 @@ export function StringFilterEditor({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={handleInputChange}
-          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -91,7 +85,6 @@ interface StringValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: string[]) => void;
-  onBlur: () => void;
 }
 
 function StringValueInput({
@@ -100,7 +93,6 @@ function StringValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  onBlur,
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -114,7 +106,6 @@ function StringValueInput({
         value={values[0]}
         placeholder={t`Enter some text`}
         onChange={event => onChange([event.target.value])}
-        onBlur={onBlur}
       />
     );
   }

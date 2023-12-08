@@ -16,7 +16,6 @@ export function NumberFilterEditor({
   column,
   filter,
   onChange,
-  onInput,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
@@ -52,13 +51,9 @@ export function NumberFilterEditor({
     onChange(getFilterClause(newOperator, values));
   };
 
-  const handleInputChange = (values: NumberValue[]) => {
-    setValues(values);
-    onInput();
-  };
-
-  const handleInputBlur = () => {
-    onChange(getFilterClause(operator, values));
+  const handleInputChange = (newValues: NumberValue[]) => {
+    setValues(newValues);
+    onChange(getFilterClause(operator, newValues));
   };
 
   return (
@@ -83,7 +78,6 @@ export function NumberFilterEditor({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={handleInputChange}
-          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -96,7 +90,6 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberValue[]) => void;
-  onBlur: () => void;
 }
 
 function NumberValueInput({
@@ -105,7 +98,6 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  onBlur,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -119,7 +111,6 @@ function NumberValueInput({
         value={values[0]}
         placeholder={t`Enter a number`}
         onChange={newValue => onChange([newValue])}
-        onBlur={onBlur}
       />
     );
   }
@@ -131,14 +122,12 @@ function NumberValueInput({
           value={values[0]}
           placeholder={t`Min`}
           onChange={(newValue: number) => onChange([newValue, values[1]])}
-          onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
           onChange={(newValue: number) => onChange([values[0], newValue])}
-          onBlur={onBlur}
         />
       </Flex>
     );

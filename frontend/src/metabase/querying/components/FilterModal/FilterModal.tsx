@@ -47,12 +47,6 @@ export function FilterModal({
   const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
 
-  const handleInput = () => {
-    if (!isChanged) {
-      setIsChanged(true);
-    }
-  };
-
   const handleChange = (newQuery: Lib.Query) => {
     setQuery(newQuery);
     setIsChanged(true);
@@ -91,7 +85,6 @@ export function FilterModal({
                   query={query}
                   groupItem={groupItem}
                   onChange={handleChange}
-                  onInput={handleInput}
                 />
               ))}
             </Flex>
@@ -153,10 +146,9 @@ interface TabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
   onChange: (newQuery: Lib.Query) => void;
-  onInput: () => void;
 }
 
-function TabPanel({ query, groupItem, onChange, onInput }: TabPanelProps) {
+function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
@@ -168,7 +160,6 @@ function TabPanel({ query, groupItem, onChange, onInput }: TabPanelProps) {
               stageIndex={groupItem.stageIndex}
               column={column}
               onChange={onChange}
-              onInput={onInput}
             />
           );
         })}
@@ -182,7 +173,6 @@ interface TabPanelItemListProps {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   onChange: (newQuery: Lib.Query) => void;
-  onInput: () => void;
 }
 
 function TabPanelItemList({
@@ -190,7 +180,6 @@ function TabPanelItemList({
   stageIndex,
   column,
   onChange,
-  onInput,
 }: TabPanelItemListProps) {
   const currentFilters = findColumnFilters(query, stageIndex, column);
   const [initialFilterCount] = useState(currentFilters.length);
@@ -206,7 +195,6 @@ function TabPanelItemList({
           column={column}
           filter={filter}
           onChange={onChange}
-          onInput={onInput}
         />
       ))}
     </div>
@@ -219,7 +207,6 @@ interface TabPanelItemProps {
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   onChange: (newQuery: Lib.Query) => void;
-  onInput: () => void;
 }
 
 function TabPanelItem({
@@ -228,7 +215,6 @@ function TabPanelItem({
   column,
   filter,
   onChange,
-  onInput,
 }: TabPanelItemProps) {
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
@@ -248,7 +234,6 @@ function TabPanelItem({
         column={column}
         filter={filter}
         onChange={handleChange}
-        onInput={onInput}
       />
     </ColumnItemRoot>
   );
