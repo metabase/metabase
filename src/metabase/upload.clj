@@ -538,9 +538,8 @@
                                        (map (fn [col]
                                               [(normalize-column-name col) col]))
                                        header)
-        normed first
-        normalized-header (map normed normalized-header+header)
-        normalized-table-cols (map normed table-cols-by-normed)
+        normalized-header-name (map first normalized-header+header)
+        normalized-table-cols-name (keys table-cols-by-normed)
         ;; check for duplicates
         _ (when (some #(< 1 %) (vals (frequencies normalized-header)))
             (throw (ex-info (tru "The CSV file contains duplicate column names.")
