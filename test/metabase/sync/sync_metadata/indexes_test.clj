@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync :as sync]
+   [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [toucan2.core :as t2]))
@@ -35,3 +36,12 @@
        (finally
         ;; clean the db so this test is repeatable
         (t2/delete! :model/Database (mt/id)))))))
+
+(driver/register! ::not-support-index-test :abstract? true)
+
+(deftest describe-table-indexes-for-table-that-not-supported-index-test
+  (testing "do nothing if the driver doesn't support indexing"
+    (mt/with-temp [:model/Database db    {:engine ::not-support-index-test}
+                   :model/Table    table {:db_id (:id db)}]
+      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! db)))
+      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! db table))))))

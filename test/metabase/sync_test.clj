@@ -232,6 +232,7 @@
   (binding [sync-util/*log-exceptions-and-continue?* false]
     (mt/with-temp [Database db {:engine ::sync-test}
                    Table    table {:name "movie", :schema "default", :db_id (u/the-id db)}]
+      #p (driver/database-supports? ::sync-test :indexing (mt/db))
       (sync/sync-table! table)
       (is (= (merge
               (table-defaults)
