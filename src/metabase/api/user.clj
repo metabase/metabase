@@ -209,6 +209,8 @@
         group-id-clause     (cond
                               ;; We know that the user is either admin or group manager of the given group_id (if it exists)
                               group_id                [group_id]
+                              ;; Superuser can see all users, so don't filter by group ID
+                              api/*is-superuser?*     nil
                               ;; otherwise, if the user is a group manager, only show them users in the groups they manage
                               api/*is-group-manager?* (vec manager-group-ids))
         clauses             (user-clauses status query group-id-clause include_deactivated)]

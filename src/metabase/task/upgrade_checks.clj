@@ -10,7 +10,6 @@
    [metabase.config :as config]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -28,14 +27,14 @@
 
 (jobs/defjob ^{:doc "Simple job which looks up all databases and runs a sync on them"} CheckForNewVersions [_]
   (when (public-settings/check-for-updates)
-    (log/debug (trs "Checking for new Metabase version info."))
+    (log/debug "Checking for new Metabase version info.")
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (public-settings/version-info-last-checked! (t/zoned-date-time))
       (when-let [version-info (get-version-info)]
         (public-settings/version-info! version-info))
       (catch Throwable e
-        (log/error e (trs "Error fetching version info; setting version-info value to nil"))
+        (log/error e "Error fetching version info; setting version-info value to nil")
         (public-settings/version-info! nil)))))
 
 (def ^:private job-key     "metabase.task.upgrade-checks.job")

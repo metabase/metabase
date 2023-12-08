@@ -1,4 +1,11 @@
-import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
+import {
+  appBar,
+  describeEE,
+  main,
+  popover,
+  restore,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 function checkFavicon() {
@@ -151,6 +158,130 @@ describeEE("formatting > whitelabel", () => {
       cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
     });
   });
+
+  describe("Help link", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/setting/help-link").as("putHelpLink");
+      cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
+        "putHelpLinkUrl",
+      );
+    });
+
+    it("should allow customising the help link", () => {
+      cy.log("Hide Help link");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByLabelText("Link to Metabase help").should("be.checked");
+
+      cy.findByTestId("help-link-setting").findByText("Hide it").click();
+      cy.wait("@putHelpLink");
+
+      cy.signInAsNormalUser();
+
+      cy.visit("/");
+      openSettingsMenu();
+      helpLink().should("not.exist");
+
+      cy.log("Set custom Help link");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      getHelpLinkCustomDestinationInput()
+        .should("have.focus")
+        .type("https://example.org/custom-destination")
+        .blur();
+
+      cy.wait("@putHelpLinkUrl");
+
+      cy.wait("@putHelpLink");
+
+      cy.log("Check that on page load the text field is not focused");
+      cy.reload();
+
+      getHelpLinkCustomDestinationInput().should("not.have.focus");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      openSettingsMenu();
+      helpLink().should(
+        "have.attr",
+        "href",
+        "https://example.org/custom-destination",
+      );
+
+      cy.log("Set default Help link");
+
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Link to Metabase help")
+        .click();
+
+      cy.wait("@putHelpLink");
+
+      cy.visit("/");
+      openSettingsMenu();
+
+      helpLink()
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help-premium?");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      openSettingsMenu();
+
+      helpLink()
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help?");
+    });
+
+    it("should link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
+      setTokenFeatures("none");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      openSettingsMenu();
+
+      helpLink()
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help?");
+    });
+
+    it("it should validate the url", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      getHelpLinkCustomDestinationInput()
+        .clear()
+        .type("ftp://something")
+        .blur();
+      main()
+        .findByText(/This needs to be/i)
+        .should("exist");
+
+      getHelpLinkCustomDestinationInput().clear().type("https://").blur();
+
+      main().findByText("Please make sure this is a valid URL").should("exist");
+
+      getHelpLinkCustomDestinationInput().type("examp");
+
+      main()
+        .findByText("Please make sure this is a valid URL")
+        .should("not.exist");
+    });
+  });
 });
 
 function changeLoadingMessage(message) {
@@ -164,3 +295,10 @@ function setApplicationFontTo(font) {
     value: font,
   });
 }
+
+const openSettingsMenu = () => appBar().icon("gear").click();
+
+const helpLink = () => popover().findByRole("link", { name: "Help" });
+
+const getHelpLinkCustomDestinationInput = () =>
+  cy.findByPlaceholderText("Enter a URL it should go to");
