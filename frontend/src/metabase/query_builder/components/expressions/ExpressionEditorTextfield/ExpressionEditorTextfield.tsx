@@ -58,7 +58,7 @@ interface ExpressionEditorTextfieldProps {
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
-  startRule?: string;
+  startRule: string;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -393,7 +393,6 @@ class ExpressionEditorTextfield extends React.Component<
       source,
       query: query ?? legacyQuery.question()._getMLv2Query(),
       stageIndex: stageIndex ?? -1,
-      legacyQuery,
       startRule,
     });
 
