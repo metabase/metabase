@@ -1,3 +1,4 @@
+import type { DatetimeUnit } from "metabase-types/api";
 import {
   createOrdersCreatedAtDatasetColumn,
   createOrdersQuantityDatasetColumn,
@@ -17,8 +18,7 @@ import {
   createNotEditableQuery,
 } from "./drills-common";
 
-// eslint-disable-next-line jest/no-disabled-tests
-describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
+describe("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   const drillType = "drill-thru/zoom-in.timeseries";
   const stageIndex = 0;
   const aggregationColumn = createCountDatasetColumn();
@@ -27,12 +27,28 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
   });
 
   describe.each([
-    { bucketName: "Year", displayName: "See this year by quarters" },
-    { bucketName: "Quarter", displayName: "See this quarter by months" },
-    { bucketName: "Month", displayName: "See this month by weeks" },
-    { bucketName: "Day", displayName: "See this day by hour" },
-    { bucketName: "Hour", displayName: "See this hour by minute" },
-  ])("$bucketName", ({ bucketName, displayName }) => {
+    {
+      bucketName: "Year",
+      unit: "year",
+      displayName: "See this year by quarter",
+    },
+    {
+      bucketName: "Quarter",
+      unit: "quarter",
+      displayName: "See this quarter by month",
+    },
+    {
+      bucketName: "Month",
+      unit: "month",
+      displayName: "See this month by week",
+    },
+    { bucketName: "Day", unit: "day", displayName: "See this day by hour" },
+    {
+      bucketName: "Hour",
+      unit: "hour",
+      displayName: "See this hour by minute",
+    },
+  ])("$bucketName", ({ bucketName, unit, displayName }) => {
     it("should drill thru an aggregated cell", () => {
       const query = createQueryWithClauses({
         aggregations: [{ operatorName: "count" }],
@@ -51,7 +67,8 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         },
         breakouts: [
           {
-            column: breakoutColumn,
+            // QP results metadata will come back with the temporal unit like this
+            column: { ...breakoutColumn, unit: unit as DatetimeUnit },
             value: "2020-01-01",
           },
         ],
@@ -93,7 +110,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         },
         breakouts: [
           {
-            column: breakoutColumn,
+            column: { ...breakoutColumn, unit: unit as DatetimeUnit },
             value: "2020-01-01",
           },
           {
@@ -135,7 +152,7 @@ describe.skip("drill-thru/zoom-in.timeseries (metabase#36173)", () => {
         ],
       });
       const clickObject = createLegendItemClickObject({
-        column: breakoutColumn,
+        column: { ...breakoutColumn, unit: unit as DatetimeUnit },
         value: "2020-01-01",
       });
       const { drill, drillInfo } = findDrillThru(
