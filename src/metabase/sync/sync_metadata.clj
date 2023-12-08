@@ -18,28 +18,27 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]))
 
 (defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
   (if version
-    (trs "Found DBMS version {0}" version)
-    (trs "Could not determine DBMS version")))
+    (format "Found DBMS version %s" version)
+    "Could not determine DBMS version"))
 
 (defn- sync-fields-summary [{:keys [total-fields updated-fields] :as _step-info}]
-  (trs "Total number of fields sync''d {0}, number of fields updated {1}"
-       total-fields updated-fields))
+  (format "Total number of fields sync''d %d, number of fields updated %d"
+          total-fields updated-fields))
 
 (defn- sync-tables-summary [{:keys [total-tables updated-tables] :as _step-info}]
-  (trs "Total number of tables sync''d {0}, number of tables updated {1}"
-       total-tables updated-tables))
+  (format "Total number of tables sync''d %d, number of tables updated %d"
+          total-tables updated-tables))
 
 (defn- sync-timezone-summary [{:keys [timezone-id]}]
-  (trs "Found timezone id {0}" timezone-id))
+  (format "Found timezone id %s" timezone-id))
 
 (defn- sync-fks-summary [{:keys [total-fks updated-fks total-failed]}]
-  (trs "Total number of foreign keys sync''d {0}, {1} updated and {2} tables failed to update"
-       total-fks updated-fks total-failed))
+  (format "Total number of foreign keys sync''d %d, %d updated and %d tables failed to update"
+          total-fks updated-fks total-failed))
 
 (defn- make-sync-steps [db-metadata]
   [(sync-util/create-sync-step "sync-dbms-version" sync-dbms-ver/sync-dbms-version! sync-dbms-version-summary)
