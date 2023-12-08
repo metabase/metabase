@@ -23,18 +23,20 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
-    valid: query => !query.sourceQuery(),
+    valid: () => true,
     active: () => true,
     revert: null, // this step is non-reversible (i.e. non-removable)
   },
   {
     type: "join",
-    valid: query => {
-      const database = query.database();
-      return query.hasData() && database != null && database.hasFeature("join");
+    valid: (query, metadata) => {
+      const databaseId = Lib.databaseID(query);
+      const database = metadata.database(databaseId);
+      return Boolean(database?.hasFeature("join"));
     },
-    subSteps: (topLevelQuery, stageIndex) =>
-      Lib.joins(topLevelQuery, stageIndex).length,
+    subSteps: (query, stageIndex) => {
+      return Lib.joins(query, stageIndex).length;
+    },
     active: (query, stageIndex, index) => {
       if (typeof index !== "number") {
         return false;
@@ -58,11 +60,10 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "expression",
-    valid: query => {
-      const database = query.database();
-      return (
-        query.hasData() && database != null && database.supportsExpressions()
-      );
+    valid: (query, metadata) => {
+      const databaseId = Lib.databaseID(query);
+      const database = metadata.database(databaseId);
+      return Boolean(database?.hasFeature("expressions"));
     },
     active: (query, stageIndex) => {
       return Lib.expressions(query, stageIndex).length > 0;
@@ -77,7 +78,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "filter",
-    valid: query => query.hasData(),
+    valid: () => true,
     active: (query, stageIndex) => {
       return Lib.filters(query, stageIndex).length > 0;
     },
@@ -92,7 +93,7 @@ const STEPS: NotebookStepDef[] = [
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
-    valid: query => query.hasData(),
+    valid: () => true,
     active: (query, stageIndex) => {
       const clauses = [
         ...Lib.breakouts(query, stageIndex),
@@ -114,10 +115,16 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "sort",
-    valid: query =>
-      query.hasData() &&
-      (!query.hasAggregations() || query.hasBreakouts()) &&
-      (!query.sourceQuery() || query.hasAnyClauses()),
+    valid: query => {
+      const hasAggregations = Lib.aggregations(query, -1).length > 0;
+      const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+
+      if (hasAggregations && !hasBreakouts) {
+        return false;
+      }
+
+      return hasAnyClauses(query);
+    },
     active: (query, stageIndex) => {
       return Lib.orderBys(query, stageIndex).length > 0;
     },
@@ -127,10 +134,16 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "limit",
-    valid: query =>
-      query.hasData() &&
-      (!query.hasAggregations() || query.hasBreakouts()) &&
-      (!query.sourceQuery() || query.hasAnyClauses()),
+    valid: query => {
+      const hasAggregations = Lib.aggregations(query, -1).length > 0;
+      const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+
+      if (hasAggregations && !hasBreakouts) {
+        return false;
+      }
+
+      return hasAnyClauses(query);
+    },
     active: (query, stageIndex) => {
       return Lib.hasLimit(query, stageIndex);
     },
@@ -139,6 +152,28 @@ const STEPS: NotebookStepDef[] = [
     },
   },
 ];
+
+const hasAnyClauses = (query: Lib.Query): boolean => {
+  const hasAggregations = Lib.aggregations(query, -1).length > 0;
+  const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+  const hasJoins = Lib.joins(query, -1).length > 0;
+  const hasExpressions = Lib.expressions(query, -1).length > 0;
+  const hasFilters = Lib.filters(query, -1).length > 0;
+  const hasOrderBys = Lib.orderBys(query, -1).length > 0;
+  const hasLimits = Lib.hasLimit(query, -1);
+  const hasFields = Lib.fields(query, -1).length > 0;
+
+  return (
+    hasJoins ||
+    hasExpressions ||
+    hasFilters ||
+    hasAggregations ||
+    hasBreakouts ||
+    hasOrderBys ||
+    hasLimits ||
+    hasFields
+  );
+};
 
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
