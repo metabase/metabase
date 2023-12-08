@@ -22,11 +22,11 @@
    (rest (csv/read-csv response))))
 
 (deftest date-columns-should-be-emitted-without-time
-  (is (= [["1" "2014-04-07" "5" "12"]
-          ["2" "2014-09-18" "1" "31"]
-          ["3" "2014-09-15" "8" "56"]
-          ["4" "2014-03-11" "5" "4"]
-          ["5" "2013-05-05" "3" "49"]]
+  (is (= [["1" "April 7, 2014" "5" "12"]
+          ["2" "September 18, 2014" "1" "31"]
+          ["3" "September 15, 2014" "8" "56"]
+          ["4" "March 11, 2014" "5" "4"]
+          ["5" "May 5, 2013" "3" "49"]]
          (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
                                             (json/generate-string (mt/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
@@ -36,22 +36,22 @@
     (mt/dataset defs/test-data-with-null-date-checkins
       (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
                                          (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-        (is (= [["1" "2014-04-07" "" "5" "12"]
-                ["2" "2014-09-18" "" "1" "31"]
-                ["3" "2014-09-15" "" "8" "56"]
-                ["4" "2014-03-11" "" "5" "4"]
-                ["5" "2013-05-05" "" "3" "49"]]
+        (is (= [["1" "April 7, 2014" "" "5" "12"]
+                ["2" "September 18, 2014" "" "1" "31"]
+                ["3" "September 15, 2014" "" "8" "56"]
+                ["4" "March 11, 2014" "" "5" "4"]
+                ["5" "May 5, 2013" "" "3" "49"]]
                (parse-and-sort-csv result)))))))
 
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
     (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
                                        (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-      (is (= [["1" "2014-04-07" "5" "12"]
-              ["2" "2014-09-18" "1" "31"]
-              ["3" "2014-09-15" "8" "56"]
-              ["4" "2014-03-11" "5" "4"]
-              ["5" "2013-05-05" "3" "49"]]
+      (is (= [["1" "April 7, 2014" "5" "12"]
+              ["2" "September 18, 2014" "1" "31"]
+              ["3" "September 15, 2014" "8" "56"]
+              ["4" "March 11, 2014" "5" "4"]
+              ["5" "May 5, 2013" "3" "49"]]
              (parse-and-sort-csv result))))))
 
 (deftest datetime-fields-are-untouched-when-exported
@@ -72,7 +72,9 @@
       (with-open [bos (ByteArrayOutputStream.)
                   os  (BufferedOutputStream. bos)]
         (let [results-writer (qp.si/streaming-results-writer :csv os)]
-          (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+          (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}
+                                                              {:base_type :type/*}
+                                                              {:base_type :type/*}]}} {})
           (doall (map-indexed
                   (fn [i row] (qp.si/write-row! results-writer row i [] {}))
                   rows))

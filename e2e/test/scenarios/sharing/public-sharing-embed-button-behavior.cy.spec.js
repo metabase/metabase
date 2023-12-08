@@ -83,7 +83,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
               cy.findByTestId("public-link-text").should("be.visible");
-              cy.findByText("Remove this public link").should("be.visible");
+              cy.findByText("Remove public link").should("be.visible");
             });
           });
         });
@@ -110,7 +110,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
               cy.findByTestId("public-link-text").should("be.visible");
-              cy.findByText("Remove this public link").should("be.visible");
+              cy.findByText("Remove public link").should("be.visible");
             });
 
             cy.signInAsNormalUser();
@@ -124,7 +124,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
               cy.findByTestId("public-link-text").should("be.visible");
-              cy.findByText("Remove this public link").should("not.exist");
+              cy.findByText("Remove public link").should("not.exist");
             });
           });
         });

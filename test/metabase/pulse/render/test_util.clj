@@ -12,9 +12,9 @@
   (:require
    [clojure.string :as str]
    [clojure.zip :as zip]
+   [metabase.formatter.datetime :as datetime]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.datetime :as datetime]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.shared.models.visualization-settings :as mb.viz]

@@ -5,6 +5,7 @@ import type { AnchorHTMLAttributes, HTMLAttributes, RefObject } from "react";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Box, Divider, Stack, Anchor, Button } from "metabase/ui";
+import Markdown from "metabase/core/components/Markdown";
 
 const { ModerationStatusIcon } = PLUGIN_MODERATION;
 
@@ -110,4 +111,14 @@ export const DescriptionSection = styled(Box)`
 
 export const DescriptionDivider = styled(Divider)`
   border-radius: ${({ theme }) => theme.radius.xs};
+`;
+
+export const SearchResultDescription = styled(Markdown)`
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  white-space: pre-line;
+  font-size: 0.75rem;
 `;
