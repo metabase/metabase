@@ -881,8 +881,9 @@
   []
   (mt/with-current-user (mt/user->id :rasta)
     (mt/dataset (upload-test/basic-db-definition)
-      (let [file (upload-test/csv-file-with ["id,name" "2,Luke Skywalker" "3,Darth Vader"] (mt/random-name))
-            table (t2/select-one :model/Table :db_id (mt/id))]
+      (let [file  (upload-test/csv-file-with ["id,name" "2,Luke Skywalker" "3,Darth Vader"] (mt/random-name))
+            table (t2/select-one :model/Table :db_id (mt/id))
+            _     (t2/update! :model/Table (:id table) {:is_upload true})]
         (mt/with-current-user (mt/user->id :crowberto)
           (@#'api.table/append-csv! {:id   (:id table)
                                      :file file}))))))

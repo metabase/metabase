@@ -1142,9 +1142,9 @@
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
       (with-redefs [driver/database-supports? (constantly false)]
-        (is (=? {:message #"Uploads are not supported on (.*) databases."
-                 :data    {:status-code 422}}
-                (catch-ex-info (append-csv-with-defaults!))))))))
+        (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults!))))))))
 
 (defn do-with-uploads-allowed
   "Set uploads-enabled to true, and uses an admin user, run the thunk"
