@@ -465,24 +465,6 @@ class DashboardGrid extends Component {
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
         onDrop={(nextLayout, item, event) => {
-          console.log("### onDrop", {
-            layout: layouts.desktop,
-            nextLayout,
-            item,
-            outsideDraggedCardId,
-            addCardToDashboard: {
-              dashId: dashboard.id,
-              cardId: outsideDraggedCardId,
-              tabId: selectedTabId,
-              position: {
-                col: item.x,
-                row: item.y,
-                size_x: item.w,
-                size_y: item.h,
-              },
-            },
-          });
-
           addCardToDashboard({
             dashId: dashboard.id,
             cardId: outsideDraggedCardId,
