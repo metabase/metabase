@@ -182,7 +182,7 @@ function setup({
     { storeInitialState: state },
   );
 
-  function getRecentClause() {
+  function getRecentClause(): Lib.Clause {
     expect(onSelect).toHaveBeenCalledWith(expect.anything());
     const [clause] = onSelect.mock.lastCall;
     return clause;

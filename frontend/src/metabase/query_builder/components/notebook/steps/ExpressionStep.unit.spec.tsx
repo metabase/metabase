@@ -19,7 +19,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
     topLevelQuery: query,
   });
 
-  function getRecentQuery() {
+  function getRecentQuery(): Lib.Query {
     expect(updateQuery).toHaveBeenCalledWith(expect.anything());
     const [recentQuery] = updateQuery.mock.lastCall;
     return recentQuery;
