@@ -338,6 +338,12 @@
 (def ^:private http-client-args-parser
   (mc/parser http-client-args))
 
+(defn parse-args [args]
+  (http-client-args-parser args))
+
+(defn unparse-args [parsed]
+  (mc/unparse http-client-args parsed))
+
 (defn- url-escape
   [url]
   (-> url

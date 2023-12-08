@@ -243,6 +243,25 @@
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
+(deftest current-user-info-for-api-key-test
+  (try
+    (t2/insert! :model/ApiKey {:id 999
+                               :user_id (mt/user->id :lucky)
+                               :created_by (mt/user->id :lucky)
+                               :key "mb_foobar"
+                               :key_prefix "mb_foob"})
+    (testing "a valid API key works"
+      (is (= {:metabase-user-id (mt/user->id :lucky) :is-superuser? false :is-group-manager? false :user-locale nil}
+             (#'mw.session/current-user-info-for-api-key "mb_foobar"))))
+    (testing "an invalid API key does not work, even if prefix does match"
+      (is (nil? (#'mw.session/current-user-info-for-api-key "mb_fooby"))))
+    (testing "an invalid API key whose prefix does not match any existing API key"
+      (is (nil? (#'mw.session/current-user-info-for-api-key "abcde"))))
+    (testing "a nil API key"
+      (is (nil? (#'mw.session/current-user-info-for-api-key nil))))
+    (finally
+      (t2/delete! :model/ApiKey :id 999))))
+
 (deftest current-user-info-for-session-test
   (testing "make sure the `current-user-info-for-session` logic is working correctly"
     ;; for some reason Toucan seems to be busted with models with non-integer IDs and `with-temp` doesn't seem to work

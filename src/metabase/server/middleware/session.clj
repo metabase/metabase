@@ -14,6 +14,7 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.api-key :as api-key]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -24,6 +25,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.password :as u.password]
    [ring.util.response :as response]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -290,6 +292,23 @@
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
 
+
+;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
+;; and only compile it to SQL once rather than every time
+(def ^:private user-data-for-api-key-prefix-query
+  (first
+   (t2.pipeline/compile*
+    {:select    [[:api_key.user_id :metabase-user-id]
+                 [:api_key.key :api-key]
+                 [:user.is_superuser :is-superuser?]
+                 [:user.locale :user-locale]]
+     :from      :api_key
+     :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
+     :where     [:and
+                 [:= :user.is_active true]
+                 [:= :api_key.key_prefix [:raw "?"]]]
+     :limit     [:inline 1]})))
+
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
   [session-id anti-csrf-token]
@@ -305,17 +324,41 @@
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
+(def ^:private api-key-that-should-never-match (str (random-uuid)))
+(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
+
+(defn- do-useless-hash []
+  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
+
+(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
+  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
+  ;; a useless hash, *then* return `false`.
+  (if api-key
+    (u.password/verify-password passed-api-key "" api-key)
+    (do-useless-hash)))
+
+(defn- current-user-info-for-api-key
+  "Return User ID and superuser status for an API Key with `api-key-id"
+  [api-key]
+  (when api-key
+    (let [user-data (some-> (t2/query-one (cons user-data-for-api-key-prefix-query [(api-key/prefix api-key)]))
+                               (update :is-group-manager? boolean))]
+      (when (matching-api-key? user-data api-key)
+        (dissoc user-data :api-key)))))
+
 (defn- merge-current-user-info
-  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]
+  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
    (current-user-info-for-session metabase-session-id anti-csrf-token)
+   (current-user-info-for-api-key x-api-key)
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
-  "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session token was passed."
+  "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
+  token OR a valid API key was passed."
   [handler]
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
