@@ -174,13 +174,23 @@
   "Updates an existing DashboardCard including all DashboardCardSeries.
    `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
    Returns nil."
-  [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
-   old-dashboard-card :- DashboardCardUpdates]
+  [{new-card-id :card_id dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
+   {old-card-id                :card_id
+    old-series                 :series
+    old-parameter-mappings     :parameter_mappings
+    old-visualization-mappings :visualization_settings
+    :as                        old-dashboard-card} :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
-    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
-                     :parameter_mappings :visualization_settings :dashboard_tab_id]
-          updates   (shallow-updates (select-keys dashboard-card update-ks)
-                                     (select-keys old-dashboard-card update-ks))]
+    (let [update-ks      [:action_id :row :col :size_x :size_y :card_id
+                          :parameter_mappings :visualization_settings :dashboard_tab_id]
+          ;; When changing the card-id, we reset the viz settings, params, and series
+          dashboard-card (cond-> dashboard-card
+                           (not= old-card-id new-card-id)
+                           (merge {:series                 (empty old-series)
+                                   :parameter_mappings     (empty old-parameter-mappings)
+                                   :visualization_settings (empty old-visualization-mappings)}))
+          updates        (shallow-updates (select-keys dashboard-card update-ks)
+                                          (select-keys old-dashboard-card update-ks))]
       (when (seq updates)
         (t2/update! :model/DashboardCard dashcard-id updates))
       (when (not= (:series dashboard-card [])
