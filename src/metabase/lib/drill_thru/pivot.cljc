@@ -109,7 +109,7 @@
   "A helper for the FE. Returns the set of pivot types (category, location, time) that apply to this drill-thru."
   [drill-thru :- [:and ::lib.schema.drill-thru/drill-thru
                   [:map [:type [:= :drill-thru/pivot]]]]]
-  (keys (:pivots drill-thru)))
+  (-> drill-thru :pivots keys sort))
 
 (mu/defn pivot-columns-for-type :- [:sequential lib.metadata/ColumnMetadata]
   "A helper for the FE. Returns all the columns of the given type which can be used to pivot the query."

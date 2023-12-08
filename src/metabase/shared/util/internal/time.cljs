@@ -65,12 +65,13 @@
                     (name offset-unit)))
 
 (defmethod common/to-range :default [^moment/Moment value {:keys [n unit]}]
-  (let [^moment/Moment c1 (.clone value)
-        ^moment/Moment c2 (.clone value)]
-    [(.startOf c1 (name unit))
-     (cond-> c2
-       (> n 1) (.add (dec n) (name unit))
-       :always ^moment/Moment (.endOf (name unit)))]))
+  (let [^moment/Moment c1       (.clone value)
+        ^moment/Moment c2       (.clone value)
+        ^moment/Moment adjusted (if (> n 1)
+                                  (.add c2 (dec n) (name unit))
+                                  c2)]
+    [(.startOf c1       (name unit))
+     (.endOf   adjusted (name unit))]))
 
 ;; NB: Only the :default for to-range is needed in CLJS, since Moment's startOf and endOf methods are doing the work.
 

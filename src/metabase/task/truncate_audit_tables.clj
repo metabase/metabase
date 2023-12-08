@@ -13,7 +13,7 @@
     :as premium-features
     :refer [defenterprise]]
    [metabase.task :as task]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -34,9 +34,9 @@
 (defn log-minimum-value-warning
   "Logs a warning that the value for `audit-max-retention-days` is below the allowed minimum and will be overriden."
   [env-var-value]
-  (log/warn (trs "MB_AUDIT_MAX_RETENTION_DAYS is set to {0}; using the minimum value of {1} instead."
-                 env-var-value
-                 min-retention-days)))
+  (log/warnf "MB_AUDIT_MAX_RETENTION_DAYS is set to %d; using the minimum value of %d instead."
+             env-var-value
+             min-retention-days))
 
 (defsetting audit-max-retention-days
   (deferred-tru "Number of days to retain data in audit-related tables. Minimum value is 30; set to 0 to retain data indefinitely.")

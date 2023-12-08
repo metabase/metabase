@@ -115,6 +115,20 @@ export function visitIframe() {
   });
 }
 
+/**
+ * Get page iframe body wrapped in `cy` helper
+ * @param {string} [selector]
+ */
+export function getIframeBody(selector = "iframe") {
+  return cy
+    .get(selector)
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.null")
+    .then(cy.wrap);
+}
+
 export function openPublicLinkPopoverFromMenu() {
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")

@@ -115,7 +115,6 @@
   find-matching-column]
  [lib.expression
   expression
-  expression-name
   expressions
   expressions-metadata
   expressionable-columns
@@ -274,7 +273,8 @@
   available-segments]
  [lib.stage
   append-stage
-  drop-stage]
+  drop-stage
+  drop-stage-if-empty]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
