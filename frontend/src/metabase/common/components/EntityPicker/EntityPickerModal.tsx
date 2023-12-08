@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { t } from "ttag";
 import { Tabs, Modal, Button, Flex } from "metabase/ui";
 
@@ -26,41 +26,43 @@ type ValidTab = (keyof typeof tabOptions);
 
 interface EntityPickerModalProps {
   title: string;
-  onItemSelect: (item: any) => void;
+  onChange: (item: any) => void;
   onClose: () => void;
   tabs: ValidTab[];
   hasConfirmButtons?: boolean;
+  value?: any;
 }
 
 export function EntityPickerModal({
   title = t`Choose an item`,
-  onItemSelect,
+  onChange,
   onClose,
   tabs,
   hasConfirmButtons = true,
+  value,
 }: EntityPickerModalProps) {
   const validTabs = tabs.filter(tabName => tabName in tabOptions);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const handleItemSelect = (item: any) => {
+  const handleItemSelect = useCallback((item: any) => {
     if (hasConfirmButtons) {
       setSelectedItem(item);
     } else {
-      onItemSelect(item);
+      onChange(item);
     }
-  };
+  }, [onChange, hasConfirmButtons]);
 
   const handleConfirm = () => {
-    onItemSelect(selectedItem);
+    onChange(selectedItem);
   };
 
   return (
-    <Modal title={title} opened onClose={onClose} size="auto">
+    <Modal title={title} opened onClose={onClose} size="100%" h="800px">
       <ErrorBoundary>
         {validTabs.length > 1 ? (
-          <TabsView tabs={validTabs} onItemSelect={handleItemSelect} />
+          <TabsView tabs={validTabs} onItemSelect={handleItemSelect} value={value} />
         ) : (
-          <SinglePickerView model={tabs[0]} onItemSelect={handleItemSelect} />
+          <SinglePickerView model={tabs[0]} onItemSelect={handleItemSelect} value={value} />
         )}
         {hasConfirmButtons && (
           <ButtonBar
@@ -74,19 +76,26 @@ export function EntityPickerModal({
 }
 
 export const SinglePickerView = ({
-  model, onItemSelect,
+  model, onItemSelect, value,
 }: {
   model: ValidTab,
   onItemSelect: (item: any) => void,
+  value?: any
 }) => {
   const { component: PickerComponent } = tabOptions[model];
 
   return (
-    <PickerComponent onItemSelect={onItemSelect} />
+    <PickerComponent onItemSelect={onItemSelect} value={value} />
   );
 };
 
-export const TabsView = ({ tabs, onItemSelect }: { tabs: ValidTab[], onItemSelect: (item: any) => void; }) => (
+export const TabsView = ({
+  tabs, onItemSelect, value,
+}: {
+  tabs: ValidTab[];
+  onItemSelect: (item: any) => void;
+  value?: any;
+}) => (
   <Tabs defaultValue={tabs[0]}>
     <Tabs.List>
       {tabs.map(tabName => {
@@ -101,7 +110,7 @@ export const TabsView = ({ tabs, onItemSelect }: { tabs: ValidTab[], onItemSelec
 
       return (
         <Tabs.Panel key={tabName} value={tabName}>
-          <TabComponent onItemSelect={onItemSelect} />
+          <TabComponent onItemSelect={onItemSelect} value={value} />
         </Tabs.Panel>
       );
     })}
@@ -115,7 +124,7 @@ export const ButtonBar = ({
   onConfirm: (item: any) => void;
   onCancel: () => void;
 }) => (
-  <Flex justify="space-between">
+  <Flex justify="space-between" pt="md">
     <Flex gap="md">
 
     </Flex>

@@ -92,6 +92,7 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
+
   return (
     <>
       <FormField
@@ -114,8 +115,8 @@ function FormCollectionPicker({
          <EntityPickerModal
           title={t`Select a collection`}
           tabs={["collection"]}
-          onItemSelect={({ id }) => {
-            console.log('item selected', id)
+          value={{ id: value }}
+          onChange={({ id }) => {
             setValue(id);
             setIsPickerOpen(false)
           }}

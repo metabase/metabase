@@ -48,7 +48,7 @@ export function NestedItemPicker({
   };
 
   return (
-    <ScrollArea>
+    <ScrollArea type="hover">
       <Flex>
         {stack.map((level, levelIndex) => (
           <ItemList
@@ -81,14 +81,14 @@ function ItemList({
 
   if (!items.length) {
     return (
-      <Box>
-        <Text>No items</Text>
+      <Box miw={310}>
+        <Text align="center" p="lg">No items</Text>
       </Box>
     );
   }
 
   return (
-    <ScrollArea miw={310}>
+    <ScrollArea miw={310} type="auto">
       <PickerColumn activeList={!selectedId}>
         {items.map(item => {
           const isFolder = folderModel.includes(item.model);
