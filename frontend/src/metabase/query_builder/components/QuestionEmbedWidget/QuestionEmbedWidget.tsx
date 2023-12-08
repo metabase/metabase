@@ -16,7 +16,7 @@ import {
 } from "../../actions";
 
 type QuestionEmbedWidgetProps = {
-  className: string;
+  className?: string;
   card: Card;
   onClose: () => void;
 };
