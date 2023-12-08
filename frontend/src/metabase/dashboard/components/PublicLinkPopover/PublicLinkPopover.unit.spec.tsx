@@ -112,14 +112,14 @@ describe("PublicLinkPopover", () => {
       expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
     });
 
-    it("should render `Remove this public link` and warning tooltip for admins", async () => {
+    it("should render `Remove public link` and warning tooltip for admins", async () => {
       setup({
         hasUUID: true,
         isOpen: true,
         isAdmin: true,
       });
 
-      userEvent.hover(screen.getByText("Remove this public link"));
+      userEvent.hover(screen.getByText("Remove public link"));
 
       expect(
         await screen.findByText(
@@ -173,14 +173,14 @@ describe("PublicLinkPopover", () => {
   });
 
   describe("when deleting public links", () => {
-    it("should call deletePublicLink and onClose when `Remove this public link` is clicked", () => {
+    it("should call deletePublicLink and onClose when `Remove public link` is clicked", () => {
       const { deletePublicLink, onClose } = setup({
         hasUUID: true,
         isOpen: true,
         isAdmin: true,
       });
 
-      userEvent.click(screen.getByText("Remove this public link"));
+      userEvent.click(screen.getByText("Remove public link"));
 
       expect(deletePublicLink).toHaveBeenCalledTimes(1);
       expect(onClose).toHaveBeenCalledTimes(1);
