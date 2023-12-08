@@ -19,6 +19,7 @@ import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
+  setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
@@ -74,6 +75,39 @@ export const addCardToDashboard =
     dispatch(
       autoWireParametersToNewCard({
         dashboard_id: dashId,
+        dashcard_id: dashcardId,
+      }),
+    );
+  };
+
+export const replaceCard =
+  ({ dashcardId, nextCardId }) =>
+  async (dispatch, getState) => {
+    await dispatch(Questions.actions.fetch({ id: nextCardId }));
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: nextCardId })
+      .card();
+
+    await dispatch(
+      setDashCardAttributes({
+        id: dashcardId,
+        attributes: {
+          card,
+          card_id: card.id,
+          series: [],
+          parameter_mappings: [],
+          visualization_settings: {},
+        },
+      }),
+    );
+
+    const dashcard = getDashCardById(getState(), dashcardId);
+
+    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
+    await dispatch(loadMetadataForDashboard([dashcard]));
+    dispatch(
+      autoWireParametersToNewCard({
+        dashboard_id: dashcard.dashboard_id,
         dashcard_id: dashcardId,
       }),
     );
