@@ -330,6 +330,16 @@
   []
   (t2/select-one Database :id (public-settings/uploads-database-id)))
 
+(mu/defn ^:private table-identifier
+  "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
+  [{:keys [schema name] :as _table}
+   :- [:map
+       [:schema {:optional true} [:maybe :string]]
+       [:name :string]]]
+  (if (str/blank? schema)
+    name
+    (str schema "." name)))
+
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
@@ -458,9 +468,7 @@
             table-name        (->> (str table-prefix filename-prefix)
                                    (unique-table-name driver)
                                    (u/lower-case-en))
-            schema+table-name (if (str/blank? schema-name)
-                                table-name
-                                (str schema-name "." table-name))
+            schema+table-name (table-identifier {:schema schema-name :name table-name})
             stats             (load-from-csv! driver (:id database) schema+table-name file)
             ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
             table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
@@ -563,15 +571,12 @@
   [database table file]
   (with-open [reader (bom/bom-reader file)]
     (let [[header & rows] (csv/read-csv reader)
-          {:keys [parse-rows table-col-names]} (check-schema table header)
-          schema+table-name (if (str/blank? (:schema table))
-                              (:name table)
-                              (str (:schema table) "." (:name table)))]
+          {:keys [parse-rows table-col-names]} (check-schema table header)]
       (try
         (let [parsed-rows (parse-rows rows)]
           (driver/insert-into! (driver.u/database->driver database)
                                (:id database)
-                               schema+table-name
+                               (table-identifier table)
                                table-col-names
                                parsed-rows)
           {:row-count (count parsed-rows)})
