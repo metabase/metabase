@@ -72,10 +72,12 @@
    column       :- lib.metadata/ColumnMetadata
    value        :- :any]
   (let [filter-clauses (or (when (lib.binning/binning column)
-                             (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
-                               (let [unbinned-column (lib.binning/with-binning column nil)]
-                                 [(lib.filter/>= unbinned-column min-value)
-                                  (lib.filter/< unbinned-column max-value)])))
+                             (let [unbinned-column (lib.binning/with-binning column nil)]
+                               (if (some? value)
+                                 (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
+                                   [(lib.filter/>= unbinned-column min-value)
+                                    (lib.filter/< unbinned-column max-value)])
+                                 [(lib.filter/is-null unbinned-column)])))
                            [(lib.filter/= column value)])]
     (reduce
      (fn [query filter-clause]
