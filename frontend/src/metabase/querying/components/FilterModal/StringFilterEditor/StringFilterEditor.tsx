@@ -6,6 +6,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function StringFilterEditor({
@@ -72,6 +73,7 @@ export function StringFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <StringValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -84,6 +86,7 @@ export function StringFilterEditor({
 }
 
 interface StringValueInputProps {
+  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -92,6 +95,7 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -100,12 +104,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <TextInput
-        value={values[0]}
-        placeholder={t`Enter some text`}
-        onChange={event => onChange([event.target.value])}
-        onBlur={onBlur}
-      />
+      <FilterValuePicker value={values} column={column} onChange={onChange} />
     );
   }
 

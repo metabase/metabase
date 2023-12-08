@@ -4,8 +4,10 @@ import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
+import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function NumberFilterEditor({
@@ -76,6 +78,7 @@ export function NumberFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <NumberValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -87,9 +90,8 @@ export function NumberFilterEditor({
   );
 }
 
-type NumberValue = number | "";
-
 interface NumberValueInputProps {
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -98,6 +100,7 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -106,12 +109,7 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <NumberInput
-        value={values[0]}
-        placeholder={t`Enter a number`}
-        onChange={newValue => onChange([newValue])}
-        onBlur={onBlur}
-      />
+      <FilterValuePicker value={values} column={column} onChange={onChange} />
     );
   }
 

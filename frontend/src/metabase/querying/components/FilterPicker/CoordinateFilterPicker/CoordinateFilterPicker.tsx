@@ -120,7 +120,12 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <FilterValuePicker column={column} value={values} onChange={onChange} />
+        <FilterValuePicker
+          column={column}
+          value={values}
+          autoFocus
+          onChange={onChange}
+        />
       </FlexWithScroll>
     );
   }
