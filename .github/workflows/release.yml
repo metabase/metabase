@@ -207,7 +207,7 @@ jobs:
     - name: Upload to S3
       run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
     - name: Upload to s3 latest path
-      if: ${{ steps.is_latest.outputs.result != 'false' }}
+      if: ${{ steps.latest_path.outputs.result != 'false' }}
       run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.latest_path.outputs.result }}/metabase.jar
     - name: Create cloudfront invalidation
       run: |
