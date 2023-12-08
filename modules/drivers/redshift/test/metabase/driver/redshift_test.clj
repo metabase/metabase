@@ -29,6 +29,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]
@@ -467,22 +468,51 @@
      ;; This was standard before PR #35995, now server side timestamps are used for that. This test confirms that
      ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
      ;; cacheable.
-     (let [honey {:select [[(with-redefs [redshift/use-server-side-relative-datetime? (constantly false)]
-                              (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
-                           [(sql.qp/->honeysql :redshift [:relative-datetime value unit])]]}
+     (let [honey {:select [[[(with-redefs [redshift/use-server-side-relative-datetime? (constantly false)]
+                                (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
+                            :db_gen]
+                           [[(sql.qp/->honeysql :redshift [:relative-datetime value unit])]
+                            :ss_gen]
+                           ;; debug
+                           [[:cast :db_gen :text]]
+                           [[:cast :ss_gen :text]]
+                           [[:getdate]]
+                           [[:cast [:getdate] :text]]
+                           [[:dateadd [:raw (str "'" (name unit) "'")] value [:cast [:getdate] :timestamp]]]
+                           [[:cast [:dateadd [:raw (str "'" (name unit) "'")] value [:cast [:getdate] :timestamp]] :text]]
+                           [[:cast [:dateadd [:raw (str "'" (name unit) "'")] value [:cast [:getdate] :timestamp]] :date]]
+                           [[:cast [:cast [:dateadd [:raw (str "'" (name unit) "'")] value [:cast [:getdate] :timestamp]] :date] :text]]
+                           ;;
+                           [[:cast (u.date/format-sql (qp.timezone/now)) :text]]
+                           [[:= :db_gen :ss_gen]]
+                           ]}
            sql (sql/format honey)
            result (apply run-native-query sql)
-           [db-generated ss-generated] (-> result mt/rows first)]
+           [db-generated ss-generated & debug] (-> result mt/rows first)]
        (is (= db-generated ss-generated)
-           (format (str "\n---\n"
-                        "results timezone == %s\n"
-                        "report timezone == %s\n"
-                        "database timezone == %s\n"
-                        "system timezone == %s\n")
-                   (qp.timezone/results-timezone-id)
-                   (qp.timezone/report-timezone-id-if-supported)
-                   (qp.timezone/database-timezone-id)
-                   (qp.timezone/system-timezone-id)))))))
+           (str
+            (format (str "\n---\n"
+                         "results timezone == %s\n"
+                         "report timezone == %s\n"
+                         "database timezone == %s\n"
+                         "system timezone == %s\n"
+                         "\n")
+                    (qp.timezone/results-timezone-id)
+                    (qp.timezone/report-timezone-id-if-supported)
+                    (qp.timezone/database-timezone-id)
+                    (qp.timezone/system-timezone-id))
+            (apply str "DEBUG\n" (mapv #(str % "\n") (conj (vec debug)
+                                                           (qp.timezone/now)
+                                                           db-generated
+                                                           ss-generated)))))))))
+
+#_(deftest thunk-dev-test
+  (mt/test-driver
+   :redshift
+   (testing "Values of getdate() and server side generated timestamp are equal"
+     (mt/with-metadata-provider (mt/id)
+       (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :day -1)]
+         (test-thunk))))))
 
 (deftest server-side-relative-datetime-test
   (mt/test-driver
@@ -585,7 +615,7 @@
    (mt/with-metadata-provider (mt/id)
      (testing "Value of server side generated timestamp matches the one from getdate() with multiple timezone settings"
        (doseq [unit [:day :week :month :year]
-               value [-30 0 7]
+               value [-30 -1 0 1 7]
                :let [test-thunk (getdate-vs-ss-ts-test-thunk-generator unit value)]]
          (test-thunk))))))
 
