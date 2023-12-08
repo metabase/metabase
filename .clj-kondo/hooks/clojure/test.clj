@@ -108,6 +108,8 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.lib.drill-thru.test-util/coverage-apply!
+     metabase.lib.drill-thru.test-util/coverage-available!
      metabase.query-processor/process-query-and-save-execution!
      metabase.query-processor/process-query-and-save-with-max-results-constraints!
      metabase.query-processor.store/store-database!})
@@ -191,7 +193,9 @@
                                                    "Split it up into smaller tests! 🥰")
                                      :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
 
-(defn deftest [{:keys [node cljc lang]}]
+(defn deftest
+  "Kondo hook for `deftest`."
+  [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
@@ -242,12 +246,16 @@
                                  :message "Use =? or malli= instead of schema="
                                  :type :metabase/warn-about-schema=)))))
 
-(defn is [{:keys [node lang]}]
+(defn is
+  "Kondo hook for `is`."
+  [{:keys [node lang]}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
   (warn-about-schema= node)
   {:node node})
 
-(defn use-fixtures [{:keys [node]}]
+(defn use-fixtures
+  "Kondo hook for `use-fixtures`."
+  [{:keys [node]}]
   (warn-about-disallowed-parallel-forms node)
   {:node node})

@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.test-util
   "Adapted from frontend/src/metabase-lib/drills.unit.spec.ts"
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [is testing]]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -224,3 +225,64 @@
         (let [query' (apply lib/drill-thru query -1 drill drill-args)]
           (is (=? (drop-uuids expected-query)
                   query')))))))
+
+(def ^:private ClickType
+  [:enum :header :cell :aggregated :pivot-cell :legend])
+
+(def ^:private ClickDetail
+  [:enum :pk :pk-multi :fk :string :number :date :category :null])
+
+#_(def ^:private DrillCase
+  [:tuple :int :int ClickType ClickDetail])
+
+(def ^:private empty-coverage
+  {:available #{}
+   :apply     {}})
+
+(def ^:private drill-thru-coverage
+  #_[:atom [:map
+            [:available [:set DrillCase]]
+            [:apply     [:map-of DrillCase
+                         [:set [:ref ::lib.schema.drill-thru/drill-thru.type]]]]]]
+  "The Atom holding the drill-thru test coverage."
+  (atom empty-coverage))
+
+(mu/defn coverage-available! :- :nil
+  "Records test coverage for calling [[lib/available-drill-thrus]] **and checking the returned list of drills**.
+
+  If the test is only plucking out one drill to inspect it or to apply it with [[lib/drill-thru]], call
+  [[coverage-apply!]] instead.
+
+  These four parameters define the context of the drill click:
+  `[aggregation-count breakout-count click-type click-detail]`."
+  [aggregation-count :- :int
+   breakout-count    :- :int
+   click-type        :- ClickType
+   click-detail      :- ClickDetail]
+  (let [drill-case [aggregation-count breakout-count click-type click-detail]]
+    (swap! drill-thru-coverage
+           #(update % :available conj drill-case)))
+  nil)
+
+(mu/defn coverage-apply! :- :nil
+  "Records test coverage for [[lib/drill-thru]], applying particular drill-thrus **and checking the resulting query**.
+
+  The first four parameters define the context of the drill click:
+  `[aggregation-count breakout-count click-type click-detail]`."
+  [aggregation-count :- :int
+   breakout-count    :- :int
+   click-type        :- ClickType
+   click-detail      :- ClickDetail
+   & drill-types     :- [:* ::lib.schema.drill-thru/drill-thru.type]]
+  (let [drill-case [aggregation-count breakout-count click-type click-detail]]
+    (swap! drill-thru-coverage
+           #(update-in % [:apply drill-case] set/union (set drill-types))))
+  nil)
+
+(comment
+  ;; Runs the test/metabase/lib/** tests from the REPL and reports on the coverage.
+  (do
+    (require '[metabase.test-runner])
+    (reset! drill-thru-coverage empty-coverage)
+    (metabase.test-runner/find-and-run-tests-repl {:only ["test/metabase/lib"]})
+    (deref drill-thru-coverage)))

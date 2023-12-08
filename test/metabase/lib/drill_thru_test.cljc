@@ -119,6 +119,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-headers-pk-test
   (testing "column headers: click on"
     (testing "primary key - column filter (default: Is), sort, summarize (distinct only)"
+      (lib.drill-thru.tu/coverage-available! 0 0 :header :pk)
       (let [context (basic-context (meta/field-metadata :orders :id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
@@ -138,6 +139,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-headers-fk-test
   (testing "column headers: click on"
     (testing "foreign key - distribution, column filter (default: Is), sort, summarize (distinct only)"
+      (lib.drill-thru.tu/coverage-available! 0 0 :header :fk)
       (let [context (basic-context (meta/field-metadata :orders :user-id) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
@@ -160,6 +162,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-headers-numeric-column-test
   (testing "column headers: click on"
     (testing "numeric column - distribution, column filter (default: Equal To), sort, summarize (all 3), summarize by time"
+      (lib.drill-thru.tu/coverage-available! 0 0 :header :number)
       (let [context (basic-context (meta/field-metadata :orders :subtotal) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
@@ -187,6 +190,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-headers-date-column-test
   (testing "column headers: click on"
     (testing "date column - distribution, column filter (no default), sort, summarize (distinct only)"
+      (lib.drill-thru.tu/coverage-available! 0 0 :header :date)
       (let [context (basic-context (meta/field-metadata :orders :created-at) nil)]
         (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
@@ -209,6 +213,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-headers-sorted-column-test
   (testing "column headers: click on"
     (testing "a sorted column"
+      (lib.drill-thru.tu/coverage-available! 0 0 :header :number)
       (let [expected [{:lib/type   :metabase.lib.drill-thru/drill-thru
                        :type       :drill-thru/column-filter
                        :column     (meta/field-metadata :orders :subtotal)
@@ -242,6 +247,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-fk-value-test
   (testing "table values: click on"
     (testing "foreign key - FK filter and FK details"
+      (lib.drill-thru.tu/coverage-available! 0 0 :cell :fk)
       (let [context (merge (basic-context (meta/field-metadata :orders :user-id) 1)
                            {:row orders-row})]
         (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru
@@ -260,6 +266,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-numeric-value-test
   (testing "table values: click on"
     (testing "numeric value - numeric quick filters and object details *for the PK column*"
+      (lib.drill-thru.tu/coverage-available! 0 0 :cell :number)
       (let [context (merge (basic-context (meta/field-metadata :orders :subtotal) 110.93)
                            {:row orders-row})]
         (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -283,6 +290,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-category-value-test
   (testing "table values: click on"
     (testing "category/enum value - filter is/is not, and object details *for the PK column*"
+      (lib.drill-thru.tu/coverage-available! 0 0 :cell :category)
       (let [context (merge (basic-context (meta/field-metadata :products :category) "Gadget")
                            {:row products-row})]
         (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -304,6 +312,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-string-value-test
   (testing "table values: click on"
     (testing "string value - filter (not) equal, and object details *for the PK column*"
+      (lib.drill-thru.tu/coverage-available! 0 0 :cell :string)
       (let [context (merge (basic-context (meta/field-metadata :products :vendor) "Herta Skiles and Sons")
                            {:row products-row})]
         (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -346,6 +355,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-null-value-test
   (testing "table values: click on"
     (testing "NULL value - basic quick filters and object details *for the PK column*"
+      (lib.drill-thru.tu/coverage-available! 0 0 :cell :null)
       (let [context (merge (basic-context (meta/field-metadata :orders :discount) :null)
                            {:row orders-row})]
         (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -366,6 +376,7 @@
 (deftest ^:parallel table-view-available-drill-thrus-date-value-test
   (testing "table values: click on"
     (testing "date value - date quick filters and object details *for the PK column*"
+      (lib.drill-thru.tu/coverage-available! 0 0 :cell :date)
       (let [context (merge (basic-context (meta/field-metadata :orders :created-at) "2018-05-15T08:04:04.58Z")
                            {:row orders-row})]
         (is (=? [{:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -437,6 +448,7 @@
         (let [context (merge (basic-context count-column 123)
                              {:row row})]
           (testing (str "\ncontext =\n" (u/pprint-to-str context))
+            (lib.drill-thru.tu/coverage-available! 1 0 :aggregated :number) ; No breakout, since empty :dimensions here.
             (is (=? (map expected-drills [:pivot :quick-filter])
                     (lib/available-drill-thrus query -1 context)))
             (test-drill-applications query context)))
@@ -445,6 +457,7 @@
                                {:row        row
                                 :dimensions [(basic-context created-at-column "2018-05-01T00:00:00Z")]})]
             (testing (str "\ncontext =\n" (u/pprint-to-str context))
+              (lib.drill-thru.tu/coverage-available! 1 1 :aggregated :number) ; This one has a breakout
               (is (=? (map expected-drills [:automatic-insights :pivot :quick-filter :underlying-records
                                             :zoom-in.timeseries])
                       (lib/available-drill-thrus query -1 context)))
@@ -453,6 +466,7 @@
 (deftest ^:parallel count-aggregation-table-view-available-drill-thrus-test
   (testing "ORDERS + count aggregation + breakout on CREATED_AT by month query"
     (testing "options for COUNT column + value"
+      (lib.drill-thru.tu/coverage-available! 1 1 :aggregated :number)
       (let [query   orders-count-aggregation-breakout-on-created-at-by-month-query
             column  (m/find-first #(= (:name %) "count")
                                   (lib/returned-columns orders-count-aggregation-breakout-on-created-at-by-month-query))
@@ -488,6 +502,7 @@
                   (lib/breakout (meta/field-metadata :orders :product-id))
                   (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                     (lib/with-temporal-bucket :month))))]
+    (lib.drill-thru.tu/coverage-available! 3 2 :aggregated :number)
     (testing "Drills for count aggregation"
       (let [count-col (m/find-first (fn [col]
                                       (= (:display-name col) "Count"))
@@ -524,6 +539,7 @@
 (deftest ^:parallel line-chart-available-drill-thrus-time-series-point-test
   (testing "line chart: click on"
     (testing "time series data point - underlying records, date zoom, pivot by non-date, automatic insights"
+      (lib.drill-thru.tu/coverage-available! 1 1 :aggregated :number)
       (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                              (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
                              (lib/breakout (lib/with-temporal-bucket
@@ -567,21 +583,30 @@
         (test-drill-applications query context)))))
 
 ;; TODO: Restore this test once zoom-in and underlying-records are checked properly.
-#_(deftest ^:parallel histogram-available-drill-thrus-test
+(deftest ^:parallel histogram-available-drill-thrus-test
   (testing "histogram breakout view"
     (testing "broken out by state - click a state - underlying, zoom in, pivot (non-location), automatic insights, quick filter"
-      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
-                      (lib/aggregate (lib/count))
-                      (lib/breakout (meta/field-metadata :people :state)))
-            row   [{:column-name "STATE" :value "Wisconsin"} ; Yes, the full name here, not WI.
-                   {:column-name "count" :value 87}]
-            cols  (lib.metadata.calculation/visible-columns query)]
+      (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (meta/field-metadata :people :state)))
+            vis-cols   (lib/visible-columns query)
+            ret-cols   (lib/returned-columns query)
+            count-col  (by-name ret-cols "count")
+            state-col  (by-name ret-cols "STATE")
+            row        [(basic-context state-col "Wisconsin") ; Yes, the full name here, not WI.
+                        (basic-context count-col 87)]
+            dimensions [(basic-context state-col "WI")]
+            agg-ref    [:aggregation {:lib/uuid string?} (:lib/source-uuid count-col)]]
         (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru,
+                  :type :drill-thru/automatic-insights,
+                  :column-ref agg-ref
+                  :dimensions dimensions}
+                 {:lib/type :metabase.lib.drill-thru/drill-thru,
                   :type :drill-thru/pivot,
-                  :pivots {:category [(by-name cols "NAME")
-                                      (by-name cols "SOURCE")]
-                           :time     [(by-name cols "BIRTH_DATE")
-                                      (by-name cols "CREATED_AT")]}}
+                  :pivots {:category [(by-name vis-cols "NAME")
+                                      (by-name vis-cols "SOURCE")]
+                           :time     [(by-name vis-cols "BIRTH_DATE")
+                                      (by-name vis-cols "CREATED_AT")]}}
                  {:lib/type :metabase.lib.drill-thru/drill-thru
                   :type     :drill-thru/quick-filter
                   :operators (for [[op label] [[:<  "<"]
@@ -590,35 +615,31 @@
                                                [:!= "≠"]]]
                                {:name label
                                 :filter [op {:lib/uuid string?}
-                                         [:aggregation {:lib/uuid string?} (-> query
-                                                                               lib/aggregations
-                                                                               first
-                                                                               lib.options/uuid)]
+                                         [:field {} "count"]
                                          87]})}
                  {:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/underlying-records
                   :row-count  87
                   :table-name "People"}
                  {:lib/type  :metabase.lib.drill-thru/drill-thru
-                  :type      :drill-thru/zoom
-                  :column    (meta/field-metadata :people :state)
-                  :object-id "WI"
-                  :many-pks? false}]
-                (lib/available-drill-thrus query -1 {:column     (-> query
-                                                                     lib.metadata.calculation/returned-columns
-                                                                     (by-name "count"))
-                                                     :value      87
-                                                     :row        row
-                                                     :dimensions [{:column-name "STATE" :value "WI"}]})))))))
-
-
-
+                  :type      :drill-thru/zoom-in.geographic
+                  :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                  :column    state-col
+                  :value     "WI"
+                  :latitude  {:column (meta/field-metadata :people :latitude)
+                              :bin-width 1}
+                  :longitude {:column (meta/field-metadata :people :longitude)
+                              :bin-width 1}}]
+                (lib/available-drill-thrus query -1 (merge (basic-context count-col 87)
+                                                           {:row        row
+                                                            :dimensions dimensions}))))))))
 
 ;;;
 ;;; The tests below are adapted from frontend/src/metabase-lib/drills.unit.spec.ts
 ;;;
 
 (deftest ^:parallel available-drill-thrus-test-1
+  (lib.drill-thru.tu/coverage-available! 0 0 :cell :pk)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :cell
     :query-type  :unaggregated
@@ -628,6 +649,7 @@
                    :many-pks? false}]}))
 
 (deftest ^:parallel available-drill-thrus-test-2
+  (lib.drill-thru.tu/coverage-available! 0 0 :cell :fk)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :cell
     :query-type  :unaggregated
@@ -638,6 +660,7 @@
                    :many-pks? false}]}))
 
 (deftest ^:parallel available-drill-thrus-test-3
+  (lib.drill-thru.tu/coverage-available! 0 0 :cell :number)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :cell
     :query-type  :unaggregated
@@ -651,6 +674,7 @@
                                                                {:name "≠"}]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-4
+  (lib.drill-thru.tu/coverage-available! 0 0 :cell :date)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :cell
     :query-type  :unaggregated
@@ -664,6 +688,7 @@
                                                                {:name "≠"}]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-5
+  (lib.drill-thru.tu/coverage-available! 0 0 :header :pk)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :header
     :query-type  :unaggregated
@@ -673,6 +698,7 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-6
+  (lib.drill-thru.tu/coverage-available! 0 0 :header :fk)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :header
     :query-type  :unaggregated
@@ -683,6 +709,7 @@
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
 (deftest ^:parallel available-drill-thrus-test-7
+  (lib.drill-thru.tu/coverage-available! 0 0 :header :number)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :header
     :query-type  :unaggregated
@@ -694,6 +721,7 @@
                   {:type :drill-thru/summarize-column-by-time}]}))
 
 (deftest ^:parallel available-drill-thrus-test-8
+  (lib.drill-thru.tu/coverage-available! 0 0 :header :date)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :header
     :query-type  :unaggregated
@@ -707,6 +735,7 @@
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
                 "fk-details should not get returned for non-fk column (#34441) "
                 "underlying-records should only get shown once for aggregated query (#34439)"))
+  (lib.drill-thru.tu/coverage-available! 3 2 :aggregated :number)
   (lib.drill-thru.tu/test-available-drill-thrus
    {:click-type  :cell
     :query-type  :aggregated
@@ -729,6 +758,7 @@
   (testing (str "fk-filter should not get returned for non-fk column (#34440) "
                 "fk-details should not get returned for non-fk column (#34441) "
                 "underlying-records should only get shown once for aggregated query (#34439)")
+    (lib.drill-thru.tu/coverage-available! 3 2 :aggregated :number)
     (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
@@ -741,56 +771,72 @@
                     {:type :drill-thru/underlying-records, :row-count 2, :table-name "Orders"}
                     {:type :drill-thru/zoom-in.timeseries, :display-name "See this month by week"}]})))
 
-;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-11
-  #_(lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/coverage-available! 3 2 :aggregated :fk)
+  (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
       :column-name "PRODUCT_ID"
-      :expected    [{:type :drill-thru/fk-filter}
+      :expected    [{:type :drill-thru/automatic-insights}
+                    {:type :drill-thru/fk-filter}
                     {:type :drill-thru/fk-details, :object-id 3, :many-pks? false}
-                    {:row-count 2, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+                    {:type       :drill-thru/underlying-records
+                     :row-count  3
+                     :table-name "Orders"}
+                    {:type      :drill-thru/zoom-in.timeseries,
+                     :next-unit :week
+                     :dimension {:column     {:id                               (meta/id :orders :created-at)
+                                              :metabase.lib.field/temporal-unit :month}
+                                 :column-ref [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                 :value      string?}}]}))
 
-;; FIXME: quick-filter gets returned for non-metric column (#34443)
 (deftest ^:parallel available-drill-thrus-test-12
-  #_(lib.drill-thru.tu/test-available-drill-thrus
+  (lib.drill-thru.tu/coverage-available! 3 2 :aggregated :date)
+  (lib.drill-thru.tu/test-available-drill-thrus
      {:click-type  :cell
       :query-type  :aggregated
       :column-name "CREATED_AT"
-      :expected    [{:type :drill-thru/quick-filter, :operators [{:name "<"}
+      :expected    [{:type :drill-thru/automatic-insights}
+                    {:type :drill-thru/quick-filter, :operators [{:name "<"}
                                                                  {:name ">"}
                                                                  {:name "="}
                                                                  {:name "≠"}]}
-                    {:row-count 3, :table-name "Orders", :type :drill-thru/underlying-records}]}))
+                    {:type       :drill-thru/underlying-records
+                     :row-count  2
+                     :table-name "Orders"}]}))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-13
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
+  (testing "click header of aggregation, get column-filter and sort"
+    (lib.drill-thru.tu/coverage-available! 3 2 :header :number)
+    (lib.drill-thru.tu/test-available-drill-thrus
        {:click-type  :header
         :query-type  :aggregated
         :column-name "count"
-        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
-                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+        :expected    [{:type       :drill-thru/column-filter
+                       :initial-op {:short :=}}
+                      {:type            :drill-thru/sort
+                       :sort-directions [:asc :desc]}]})))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-14
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
+  (testing "click header of FK breakout, get column-filter and sort"
+    (lib.drill-thru.tu/coverage-available! 3 2 :header :fk)
+    (lib.drill-thru.tu/test-available-drill-thrus
        {:click-type  :header
         :query-type  :aggregated
         :column-name "PRODUCT_ID"
-        :expected    [{:initial-op {:short :=}, :type :drill-thru/column-filter}
-                      {:sort-directions [:asc :desc], :type :drill-thru/sort}]})))
+        :expected    [{:type       :drill-thru/column-filter
+                       :initial-op {:short :=}}
+                      {:type            :drill-thru/sort
+                       :sort-directions [:asc :desc]}]})))
 
-;; FIXME: for some reason the results for aggregated query are not correct (#34223, #34341)
 (deftest ^:parallel available-drill-thrus-test-15
-  (testing "We expect column-filter and sort drills, but get distribution and summarize-column"
-    #_(lib.drill-thru.tu/test-available-drill-thrus
+  (testing "click header of date breakout, get column-filter and sort"
+    (lib.drill-thru.tu/coverage-available! 3 2 :header :date)
+    (lib.drill-thru.tu/test-available-drill-thrus
        {:click-type  :header
         :query-type  :aggregated
         :column-name "CREATED_AT"
         :expected    [{:type       :drill-thru/column-filter
-                       :initial-op {:short :=}}
+                       :initial-op nil} ; Date fields have special handling in the FE; just return nil here.
                       {:type            :drill-thru/sort
                        :sort-directions [:asc :desc]}]})))
