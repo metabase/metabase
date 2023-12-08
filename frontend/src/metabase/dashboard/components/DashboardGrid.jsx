@@ -38,6 +38,7 @@ import { GridLayout } from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
+import { QuestionPickerModal } from "./QuestionPickerModal";
 import { DashCard } from "./DashCard/DashCard";
 
 const mapDispatchToProps = { addUndo };
@@ -58,6 +59,7 @@ class DashboardGrid extends Component {
       initialCardSizes: this.getInitialCardSizes(props.dashboard.dashcards),
       layouts: this.getLayouts(props.dashboard.dashcards),
       addSeriesModalDashCard: null,
+      replaceCardModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
     };
@@ -286,6 +288,29 @@ class DashboardGrid extends Component {
     );
   }
 
+  renderReplaceCardModal() {
+    const { replaceCard } = this.props;
+    const { replaceCardModalDashCard } = this.state;
+
+    const isOpen = replaceCardModalDashCard != null;
+
+    const handleSelect = nextCardId => {
+      replaceCard({ dashcardId: replaceCardModalDashCard.id, nextCardId });
+    };
+
+    const handleClose = () => {
+      this.setState({ replaceCardModalDashCard: null });
+    };
+
+    return (
+      <QuestionPickerModal
+        opened={isOpen}
+        onSelect={handleSelect}
+        onClose={handleClose}
+      />
+    );
+  }
+
   // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
   onDrag = () => {
     if (!this.state.isDragging) {
@@ -314,6 +339,10 @@ class DashboardGrid extends Component {
   onDashCardAddSeries(dc) {
     this.setState({ addSeriesModalDashCard: dc });
   }
+
+  onReplaceCard = dashcard => {
+    this.setState({ replaceCardModalDashCard: dashcard });
+  };
 
   getDashboardCardIcon = dashCard => {
     const { isRegularCollection } = PLUGIN_COLLECTIONS;
@@ -361,6 +390,7 @@ class DashboardGrid extends Component {
         isXray={this.props.isXray}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+        onReplaceCard={() => this.onReplaceCard(dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(
           this,
           dc.id,
@@ -454,6 +484,7 @@ class DashboardGrid extends Component {
       <div className="flex layout-centered" data-testid="dashboard-grid">
         {width > 0 ? this.renderGrid() : <div />}
         {this.renderAddSeriesModal()}
+        {this.renderReplaceCardModal()}
       </div>
     );
   }
