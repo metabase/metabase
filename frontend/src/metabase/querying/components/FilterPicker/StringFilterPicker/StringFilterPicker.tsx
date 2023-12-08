@@ -9,6 +9,7 @@ import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
 const MAX_HEIGHT = 300;
@@ -76,6 +77,7 @@ export function StringFilterPicker({
       </FilterPickerHeader>
       <div>
         <StringValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -95,6 +97,7 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
+  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -102,6 +105,7 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -110,13 +114,7 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={MAX_HEIGHT}>
-        <TextInput
-          value={values[0]}
-          onChange={event => onChange([event.target.value])}
-          placeholder={t`Enter some text`}
-          autoFocus
-          w="100%"
-        />
+        <FilterValuePicker column={column} value={values} onChange={onChange} />
       </FlexWithScroll>
     );
   }

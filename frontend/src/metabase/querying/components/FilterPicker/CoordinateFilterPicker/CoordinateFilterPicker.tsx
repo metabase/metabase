@@ -10,6 +10,7 @@ import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 
@@ -87,6 +88,7 @@ export function CoordinateFilterPicker({
           />
         )}
         <CoordinateValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -99,6 +101,7 @@ export function CoordinateFilterPicker({
 }
 
 interface CoordinateValueInputProps {
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -106,6 +109,7 @@ interface CoordinateValueInputProps {
 }
 
 function CoordinateValueInput({
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -116,13 +120,7 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <NumberInput
-          value={values[0]}
-          onChange={(newValue: number) => onChange([newValue])}
-          placeholder={placeholder}
-          autoFocus
-          w="100%"
-        />
+        <FilterValuePicker column={column} value={values} onChange={onChange} />
       </FlexWithScroll>
     );
   }

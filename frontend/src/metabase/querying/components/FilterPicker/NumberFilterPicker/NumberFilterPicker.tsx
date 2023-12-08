@@ -10,6 +10,7 @@ import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 
 export function NumberFilterPicker({
@@ -72,6 +73,7 @@ export function NumberFilterPicker({
       </FilterPickerHeader>
       <div>
         <NumberValueInput
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -84,6 +86,7 @@ export function NumberFilterPicker({
 }
 
 interface NumberValueInputProps {
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -91,6 +94,7 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -101,13 +105,7 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <NumberInput
-          value={values[0]}
-          onChange={newValue => onChange([newValue])}
-          placeholder={placeholder}
-          autoFocus
-          w="100%"
-        />
+        <FilterValuePicker column={column} value={values} onChange={onChange} />
       </FlexWithScroll>
     );
   }
