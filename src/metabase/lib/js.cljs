@@ -111,9 +111,14 @@
   (lib.core/append-stage a-query))
 
 (defn ^:export drop-stage
-  "Drops the final stage in the pipeline"
+  "Drops the final stage in the pipeline, will no-op if it is the only stage"
   [a-query]
   (lib.core/drop-stage a-query))
+
+(defn ^:export drop-stage-if-empty
+  "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
+  [a-query]
+  (lib.core/drop-stage-if-empty a-query))
 
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
@@ -696,13 +701,10 @@
   [a-query stage-number expression-name an-expression-clause]
   (lib.core/expression a-query stage-number expression-name an-expression-clause))
 
-(defn ^:export expression-name
-  "Return the name of `an-expression-clause`."
-  [an-expression-clause]
-  (lib.core/expression-name an-expression-clause))
-
 (defn ^:export with-expression-name
-  "Return an new expressions clause like `an-expression-clause` but with name `new-name`."
+  "Return a new expression clause like `an-expression-clause` but with name `new-name`.
+  For expressions from the :expressions clause of a pMBQL query this sets the :lib/expression-name option,
+  for other expressions (for example named aggregation expressions) the :display-name option is set."
   [an-expression-clause new-name]
   (lib.core/with-expression-name an-expression-clause new-name))
 
@@ -964,15 +966,19 @@
 
 (defn ^:export available-drill-thrus
   "Return an array (possibly empty) of drill-thrus given:
-  - Required column
+  - Nullable column
   - Nullable value
   - Nullable data row (the array of `{col, value}` pairs from `clicked.data`)
-  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)"
+  - Nullable dimensions list (`{column, value}` pairs from `clicked.dimensions`)
+
+  Column can be nil for a \"chart legend\" click, eg. clicking a category in the legend explaining the colours in a
+  multiple bar or line chart. Underlying records drills apply in that case!"
   [a-query stage-number column value row dimensions]
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
-    (let [column-ref (when-let [a-ref (.-field_ref ^js column)]
+    (let [column-ref (when-let [a-ref (and column (.-field_ref ^js column))]
                        (legacy-ref->pMBQL a-ref))]
-      (->> (merge {:column     (fix-column-with-ref column-ref (js.metadata/parse-column column))
+      (->> (merge {:column     (when column
+                                 (fix-column-with-ref column-ref (js.metadata/parse-column column)))
                    :column-ref column-ref
                    :value      (cond
                                  (undefined? value) nil   ; Missing a value, ie. a column click
@@ -1005,12 +1011,14 @@
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
   [a-drill-thru]
-  (to-array (lib.core/pivot-types a-drill-thru)))
+  (->> (lib.core/pivot-types a-drill-thru)
+       (map name)
+       to-array))
 
 (defn ^:export pivot-columns-for-type
   "Returns an array of pivotable columns of the specified type."
   [a-drill-thru pivot-type]
-  (lib.core/pivot-columns-for-type a-drill-thru pivot-type))
+  (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
 (defn ^:export with-different-table
   "Changes an existing query to use a different source table or card.
@@ -1086,5 +1094,6 @@
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
-                 (= (first legacy-expr) :aggregation-options)
+                 (and (vector? legacy-expr)
+                      (= (first legacy-expr) :aggregation-options))
                  (get 1))))))

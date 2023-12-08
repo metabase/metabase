@@ -152,7 +152,7 @@ class DashboardInner extends Component {
   };
 
   onSharingClick = () => {
-    this.props.setSharing(true);
+    this.props.setSharing(!this.props.isSharing);
   };
 
   onAddQuestion = () => {

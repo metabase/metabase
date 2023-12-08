@@ -73,6 +73,16 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
+  describe("sidebar toggling behavior", () => {
+    it("should allow toggling the sidebar", () => {
+      openDashboardSubscriptions();
+
+      // The sidebar starts open after the method there, so test that clicking the icon closes it
+      cy.findByLabelText("subscriptions").click();
+      sidebar().should("not.exist");
+    });
+  });
+
   describe("with no channels set up", () => {
     it("should instruct user to connect email or slack", () => {
       openDashboardSubscriptions();

@@ -20,7 +20,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse.markdown :as markdown]
-   [metabase.pulse.parameters :as params]
+   [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
@@ -318,7 +318,7 @@
    (merge (common-context)
           {:emailType                 "pulse"
            :title                     (:name pulse)
-           :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
+           :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
            :dashboardDescription      (:description dashboard)
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id
@@ -389,14 +389,14 @@
       (no "less than %d rows in results" body/rows-limit))))
 
 (defn- stream-api-results-to-export-format
-  "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
+  "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
   format.
 
-  TODO -- this function is provided mainly because rewriting all of the Pulse/Alert code to stream results directly
+  TODO -- this function is provided mainly because rewriting all the Pulse/Alert code to stream results directly
   was a lot of work. I intend to rework that code so we can stream directly to the correct export format(s) at some
   point in the future; for now, this function is a stopgap.
 
-  Results are streamed synchronosuly. Caller is responsible for closing `os` when this call is complete."
+  Results are streamed synchronously. Caller is responsible for closing `os` when this call is complete."
   [export-format ^OutputStream os {{:keys [rows]} :data, database-id :database_id, :as results}]
   ;; make sure Database/driver info is available for the streaming results writers -- they might need this in order to
   ;; get timezone information when writing results
@@ -449,7 +449,7 @@
 
 (defn- render-filters
   [notification dashboard]
-  (let [filters (params/parameters notification dashboard)
+  (let [filters (pulse-params/parameters notification dashboard)
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
@@ -474,7 +474,7 @@
                                              :width "50%"
                                              :padding "4px 16px 4px 8px"
                                              :vertical-align "baseline"})}
-                       (params/value-string filter)]]]])
+                       (pulse-params/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html

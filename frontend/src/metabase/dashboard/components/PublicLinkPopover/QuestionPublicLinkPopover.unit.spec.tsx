@@ -104,7 +104,7 @@ describe("QuestionPublicLinkPopover", () => {
 
   it("should call the Card public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
-    userEvent.click(screen.getByText("Remove this public link"));
+    userEvent.click(screen.getByText("Remove public link"));
     expect(
       fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
         method: "DELETE",

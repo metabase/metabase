@@ -1,9 +1,9 @@
 (ns metabase.pulse.render.table-test
   (:require
    [clojure.test :refer :all]
+   [metabase.formatter :as formatter]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.common :as common]
    [metabase.pulse.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]))
@@ -62,9 +62,9 @@
                        :rows [[1 2 3]
                               [4 5 6]
                               [7 8 9]
-                              [7 8 (common/map->NumericWrapper {:num-str "4.5" :num-value 4.5})]
-                              [7 8 (common/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point seperator .
-                              [7 8 (common/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point seperator is ,
+                              [7 8 (formatter/map->NumericWrapper {:num-str "4.5" :num-value 4.5})]
+                              [7 8 (formatter/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point seperator .
+                              [7 8 (formatter/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point seperator is ,
     (is (= {"1"       nil
             "2"       nil
             "3"       "rgba(0, 255, 0, 0.75)"
