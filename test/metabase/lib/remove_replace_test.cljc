@@ -983,3 +983,44 @@
       (is (seq (lib/breakouts result)))
       (is (empty? (lib/aggregations result)))
       (is (= (lib/breakouts query) (lib/breakouts result))))))
+
+(deftest ^:parallel remove-expression-should-clear-fields-if-needed-test
+  (testing "#36574"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :price)))
+                    (lib/aggregate (lib/sum (meta/field-metadata :products :rating)))
+                    (lib/breakout (meta/field-metadata :products :category))
+                    (lib/append-stage)
+                    (lib/expression "foobar" (lib/+ 1 1))
+                    (as-> $q (lib/remove-field $q -1 (m/find-first (comp #{"count"} :name) (lib/visible-columns $q)))))]
+      (testing "Removes if conditions are correct"
+        (is (= (lib/drop-stage query) (lib/remove-clause query (first (lib/expressions query))))))
+      (testing "Does not drop-stage unless last stage"
+        (let [result  (as-> query $q
+                        (lib/append-stage $q)
+                        (lib/remove-clause $q 1 (first (lib/expressions $q 1))))]
+          (is (nil? (lib/expressions result 1)))
+          (is (= 3 (lib/stage-count result)))))
+      (testing "Does not drop-stage if multiple expressions"
+        (let [result (as-> query $q
+                       (lib/expression $q "quux" (lib/+ 2 2))
+                       (lib/remove-clause $q 1 (first (lib/expressions $q 1))))]
+          (is (=? [[:+ {:lib/expression-name "quux"} 2 2]] (lib/expressions result 1)))
+          (is (= 2 (lib/stage-count result)))))))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                  (lib/expression "foobar" (lib/+ 1 1))
+                  (as-> $q (lib/remove-field $q -1 (m/find-first (comp #{"PRICE"} :name) (lib/returned-columns $q)))))]
+    (testing "Does not drop first stage"
+      (is (= (count (disj (meta/fields :products) :price))
+             (count (lib/fields (lib/remove-clause query (first (lib/expressions query)))))))))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                  (lib/append-stage)
+                  (lib/expression "foobar" (lib/+ 1 1))
+                  (as-> $q (lib/remove-field $q -1 (m/find-first (comp #{"PRICE"} :name) (lib/visible-columns $q)))))
+        result (lib/remove-clause query (first (lib/expressions query)))]
+    (testing "Does not drop-stage if previous stage is not summarized"
+      (is (nil? (lib/expressions result)))
+      (is (= (count (disj (meta/fields :products) :price))
+             (count (lib/fields result))))
+      (is (= 2 (lib/stage-count result))))))

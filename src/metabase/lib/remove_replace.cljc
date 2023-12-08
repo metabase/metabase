@@ -138,14 +138,15 @@
 (defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
   (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)
+          stage-number (lib.util/canonical-stage-index query stage-number)
           stage (lib.util/query-stage query stage-number)
           location (m/find-first
-                    (fn [possible-location]
-                      (when-let [clauses (get-in stage possible-location)]
-                        (let [target-uuid (lib.options/uuid target-clause)]
-                          (when (some (comp #{target-uuid} :lib/uuid second) clauses)
-                            possible-location))))
-                    (stage-paths query stage-number))
+                     (fn [possible-location]
+                       (when-let [clauses (get-in stage possible-location)]
+                         (let [target-uuid (lib.options/uuid target-clause)]
+                           (when (some (comp #{target-uuid} :lib/uuid second) clauses)
+                             possible-location))))
+                     (stage-paths query stage-number))
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
                                (lib.common/->op-arg replacement))
@@ -153,6 +154,21 @@
                               #(lib.util/replace-clause %1 %2 %3 replacement-clause)
                               #(lib.util/remove-clause %1 %2 %3 stage-number))
           changing-breakout? (= [:breakout] location)
+          ;; See #36574 - This is a very narrow condition, which I think is driven by FE limitations:
+          ;; If an expression is used after a summarized stage, then removing that expression
+          ;; should drop the entire stage if the only thing remaining on that stage is `:fields`
+          stage-keys (set (keys stage))
+          drop-stage-after-removing-only-expression? (and (pos? stage-number)
+                                                          (or (get-in query [:stages (dec stage-number) :breakout])
+                                                              (get-in query [:stages (dec stage-number) :aggregation]))
+                                                          (not replace?)
+                                                          (get-in stage location)
+                                                          (= [:expressions] location)
+                                                          (or
+                                                            (= #{:lib/type :expressions :fields} stage-keys)
+                                                            (= #{:lib/type :expressions} stage-keys))
+                                                          (= 1 (count (:expressions stage)))
+                                                          (= stage-number (dec (count (:stages query)))))
           sync-breakout-ordering? (and replace?
                                        changing-breakout?
                                        (and (= (first target-clause)
@@ -162,18 +178,24 @@
           query (cond
                   sync-breakout-ordering?
                   (sync-order-by-options-with-breakout
-                   query
-                   stage-number
-                   target-clause
-                   (select-keys (second replacement-clause) [:binning :temporal-unit]))
+                    query
+                    stage-number
+                    target-clause
+                    (select-keys (second replacement-clause) [:binning :temporal-unit]))
 
                   changing-breakout?
                   (remove-breakout-order-by query stage-number target-clause)
 
                   :else
                   query)]
-      (if location
+      (cond
+        drop-stage-after-removing-only-expression?
+        (update query :stages pop)
+
+        location
         (remove-replace-location query stage-number query location target-clause remove-replace-fn)
+
+        :else
         query))))
 
 (declare remove-join)
