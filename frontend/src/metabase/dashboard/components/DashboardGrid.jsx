@@ -440,7 +440,7 @@ class DashboardGrid extends Component {
     const {
       dashboard,
       selectedTabId,
-      outsideDraggedCardId,
+      outsideDraggedCard,
       width,
       addCardToDashboard,
     } = this.props;
@@ -461,13 +461,13 @@ class DashboardGrid extends Component {
         containerPadding={[0, 0]}
         rowHeight={rowHeight}
         isDroppable
-        droppingItem={{ i: String(outsideDraggedCardId), w: 4, h: 2 }}
+        droppingItem={outsideDraggedCard}
         onLayoutChange={this.onLayoutChange}
         onDrag={this.onDrag}
         onDrop={(nextLayout, item, event) => {
           addCardToDashboard({
             dashId: dashboard.id,
-            cardId: outsideDraggedCardId,
+            cardId: outsideDraggedCard.cardId,
             tabId: selectedTabId,
             position: {
               col: item.x,

@@ -60,7 +60,7 @@ import {
   getIsAutoApplyFilters,
   getSelectedTabId,
   getIsNavigatingBackToDashboard,
-  getOutsideDraggedCardId,
+  getOutsideDraggedCard,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
@@ -105,7 +105,7 @@ const mapStateToProps = state => {
     selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-    outsideDraggedCardId: getOutsideDraggedCardId(state),
+    outsideDraggedCard: getOutsideDraggedCard(state),
   };
 };
 

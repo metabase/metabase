@@ -9,9 +9,9 @@ import SelectList from "metabase/components/SelectList";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 
-import { setOutsideDraggedCardId } from "metabase/dashboard/actions";
+import { setOutsideDraggedCard } from "metabase/dashboard/actions";
 
 import type {
   CollectionId,
@@ -132,10 +132,10 @@ export function QuestionList({
                   // @see https://bugzilla.mozilla.org/show_bug.cgi?id=568313
                   onDragStart={e => {
                     e.dataTransfer.setData("text/plain", "");
-                    dispatch(setOutsideDraggedCardId(item.id));
+                    dispatch(setOutsideDraggedCard(item));
                   }}
                   onDragEnd={() => {
-                    dispatch(setOutsideDraggedCardId(null));
+                    dispatch(setOutsideDraggedCard(null));
                   }}
                 />
               ))}

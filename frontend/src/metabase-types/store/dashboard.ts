@@ -83,5 +83,10 @@ export interface DashboardState {
   };
   tabDeletions: Record<TabDeletionId, TabDeletion>;
 
-  outsideDraggedCardId: CardId | null;
+  outsideDraggedCard: {
+    cardId: CardId;
+    i: string;
+    w: number;
+    h: number;
+  } | null;
 }

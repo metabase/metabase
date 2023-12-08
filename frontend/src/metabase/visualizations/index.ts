@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 import type {
+  Card,
   DatasetData,
   Series,
   TransformedSeries,
@@ -56,7 +57,9 @@ export function registerVisualization(visualization: Visualization) {
   }
 }
 
-export function getVisualizationRaw(series: Series) {
+type SeriesLike = Array<{ card: Card }>;
+
+export function getVisualizationRaw(series: SeriesLike) {
   return visualizations.get(series[0].card.display);
 }
 

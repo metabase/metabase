@@ -46,7 +46,7 @@ import {
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
   fetchDashboard,
-  setOutsideDraggedCardId,
+  setOutsideDraggedCard,
 } from "./actions";
 import {
   calculateDashCardRowAfterUndo,
@@ -493,11 +493,8 @@ export const autoApplyFilters = handleActions(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
-export const outsideDraggedCardId = createReducer(null, builder => {
-  builder.addCase(
-    setOutsideDraggedCardId,
-    (state, { payload: cardId }) => cardId,
-  );
+export const outsideDraggedCard = createReducer(null, builder => {
+  builder.addCase(setOutsideDraggedCard, (state, { payload }) => payload);
 });
 
 export const dashboardReducers = reduceReducers(
@@ -518,7 +515,7 @@ export const dashboardReducers = reduceReducers(
     sidebar,
     missingActionParameters,
     autoApplyFilters,
-    outsideDraggedCardId,
+    outsideDraggedCard,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,

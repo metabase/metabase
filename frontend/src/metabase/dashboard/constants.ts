@@ -38,7 +38,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     toastDashboardId: null,
   },
   tabDeletions: {},
-  outsideDraggedCardId: null,
+  outsideDraggedCard: null,
 };
 
 export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;

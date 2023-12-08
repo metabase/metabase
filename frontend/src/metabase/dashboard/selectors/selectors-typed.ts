@@ -25,5 +25,5 @@ export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   return dashcards[dashcardId];
 };
 
-export const getOutsideDraggedCardId = (state: State) =>
-  state.dashboard.outsideDraggedCardId;
+export const getOutsideDraggedCard = (state: State) =>
+  state.dashboard.outsideDraggedCard;
