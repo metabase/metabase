@@ -20,7 +20,10 @@ import { tokenize } from "metabase-lib/expressions/tokenizer";
 import { isExpression } from "metabase-lib/expressions";
 import type { Suggestion } from "metabase-lib/expressions/suggest";
 import { suggest } from "metabase-lib/expressions/suggest";
-import type { HelpText } from "metabase-lib/expressions/types";
+import type {
+  ErrorWithMessage,
+  HelpText,
+} from "metabase-lib/expressions/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
@@ -35,8 +38,6 @@ import {
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
-
-type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
 const ACE_OPTIONS = {
   behavioursEnabled: false,
@@ -401,7 +402,7 @@ class ExpressionEditorTextfield extends React.Component<
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
-    return diagnose(source, startRule, legacyQuery, name);
+    return diagnose({ source, startRule, legacyQuery, name });
   }
 
   commitExpression() {
@@ -412,11 +413,11 @@ class ExpressionEditorTextfield extends React.Component<
       onError,
     } = this.props;
     const { source } = this.state;
-    const errorMessage = diagnose(
+    const errorMessage = diagnose({
       source,
       startRule,
       legacyQuery,
-    ) as ErrorWithMessage | null;
+    });
     this.setState({ errorMessage });
 
     if (errorMessage) {

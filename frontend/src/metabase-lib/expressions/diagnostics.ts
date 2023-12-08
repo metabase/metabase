@@ -1,14 +1,17 @@
 import { t } from "ttag";
 
+import type { Expr, Node } from "metabase-lib/expressions/pratt";
 import {
   parse,
   lexify,
   compile,
   ResolverError,
 } from "metabase-lib/expressions/pratt";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
+import type { ErrorWithMessage } from "./types";
 import {
   MBQL_CLAUSES,
   getMBQLName,
@@ -17,29 +20,33 @@ import {
   parseSegment,
 } from "./index";
 
+type Token = {
+  type: number;
+  op: string;
+  start: number;
+  end: number;
+};
+
 // e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
-export function countMatchingParentheses(tokens) {
-  const isOpen = t => t.op === OPERATOR.OpenParenthesis;
-  const isClose = t => t.op === OPERATOR.CloseParenthesis;
-  const count = (c, token) =>
+export function countMatchingParentheses(tokens: Token[]) {
+  const isOpen = (t: Token) => t.op === OPERATOR.OpenParenthesis;
+  const isClose = (t: Token) => t.op === OPERATOR.CloseParenthesis;
+  const count = (c: number, token: Token) =>
     isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
   return tokens.reduce(count, 0);
 }
 
-/**
- * @typedef {Object} ErrorWithMessage
- * @property {string} message
- */
-
-/**
- * @private
- * @param {string} source
- * @param {string} startRule
- * @param {object} legacyQuery
- * @param {string | null} name
- * @returns {ErrorWithMessage | null}
- */
-export function diagnose(source, startRule, legacyQuery, name = null) {
+export function diagnose({
+  source,
+  startRule,
+  legacyQuery,
+  name = null,
+}: {
+  source: string;
+  startRule: string;
+  legacyQuery: StructuredQuery;
+  name?: string | null;
+}): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
   }
@@ -84,11 +91,20 @@ export function diagnose(source, startRule, legacyQuery, name = null) {
   try {
     return prattCompiler(source, startRule, legacyQuery, name);
   } catch (err) {
-    return err;
+    if (isErrorWithMessage(err)) {
+      return err;
+    }
+
+    return { message: t`Invalid expression` };
   }
 }
 
-function prattCompiler(source, startRule, legacyQuery, name) {
+function prattCompiler(
+  source: string,
+  startRule: string,
+  legacyQuery: StructuredQuery,
+  name: string | null,
+): ErrorWithMessage | null {
   const tokens = lexify(source);
   const options = { source, startRule, legacyQuery, name };
 
@@ -101,7 +117,7 @@ function prattCompiler(source, startRule, legacyQuery, name) {
     return errors[0];
   }
 
-  function resolveMBQLField(kind, name, node) {
+  function resolveMBQLField(kind: string, name: string, node: Node) {
     if (!legacyQuery) {
       return [kind, name];
     }
@@ -118,7 +134,7 @@ function prattCompiler(source, startRule, legacyQuery, name) {
       }
       return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
-      const reference = options.name; // avoid circular reference
+      const reference = options.name ?? ""; // avoid circular reference
 
       // fallback
       const dimension = parseDimension(name, { reference, ...options });
@@ -140,9 +156,7 @@ function prattCompiler(source, startRule, legacyQuery, name) {
       ],
       getMBQLName,
     });
-    const isBoolean =
-      COMPARISON_OPS.includes(expression[0]) ||
-      LOGICAL_OPS.includes(expression[0]);
+    const isBoolean = isBooleanExpression(expression);
     if (startRule === "expression" && isBoolean) {
       throw new ResolverError(
         t`Custom columns do not support boolean expressions`,
@@ -151,8 +165,30 @@ function prattCompiler(source, startRule, legacyQuery, name) {
     }
   } catch (err) {
     console.warn("compile error", err);
-    return err;
+
+    if (isErrorWithMessage(err)) {
+      return err;
+    }
+
+    return { message: t`Invalid expression` };
   }
 
   return null;
+}
+
+function isBooleanExpression(
+  expr: unknown,
+): expr is [string, ...Expr[]] & { node?: Node } {
+  return (
+    Array.isArray(expr) &&
+    (LOGICAL_OPS.includes(expr[0]) || COMPARISON_OPS.includes(expr[0]))
+  );
+}
+
+function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
+  return (
+    typeof err === "object" &&
+    err != null &&
+    typeof (err as any).message === "string"
+  );
 }
