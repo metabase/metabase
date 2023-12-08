@@ -156,56 +156,56 @@
                        (update :base_type       keyword))))))))))
 
 (deftest yaml-sorted-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database           db  {:name "My Company Data"}
-                       Table              t   {:name "Customers" :db_id (:id db)}
-                       Field              w   {:name "Company/organization website" :table_id (:id t)}
-                       FieldValues        _   {:field_id (:id w)}
-                       Collection         col {:name "Some Collection"}
-                       Card               c1  {:name "some card" :collection_id nil}
-                       Card               c2  {:name "other card" :collection_id (:id col)}
-                       Dashboard          d1  {:name "some dash" :collection_id (:id col)}
-                       DashboardCard      _   {:card_id (:id c1) :dashboard_id (:id d1)}
-                       DashboardCard      _   {:card_id (:id c2) :dashboard_id (:id d1)}
-                       NativeQuerySnippet _   {:name "root snippet" :collection_id nil}]
-      (let [export     (extract/extract nil)
-            check-sort (fn [coll order]
-                         (loop [[k :as ks] (keys coll)
-                                idx        -1]
-                           (let [new-idx (get order k)]
-                             (if (nil? new-idx)
-                               ;; rest are sorted alphabetically
-                               (is (= (not-empty (sort ks))
-                                      (not-empty ks)))
-                               (do
-                                 ;; check every present key is sorted in a monotone increasing order
-                                 (is (< idx (get order k)))
-                                 (recur (rest ks)
-                                        (long new-idx)))))))
-            descend    (fn descend
-                         ([coll]
-                          (let [model (-> (:serdes/meta coll) last :model)]
-                            (is model)
-                            (descend coll [(keyword model)])))
-                         ([coll path]
-                          (let [order (or (get @@#'dump/serialization-order path)
-                                          (get @@#'dump/serialization-order (last path)))]
-                            (testing (str "Path = " path)
-                              (is order)
-                              (check-sort coll order))
-                            (doseq [[k v] coll]
-                              (cond
-                                (map? v)               (descend v (conj path k))
-                                (and (sequential? v)
-                                     (map? (first v))) (run! #(descend % (conj path k)) v))))))]
-        (with-redefs [spit (fn [fname yaml-data]
-                             (testing (format "File %s\n" fname)
-                               (let [coll (yaml/parse-string yaml-data)]
-                                 (if (str/ends-with? fname "settings.yaml")
-                                   (descend coll [:settings])
-                                   (descend coll)))))]
-          (storage/store! export "/non-existent"))))))
-
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db
+      (ts/with-temp-dpc [Database           db  {:name "My Company Data"}
+                         Table              t   {:name "Customers" :db_id (:id db)}
+                         Field              w   {:name "Company/organization website" :table_id (:id t)}
+                         FieldValues        _   {:field_id (:id w)}
+                         Collection         col {:name "Some Collection"}
+                         Card               c1  {:name "some card" :collection_id nil}
+                         Card               c2  {:name "other card" :collection_id (:id col)}
+                         Dashboard          d1  {:name "some dash" :collection_id (:id col)}
+                         DashboardCard      _   {:card_id (:id c1) :dashboard_id (:id d1)}
+                         DashboardCard      _   {:card_id (:id c2) :dashboard_id (:id d1)}
+                         NativeQuerySnippet _   {:name "root snippet" :collection_id nil}]
+        (let [export     (extract/extract nil)
+              check-sort (fn [coll order]
+                           (loop [[k :as ks] (keys coll)
+                                  idx        -1]
+                             (let [new-idx (get order k)]
+                               (if (nil? new-idx)
+                                 ;; rest are sorted alphabetically
+                                 (is (= (not-empty (sort ks))
+                                        (not-empty ks)))
+                                 (do
+                                   ;; check every present key is sorted in a monotone increasing order
+                                   (is (< idx (get order k)))
+                                   (recur (rest ks)
+                                          (long new-idx)))))))
+              descend    (fn descend
+                           ([coll]
+                            (let [model (-> (:serdes/meta coll) last :model)]
+                              (is model)
+                              (descend coll [(keyword model)])))
+                           ([coll path]
+                            (let [order (or (get @@#'dump/serialization-order path)
+                                            (get @@#'dump/serialization-order (last path)))]
+                              (testing (str "Path = " path)
+                                (is order)
+                                (check-sort coll order))
+                              (doseq [[k v] coll]
+                                (cond
+                                  (map? v)               (descend v (conj path k))
+                                  (and (sequential? v)
+                                       (map? (first v))) (run! #(descend % (conj path k)) v))))))]
+          (with-redefs [spit (fn [fname yaml-data]
+                               (testing (format "File %s\n" fname)
+                                 (let [coll (yaml/parse-string yaml-data)]
+                                   (if (str/ends-with? fname "settings.yaml")
+                                     (descend coll [:settings])
+                                     (descend coll)))))]
+            (storage/store! export dump-dir)))))))
 
 (deftest store-error-test
   (testing "destination not writable"

@@ -78,6 +78,13 @@
   [^Path path]
   (iterator-seq (.iterator (Files/list path))))
 
+(defn make-writable-parents!
+  "Like `clojure.java.io/make-parents`, but checks that resulting path is writable."
+  [f]
+  (when-let [parent (.getParentFile (io/file f))]
+    (.mkdirs parent)
+    (.canWrite parent)))
+
 
 ;;; ------------------------------------------------- Copying Stuff --------------------------------------------------
 
