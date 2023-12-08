@@ -29,7 +29,8 @@ export function processSource(options) {
       if (!dimension) {
         throw new Error(t`Unknown Field: ${name}`);
       }
-      return dimension.mbql();
+
+      return Lib.legacyFieldRef(dimension);
     }
   };
 

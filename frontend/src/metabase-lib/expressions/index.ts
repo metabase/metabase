@@ -1,10 +1,9 @@
 export * from "./config";
 
 import { FK_SYMBOL } from "metabase/lib/formatting";
-import { checkNotNull } from "metabase/lib/types";
 import type { Expression } from "metabase-types/api";
-import Dimension, { ExpressionDimension } from "metabase-lib/Dimension";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as Lib from "metabase-lib";
+import Dimension from "metabase-lib/Dimension";
 import type Metric from "metabase-lib/metadata/Metric";
 import type Segment from "metabase-lib/metadata/Segment";
 import {
@@ -68,11 +67,30 @@ function isReservedWord(word: string) {
 
 export function parseMetric(
   metricName: string,
-  { legacyQuery }: { legacyQuery: StructuredQuery },
+  { query, stageIndex }: { query: Lib.Query; stageIndex: number },
 ) {
-  return checkNotNull(legacyQuery.table()).metrics?.find(
-    metric => metric.name.toLowerCase() === metricName.toLowerCase(),
-  );
+  const metrics = Lib.availableMetrics(query);
+
+  const metric = metrics.find(metric => {
+    const displayInfo = Lib.displayInfo(
+      query as Lib.Query,
+      stageIndex as number,
+      metric,
+    );
+
+    return displayInfo.displayName.toLowerCase() === metricName.toLowerCase();
+  });
+
+  if (metric) {
+    // @uladzimirdev fix a type of the metric
+    const legacyExpression = Lib.legacyExpressionForExpressionClause(
+      query,
+      stageIndex,
+      metric as any,
+    );
+
+    return legacyExpression;
+  }
 }
 
 export function formatMetricName(metric: Metric, options: Record<string, any>) {
@@ -82,21 +100,39 @@ export function formatMetricName(metric: Metric, options: Record<string, any>) {
 // SEGMENTS
 export function parseSegment(
   segmentName: string,
-  { legacyQuery }: { legacyQuery: StructuredQuery },
+  { query, stageIndex }: { query: Lib.Query; stageIndex: number },
 ) {
-  const table = checkNotNull(legacyQuery.table());
-  const segment = table.segments?.find(
-    segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
-  );
+  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, segment);
+
+    return displayInfo.displayName.toLowerCase() === segmentName.toLowerCase();
+  });
+
   if (segment) {
-    return segment;
+    // @uladzimirdev fix a type of the segment
+    const legacyExpression = Lib.legacyExpressionForExpressionClause(
+      query,
+      stageIndex,
+      segment as any,
+    );
+
+    return legacyExpression;
   }
 
-  const field = table.fields?.find(
-    field => field.name.toLowerCase() === segmentName.toLowerCase(),
-  );
-  if (field?.isBoolean()) {
-    return field;
+  const column = Lib.fieldableColumns(query, stageIndex).find(field => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, field);
+    return displayInfo.name.toLowerCase() === segmentName.toLowerCase();
+  });
+
+  if (column && Lib.isBoolean(column)) {
+    // @uladzimirdev fix a type of the column
+    const legacyExpression = Lib.legacyExpressionForExpressionClause(
+      query,
+      stageIndex,
+      column as any,
+    );
+
+    return legacyExpression;
   }
 }
 
@@ -116,23 +152,35 @@ export function parseDimension(
   name: string,
   {
     reference,
-    legacyQuery,
-  }: { reference: string; legacyQuery: StructuredQuery },
+    query,
+    stageIndex,
+    source,
+  }: {
+    reference: string;
+    query: Lib.Query;
+    stageIndex: number;
+    source: string;
+  },
 ) {
-  // FIXME: this is pretty inefficient, create a lookup table?
-  return legacyQuery
-    .dimensionOptions()
-    .all()
-    .filter(
-      d =>
-        !(d instanceof ExpressionDimension) ||
-        getDimensionName(d) !== reference,
-    )
-    .find(d =>
-      EDITOR_FK_SYMBOLS.symbols.some(
-        separator => getDimensionName(d, separator) === name,
-      ),
-    );
+  const columns = Lib.expressionableColumns(query, stageIndex, source.length);
+
+  return columns
+    .filter(column => {
+      const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
+      const _name = getDisplayNameWithSeparator(displayInfo.longDisplayName);
+
+      return _name !== reference;
+    })
+    .find(column => {
+      const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
+      return EDITOR_FK_SYMBOLS.symbols.some(
+        separator =>
+          getDisplayNameWithSeparator(displayInfo.displayName, separator) ===
+          name,
+      );
+    });
 }
 
 export function formatDimensionName(dimension: Dimension, options: object) {
