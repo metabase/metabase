@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import type { FieldReference, Filter } from "metabase-types/api";
 import {
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
@@ -24,13 +25,14 @@ import {
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
 
 // convert a MBQL expression back into an expression string
-export function format(mbql, options = {}) {
+// It is hard to provide correct types here, so we have to use any
+export function format(mbql: any, options: Record<string, any> = {}): string {
   if (mbql == null || _.isEqual(mbql, [])) {
     return "";
   } else if (isNumberLiteral(mbql)) {
-    return formatNumberLiteral(mbql, options);
+    return formatNumberLiteral(mbql);
   } else if (isBooleanLiteral(mbql)) {
-    return formatBooleanLiteral(mbql, options);
+    return formatBooleanLiteral(mbql);
   } else if (isStringLiteral(mbql)) {
     return formatStringLiteral(mbql, options);
   } else if (isOperator(mbql)) {
@@ -51,15 +53,19 @@ export function format(mbql, options = {}) {
   throw new Error("Unknown MBQL clause " + JSON.stringify(mbql));
 }
 
-function formatBooleanLiteral(mbql) {
+function formatBooleanLiteral(mbql: unknown) {
   return mbql ? "True" : "False";
 }
 
-function formatNumberLiteral(mbql) {
+function formatNumberLiteral(mbql: unknown) {
   return JSON.stringify(mbql);
 }
 
-function formatDimension(fieldRef, options) {
+// @uladzimirdev provide correct types to options
+function formatDimension(
+  fieldRef: FieldReference,
+  options: Record<string, any>,
+) {
   const { legacyQuery } = options;
   if (legacyQuery) {
     const dimension = legacyQuery.parseFieldReference(fieldRef);
@@ -71,7 +77,10 @@ function formatDimension(fieldRef, options) {
   }
 }
 
-function formatMetric([, metricId], options) {
+function formatMetric(
+  [, metricId]: FieldReference,
+  options: Record<string, any>,
+) {
   const { legacyQuery } = options;
   const metric = _.findWhere(legacyQuery.table().metrics, { id: metricId });
   if (!metric) {
@@ -80,7 +89,10 @@ function formatMetric([, metricId], options) {
   return formatMetricName(metric, options);
 }
 
-function formatSegment([, segmentId], options) {
+function formatSegment(
+  [, segmentId]: FieldReference,
+  options: Record<string, any>,
+) {
   const { legacyQuery } = options;
   const segment = _.findWhere(legacyQuery.table().segments, { id: segmentId });
   if (!segment) {
@@ -90,7 +102,7 @@ function formatSegment([, segmentId], options) {
 }
 
 // HACK: very specific to some string/time functions for now
-function formatFunctionOptions(fnOptions) {
+function formatFunctionOptions(fnOptions: Record<string, any>) {
   if (Object.prototype.hasOwnProperty.call(fnOptions, "case-sensitive")) {
     const caseSensitive = fnOptions["case-sensitive"];
     if (!caseSensitive) {
@@ -105,7 +117,7 @@ function formatFunctionOptions(fnOptions) {
   }
 }
 
-function formatFunction([fn, ...args], options) {
+function formatFunction([fn, ...args]: any[], options: Record<string, any>) {
   if (hasOptions(args)) {
     const fnOptions = formatFunctionOptions(args.pop());
     if (fnOptions) {
@@ -119,7 +131,7 @@ function formatFunction([fn, ...args], options) {
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
-function formatOperator([op, ...args], options) {
+function formatOperator([op, ...args]: any[], options: Record<string, any>) {
   if (hasOptions(args)) {
     // FIXME: how should we format args?
     args = args.slice(0, -1);
@@ -155,11 +167,14 @@ function formatOperator([op, ...args], options) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase([_, clauses, caseOptions = {}], options) {
+function formatCase(
+  [_, clauses, caseOptions = {}]: any[],
+  options: Record<string, any>,
+) {
   const formattedName = getExpressionName("case");
   const formattedClauses = clauses
     .map(
-      ([filter, mbql]) =>
+      ([filter, mbql]: any[]) =>
         format(filter, options) + ", " + format(mbql, options),
     )
     .join(", ");
@@ -170,18 +185,18 @@ function formatCase([_, clauses, caseOptions = {}], options) {
   return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }
 
-const NEGATIVE_FILTERS = {
+const NEGATIVE_FILTERS: Record<string, string> = {
   "does-not-contain": "contains",
   "not-empty": "is-empty",
   "not-null": "is-null",
 };
 
-function isNegativeFilter(expr) {
+function isNegativeFilter(expr: Filter) {
   const [fn, ...args] = expr;
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
 
-function formatNegativeFilter(mbql, options) {
+function formatNegativeFilter(mbql: Filter, options: Record<string, any>) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
   return "NOT " + format([baseFn, ...args], options);

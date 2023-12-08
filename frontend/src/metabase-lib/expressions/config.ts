@@ -28,7 +28,7 @@ export const EDITOR_FK_SYMBOLS = {
 };
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-export const OPERATOR_PRECEDENCE = {
+export const OPERATOR_PRECEDENCE: Record<string, number> = {
   not: 17,
   "*": 15,
   "/": 15,
@@ -421,7 +421,7 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
   ]),
 );
 export function getExpressionName(mbqlName: string) {
-  return MBQL_TO_EXPRESSION_NAME.get(mbqlName);
+  return MBQL_TO_EXPRESSION_NAME.get(mbqlName) ?? "";
 }
 export function getMBQLName(expressionName: string) {
   // case-insensitive
