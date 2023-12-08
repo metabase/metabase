@@ -70,7 +70,10 @@ export const ExpressionStep = ({
       )}
       isLastOpened={isLastOpened}
       onRemove={clause => {
-        const nextQuery = Lib.removeClause(query, stageIndex, clause);
+        const nextQuery = Lib.dropStageIfEmpty(
+          Lib.removeClause(query, stageIndex, clause),
+          step.stageIndex,
+        );
         updateQuery(nextQuery);
       }}
       withLegacyPopover
