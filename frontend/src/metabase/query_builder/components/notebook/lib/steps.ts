@@ -180,26 +180,26 @@ export function getQuestionSteps(
   const allSteps: NotebookStep[] = [];
 
   if (question.isStructured()) {
-    let query = question.query() as StructuredQuery;
+    let legacyQuery = question.query() as StructuredQuery;
 
-    let topLevelQuery = query.rootQuery().question()._getMLv2Query();
+    let query = legacyQuery.rootQuery().question()._getMLv2Query();
 
     const database = question.database();
     const allowsNesting = database && database.hasFeature("nested-queries");
 
     // strip empty source queries
-    query = query.cleanNesting();
+    legacyQuery = legacyQuery.cleanNesting();
 
     // add a level of nesting, if valid
-    if (allowsNesting && query.hasBreakouts()) {
-      query = query.nest();
-      topLevelQuery = Lib.appendStage(topLevelQuery);
+    if (allowsNesting && legacyQuery.hasBreakouts()) {
+      legacyQuery = legacyQuery.nest();
+      query = Lib.appendStage(query);
     }
 
-    const stagedQueries = query.queries();
+    const stagedQueries = legacyQuery.queries();
     for (const [stageIndex, stageQuery] of stagedQueries.entries()) {
       const { steps, actions } = getStageSteps(
-        topLevelQuery,
+        query,
         stageQuery,
         stageIndex,
         metadata,
@@ -226,8 +226,8 @@ export function getQuestionSteps(
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
 function getStageSteps(
-  topLevelQuery: Query,
-  stageQuery: StructuredQuery,
+  query: Query,
+  legacyQuery: StructuredQuery,
   stageIndex: number,
   metadata: Metadata,
   openSteps: OpenSteps,
@@ -247,22 +247,17 @@ function getStageSteps(
 
   function getStep(STEP: NotebookStepDef, itemIndex: number | null = null) {
     const id = getId(STEP, itemIndex);
-    const active = STEP.active(
-      topLevelQuery,
-      stageIndex,
-      itemIndex ?? undefined,
-    );
+    const active = STEP.active(query, stageIndex, itemIndex ?? undefined);
     const step: NotebookStep = {
       id: id,
       type: STEP.type,
       stageIndex: stageIndex,
       itemIndex: itemIndex,
-      topLevelQuery,
-      query: stageQuery,
-      valid: STEP.valid(topLevelQuery, metadata),
+      topLevelQuery: query,
+      query: legacyQuery,
+      valid: STEP.valid(query, metadata),
       active,
-      visible:
-        STEP.valid(topLevelQuery, metadata) && Boolean(active || openSteps[id]),
+      visible: STEP.valid(query, metadata) && Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
         ? (query: Lib.Query) =>
@@ -284,10 +279,7 @@ function getStageSteps(
     STEPS.map(STEP => {
       if (STEP.subSteps) {
         // add 1 for the initial or next action button
-        const itemIndexes = _.range(
-          0,
-          STEP.subSteps(topLevelQuery, stageIndex) + 1,
-        );
+        const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
         return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
       } else {
         return [getStep(STEP)];
@@ -295,7 +287,7 @@ function getStageSteps(
     }),
   );
 
-  let previewQuery: Lib.Query | null = topLevelQuery;
+  let previewQuery: Lib.Query | null = query;
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
