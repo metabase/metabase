@@ -608,8 +608,7 @@
   ;; => 108
   )
 
-;;;; Flakes in CI around 0400 UTC. Investigating.
-#_(deftest server-side-relative-datetime-various-units-test
+(deftest server-side-relative-datetime-various-units-test
   (mt/test-driver
    :redshift
    (mt/with-metadata-provider (mt/id)
