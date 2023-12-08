@@ -1216,21 +1216,24 @@
 (deftest append-all-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "Append should succeed for all possible CSV column types"
-        (let [csv-rows ["id,biginteger,float,text,boolean,date,datetime,offset_datetime"
-                        "2,2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
-          (mt/dataset (all-types-db-definition)
-            (let [table (t2/select-one :model/Table :db_id (mt/id))
-                  _     (t2/update! :model/Table (:id table) {:is_upload true})
-                  file  (csv-file-with csv-rows (mt/random-name))]
-              (is (some? (upload/append-csv! {:file     file
-                                              :table-id (:id table)})))
-              (testing "Check the data was uploaded into the table correctly"
-                (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
-                        [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
-                       (mt/with-report-timezone-id "UTC"
-                         (rows-for-table table)))))
-              (io/delete-file file))))))))
+      (with-mysql-local-infile-on-and-off
+        (mt/with-report-timezone-id "UTC"
+          (testing "Append should succeed for all possible CSV column types"
+            (let [csv-rows ["id,biginteger,float,text,boolean,date,datetime,offset_datetime"
+                            "2,2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
+              (mt/dataset (all-types-db-definition)
+                (with-redefs [driver/db-default-timezone (constantly "Z")
+                              upload/current-database    (constantly (mt/db))]
+                  (let [table (t2/select-one :model/Table :db_id (mt/id))
+                        _     (t2/update! :model/Table (:id table) {:is_upload true})
+                        file  (csv-file-with csv-rows (mt/random-name))]
+                    (is (some? (upload/append-csv! {:file     file
+                                                    :table-id (:id table)})))
+                    (testing "Check the data was uploaded into the table correctly"
+                      (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
+                              [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
+                             (rows-for-table table))))
+                    (io/delete-file file)))))))))))
 
 (deftest append-no-rows-test
   (mt/test-driver :h2
