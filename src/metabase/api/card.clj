@@ -804,13 +804,13 @@
   [{:keys [collection-id filename file]}]
   (try
     (let [model (upload/create-csv-upload! {:collection-id collection-id
-                                     :filename      filename
-                                     :file          file
-                                     :schema-name   (public-settings/uploads-schema-name)
-                                     :table-prefix  (public-settings/uploads-table-prefix)
-                                     :db-id         (or (public-settings/uploads-database-id)
-                                                        (throw (ex-info (tru "The uploads database is not configured.")
-                                                                        {:status-code 422})))})]
+                                            :filename      filename
+                                            :file          file
+                                            :schema-name   (public-settings/uploads-schema-name)
+                                            :table-prefix  (public-settings/uploads-table-prefix)
+                                            :db-id         (or (public-settings/uploads-database-id)
+                                                               (throw (ex-info (tru "The uploads database is not configured.")
+                                                                               {:status-code 422})))})]
       {:status 200
        :body   (:id model)})
     (catch Throwable e

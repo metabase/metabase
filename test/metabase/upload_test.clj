@@ -886,16 +886,16 @@
         (when grant?
           (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
         (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
-                   (upload/upload-csv! {:collection-id collection-id
-                                        :filename      csv-file-name
-                                        :file          file
-                                        :db-id         db-id
-                                        :schema-name   schema-name
-                                        :table-prefix  table-prefix}))
+                   (upload/create-csv-upload! {:collection-id collection-id
+                                               :filename      csv-file-name
+                                               :file          file
+                                               :db-id         db-id
+                                               :schema-name   schema-name
+                                               :table-prefix  table-prefix}))
           (when grant?
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
-(deftest upload-csv!-schema-test
+(deftest create-csv-upload!-schema-test
   (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
     (mt/with-empty-db
       (let [db                   (mt/db)
@@ -946,7 +946,7 @@
           (finally
             (t2/update! :model/Database db-id original-sync-values)))))))
 
-(deftest upload-csv!-table-prefix-test
+(deftest create-csv-upload!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Happy path with table prefix, and without schema"
@@ -963,7 +963,7 @@
                     new-table))
             (is (nil? (:schema new-table)))))))))
 
-(deftest upload-csv!-auto-pk-column-display-name-test
+(deftest create-csv-upload!-auto-pk-column-display-name-test
   (testing "The auto-generated column display_name should be the same as its name"
    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
      (mt/with-empty-db
@@ -1008,7 +1008,7 @@
                   :user-id (str (mt/user->id :rasta))}
                  (last (snowplow-test/pop-event-data-and-user-id!)))))))))
 
-(deftest upload-csv!-failure-test
+(deftest create-csv-upload!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -1041,7 +1041,7 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest upload-csv!-schema-does-not-sync-test
+(deftest create-csv-upload!-schema-does-not-sync-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
     (mt/with-empty-db
