@@ -863,12 +863,13 @@
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
   current user is granted data permissions to the database."
-  [& {:keys [schema-name table-prefix collection-id grant-permission? uploads-enabled user-id db-id]
-      :or {collection-id     nil ;; root collection
-           grant-permission? true
-           uploads-enabled   true
-           user-id           (mt/user->id :rasta)
-           db-id             (mt/id)}}]
+  [& {:keys [schema-name table-prefix collection-id grant-permission? uploads-enabled user-id db-id sync-synchronously?]
+      :or {collection-id       nil ;; root collection
+           grant-permission?   true
+           uploads-enabled     true
+           user-id             (mt/user->id :rasta)
+           db-id               (mt/id)
+           sync-synchronously? true}}]
   (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
     (mt/with-current-user user-id
       (let [;; Make the file-name unique so the table names don't collide
@@ -884,12 +885,13 @@
                                    grant-permission?)]
         (when grant?
           (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
-        (u/prog1 (upload/upload-csv! {:collection-id collection-id
-                                      :filename      csv-file-name
-                                      :file          file
-                                      :db-id         db-id
-                                      :schema-name   schema-name
-                                      :table-prefix  table-prefix})
+        (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
+                   (upload/upload-csv! {:collection-id collection-id
+                                        :filename      csv-file-name
+                                        :file          file
+                                        :db-id         db-id
+                                        :schema-name   schema-name
+                                        :table-prefix  table-prefix}))
           (when grant?
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
@@ -912,7 +914,7 @@
               (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
                 (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                ["CREATE SCHEMA \"not_public\";"]))
-              (let [new-model (upload-example-csv! :schema-name "not_public")
+              (let [new-model (upload-example-csv! :schema-name "not_public" :sync-synchronously? false)
                     new-table (t2/select-one Table :db_id db-id)]
                 (is (=? {:display          :table
                          :database_id      db-id
