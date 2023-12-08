@@ -7,8 +7,14 @@ import { resolve } from "./resolver";
 
 import { parseDimension, parseMetric, parseSegment } from "./index";
 
-export function processSource(options) {
-  const resolveMBQLField = (kind, name) => {
+export function processSource(options: {
+  source: string;
+  query: Lib.Query;
+  stageIndex: number;
+  startRule: string;
+  name?: string;
+}) {
+  const resolveMBQLField = (kind: string, name: string) => {
     if (kind === "metric") {
       const metric = parseMetric(name, options);
       if (!metric) {
@@ -22,7 +28,7 @@ export function processSource(options) {
       }
       return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
-      const reference = options.name; // avoid circular reference
+      const reference = options.name ?? ""; // avoid circular reference
 
       // fallback
       const dimension = parseDimension(name, { reference, ...options });
