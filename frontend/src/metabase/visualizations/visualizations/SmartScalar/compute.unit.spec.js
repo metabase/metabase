@@ -150,14 +150,14 @@ describe("SmartScalar > compute", () => {
           expected: "100; Nov 2019; ↓ 66.67% vs. Sep: 300",
         },
         {
-          description:
-            "should correctly fallback to day unit if backend doesn’t return valid unit",
+          description: "should display full date if no dateUnit is supplied",
           rows: [
             ["2018-09-01", 100],
             ["2019-11-01", 300],
           ],
           dateUnit: null,
-          expected: "300; Nov 1, 2019; ↑ 200% vs. Sep 1, 2018: 100",
+          expected:
+            "300; November 1, 2019, 12:00 AM; ↑ 200% vs. September 1, 2018, 12:00 AM: 100",
         },
       ];
 
