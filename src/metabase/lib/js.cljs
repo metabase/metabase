@@ -1011,12 +1011,14 @@
 (defn ^:export pivot-types
   "Returns an array of pivot types that are available in this drill-thru, which must be a pivot drill-thru."
   [a-drill-thru]
-  (to-array (lib.core/pivot-types a-drill-thru)))
+  (->> (lib.core/pivot-types a-drill-thru)
+       (map name)
+       to-array))
 
 (defn ^:export pivot-columns-for-type
   "Returns an array of pivotable columns of the specified type."
   [a-drill-thru pivot-type]
-  (lib.core/pivot-columns-for-type a-drill-thru pivot-type))
+  (to-array (lib.core/pivot-columns-for-type a-drill-thru (keyword pivot-type))))
 
 (defn ^:export with-different-table
   "Changes an existing query to use a different source table or card.

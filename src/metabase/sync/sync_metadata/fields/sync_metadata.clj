@@ -9,7 +9,6 @@
    [metabase.sync.sync-metadata.fields.common :as common]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -71,57 +70,57 @@
         updates
         (merge
          (when new-db-type?
-           (log/info (trs "Database type of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-database-type
-                          new-database-type))
+           (log/infof "Database type of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-type
+                      new-database-type)
            {:database_type new-database-type})
          (when new-base-type?
-           (log/info (trs "Base type of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-base-type
-                          new-base-type))
+           (log/infof "Base type of %s has changed from ''%s'' to ''%s''."
+                     (common/field-metadata-name-for-logging table metabase-field)
+                     old-base-type
+                     new-base-type)
            {:base_type new-base-type})
          (when new-semantic-type?
-           (log/info (trs "Semantic type of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-semantic-type
-                          new-semantic-type))
+           (log/infof "Semantic type of {0} has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-semantic-type
+                      new-semantic-type)
            {:semantic_type new-semantic-type})
          (when new-comment?
-           (log/info (trs "Comment has been added for {0}."
-                          (common/field-metadata-name-for-logging table metabase-field)))
+           (log/infof "Comment has been added for %s."
+                      (common/field-metadata-name-for-logging table metabase-field))
            {:description new-field-comment})
          (when new-database-position?
-           (log/info (trs "Database position of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-database-position
-                          new-database-position))
+           (log/infof "Database position of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-position
+                      new-database-position)
            {:database_position new-database-position})
          (when (and (= (:field_order table) :database)
                     (not= old-position new-database-position))
-           (log/info (trs "Position of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-position
-                          new-database-position))
+           (log/infof "Position of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-position
+                      new-database-position)
            {:position new-database-position})
          (when new-name?
-           (log/info (trs "Name of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-database-name
-                          new-database-name))
+           (log/infof "Name of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-name
+                      new-database-name)
            {:name new-database-name})
          (when new-db-auto-incremented?
-           (log/info (trs "Database auto incremented of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-database-is-auto-increment
-                          new-database-is-auto-increment))
+           (log/infof "Database auto incremented of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-auto-increment
+                      new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
          (when new-db-required?
-           (log/info (trs "Database required of {0} has changed from ''{1}'' to ''{2}''."
-                          (common/field-metadata-name-for-logging table metabase-field)
-                          old-db-required
-                          new-db-required))
+           (log/infof "Database required of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-db-required
+                      new-db-required)
            {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
