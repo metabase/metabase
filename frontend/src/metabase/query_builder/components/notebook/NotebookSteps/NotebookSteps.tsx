@@ -47,7 +47,9 @@ function NotebookSteps({
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );
-  const [lastOpenedStep, setLastOpenedStep] = useState<string | null>(null);
+  const [lastOpenedStep, setLastOpenedStep] = useState<
+    INotebookStep["id"] | null
+  >(null);
 
   const steps = useMemo(() => {
     if (!question) {
@@ -56,12 +58,12 @@ function NotebookSteps({
     return getQuestionSteps(question, metadata, openSteps);
   }, [metadata, question, openSteps]);
 
-  const handleStepOpen = useCallback((id: string) => {
+  const handleStepOpen = useCallback((id: INotebookStep["id"]) => {
     setOpenSteps(openSteps => ({ ...openSteps, [id]: true }));
     setLastOpenedStep(id);
   }, []);
 
-  const handleStepClose = useCallback((id: string) => {
+  const handleStepClose = useCallback((id: INotebookStep["id"]) => {
     setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
     setLastOpenedStep(lastOpenedStep =>
       lastOpenedStep === id ? null : lastOpenedStep,
@@ -69,18 +71,14 @@ function NotebookSteps({
   }, []);
 
   const handleQueryChange = useCallback(
-    async (step: INotebookStep, query: Query) => {
+    async (query: Query) => {
       const updatedLegacyQuery = Lib.toLegacyQuery(query);
       const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
       const updatedQuery = updatedQuestion.query() as StructuredQuery;
       const cleanQuestion = updatedQuery.cleanNesting().question();
       await updateQuestion(cleanQuestion);
-
-      // mark the step as "closed" since we can assume
-      // it's been added or removed by the updateQuery
-      handleStepClose(step.id);
     },
-    [question, updateQuestion, handleStepClose],
+    [question, updateQuestion],
   );
 
   if (!question) {
@@ -92,7 +90,13 @@ function NotebookSteps({
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
-        const onChange = (query: Query) => handleQueryChange(step, query);
+        const onChange = async (query: Query) => {
+          await handleQueryChange(query);
+
+          // mark the step as "closed" since we can assume
+          // it's been added or removed by the updateQuery
+          handleStepClose(step.id);
+        };
 
         return (
           <NotebookStep
