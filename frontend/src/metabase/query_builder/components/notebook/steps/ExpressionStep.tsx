@@ -1,5 +1,6 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import * as Lib from "metabase-lib";
+import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 
 import type { NotebookStepUiComponentProps } from "../types";
 import { ClauseStep } from "./ClauseStep";
@@ -37,7 +38,13 @@ export const ExpressionStep = ({
           clause={item}
           withName
           onChangeClause={(name, clause) => {
-            const namedClause = Lib.withExpressionName(clause, name);
+            const expressionsObject = Object.fromEntries(
+              expressions.map(expression => [
+                Lib.displayInfo(query, stageIndex, expression).displayName,
+              ]),
+            );
+            const uniqueName = getUniqueExpressionName(expressionsObject, name);
+            const namedClause = Lib.withExpressionName(clause, uniqueName);
             const isUpdate = item;
 
             if (isUpdate) {
@@ -52,7 +59,7 @@ export const ExpressionStep = ({
               const nextQuery = Lib.expression(
                 query,
                 stageIndex,
-                name,
+                uniqueName,
                 namedClause,
               );
               updateQuery(nextQuery);
