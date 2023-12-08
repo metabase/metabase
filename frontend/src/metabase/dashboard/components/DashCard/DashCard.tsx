@@ -12,7 +12,6 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 import {
   getDashcardResultsError,
   isDashcardLoading,
-  isVirtualDashCard,
 } from "metabase/dashboard/utils";
 
 import { isActionCard } from "metabase/actions/utils";
@@ -268,7 +267,6 @@ function DashCardInner({
             dashcard={dashcard}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
-            isVirtualDashCard={isVirtualDashCard(dashcard)}
             hasError={hasError}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
