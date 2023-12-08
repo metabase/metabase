@@ -30,8 +30,7 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "join",
     valid: (query, metadata) => {
-      const databaseId = Lib.databaseID(query);
-      const database = metadata.database(databaseId);
+      const database = metadata.database(Lib.databaseID(query));
       return Boolean(database?.hasFeature("join"));
     },
     subSteps: (query, stageIndex) => {
@@ -61,8 +60,7 @@ const STEPS: NotebookStepDef[] = [
   {
     type: "expression",
     valid: (query, metadata) => {
-      const databaseId = Lib.databaseID(query);
-      const database = metadata.database(databaseId);
+      const database = metadata.database(Lib.databaseID(query));
       return Boolean(database?.hasFeature("expressions"));
     },
     active: (query, stageIndex) => {
@@ -183,8 +181,7 @@ export function getQuestionSteps(
     let legacyQuery = question.query() as StructuredQuery;
     let query = legacyQuery.rootQuery().question()._getMLv2Query();
 
-    const databaseId = Lib.databaseID(query);
-    const database = metadata.database(databaseId);
+    const database = metadata.database(Lib.databaseID(query));
     const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
 
     // strip empty source queries
