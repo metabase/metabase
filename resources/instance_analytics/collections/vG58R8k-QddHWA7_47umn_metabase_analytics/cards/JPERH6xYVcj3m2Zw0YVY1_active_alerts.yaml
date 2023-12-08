@@ -15,7 +15,7 @@ database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
 - public
-- v_alerts_subscriptions
+- v_alerts
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -28,24 +28,15 @@ dataset_query:
     aggregation:
     - - count
     filter:
-    - and
-    - - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_alerts_subscriptions
-          - archived
-        - null
-      - false
-    - - =
-      - - field
-        - - Internal Metabase Database
-          - public
-          - v_alerts_subscriptions
-          - entity_type
-        - null
-      - alert
-    source-table: 5ojUtU9iE-DCggHdFPIll
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts
+        - archived
+      - base-type: type/Boolean
+    - false
+    source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
 result_metadata: null
 visualization_settings:
