@@ -111,9 +111,14 @@
   (lib.core/append-stage a-query))
 
 (defn ^:export drop-stage
-  "Drops the final stage in the pipeline"
+  "Drops the final stage in the pipeline, will no-op if it is the only stage"
   [a-query]
   (lib.core/drop-stage a-query))
+
+(defn ^:export drop-stage-if-empty
+  "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
+  [a-query]
+  (lib.core/drop-stage-if-empty a-query))
 
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
@@ -1087,5 +1092,6 @@
   (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
-                 (= (first legacy-expr) :aggregation-options)
+                 (and (vector? legacy-expr)
+                      (= (first legacy-expr) :aggregation-options))
                  (get 1))))))

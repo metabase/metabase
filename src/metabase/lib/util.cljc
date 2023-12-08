@@ -79,7 +79,7 @@
   (when (clause? clause)
     (:lib/expression-name (lib.options/options clause))))
 
-(defn named-expression-clause
+(defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
   (-> (if (clause? clause)
@@ -87,7 +87,10 @@
         [:value {:lib/uuid (str (random-uuid))
                  :effective-type (lib.schema.expression/type-of clause)}
          clause])
-      (lib.options/update-options assoc :lib/expression-name a-name)))
+      (lib.options/update-options (fn [opts]
+                                    (-> opts
+                                        (assoc :lib/expression-name a-name)
+                                        (dissoc :name :display-name))))))
 
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
@@ -96,7 +99,7 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (named-expression-clause new-clause (expression-name target-clause))
+                     (top-level-expression-clause new-clause (expression-name target-clause))
                      new-clause)]
     (m/update-existing-in
       stage
