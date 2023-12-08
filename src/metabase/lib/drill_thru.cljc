@@ -115,6 +115,6 @@
     stage-number :- :int
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
-   (log/infof "Applying drill thru: %s"
-              (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
+   (log/debugf "Applying drill thru: %s"
+               (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
    (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))
