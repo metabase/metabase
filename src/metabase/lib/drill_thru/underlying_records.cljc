@@ -11,6 +11,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
@@ -69,14 +71,25 @@
 (mu/defn ^:private drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
+   column       :- ::lib.schema.metadata/column
    value        :- :any]
   (let [filter-clauses (or (when (lib.binning/binning column)
                              (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
                                (let [unbinned-column (lib.binning/with-binning column nil)]
                                  [(lib.filter/>= unbinned-column min-value)
                                   (lib.filter/< unbinned-column max-value)])))
-                           [(lib.filter/= column value)])]
+                           ;; if the column was temporally bucketed in the top level, make sure the `=` filter we
+                           ;; generate still has that bucket. Otherwise the filter will be something like
+                           ;;
+                           ;;    col = March 2023
+                           ;;
+                           ;; instead of
+                           ;;
+                           ;;    month(col) = March 2023
+                           (let [column (if-let [temporal-unit (::lib.underlying/temporal-unit column)]
+                                          (lib.temporal-bucket/with-temporal-bucket column temporal-unit)
+                                          column)]
+                             [(lib.filter/= column value)]))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))
