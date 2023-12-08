@@ -168,9 +168,11 @@ export function parseDimension(
     .filter(column => {
       const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
-      const _name = getDisplayNameWithSeparator(displayInfo.longDisplayName);
+      const nameWithSeparator = getDisplayNameWithSeparator(
+        displayInfo.longDisplayName,
+      );
 
-      return _name !== reference;
+      return nameWithSeparator !== reference;
     })
     .find(column => {
       const displayInfo = Lib.displayInfo(query, stageIndex, column);
