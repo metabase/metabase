@@ -128,12 +128,10 @@ describe("PublicLinkPopover", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render `Remove this public link` for non-admins", () => {
+    it("should not render `Remove public link` for non-admins", () => {
       setup({ isAdmin: false });
 
-      expect(
-        screen.queryByText("Remove this public link"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
     });
   });
 
