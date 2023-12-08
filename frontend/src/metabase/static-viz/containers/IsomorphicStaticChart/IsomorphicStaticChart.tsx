@@ -21,7 +21,6 @@ export const IsomorphicStaticChart = (props: IsomorphicStaticChartProps) => {
     case "bar":
     case "combo":
       return <ComboChart {...props} />;
-    case "scatter2": // TODO remove this
     case "scatter":
       return <ScatterPlot {...props} />;
     case "scalar":

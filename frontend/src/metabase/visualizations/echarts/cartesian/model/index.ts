@@ -84,8 +84,7 @@ export const getCartesianChartModel = (
 
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const dataset =
-    rawSeries[0].card.display === "scatter" ||
-    rawSeries[0].card.display === "scatter2"
+    rawSeries[0].card.display === "scatter"
       ? getScatterPlotDataset(rawSeries, cardsColumns)
       : getJoinedCardsDataset(rawSeries, cardsColumns);
   const transformedDataset = getTransformedDataset(

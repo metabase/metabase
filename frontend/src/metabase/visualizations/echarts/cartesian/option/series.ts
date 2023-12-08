@@ -174,8 +174,6 @@ export const buildEChartsSeries = (
             barSeriesCount,
             renderingContext,
           );
-        // TODO: remove scatter2 case
-        case "scatter2":
         case "scatter":
           return buildEChartsScatterSeries(
             seriesModel,

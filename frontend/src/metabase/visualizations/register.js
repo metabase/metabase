@@ -25,7 +25,6 @@ import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 import { Heading } from "./visualizations/Heading";
-import { ScatterPlot2 } from "./visualizations/ScatterPlot2";
 
 export default function () {
   registerVisualization(Scalar);
@@ -40,8 +39,6 @@ export default function () {
   registerVisualization(BarChart);
   registerVisualization(WaterfallChart);
   registerVisualization(ComboChart);
-  // Do not merge to master
-  registerVisualization(ScatterPlot2);
   registerVisualization(RowChart);
   registerVisualization(ScatterPlot);
   registerVisualization(PieChart);

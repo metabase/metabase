@@ -104,7 +104,6 @@
            :area
            :bar
            :combo
-           :scatter2 ;; TODO: remove this before merging
            :scatter} display-type)
         (chart-type :isomorphic "display-type is %s" display-type)
 
