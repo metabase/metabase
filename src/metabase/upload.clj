@@ -528,31 +528,34 @@
     - the schema of the CSV file does not match the schema of the table"
   [table header]
   ;; Assumes table-cols are unique when normalized
-  (let [table-cols           (t2/select :model/Field :table_id (:id table))
-        table-cols-by-normed (-> (into {}
-                                       (map (fn [col]
-                                              [(normalize-column-name (:name col)) col]))
-                                       table-cols)
-                                 (dissoc "_mb_row_id"))
+  (let [fields                   (t2/select :model/Field :table_id (:id table))
+        fields-by-normed-name    (-> (into {}
+                                           (map (fn [field]
+                                                  [(normalize-column-name (:name field)) field]))
+                                           fields)
+                                     ;; ignore the _mb_row_id field, it will be filled automatically
+                                     (dissoc "_mb_row_id"))
+        normalized-field-names   (keys fields-by-normed-name)
+        ;; TODO: use this to create nice error messages when there are extra or missing columns
         normalized-header+header (into []
                                        (map (fn [col]
                                               [(normalize-column-name col) col]))
                                        header)
-        normalized-header-name (map first normalized-header+header)
-        normalized-table-cols-name (keys table-cols-by-normed)
+        normalized-header        (map first normalized-header+header)
         ;; check for duplicates
         _ (when (some #(< 1 %) (vals (frequencies normalized-header)))
             (throw (ex-info (tru "The CSV file contains duplicate column names.")
                             {:status-code 422})))
         [extra missing _both] (data/diff (set normalized-header)
-                                         (set normalized-table-cols))]
+                                         (set normalized-field-names))]
 
-    (if (and (nil? extra) (nil? missing))
+    (if (and (empty? extra) (empty? missing))
       {:parse-rows (fn [rows]
                      (let [rows' rows ;; TODO: remove auto-pk columns here
-                           col-upload-types (map (comp base-type->upload-type :base_type table-cols-by-normed) normalized-header)]
+                           col-upload-types (map (comp base-type->upload-type :base_type fields-by-normed-name)
+                                                 normalized-header)]
                        (parse-rows* col-upload-types rows')))
-       :table-col-names (map (comp :name table-cols-by-normed) normalized-header)}
+       :table-col-names (map (comp :name fields-by-normed-name) normalized-header)}
       (throw (ex-info (tru "The schema of the CSV file does not match the schema of the table.")
                       {:status-code 422})))))
 
