@@ -14,7 +14,8 @@
   (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
     (let [indexes                    (fetch-metadata/index-metadata database table)
           ;; not all indexes are field names, they could be function based index as well
-          field-name-indexes         (t2/select-fn-set :name :model/Field :table_id (:id table) :name [:in indexes])
+          field-name-indexes         (when (seq indexes)
+                                       (t2/select-fn-set :name :model/Field :table_id (:id table) :name [:in indexes]))
           existing-index-field-names (t2/select-fn-set :name :model/Field :table_id (:id table) :database_indexed true)
           [removing adding]          (data/diff existing-index-field-names field-name-indexes)]
       (doseq [field-name removing]
