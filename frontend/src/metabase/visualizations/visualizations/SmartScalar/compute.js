@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { formatValue } from "metabase/lib/formatting/value";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import { color } from "metabase/lib/colors";
+import { color, colors } from "metabase/lib/colors";
 import {
   COMPARISON_TYPES,
   formatChange,
@@ -35,7 +35,7 @@ export function computeTrend(series, insights, settings) {
   // find percent change in values
   const percentChange = !isEmpty(comparisonValue)
     ? computeChange(comparisonValue, value)
-    : null;
+    : undefined;
 
   const {
     changeType,
@@ -53,7 +53,7 @@ export function computeTrend(series, insights, settings) {
         changeArrowIconName,
         settings["scalar.switch_positive_negative"],
       )
-    : null;
+    : undefined;
 
   const valueStr = formatValue(value, formatOptions);
   const dateStr = formatDateStr({ date, dateUnitSettings });
@@ -400,10 +400,25 @@ export function computeChange(comparisonVal, currVal) {
   return (currVal - comparisonVal) / Math.abs(comparisonVal);
 }
 
-export const PREVIOUS_VALUE_OPTIONS = {
-  MISSING: "PREVIOUS_VALUE_MISSING",
-  SAME: "PREVIOUS_VALUE_SAME",
-  CHANGED: "PREVIOUS_VALUE_CHANGED",
+export const CHANGE_TYPE_OPTIONS = {
+  MISSING: {
+    CHANGE_TYPE: "PREVIOUS_VALUE_MISSING",
+    PERCENT_CHANGE_STR: t`N/A`,
+    COMPARISON_VALUE_STR: t`(No data)`,
+  },
+  SAME: {
+    CHANGE_TYPE: "PREVIOUS_VALUE_SAME",
+    PERCENT_CHANGE_STR: t`No change`,
+    COMPARISON_VALUE_STR: "",
+  },
+  CHANGED: {
+    CHANGE_TYPE: "PREVIOUS_VALUE_CHANGED",
+  },
+};
+
+export const CHANGE_ARROW_ICONS = {
+  ARROW_UP: "arrow_up",
+  ARROW_DOWN: "arrow_down",
 };
 
 function computeChangeTypeWithOptions({
@@ -413,23 +428,26 @@ function computeChangeTypeWithOptions({
 }) {
   if (isEmpty(comparisonValue)) {
     return {
-      changeType: PREVIOUS_VALUE_OPTIONS.MISSING,
-      percentChangeStr: t`N/A`,
-      comparisonValueStr: t`(No data)`,
+      changeType: CHANGE_TYPE_OPTIONS.MISSING.CHANGE_TYPE,
+      percentChangeStr: CHANGE_TYPE_OPTIONS.MISSING.PERCENT_CHANGE_STR,
+      comparisonValueStr: CHANGE_TYPE_OPTIONS.MISSING.COMPARISON_VALUE_STR,
     };
   }
 
   if (percentChange === 0) {
     return {
-      changeType: PREVIOUS_VALUE_OPTIONS.SAME,
-      percentChangeStr: t`No change`,
-      comparisonValueStr: "",
+      changeType: CHANGE_TYPE_OPTIONS.SAME.CHANGE_TYPE,
+      percentChangeStr: CHANGE_TYPE_OPTIONS.SAME.PERCENT_CHANGE_STR,
+      comparisonValueStr: CHANGE_TYPE_OPTIONS.SAME.COMPARISON_VALUE_STR,
     };
   }
 
   return {
-    changeType: PREVIOUS_VALUE_OPTIONS.CHANGED,
-    changeArrowIconName: percentChange < 0 ? "arrow_down" : "arrow_up",
+    changeType: CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE,
+    changeArrowIconName:
+      percentChange < 0
+        ? CHANGE_ARROW_ICONS.ARROW_DOWN
+        : CHANGE_ARROW_ICONS.ARROW_UP,
     percentChangeStr: formatChange(percentChange),
     comparisonValueStr: formatValue(comparisonValue, formatOptions),
   };
@@ -437,8 +455,14 @@ function computeChangeTypeWithOptions({
 
 function getArrowColor(changeArrowIconName, shouldSwitchPositiveNegative) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
-    ? { arrow_down: "success", arrow_up: "error" }
-    : { arrow_down: "error", arrow_up: "success" };
+    ? {
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: colors.success,
+        [CHANGE_ARROW_ICONS.ARROW_UP]: colors.error,
+      }
+    : {
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: colors.error,
+        [CHANGE_ARROW_ICONS.ARROW_UP]: colors.success,
+      };
 
   return color(arrowIconColorNames[changeArrowIconName]);
 }

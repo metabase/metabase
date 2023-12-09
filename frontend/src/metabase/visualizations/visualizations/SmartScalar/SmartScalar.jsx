@@ -55,7 +55,7 @@ import {
   isComparisonValid,
   isPeriodVisible,
 } from "./utils";
-import { computeTrend, PREVIOUS_VALUE_OPTIONS } from "./compute";
+import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
 
 const ScalarPeriod = ({ lines = 2, period, onClick }) => (
   <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
@@ -89,7 +89,7 @@ function PreviousValueComparison({
   } = comparison;
 
   const fittedChangeDisplay =
-    changeType === PREVIOUS_VALUE_OPTIONS.CHANGED
+    changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
       ? formatChangeAutoPrecision(percentChange, {
           fontFamily,
           fontWeight: 900,
@@ -115,7 +115,7 @@ function PreviousValueComparison({
 
   const valueCandidates = [
     display.comparisonValue,
-    ...(changeType === PREVIOUS_VALUE_OPTIONS.CHANGED
+    ...(changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
       ? [formatValue(comparisonValue, { ...formatOptions, compact: true })]
       : []),
     "",
