@@ -104,7 +104,8 @@
            :area
            :bar
            :combo
-           :scatter} display-type)
+           :scatter
+           :waterfall} display-type)
         (chart-type :isomorphic "display-type is %s" display-type)
 
         (#{:scalar
@@ -113,8 +114,7 @@
            :funnel
            :progress
            :gauge
-           :table
-           :waterfall} display-type)
+           :table} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= display-type :pie)

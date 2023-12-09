@@ -23,6 +23,8 @@ export const IsomorphicStaticChart = (props: IsomorphicStaticChartProps) => {
       return <ComboChart {...props} />;
     case "scatter":
       return <ScatterPlot {...props} />;
+    case "waterfall":
+      return <Placeholder text="waterfall placeholder" />;
     case "scalar":
       return <Placeholder text="combined scalar placeholder" />;
     case "pie":

@@ -61,6 +61,7 @@ const VALUES_MARGIN = 6;
  * @param {import("./types").WaterfallChartProps} props
  * @returns {JSX.Element}
  */
+// TODO delete this component and file
 function WaterfallChart({
   data,
   type,
