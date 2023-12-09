@@ -102,7 +102,7 @@ function computeComparison({ currentMetricData, series, settings }) {
     });
   }
 
-  return null;
+  throw Error("Invalid comparison type specified");
 }
 
 function getCurrentMetricData({ series, insights, settings }) {

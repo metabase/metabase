@@ -182,7 +182,6 @@ describe("SmartScalar > compute", () => {
             comparison: {
               ...getComparisonProperties({
                 changeType: "missing",
-                metricValue: 300,
               }),
             },
           },
@@ -197,7 +196,6 @@ describe("SmartScalar > compute", () => {
             comparison: {
               ...getComparisonProperties({
                 changeType: "missing",
-                metricValue: 300,
               }),
             },
           },
@@ -278,7 +276,6 @@ describe("SmartScalar > compute", () => {
               comparison: {
                 ...getComparisonProperties({
                   changeType: "missing",
-                  metricValue: 100,
                 }),
               },
             },
@@ -458,7 +455,6 @@ describe("SmartScalar > compute", () => {
                 ...getComparisonProperties({
                   changeType: "missing",
                   dateStr: "previous year",
-                  metricValue: 300,
                 }),
               },
             },
@@ -475,7 +471,7 @@ describe("SmartScalar > compute", () => {
           expect(getTrend(trend)).toEqual(expected);
         });
 
-        describe(`should handle dateUnit is missing`, () => {
+        describe(`invalid options`, () => {
           const comparisonType = COMPARISON_TYPES.PREVIOUS_PERIOD;
           const settings = {
             "scalar.field": "Count",
@@ -681,7 +677,6 @@ describe("SmartScalar > compute", () => {
                 ...getComparisonProperties({
                   changeType: "missing",
                   dateStr: "2017",
-                  metricValue: 300,
                 }),
               },
             },
@@ -704,7 +699,6 @@ describe("SmartScalar > compute", () => {
                 ...getComparisonProperties({
                   changeType: "missing",
                   dateStr: "2014",
-                  metricValue: 300,
                 }),
               },
             },
@@ -750,7 +744,6 @@ describe("SmartScalar > compute", () => {
                 ...getComparisonProperties({
                   changeType: "missing",
                   dateStr: "2019",
-                  metricValue: 300,
                 }),
               },
             },
@@ -772,7 +765,6 @@ describe("SmartScalar > compute", () => {
                 ...getComparisonProperties({
                   changeType: "missing",
                   dateStr: "2020",
-                  metricValue: 300,
                 }),
               },
             },
@@ -792,13 +784,87 @@ describe("SmartScalar > compute", () => {
             expect(getTrend(trend)).toEqual(expected);
           },
         );
+
+        describe(`invalid options`, () => {
+          const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
+          const createSettings = value => ({
+            "scalar.field": "Count",
+            "scalar.comparisons": { type: comparisonType, value },
+          });
+
+          const cols = [
+            DateTimeColumn({ name: "Month" }),
+            NumberColumn({ name: "Count" }),
+          ];
+
+          const testCases = [
+            {
+              description: "should handle no dateUnit supplied",
+              rows: [
+                ["2017-01-01", 10],
+                ["2018-01-01", 100],
+                ["2019-01-01", 300],
+              ],
+              dateUnit: null,
+              periodsAgo: 1,
+              error: "No date unit supplied for periods ago comparison",
+            },
+            {
+              description: "should handle periodsAgo as a string",
+              rows: [
+                ["2017-01-01", 10],
+                ["2018-01-01", 100],
+                ["2019-01-01", 300],
+              ],
+              dateUnit: "year",
+              periodsAgo: "string",
+              error: "No integer value supplied for periods ago comparison",
+            },
+            {
+              description: "should handle periodsAgo as a float",
+              rows: [
+                ["2017-01-01", 10],
+                ["2018-01-01", 100],
+                ["2019-01-01", 300],
+              ],
+              dateUnit: "year",
+              periodsAgo: 5.39,
+              error: "No integer value supplied for periods ago comparison",
+            },
+            {
+              description: "should handle missing periodsAgo value",
+              rows: [
+                ["2017-01-01", 10],
+                ["2018-01-01", 100],
+                ["2019-01-01", 300],
+              ],
+              dateUnit: "year",
+              periodsAgo: null,
+              error: "No integer value supplied for periods ago comparison",
+            },
+          ];
+
+          it.each(testCases)(
+            "$description",
+            ({ rows, dateUnit, periodsAgo, error }) => {
+              const insights = [{ unit: dateUnit, col: "Count" }];
+
+              expect(() =>
+                computeTrend(
+                  series({ rows, cols }),
+                  insights,
+                  createSettings(periodsAgo),
+                ),
+              ).toThrow(error);
+            },
+          );
+        });
       });
 
-      describe(`should handle invalid values`, () => {
-        const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
-        const createSettings = value => ({
+      describe(`invalid comparison type`, () => {
+        const createSettings = type => ({
           "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType, value },
+          "scalar.comparisons": { type },
         });
 
         const cols = [
@@ -808,70 +874,43 @@ describe("SmartScalar > compute", () => {
 
         const testCases = [
           {
-            description: "should handle no dateUnit supplied",
+            description: "should handle no comparison type specified",
             rows: [
-              ["2017-01-01", 10],
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: null,
-            periodsAgo: 1,
-            error: "No date unit supplied for periods ago comparison",
-          },
-          {
-            description: "should handle periodsAgo as a string",
-            rows: [
-              ["2017-01-01", 10],
+              ["2016-01-01", 10],
               ["2018-01-01", 100],
               ["2019-01-01", 300],
             ],
             dateUnit: "year",
-            periodsAgo: "string",
-            error: "No integer value supplied for periods ago comparison",
+            type: undefined,
           },
           {
-            description: "should handle periodsAgo as a float",
+            description: "should handle invalid comparison type specified",
             rows: [
-              ["2017-01-01", 10],
+              ["2016-01-01", 10],
               ["2018-01-01", 100],
               ["2019-01-01", 300],
             ],
             dateUnit: "year",
-            periodsAgo: 5.39,
-            error: "No integer value supplied for periods ago comparison",
-          },
-          {
-            description: "should handle missing periodsAgo value",
-            rows: [
-              ["2017-01-01", 10],
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: "year",
-            periodsAgo: null,
-            error: "No integer value supplied for periods ago comparison",
+            type: "whatever you feel like",
           },
         ];
 
-        it.each(testCases)(
-          "$description",
-          ({ rows, dateUnit, periodsAgo, error }) => {
-            const insights = [{ unit: dateUnit, col: "Count" }];
+        it.each(testCases)("$description", ({ rows, dateUnit, type }) => {
+          const insights = [{ unit: dateUnit, col: "Count" }];
 
-            expect(() =>
-              computeTrend(
-                series({ rows, cols }),
-                insights,
-                createSettings(periodsAgo),
-              ),
-            ).toThrow(error);
-          },
-        );
+          expect(() =>
+            computeTrend(
+              series({ rows, cols }),
+              insights,
+              createSettings(type),
+            ),
+          ).toThrow("Invalid comparison type specified");
+        });
       });
     });
 
     describe("formatting options", () => {
-      describe("should display date based on date-unit", () => {
+      describe("dateUnit", () => {
         describe("(dateUnit supplied) should remove higher-order time periods if previous date is same day or same year as metric date", () => {
           const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
           const getComparisonProperties =
@@ -1358,7 +1397,15 @@ describe("SmartScalar > compute", () => {
 });
 
 function createGetComparisonProperties(comparisonType) {
-  return args => getComparisonPropertiesByType({ comparisonType, ...args });
+  return ({ changeType, comparisonValue, dateStr, flipColor, metricValue }) =>
+    getComparisonPropertiesByType({
+      comparisonType,
+      changeType,
+      comparisonValue,
+      dateStr,
+      flipColor,
+      metricValue,
+    });
 }
 
 function getComparisonPropertiesByType({
