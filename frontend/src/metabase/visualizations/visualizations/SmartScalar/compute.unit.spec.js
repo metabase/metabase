@@ -1151,6 +1151,84 @@ describe("SmartScalar > compute", () => {
         });
       });
     });
+
+    describe("should correctly handle time-zones", () => {
+      const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
+      const getComparisonProperties =
+        createGetComparisonProperties(comparisonType);
+      const createSettings = value => ({
+        "scalar.field": "Count",
+        "scalar.comparisons": { type: comparisonType, value },
+      });
+
+      const cols = [
+        DateTimeColumn({ name: "Month" }),
+        NumberColumn({ name: "Count" }),
+      ];
+
+      const testCases = [
+        {
+          description: "should handle comparisons by hours",
+          rows: [
+            ["2022-12-01T07:00:00-04:00", 100],
+            ["2022-12-01T10:00:00-04:00", 300],
+          ],
+          dateUnit: "hour",
+          periodsAgo: 3,
+          expected: {
+            ...getMetricProperties({
+              dateStr: "Dec 1, 2022, 10:00–59 AM",
+              metricValue: 300,
+            }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "increase",
+                comparisonValue: 100,
+                dateStr: "7:00–59 AM",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+        {
+          description: "should handle comparisons by minutes",
+          rows: [
+            ["2022-12-01T10:15:00-04:00", 100],
+            ["2022-12-01T10:30:00-04:00", 300],
+          ],
+          dateUnit: "minute",
+          periodsAgo: 15,
+          expected: {
+            ...getMetricProperties({
+              dateStr: "Dec 1, 2022, 10:30 AM",
+              metricValue: 300,
+            }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "increase",
+                comparisonValue: 100,
+                dateStr: "10:15 AM",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+      ];
+
+      it.each(testCases)(
+        "$description",
+        ({ rows, expected, dateUnit, periodsAgo }) => {
+          const insights = [{ unit: dateUnit, col: "Count" }];
+          const trend = computeTrend(
+            series({ rows, cols }),
+            insights,
+            createSettings(periodsAgo),
+          );
+
+          expect(getTrend(trend)).toEqual(expected);
+        },
+      );
+    });
   });
 });
 
