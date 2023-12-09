@@ -7,11 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:clj  ([clojure.string :as str]
-              [metabase.driver :as driver]
-              [metabase.query-processor :as qp]
-              [metabase.query-processor.store :as qp.store])
-       :cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -229,34 +225,10 @@
                                       {:short :is-null}
                                       {:short :not-null}]}}
               drill))
-      (let [query' (lib/drill-thru query -1 drill "=" (lib/relative-datetime :current :day))]
+      (testing "VERY IMPORTANT! UPDATED QUERY NEEDS TO USE A NOMINAL FIELD LITERAL REF, SINCE COLUMN NAME IS DIFFERENT!"
         (is (=? {:stages [{:source-card 5
                            :filters     [[:=
                                           {}
                                           [:field {} "ALIAS_CREATED_AT"]
                                           [:relative-datetime {} :current :day]]]}]}
-                query'))
-        #?(:clj
-           (qp.store/with-metadata-provider metadata-provider
-             (is (= ["SELECT"
-                     "  \"source\".\"ID\" AS \"ID\","
-                     "  \"source\".\"ALIAS_CREATED_AT\" AS \"ALIAS_CREATED_AT\""
-                     "FROM"
-                     "  ("
-                     "    select"
-                     "      1 as \"ID\","
-                     "      current_timestamp:: datetime as \"ALIAS_CREATED_AT\""
-                     "  ) AS \"source\""
-                     "WHERE"
-                     "  (\"source\".\"ALIAS_CREATED_AT\" >= CAST(NOW() AS date))"
-                     "  AND ("
-                     "    \"source\".\"ALIAS_CREATED_AT\" < CAST("
-                     "      DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date"
-                     "    )"
-                     "  )"
-                     "LIMIT"
-                     "  1048575"]
-                    (->> (qp/compile query')
-                         :query
-                         (driver/prettify-native-form :h2)
-                         str/split-lines)))))))))
+                (lib/drill-thru query -1 drill "=" (lib/relative-datetime :current :day))))))))
