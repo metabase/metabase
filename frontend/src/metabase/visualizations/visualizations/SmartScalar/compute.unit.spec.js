@@ -59,6 +59,159 @@ describe("SmartScalar > compute", () => {
   describe("computeTrend", () => {
     const series = ({ rows, cols }) => [{ data: { rows, cols } }];
 
+    describe("change types", () => {
+      const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
+      const getComparisonProperties =
+        createGetComparisonProperties(comparisonType);
+      const settings = {
+        "scalar.field": "Count",
+        "scalar.comparisons": { type: comparisonType },
+      };
+
+      const cols = [
+        DateTimeColumn({ name: "Month" }),
+        NumberColumn({ name: "Count" }),
+      ];
+
+      const testCases = [
+        {
+          description: "should correctly display percent increase",
+          rows: [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "increase",
+                comparisonValue: 100,
+                dateStr: "Oct",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+        {
+          description: "should correctly display percent decrease",
+          rows: [
+            ["2019-10-01", 300],
+            ["2019-11-01", 100],
+          ],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 100 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "decrease",
+                comparisonValue: 300,
+                dateStr: "Oct",
+                metricValue: 100,
+              }),
+            },
+          },
+        },
+        {
+          description: "should correctly display positive infinite increase",
+          rows: [
+            ["2019-10-01", 0],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "increase",
+                comparisonValue: 0,
+                dateStr: "Oct",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+        {
+          description: "should correctly display negative infinite decrease",
+          rows: [
+            ["2019-10-01", 0],
+            ["2019-11-01", -300],
+          ],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: -300 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "decrease",
+                comparisonValue: 0,
+                dateStr: "Oct",
+                metricValue: -300,
+              }),
+            },
+          },
+        },
+        {
+          description: "should correctly display no change",
+          rows: [
+            ["2019-10-01", 100],
+            ["2019-11-01", 100],
+          ],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 100 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "no change",
+                comparisonValue: 100,
+                dateStr: "Oct",
+                metricValue: 100,
+              }),
+            },
+          },
+        },
+        {
+          description:
+            "should correctly display missing data if previous value is null",
+          rows: [
+            ["2019-09-01", null],
+            ["2019-11-01", 300],
+          ],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "missing",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+        {
+          description:
+            "should correctly display missing data for no previous rows",
+          rows: [["2019-11-01", 300]],
+          dateUnit: "month",
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "missing",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+      ];
+
+      it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
+        const insights = [{ unit: dateUnit, col: "Count" }];
+        const trend = computeTrend(series({ rows, cols }), insights, settings);
+
+        expect(getTrend(trend)).toEqual(expected);
+      });
+    });
+
     describe("comparison types", () => {
       describe(`comparisonType: ${COMPARISON_TYPES.PREVIOUS_VALUE}`, () => {
         const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
@@ -75,114 +228,6 @@ describe("SmartScalar > compute", () => {
         ];
 
         const testCases = [
-          {
-            description: "should correctly display percent increase",
-            rows: [
-              ["2019-10-01", 100],
-              ["2019-11-01", 300],
-            ],
-            dateUnit: "month",
-            expected: {
-              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "increase",
-                  comparisonValue: 100,
-                  dateStr: "Oct",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description: "should correctly display percent decrease",
-            rows: [
-              ["2019-10-01", 300],
-              ["2019-11-01", 100],
-            ],
-            dateUnit: "month",
-            expected: {
-              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 100 }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "decrease",
-                  comparisonValue: 300,
-                  dateStr: "Oct",
-                  metricValue: 100,
-                }),
-              },
-            },
-          },
-          {
-            description: "should correctly display no change",
-            rows: [
-              ["2019-10-01", 100],
-              ["2019-11-01", 100],
-            ],
-            dateUnit: "month",
-            expected: {
-              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 100 }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "no change",
-                  comparisonValue: 100,
-                  dateStr: "Oct",
-                  metricValue: 100,
-                }),
-              },
-            },
-          },
-          {
-            description: "should correctly display infinite increase",
-            rows: [
-              ["2019-10-01", 0],
-              ["2019-11-01", 300],
-            ],
-            dateUnit: "month",
-            expected: {
-              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "increase",
-                  comparisonValue: 0,
-                  dateStr: "Oct",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description:
-              "should correctly display missing data if previous value is null",
-            rows: [
-              ["2019-09-01", null],
-              ["2019-11-01", 300],
-            ],
-            dateUnit: "month",
-            expected: {
-              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "missing",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description: "should correctly display missing data for single row",
-            rows: [["2019-11-01", 300]],
-            dateUnit: "month",
-            expected: {
-              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "missing",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
           {
             description:
               "should correctly display percent decrease over missing row",
@@ -205,7 +250,7 @@ describe("SmartScalar > compute", () => {
           },
           {
             description:
-              "should correctly display percent decrease over null data",
+              "should correctly display percent decrease over null row data",
             rows: [
               ["2019-09-01", 300],
               ["2019-10-01", null],
@@ -433,7 +478,7 @@ describe("SmartScalar > compute", () => {
 
         const testCases = [
           {
-            description: "should correctly display '2 years ago' comparison",
+            description: "should handle comparisons by years",
             rows: [
               ["2017-01-01", 10],
               ["2018-01-01", 100],
@@ -451,121 +496,6 @@ describe("SmartScalar > compute", () => {
                   changeType: "increase",
                   comparisonValue: 10,
                   dateStr: "2017",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description: "should correctly display '1 years ago' comparison",
-            rows: [
-              ["2017-01-01", 10],
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: "year",
-            periodsAgo: 1,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "2019",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "increase",
-                  comparisonValue: 100,
-                  dateStr: "previous year",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description:
-              "should correctly display missing '2 years ago' comparison",
-            rows: [
-              ["2016-01-01", 10],
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: "year",
-            periodsAgo: 2,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "2019",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "missing",
-                  dateStr: "2017",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description: "should handle out of range comparison",
-            rows: [
-              ["2016-01-01", 10],
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: "year",
-            periodsAgo: 5,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "2019",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "missing",
-                  dateStr: "2014",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description: "should handle negative period values",
-            rows: [
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: "year",
-            periodsAgo: -1,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "2019",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "missing",
-                  dateStr: "2020",
-                  metricValue: 300,
-                }),
-              },
-            },
-          },
-          {
-            description: "should not compare to itself",
-            rows: [
-              ["2018-01-01", 100],
-              ["2019-01-01", 300],
-            ],
-            dateUnit: "year",
-            periodsAgo: 0,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "2019",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "missing",
-                  dateStr: "2019",
                   metricValue: 300,
                 }),
               },
@@ -686,6 +616,120 @@ describe("SmartScalar > compute", () => {
               },
             },
           },
+          {
+            description: "should handle in-range missing comparison",
+            rows: [
+              ["2016-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: 2,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "missing",
+                  dateStr: "2017",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description: "should handle out-of-range missing comparison",
+            rows: [
+              ["2016-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: 5,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "missing",
+                  dateStr: "2014",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description: "should handle 1 period ago comparison",
+            rows: [
+              ["2017-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: 1,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "previous year",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description: "should handle 0 periods ago comparison",
+            rows: [
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: 0,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "missing",
+                  dateStr: "2019",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description: "should handle negative periods ago comparison",
+            rows: [
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: -1,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "missing",
+                  dateStr: "2020",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
         ];
 
         it.each(testCases)(
@@ -703,6 +747,7 @@ describe("SmartScalar > compute", () => {
         );
       });
     });
+
     describe("formatting options", () => {
       describe("should remove higher-order time periods for previous date if dateUnit is supplied", () => {
         const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
