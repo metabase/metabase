@@ -269,6 +269,20 @@ describe("SmartScalar > compute", () => {
               },
             },
           },
+          {
+            description: "should handle no previous value to compare to",
+            rows: [["2019-11-01", 100]],
+            dateUnit: "month",
+            expected: {
+              ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 100 }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "missing",
+                  metricValue: 100,
+                }),
+              },
+            },
+          },
         ];
 
         it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
@@ -459,6 +473,39 @@ describe("SmartScalar > compute", () => {
             settings,
           );
           expect(getTrend(trend)).toEqual(expected);
+        });
+
+        describe(`should handle dateUnit is missing`, () => {
+          const comparisonType = COMPARISON_TYPES.PREVIOUS_PERIOD;
+          const settings = {
+            "scalar.field": "Count",
+            "scalar.comparisons": { type: comparisonType },
+          };
+
+          const cols = [
+            DateTimeColumn({ name: "Month" }),
+            NumberColumn({ name: "Count" }),
+          ];
+
+          const testCases = [
+            {
+              description: "should handle no dateUnit supplied",
+              rows: [
+                ["2017-01-01", 10],
+                ["2018-01-01", 100],
+                ["2019-01-01", 300],
+              ],
+              dateUnit: null,
+            },
+          ];
+
+          it.each(testCases)("$description", ({ rows, dateUnit }) => {
+            const insights = [{ unit: dateUnit, col: "Count" }];
+
+            expect(() =>
+              computeTrend(series({ rows, cols }), insights, settings),
+            ).toThrow();
+          });
         });
       });
 
@@ -746,11 +793,86 @@ describe("SmartScalar > compute", () => {
           },
         );
       });
+
+      describe(`should handle invalid values`, () => {
+        const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
+        const createSettings = value => ({
+          "scalar.field": "Count",
+          "scalar.comparisons": { type: comparisonType, value },
+        });
+
+        const cols = [
+          DateTimeColumn({ name: "Month" }),
+          NumberColumn({ name: "Count" }),
+        ];
+
+        const testCases = [
+          {
+            description: "should handle no dateUnit supplied",
+            rows: [
+              ["2017-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: null,
+            periodsAgo: 1,
+            error: "No date unit supplied for periods ago comparison",
+          },
+          {
+            description: "should handle periodsAgo as a string",
+            rows: [
+              ["2017-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: "string",
+            error: "No integer value supplied for periods ago comparison",
+          },
+          {
+            description: "should handle periodsAgo as a float",
+            rows: [
+              ["2017-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: 5.39,
+            error: "No integer value supplied for periods ago comparison",
+          },
+          {
+            description: "should handle missing periodsAgo value",
+            rows: [
+              ["2017-01-01", 10],
+              ["2018-01-01", 100],
+              ["2019-01-01", 300],
+            ],
+            dateUnit: "year",
+            periodsAgo: null,
+            error: "No integer value supplied for periods ago comparison",
+          },
+        ];
+
+        it.each(testCases)(
+          "$description",
+          ({ rows, dateUnit, periodsAgo, error }) => {
+            const insights = [{ unit: dateUnit, col: "Count" }];
+
+            expect(() =>
+              computeTrend(
+                series({ rows, cols }),
+                insights,
+                createSettings(periodsAgo),
+              ),
+            ).toThrow(error);
+          },
+        );
+      });
     });
 
     describe("formatting options", () => {
       describe("should display date based on date-unit", () => {
-        describe("(dateUnit) should remove higher-order time periods if previous date is same day or same year as metric date", () => {
+        describe("(dateUnit supplied) should remove higher-order time periods if previous date is same day or same year as metric date", () => {
           const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
           const getComparisonProperties =
             createGetComparisonProperties(comparisonType);
@@ -1101,7 +1223,7 @@ describe("SmartScalar > compute", () => {
           });
         });
 
-        describe("(no dateUnit) should display full date if missing dateUnit", () => {
+        describe("(no dateUnit supplied) should display full date if missing dateUnit", () => {
           const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
           const getComparisonProperties =
             createGetComparisonProperties(comparisonType);

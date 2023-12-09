@@ -248,12 +248,12 @@ function computeTrendPeriodsAgo({ currentMetricData, series, settings }) {
   } = currentMetricData;
 
   if (isEmpty(dateUnitSettings.dateUnit)) {
-    throw new Error("No date unit supplied for periods ago comparison");
+    throw Error("No date unit supplied for periods ago comparison");
   }
 
   const { type, value } = settings["scalar.comparisons"];
   if (type === COMPARISON_TYPES.PERIODS_AGO && !Number.isInteger(value)) {
-    return null;
+    throw Error("No integer value supplied for periods ago comparison");
   }
   const dateUnitsAgo = value ?? 1;
 
