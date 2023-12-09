@@ -37,16 +37,6 @@ function gauge(card, data) {
   });
 }
 
-function waterfall(data, labels, settings, waterfallType, instanceColors) {
-  return StaticViz.RenderChart("waterfall", {
-    data: toJSArray(data),
-    labels: toJSMap(labels),
-    settings: JSON.parse(settings),
-    type: waterfallType,
-    colors: JSON.parse(instanceColors),
-  });
-}
-
 function funnel(data, settings) {
   return StaticViz.RenderChart("funnel", {
     data: JSON.parse(data),

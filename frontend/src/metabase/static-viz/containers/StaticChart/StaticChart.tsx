@@ -1,7 +1,6 @@
 import RowChart from "metabase/static-viz/components/RowChart";
 import Gauge from "metabase/static-viz/components/Gauge";
 import CategoricalDonutChart from "metabase/static-viz/components/CategoricalDonutChart";
-import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
 import ProgressBar from "metabase/static-viz/components/ProgressBar";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import type { ColorPalette } from "metabase/lib/colors/types";
@@ -32,8 +31,6 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
   switch (type) {
     case "categorical/donut":
       return <CategoricalDonutChart {...chartProps} />;
-    case "waterfall":
-      return <WaterfallChart {...chartProps} />;
     case "gauge":
       return <Gauge {...chartProps} />;
     case "row":

@@ -3,15 +3,15 @@ import {
   CATEGORICAL,
   TIMESERIES,
 } from "metabase/static-viz/components/WaterfallChart/stories-data";
-import WaterfallChart from "./WaterfallChart";
+import OldWaterfallChart from "./OldWaterfallChart";
 
 export default {
   title: "static-viz/WaterfallChart",
-  component: WaterfallChart,
+  component: OldWaterfallChart,
 };
 
-const Template: ComponentStory<typeof WaterfallChart> = args => {
-  return <WaterfallChart {...args} />;
+const Template: ComponentStory<typeof OldWaterfallChart> = args => {
+  return <OldWaterfallChart {...args} />;
 };
 
 export const Timeseries = Template.bind({});
