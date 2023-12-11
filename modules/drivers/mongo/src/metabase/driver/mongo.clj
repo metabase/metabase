@@ -20,6 +20,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [monger.collection :as mcoll]
    [monger.command :as cmd]
    [monger.conversion :as m.conversion]
    [monger.core :as mg]
@@ -204,6 +205,19 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defmethod driver/describe-table-indexes :mongo
+  [_ database table]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    (->> (mcoll/indexes-on conn (:name table))
+         (map :key)
+         ;; when the key is not a persistent array map, then the ordered of the key can't be determined
+         ;; so we ignore those.
+         ;; Practically this will be only the case for when an index has more than 8 keys because a map
+         ;; with less than 8 keys are PersistentArrayMap, it's a PersistentHashedMap if it has more than 8 keys.
+         (filter #(instance? clojure.lang.PersistentArrayMap %))
+         (map (comp name first keys))
+         set)))
+
 (defn- from-db-object
   "This is mostly a copy of the monger library's own function of the same name with the
   only difference that it uses an ordered map to represent the document. This ensures that
@@ -270,7 +284,8 @@
                               :native-parameters               true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
+                              :test/jvm-timezone-setting       false
+                              :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 ;; We say Mongo supports foreign keys so that the front end can use implicit

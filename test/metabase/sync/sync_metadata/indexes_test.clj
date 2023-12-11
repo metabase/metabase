@@ -3,11 +3,13 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [monger.collection :as mcoll]
    [toucan2.core :as t2]))
 
 (deftest sync-single-indexed-columns-test
@@ -28,8 +30,11 @@
                     {:field-name "second" :indexed? false :base-type :type/Integer}]
                    [[1 2]]])
       (try
-       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                      (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
+       (if (= :mongo driver/*driver*)
+         (mongo.util/with-mongo-connection [conn (mt/db)]
+           (mcoll/create-index conn "table" {"first" 1 "second" 1}))
+         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"])))
        (sync/sync-database! (mt/db))
        (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
        (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))
