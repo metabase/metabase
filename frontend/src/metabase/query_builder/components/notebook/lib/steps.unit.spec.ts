@@ -1,5 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
+import { checkNotNull } from "metabase/lib/types";
+import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
   createSampleDatabase,
   ORDERS,
@@ -8,17 +10,17 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const rawDataQuery = {
+const rawDataQuery: StructuredQueryObject = {
   "source-table": ORDERS_ID,
 };
 
-const summarizedQuery = {
+const summarizedQuery: StructuredQueryObject = {
   ...rawDataQuery,
   aggregation: [["count"]],
   breakout: [
@@ -30,35 +32,30 @@ const summarizedQuery = {
   ],
 };
 
-const filteredQuery = {
+const filteredQuery: StructuredQueryObject = {
   ...rawDataQuery,
   filter: ["=", ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }], 1],
 };
 
-const filteredAndSummarizedQuery = {
+const filteredAndSummarizedQuery: StructuredQueryObject = {
   ...summarizedQuery,
   ...filteredQuery,
 };
 
-const postAggregationFilterQuery = {
+const postAggregationFilterQuery: StructuredQueryObject = {
   "source-query": filteredAndSummarizedQuery,
   filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
 };
 
-const getQuestionStepsForMBQLQuery = query =>
-  getQuestionSteps(
-    metadata
-      .database(SAMPLE_DB_ID)
-      .question()
-      .query()
-      .setQuery(query)
-      .question(),
-    metadata,
-    {},
-  );
+const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
+  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
+  const legacyQuery = database.question().query() as StructuredQuery;
+
+  return getQuestionSteps(legacyQuery.setQuery(query).question(), metadata, {});
+};
 
 describe("new query", () => {
-  const steps = getQuestionStepsForMBQLQuery(createQuery());
+  const steps = getQuestionStepsForMBQLQuery({});
 
   describe("getQuestionSteps", () => {
     it("should return data step with no actions", () => {
@@ -104,7 +101,7 @@ describe("filtered and summarized query", () => {
 
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize for data step", () => {
-      const { previewQuery } = dataStep;
+      const previewQuery = checkNotNull(dataStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -112,7 +109,7 @@ describe("filtered and summarized query", () => {
     });
 
     it("shouldn't include summarize for filter step", () => {
-      const { previewQuery } = filterStep;
+      const previewQuery = checkNotNull(filterStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -122,7 +119,9 @@ describe("filtered and summarized query", () => {
 
   describe("revert", () => {
     it("shouldn't remove summarize when removing filter", () => {
-      const newQuery = filterStep.revert(filterStep.topLevelQuery);
+      const newQuery = checkNotNull(
+        filterStep.revert?.(filterStep.topLevelQuery, 0),
+      );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
@@ -130,7 +129,9 @@ describe("filtered and summarized query", () => {
     });
 
     it("shouldn't remove filter when removing summarize", () => {
-      const newQuery = summarizeStep.revert(summarizeStep.topLevelQuery);
+      const newQuery = checkNotNull(
+        summarizeStep.revert?.(summarizeStep.topLevelQuery, 0),
+      );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(0);
@@ -167,7 +168,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
-      const { previewQuery } = dataStep;
+      const previewQuery = checkNotNull(dataStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -176,7 +177,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("shouldn't include summarize or post-aggregation filter for filter step", () => {
-      const { previewQuery } = filterStep;
+      const previewQuery = checkNotNull(filterStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -185,7 +186,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("should be the original query for post-aggregation filter step", () => {
-      const { previewQuery } = postAggregationFilterStep;
+      const previewQuery = checkNotNull(postAggregationFilterStep.previewQuery);
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(1);
@@ -196,7 +197,9 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("revert", () => {
     it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
-      const newQuery = filterStep.revert(filterStep.topLevelQuery);
+      const newQuery = checkNotNull(
+        filterStep.revert?.(filterStep.topLevelQuery, 0),
+      );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
@@ -205,7 +208,9 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("should remove post-aggregation filter when removing summarize", () => {
-      const newQuery = summarizeStep.revert(summarizeStep.topLevelQuery);
+      const newQuery = checkNotNull(
+        summarizeStep.revert?.(summarizeStep.topLevelQuery, 0),
+      );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(0);
@@ -214,8 +219,11 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("should not remove filter or summarize when removing post-aggregation filter", () => {
-      const newQuery = postAggregationFilterStep.revert(
-        postAggregationFilterStep.topLevelQuery,
+      const newQuery = checkNotNull(
+        postAggregationFilterStep.revert?.(
+          postAggregationFilterStep.topLevelQuery,
+          1,
+        ),
       );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
