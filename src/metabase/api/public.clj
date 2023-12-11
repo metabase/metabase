@@ -16,6 +16,7 @@
    [metabase.api.field :as api.field]
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
+   [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
@@ -250,7 +251,10 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (dashboard-with-uuid uuid))
+  (let [dashboard (dashboard-with-uuid uuid)]
+    (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                  :object  dashboard})
+    dashboard))
 
 ;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
 ;; [[run-query-for-card-with-id-async]]

@@ -26,6 +26,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.params :as params]
@@ -419,7 +420,10 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (let [dashboard (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])]
+      (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                    :object dashboard})
+      dashboard)))
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
