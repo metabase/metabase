@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
+import { checkNotNull } from "metabase/lib/types";
 import type { Query } from "metabase-lib/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
@@ -272,10 +273,10 @@ function getStageSteps(
         Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
-        ? (query: Lib.Query) =>
-            STEP.revert
-              ? STEP.revert(query, stageIndex, itemIndex ?? undefined)
-              : null
+        ? (query: Lib.Query) => {
+            const revert = checkNotNull(STEP.revert);
+            return revert(query, stageIndex, itemIndex ?? undefined);
+          }
         : null,
       // `actions`, `previewQuery`, `next` and `previous` will be set later
       actions: [],

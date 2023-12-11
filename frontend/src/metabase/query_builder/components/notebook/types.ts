@@ -13,11 +13,7 @@ export type NotebookStepType =
   | "sort"
   | "limit";
 
-type RevertFn = (
-  query: Query,
-  stageIndex: number,
-  index?: number,
-) => Query | null;
+type RevertFn = (query: Query, stageIndex: number, index?: number) => Query;
 
 export interface NotebookStep {
   id: string;
