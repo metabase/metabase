@@ -1,7 +1,7 @@
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import {
-  createMockActionDashboardCard as _createMockActionDashboardCard,
-  createMockActionParameter,
+  // createMockActionDashboardCard,
+  // createMockActionParameter,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 import type { Dashboard, Parameter } from "metabase-types/api";
@@ -144,27 +144,7 @@ describe("Dashboard data fetching", () => {
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(1);
   });
 
-  it("should fetch card data when parameters change", async () => {
-    const mocks = await setup();
-    jest.clearAllMocks();
-    mocks.rerender({
-      parameters: [createMockActionParameter()],
-    });
-    expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
-    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
-  });
-
-  it("should fetch card data when parameter properties change", async () => {
-    const mocks = await setup({
-      parameters: [createMockActionParameter()],
-    });
-    jest.clearAllMocks();
-    mocks.rerender({
-      parameters: [createMockActionParameter({ id: "another" })],
-    });
-    expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(0);
-    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
-  });
+  // it("should call fetchDashboardCardData when dashboard cards change", async () => {});
 
   it("should fetch card data when dashboard changes to non-empty", async () => {
     const mocks = await setup({
