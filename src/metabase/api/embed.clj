@@ -40,7 +40,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [iapetos.export :as export]))
 
 (set! *warn-on-reflection* true)
 
@@ -305,6 +306,15 @@
         (remove-locked-and-disabled-params embedding-params)
         (remove-linked-filters-param-values))))
 
+(defn- get-embed-dashboard-context
+  "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
+  [export-format]
+  (case export-format
+    "csv"  :embedded-csv-download
+    "xlsx" :embedded-xlsx-download
+    "json" :embedded-json-download
+    :embedded-dashboard))
+
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
   {:style/indent 0}
@@ -323,7 +333,7 @@
      :export-format export-format
      :parameters    parameters
      :qp-runner     qp-runner
-     :context       :embedded-dashboard
+     :context       (get-embed-dashboard-context export-format)
      :constraints   constraints
      :middleware    middleware)))
 

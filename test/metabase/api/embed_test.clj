@@ -15,6 +15,7 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public-test :as public-test]
    [metabase.config :as config]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -23,6 +24,7 @@
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -348,6 +350,22 @@
             (is (= 101
                    (count (csv/read-csv results))))))))))
 
+(deftest embed-download-query-execution-test
+  (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
+    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-card [card {:enable_embedding true
+                               :dataset_query    (assoc (mt/mbql-query venues)
+                                                        :middleware
+                                                        {:add-default-userland-constraints? true
+                                                         :userland-query?                   true})}]
+          (client/client :get 200 (card-query-url card "/csv"))
+          (is (some? (t2/select-one :model/QueryExecution :context "embedded-csv-download")))
+          (client/client :get 200 (card-query-url card "/xlsx"))
+          (is (some? (t2/select-one :model/QueryExecution :context "embedded-xlsx-download")))
+          (client/client :get 200 (card-query-url card "/json"))
+          (is (some? (t2/select-one :model/QueryExecution :context "embedded-json-download"))) )))))
+
 (deftest card-locked-params-test
   (mt/with-ensure-with-temp-no-transaction!
     (with-embedding-enabled-and-new-secret-key
@@ -502,6 +520,17 @@
       (is (= successful-dashboard-info
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
+
+(deftest embedding-logs-view-test
+  (with-embedding-enabled-and-new-secret-key
+    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+      (testing "Viewing an embedding logs the correct view log event."
+        (client/client :get 200 (dashboard-url dash))
+        (is (partial=
+             {:model      "dashboard"
+              :model_id   (:id dash)
+              :has_access true}
+             (view-log-test/latest-view nil (:id dash))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key

@@ -12,17 +12,11 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            Collection
-            Database
-            Dashboard
-            DashboardCard
-            DashboardCardSeries
-            Dimension
-            Field
-            FieldValues]]
+    :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+            Database Dimension Field FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
@@ -448,6 +442,17 @@
          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
          (is (= {:name true, :dashcards 2, :tabs 2}
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+
+(deftest public-dashboard-logs-view-test
+  (testing "Viewing a public dashboard logs the correct view log event."
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard-and-card [dash _]
+        (fetch-public-dashboard dash)
+        (is (partial=
+             {:model      "dashboard"
+              :model_id   (:id dash)
+              :has_access true}
+             (view-log-test/latest-view nil (:id dash))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]

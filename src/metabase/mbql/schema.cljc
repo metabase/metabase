@@ -1725,7 +1725,10 @@
    :public-question
    :pulse
    :question
-   :xlsx-download])
+   :xlsx-download
+   :embedded-json-download
+   :embedded-xlsx-download
+   :embedded-csv-download])
 
 (def ^:private Hash
   #?(:clj bytes?
