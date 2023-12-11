@@ -31,7 +31,7 @@ const STEPS: NotebookStepDef[] = [
     type: "join",
     valid: (query, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
-      return Boolean(database?.hasFeature("join"));
+      return hasData(query) && Boolean(database?.hasFeature("join"));
     },
     subSteps: (query, stageIndex) => {
       return Lib.joins(query, stageIndex).length;
@@ -61,7 +61,7 @@ const STEPS: NotebookStepDef[] = [
     type: "expression",
     valid: (query, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
-      return Boolean(database?.hasFeature("expressions"));
+      return hasData(query) && Boolean(database?.hasFeature("expressions"));
     },
     active: (query, stageIndex) => {
       return Lib.expressions(query, stageIndex).length > 0;
@@ -74,7 +74,9 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "filter",
-    valid: () => true,
+    valid: query => {
+      return hasData(query);
+    },
     active: (query, stageIndex) => {
       return Lib.filters(query, stageIndex).length > 0;
     },
@@ -87,7 +89,9 @@ const STEPS: NotebookStepDef[] = [
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
-    valid: () => true,
+    valid: query => {
+      return hasData(query);
+    },
     active: (query, stageIndex) => {
       const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
       const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
@@ -115,7 +119,7 @@ const STEPS: NotebookStepDef[] = [
         return false;
       }
 
-      return hasAnyClauses(query);
+      return hasData(query) && hasAnyClauses(query);
     },
     active: (query, stageIndex) => {
       return Lib.orderBys(query, stageIndex).length > 0;
@@ -134,7 +138,7 @@ const STEPS: NotebookStepDef[] = [
         return false;
       }
 
-      return hasAnyClauses(query);
+      return hasData(query) && hasAnyClauses(query);
     },
     active: (query, stageIndex) => {
       return Lib.hasLimit(query, stageIndex);
@@ -144,6 +148,11 @@ const STEPS: NotebookStepDef[] = [
     },
   },
 ];
+
+const hasData = (query: Lib.Query): boolean => {
+  const databaseId = Lib.databaseID(query) !== null;
+  return databaseId !== null;
+};
 
 const hasAnyClauses = (query: Lib.Query): boolean => {
   const hasAggregations = Lib.aggregations(query, -1).length > 0;
