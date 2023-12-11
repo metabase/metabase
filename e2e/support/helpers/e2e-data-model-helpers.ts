@@ -23,7 +23,7 @@ export function remapDisplayValueToFK({
   display_value: number;
   name: string;
   fk: number;
-}): Cypress.Chainable<Cypress.Response<any>> {
+}): Cypress.Chainable<Cypress.Response<unknown>> {
   return cy.request("POST", `/api/field/${display_value}/dimension`, {
     field_id: display_value,
     name,
