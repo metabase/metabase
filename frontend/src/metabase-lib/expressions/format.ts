@@ -228,7 +228,7 @@ function formatFunction([fn, ...args]: any[], options: Options) {
       args = [...args, fnOptions];
     }
   }
-  const formattedName = getExpressionName(fn);
+  const formattedName = getExpressionName(fn) ?? "";
   const formattedArgs = args.map(arg => format(arg, options));
   return args.length === 0
     ? formattedName

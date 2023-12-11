@@ -421,7 +421,7 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
   ]),
 );
 export function getExpressionName(mbqlName: string) {
-  return MBQL_TO_EXPRESSION_NAME.get(mbqlName) ?? "";
+  return MBQL_TO_EXPRESSION_NAME.get(mbqlName);
 }
 export function getMBQLName(expressionName: string) {
   // case-insensitive
