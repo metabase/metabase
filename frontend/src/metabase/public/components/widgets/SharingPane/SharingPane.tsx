@@ -76,7 +76,7 @@ function SharingPane({
       <SharingPaneButton
         header={t`Static embed`}
         description={t`Securely embed this dashboard in your own application’s server code.`}
-        illustration={StaticEmbedIcon}
+        illustration={<StaticEmbedIcon />}
       >
         <SharingPaneActionButton
           fullWidth
@@ -108,7 +108,7 @@ function SharingPane({
             </>
           )
         }
-        illustration={PublicEmbedIcon}
+        illustration={<PublicEmbedIcon />}
       >
         {resource.public_uuid ? (
           <PublicLinkCopyPanel

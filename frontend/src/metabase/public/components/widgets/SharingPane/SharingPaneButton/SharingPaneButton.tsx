@@ -6,7 +6,7 @@ import {
 import { Box, Center, Stack, Text } from "metabase/ui";
 
 type SharingOptionProps = {
-  illustration: () => JSX.Element;
+  illustration: JSX.Element;
   children: ReactNode;
   header: string;
   description: ReactNode | string;
