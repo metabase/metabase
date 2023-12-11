@@ -8,6 +8,7 @@ import {
 } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
+import { FilterSearchInput } from "./FilterSearchInput";
 import {
   appendStageIfAggregated,
   dropStageIfEmpty,
@@ -69,6 +70,7 @@ export function FilterModal({
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
+          <FilterSearchInput />
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
