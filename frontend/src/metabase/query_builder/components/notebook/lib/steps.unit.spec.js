@@ -103,10 +103,19 @@ describe("filtered and summarized query", () => {
 
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize for data step", () => {
-      expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
+      const { previewQuery } = dataStep;
+
+      expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(previewQuery, 0)).toHaveLength(0);
     });
+
     it("shouldn't include summarize for filter step", () => {
-      expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
+      const { previewQuery } = filterStep;
+
+      expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(previewQuery, 0)).toHaveLength(1);
     });
   });
 
