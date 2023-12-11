@@ -1,2 +1,3 @@
-export * from "./components/FilterPicker";
-export * from "./components/TimeseriesChrome";
+export { FilterModal } from "./components/FilterModal";
+export { FilterPicker, FilterPickerBody } from "./components/FilterPicker";
+export { TimeseriesChrome } from "./components/TimeseriesChrome";

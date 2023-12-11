@@ -1038,7 +1038,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @deprecated use the clearOrderBys function from metabase-lib v2
+   * @deprecated use the removeOrderBys function from metabase-lib v2
    */
   clearSort() {
     return this._updateQuery(Q.clearOrderBy, arguments);

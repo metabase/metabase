@@ -1,28 +1,18 @@
-import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
-import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
+import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
+import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
+import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
-import { getAvailableOperatorOptions } from "../utils";
-import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
-import { OPERATOR_OPTIONS } from "./constants";
-import {
-  canPickColumns,
-  getAvailableColumns,
-  getDefaultSecondColumn,
-  getDefaultValues,
-  getFilterClause,
-  hasValidValues,
-} from "./utils";
-import type { NumberValue } from "./types";
 
 export function CoordinateFilterPicker({
   query,
@@ -38,45 +28,33 @@ export function CoordinateFilterPicker({
     [query, stageIndex, column],
   );
 
-  const filterParts = useMemo(
-    () =>
-      filter ? Lib.coordinateFilterParts(query, stageIndex, filter) : null,
-    [query, stageIndex, filter],
-  );
-
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
-    [query, stageIndex, column],
-  );
-
-  const availableColumns = useMemo(
-    () => getAvailableColumns(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
-
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
-  );
-  const [values, setValues] = useState(
-    getDefaultValues(operator, filterParts?.values),
-  );
-  const [secondColumn, setSecondColumn] = useState(
-    getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),
-  );
-
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(operator, values);
-
-  const handleOperatorChange = (operator: Lib.CoordinateFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
+  const {
+    operator,
+    availableOptions,
+    secondColumn,
+    availableColumns,
+    canPickColumns,
+    values,
+    valueCount,
+    hasMultipleValues,
+    isValid,
+    getFilterClause,
+    setOperator,
+    setSecondColumn,
+    setValues,
+  } = useCoordinateFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isValid) {
-      onChange(getFilterClause(operator, column, secondColumn, values));
+
+    const filter = getFilterClause(operator, secondColumn, values);
+    if (filter) {
+      onChange(filter);
     }
   };
 
@@ -94,12 +72,12 @@ export function CoordinateFilterPicker({
       >
         <FilterOperatorPicker
           value={operator}
-          options={availableOperators}
-          onChange={handleOperatorChange}
+          options={availableOptions}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <Box>
-        {canPickColumns(operator, availableColumns) && (
+        {canPickColumns && (
           <CoordinateColumnPicker
             query={query}
             stageIndex={stageIndex}
@@ -142,10 +120,10 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <FilterValuesWidget
-          value={values}
+        <FilterValuePicker
           column={column}
-          hasMultipleValues
+          value={values}
+          autoFocus
           onChange={onChange}
         />
       </FlexWithScroll>
@@ -191,37 +169,37 @@ function CoordinateValueInput({
         <NumberInput
           label={t`Upper latitude`}
           value={values[0]}
+          placeholder="90"
+          autoFocus
           onChange={(newValue: number) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
-          placeholder="90"
-          autoFocus
         />
         <Flex align="center" justify="center" gap="sm">
           <NumberInput
             label={t`Left longitude`}
             value={values[1]}
+            placeholder="-180"
             onChange={(newValue: number) =>
               onChange([values[0], newValue, values[2], values[3]])
             }
-            placeholder="-180"
           />
           <NumberInput
             label={t`Right longitude`}
             value={values[3]}
+            placeholder="180"
             onChange={(newValue: number) =>
               onChange([values[0], values[1], values[2], newValue])
             }
-            placeholder="180"
           />
         </Flex>
         <NumberInput
           label={t`Lower latitude`}
           value={values[2]}
+          placeholder="-90"
           onChange={(newValue: number) =>
             onChange([values[0], values[1], newValue, values[3]])
           }
-          placeholder="-90"
         />
       </Stack>
     );

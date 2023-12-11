@@ -1,19 +1,17 @@
-import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
+import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
+import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import type { FilterPickerWidgetProps } from "../types";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
-import { getAvailableOperatorOptions } from "../utils";
-import { FilterValuesWidget } from "../FilterValuesWidget";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import { FilterValuePicker } from "../FilterValuePicker";
 import { FlexWithScroll } from "../FilterPicker.styled";
-import { OPERATOR_OPTIONS } from "./constants";
-import { getDefaultValues, getFilterClause, hasValidValues } from "./utils";
-import type { NumberValue } from "./types";
 
 export function NumberFilterPicker({
   query,
@@ -29,37 +27,29 @@ export function NumberFilterPicker({
     [query, stageIndex, column],
   );
 
-  const filterParts = useMemo(
-    () => (filter ? Lib.numberFilterParts(query, stageIndex, filter) : null),
-    [query, stageIndex, filter],
-  );
-
-  const availableOperators = useMemo(
-    () =>
-      getAvailableOperatorOptions(query, stageIndex, column, OPERATOR_OPTIONS),
-    [query, stageIndex, column],
-  );
-
-  const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "=",
-  );
-
-  const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
-  );
-
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  const isValid = hasValidValues(operator, values);
-
-  const handleOperatorChange = (operator: Lib.NumberFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
+  const {
+    operator,
+    availableOptions,
+    values,
+    valueCount,
+    hasMultipleValues,
+    isValid,
+    getFilterClause,
+    setOperator,
+    setValues,
+  } = useNumberFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (isValid) {
-      onChange(getFilterClause(operator, column, values));
+
+    const filter = getFilterClause(operator, values);
+    if (filter) {
+      onChange(filter);
     }
   };
 
@@ -77,8 +67,8 @@ export function NumberFilterPicker({
       >
         <FilterOperatorPicker
           value={operator}
-          options={availableOperators}
-          onChange={handleOperatorChange}
+          options={availableOptions}
+          onChange={setOperator}
         />
       </FilterPickerHeader>
       <div>
@@ -115,10 +105,10 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FlexWithScroll p="md" mah={300}>
-        <FilterValuesWidget
-          value={values}
+        <FilterValuePicker
           column={column}
-          hasMultipleValues
+          value={values}
+          autoFocus
           onChange={onChange}
         />
       </FlexWithScroll>

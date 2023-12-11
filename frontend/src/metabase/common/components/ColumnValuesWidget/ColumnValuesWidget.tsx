@@ -1,26 +1,37 @@
 import { useMemo } from "react";
+import * as Lib from "metabase-lib";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
-import * as Lib from "metabase-lib";
+import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
 import LegacyDimension from "metabase-lib/Dimension";
 
 export interface ColumnValuesWidgetProps<T> {
   value: T[];
   column: Lib.ColumnMetadata;
   hasMultipleValues?: boolean;
+  disablePKRemappingForSearch?: boolean;
+  expand?: boolean;
+  disableList?: boolean;
+  autoFocus?: boolean;
   minWidth?: string;
   maxWidth?: string;
   onChange: (value: T[]) => void;
+  layoutRenderer?: (args: LayoutRendererArgs) => JSX.Element;
 }
 
 export function ColumnValuesWidget<T extends string | number>({
   value,
   column,
   hasMultipleValues,
+  disablePKRemappingForSearch,
+  expand,
+  disableList,
+  autoFocus,
   minWidth,
   maxWidth,
   onChange,
+  layoutRenderer,
 }: ColumnValuesWidgetProps<T>) {
   const metadata = useSelector(getMetadata);
 
@@ -46,10 +57,13 @@ export function ColumnValuesWidget<T extends string | number>({
       minWidth={minWidth}
       maxWidth={maxWidth}
       onChange={onChange}
-      disablePKRemappingForSearch
-      autoFocus
+      disablePKRemappingForSearch={disablePKRemappingForSearch}
+      expand={expand}
+      autoFocus={autoFocus}
+      disableList={disableList}
       multi={hasMultipleValues}
       disableSearch={!hasMultipleValues}
+      layoutRenderer={layoutRenderer}
     />
   );
 }
