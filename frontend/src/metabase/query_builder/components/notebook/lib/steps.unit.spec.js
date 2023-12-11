@@ -149,17 +149,12 @@ describe("filtered and summarized query with post-aggregation filter", () => {
   });
 
   describe("query", () => {
-    it("should be the source-query for data step", () => {
-      expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
-    });
-    it("should be the source-query for filter step", () => {
-      expect(steps[1].query.query()).toEqual(filteredAndSummarizedQuery);
-    });
-    it("should be the source-query for summarize step", () => {
-      expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
-    });
-    it("should be the original query for post-aggregation filter step", () => {
-      expect(steps[3].query.query()).toEqual(postAggregationFilterQuery);
+    it("should be the same for all steps", () => {
+      const { topLevelQuery } = dataStep;
+
+      expect(filterStep.topLevelQuery).toBe(topLevelQuery);
+      expect(summarizeStep.topLevelQuery).toBe(topLevelQuery);
+      expect(postAggregationFilterStep.topLevelQuery).toBe(topLevelQuery);
     });
   });
 
