@@ -6,7 +6,6 @@ import {
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
-  PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
@@ -59,6 +58,7 @@ const getQuestionStepsForMBQLQuery = query =>
 
 describe("new query", () => {
   const steps = getQuestionStepsForMBQLQuery({});
+
   describe("getQuestionSteps", () => {
     it("should return data step with no actions", () => {
       expect(steps.length).toBe(1);
@@ -70,6 +70,7 @@ describe("new query", () => {
 
 describe("raw data query", () => {
   const steps = getQuestionStepsForMBQLQuery(rawDataQuery);
+
   describe("getQuestionSteps", () => {
     it("should return data step with actions", () => {
       expect(steps.length).toBe(1);
@@ -84,11 +85,13 @@ describe("raw data query", () => {
 describe("filtered and summarized query", () => {
   const steps = getQuestionStepsForMBQLQuery(filteredAndSummarizedQuery);
   const [_dataStep, filterStep, summarizeStep] = steps;
+
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
       expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);
     });
   });
+
   describe("query", () => {
     it("should be the full query for data step", () => {
       expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
@@ -100,6 +103,7 @@ describe("filtered and summarized query", () => {
       expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
     });
   });
+
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize for data step", () => {
       expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
@@ -108,15 +112,19 @@ describe("filtered and summarized query", () => {
       expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
     });
   });
-  describe("update", () => {
+
+  describe("revert", () => {
     it("shouldn't remove summarize when removing filter", () => {
       const newQuery = filterStep.revert(filterStep.topLevelQuery);
+
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
       expect(Lib.filters(newQuery, 0)).toHaveLength(0);
     });
+
     it("shouldn't remove filter when removing summarize", () => {
       const newQuery = summarizeStep.revert(summarizeStep.topLevelQuery);
+
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(0);
       expect(Lib.filters(newQuery, 0)).toHaveLength(1);
@@ -126,6 +134,8 @@ describe("filtered and summarized query", () => {
 
 describe("filtered and summarized query with post-aggregation filter", () => {
   const steps = getQuestionStepsForMBQLQuery(postAggregationFilterQuery);
+  const [_dataStep, filterStep1, summarizeStep, filterStep2] = steps;
+
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, summarize, and filter steps", () => {
       expect(steps.map(s => s.type)).toEqual([
@@ -136,6 +146,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       ]);
     });
   });
+
   describe("query", () => {
     it("should be the source-query for data step", () => {
       expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
@@ -150,6 +161,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       expect(steps[3].query.query()).toEqual(postAggregationFilterQuery);
     });
   });
+
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
       expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
@@ -161,33 +173,33 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       expect(steps[3].previewQuery.query()).toEqual(postAggregationFilterQuery);
     });
   });
-  describe("update", () => {
-    it("should remove all steps when changing the table", () => {
-      const newQuery = steps[0].update(
-        steps[0].query.setTableId(PRODUCTS_ID).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS_ID });
-    });
+
+  describe("revert", () => {
     it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
-      const newQuery = steps[1].update(
-        steps[1].revert(steps[1].query).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual({
-        ...postAggregationFilterQuery,
-        "source-query": summarizedQuery,
-      });
+      const newQuery = filterStep1.revert(filterStep1.topLevelQuery);
+
+      expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(newQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(newQuery, 1)).toHaveLength(1);
     });
+
     it("should remove post-aggregation filter when removing summarize", () => {
-      const newQuery = steps[2].update(
-        steps[2].revert(steps[2].query).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual(filteredQuery);
+      const newQuery = summarizeStep.revert(summarizeStep.topLevelQuery);
+
+      expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
+      expect(Lib.breakouts(newQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(newQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(newQuery, 1)).toHaveLength(0);
     });
-    it("should remove empty layer of nesting but not remove filter or summarize when removing post-aggregation filter", () => {
-      const newQuery = steps[3].update(
-        steps[3].revert(steps[3].query).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual(filteredAndSummarizedQuery);
+
+    it("should not remove filter or summarize when removing post-aggregation filter", () => {
+      const newQuery = filterStep2.revert(filterStep2.topLevelQuery);
+
+      expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(newQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(newQuery, 1)).toHaveLength(0);
     });
   });
 });
