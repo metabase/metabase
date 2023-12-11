@@ -23,7 +23,7 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
-    valid: () => true,
+    valid: (_query, stageIndex) => stageIndex === 0,
     active: () => true,
     revert: null, // this step is non-reversible (i.e. non-removable)
   },
@@ -119,7 +119,9 @@ const STEPS: NotebookStepDef[] = [
         return false;
       }
 
-      return hasData(query) && hasAnyClauses(query, stageIndex);
+      return (
+        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
+      );
     },
     active: (query, stageIndex) => {
       return Lib.orderBys(query, stageIndex).length > 0;
@@ -138,7 +140,9 @@ const STEPS: NotebookStepDef[] = [
         return false;
       }
 
-      return hasData(query) && hasAnyClauses(query, stageIndex);
+      return (
+        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
+      );
     },
     active: (query, stageIndex) => {
       return Lib.hasLimit(query, stageIndex);
