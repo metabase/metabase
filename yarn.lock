@@ -9028,10 +9028,10 @@ cyclist@^1.0.1:
   resolved "https://registry.yarnpkg.com/cyclist/-/cyclist-1.0.1.tgz#596e9698fd0c80e12038c2b82d6eb1b35b6224d9"
   integrity sha1-WW6WmP0MgOEgOMK4LW6xs1tiJNk=
 
-cypress-real-events@^1.7.6:
-  version "1.7.6"
-  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.7.6.tgz#6f17e0b2ceea1d6dc60f6737d8f84cc517bbbb4c"
-  integrity sha512-yP6GnRrbm6HK5q4DH6Nnupz37nOfZu/xn1xFYqsE2o4G73giPWQOdu6375QYpwfU1cvHNCgyD2bQ2hPH9D7NMw==
+cypress-real-events@^1.11.0:
+  version "1.11.0"
+  resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.11.0.tgz#292fe5281c5b6e955524e766ab7fec46930c7763"
+  integrity sha512-4LXVRsyq+xBh5TmlEyO1ojtBXtN7xw720Pwb9rEE9rkJuXmeH3VyoR1GGayMGr+Itqf11eEjfDewtDmcx6PWPQ==
 
 cypress@13.6.1:
   version "13.6.1"
