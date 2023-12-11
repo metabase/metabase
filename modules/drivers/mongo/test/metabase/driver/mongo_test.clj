@@ -261,7 +261,6 @@
        (finally
         (t2/delete! :model/Database (mt/id)))))))
 
-
 (deftest nested-columns-test
   (mt/test-driver :mongo
     (mt/dataset geographical-tips
