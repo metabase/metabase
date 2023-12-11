@@ -1,6 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
-import * as Lib from "metabase-lib";
 import {
   createSampleDatabase,
   ORDERS,
@@ -8,6 +7,8 @@ import {
   PRODUCTS,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import * as Lib from "metabase-lib";
+import { createQuery } from "metabase-lib/test-helpers";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -57,7 +58,7 @@ const getQuestionStepsForMBQLQuery = query =>
   );
 
 describe("new query", () => {
-  const steps = getQuestionStepsForMBQLQuery({});
+  const steps = getQuestionStepsForMBQLQuery(createQuery());
 
   describe("getQuestionSteps", () => {
     it("should return data step with no actions", () => {
