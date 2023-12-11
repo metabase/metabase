@@ -579,6 +579,7 @@
                        (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id
                                   ::source-join-alias (:metabase.lib.join/join-alias source)))))
+                (filter :table-id)
                 (remove #(contains? existing-table-ids (:table-id %)))
                 (mapcat (fn [{:keys [table-id], ::keys [source-field-id source-join-alias]}]
                           (let [table-metadata (lib.metadata/table query table-id)
