@@ -171,11 +171,14 @@ export function parseDimension(
     .find(column => {
       const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
-      return EDITOR_FK_SYMBOLS.symbols.some(
-        separator =>
-          getDisplayNameWithSeparator(displayInfo.displayName, separator) ===
-          name,
-      );
+      return EDITOR_FK_SYMBOLS.symbols.some(separator => {
+        const displayName = getDisplayNameWithSeparator(
+          displayInfo.longDisplayName,
+          separator,
+        );
+
+        return displayName === name;
+      });
     });
 }
 
