@@ -44,7 +44,7 @@ export interface ResultsMetadata {
 }
 
 export type Insight = {
-  col: "string";
+  col: string;
   unit: DatetimeUnit;
   [key: string]: any;
 };
