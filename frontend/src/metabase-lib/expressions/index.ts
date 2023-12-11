@@ -76,13 +76,7 @@ export function parseMetric(
   });
 
   if (metric) {
-    const legacyExpression = Lib.legacyExpressionForExpressionClause(
-      query,
-      stageIndex,
-      metric,
-    );
-
-    return legacyExpression;
+    return metric;
   }
 }
 
@@ -105,13 +99,7 @@ export function parseSegment(
   });
 
   if (segment) {
-    const legacyExpression = Lib.legacyExpressionForExpressionClause(
-      query,
-      stageIndex,
-      segment,
-    );
-
-    return legacyExpression;
+    return segment;
   }
 
   const column = Lib.fieldableColumns(query, stageIndex).find(field => {
@@ -120,13 +108,7 @@ export function parseSegment(
   });
 
   if (column && Lib.isBoolean(column)) {
-    const legacyExpression = Lib.legacyExpressionForExpressionClause(
-      query,
-      stageIndex,
-      column,
-    );
-
-    return legacyExpression;
+    return column;
   }
 }
 

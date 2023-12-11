@@ -136,13 +136,15 @@ function prattCompiler({
       if (!metric) {
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
-      return ["metric", metric.id];
+
+      return Lib.legacyFieldRef(metric);
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
+
+      return Lib.legacyFieldRef(segment);
     } else {
       const reference = options.name ?? ""; // avoid circular reference
 

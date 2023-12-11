@@ -20,13 +20,15 @@ export function processSource(options: {
       if (!metric) {
         throw new Error(t`Unknown Metric: ${name}`);
       }
-      return ["metric", metric.id];
+
+      return Lib.legacyFieldRef(metric);
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
         throw new Error(t`Unknown Segment: ${name}`);
       }
-      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
+
+      return Lib.legacyFieldRef(segment);
     } else {
       const reference = options.name ?? ""; // avoid circular reference
 
