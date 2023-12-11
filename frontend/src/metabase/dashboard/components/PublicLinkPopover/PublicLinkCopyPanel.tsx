@@ -4,6 +4,7 @@ import {
   LinkContainer,
   PublicLinkCopyButton,
   PublicLinkTextContainer,
+  ExtensionOption,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
 import type { exportFormats } from "metabase/lib/urls";
 import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
