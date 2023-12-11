@@ -243,6 +243,7 @@ describe("scenarios > models metadata", () => {
       saveMetadataChanges();
 
       cy.log("Revision 1");
+      cy.findByTestId("TableInteractive-root");
       cy.findAllByTestId("header-cell")
         .should("contain", "Subtotal ($)")
         .and("not.contain", "SUBTOTAL");

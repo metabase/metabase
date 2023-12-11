@@ -76,7 +76,7 @@ jobs:
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
+    timeout-minutes: 30
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
