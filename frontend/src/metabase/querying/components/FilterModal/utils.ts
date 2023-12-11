@@ -4,6 +4,7 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
+import { SEARCH_KEY } from "metabase/querying/components/FilterModal/constants";
 import type { GroupItem } from "./types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
@@ -37,7 +38,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
         key: groupInfo.name ?? String(stageIndex),
         displayName: getColumnGroupName(groupInfo) || t`Summaries`,
         icon: getColumnGroupIcon(groupInfo) || "sum",
-        items: Lib.getColumnsFromColumnGroup(group).map(column => ({
+        columnItems: Lib.getColumnsFromColumnGroup(group).map(column => ({
           column,
           displayName: Lib.displayInfo(query, stageIndex, column).displayName,
           stageIndex,
@@ -45,6 +46,27 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
       };
     });
   });
+}
+
+export function searchGroupItems(
+  groupItems: GroupItem[],
+  searchText: string,
+): GroupItem[] {
+  const searchValue = searchText.toLowerCase();
+  const columnItems = groupItems
+    .flatMap(groupItem => groupItem.columnItems)
+    .filter(columnItem =>
+      columnItem.displayName.toLowerCase().includes(searchValue),
+    );
+
+  return [
+    {
+      key: SEARCH_KEY,
+      displayName: t`Search`,
+      icon: "search",
+      columnItems,
+    },
+  ];
 }
 
 export function hasFilters(query: Lib.Query) {

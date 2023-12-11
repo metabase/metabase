@@ -11,7 +11,7 @@ export interface GroupItem {
   key: string;
   displayName: string;
   icon: IconName;
-  items: ColumnItem[];
+  columnItems: ColumnItem[];
 }
 
 export interface FilterEditorProps {

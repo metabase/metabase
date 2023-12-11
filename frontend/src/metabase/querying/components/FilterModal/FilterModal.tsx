@@ -5,6 +5,7 @@ import { Icon } from "metabase/core/components/Icon";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
 import { FilterSearchInput } from "./FilterSearchInput";
+import { SEARCH_KEY } from "./constants";
 import {
   appendStageIfAggregated,
   dropStageIfEmpty,
@@ -15,6 +16,7 @@ import {
   getModalWidth,
   hasFilters,
   removeFilters,
+  searchGroupItems,
 } from "./utils";
 import type { GroupItem } from "./types";
 import {
@@ -40,10 +42,16 @@ export function FilterModal({
     appendStageIfAggregated(initialQuery),
   );
   const [version, setVersion] = useState(1);
-  const [_, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState("");
   const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getGroupItems(query), [query]);
+  const [tab, setTab] = useState<string | null>(groupItems[0].key);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
+
+  const visibleItems = useMemo(
+    () => (searchText ? searchGroupItems(groupItems, searchText) : groupItems),
+    [groupItems, searchText],
+  );
 
   const handleChange = (newQuery: Lib.Query) => {
     setQuery(newQuery);
@@ -61,24 +69,30 @@ export function FilterModal({
     onClose();
   };
 
+  const handleSearch = (searchText: string) => {
+    setTab(searchText ? SEARCH_KEY : groupItems[0].key);
+    setSearchText(searchText);
+  };
+
   return (
     <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <FilterSearchInput onChange={setSearchText} />
+          <FilterSearchInput onChange={handleSearch} />
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
           <Tabs
-            defaultValue={groupItems[0].key}
+            value={tab}
+            onTabChange={setTab}
             orientation="vertical"
             h="100%"
           >
             <Flex direction="row" w="100%">
-              {groupItems.length > 1 && <TabList groupItems={groupItems} />}
-              {groupItems.map(groupItem => (
+              {visibleItems.length > 1 && <TabList groupItems={visibleItems} />}
+              {visibleItems.map(groupItem => (
                 <TabPanel
                   key={`${groupItem.key}:${version}`}
                   query={query}
@@ -147,9 +161,9 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
-        {groupItem.items.map((columnItem, columnIndex) => {
+        {groupItem.columnItems.map((columnItem, columnIndex) => {
           return (
-            <TabPanelItemList
+            <TabPanelColumnItemList
               key={columnIndex}
               query={query}
               column={columnItem.column}
@@ -163,19 +177,19 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   );
 }
 
-interface TabPanelItemListProps {
+interface TabPanelColumnItemListProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   onChange: (newQuery: Lib.Query) => void;
 }
 
-function TabPanelItemList({
+function TabPanelColumnItemList({
   query,
   stageIndex,
   column,
   onChange,
-}: TabPanelItemListProps) {
+}: TabPanelColumnItemListProps) {
   const currentFilters = findColumnFilters(query, stageIndex, column);
   const [initialFilterCount] = useState(currentFilters.length);
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
@@ -183,7 +197,7 @@ function TabPanelItemList({
   return (
     <div>
       {visibleFilters.map((filter, filterIndex) => (
-        <TabPanelItem
+        <TabPanelColumnItem
           key={filterIndex}
           query={query}
           stageIndex={stageIndex}
@@ -196,7 +210,7 @@ function TabPanelItemList({
   );
 }
 
-interface TabPanelItemProps {
+interface TabPanelColumnItemProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -204,13 +218,13 @@ interface TabPanelItemProps {
   onChange: (newQuery: Lib.Query) => void;
 }
 
-function TabPanelItem({
+function TabPanelColumnItem({
   query,
   stageIndex,
   column,
   filter,
   onChange,
-}: TabPanelItemProps) {
+}: TabPanelColumnItemProps) {
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
       onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
