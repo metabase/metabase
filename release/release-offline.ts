@@ -265,7 +265,8 @@ async function s3() {
   );
 
   if (isLatest === 'true') {
-    await $`aws s3 cp ${JAR_PATH}/metabase.jar s3://${AWS_S3_DOWNLOADS_BUCKET}/latest/metabase.jar`.pipe(
+    const latestPath = edition === "ee" ? `enterprise/latest` : `latest`;
+    await $`aws s3 cp ${JAR_PATH}/metabase.jar s3://${AWS_S3_DOWNLOADS_BUCKET}/${latestPath}/metabase.jar`.pipe(
       process.stdout,
     );
   }
