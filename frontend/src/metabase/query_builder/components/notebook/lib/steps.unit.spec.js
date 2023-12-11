@@ -1,5 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib/steps";
+import * as Lib from "metabase-lib";
 import {
   createSampleDatabase,
   ORDERS,
@@ -82,6 +83,7 @@ describe("raw data query", () => {
 
 describe("filtered and summarized query", () => {
   const steps = getQuestionStepsForMBQLQuery(filteredAndSummarizedQuery);
+  const [_dataStep, filterStep, summarizeStep] = steps;
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
       expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);
@@ -107,23 +109,17 @@ describe("filtered and summarized query", () => {
     });
   });
   describe("update", () => {
-    it("should remove all steps when changing the table", () => {
-      const newQuery = steps[0].update(
-        steps[0].query.setTableId(PRODUCTS_ID).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS_ID });
-    });
     it("shouldn't remove summarize when removing filter", () => {
-      const newQuery = steps[1].update(
-        steps[1].revert(steps[1].query).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual(summarizedQuery);
+      const newQuery = filterStep.revert(filterStep.topLevelQuery);
+      expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
+      expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(newQuery, 0)).toHaveLength(0);
     });
     it("shouldn't remove filter when removing summarize", () => {
-      const newQuery = steps[2].update(
-        steps[2].revert(steps[2].query).datasetQuery(),
-      );
-      expect(newQuery.query()).toEqual(filteredQuery);
+      const newQuery = summarizeStep.revert(summarizeStep.topLevelQuery);
+      expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
+      expect(Lib.breakouts(newQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(newQuery, 0)).toHaveLength(1);
     });
   });
 });
