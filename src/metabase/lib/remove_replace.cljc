@@ -199,17 +199,18 @@
     :custom-column
     :custom-aggregation))
 
-(let [expression-validator (mc/validator :metabase.lib.schema.expression/expression)]
-  (defn- tweak?
-    "Returns if replacing `an-expression` with `new-expression` in `query` at stage `stage-number` is a tweak.
+(def ^:private expression-validator (mc/validator :metabase.lib.schema.expression/expression))
+
+(defn- tweak?
+  "Returns if replacing `an-expression` with `new-expression` in `query` at stage `stage-number` is a tweak.
   A tweak changes a top level expression or an aggregation while preserving its name and type."
-    [query stage-number an-expression new-expression]
-    (and (expression-validator an-expression)
-         (expression-validator new-expression)
-         (= (lib.metadata.calculation/display-name query stage-number new-expression)
-            (lib.metadata.calculation/display-name query stage-number an-expression))
-         (types/assignable? (lib.metadata.calculation/type-of query stage-number new-expression)
-                            (lib.metadata.calculation/type-of query stage-number an-expression)))))
+  [query stage-number an-expression new-expression]
+  (and (expression-validator an-expression)
+       (expression-validator new-expression)
+       (= (lib.metadata.calculation/display-name query stage-number new-expression)
+          (lib.metadata.calculation/display-name query stage-number an-expression))
+       (types/assignable? (lib.metadata.calculation/type-of query stage-number new-expression)
+                          (lib.metadata.calculation/type-of query stage-number an-expression))))
 
 (mu/defn tweak-expression :- :metabase.lib.schema/query
   "Return `query` with `an-exprssion` replaced by `new-expression` at stage `stage-number`.

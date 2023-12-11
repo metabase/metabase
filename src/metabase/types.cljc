@@ -357,7 +357,11 @@
 (declare-assignable :type/Integer :type/Decimal)
 
 (defn assignable?
-  "Is a value of type `x` assignable to a variable of type `y`?"
+  "Is a value of type `x` assignable to a variable of type `y`?
+
+  When deciding assignability, We also consider the type hierarchy.
+  If x is assignable to z and z is a y, then x is also assignable to y.
+  Also, if z is assignable to y and x is an z, then x is assignable to y."
   [x y]
   (or (isa? assignable-hierarchy x y)
       (boolean (some #(assignable? x %) (descendants y)))
