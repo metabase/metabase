@@ -14,7 +14,7 @@ import {
   dropStageIfEmpty,
   findColumnFilters,
   findVisibleFilters,
-  getColumnGroupItems,
+  getGroupItems,
   getModalTitle,
   getModalWidth,
   hasFilters,
@@ -44,8 +44,9 @@ export function FilterModal({
     appendStageIfAggregated(initialQuery),
   );
   const [version, setVersion] = useState(1);
+  const [_, setSearchText] = useState("");
   const [isChanged, setIsChanged] = useState(false);
-  const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
+  const groupItems = useMemo(() => getGroupItems(query), [query]);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
 
   const handleChange = (newQuery: Lib.Query) => {
@@ -70,7 +71,7 @@ export function FilterModal({
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <FilterSearchInput />
+          <FilterSearchInput onChange={setSearchText} />
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>

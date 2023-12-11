@@ -20,7 +20,7 @@ function getStageIndexes(query: Lib.Query) {
   return stageCount > 1 ? [-2, -1] : [-1];
 }
 
-export function getColumnGroupItems(query: Lib.Query): ColumnGroupItem[] {
+export function getGroupItems(query: Lib.Query): ColumnGroupItem[] {
   const stageIndexes = getStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
