@@ -1,12 +1,27 @@
 import { titleize } from "inflection";
 import { useState } from "react";
 import { t } from "ttag";
-import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
+import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
 import { Box, Center } from "metabase/ui";
+import { EmbedTitleLabel } from "./EmbedModal.styled";
 
 type EmbedModalStep = "application" | null;
+
+const EmbedTitle = ({
+  type,
+  onClick = undefined,
+}: {
+  type: string;
+  onClick?: () => void;
+}) => (
+  <a className="flex align-center" onClick={onClick}>
+    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
+    {type && <Icon name="chevronright" className="mx1 text-medium" />}
+    {type}
+  </a>
+);
 
 export const EmbedModal = ({
   children,
