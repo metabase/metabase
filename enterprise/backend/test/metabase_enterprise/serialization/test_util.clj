@@ -12,6 +12,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.util.files :as u.files]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -102,7 +103,7 @@
   `(~'&do-with-dest-db (fn [] ~@body)))
 
 (defn random-dump-dir [prefix]
-  (str (System/getProperty "java.io.tmpdir") "/" prefix (mt/random-name)))
+  (str (u.files/get-path (System/getProperty "java.io.tmpdir") prefix (mt/random-name))))
 
 (defn do-with-random-dump-dir [prefix f]
   (let [dump-dir (random-dump-dir (or prefix ""))]
