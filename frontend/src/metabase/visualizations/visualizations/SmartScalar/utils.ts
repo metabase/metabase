@@ -97,7 +97,7 @@ export const COMPARISON_SELECT_OPTIONS = {
     nameTemplate: t`${PLACEHOLDER_STR} ago`,
     MenuItemComponent: PeriodsAgoInputWidget,
   },
-  COMPARE_TO_PREVIOUS: {
+  PREVIOUS_VALUE: {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
     name: t`Previous value`,
   },
@@ -144,7 +144,7 @@ export function getDefaultComparison(
   )?.unit;
 
   if (!dateUnit) {
-    return COMPARISON_SELECT_OPTIONS.COMPARE_TO_PREVIOUS;
+    return COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE;
   }
 
   return {
@@ -171,7 +171,7 @@ export function getComparisonOptions(
   )?.unit as RelativeDatetimeUnit | undefined;
 
   if (!dateUnit) {
-    return [COMPARISON_SELECT_OPTIONS.COMPARE_TO_PREVIOUS];
+    return [COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE];
   }
 
   const options: ComparisonOption[] = [
@@ -199,7 +199,7 @@ export function getComparisonOptions(
     });
   }
 
-  options.push(COMPARISON_SELECT_OPTIONS.COMPARE_TO_PREVIOUS);
+  options.push(COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE);
 
   return options;
 }
