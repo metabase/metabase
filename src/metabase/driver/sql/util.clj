@@ -11,7 +11,8 @@
    [metabase.util.log :as log]
    [schema.core :as s])
   (:import
-   (com.github.vertical_blank.sqlformatter SqlFormatter)
+   (com.github.vertical_blank.sqlformatter SqlFormatter SqlFormatter$Formatter)
+   (com.github.vertical_blank.sqlformatter.core DialectConfig)
    (com.github.vertical_blank.sqlformatter.languages Dialect)
    (metabase.util.honey_sql_1 Identifier)))
 
@@ -166,6 +167,15 @@
    :standardsql Dialect/StandardSql
    :tsql        Dialect/TSql})
 
+(def ^:private ^java.util.List additional-operators
+  ["#>>" "!="])
+
+(defn- add-operators
+  ^SqlFormatter$Formatter [^SqlFormatter$Formatter formatter]
+  (.extend formatter (reify java.util.function.UnaryOperator
+                       (apply [_this config]
+                         (.plusOperators ^DialectConfig config additional-operators)))))
+
 (defn format-sql
   "Pretty format `sql` string using appropriate `dialect`.
   `dialect` is derived from `driver-or-dialect-kw`. If there is no corresponding value in [[dialects]]. fallback to
@@ -173,7 +183,7 @@
   [driver-or-dialect-kw sql]
   (when (string? sql)
     (let [dialect (get dialects driver-or-dialect-kw Dialect/StandardSql)
-          formatter (SqlFormatter/of ^Dialect dialect)]
+          formatter (add-operators (SqlFormatter/of ^Dialect dialect))]
       (.format formatter ^String sql))))
 
 (defn format-sql-and-fix-params
