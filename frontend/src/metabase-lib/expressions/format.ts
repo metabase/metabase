@@ -95,12 +95,13 @@ function formatDimension(fieldRef: FieldReference, options: Options) {
   }
 
   const columns = Lib.expressionableColumns(query, stageIndex);
-  const column = Lib.findColumnForLegacyRef(
+  const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
     query,
     stageIndex,
-    fieldRef,
     columns,
+    [fieldRef],
   );
+  const column = columns[columnIndex];
 
   return column
     ? formatDimensionName(
