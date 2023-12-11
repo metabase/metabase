@@ -134,7 +134,8 @@ describe("filtered and summarized query", () => {
 
 describe("filtered and summarized query with post-aggregation filter", () => {
   const steps = getQuestionStepsForMBQLQuery(postAggregationFilterQuery);
-  const [dataStep, filterStep1, summarizeStep, filterStep2] = steps;
+  const [dataStep, filterStep, summarizeStep, postAggregationFilterStep] =
+    steps;
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, summarize, and filter steps", () => {
@@ -173,7 +174,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("shouldn't include summarize or post-aggregation filter for filter step", () => {
-      const { previewQuery } = filterStep1;
+      const { previewQuery } = filterStep;
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
@@ -182,7 +183,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("should be the original query for post-aggregation filter step", () => {
-      const { previewQuery } = filterStep2;
+      const { previewQuery } = postAggregationFilterStep;
 
       expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(previewQuery, 0)).toHaveLength(1);
@@ -193,7 +194,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("revert", () => {
     it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
-      const newQuery = filterStep1.revert(filterStep1.topLevelQuery);
+      const newQuery = filterStep.revert(filterStep.topLevelQuery);
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
@@ -211,7 +212,9 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
 
     it("should not remove filter or summarize when removing post-aggregation filter", () => {
-      const newQuery = filterStep2.revert(filterStep2.topLevelQuery);
+      const newQuery = postAggregationFilterStep.revert(
+        postAggregationFilterStep.topLevelQuery,
+      );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
