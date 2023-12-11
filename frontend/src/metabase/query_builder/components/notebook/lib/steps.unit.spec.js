@@ -134,7 +134,7 @@ describe("filtered and summarized query", () => {
 
 describe("filtered and summarized query with post-aggregation filter", () => {
   const steps = getQuestionStepsForMBQLQuery(postAggregationFilterQuery);
-  const [_dataStep, filterStep1, summarizeStep, filterStep2] = steps;
+  const [dataStep, filterStep1, summarizeStep, filterStep2] = steps;
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, summarize, and filter steps", () => {
@@ -164,13 +164,30 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
-      expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
+      const { previewQuery } = dataStep;
+
+      expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(previewQuery, 1)).toHaveLength(0);
     });
-    it("shouldn't include summarize or post-aggregation filter filter step", () => {
-      expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
+
+    it("shouldn't include summarize or post-aggregation filter for filter step", () => {
+      const { previewQuery } = filterStep1;
+
+      expect(Lib.aggregations(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.breakouts(previewQuery, 0)).toHaveLength(0);
+      expect(Lib.filters(previewQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(previewQuery, 1)).toHaveLength(0);
     });
+
     it("should be the original query for post-aggregation filter step", () => {
-      expect(steps[3].previewQuery.query()).toEqual(postAggregationFilterQuery);
+      const { previewQuery } = filterStep2;
+
+      expect(Lib.aggregations(previewQuery, 0)).toHaveLength(1);
+      expect(Lib.breakouts(previewQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(previewQuery, 0)).toHaveLength(1);
+      expect(Lib.filters(previewQuery, 1)).toHaveLength(1);
     });
   });
 
