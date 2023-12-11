@@ -5,7 +5,6 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
-  createMockSettings,
   createMockDatasetData,
   createMockTextDashboardCard,
   createMockHeadingDashboardCard,
@@ -13,13 +12,12 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 
-import { createMockState } from "metabase-types/store/mocks";
 import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";
 
 registerVisualizations();
 
-const dashboard = createMockDashboard();
+const testDashboard = createMockDashboard();
 
 const tableDashcard = createMockDashboardCard({
   card: createMockCard({
@@ -28,40 +26,45 @@ const tableDashcard = createMockDashboardCard({
   }),
 });
 
-const metadata = createMockMetadata({}, createMockSettings());
+const tableDashcardData = {
+  [tableDashcard.id]: {
+    [tableDashcard.card.id]: {
+      data: createMockDatasetData({
+        rows: [["Davy Crocket"], ["Daniel Boone"]],
+      }),
+      database_id: 1,
+      context: "dashboard",
+      running_time: 50,
+      row_count: 2,
+      status: "completed",
+    },
+  },
+};
 
-const store = createMockState({});
+const metadata = createMockMetadata({});
 
-function setup(
-  options?: Partial<DashCardProps>,
-  storeOptions?: Partial<typeof store>,
-) {
-  return renderWithProviders(
+function setup({
+  dashboard = testDashboard,
+  dashcard = tableDashcard,
+  dashcardData = tableDashcardData,
+  ...props
+}: Partial<DashCardProps> = {}) {
+  const onReplaceCard = jest.fn();
+  renderWithProviders(
     <DashCard
       dashboard={dashboard}
-      dashcard={tableDashcard}
+      dashcard={dashcard}
       gridItemWidth={4}
       totalNumGridCols={24}
-      dashcardData={{
-        1: {
-          1: {
-            data: createMockDatasetData({
-              rows: [["Davy Crocket"], ["Daniel Boone"]],
-            }),
-            database_id: 1,
-            context: "dashboard",
-            running_time: 50,
-            row_count: 2,
-            status: "completed",
-          },
-        },
-      }}
+      dashcardData={dashcardData}
       slowCards={{}}
       parameterValues={{}}
       metadata={metadata}
       isEditing={false}
       isEditingParameter={false}
+      {...props}
       onAddSeries={jest.fn()}
+      onReplaceCard={onReplaceCard}
       onRemove={jest.fn()}
       markNewCardSeen={jest.fn()}
       navigateToNewCardFromDashboard={jest.fn()}
@@ -69,90 +72,82 @@ function setup(
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
-      {...options}
     />,
-    { storeInitialState: { ...store, ...storeOptions } },
   );
 }
 
 describe("DashCard", () => {
-  it("shows a dashcard title", () => {
+  it("should show a dashcard title", () => {
     setup();
     expect(screen.getByText("My Card")).toBeVisible();
   });
 
-  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", async () => {
-    setup({ isXray: true });
-
-    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
-  });
-
-  it("shows a table visualization", () => {
+  it("should show a table card", () => {
     setup();
     expect(screen.getByText("My Card")).toBeVisible();
     expect(screen.getByRole("table")).toBeVisible();
-
     expect(screen.getByText("NAME")).toBeVisible();
     expect(screen.getByText("Davy Crocket")).toBeVisible();
     expect(screen.getByText("Daniel Boone")).toBeVisible();
   });
 
-  it("shows a text visualization", () => {
+  it("should show a text card", () => {
     const textCard = createMockTextDashboardCard({ text: "Hello, world!" });
-    const board = {
-      ...dashboard,
-      dashcards: [textCard],
-    };
     setup({
-      dashboard: board,
+      dashboard: {
+        ...testDashboard,
+        dashcards: [textCard],
+      },
       dashcard: textCard,
       dashcardData: {},
     });
     expect(screen.getByText("Hello, world!")).toBeVisible();
   });
 
-  it("shows a heading visualization", () => {
+  it("should show a heading card", () => {
     const textCard = createMockHeadingDashboardCard({
       text: "What a cool section",
     });
-    const board = {
-      ...dashboard,
-      dashcards: [textCard],
-    };
     setup({
-      dashboard: board,
+      dashboard: {
+        ...testDashboard,
+        dashcards: [textCard],
+      },
       dashcard: textCard,
       dashcardData: {},
     });
     expect(screen.getByText("What a cool section")).toBeVisible();
   });
 
-  it("shows a link visualization", () => {
+  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", async () => {
+    setup({ isXray: true });
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  it("should show a link card", () => {
     const linkCard = createMockLinkDashboardCard({
       url: "https://xkcd.com/327",
     });
-    const board = {
-      ...dashboard,
-      dashcards: [linkCard],
-    };
     setup({
-      dashboard: board,
+      dashboard: {
+        ...testDashboard,
+        dashcards: [linkCard],
+      },
       dashcard: linkCard,
       dashcardData: {},
     });
     expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
   });
 
-  it("in parameter editing mode, shows faded link dashcard", () => {
+  it("should fade link card in parameter editing mode", () => {
     const linkCard = createMockLinkDashboardCard({
       url: "https://xkcd.com/327",
     });
-    const board = {
-      ...dashboard,
-      dashcards: [linkCard],
-    };
     setup({
-      dashboard: board,
+      dashboard: {
+        ...testDashboard,
+        dashcards: [linkCard],
+      },
       dashcard: linkCard,
       dashcardData: {},
       isEditing: true,
