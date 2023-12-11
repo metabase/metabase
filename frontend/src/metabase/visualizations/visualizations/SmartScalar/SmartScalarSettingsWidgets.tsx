@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
@@ -127,56 +127,75 @@ export function PeriodsAgoInputWidget({
   const minValue = 2;
 
   const [inputValue, setInputValue] = useState(value ?? minValue);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // used to prevent accidental button click when mouseDown inside input field
   // but dragged to highlight all text and accidentally mouseUp on the button
   // outside the input field
-  const mouseDownInChild = useRef(false);
+  const mouseDownInChildRef = useRef(false);
   const handleChildMouseDownAndUp = useCallback(
     (e: MouseEvent<HTMLInputElement>) => {
       e.stopPropagation();
       e.preventDefault();
-      e.currentTarget.select();
+      inputRef.current?.select();
 
-      mouseDownInChild.current = true;
+      mouseDownInChildRef.current = true;
     },
     [],
   );
   const handleParentMouseDown = useCallback(() => {
-    mouseDownInChild.current = false;
+    mouseDownInChildRef.current = false;
   }, []);
+
+  const submitValue = useCallback(() => {
+    if (inputValue < minValue) {
+      return setInputValue(minValue);
+    }
+
+    if (inputValue > maxValue) {
+      return setInputValue(maxValue);
+    }
+
+    if (!Number.isInteger(inputValue)) {
+      return setInputValue(value ?? minValue);
+    }
+
+    onChange({
+      type,
+      value: inputValue,
+    });
+
+    setOpen(false);
+  }, [inputValue, maxValue, type, onChange, setOpen, value]);
 
   const handleButtonClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       e.stopPropagation();
       e.preventDefault();
 
-      if (mouseDownInChild.current) {
-        mouseDownInChild.current = false;
+      if (mouseDownInChildRef.current) {
+        mouseDownInChildRef.current = false;
         return;
       }
 
-      if (inputValue < minValue) {
-        return setInputValue(minValue);
-      }
-
-      if (inputValue > maxValue) {
-        return setInputValue(maxValue);
-      }
-
-      if (!Number.isInteger(inputValue)) {
-        return setInputValue(value ?? minValue);
-      }
-
-      onChange({
-        type,
-        value: inputValue,
-      });
-
-      setOpen(false);
+      submitValue();
     },
-    [inputValue, maxValue, type, onChange, setOpen, value],
+    [submitValue],
   );
+
+  const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      mouseDownInChildRef.current = false;
+      inputRef.current?.blur();
+
+      submitValue();
+
+      // re-select input just in case the input number was not a valid input
+      setTimeout(() => {
+        inputRef.current?.select();
+      }, 0);
+    }
+  };
 
   return (
     <MenuItemStyled py="0.25rem" isSelected={isSelected}>
@@ -184,10 +203,12 @@ export function PeriodsAgoInputWidget({
         <Group position="apart" px="0.5rem">
           <Text fw="bold">{`${inputValue} ${name}`}</Text>
           <NumberInputStyled
+            ref={inputRef}
             value={inputValue}
             onChange={(value: number) => setInputValue(value)}
             onMouseDown={handleChildMouseDownAndUp}
             onMouseUp={handleChildMouseDownAndUp}
+            onKeyPress={handleEnter}
             size="xs"
             w="3.5rem"
             type="number"
