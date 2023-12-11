@@ -15,6 +15,7 @@ import {
   getModalTitle,
   getModalWidth,
   hasFilters,
+  isSearchActive,
   removeFilters,
   searchGroupItems,
 } from "./utils";
@@ -42,15 +43,16 @@ export function FilterModal({
     appendStageIfAggregated(initialQuery),
   );
   const [version, setVersion] = useState(1);
-  const [searchText, setSearchText] = useState("");
   const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getGroupItems(query), [query]);
   const [tab, setTab] = useState<string | null>(groupItems[0].key);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
+  const [searchText, setSearchText] = useState("");
+  const isSearching = isSearchActive(searchText);
 
   const visibleItems = useMemo(
-    () => (searchText ? searchGroupItems(groupItems, searchText) : groupItems),
-    [groupItems, searchText],
+    () => (isSearching ? searchGroupItems(groupItems, searchText) : groupItems),
+    [groupItems, searchText, isSearching],
   );
 
   const handleChange = (newQuery: Lib.Query) => {
@@ -70,7 +72,7 @@ export function FilterModal({
   };
 
   const handleSearch = (searchText: string) => {
-    setTab(searchText ? SEARCH_KEY : groupItems[0].key);
+    setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0].key);
     setSearchText(searchText);
   };
 

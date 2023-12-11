@@ -4,7 +4,7 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { SEARCH_KEY } from "metabase/querying/components/FilterModal/constants";
+import { SEARCH_KEY } from "./constants";
 import type { GroupItem } from "./types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
@@ -46,6 +46,10 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
       };
     });
   });
+}
+
+export function isSearchActive(searchText: string) {
+  return searchText.length > 0;
 }
 
 export function searchGroupItems(
