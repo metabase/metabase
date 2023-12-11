@@ -1,17 +1,18 @@
 import styled from "@emotion/styled";
 import { Flex, TextInput } from "metabase/ui";
+import type { TextInputProps } from "metabase/ui";
 
 export const SearchInputContainer = styled(Flex)`
   flex-grow: 1;
 `;
 
-export const SearchInput = styled(TextInput)`
-  width: 1.75rem;
-  transition: width 0.2s;
+interface SearchInputProps extends TextInputProps {
+  isActive: boolean;
+}
 
-  &:focus-within {
-    width: 20rem;
-  }
+export const SearchInput = styled(TextInput)<SearchInputProps>`
+  width: ${props => (props.isActive ? "20rem" : "1.75rem")};
+  transition: width 0.2s;
 
   @media (prefers-reduced-motion) {
     transition: none;

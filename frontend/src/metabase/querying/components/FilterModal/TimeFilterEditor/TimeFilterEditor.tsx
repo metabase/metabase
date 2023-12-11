@@ -5,10 +5,10 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
 import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
-import * as Lib from "metabase-lib";
-import { getColumnName } from "../utils";
-import type { FilterEditorProps } from "../types";
+import type * as Lib from "metabase-lib";
+import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
+import type { FilterEditorProps } from "../types";
 
 export function TimeFilterEditor({
   query,
@@ -18,11 +18,6 @@ export function TimeFilterEditor({
   isSearching,
   onChange,
 }: FilterEditorProps) {
-  const columnInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
-
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -57,9 +52,12 @@ export function TimeFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
-          <Text color="text.2" weight="bold">
-            {getColumnName(columnInfo, isSearching)}
-          </Text>
+          <FilterColumnName
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            isSearching={isSearching}
+          />
           <FilterOperatorPicker
             value={operator}
             options={availableOptions}

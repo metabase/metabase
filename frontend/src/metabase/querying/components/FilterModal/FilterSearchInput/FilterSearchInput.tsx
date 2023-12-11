@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
+import { isSearchActive } from "../utils";
 import { SearchInput, SearchInputContainer } from "./FilterSearchInput.styled";
 
 const SEARCH_TIMEOUT = 200;
@@ -13,6 +14,7 @@ interface FilterSearchInputProps {
 export function FilterSearchInput({ onChange }: FilterSearchInputProps) {
   const [value, setValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
+  const isActive = isFocused || isSearchActive(value);
 
   useDebounce(() => onChange(value), SEARCH_TIMEOUT, [value]);
 
@@ -21,8 +23,9 @@ export function FilterSearchInput({ onChange }: FilterSearchInputProps) {
       <SearchInput
         value={value}
         icon={<Icon name="search" />}
-        variant={isFocused ? "default" : "unstyled"}
-        placeholder={isFocused ? t`Search for a column…` : undefined}
+        variant={isActive ? "default" : "unstyled"}
+        placeholder={isActive ? t`Search for a column…` : undefined}
+        isActive={isActive}
         onChange={event => setValue(event.currentTarget.value)}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}

@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
-import { Checkbox, Flex, Grid, Group, Text } from "metabase/ui";
+import { Checkbox, Flex, Grid, Group } from "metabase/ui";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useBooleanOperatorFilter } from "metabase/querying/hooks/use-boolean-operator-filter";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
+import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { getColumnName } from "../utils";
 import type { FilterEditorProps } from "../types";
 
 export function BooleanFilterEditor({
@@ -17,10 +17,6 @@ export function BooleanFilterEditor({
   isSearching,
   onChange,
 }: FilterEditorProps) {
-  const columnInfo = useMemo(() => {
-    return Lib.displayInfo(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -57,9 +53,12 @@ export function BooleanFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
-          <Text color="text.2" weight="bold">
-            {getColumnName(columnInfo, isSearching)}
-          </Text>
+          <FilterColumnName
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            isSearching={isSearching}
+          />
           {isExpanded && (
             <FilterOperatorPicker
               value={operator}

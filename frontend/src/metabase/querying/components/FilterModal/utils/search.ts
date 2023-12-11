@@ -1,17 +1,9 @@
 import { t } from "ttag";
-import type * as Lib from "metabase-lib";
 import { SEARCH_KEY } from "../constants";
 import type { GroupItem } from "../types";
 
 export function isSearchActive(searchText: string) {
   return searchText.length > 0;
-}
-
-export function getColumnName(
-  columnInfo: Lib.ColumnDisplayInfo,
-  isSearching: boolean,
-) {
-  return isSearching ? columnInfo.longDisplayName : columnInfo.displayName;
 }
 
 export function searchGroupItems(
