@@ -815,3 +815,21 @@
                 (set (mapv :short (-> query
                                       (lib/join (meta/table-metadata :venues))
                                       lib/available-aggregation-operators)))))))))
+
+(deftest ^:synchronized selected-aggregation-operators-skip-marking-columns-for-non-refs-test
+  (testing "when the aggregation's argument is not a column ref, don't try to mark selected columns"
+    ;; See https://metaboat.slack.com/archives/C05MPF0TM3L/p1702039952166409 for details.
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/distinct (lib/case
+                                                       [[(lib/= (meta/field-metadata :products :category) "Gizmo") 2]]
+                                                       3))))
+          available (lib/available-aggregation-operators query)]
+      (is (=? (for [op available]
+                (cond-> op
+                  ;; Hawk's =? will think these are predicates and try to run them!
+                  true                      (dissoc :display-info)
+                  (= (:short op) :distinct) (assoc :selected? true)))
+              (lib/selected-aggregation-operators available (first (lib/aggregations query)))))
+      (is (thrown? #?(:clj Exception :cljs js/Error)
+                   (with-redefs [lib.util/ref-clause? (constantly true)]
+                     (lib/selected-aggregation-operators available (first (lib/aggregations query)))))))))

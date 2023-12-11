@@ -53,7 +53,7 @@ dataset_query:
       - week
       - include-current: false
     joins:
-    - alias: Question 34
+    - alias: Group Members - Creator
       condition:
       - =
       - - field
@@ -68,9 +68,10 @@ dataset_query:
           - v_group_members
           - user_id
         - base-type: type/Integer
-          join-alias: Question 34
+          join-alias: Group Members - Creator
       fields: all
       source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
     source-table: AxSackBiyXVRUzM_TyyQY
   type: query
 result_metadata: null

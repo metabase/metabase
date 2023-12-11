@@ -27,13 +27,13 @@ import {
   SearchInput,
 } from "./QuestionPicker.styled";
 
-QuestionPicker.propTypes = {
+QuestionPickerInner.propTypes = {
   onSelect: PropTypes.func.isRequired,
   collectionsById: PropTypes.object,
   getCollectionIcon: PropTypes.func,
 };
 
-function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
+function QuestionPickerInner({ onSelect, collectionsById, getCollectionIcon }) {
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
   const [currentCollectionId, setCurrentCollectionId] = useState(
@@ -115,7 +115,7 @@ function QuestionPicker({ onSelect, collectionsById, getCollectionIcon }) {
   );
 }
 
-export const QuestionPickerConnected = _.compose(
+export const QuestionPicker = _.compose(
   entityObjectLoader({
     id: () => "root",
     entityType: "collections",
@@ -131,4 +131,4 @@ export const QuestionPickerConnected = _.compose(
     ).selectors.getExpandedCollectionsById(state),
     getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
   })),
-)(QuestionPicker);
+)(QuestionPickerInner);

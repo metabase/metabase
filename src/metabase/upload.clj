@@ -355,11 +355,18 @@
 ;;; |                                                 public interface                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:dynamic *sync-synchronously?*
+  "For testing purposes, often we'd like to sync synchronously so that we can test the results immediately and avoid
+  race conditions."
+  false)
+
 (defn- scan-and-sync-table!
   [database table]
   (sync-fields/sync-fields-for-table! database table)
-  (future
-    (sync/sync-table! table)))
+  (if *sync-synchronously?*
+    (sync/sync-table! table)
+    (future
+      (sync/sync-table! table))))
 
 (defn- can-upload-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."

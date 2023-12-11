@@ -1,4 +1,40 @@
 (ns metabase.lib.drill-thru.quick-filter
+  "Adds a filter clause with simple operators like `<`, `>`, `=`, `≠`, `contains`, does-not-contain`.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Column not `type/PK`, `type/FK`, or `type/Structured`
+
+  - Column can be filtered upon (exists in `filterableColumns`)
+
+  - For `null` value, allow only `=` and `≠` operators, which map to `is-null` and `not-null` filter operators
+
+  - For date and numeric columns, allow `<`, `>`, `=`, `≠` operators
+
+  - For string columns which have `type/Comment` or `type/Description` semantic type, allow `contains` and
+    `does-not-contain` operators.
+
+  - For other cases, including string columns, allow only `=` and `≠` operators.
+
+  - Return raw `value` in `displayInfo` for the drill. Is it used to show `Is ${value}` for string column operators.
+
+  Query transformation:
+
+  - Add a filter clause based on the selected column, value, and the operator
+
+  - Append a query stage if the selected column is coming from an aggregation or breakout clause.
+
+  Question transformation:
+
+  - None
+
+  There is a separate function `filterDrillDetails` which returns `query` and `column` used for the `FilterPicker`. It
+  should automatically append a query stage and find the corresponding _filterable_ column in this stage. It is used
+  for `contains` and `does-not-contain` operators."
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
