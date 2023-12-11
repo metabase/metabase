@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import { ExtensionOption } from "metabase/public/components/widgets/SharingPane/SharingPane.styled";
 import {
   LinkContainer,
   PublicLinkCopyButton,
