@@ -209,9 +209,19 @@
 
 (deftest store-error-test
   (testing "destination not writable"
-    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (io/make-parents (str dump-dir "/test"))
-      (.setWritable (io/file dump-dir) false)
-      (is (thrown-with-msg? Exception #"Destination path is not writeable: "
-                            (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
-                                            dump-dir))))))
+    (ts/with-random-dump-dir [parent-dir "serdesv2-"]
+      (let [dump-dir (str parent-dir "/test")]
+        (testing "parent is not writable, cannot create own directory"
+          (.mkdirs (io/file parent-dir))
+          (.setWritable (io/file parent-dir) false)
+          (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                                (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                                dump-dir))))
+        (testing "directory exists but is not writable"
+          (.setWritable (io/file parent-dir) true)
+          (.mkdirs (io/file dump-dir))
+          (io/make-parents dump-dir "inner")
+          (.setWritable (io/file dump-dir) false)
+          (is (thrown-with-msg? Exception #"Destination path is not writeable: "
+                                (storage/store! [{:serdes/meta [{:model "A" :id "B"}]}]
+                                                dump-dir))))))))
