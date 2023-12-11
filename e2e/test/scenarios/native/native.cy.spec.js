@@ -21,7 +21,7 @@ import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-describe.skip("scenarios > question > native", () => {
+describe("scenarios > question > native", () => {
   beforeEach(() => {
     cy.intercept("POST", "api/card").as("card");
     cy.intercept("POST", "api/dataset").as("dataset");

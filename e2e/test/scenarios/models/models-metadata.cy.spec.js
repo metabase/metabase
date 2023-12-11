@@ -243,10 +243,10 @@ describe("scenarios > models metadata", () => {
       saveMetadataChanges();
 
       cy.log("Revision 1");
-      cy.findByTestId("TableInteractive-root");
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Subtotal ($)")
-        .and("not.contain", "SUBTOTAL");
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("Subtotal ($)").should("be.visible");
+        cy.findByText("SUBTOTAL").should("not.exist");
+      });
 
       openQuestionActions();
       popover().findByTextEnsureVisible("Edit metadata").click();
