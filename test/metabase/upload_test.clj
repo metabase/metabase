@@ -176,12 +176,14 @@
            [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
-    (let [settings {:number-separators (or seps ".,")}
-          type     (#'upload/value->type string-value settings)
-          parser   (upload-parsing/upload-type->parser type settings)]
+    (let [settings   {:number-separators (or seps ".,")}
+          value-type (#'upload/value->type string-value settings)
+          ;; get the type of the column, if it were filled with only that value
+          col-type   (first (#'upload/column-types-from-rows settings 1 [[string-value]]))
+          parser     (upload-parsing/upload-type->parser col-type settings)]
       (testing (format "\"%s\" is a %s" string-value type)
         (is (= expected-type
-               type)))
+               value-type)))
       (testing (format "\"%s\" is parsed into %s" string-value expected-value)
         (is (= expected-value
                (parser string-value)))))))

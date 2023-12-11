@@ -83,6 +83,13 @@
     [::float ::varchar-255]
     [::varchar-255 ::text]))
 
+(defn ^:private column-type
+  "Returns the type of a column given the lowest common ancestor type of the values in the column."
+  [type]
+  (case type
+    ::boolean-or-int ::boolean
+    type))
+
 (def ^:private type->parents
   (reduce
    (fn [m [type parent]]
@@ -90,9 +97,13 @@
    {}
    type+parent-pairs))
 
-(def ^:private types
-  "All types, including the root type, ::text"
+(def ^:private value-types
+  "All value types including the root type, ::text"
   (conj (keys type->parents) ::text))
+
+(def ^:private column-types
+  "All column types"
+  (map column-type value-types))
 
 (defn- bfs-ancestors [type]
   (loop [visit   (list type)
@@ -104,7 +115,7 @@
 
 (def ^:private type->bfs-ancestors
   "A map from each type to an ordered set of its ancestors, in breadth-first order"
-  (into {} (for [type types]
+  (into {} (for [type value-types]
              [type (bfs-ancestors type)])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -199,7 +210,7 @@
       (<= (count trimmed) 255)                                  ::varchar-255
       :else                                                     ::text)))
 
-(defn- row->types
+(defn- row->value-types
   [row settings]
   (map #(value->type % settings) row))
 
@@ -263,13 +274,25 @@
 (defn- parse-rows*
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
   Replaces empty strings with nil."
-  [col-upload-types rows]
+  [col-types rows]
   (let [settings (upload-parsing/get-settings)
-        parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+        parsers  (map #(upload-parsing/upload-type->parser % settings) col-types)]
     (for [row rows]
       (for [[value parser] (map-with-nils vector row parsers)]
         (when (not (str/blank? value))
           (parser value))))))
+
+(mu/defn ^:private column-types-from-rows :- [:sequential (into [:enum] column-types)]
+  "Returns a sequence of types, given the unparsed rows in the CSV file"
+  [settings column-count rows]
+  (->> rows
+       (map #(row->value-types % settings))
+       (reduce coalesce-types (repeat column-count nil))
+       (map (fn [type]
+              ;; if there's no values in the column, assume it's a string
+              (if (nil? type)
+                ::text
+                (column-type type))))))
 
 (defn- rows->schema
   "Rows should be a lazy-seq. This function hides the logic for ignoring any columns in the CSV that have the same
@@ -292,15 +315,7 @@
         column-count      (count normalized-header)
         settings          (upload-parsing/get-settings)
         col-name+type-pairs (->> rows
-                                 (map #(row->types % settings))
-                                 (reduce coalesce-types (repeat column-count nil))
-                                 (map (fn [type]
-                                        (case type
-                                          ;; if there's no values in the column, assume it's a string
-                                          nil ::text
-                                          ;; if the final type is a boolean-or-int, assume it's a boolean
-                                          ::boolean-or-int ::boolean
-                                          type)))
+                                 (column-types-from-rows settings column-count)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)
