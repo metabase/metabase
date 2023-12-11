@@ -142,7 +142,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
@@ -155,7 +155,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
@@ -168,7 +168,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@flaky",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
@@ -179,7 +179,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
@@ -192,7 +192,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
@@ -276,6 +276,6 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Percy Test
-        run: yarn run test-visual-run --browser chrome
+        run: yarn run test-visual-run --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
         env:
           PERCY_TOKEN: ${{ github.ref == 'refs/heads/master' && secrets.PERCY_TOKEN || ''}}

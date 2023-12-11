@@ -17,7 +17,8 @@ runs:
       if: ${{ inputs.is-replay-browser != 'true' }}
       uses: browser-actions/setup-chrome@v1
       with:
-        chrome-version: stable
+        # https://chromium.cypress.io/linux/stable/111.0.5563.146
+        chrome-version: 1097615
       id: setup-chrome
     - name: Chrome install feedback
       if: ${{ inputs.is-replay-browser != 'true' }}
