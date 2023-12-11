@@ -886,16 +886,16 @@
         (when grant?
           (perms/grant-permissions! group-id (perms/data-perms-path (mt/id))))
         (u/prog1 (binding [upload/*sync-synchronously?* sync-synchronously?]
-                   (upload/upload-csv! {:collection-id collection-id
-                                        :filename      csv-file-name
-                                        :file          file
-                                        :db-id         db-id
-                                        :schema-name   schema-name
-                                        :table-prefix  table-prefix}))
+                   (upload/create-csv-upload! {:collection-id collection-id
+                                               :filename      csv-file-name
+                                               :file          file
+                                               :db-id         db-id
+                                               :schema-name   schema-name
+                                               :table-prefix  table-prefix}))
           (when grant?
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
-(deftest upload-csv!-schema-test
+(deftest create-csv-upload!-schema-test
   (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
     (mt/with-empty-db
       (let [db                   (mt/db)
@@ -946,7 +946,7 @@
           (finally
             (t2/update! :model/Database db-id original-sync-values)))))))
 
-(deftest upload-csv!-table-prefix-test
+(deftest create-csv-upload!-table-prefix-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Happy path with table prefix, and without schema"
@@ -963,7 +963,7 @@
                     new-table))
             (is (nil? (:schema new-table)))))))))
 
-(deftest upload-csv!-auto-pk-column-display-name-test
+(deftest create-csv-upload!-auto-pk-column-display-name-test
   (testing "The auto-generated column display_name should be the same as its name"
    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
      (mt/with-empty-db
@@ -1008,7 +1008,7 @@
                   :user-id (str (mt/user->id :rasta))}
                  (last (snowplow-test/pop-event-data-and-user-id!)))))))))
 
-(deftest upload-csv!-failure-test
+(deftest create-csv-upload!-failure-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -1041,7 +1041,7 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(deftest upload-csv!-schema-does-not-sync-test
+(deftest create-csv-upload!-schema-does-not-sync-test
   ;; Just test with postgres because failure should be independent of the driver
   (mt/test-driver :postgres
     (mt/with-empty-db
@@ -1065,3 +1065,207 @@
                         (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                         ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                             first :exists)))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           append-csv!                                                          |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn basic-db-definition
+  "This creates a table with an auto-incrementing integer ID column, and a name column."
+  []
+  (mt/dataset-definition
+   (mt/random-name)
+   ["table_one"
+    [;; 'id' is created automatically
+     {:field-name "name", :base-type :type/Text}]
+    [["Obi-Wan Kenobi"]]]))
+
+(defn append-csv-with-defaults!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  [& {:keys [uploads-enabled user-id file table-id is-upload]
+      :or {uploads-enabled   true
+           user-id           (mt/user->id :crowberto)
+           file              (csv-file-with
+                              ["id,name"
+                               "2,Luke Skywalker"
+                               "3,Darth Vader"]
+                              (str (mt/random-name) ".csv"))
+           is-upload          true}}]
+  (try
+    (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
+      (mt/with-current-user user-id
+        (mt/dataset (basic-db-definition)
+          (let [tables (t2/select :model/Table :db_id (mt/id))
+                table (first tables)]
+            (assert (= (count tables) 1))
+            (t2/update! :model/Table (:id table) {:is_upload is-upload})
+            (upload/append-csv! {:table-id (or table-id (:id table))
+                                    :file     file})))))
+    (finally
+      (io/delete-file file))))
+
+(defn catch-ex-info* [f]
+  (try
+    (f)
+    (catch Exception e
+      {:message (ex-message e) :data (ex-data e)})))
+
+(defmacro catch-ex-info
+  [& body]
+  `(catch-ex-info* (fn [] ~@body)))
+
+(deftest can-append-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (testing "Happy path"
+      (is (= {:row-count 2}
+             (append-csv-with-defaults!))))
+    (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
+      (mt/with-temporary-setting-values [uploads-database-id nil
+                                         uploads-schema-name nil
+                                         uploads-table-prefix nil]
+        (is (some? (append-csv-with-defaults!)))))
+    (testing "Uploads must be enabled"
+      (is (= {:message "Uploads are not enabled."
+              :data    {:status-code 422}}
+             (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
+    (testing "The table must exist"
+      (is (= {:message "Not found."
+              :data    {:status-code 404}}
+             (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
+    (testing "The table must be an uploaded table"
+      (is (= {:message "The table must be an uploaded table."
+              :data    {:status-code 422}}
+             (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
+    (testing "The CSV file must not be empty"
+      (is (= {:data {:status-code 422},
+              :message "The schema of the CSV file does not match the schema of the table."}
+             (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
+    (testing "Uploads must be supported"
+      (with-redefs [driver/database-supports? (constantly false)]
+        (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults!))))))))
+
+(defn do-with-uploads-allowed
+  "Set uploads-enabled to true, and uses an admin user, run the thunk"
+  [thunk]
+  (mt/with-temporary-setting-values [uploads-enabled true]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (thunk))))
+
+(defmacro with-uploads-allowed [& body]
+  `(do-with-uploads-allowed (fn [] ~@body)))
+
+(deftest append-column-match-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "Append should succeed regardless of CSV column order or case"
+        (doseq [csv-rows [["id,name" "2,Luke Skywalker" "3,Darth Vader"]
+                          ["Id\t,NAmE " "2,Luke Skywalker" "3,Darth Vader"] ;; the same name when normalized
+                          ["name,id" "Luke Skywalker,2" "Darth Vader,3"]]]  ;; different order
+          (mt/dataset (basic-db-definition)
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  _     (t2/update! :model/Table (:id table) {:is_upload true})
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (some? (upload/append-csv! {:file     file
+                                              :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table correctly"
+                (is (= [[1 "Obi-Wan Kenobi"]
+                        [2 "Luke Skywalker"]
+                        [3 "Darth Vader"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest append-column-mismatch-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "Append should fail if there are extra columns in the CSV file"
+        (doseq [csv-rows [["id,name,extra_column" "2,Luke Skywalker,so extra"] ;; extra column
+                          ["id" "2,Luke Skywalker"]                            ;; missing column
+                          ["id,extra_column" "2,so extra"]]]                   ;; extra and missing column
+          (mt/dataset (basic-db-definition)
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  _     (t2/update! :model/Table (:id table) {:is_upload true})
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              ;; TODO: specialise this error message
+              (is (= {:message "The schema of the CSV file does not match the schema of the table."
+                      :data {:status-code 422}}
+                     (catch-ex-info (upload/append-csv! {:file     file
+                                                         :table-id (:id table)}))))
+              (testing "Check the data was not uploaded into the table"
+                (is (= [[1 "Obi-Wan Kenobi"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(defn all-types-db-definition
+  "This creates a table with an auto-incrementing integer ID column, and a name column."
+  []
+  (mt/dataset-definition
+   (mt/random-name)
+   ["table_one"
+    [;; 'id' is created automatically
+     {:field-name "biginteger", :base-type :type/BigInteger}
+     {:field-name "float", :base-type :type/Float}
+     {:field-name "text", :base-type :type/Text}
+     {:field-name "boolean", :base-type :type/Boolean}
+     {:field-name "date", :base-type :type/Date}
+     {:field-name "datetime", :base-type :type/DateTime}
+     {:field-name "offset_datetime", :base-type :type/DateTimeWithLocalTZ}]
+    [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]]))
+
+(deftest append-all-types-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (with-mysql-local-infile-on-and-off
+        (mt/with-report-timezone-id "UTC"
+          (testing "Append should succeed for all possible CSV column types"
+            (let [csv-rows ["id,biginteger,float,text,boolean,date,datetime,offset_datetime"
+                            "2,2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
+              (mt/dataset (all-types-db-definition)
+                (with-redefs [driver/db-default-timezone (constantly "Z")
+                              upload/current-database    (constantly (mt/db))]
+                  (let [table (t2/select-one :model/Table :db_id (mt/id))
+                        _     (t2/update! :model/Table (:id table) {:is_upload true})
+                        file  (csv-file-with csv-rows (mt/random-name))]
+                    (is (some? (upload/append-csv! {:file     file
+                                                    :table-id (:id table)})))
+                    (testing "Check the data was uploaded into the table correctly"
+                      (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
+                              [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
+                             (rows-for-table table))))
+                    (io/delete-file file)))))))))))
+
+(deftest append-no-rows-test
+  (mt/test-driver :h2
+    (with-uploads-allowed
+      (testing "Append should succeed with a CSV with only the header"
+        (doseq [csv-rows [["id,name"]]]
+          (mt/dataset (basic-db-definition)
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  _     (t2/update! :model/Table (:id table) {:is_upload true})
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:row-count 0}
+                     (upload/append-csv! {:file     file
+                                          :table-id (:id table)})))
+              (testing "Check the data was not uploaded into the table"
+                (is (= [[1 "Obi-Wan Kenobi"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest append-duplicate-header-csv-test
+  (mt/test-driver :h2
+    (with-uploads-allowed
+      (testing "Happy path"
+        (doseq [csv-rows [["id,id,name" "2,2,Luke Skywalker" "3,3,Darth Vader"]]]
+          (mt/dataset (basic-db-definition)
+            (let [table (t2/select-one :model/Table :db_id (mt/id))
+                  _     (t2/update! :model/Table (:id table) {:is_upload true})
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:message "The CSV file contains duplicate column names."
+                      :data    {:status-code 422}}
+                     (catch-ex-info (upload/append-csv! {:file     file
+                                                         :table-id (:id table)}))))
+              (testing "Check the data was not uploaded into the table"
+                (is (= [[1 "Obi-Wan Kenobi"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))

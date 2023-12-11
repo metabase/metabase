@@ -16,6 +16,7 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -870,3 +871,44 @@
                       (map u/the-id))))))
       (finally (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                      {:field_order original-field-order})))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          POST /api/table/:id/append-csv                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn append-csv-via-api!
+  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  []
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/dataset (upload-test/basic-db-definition)
+      (let [file  (upload-test/csv-file-with ["id,name" "2,Luke Skywalker" "3,Darth Vader"] (mt/random-name))
+            table (t2/select-one :model/Table :db_id (mt/id))
+            _     (t2/update! :model/Table (:id table) {:is_upload true})]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (@#'api.table/append-csv! {:id   (:id table)
+                                     :file file}))))))
+
+(deftest append-csv-test
+  (mt/test-driver :h2
+    (mt/with-empty-db
+      (testing "Happy path"
+        (mt/with-temporary-setting-values [uploads-enabled true]
+          (is (= {:status 200, :body nil}
+                 (append-csv-via-api!)))))
+      (testing "Failure paths return an appropriate status code and a message in the body"
+        (mt/with-temporary-setting-values [uploads-enabled false]
+          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                 (append-csv-via-api!))))))))
+
+(deftest append-csv-deletes-file-test
+  (testing "File gets deleted after appending"
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/dataset (upload-test/basic-db-definition)
+        (let [filename (mt/random-name)
+              file (upload-test/csv-file-with ["id,name" "2,Luke Skywalker" "3,Darth Vader"] filename)
+              table (t2/select-one :model/Table :db_id (mt/id))]
+          (is (.exists file) "File should exist before append-csv!")
+          (mt/with-current-user (mt/user->id :crowberto)
+            (@#'api.table/append-csv! {:id   (:id table)
+                                       :file file}))
+          (is (not (.exists file)) "File should be deleted after append-csv!"))))))

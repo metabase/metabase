@@ -1,6 +1,7 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
+   [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -21,9 +22,11 @@
    #_{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
+   [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -500,5 +503,29 @@
   {id ms/PositiveInt
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
+
+(mu/defn ^:private append-csv!
+  "This helper function exists to make testing the POST /api/table/:id/append-csv endpoint easier."
+  [{:keys [id file]}
+   :- [:map
+       [:id ms/PositiveInt]
+       [:file (ms/InstanceOfClass java.io.File)]]]
+  (try
+    (let [model (upload/append-csv! {:table-id id
+                                     :file     file})]
+      {:status 200
+       :body   (:id model)})
+    (catch Throwable e
+      {:status (or (-> e ex-data :status-code)
+                   500)
+       :body   {:message (or (ex-message e)
+                             (tru "There was an error uploading the file"))}})
+    (finally (io/delete-file file :silently))))
+
+(api/defendpoint ^:multipart POST "/:id/append-csv"
+  "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file."
+  [id :as {raw-params :params}]
+  {id ms/PositiveInt}
+  (append-csv! {:id id, :file (get-in raw-params ["file" :tempfile])}))
 
 (api/define-routes)
