@@ -1,5 +1,30 @@
 (ns metabase.lib.drill-thru.zoom
-  "A `:zoom` drill is a 'View details' drill when you click on the value of a PK column in a Table that has EXACTLY ONE
+  "Object details drill for PK columns when there is a single PK column available.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - There is only on PK column available in returned columns
+
+  - Selected column is not a FK
+
+  - Selected column is either a FK OR the query has no aggregations (in this case the PK column should be used instead
+    of the selected column)
+
+  - The value for the PK column (which can be different to selected column) in the data row is not `null`.
+
+  Query transformation:
+
+  - None/identity
+
+  Question transformation:
+
+  - None
+
+  A `:zoom` drill is a 'View details' drill when you click on the value of a PK column in a Table that has EXACTLY ONE
   PK column. In MLv2, it is a no-op; in the frontend it changes the URL to take you to the 'object details' view for
   the row in question. For Tables with multiple PK columns, a [[metabase.lib.drill-thru.pk]] drill is returned
   instead.
