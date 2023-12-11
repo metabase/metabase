@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: recipient_external
   model: Field
+database_indexed: null
