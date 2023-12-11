@@ -1,5 +1,6 @@
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import * as Lib from "metabase-lib";
+import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 
 import type { NotebookStepUiComponentProps } from "../types";
 import { ClauseStep } from "./ClauseStep";
@@ -37,7 +38,13 @@ export const ExpressionStep = ({
           clause={item}
           withName
           onChangeClause={(name, clause) => {
-            const namedClause = Lib.withExpressionName(clause, name);
+            const uniqueName = getUniqueClauseName(
+              query,
+              stageIndex,
+              item,
+              name,
+            );
+            const namedClause = Lib.withExpressionName(clause, uniqueName);
             const isUpdate = item;
 
             if (isUpdate) {
@@ -52,7 +59,7 @@ export const ExpressionStep = ({
               const nextQuery = Lib.expression(
                 query,
                 stageIndex,
-                name,
+                uniqueName,
                 namedClause,
               );
               updateQuery(nextQuery);
@@ -63,10 +70,34 @@ export const ExpressionStep = ({
       )}
       isLastOpened={isLastOpened}
       onRemove={clause => {
-        const nextQuery = Lib.removeClause(query, stageIndex, clause);
+        const nextQuery = Lib.dropStageIfEmpty(
+          Lib.removeClause(query, stageIndex, clause),
+          step.stageIndex,
+        );
         updateQuery(nextQuery);
       }}
       withLegacyPopover
     />
   );
+};
+
+const getUniqueClauseName = (
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.ExpressionClause | undefined,
+  name: string,
+) => {
+  const isUpdate = clause;
+  // exclude the current clause so that its name is available during update (metabase#21135)
+  const queryWithoutCurrentClause = isUpdate
+    ? Lib.removeClause(query, stageIndex, clause)
+    : query;
+  const expressions = Lib.expressions(queryWithoutCurrentClause, stageIndex);
+  const expressionsObject = Object.fromEntries(
+    expressions.map(expression => [
+      Lib.displayInfo(query, stageIndex, expression).displayName,
+    ]),
+  );
+  const uniqueName = getUniqueExpressionName(expressionsObject, name);
+  return uniqueName;
 };

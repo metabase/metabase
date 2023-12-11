@@ -1,8 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { FieldReference } from "metabase-types/api";
-import type { Clause, ColumnMetadata, Query } from "./types";
+import type { ColumnMetadata, Query } from "./types";
 
-export function fields(query: Query, stageIndex: number): Clause[] {
+export function fields(query: Query, stageIndex: number): ColumnMetadata[] {
   return ML.fields(query, stageIndex);
 }
 

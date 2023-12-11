@@ -170,19 +170,32 @@ interface OrderByClauseOpts {
 
 interface QueryWithClausesOpts {
   query?: Lib.Query;
+  expressions?: ExpressionClauseOpts[];
   aggregations?: AggregationClauseOpts[];
   breakouts?: BreakoutClauseOpts[];
-  expressions?: ExpressionClauseOpts[];
   orderBys?: OrderByClauseOpts[];
 }
 
 export function createQueryWithClauses({
   query = createQuery(),
+  expressions = [],
   aggregations = [],
   breakouts = [],
-  expressions = [],
   orderBys = [],
 }: QueryWithClausesOpts) {
+  const queryWithExpressions = expressions.reduce((query, expression) => {
+    return Lib.expression(
+      query,
+      -1,
+      expression.name,
+      Lib.expressionClause(
+        expression.operator,
+        expression.args,
+        expression.options,
+      ),
+    );
+  }, query);
+
   const queryWithAggregations = aggregations.reduce((query, aggregation) => {
     return Lib.aggregate(
       query,
@@ -191,7 +204,7 @@ export function createQueryWithClauses({
         findAggregationOperator(query, aggregation.operatorName),
       ),
     );
-  }, query);
+  }, queryWithExpressions);
 
   const queryWithBreakouts = breakouts.reduce((query, breakout) => {
     const breakoutColumn = columnFinder(
@@ -210,26 +223,13 @@ export function createQueryWithClauses({
     );
   }, queryWithAggregations);
 
-  const queryWithExpressions = expressions.reduce((query, expression) => {
-    return Lib.expression(
-      query,
-      -1,
-      expression.name,
-      Lib.expressionClause(
-        expression.operator,
-        expression.args,
-        expression.options,
-      ),
-    );
-  }, queryWithBreakouts);
-
   return orderBys.reduce((query, orderBy) => {
     const orderByColumn = columnFinder(query, Lib.orderableColumns(query, -1))(
       orderBy.tableName,
       orderBy.columnName,
     );
     return Lib.orderBy(query, -1, orderByColumn, orderBy.direction);
-  }, queryWithExpressions);
+  }, queryWithBreakouts);
 }
 
 export const queryDrillThru = (

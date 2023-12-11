@@ -402,3 +402,8 @@
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
                 (lib.options/uuid agg))))))
+
+(deftest ^:parallel simple-value-with-expression-name-test
+  (testing "simple values can be named (#36459)"
+    (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
+            (lib/with-expression-name 0 "zero")))))

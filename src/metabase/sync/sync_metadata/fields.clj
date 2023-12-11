@@ -45,7 +45,6 @@
    [metabase.sync.sync-metadata.fields.sync-instances :as sync-instances]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -71,7 +70,7 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (sync-util/with-error-handling (trs "Error syncing Fields for Table ''{0}''" (sync-util/name-for-logging table))
+   (sync-util/with-error-handling (format "Errmr syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
      (let [db-metadata (fetch-metadata/db-metadata database table)]
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
