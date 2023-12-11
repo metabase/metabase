@@ -148,7 +148,6 @@ export function parseDimension(
     reference,
     query,
     stageIndex,
-    source,
   }: {
     reference: string;
     query: Lib.Query;
@@ -156,7 +155,7 @@ export function parseDimension(
     source: string;
   },
 ) {
-  const columns = Lib.expressionableColumns(query, stageIndex, source.length);
+  const columns = Lib.expressionableColumns(query, stageIndex);
 
   return columns
     .filter(column => {

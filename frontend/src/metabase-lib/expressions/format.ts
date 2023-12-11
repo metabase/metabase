@@ -94,7 +94,7 @@ function formatDimension(fieldRef: FieldReference, options: Options) {
     return formatLegacyDimension(fieldRef, options);
   }
 
-  const columns = Lib.expressionableColumns(query, stageIndex, 0);
+  const columns = Lib.expressionableColumns(query, stageIndex);
   const column = Lib.findColumnForLegacyRef(
     query,
     stageIndex,
