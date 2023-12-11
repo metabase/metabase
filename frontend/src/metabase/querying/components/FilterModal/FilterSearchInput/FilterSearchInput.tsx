@@ -21,6 +21,7 @@ export function FilterSearchInput({ onChange }: FilterSearchInputProps) {
   return (
     <SearchInputContainer mx="md" justify="end">
       <SearchInput
+        type="search"
         value={value}
         icon={<Icon name="search" />}
         variant={isActive ? "default" : "unstyled"}
