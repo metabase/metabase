@@ -215,7 +215,7 @@
   [unit]
   (contains? #{:day :week :month :quarter :year} unit))
 
-(defn- server-side-relative-datetime-honeysql-form
+(defn- server-side-relative-date-honeysql-form
   "Compute `:relative-datetime` clause value server-side. Value is sql formatted (and not passed as date time) to avoid
    jdbc driver's timezone adjustments. Use of `qp.timezone/now` ensures correct timezone is used for the calculation.
    For details see the [[metabase.driver.redshift-test/server-side-relative-datetime-truncation-test]]."
@@ -225,12 +225,12 @@
        (u.date/truncate unit)
        (u.date/add unit amount)
        (u.date/format-sql))
-   :timestamp])
+   :date])
 
 (defmethod sql.qp/->honeysql [:redshift :relative-datetime]
   [driver [_ amount unit]]
   (if (use-server-side-relative-datetime? unit)
-    (server-side-relative-datetime-honeysql-form amount unit)
+    (server-side-relative-date-honeysql-form amount unit)
     (let [now-hsql (sql.qp/current-datetime-honeysql-form driver)]
       (sql.qp/date driver unit (if (zero? amount)
                                  now-hsql

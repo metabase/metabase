@@ -1,5 +1,5 @@
-(ns metabase.pulse.render.datetime
-  "Logic for rendering datetimes inside Pulses."
+(ns metabase.formatter.datetime
+  "Logic for rendering datetimes when context such as timezone, column metadata, and visualization settings are known."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
