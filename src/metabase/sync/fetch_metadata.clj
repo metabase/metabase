@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.sync.interface :as i]
    [metabase.util.malli :as mu]))
 
@@ -35,3 +36,9 @@
   (let [driver (driver.u/database->driver database)]
     (when (driver/database-supports? driver :nested-field-columns database)
       (sql-jdbc.sync/describe-nested-field-columns driver database table))))
+
+(mu/defn index-metadata :- [:maybe [:set ::lib.schema.common/non-blank-string]]
+  "Get information about the indexes belonging to `table`."
+  [database :- i/DatabaseInstance
+   table    :- i/TableInstance]
+  (driver/describe-table-indexes (driver.u/database->driver database) database table))
