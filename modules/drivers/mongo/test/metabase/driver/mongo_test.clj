@@ -240,30 +240,24 @@
        (let [describe-indexes (fn [table-name]
                                 (driver/describe-table-indexes :mongo (mt/db) (t2/select-one :model/Table (mt/id table-name))))]
          (mongo.util/with-mongo-connection [conn (mt/db)]
-           #_(testing "single column index"
-               (mcoll/create-index conn "singly-index" {"a" 1})
-               (is (= #{"_id" "a"}
-                      (describe-indexes :singly-index))))
+           (testing "single column index"
+             (mcoll/create-index conn "singly-index" {"a" 1})
+             (is (= #{"_id" "a"}
+                    (describe-indexes :singly-index))))
 
-           #_(testing "compound index column index"
-              (mcoll/create-index conn "compound-index" (array-map "a" 1 "b" 1 "c" 1)) ;; first index column is :a
-              (mcoll/create-index conn "compound-index" (array-map "e" 1 "d" 1 "f" 1)) ;; first index column is :e
-              (is (= #{"_id" "a" "e"}
-                     (describe-indexes :compound-index))))
-
-           #_(testing "compound index that has too many keys will be ignored"
-             ;; see comment in `driver/describe-table-indexes :mongo
-              (mcoll/create-index conn "compound-index-big"
-                                  (array-map "a" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "j" 1)) ;; first index column is :a
-              (is (= #{"_id"}
-                     (describe-indexes :compound-index-big))))
+           (testing "compound index column index"
+             (mcoll/create-index conn "compound-index" (array-map "a" 1 "b" 1 "c" 1)) ;; first index column is :a
+             (mcoll/create-index conn "compound-index" (array-map "e" 1 "d" 1 "f" 1)) ;; first index column is :e
+             (is (= #{"_id" "a" "e"}
+                    (describe-indexes :compound-index))))
 
            (testing "compound index that has too many keys will be ignored"
              ;; see comment in `driver/describe-table-indexes :mongo
-             (mcoll/create-index conn "multi-key-index"
-                                 (array-map "a.b" 1)) ;; first index column is :a
+             (mcoll/create-index conn "compound-index-big"
+                                 (array-map "a" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "j" 1)) ;; first index column is :a
              (is (= #{"_id"}
-                    (describe-indexes :multi-key-index))))))
+                    (describe-indexes :compound-index-big))))))
+
        (finally
         (t2/delete! :model/Database (mt/id)))))))
 
