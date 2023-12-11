@@ -194,24 +194,28 @@
 
 (defmulti create-index-sql
   "Return a `CREATE INDEX` statement.
-  `options` is a map, currently it only have on key :unique to indicate whether to create an unique index."
+  `options` is a map. The supported keys are: unique?, method and condition"
   {:arglists '([driver tabledef fielddef]
                [driver tabledef fielddef options])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- format-and-quote-field-name [driver field-name]
+(defn format-and-quote-field-name
+  "Format and quote a field name."
+  [driver field-name]
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
 
 (defmethod create-index-sql :sql/test-extensions
   ([driver table-name field-names]
    (create-index-sql driver table-name field-names {}))
-  ([driver table-name field-names {:keys [unique]}]
-   (format "CREATE %sINDEX %s ON %s (%s);"
-           (if unique "UNIQUE " "")
+  ([driver table-name field-names {:keys [unique? method condition]}]
+   (format "CREATE %sINDEX %s ON %s%s (%s)%s;"
+           (if unique? "UNIQUE " "")
            (str "idx_" table-name "_" (str/join "_" field-names))
            (qualify-and-quote driver table-name)
-           (str/join ", " (map #(format-and-quote-field-name driver %) field-names)))))
+           (if method (str "USING " method) "")
+           (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
+           (if condition (str " WHERE " condition) ""))))
 
 (defn- field-definition-sql
   [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
