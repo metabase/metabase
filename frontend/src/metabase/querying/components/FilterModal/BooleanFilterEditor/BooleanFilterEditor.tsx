@@ -6,7 +6,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { useBooleanOperatorFilter } from "metabase/querying/hooks/use-boolean-operator-filter";
 import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function BooleanFilterEditor({
   query,
@@ -14,7 +14,7 @@ export function BooleanFilterEditor({
   column,
   filter,
   onChange,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);

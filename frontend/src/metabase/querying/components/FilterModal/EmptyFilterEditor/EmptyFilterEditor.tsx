@@ -3,13 +3,13 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { Flex, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import * as Lib from "metabase-lib";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function EmptyFilterEditor({
   query,
   stageIndex,
   column,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);

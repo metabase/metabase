@@ -19,7 +19,7 @@ import {
   hasFilters,
   removeFilters,
 } from "./utils";
-import type { GroupItem } from "./types";
+import type { ColumnGroupItem } from "./types";
 import {
   ColumnItemRoot,
   ModalBody,
@@ -109,7 +109,7 @@ export function FilterModal({
 }
 
 interface TabListProps {
-  groupItems: GroupItem[];
+  groupItems: ColumnGroupItem[];
 }
 
 function TabList({ groupItems }: TabListProps) {
@@ -123,7 +123,7 @@ function TabList({ groupItems }: TabListProps) {
 }
 
 interface TabProps {
-  groupItem: GroupItem;
+  groupItem: ColumnGroupItem;
 }
 
 function Tab({ groupItem }: TabProps) {
@@ -144,7 +144,7 @@ function Tab({ groupItem }: TabProps) {
 
 interface TabPanelProps {
   query: Lib.Query;
-  groupItem: GroupItem;
+  groupItem: ColumnGroupItem;
   onChange: (newQuery: Lib.Query) => void;
 }
 
@@ -152,13 +152,13 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
-        {groupItem.columns.map((column, index) => {
+        {groupItem.columnItems.map((columnItem, index) => {
           return (
             <TabPanelItemList
               key={index}
               query={query}
               stageIndex={groupItem.stageIndex}
-              column={column}
+              column={columnItem.column}
               onChange={onChange}
             />
           );

@@ -14,7 +14,7 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 import { MODAL_Z_INDEX, SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 import { ClearIcon } from "./DateFilterEditor.styled";
@@ -25,7 +25,7 @@ export function DateFilterEditor({
   column,
   filter,
   onChange,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
-import type { GroupItem } from "./types";
+import type { ColumnGroupItem } from "./types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
   const aggregations = Lib.aggregations(query, -1);
@@ -20,7 +20,7 @@ function getStageIndexes(query: Lib.Query) {
   return stageCount > 1 ? [-2, -1] : [-1];
 }
 
-export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
+export function getColumnGroupItems(query: Lib.Query): ColumnGroupItem[] {
   const stageIndexes = getStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -29,12 +29,16 @@ export function getColumnGroupItems(query: Lib.Query): GroupItem[] {
     return groups.map(group => {
       const groupInfo = Lib.displayInfo(query, stageIndex, group);
       const columns = Lib.getColumnsFromColumnGroup(group);
+      const columnItems = columns.map(column => ({
+        column,
+        columnInfo: Lib.displayInfo(query, stageIndex, column),
+      }));
 
       return {
         key: groupInfo.name ?? String(stageIndex),
         group,
         groupInfo,
-        columns,
+        columnItems,
         stageIndex,
       };
     });
@@ -78,13 +82,13 @@ export function findVisibleFilters(
     .map((_, i) => filters[i]);
 }
 
-export function getModalTitle(groupItems: GroupItem[]) {
+export function getModalTitle(groupItems: ColumnGroupItem[]) {
   return groupItems.length === 1
     ? t`Filter ${groupItems[0].groupInfo.displayName} by`
     : t`Filter by`;
 }
 
-export function getModalWidth(groupItems: GroupItem[]) {
+export function getModalWidth(groupItems: ColumnGroupItem[]) {
   const maxWidth = groupItems.length > 1 ? "70rem" : "55rem";
   return `min(98vw, ${maxWidth})`;
 }

@@ -6,7 +6,7 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { useTimeFilter } from "metabase/querying/hooks/use-time-filter";
 import type { TimeValue } from "metabase/querying/hooks/use-time-filter";
 import * as Lib from "metabase-lib";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 
 export function TimeFilterEditor({
@@ -15,7 +15,7 @@ export function TimeFilterEditor({
   column,
   filter,
   onChange,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],

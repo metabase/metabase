@@ -7,7 +7,7 @@ import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function StringFilterEditor({
   query,
@@ -15,7 +15,7 @@ export function StringFilterEditor({
   column,
   filter,
   onChange,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);

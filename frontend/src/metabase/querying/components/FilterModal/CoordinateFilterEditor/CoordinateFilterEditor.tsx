@@ -8,7 +8,7 @@ import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filt
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function CoordinateFilterEditor({
   query,
@@ -16,7 +16,7 @@ export function CoordinateFilterEditor({
   column,
   filter,
   onChange,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);

@@ -1,14 +1,19 @@
 import type * as Lib from "metabase-lib/types";
 
-export interface GroupItem {
+export interface ColumnItem {
+  column: Lib.ColumnMetadata;
+  columnInfo: Lib.ColumnDisplayInfo;
+}
+
+export interface ColumnGroupItem {
   key: string;
   group: Lib.ColumnGroup;
   groupInfo: Lib.ColumnGroupDisplayInfo;
-  columns: Lib.ColumnMetadata[];
+  columnItems: ColumnItem[];
   stageIndex: number;
 }
 
-export interface FilterPickerWidgetProps {
+export interface FilterEditorProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;

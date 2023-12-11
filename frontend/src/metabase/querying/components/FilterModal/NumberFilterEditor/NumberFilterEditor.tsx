@@ -8,7 +8,7 @@ import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
   query,
@@ -16,7 +16,7 @@ export function NumberFilterEditor({
   column,
   filter,
   onChange,
-}: FilterPickerWidgetProps) {
+}: FilterEditorProps) {
   const columnInfo = useMemo(() => {
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
