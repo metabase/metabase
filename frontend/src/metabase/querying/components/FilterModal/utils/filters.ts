@@ -4,8 +4,7 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { SEARCH_KEY } from "./constants";
-import type { GroupItem } from "./types";
+import type { GroupItem } from "../types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
   const aggregations = Lib.aggregations(query, -1);
@@ -48,38 +47,6 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
   });
 }
 
-export function isSearchActive(searchText: string) {
-  return searchText.length > 0;
-}
-
-export function searchGroupItems(
-  groupItems: GroupItem[],
-  searchText: string,
-): GroupItem[] {
-  const searchValue = searchText.toLowerCase();
-  const columnItems = groupItems
-    .flatMap(groupItem => groupItem.columnItems)
-    .filter(columnItem =>
-      columnItem.displayName.toLowerCase().includes(searchValue),
-    );
-
-  return [
-    {
-      key: SEARCH_KEY,
-      displayName: t`Search`,
-      icon: "search",
-      columnItems,
-    },
-  ];
-}
-
-export function getColumnName(
-  columnInfo: Lib.ColumnDisplayInfo,
-  isSearching: boolean,
-) {
-  return isSearching ? columnInfo.longDisplayName : columnInfo.displayName;
-}
-
 export function hasFilters(query: Lib.Query) {
   const stageIndexes = getStageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>
@@ -115,15 +82,4 @@ export function findVisibleFilters(
   return Array(Math.max(filters.length, initialFilterCount, 1))
     .fill(undefined)
     .map((_, i) => filters[i]);
-}
-
-export function getModalTitle(groupItems: GroupItem[]) {
-  return groupItems.length === 1
-    ? t`Filter ${groupItems[0].displayName} by`
-    : t`Filter by`;
-}
-
-export function getModalWidth(groupItems: GroupItem[]) {
-  const maxWidth = groupItems.length > 1 ? "70rem" : "55rem";
-  return `min(98vw, ${maxWidth})`;
 }
