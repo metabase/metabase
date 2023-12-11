@@ -14,6 +14,7 @@
    :removed-indexes 0})
 
 (defn- nested-field-names->field-id
+  "Recusively find the field id for a nested field name, return nil if not found."
   [table-id field-names]
   (loop [field-names field-names
           field-id    nil]
@@ -32,7 +33,7 @@
           nested-indexes           (remove string? indexes)
           normal-indexes-field-ids (when (seq normal-indexes) (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
           nested-indexes-field-ids (remove nil? (map #(nested-field-names->field-id table-id %) nested-indexes))]
-      (set (concat normal-indexes-field-ids nested-indexes-field-ids)))))
+      (set (filter nil? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
 (defn maybe-sync-indexes-for-table!
   "Sync the indexes for `table` if the driver supports storing index info."
@@ -40,14 +41,13 @@
   (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
-            ;; not all indexes are field names, they could be function based index as well
             indexed-field-ids          (indexes->field-id (:id table) indexes)
-            existing-index-field-ids   (t2/select-pks-vec :model/Field :table_id (:id table) :database_indexed true)
-            [removing adding]          (data/diff indexed-field-ids existing-index-field-ids)]
-        #_(doseq [field-name removing]
-            (log/infof "Unmarking %s.%s as indexed" (:name table) field-name))
-        #_(doseq [field-name adding]
-            (log/infof "Marking %s.%s as indexed" (:name table) field-name))
+            existing-indexed-field-ids (t2/select-pks-vec :model/Field :table_id (:id table) :database_indexed true)
+            [removing adding]          (data/diff indexed-field-ids existing-indexed-field-ids)]
+        (doseq [field-id removing]
+          (log/infof "Unmarking Field %d as indexed" field-id))
+        (doseq [field-id adding]
+          (log/infof "Marking Field %d as indexed" field-id))
         (if (or (seq adding) (seq removing))
           (do (t2/update! :model/Field {:table_id (:id table)}
                           {:database_indexed (if (seq indexed-field-ids)
