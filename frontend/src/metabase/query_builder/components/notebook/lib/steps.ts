@@ -15,7 +15,7 @@ import type { NotebookStep, OpenSteps } from "../types";
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
 type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
-  valid: (query: Query, metadata: Metadata) => boolean;
+  valid: (query: Query, stageIndex: number, metadata: Metadata) => boolean;
   active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
 };
@@ -29,7 +29,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "join",
-    valid: (query, metadata) => {
+    valid: (query, _stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
       return hasData(query) && Boolean(database?.hasFeature("join"));
     },
@@ -59,7 +59,7 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "expression",
-    valid: (query, metadata) => {
+    valid: (query, _stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
       return hasData(query) && Boolean(database?.hasFeature("expressions"));
     },
@@ -111,15 +111,15 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "sort",
-    valid: query => {
-      const hasAggregations = Lib.aggregations(query, -1).length > 0;
-      const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+    valid: (query, stageIndex) => {
+      const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+      const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
 
       if (hasAggregations && !hasBreakouts) {
         return false;
       }
 
-      return hasData(query) && hasAnyClauses(query);
+      return hasData(query) && hasAnyClauses(query, stageIndex);
     },
     active: (query, stageIndex) => {
       return Lib.orderBys(query, stageIndex).length > 0;
@@ -130,15 +130,15 @@ const STEPS: NotebookStepDef[] = [
   },
   {
     type: "limit",
-    valid: query => {
-      const hasAggregations = Lib.aggregations(query, -1).length > 0;
-      const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+    valid: (query, stageIndex) => {
+      const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+      const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
 
       if (hasAggregations && !hasBreakouts) {
         return false;
       }
 
-      return hasData(query) && hasAnyClauses(query);
+      return hasData(query) && hasAnyClauses(query, stageIndex);
     },
     active: (query, stageIndex) => {
       return Lib.hasLimit(query, stageIndex);
@@ -154,15 +154,15 @@ const hasData = (query: Lib.Query): boolean => {
   return databaseId !== null;
 };
 
-const hasAnyClauses = (query: Lib.Query): boolean => {
-  const hasAggregations = Lib.aggregations(query, -1).length > 0;
-  const hasBreakouts = Lib.breakouts(query, -1).length > 0;
-  const hasJoins = Lib.joins(query, -1).length > 0;
-  const hasExpressions = Lib.expressions(query, -1).length > 0;
-  const hasFilters = Lib.filters(query, -1).length > 0;
-  const hasOrderBys = Lib.orderBys(query, -1).length > 0;
-  const hasLimits = Lib.hasLimit(query, -1);
-  const hasFields = Lib.fields(query, -1).length > 0;
+const hasAnyClauses = (query: Lib.Query, stageIndex: number): boolean => {
+  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+  const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+  const hasJoins = Lib.joins(query, stageIndex).length > 0;
+  const hasExpressions = Lib.expressions(query, stageIndex).length > 0;
+  const hasFilters = Lib.filters(query, stageIndex).length > 0;
+  const hasOrderBys = Lib.orderBys(query, stageIndex).length > 0;
+  const hasLimits = Lib.hasLimit(query, stageIndex);
+  const hasFields = Lib.fields(query, stageIndex).length > 0;
 
   return (
     hasJoins ||
@@ -261,9 +261,11 @@ function getStageSteps(
       itemIndex: itemIndex,
       topLevelQuery: query,
       query: legacyQuery,
-      valid: STEP.valid(query, metadata),
+      valid: STEP.valid(query, stageIndex, metadata),
       active,
-      visible: STEP.valid(query, metadata) && Boolean(active || openSteps[id]),
+      visible:
+        STEP.valid(query, stageIndex, metadata) &&
+        Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
         ? (query: Lib.Query) =>
