@@ -113,7 +113,7 @@ export type ComparisonOption = {
   maxValue?: number;
 };
 
-type SelectedComparisonPeriodsAgo = {
+export type SelectedComparisonPeriodsAgo = {
   type: typeof COMPARISON_TYPES.PERIODS_AGO;
   value: number;
 };

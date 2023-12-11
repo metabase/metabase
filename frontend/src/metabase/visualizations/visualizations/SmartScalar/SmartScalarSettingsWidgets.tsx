@@ -3,7 +3,7 @@ import type { MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
-import { COMPARISON_SELECT_OPTIONS } from "./utils";
+import { COMPARISON_SELECT_OPTIONS, COMPARISON_TYPES } from "./utils";
 import {
   MenuItemStyled,
   MenuTargetStyled,
@@ -12,8 +12,8 @@ import {
 
 import type {
   ComparisonOption,
-  ComparisonPeriodsAgoType,
   SelectedComparison,
+  SelectedComparisonPeriodsAgo,
 } from "./utils";
 
 interface SmartScalarComparisonWidgetProps {
@@ -33,10 +33,10 @@ export function SmartScalarComparisonWidget({
     ({ type }) => type === selectedValue.type,
   );
 
-  const selectedName =
-    selectedValue.type !== COMPARISON_SELECT_OPTIONS.PERIODS_AGO.type
-      ? selectedOption?.name
-      : `${selectedValue.value ?? ""} ${selectedOption?.name}`;
+  const selectedDisplayName =
+    selectedValue.type === COMPARISON_SELECT_OPTIONS.PERIODS_AGO.type
+      ? `${selectedValue.value ?? ""} ${selectedOption?.name}`
+      : selectedOption?.name;
 
   const isDisabled = options.length === 1 && !isEmpty(selectedOption);
 
@@ -45,7 +45,7 @@ export function SmartScalarComparisonWidget({
       <MenuTargetStyled>
         <Button pr="0" pl="1rem" disabled={isDisabled}>
           <Group spacing="sm">
-            <span>{selectedName}</span>
+            <span>{selectedDisplayName}</span>
             <Icon name="chevrondown" size="14" />
           </Group>
         </Button>
@@ -54,6 +54,9 @@ export function SmartScalarComparisonWidget({
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
           {options.map(({ type, name, MenuItemComponent, ...rest }) => {
+            const givenValue =
+              selectedValue.type === type ? selectedValue : null;
+
             if (MenuItemComponent) {
               return (
                 <MenuItemComponent
@@ -62,7 +65,7 @@ export function SmartScalarComparisonWidget({
                   type={type}
                   name={name}
                   onChange={onChange}
-                  selectedValue={selectedValue}
+                  givenValue={givenValue}
                   setOpen={setOpen}
                   {...rest}
                 />
@@ -93,7 +96,7 @@ interface PeriodsAgoInputWidget {
   minValue: number;
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
-  selectedValue: ComparisonPeriodsAgoType;
+  givenValue: SelectedComparisonPeriodsAgo | undefined;
   setOpen: (value: boolean) => void;
   type: string;
 }
@@ -103,13 +106,24 @@ export function PeriodsAgoInputWidget({
   maxValue,
   name,
   onChange,
-  selectedValue,
+  givenValue,
   setOpen,
   type,
 }: PeriodsAgoInputWidget) {
   const value = useMemo(() => {
-    return selectedValue.value ? Number(selectedValue.value) : null;
-  }, [selectedValue]);
+    if (!givenValue) {
+      return null;
+    }
+
+    if (
+      givenValue.type === COMPARISON_TYPES.PERIODS_AGO &&
+      Number.isInteger(givenValue.value)
+    ) {
+      return givenValue.value;
+    }
+
+    return null;
+  }, [givenValue]);
   const minValue = 2;
 
   const [inputValue, setInputValue] = useState(value ?? minValue);
