@@ -1,4 +1,5 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
 /**
  * Switch to a notebook editor from a simple query view (aka "chill mode").
@@ -13,14 +14,7 @@ export function openNotebook() {
  * @see {@link https://github.com/metabase/metabase/pull/17708#discussion_r700082403}
  */
 export function getNotebookStep(
-  type:
-    | "summarize"
-    | "join"
-    | "expression"
-    | "filter"
-    | "sort"
-    | "limit"
-    | "data",
+  type: Exclude<NotebookStepType, "aggregate" | "breakout">,
   { stage = 0, index = 0 } = {},
 ): Cypress.Chainable<JQuery<HTMLElement>> {
   return cy.findByTestId(`step-${type}-${stage}-${index}`);
