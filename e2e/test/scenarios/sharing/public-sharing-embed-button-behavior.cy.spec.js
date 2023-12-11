@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createPublicDashboardLink,
   createPublicQuestionLink,
+  getEmbedModalSharingPane,
   openPublicLinkPopoverFromMenu,
   restore,
   visitDashboard,
@@ -146,9 +147,10 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.icon("share").click();
 
-            cy.get(".Modal--full")
-              .findByText("Embed in your application")
-              .should("be.visible");
+            getEmbedModalSharingPane().within(() => {
+              cy.findByText("Static embed").should("be.visible");
+              cy.findByText("Public embed").should("be.visible");
+            });
           });
         });
         describe("when user is non-admin", () => {

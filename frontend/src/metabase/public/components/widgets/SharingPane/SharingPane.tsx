@@ -72,13 +72,14 @@ function SharingPane({
   };
 
   return (
-    <Group p="lg">
+    <Group p="lg" data-testid="sharing-pane-container">
       <SharingPaneButton
         header={t`Static embed`}
         description={t`Securely embed this dashboard in your own application’s server code.`}
-        illustration={StaticEmbedIcon}
+        illustration={<StaticEmbedIcon />}
       >
         <SharingPaneActionButton
+          data-testid="sharing-pane-static-embed-button"
           fullWidth
           onClick={() => onChangeEmbedType("application")}
         >
@@ -108,7 +109,7 @@ function SharingPane({
             </>
           )
         }
-        illustration={PublicEmbedIcon}
+        illustration={<PublicEmbedIcon />}
       >
         {resource.public_uuid ? (
           <PublicLinkCopyPanel
@@ -119,6 +120,7 @@ function SharingPane({
           />
         ) : (
           <SharingPaneActionButton
+            data-testid="sharing-pane-public-embed-button"
             fullWidth
             disabled={!isPublicSharingEnabled}
             onClick={createPublicLink}

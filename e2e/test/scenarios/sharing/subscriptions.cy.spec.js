@@ -20,6 +20,7 @@ import {
   viewEmailPage,
   openPublicLinkPopoverFromMenu,
   openEmbedModalFromMenu,
+  getEmbedModalSharingPane,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
@@ -46,9 +47,9 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.icon("share").click();
 
     openEmbedModalFromMenu();
-    cy.get(".Modal--full").within(() => {
+    getEmbedModalSharingPane().within(() => {
       cy.findByText("Public embed").should("be.visible");
-      cy.findByText("Embed in your application").should("be.visible");
+      cy.findByText("Static embed").should("be.visible");
     });
   });
 
@@ -67,9 +68,9 @@ describe("scenarios > dashboard > subscriptions", () => {
     // getting notifications with static text-only cards doesn't make a lot of sense
     cy.findByLabelText("subscriptions").should("not.exist");
 
-    cy.get(".Modal--full").within(() => {
+    getEmbedModalSharingPane().within(() => {
       cy.findByText("Public embed").should("be.visible");
-      cy.findByText("Embed in your application").should("be.visible");
+      cy.findByText("Static embed").should("be.visible");
     });
   });
 

@@ -129,6 +129,10 @@ export function getIframeBody(selector = "iframe") {
     .then(cy.wrap);
 }
 
+export function getEmbedModalSharingPane() {
+  return cy.findByTestId("sharing-pane-container");
+}
+
 export function openPublicLinkPopoverFromMenu() {
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")
@@ -148,7 +152,7 @@ export function openStaticEmbeddingModal() {
 
   openEmbedModalFromMenu();
 
-  cy.get(".Modal--full").findByText("Embed in your application").click();
+  cy.findByTestId("sharing-pane-static-embed-button").click();
   cy.wait("@sessionProperties");
 }
 
