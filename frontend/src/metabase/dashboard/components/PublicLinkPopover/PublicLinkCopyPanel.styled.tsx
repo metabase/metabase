@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import CopyButton from "metabase/components/CopyButton";
+import { color } from "metabase/lib/colors";
 import { Box, Group } from "metabase/ui";
 
 export const PublicLinkCopyButton = styled(CopyButton)`
@@ -19,4 +20,19 @@ export const PublicLinkTextContainer = styled(Box)`
 export const LinkContainer = styled(Group)`
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radius.xs};
+`;
+
+interface ExtensionOptionProps {
+  isSelected: boolean;
+}
+
+export const ExtensionOption = styled.span<ExtensionOptionProps>`
+  cursor: pointer;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
+
+  &:hover {
+    color: ${color("brand")};
+  }
 `;
