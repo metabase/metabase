@@ -57,18 +57,98 @@ import {
 } from "./utils";
 import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
 
-const ScalarPeriod = ({ lines = 2, period, onClick }) => (
-  <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
-    <ScalarPeriodContent
-      className="fullscreen-normal-text fullscreen-night-text"
-      onClick={onClick}
-    >
-      <Ellipsified tooltip={period} lines={lines} placement="bottom">
-        {period}
-      </Ellipsified>
-    </ScalarPeriodContent>
-  </ScalarTitleContainer>
-);
+export function SmartScalar({
+  onVisualizationClick,
+  isDashboard,
+  settings,
+  visualizationIsClickable,
+  series,
+  rawSeries,
+  gridSize,
+  width,
+  height,
+  totalNumGridCols,
+  fontFamily,
+}) {
+  const scalarRef = useRef(null);
+
+  const insights = rawSeries?.[0].data?.insights;
+  const trend = useMemo(
+    () => computeTrend(series, insights, settings),
+    [series, insights, settings],
+  );
+  if (trend == null) {
+    return null;
+  }
+  const { value, clicked, comparison, display, formatOptions } = trend;
+
+  const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
+
+  const isClickable = onVisualizationClick != null;
+
+  const handleClick = () => {
+    if (
+      scalarRef.current &&
+      onVisualizationClick &&
+      visualizationIsClickable(clicked)
+    ) {
+      onVisualizationClick({ ...clicked, element: scalarRef.current });
+    }
+  };
+
+  const { displayValue, fullScalarValue } = compactifyValue(
+    value,
+    width,
+    formatOptions,
+  );
+
+  return (
+    <ScalarWrapper>
+      <ScalarContainer
+        className="fullscreen-normal-text fullscreen-night-text"
+        data-testid="scalar-container"
+        tooltip={fullScalarValue}
+        alwaysShowTooltip={fullScalarValue !== displayValue}
+        isClickable={isClickable}
+      >
+        <span onClick={handleClick} ref={scalarRef}>
+          <ScalarValue
+            fontFamily={fontFamily}
+            gridSize={gridSize}
+            height={getValueHeight(innerHeight)}
+            totalNumGridCols={totalNumGridCols}
+            value={displayValue}
+            width={getValueWidth(width)}
+          />
+        </span>
+      </ScalarContainer>
+      {isPeriodVisible(innerHeight) && (
+        <ScalarPeriod lines={1} period={display.date} />
+      )}
+
+      <PreviousValueWrapper data-testid="scalar-previous-value">
+        <PreviousValueComparison
+          {...{ comparison, width, fontFamily, formatOptions }}
+        />
+      </PreviousValueWrapper>
+    </ScalarWrapper>
+  );
+}
+
+function ScalarPeriod({ lines = 2, period, onClick }) {
+  return (
+    <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
+      <ScalarPeriodContent
+        className="fullscreen-normal-text fullscreen-night-text"
+        onClick={onClick}
+      >
+        <Ellipsified tooltip={period} lines={lines} placement="bottom">
+          {period}
+        </Ellipsified>
+      </ScalarPeriodContent>
+    </ScalarTitleContainer>
+  );
+}
 
 function PreviousValueComparison({
   comparison,
@@ -179,84 +259,6 @@ function PreviousValueComparison({
         <VariationDetails>{fittedDetailDisplay}</VariationDetails>
       </VariationContainer>
     </Tooltip>
-  );
-}
-
-export function SmartScalar({
-  onVisualizationClick,
-  isDashboard,
-  settings,
-  visualizationIsClickable,
-  series,
-  rawSeries,
-  gridSize,
-  width,
-  height,
-  totalNumGridCols,
-  fontFamily,
-}) {
-  const scalarRef = useRef(null);
-
-  const insights = rawSeries?.[0].data?.insights;
-  const trend = useMemo(
-    () => computeTrend(series, insights, settings),
-    [series, insights, settings],
-  );
-  if (trend == null) {
-    return null;
-  }
-  const { value, clicked, comparison, display, formatOptions } = trend;
-
-  const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
-
-  const isClickable = onVisualizationClick != null;
-
-  const handleClick = () => {
-    if (
-      scalarRef.current &&
-      onVisualizationClick &&
-      visualizationIsClickable(clicked)
-    ) {
-      onVisualizationClick({ ...clicked, element: scalarRef.current });
-    }
-  };
-
-  const { displayValue, fullScalarValue } = compactifyValue(
-    value,
-    width,
-    formatOptions,
-  );
-
-  return (
-    <ScalarWrapper>
-      <ScalarContainer
-        className="fullscreen-normal-text fullscreen-night-text"
-        data-testid="scalar-container"
-        tooltip={fullScalarValue}
-        alwaysShowTooltip={fullScalarValue !== displayValue}
-        isClickable={isClickable}
-      >
-        <span onClick={handleClick} ref={scalarRef}>
-          <ScalarValue
-            fontFamily={fontFamily}
-            gridSize={gridSize}
-            height={getValueHeight(innerHeight)}
-            totalNumGridCols={totalNumGridCols}
-            value={displayValue}
-            width={getValueWidth(width)}
-          />
-        </span>
-      </ScalarContainer>
-      {isPeriodVisible(innerHeight) && (
-        <ScalarPeriod lines={1} period={display.date} />
-      )}
-
-      <PreviousValueWrapper data-testid="scalar-previous-value">
-        <PreviousValueComparison
-          {...{ comparison, width, fontFamily, formatOptions }}
-        />
-      </PreviousValueWrapper>
-    </ScalarWrapper>
   );
 }
 
