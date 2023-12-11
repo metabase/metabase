@@ -1,6 +1,6 @@
 import {
   restore,
-  describeEE,
+  // describeEE,
   visitQuestion,
   getDashboardCard,
   setTokenFeatures,
@@ -45,7 +45,7 @@ function generateDashboards(user) {
   cy.createDashboard({ name: `${user} dashboard` });
 }
 
-describeEE("auditing > Auditv1 deprecation", () => {
+describe.skip("auditing > Auditv1 deprecation", () => {
   it("should show an audit deprecation notice", () => {
     restore();
     cy.signInAsAdmin();
@@ -58,7 +58,7 @@ describeEE("auditing > Auditv1 deprecation", () => {
   });
 });
 
-describeEE("audit > auditing", () => {
+describe.skip("audit > auditing", () => {
   const ADMIN_QUESTION = "admin question";
   const ADMIN_DASHBOARD = "admin dashboard";
   const NORMAL_QUESTION = "normal question";

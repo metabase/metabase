@@ -105,7 +105,6 @@ const defaultConfig = {
     return config;
   },
   supportFile: "e2e/support/cypress.js",
-  videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
   // New `specPattern` is the combination of the old:
