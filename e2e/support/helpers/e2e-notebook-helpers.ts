@@ -48,7 +48,7 @@ export function visualize(callback?: (response?: object) => void) {
 /**
  * Summarize (Aggregate).
  *
- * Doesn't support summarizing using Custom Expression!
+ * Doesn't support summarizing using Custom Expression or Common Metrics!
  */
 export function addSummaryField({
   metric,
@@ -90,7 +90,7 @@ export function addSummaryField({
 }
 
 /**
- * Group by.
+ * Breakout (Group by in the UI).
  */
 export function addSummaryGroupingField({
   table,
@@ -118,7 +118,7 @@ export function addSummaryGroupingField({
 }
 
 /**
- * Remove Group by.
+ * Remove breakout.
  */
 export function removeSummaryGroupingField({
   field,
