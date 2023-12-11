@@ -84,7 +84,7 @@ describe("raw data query", () => {
 
 describe("filtered and summarized query", () => {
   const steps = getQuestionStepsForMBQLQuery(filteredAndSummarizedQuery);
-  const [_dataStep, filterStep, summarizeStep] = steps;
+  const [dataStep, filterStep, summarizeStep] = steps;
 
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
@@ -93,14 +93,11 @@ describe("filtered and summarized query", () => {
   });
 
   describe("query", () => {
-    it("should be the full query for data step", () => {
-      expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
-    });
-    it("should be the full query for filter step", () => {
-      expect(steps[1].query.query()).toEqual(filteredAndSummarizedQuery);
-    });
-    it("should be the full query for summarize step", () => {
-      expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
+    it("should be the same for all steps", () => {
+      const { topLevelQuery } = dataStep;
+
+      expect(filterStep.topLevelQuery).toBe(topLevelQuery);
+      expect(summarizeStep.topLevelQuery).toBe(topLevelQuery);
     });
   });
 
