@@ -13,7 +13,7 @@ import {
   updateEmbeddingParams,
 } from "../../actions";
 
-type DashboardSharingEmbeddingModalProps = {
+export type DashboardSharingEmbeddingModalProps = {
   isLinkEnabled: boolean;
   className?: string;
   dashboard: Dashboard;
