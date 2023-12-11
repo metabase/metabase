@@ -27,7 +27,7 @@
         (email/send-message-or-throw!
          {:recipients   [(:email admin)]
           :message-type :html
-          :subject      "Removal of Legacy Pulses in Upcoming Metabase Release"
+          :subject      "[Metabase] Removal of legacy pulses in upcoming Metabase release"
           :message      (stencil/render-file template-path {:userName    (:common_name admin)
                                                             :pulses      legacy-pulse
                                                             :instanceURL (urls/site-url)})})))))
