@@ -11,7 +11,8 @@ interface ColumnFilterSectionProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter: Lib.FilterClause | undefined;
+  isSearching: boolean;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
 }
 
@@ -20,6 +21,7 @@ export function ColumnFilterSection({
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
 }: ColumnFilterSectionProps) {
   const FilterWidget = getFilterWidget(column);
@@ -33,6 +35,7 @@ export function ColumnFilterSection({
       stageIndex={stageIndex}
       column={column}
       filter={filter}
+      isSearching={isSearching}
       onChange={onChange}
     />
   );

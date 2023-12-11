@@ -73,6 +73,13 @@ export function searchGroupItems(
   ];
 }
 
+export function getColumnName(
+  columnInfo: Lib.ColumnDisplayInfo,
+  isSearching: boolean,
+) {
+  return isSearching ? columnInfo.longDisplayName : columnInfo.displayName;
+}
+
 export function hasFilters(query: Lib.Query) {
   const stageIndexes = getStageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>

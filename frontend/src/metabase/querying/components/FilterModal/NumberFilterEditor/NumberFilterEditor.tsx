@@ -8,6 +8,7 @@ import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
+import { getColumnName } from "../utils";
 import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
@@ -15,6 +16,7 @@ export function NumberFilterEditor({
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
 }: FilterEditorProps) {
   const columnInfo = useMemo(() => {
@@ -62,7 +64,7 @@ export function NumberFilterEditor({
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
           <Text color="text.2" weight="bold">
-            {columnInfo.displayName}
+            {getColumnName(columnInfo, isSearching)}
           </Text>
           <FilterOperatorPicker
             value={operator}

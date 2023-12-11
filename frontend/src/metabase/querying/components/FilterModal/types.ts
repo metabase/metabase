@@ -18,6 +18,7 @@ export interface FilterEditorProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter: Lib.FilterClause | undefined;
+  isSearching: boolean;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
 }

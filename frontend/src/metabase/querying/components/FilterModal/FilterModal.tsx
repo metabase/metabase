@@ -45,7 +45,7 @@ export function FilterModal({
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
   const groupItems = useMemo(() => getGroupItems(query), [query]);
-  const [tab, setTab] = useState<string | null>(groupItems[0].key);
+  const [tab, setTab] = useState<string | null>(groupItems[0]?.key);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
   const [searchText, setSearchText] = useState("");
   const isSearching = isSearchActive(searchText);
@@ -72,7 +72,7 @@ export function FilterModal({
   };
 
   const handleSearch = (searchText: string) => {
-    setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0].key);
+    setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
     setSearchText(searchText);
   };
 
@@ -99,6 +99,7 @@ export function FilterModal({
                   key={`${groupItem.key}:${version}`}
                   query={query}
                   groupItem={groupItem}
+                  isSearching={isSearching}
                   onChange={handleChange}
                 />
               ))}
@@ -156,10 +157,11 @@ function Tab({ groupItem }: TabProps) {
 interface TabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
+  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
-function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
+function TabPanel({ query, groupItem, isSearching, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
@@ -170,6 +172,7 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
               query={query}
               column={columnItem.column}
               stageIndex={columnItem.stageIndex}
+              isSearching={isSearching}
               onChange={onChange}
             />
           );
@@ -183,6 +186,7 @@ interface TabPanelColumnItemListProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
+  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
@@ -190,6 +194,7 @@ function TabPanelColumnItemList({
   query,
   stageIndex,
   column,
+  isSearching,
   onChange,
 }: TabPanelColumnItemListProps) {
   const currentFilters = findColumnFilters(query, stageIndex, column);
@@ -205,6 +210,7 @@ function TabPanelColumnItemList({
           stageIndex={stageIndex}
           column={column}
           filter={filter}
+          isSearching={isSearching}
           onChange={onChange}
         />
       ))}
@@ -216,7 +222,8 @@ interface TabPanelColumnItemProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter: Lib.FilterClause | undefined;
+  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
@@ -225,6 +232,7 @@ function TabPanelColumnItem({
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
 }: TabPanelColumnItemProps) {
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
@@ -244,6 +252,7 @@ function TabPanelColumnItem({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
+        isSearching={isSearching}
         onChange={handleChange}
       />
     </ColumnItemRoot>

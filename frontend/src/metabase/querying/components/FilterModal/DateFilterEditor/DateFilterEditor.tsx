@@ -14,6 +14,7 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
+import { getColumnName } from "../utils";
 import type { FilterEditorProps } from "../types";
 import { MODAL_Z_INDEX, SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
@@ -24,6 +25,7 @@ export function DateFilterEditor({
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
 }: FilterEditorProps) {
   const columnInfo = useMemo(
@@ -65,7 +67,7 @@ export function DateFilterEditor({
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
           <Text color="text.2" weight="bold">
-            {columnInfo.displayName}
+            {getColumnName(columnInfo, isSearching)}
           </Text>
         </Flex>
       </Grid.Col>
