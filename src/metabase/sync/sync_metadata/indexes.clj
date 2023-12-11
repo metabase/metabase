@@ -14,7 +14,7 @@
    :removed-indexes 0})
 
 (defn maybe-sync-indexes-for-table!
-  "Sync the indexes for `table` if the driver supports indexing."
+  "Sync the indexes for `table` if the driver supports storing index info."
   [database table]
   (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
@@ -40,7 +40,7 @@
     empty-stats))
 
 (defn maybe-sync-indexes!
-  "Sync the indexes for all tables in `database` if the driver supports indexing."
+  "Sync the indexes for all tables in `database` if the driver supports storing index info."
   [database]
   (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
     (apply merge-with + empty-stats
