@@ -36,6 +36,26 @@ dataset_query:
         - archived
       - base-type: type/Boolean
     - false
+    joins:
+    - alias: People - Creator
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_alerts
+          - creator_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - Creator
+      fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
 result_metadata: null
