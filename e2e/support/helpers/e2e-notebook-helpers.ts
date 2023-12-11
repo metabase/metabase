@@ -57,16 +57,7 @@ export function addSummaryField({
   stage = 0,
   index = 0,
 }: {
-  metric:
-    | "Count of rows"
-    | "Sum of ..."
-    | "Average of ..."
-    | "Number of distinct values of ..."
-    | "Cumulative sum of ..."
-    | "Cumulative count of rows"
-    | "Standard deviation of ..."
-    | "Minimum of ..."
-    | "Maximum of ...";
+  metric: string;
   table?: string;
   field?: string;
   stage?: number;
