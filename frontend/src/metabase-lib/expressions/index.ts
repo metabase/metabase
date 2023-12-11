@@ -4,8 +4,6 @@ import { FK_SYMBOL } from "metabase/lib/formatting";
 import type { Expression } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
-import type Metric from "metabase-lib/metadata/Metric";
-import type Segment from "metabase-lib/metadata/Segment";
 import {
   OPERATORS,
   FUNCTIONS,
@@ -72,11 +70,7 @@ export function parseMetric(
   const metrics = Lib.availableMetrics(query);
 
   const metric = metrics.find(metric => {
-    const displayInfo = Lib.displayInfo(
-      query as Lib.Query,
-      stageIndex as number,
-      metric,
-    );
+    const displayInfo = Lib.displayInfo(query, stageIndex, metric);
 
     return displayInfo.displayName.toLowerCase() === metricName.toLowerCase();
   });
@@ -92,8 +86,11 @@ export function parseMetric(
   }
 }
 
-export function formatMetricName(metric: Metric, options: Record<string, any>) {
-  return formatIdentifier(metric.name, options);
+export function formatMetricName(
+  metricName: string,
+  options: Record<string, any>,
+) {
+  return formatIdentifier(metricName, options);
 }
 
 // SEGMENTS
@@ -134,10 +131,10 @@ export function parseSegment(
 }
 
 export function formatSegmentName(
-  segment: Segment,
+  segmentName: string,
   options: Record<string, any>,
 ) {
-  return formatIdentifier(segment.name, options);
+  return formatIdentifier(segmentName, options);
 }
 
 // DIMENSIONS
@@ -182,8 +179,18 @@ export function parseDimension(
     });
 }
 
-export function formatDimensionName(dimension: Dimension, options: object) {
+export function formatLegacyDimensionName(
+  dimension: Dimension,
+  options: object,
+) {
   return formatIdentifier(getDimensionName(dimension), options);
+}
+
+export function formatDimensionName(
+  dimensionName: string,
+  options: Record<string, any>,
+) {
+  return formatIdentifier(getDisplayNameWithSeparator(dimensionName), options);
 }
 
 /**
@@ -208,7 +215,7 @@ export function getDisplayNameWithSeparator(
 
 export function formatStringLiteral(
   mbqlString: string,
-  { quotes = EDITOR_QUOTES } = {},
+  { quotes = EDITOR_QUOTES }: Record<string, any> = {},
 ) {
   return quoteString(mbqlString, quotes.literalQuoteDefault);
 }
@@ -349,18 +356,21 @@ export function isMetric(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     expr[0] === "metric" &&
-    expr.length === 2 &&
+    // @uladzimirdev double check if it's a correct behaviour https://metaboat.slack.com/archives/C04CYTEL9N2/p1702289380614509// @uladzimirdev double check if it's a correct behaviour https://metaboat.slack.com/archives/C04CYTEL9N2/p1702289380614509
+    // expr.length === 2 &&
     typeof expr[1] === "number"
   );
 }
 
 export function isSegment(expr: unknown): boolean {
-  return (
+  const res =
     Array.isArray(expr) &&
     expr[0] === "segment" &&
-    expr.length === 2 &&
-    typeof expr[1] === "number"
-  );
+    // @uladzimirdev double check if it's a correct behaviour https://metaboat.slack.com/archives/C04CYTEL9N2/p1702289380614509
+    // expr.length === 2 &&
+    typeof expr[1] === "number";
+
+  return res;
 }
 
 export function isCase(expr: unknown): boolean {

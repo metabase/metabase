@@ -1,6 +1,9 @@
 import _ from "underscore";
 
 import type { FieldReference, Filter } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import { checkNotNull } from "metabase/lib/types";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   MBQL_CLAUSES,
   OPERATOR_PRECEDENCE,
@@ -15,18 +18,35 @@ import {
   isCase,
   formatMetricName,
   formatSegmentName,
-  formatDimensionName,
+  formatLegacyDimensionName,
   getExpressionName,
   formatStringLiteral,
   hasOptions,
   EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY,
+  formatDimensionName,
 } from "./index";
 
 export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
 
+type Options = {
+  startRule: string;
+  [key: string]: any;
+} & (
+  | {
+      legacyQuery: StructuredQuery;
+      query?: never;
+      stageIndex: never;
+    }
+  | {
+      legacyQuery?: never;
+      query: Lib.Query;
+      stageIndex: number;
+    }
+);
+
 // convert a MBQL expression back into an expression string
 // It is hard to provide correct types here, so we have to use any
-export function format(mbql: any, options: Record<string, any> = {}): string {
+export function format(mbql: any, options: Options): string {
   if (mbql == null || _.isEqual(mbql, [])) {
     return "";
   } else if (isNumberLiteral(mbql)) {
@@ -61,44 +81,128 @@ function formatNumberLiteral(mbql: unknown) {
   return JSON.stringify(mbql);
 }
 
-// @uladzimirdev provide correct types to options
-function formatDimension(
-  fieldRef: FieldReference,
-  options: Record<string, any>,
-) {
-  const { legacyQuery } = options;
-  if (legacyQuery) {
-    const dimension = legacyQuery.parseFieldReference(fieldRef);
-    return formatDimensionName(dimension, options);
-  } else {
-    throw new Error(
-      "`legacyQuery` is a required parameter to format expressions",
-    );
+function formatDimension(fieldRef: FieldReference, options: Options) {
+  const { query, stageIndex, legacyQuery } = options;
+
+  if (!query) {
+    if (!legacyQuery) {
+      throw new Error(
+        "`legacyQuery` is a required parameter to format expressions",
+      );
+    }
+
+    return formatLegacyDimension(fieldRef, options);
   }
+
+  const columns = Lib.expressionableColumns(query, stageIndex, 0);
+  const column = Lib.findColumnForLegacyRef(
+    query,
+    stageIndex,
+    fieldRef,
+    columns,
+  );
+
+  return column
+    ? formatDimensionName(
+        Lib.displayInfo(query, stageIndex, column).longDisplayName,
+        options,
+      )
+    : "";
 }
 
-function formatMetric(
-  [, metricId]: FieldReference,
-  options: Record<string, any>,
+function formatLegacyDimension(
+  fieldRef: FieldReference,
+  options: { legacyQuery: StructuredQuery },
 ) {
   const { legacyQuery } = options;
-  const metric = _.findWhere(legacyQuery.table().metrics, { id: metricId });
+  const dimension = legacyQuery.parseFieldReference(fieldRef);
+
+  return dimension ? formatLegacyDimensionName(dimension, options) : "";
+}
+
+function formatMetric([, metricId]: FieldReference, options: Options) {
+  const { legacyQuery, query, stageIndex } = options;
+
+  if (!query) {
+    // fallback to legacyQuery
+    if (legacyQuery) {
+      // StructuredQuery -> formatExpression
+      return formatLegacyMetric(metricId, options);
+    }
+
+    throw new Error("`query` is a required parameter to format expressions");
+  }
+
+  const metric = Lib.availableMetrics(query).find(metric => {
+    const [_, availableMetricId] = Lib.legacyFieldRef(metric);
+
+    return availableMetricId === metricId;
+  });
+
   if (!metric) {
     throw "metric with ID does not exist: " + metricId;
   }
-  return formatMetricName(metric, options);
+
+  const displayInfo = Lib.displayInfo(query, stageIndex, metric);
+
+  return formatMetricName(displayInfo.displayName, options);
 }
 
-function formatSegment(
-  [, segmentId]: FieldReference,
-  options: Record<string, any>,
+function formatLegacyMetric(
+  metricId: number | string,
+  options: { legacyQuery: StructuredQuery },
 ) {
   const { legacyQuery } = options;
-  const segment = _.findWhere(legacyQuery.table().segments, { id: segmentId });
-  if (!segment) {
-    throw "segment with ID does not exist: " + segment;
+  const metric = _.findWhere(checkNotNull(legacyQuery.table()).metrics ?? [], {
+    id: metricId,
+  });
+  if (!metric) {
+    throw "metric with ID does not exist: " + metricId;
   }
-  return formatSegmentName(segment, options);
+  return formatMetricName(metric.name, options);
+}
+
+function formatSegment([, segmentId]: FieldReference, options: Options) {
+  const { legacyQuery, stageIndex, query } = options;
+
+  if (!query) {
+    // fallback to legacyQuery
+    if (legacyQuery) {
+      // StructuredQuery -> formatExpression
+      return formatLegacySegment(segmentId, options);
+    }
+
+    throw new Error("`query` is a required parameter to format expressions");
+  }
+
+  const segment = Lib.availableSegments(query, stageIndex).find(segment => {
+    const [_, availableSegmentId] = Lib.legacyFieldRef(segment);
+
+    return availableSegmentId === segmentId;
+  });
+
+  if (!segment) {
+    throw "segment with ID does not exist: " + segmentId;
+  }
+
+  const displayInfo = Lib.displayInfo(query, stageIndex, segment);
+
+  return formatSegmentName(displayInfo.displayName, options);
+}
+
+function formatLegacySegment(
+  segmentId: number | string,
+  options: { legacyQuery: StructuredQuery },
+) {
+  const { legacyQuery } = options;
+  const segment = _.findWhere(
+    checkNotNull(legacyQuery.table()).segments ?? [],
+    { id: Number(segmentId) },
+  );
+  if (!segment) {
+    throw "segment with ID does not exist: " + segmentId;
+  }
+  return formatSegmentName(segment.name, options);
 }
 
 // HACK: very specific to some string/time functions for now
@@ -117,7 +221,7 @@ function formatFunctionOptions(fnOptions: Record<string, any>) {
   }
 }
 
-function formatFunction([fn, ...args]: any[], options: Record<string, any>) {
+function formatFunction([fn, ...args]: any[], options: Options) {
   if (hasOptions(args)) {
     const fnOptions = formatFunctionOptions(args.pop());
     if (fnOptions) {
@@ -131,7 +235,7 @@ function formatFunction([fn, ...args]: any[], options: Record<string, any>) {
     : `${formattedName}(${formattedArgs.join(", ")})`;
 }
 
-function formatOperator([op, ...args]: any[], options: Record<string, any>) {
+function formatOperator([op, ...args]: any[], options: Options) {
   if (hasOptions(args)) {
     // FIXME: how should we format args?
     args = args.slice(0, -1);
@@ -167,10 +271,7 @@ function formatOperator([op, ...args]: any[], options: Record<string, any>) {
   return options.parens ? `(${formatted})` : formatted;
 }
 
-function formatCase(
-  [_, clauses, caseOptions = {}]: any[],
-  options: Record<string, any>,
-) {
+function formatCase([_, clauses, caseOptions = {}]: any[], options: Options) {
   const formattedName = getExpressionName("case");
   const formattedClauses = clauses
     .map(
@@ -196,7 +297,7 @@ function isNegativeFilter(expr: Filter) {
   return typeof NEGATIVE_FILTERS[fn] === "string" && args.length >= 1;
 }
 
-function formatNegativeFilter(mbql: Filter, options: Record<string, any>) {
+function formatNegativeFilter(mbql: Filter, options: Options) {
   const [fn, ...args] = mbql;
   const baseFn = NEGATIVE_FILTERS[fn];
   return "NOT " + format([baseFn, ...args], options);

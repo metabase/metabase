@@ -1,6 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { FieldReference } from "metabase-types/api";
-import type { Clause, ColumnMetadata, Query } from "./types";
+import type {
+  Clause,
+  ColumnMetadata,
+  MetricMetadata,
+  Query,
+  SegmentMetadata,
+} from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
   return ML.fields(query, stageIndex);
@@ -61,6 +67,8 @@ export function findVisibleColumnForLegacyRef(
   return ML.find_visible_column_for_legacy_ref(query, stageIndex, fieldRef);
 }
 
-export function legacyFieldRef(column: ColumnMetadata): FieldReference {
+export function legacyFieldRef(
+  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+): FieldReference {
   return ML.legacy_field_ref(column);
 }

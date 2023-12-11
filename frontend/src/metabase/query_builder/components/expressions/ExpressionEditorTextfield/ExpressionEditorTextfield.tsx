@@ -106,7 +106,11 @@ function transformPropsToState(
       )
     : undefined;
   const expression = expressionFromClause ?? legacyExpression;
-  const source = format(expression, { legacyQuery, startRule });
+  const source = format(expression, {
+    startRule,
+    stageIndex: stageIndex ?? -1,
+    query: query ?? legacyQuery.question()._getMLv2Query(),
+  });
 
   return {
     source,
@@ -169,7 +173,11 @@ class ExpressionEditorTextfield extends React.Component<
     const newExpression = expressionFromClause ?? expression;
 
     if (!this.state || hasExpressionChanged) {
-      const source = format(newExpression, { legacyQuery, startRule });
+      const source = format(newExpression, {
+        startRule,
+        stageIndex: stageIndex ?? -1,
+        query: query ?? legacyQuery.question()._getMLv2Query(),
+      });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
 
