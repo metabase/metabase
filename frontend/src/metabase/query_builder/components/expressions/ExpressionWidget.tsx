@@ -38,7 +38,7 @@ interface QueryProps {
   stageIndex: number;
 }
 
-export type ExpressionWidgetProps = {
+export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   legacyQuery: StructuredQuery;
   query?: Lib.Query;
   stageIndex?: number;
@@ -50,7 +50,7 @@ export type ExpressionWidgetProps = {
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
    */
-  clause?: Lib.AggregationClause | Lib.ExpressionClause | undefined;
+  clause?: Clause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
@@ -60,13 +60,15 @@ export type ExpressionWidgetProps = {
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (
     name: string,
-    clause: Lib.AggregationClause | Lib.ExpressionClause,
+    clause: Clause | Lib.ExpressionClause,
   ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
 } & (QueryProps | LegacyQueryProps);
 
-export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
+export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
+  props: ExpressionWidgetProps<Clause>,
+): JSX.Element => {
   const {
     legacyQuery,
     query,
@@ -88,9 +90,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression ?? null,
   );
-  const [clause, setClause] = useState<
-    Lib.AggregationClause | Lib.ExpressionClause | null
-  >(initialClause ?? null);
+  const [clause, setClause] = useState<Clause | Lib.ExpressionClause | null>(
+    initialClause ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const helpTextTargetRef = useRef(null);
@@ -103,7 +105,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleCommit = (
     expression: Expression | null,
-    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+    clause: Clause | Lib.ExpressionClause | null,
   ) => {
     const isValidExpression = isNotNull(expression) && isExpression(expression);
     const isValidExpressionClause = isNotNull(clause);
@@ -127,7 +129,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleExpressionChange = (
     expression: Expression | null,
-    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+    clause: Lib.ExpressionClause | null,
   ) => {
     setExpression(expression);
     setClause(clause);

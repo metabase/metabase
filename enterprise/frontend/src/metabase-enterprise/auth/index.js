@@ -253,13 +253,6 @@ if (hasPremiumFeature("sso_ldap")) {
         key: "ldap-group-membership-filter",
         display_name: t`Group membership filter`,
         type: "string",
-        validations: [
-          value =>
-            (value.match(/\(/g) || []).length !==
-            (value.match(/\)/g) || []).length
-              ? t`Check your parentheses`
-              : null,
-        ],
       },
       {
         key: "ldap-sync-admin-group",

@@ -363,25 +363,37 @@ declare const DrillThru: unique symbol;
 export type DrillThru = unknown & { _opaque: typeof DrillThru };
 
 export type DrillThruType =
-  | "drill-thru/quick-filter"
-  | "drill-thru/pk"
-  | "drill-thru/zoom"
-  | "drill-thru/fk-details"
-  | "drill-thru/pivot"
-  | "drill-thru/fk-filter"
-  | "drill-thru/distribution"
-  | "drill-thru/sort"
-  | "drill-thru/summarize-column"
-  | "drill-thru/summarize-column-by-time"
+  | "drill-thru/automatic-insights"
   | "drill-thru/column-filter"
+  | "drill-thru/distribution"
+  | "drill-thru/fk-details"
+  | "drill-thru/fk-filter"
+  | "drill-thru/pivot"
+  | "drill-thru/pk"
+  | "drill-thru/quick-filter"
+  | "drill-thru/sort"
+  | "drill-thru/summarize-column-by-time"
+  | "drill-thru/summarize-column"
   | "drill-thru/underlying-records"
+  | "drill-thru/zoom"
+  | "drill-thru/zoom-in.binning"
+  | "drill-thru/zoom-in.geographic"
   | "drill-thru/zoom-in.timeseries";
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
+export type QuickFilterDrillThruOperator =
+  | "="
+  | "≠"
+  | "<"
+  | ">"
+  | "contains"
+  | "does-not-contain";
+
 export type QuickFilterDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/quick-filter"> & {
-    operators: Array<"=" | "≠" | "<" | ">">;
+    value: unknown;
+    operators: Array<QuickFilterDrillThruOperator>;
   };
 
 type ObjectDetailsDrillThruInfo<Type extends DrillThruType> =
@@ -401,30 +413,26 @@ export type FKFilterDrillThruInfo =
     tableName: string;
     columnName: string;
   };
-
 export type DistributionDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/distribution">;
 
+export type SortDrillThruDirection = "asc" | "desc";
+
 export type SortDrillThruInfo = BaseDrillThruInfo<"drill-thru/sort"> & {
-  directions: Array<"asc" | "desc">;
+  directions: Array<SortDrillThruDirection>;
 };
 
-export type SummarizeColumnDrillAggregationOperator =
-  | "sum"
-  | "avg"
-  | "distinct";
+export type SummarizeColumnDrillThruOperator = "sum" | "avg" | "distinct";
 
 export type SummarizeColumnDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column"> & {
-    aggregations: Array<SummarizeColumnDrillAggregationOperator>;
+    aggregations: Array<SummarizeColumnDrillThruOperator>;
   };
 export type SummarizeColumnByTimeDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/summarize-column-by-time">;
 
 export type ColumnFilterDrillThruInfo =
-  BaseDrillThruInfo<"drill-thru/column-filter"> & {
-    initialOp: { short: string } | null; // null gets returned for date column
-  };
+  BaseDrillThruInfo<"drill-thru/column-filter">;
 
 export type UnderlyingRecordsDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/underlying-records"> & {
@@ -454,16 +462,34 @@ export type DrillThruDisplayInfo =
 
 export type FilterDrillDetails = {
   query: Query;
-  stageNumber: number;
+  stageIndex: number;
   column: ColumnMetadata;
 };
 
-export interface Dimension {
+export type PivotType = "category" | "location" | "time";
+
+export interface ClickObjectDimension {
+  value: RowValue;
   column: DatasetColumn;
-  value?: RowValue;
 }
 
-export type DataRow = Array<{
-  col: DatasetColumn | ColumnMetadata | null;
+export interface ClickObjectDataRow {
+  col: DatasetColumn | null; // can be null for custom columns
   value: RowValue;
-}>;
+}
+
+export interface ClickObject {
+  value?: RowValue;
+  column?: DatasetColumn;
+  dimensions?: ClickObjectDimension[];
+  event?: MouseEvent;
+  element?: Element;
+  seriesIndex?: number;
+  settings?: Record<string, unknown>;
+  origin?: {
+    row: RowValue;
+    cols: DatasetColumn[];
+  };
+  extraData?: Record<string, unknown>;
+  data?: ClickObjectDataRow[];
+}
