@@ -338,23 +338,14 @@ export function isDimension(expr: unknown): boolean {
 
 export function isMetric(expr: unknown): boolean {
   return (
-    Array.isArray(expr) &&
-    expr[0] === "metric" &&
-    // @uladzimirdev double check if it's a correct behaviour https://metaboat.slack.com/archives/C04CYTEL9N2/p1702289380614509// @uladzimirdev double check if it's a correct behaviour https://metaboat.slack.com/archives/C04CYTEL9N2/p1702289380614509
-    // expr.length === 2 &&
-    typeof expr[1] === "number"
+    Array.isArray(expr) && expr[0] === "metric" && typeof expr[1] === "number"
   );
 }
 
 export function isSegment(expr: unknown): boolean {
-  const res =
-    Array.isArray(expr) &&
-    expr[0] === "segment" &&
-    // @uladzimirdev double check if it's a correct behaviour https://metaboat.slack.com/archives/C04CYTEL9N2/p1702289380614509
-    // expr.length === 2 &&
-    typeof expr[1] === "number";
-
-  return res;
+  return (
+    Array.isArray(expr) && expr[0] === "segment" && typeof expr[1] === "number"
+  );
 }
 
 export function isCase(expr: unknown): boolean {
