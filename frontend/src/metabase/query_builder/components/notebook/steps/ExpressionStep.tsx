@@ -38,12 +38,12 @@ export const ExpressionStep = ({
           clause={item}
           withName
           onChangeClause={(name, clause) => {
-            const expressionsObject = Object.fromEntries(
-              expressions.map(expression => [
-                Lib.displayInfo(query, stageIndex, expression).displayName,
-              ]),
+            const uniqueName = getUniqueClauseName(
+              query,
+              stageIndex,
+              item,
+              name,
             );
-            const uniqueName = getUniqueExpressionName(expressionsObject, name);
             const namedClause = Lib.withExpressionName(clause, uniqueName);
             const isUpdate = item;
 
@@ -79,4 +79,25 @@ export const ExpressionStep = ({
       withLegacyPopover
     />
   );
+};
+
+const getUniqueClauseName = (
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.ExpressionClause | undefined,
+  name: string,
+) => {
+  const isUpdate = clause;
+  // exclude the current clause so that its name is available during update (metabase#21135)
+  const queryWithoutCurrentClause = isUpdate
+    ? Lib.removeClause(query, stageIndex, clause)
+    : query;
+  const expressions = Lib.expressions(queryWithoutCurrentClause, stageIndex);
+  const expressionsObject = Object.fromEntries(
+    expressions.map(expression => [
+      Lib.displayInfo(query, stageIndex, expression).displayName,
+    ]),
+  );
+  const uniqueName = getUniqueExpressionName(expressionsObject, name);
+  return uniqueName;
 };
