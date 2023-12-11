@@ -41,3 +41,4 @@ serdes/meta:
   model: Table
 - id: creator_id
   model: Field
+database_indexed: null
