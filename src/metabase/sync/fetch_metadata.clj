@@ -37,7 +37,8 @@
     (when (driver/database-supports? driver :nested-field-columns database)
       (sql-jdbc.sync/describe-nested-field-columns driver database table))))
 
-(mu/defn index-metadata :- [:maybe [:set ::lib.schema.common/non-blank-string]]
+(mu/defn index-metadata :- [:maybe [:set [:or ::lib.schema.common/non-blank-string
+                                          [:sequential ::lib.schema.common/non-blank-string]]]]
   "Get information about the indexes belonging to `table`."
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]

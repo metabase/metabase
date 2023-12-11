@@ -216,6 +216,11 @@
          ;; with less than 8 keys are PersistentArrayMap, it's a PersistentHashedMap if it has more than 8 keys.
          (filter #(instance? clojure.lang.PersistentArrayMap %))
          (map (comp name first keys))
+         ;; mongo support multi key index, aka nested fields index, so we need to split the keys
+         ;; and represent it as a list of field names
+         (map #(if (str/includes? % ".")
+                (str/split % #"\.")
+                %))
          set)))
 
 (defn- from-db-object

@@ -13,6 +13,27 @@
    :added-indexes 0
    :removed-indexes 0})
 
+(defn- nested-field-names->field-id
+  [table-id field-names]
+  (loop [field-names field-names
+          field-id    nil]
+    (if (seq field-names)
+      (let [field-name (first field-names)
+            field-id   (t2/select-one-pk :model/Field :name field-name :parent_id field-id :table_id table-id)]
+        (if field-id
+          (recur (rest field-names) field-id)
+          nil))
+      field-id)))
+
+(defn- indexes->field-id
+  [table-id indexes]
+  (when (seq indexes)
+    (let [normal-indexes           (filter string? indexes)
+          nested-indexes           (remove string? indexes)
+          normal-indexes-field-ids (when (seq normal-indexes) (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
+          nested-indexes-field-ids (remove nil? (map #(nested-field-names->field-id table-id %) nested-indexes))]
+      (set (concat normal-indexes-field-ids nested-indexes-field-ids)))))
+
 (defn maybe-sync-indexes-for-table!
   "Sync the indexes for `table` if the driver supports indexing."
   [database table]
@@ -20,20 +41,19 @@
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
             ;; not all indexes are field names, they could be function based index as well
-            field-name-indexes         (when (seq indexes)
-                                         (t2/select-fn-set :name :model/Field :table_id (:id table) :name [:in indexes]))
-            existing-index-field-names (t2/select-fn-set :name :model/Field :table_id (:id table) :database_indexed true)
-            [removing adding]          (data/diff existing-index-field-names field-name-indexes)]
-        (doseq [field-name removing]
-          (log/infof "Unmarking %s.%s as indexed" (:name table) field-name))
-        (doseq [field-name adding]
-          (log/infof "Marking %s.%s as indexed" (:name table) field-name))
+            indexed-field-ids          (indexes->field-id (:id table) indexes)
+            existing-index-field-ids   (t2/select-pks-vec :model/Field :table_id (:id table) :database_indexed true)
+            [removing adding]          (data/diff indexed-field-ids existing-index-field-ids)]
+        #_(doseq [field-name removing]
+            (log/infof "Unmarking %s.%s as indexed" (:name table) field-name))
+        #_(doseq [field-name adding]
+            (log/infof "Marking %s.%s as indexed" (:name table) field-name))
         (if (or (seq adding) (seq removing))
           (do (t2/update! :model/Field {:table_id (:id table)}
-                          {:database_indexed (if (seq field-name-indexes)
-                                               [:case [:in :name field-name-indexes] true :else false]
+                          {:database_indexed (if (seq indexed-field-ids)
+                                               [:case [:in :id indexed-field-ids] true :else false]
                                                false)})
-              {:total-indexes   (count field-name-indexes)
+              {:total-indexes   (count indexed-field-ids)
                :added-indexes   (count adding)
                :removed-indexes (count removing)})
           empty-stats)))

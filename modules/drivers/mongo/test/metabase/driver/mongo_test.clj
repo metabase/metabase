@@ -220,6 +220,42 @@
                        :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))
 
+(deftest sync-indexes-info-test
+  (mt/test-driver :mongo
+    (mt/dataset (mt/dataset-definition "composite-index"
+                  ["singly-index"
+                   [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                    {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]]
+                  ["compound-index"
+                   [{:field-name "first" :indexed? false :base-type :type/Integer}
+                    {:field-name "second" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]]
+                  ["multi-key-index"
+                   [{:field-name "url" :indexed? false :base-type :type/Integer}]
+                   [[{:small "http://example.com/small.jpg" :large "http://example.com/large.jpg"}]]])
+
+      (try
+       (testing "singly index"
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
+
+       (testing "compount index"
+         (mongo.util/with-mongo-connection [conn (mt/db)]
+           (mcoll/create-index conn "compound-index" {"first" 1 "second" 1}))
+         (sync/sync-database! (mt/db))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
+
+       (testing "multi key index"
+         (mongo.util/with-mongo-connection [conn (mt/db)]
+           (mcoll/create-index conn "multi-key-index" {"url.small" 1}))
+         (sync/sync-database! (mt/db))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
+       (finally
+        (t2/delete! :model/Database (mt/id)))))))
+
 (deftest describe-table-indexes-test
   (mt/test-driver :mongo
     (mt/dataset (mt/dataset-definition "indexing"
@@ -256,6 +292,13 @@
              (mcoll/create-index conn "compound-index-big"
                                  (array-map "a" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "j" 1)) ;; first index column is :a
              (is (= #{"_id"}
+                    (describe-indexes :compound-index-big))))
+
+           (testing "multi key indexes"
+             ;; see comment in `driver/describe-table-indexes :mongo
+             (mcoll/create-index conn "compound-index-big"
+                                 (array-map "a.b" 1)) ;; first index column is :a
+             (is (= #{"_id" "a.b"}
                     (describe-indexes :compound-index-big))))))
 
        (finally
