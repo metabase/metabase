@@ -17,10 +17,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- allowed-metric [_body]
-  #_(def bbb body)
-  nil)
-
 (api/defendpoint POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
@@ -30,8 +26,6 @@
    description [:maybe :string]}
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
-  (api/check
-    (allowed-metric body) [400 (metabase.util.i18n/tru "Metrics in custom expressions not allowed.")])
   (let [metric (api/check-500
                 (first (t2/insert-returning-instances! Metric
                                                        :table_id    table_id

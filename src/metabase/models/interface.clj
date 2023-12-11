@@ -11,6 +11,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.plugins.classloader :as classloader]
@@ -323,6 +324,18 @@
                            :humanized humanized})))
         definition))))
 
+(defn- forbidden-metric-definition?
+  [{ag :aggregation :as _definition}]
+  (boolean (mbql.u/match-one ag [:metric (id :guard integer?)])))
+
+(defn- validate-metric-not-defined-using-metrics
+  [definition]
+  (if (forbidden-metric-definition? definition)
+    (throw (ex-info (tru "Metric definition can not contain references to other metrics.")
+                    {:status-code 400
+                     :definition definition}))
+    definition))
+
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when (seq definition)
@@ -332,7 +345,9 @@
 
 (def transform-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
-  {:in  (comp json-in normalize-metric-segment-definition)
+  ;; NOTE: `validate-metric-not-defined-using-metrics` validates only the data going into the app db. Intent is to
+  ;;       disable adding NEW metrics that are defined using other metrics.
+  {:in  (comp json-in validate-metric-not-defined-using-metrics normalize-metric-segment-definition)
    :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization)})
 
 (defn- blob->bytes [^Blob b]
