@@ -109,14 +109,21 @@
 
 (deftest data-graph-for-group-check-all-groups-test
   (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
-    (testing (str "testing data perms graph for group graph with group-id: [" group-id "].")
+    (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
       (let [graph (perms/data-graph-for-group group-id)]
         (is (perm-test-util/validate-graph-api-output graph))
         (is (= #{group-id} (set (keys graph))))))))
 
+(defn- perm-object->db [perm-obj]
+  (some-> (re-find #"/db/(\d+)/" perm-obj) second parse-long))
+
 (deftest data-graph-for-db-check-all-dbs-test
-  (doseq [db-id (t2/select-fn-set :id :model/Database)]
-    (testing (str "testing data perms graph for db graph with db-id: [" db-id "].")
-      (let [graph (perms/data-graph-for-db db-id)]
-        (is (perm-test-util/validate-graph-api-output graph))
-        (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))
+  (let [perm-objects (t2/select-fn-set :object :model/Permissions)
+        dbs-in-perms (set (keep perm-object->db perm-objects))]
+    (doseq [db-id (t2/select-fn-set :id :model/Database)]
+      (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
+        (let [graph (perms/data-graph-for-db db-id)]
+          (is (perm-test-util/validate-graph-api-output graph))
+          ;; Only check this for dbs with permissions
+          (when (contains? dbs-in-perms db-id)
+            (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))))
