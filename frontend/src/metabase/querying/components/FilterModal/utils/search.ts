@@ -17,12 +17,16 @@ export function searchGroupItems(
       columnItem.displayName.toLowerCase().includes(searchValue),
     );
 
-  return [
-    {
-      key: SEARCH_KEY,
-      displayName: t`Search`,
-      icon: "search",
-      columnItems,
-    },
-  ];
+  if (columnItems.length > 0) {
+    return [
+      {
+        key: SEARCH_KEY,
+        displayName: t`Search`,
+        icon: "search",
+        columnItems,
+      },
+    ];
+  }
+
+  return [];
 }

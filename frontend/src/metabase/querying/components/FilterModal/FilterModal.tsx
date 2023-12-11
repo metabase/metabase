@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Modal, Tabs } from "metabase/ui";
+import { Button, Flex, Modal, Stack, Tabs, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
@@ -86,15 +86,19 @@ export function FilterModal({
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
-          <TabContent
-            query={query}
-            groupItems={visibleItems}
-            tab={tab}
-            version={version}
-            isSearching={isSearching}
-            onChange={handleChange}
-            onTabChange={setTab}
-          />
+          {visibleItems.length > 0 ? (
+            <TabContent
+              query={query}
+              groupItems={visibleItems}
+              tab={tab}
+              version={version}
+              isSearching={isSearching}
+              onChange={handleChange}
+              onTabChange={setTab}
+            />
+          ) : (
+            <SearchEmptyState />
+          )}
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
           <Button
@@ -148,6 +152,15 @@ function TabContent({
         ))}
       </Flex>
     </Tabs>
+  );
+}
+
+function SearchEmptyState() {
+  return (
+    <Stack c="text.0" h="100%" justify="center" align="center">
+      <Icon name="search" size={40} />
+      <Text c="text.1" mt="lg" fw="bold">{t`Didn't find anything`}</Text>
+    </Stack>
   );
 }
 
