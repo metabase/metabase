@@ -1,5 +1,30 @@
 (ns metabase.lib.drill-thru.fk-details
-  "An FK details drill is one where you click a foreign key value in a table view e.g. ORDERS.USER_ID and choose the
+  "Object details drill for FK fields. Creates a new query based on the FK table with a `=` filter based on selected value.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Column is `type/FK`
+  - `value` is not `null`
+
+  Query transformation:
+
+  - Find the target table for the selected FK
+
+  - Create a new query that targets the FK table and add a `=` filter using the corresponding PK column and the
+    selected value
+
+  - Preserve filters from the original query that use `=` operator and are based on **other** FK columns targeting the
+    same FK table as the selected FK. This can only happen when the target table's PK consists of multiple columns.
+
+  Question transformation:
+
+  - Set default display
+
+  An FK details drill is one where you click a foreign key value in a table view e.g. ORDERS.USER_ID and choose the
   'View details' option, then it shows you the PEOPLE record in question (e.g. Person 5 if USER_ID was 5).
 
   We will only possibly return one of the 'object details'

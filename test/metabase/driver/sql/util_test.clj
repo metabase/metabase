@@ -1,6 +1,8 @@
 (ns metabase.driver.sql.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
@@ -82,3 +84,15 @@
            (sql.u/format-sql-and-fix-params :mysql "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))
     (is (= "SELECT\n  A\nFROM\n  {{#1234}}\nWHERE\n  {{STATE}}"
            (sql.u/format-sql-and-fix-params :postgres "SELECT A FROM { { #1234}} WHERE {{ STATE}  }")))))
+
+(deftest ^:parallel format-sql-with-additional-operators
+  (testing "Should not split additional operators (#36175)"
+    (doseq [op @#'sql.u/additional-operators
+            :let [q (str "SELECT a FROM t WHERE x " op " 12")]]
+      (testing (str "operator " op)
+        (doseq [driver-or-dialect (set (concat (descendants driver/hierarchy :sql) (keys sql.u/dialects)))
+                ;; the formatter includes # in specialWordChars for :db2, :plsql, :redshift, and :tsql
+                :when (not (and (str/includes? op "#")
+                                (#{:db2 :plsql :redshift :tsql} driver-or-dialect)))]
+          (testing (str "driver or dialect " driver-or-dialect)
+            (is (str/includes? (sql.u/format-sql-and-fix-params driver-or-dialect q) op))))))))

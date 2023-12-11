@@ -1,5 +1,50 @@
 (ns metabase.lib.drill-thru.zoom-in-geographic
-  "All geographic zooms require both a `:type/Latitude` and a `:type/Longitude` column
+  "\"Zoom\" transform for different geo semantic types.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Possible transformations:
+
+  - Country -> State
+
+  - Country -> LatLon(10)
+
+  - State -> LatLon(1)
+
+  - City -> LatLon(0.1)
+
+  - LatLon -> LatLon
+
+  Query transformation follows rules from other `zoom-in` transforms, however new breakout columns are handled
+  differently for each type.
+
+  - Country -> State. If a column with `type/State` semantic type exists, add a filter based on the selected country
+    and breakout by State.
+
+  - Country -> LatLon(10). If there is no `type/State` column available but there are `type/Latitude` and
+    `type/Longitude` columns, add a filter based on the selected country and 2 breakouts (latitude and longitude)
+    using \"Every 10 degrees\" binning strategy.
+
+  - State -> LatLon(1). Add a filter based on the selected state and 2 breakouts (latitude and longitude) using \"Every 1
+    degree\" binning strategy.
+
+  - City -> LatLon(0.1). Add a filter based on the selected city and 2 breakouts (latitude and longitude) using \"Every
+    0.1 degrees\" binning strategy.
+
+  - LatLon -> LatLon. If the binning strategy is more greater than every 20 degrees, change it to 10 degrees. Otherwise
+    divide the value by 10 and use it as the new binning strategy.
+
+  Question transformation:
+
+  - Set default display
+
+  All geographic zooms require both a `:type/Latitude` and a `:type/Longitude` column
   in [[metabase.lib.metadata.calculation/visible-columns]], not necessarily in the
   query's [[metabase.lib.metadata.calculation/returned-columns]]. E.g. 'count broken out by state' query should still
   get presented this drill.
