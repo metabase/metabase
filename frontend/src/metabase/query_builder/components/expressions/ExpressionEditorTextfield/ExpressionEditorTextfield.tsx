@@ -413,6 +413,8 @@ class ExpressionEditorTextfield extends React.Component<
       legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       name,
+      query,
+      stageIndex,
     } = this.props;
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
@@ -421,14 +423,16 @@ class ExpressionEditorTextfield extends React.Component<
       source,
       startRule,
       name,
-      query: legacyQuery.question()._getMLv2Query(),
-      stageIndex: -1,
+      query: query ?? legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
     });
   }
 
   commitExpression() {
     const {
       legacyQuery,
+      query,
+      stageIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
@@ -437,8 +441,8 @@ class ExpressionEditorTextfield extends React.Component<
     const errorMessage = diagnose({
       source,
       startRule,
-      query: legacyQuery.question()._getMLv2Query(),
-      stageIndex: -1,
+      query: query ?? legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
     });
     this.setState({ errorMessage });
 
