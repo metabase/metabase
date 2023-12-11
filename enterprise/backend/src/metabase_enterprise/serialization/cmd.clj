@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.cmd
   (:refer-clojure :exclude [load])
   (:require
+   [clojure.java.io :as io]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
@@ -206,6 +207,10 @@
   (mdb/setup-db!)
   (check-premium-token!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
+  (let [f (io/file path)]
+    (.mkdirs f)
+    (when-not (.canWrite f)
+      (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
   (serdes/with-cache
     (-> (cond-> opts
           (seq collection-ids) (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
