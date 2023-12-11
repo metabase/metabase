@@ -1029,3 +1029,18 @@
               {:lib/type :mbql.stage/mbql,
                :filters [[:> {} [:field {:effective-type :type/Float} "Avg Tax"] 0.06]]}]}
             (lib/replace-clause query 0 orig-agg new-agg)))))
+
+(deftest ^:parallel replace-clause-uses-custom-expression-name-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "expr" (lib/+ 1 1)))]
+    (is (=? [[:+ {:lib/expression-name "expr"} 1 1]]
+            (lib/expressions query)))
+    (is (=? [[:value {:lib/expression-name "evaluated expr"
+                      :name (symbol "nil #_\"key is not present.\"")
+                      :display-name (symbol "nil #_\"key is not present.\"")
+                      :effective-type :type/Integer}
+              2]]
+            (-> query
+                (lib/replace-clause (first (lib/expressions query))
+                                    (lib/with-expression-name 2 "evaluated expr"))
+                lib/expressions)))))
