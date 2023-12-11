@@ -67,7 +67,7 @@
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
                               :case-sensitivity-string-filter-options false
-                              :indexing                               true}]
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.

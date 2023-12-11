@@ -11,7 +11,7 @@
    [toucan2.core :as t2]))
 
 (deftest sync-single-indexed-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :indexing)
+  (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
     (mt/dataset (mt/dataset-definition "single_index"
                   ["table"
                    [{:field-name "indexed" :indexed? true :base-type :type/Integer}
@@ -21,7 +21,7 @@
       (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
 
 (deftest sync-composite-indexed-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :indexing)
+  (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
     (mt/dataset (mt/dataset-definition "composite-index"
                   ["table"
                    [{:field-name "first" :indexed? false :base-type :type/Integer}

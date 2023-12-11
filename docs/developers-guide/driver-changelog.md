@@ -5,7 +5,7 @@ title: Driver interface changelog
 # Driver Interface Changelog
 
 ## Metabase 0.49.0
-- A new driver method has been added [[driver/describe-table-indexes]] along with a new feature `:indexing`.
+- A new driver method has been added [[driver/describe-table-indexes]] along with a new feature `:index-info`.
   This method is used to get a set of column names that are indexed or are the first columns in a composite index.
 
 ## Metabase 0.48.0

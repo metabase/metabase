@@ -74,7 +74,7 @@
                  :actions/custom
                  :table-privileges
                  :uploads
-                 :indexing]]
+                 :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))

@@ -540,8 +540,8 @@
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
     :native-requires-specified-collection
 
-    ;; Does the driver support column(s) indexing
-    :indexing})
+    ;; Does the driver support column(s) support storing index info
+    :index-info})
 
 
 (defmulti supports?

@@ -16,7 +16,7 @@
 (defn maybe-sync-indexes-for-table!
   "Sync the indexes for `table` if the driver supports indexing."
   [database table]
-  (if (driver/database-supports? (driver.u/database->driver database) :indexing database)
+  (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
             ;; not all indexes are field names, they could be function based index as well
@@ -42,7 +42,7 @@
 (defn maybe-sync-indexes!
   "Sync the indexes for all tables in `database` if the driver supports indexing."
   [database]
-  (if (driver/database-supports? (driver.u/database->driver database) :indexing database)
+  (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
     (apply merge-with + empty-stats
            (map #(maybe-sync-indexes-for-table! database %) (sync-util/db->sync-tables database)))
     empty-stats))

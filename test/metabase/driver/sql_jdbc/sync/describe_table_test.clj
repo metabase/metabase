@@ -469,7 +469,7 @@
                         (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
 
 (deftest describe-table-indexes-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :indexing)
+  (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
     (mt/dataset (mt/dataset-definition "indexes"
                   ["single_index"
                    [{:field-name "indexed" :indexed? true :base-type :type/Integer}
@@ -502,7 +502,7 @@
 
 (deftest describe-table-indexes-advanced-index-type-test
   ;; a set of tests for advanced index types
-  (mt/test-drivers (mt/normal-drivers-with-feature :indexing)
+  (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
     (mt/dataset (mt/dataset-definition "advanced-indexes"
                   ["unique_index"
                    [{:field-name "column" :indexed? false :base-type :type/Integer}]
