@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: last_login
   model: Field
+database_indexed: null
