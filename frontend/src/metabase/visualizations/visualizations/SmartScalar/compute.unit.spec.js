@@ -909,409 +909,377 @@ describe("SmartScalar > compute", () => {
       });
     });
 
-    describe("formatting options", () => {
+    describe("dates", () => {
       describe("dateUnit", () => {
-        describe("(dateUnit supplied) should remove higher-order time periods if previous date is same day or same year as metric date", () => {
-          const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
-          const getComparisonProperties =
-            createGetComparisonProperties(comparisonType);
-          const settings = {
-            "scalar.field": "Count",
-            "scalar.comparisons": { type: comparisonType },
-          };
+        const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
+        const getComparisonProperties =
+          createGetComparisonProperties(comparisonType);
+        const settings = {
+          "scalar.field": "Count",
+          "scalar.comparisons": { type: comparisonType },
+        };
 
-          const cols = [
-            DateTimeColumn({ name: "Month" }),
-            NumberColumn({ name: "Count" }),
-          ];
+        const cols = [
+          DateTimeColumn({ name: "Month" }),
+          NumberColumn({ name: "Count" }),
+        ];
 
-          const testCases = [
-            {
-              description:
-                "should not remove year when previous quarter and current quarter are different years",
-              rows: [
-                ["2023-10-01T00:00:00", 100],
-                ["2024-10-01T00:00:00", 300],
-              ],
-              dateUnit: "quarter",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Q4 2024",
+        const testCases = [
+          {
+            description:
+              "should not remove year when previous quarter and current quarter are different years",
+            rows: [
+              ["2023-10-01T00:00:00", 100],
+              ["2024-10-01T00:00:00", 300],
+            ],
+            dateUnit: "quarter",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Q4 2024",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Q4 2023",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Q4 2023",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year when previous quarter and current quarter are within the same year",
-              rows: [
-                ["2024-04-01T00:00:00", 100],
-                ["2024-10-01T00:00:00", 300],
-              ],
-              dateUnit: "quarter",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Q4 2024",
+          },
+          {
+            description:
+              "should remove year when previous quarter and current quarter are within the same year",
+            rows: [
+              ["2024-04-01T00:00:00", 100],
+              ["2024-10-01T00:00:00", 300],
+            ],
+            dateUnit: "quarter",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Q4 2024",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Q2",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Q2",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should not remove year when previous month and current month are in different years",
-              rows: [
-                ["2018-09-01", 100],
-                ["2019-11-01", 300],
-              ],
-              dateUnit: "month",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 2019",
+          },
+          {
+            description:
+              "should not remove year when previous month and current month are in different years",
+            rows: [
+              ["2018-09-01", 100],
+              ["2019-11-01", 300],
+            ],
+            dateUnit: "month",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Sep 2018",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Sep 2018",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year when previous month and current month are within the same year",
-              rows: [
-                ["2019-09-01", 100],
-                ["2019-11-01", 300],
-              ],
-              dateUnit: "month",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 2019",
+          },
+          {
+            description:
+              "should remove year when previous month and current month are within the same year",
+            rows: [
+              ["2019-09-01", 100],
+              ["2019-11-01", 300],
+            ],
+            dateUnit: "month",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Sep",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Sep",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should not remove year when previous week and current week are in different years",
-              rows: [
-                ["2022-11-06", 100],
-                ["2023-11-19", 300],
-              ],
-              dateUnit: "week",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 19–25, 2023",
+          },
+          {
+            description:
+              "should not remove year when previous week and current week are in different years",
+            rows: [
+              ["2022-11-06", 100],
+              ["2023-11-19", 300],
+            ],
+            dateUnit: "week",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 19–25, 2023",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Nov 6–12, 2022",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Nov 6–12, 2022",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year when previous week and current week are within the same year",
-              rows: [
-                ["2023-11-05", 100],
-                ["2023-11-19", 300],
-              ],
-              dateUnit: "week",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 19–25, 2023",
+          },
+          {
+            description:
+              "should remove year when previous week and current week are within the same year",
+            rows: [
+              ["2023-11-05", 100],
+              ["2023-11-19", 300],
+            ],
+            dateUnit: "week",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 19–25, 2023",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Nov 5–11",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Nov 5–11",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should not remove year when previous day and current day are in different years",
-              rows: [
-                ["2018-10-01", 100],
-                ["2019-11-05", 300],
-              ],
-              dateUnit: "day",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019",
+          },
+          {
+            description:
+              "should not remove year when previous day and current day are in different years",
+            rows: [
+              ["2018-10-01", 100],
+              ["2019-11-05", 300],
+            ],
+            dateUnit: "day",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Oct 1, 2018",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Oct 1, 2018",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year when previous day and current day are within the same year",
-              rows: [
-                ["2019-10-10", 100],
-                ["2019-11-05", 300],
-              ],
-              dateUnit: "day",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019",
+          },
+          {
+            description:
+              "should remove year when previous day and current day are within the same year",
+            rows: [
+              ["2019-10-10", 100],
+              ["2019-11-05", 300],
+            ],
+            dateUnit: "day",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Oct 10",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Oct 10",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should not remove year when previous hour and current hour are in different years",
-              rows: [
-                ["2018-11-05T04:00:00", 100],
-                ["2019-11-05T04:00:00", 300],
-              ],
-              dateUnit: "hour",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019, 4:00–59 AM",
+          },
+          {
+            description:
+              "should not remove year when previous hour and current hour are in different years",
+            rows: [
+              ["2018-11-05T04:00:00", 100],
+              ["2019-11-05T04:00:00", 300],
+            ],
+            dateUnit: "hour",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 4:00–59 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Nov 5, 2018, 4:00–59 AM",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Nov 5, 2018, 4:00–59 AM",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year when previous hour and current hour are in the same year",
-              rows: [
-                ["2019-10-30T04:00:00", 100],
-                ["2019-11-05T04:00:00", 300],
-              ],
-              dateUnit: "hour",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019, 4:00–59 AM",
+          },
+          {
+            description:
+              "should remove year when previous hour and current hour are in the same year",
+            rows: [
+              ["2019-10-30T04:00:00", 100],
+              ["2019-11-05T04:00:00", 300],
+            ],
+            dateUnit: "hour",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 4:00–59 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Oct 30, 4:00–59 AM",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Oct 30, 4:00–59 AM",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year and day when previous hour and current hour are in the same day",
-              rows: [
-                ["2019-11-05T04:00:00", 100],
-                ["2019-11-05T10:00:00", 300],
-              ],
-              dateUnit: "hour",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019, 10:00–59 AM",
+          },
+          {
+            description:
+              "should remove year and day when previous hour and current hour are in the same day",
+            rows: [
+              ["2019-11-05T04:00:00", 100],
+              ["2019-11-05T10:00:00", 300],
+            ],
+            dateUnit: "hour",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 10:00–59 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "4:00–59 AM",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "4:00–59 AM",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should not remove year when previous minute and current minute are in different years",
-              rows: [
-                ["2018-10-10T04:00:00", 100],
-                ["2019-11-05T04:00:00", 300],
-              ],
-              dateUnit: "minute",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019, 4:00 AM",
+          },
+          {
+            description:
+              "should not remove year when previous minute and current minute are in different years",
+            rows: [
+              ["2018-10-10T04:00:00", 100],
+              ["2019-11-05T04:00:00", 300],
+            ],
+            dateUnit: "minute",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 4:00 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Oct 10, 2018, 4:00 AM",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Oct 10, 2018, 4:00 AM",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year when previous minute and current minute are in the same year",
-              rows: [
-                ["2019-10-10T04:00:00", 100],
-                ["2019-11-05T04:00:00", 300],
-              ],
-              dateUnit: "minute",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019, 4:00 AM",
+          },
+          {
+            description:
+              "should remove year when previous minute and current minute are in the same year",
+            rows: [
+              ["2019-10-10T04:00:00", 100],
+              ["2019-11-05T04:00:00", 300],
+            ],
+            dateUnit: "minute",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 4:00 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Oct 10, 4:00 AM",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "Oct 10, 4:00 AM",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-            {
-              description:
-                "should remove year and day when previous minute and current minute are in the same day",
-              rows: [
-                ["2019-11-05T04:00:00", 100],
-                ["2019-11-05T10:00:00", 300],
-              ],
-              dateUnit: "minute",
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "Nov 5, 2019, 10:00 AM",
+          },
+          {
+            description:
+              "should remove year and day when previous minute and current minute are in the same day",
+            rows: [
+              ["2019-11-05T04:00:00", 100],
+              ["2019-11-05T10:00:00", 300],
+            ],
+            dateUnit: "minute",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Nov 5, 2019, 10:00 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "4:00 AM",
                   metricValue: 300,
                 }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "4:00 AM",
-                    metricValue: 300,
-                  }),
-                },
               },
             },
-          ];
+          },
+          {
+            description: "should display full date if no dateUnit is supplied",
+            rows: [
+              ["2018-09-01T06:00", 100],
+              ["2019-11-01T07:50", 300],
+            ],
+            dateUnit: null,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "November 1, 2019, 7:50 AM",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "September 1, 2018, 6:00 AM",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+        ];
 
-          it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-            const insights = [{ unit: dateUnit, col: "Count" }];
-            const trend = computeTrend(
-              series({ rows, cols }),
-              insights,
-              settings,
-            );
+        it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
+          const insights = [{ unit: dateUnit, col: "Count" }];
+          const trend = computeTrend(
+            series({ rows, cols }),
+            insights,
+            settings,
+          );
 
-            expect(getTrend(trend)).toEqual(expected);
-          });
-        });
-
-        describe("(no dateUnit supplied) should display full date if missing dateUnit", () => {
-          const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
-          const getComparisonProperties =
-            createGetComparisonProperties(comparisonType);
-          const settings = {
-            "scalar.field": "Count",
-            "scalar.comparisons": { type: comparisonType },
-          };
-
-          const cols = [
-            DateTimeColumn({ name: "Month" }),
-            NumberColumn({ name: "Count" }),
-          ];
-
-          const testCases = [
-            {
-              description:
-                "should display full date if no dateUnit is supplied",
-              rows: [
-                ["2018-09-01T06:00", 100],
-                ["2019-11-01T07:50", 300],
-              ],
-              dateUnit: null,
-              expected: {
-                ...getMetricProperties({
-                  dateStr: "November 1, 2019, 7:50 AM",
-                  metricValue: 300,
-                }),
-                comparison: {
-                  ...getComparisonProperties({
-                    changeType: "increase",
-                    comparisonValue: 100,
-                    dateStr: "September 1, 2018, 6:00 AM",
-                    metricValue: 300,
-                  }),
-                },
-              },
-            },
-          ];
-
-          it.each(testCases)("$description", ({ rows, expected, dateUnit }) => {
-            const insights = [{ unit: dateUnit, col: "Count" }];
-            const trend = computeTrend(
-              series({ rows, cols }),
-              insights,
-              settings,
-            );
-
-            expect(getTrend(trend)).toEqual(expected);
-          });
+          expect(getTrend(trend)).toEqual(expected);
         });
       });
 
@@ -1392,6 +1360,85 @@ describe("SmartScalar > compute", () => {
           },
         );
       });
+    });
+
+    describe("field selection", () => {
+      const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
+      const getComparisonProperties =
+        createGetComparisonProperties(comparisonType);
+      const createSettings = field => ({
+        "scalar.field": field,
+        "scalar.comparisons": { type: comparisonType },
+      });
+
+      const COUNT_FIELD = "Count";
+      const SUM_FIELD = "Sum";
+
+      const cols = [
+        DateTimeColumn({ name: "Month" }),
+        NumberColumn({ name: COUNT_FIELD }),
+        NumberColumn({ name: SUM_FIELD }),
+      ];
+
+      const testCases = [
+        {
+          description: "should correctly use field setting Count",
+          rows: [
+            ["2019-10-01", 100, 958469],
+            ["2019-11-01", 300, 920000],
+          ],
+          dateUnit: "month",
+          field: COUNT_FIELD,
+          expected: {
+            ...getMetricProperties({ dateStr: "Nov 2019", metricValue: 300 }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "increase",
+                comparisonValue: 100,
+                dateStr: "Oct",
+                metricValue: 300,
+              }),
+            },
+          },
+        },
+        {
+          description: "should correctly use field setting Sum",
+          rows: [
+            ["2019-10-01", 100, 958469],
+            ["2019-11-01", 300, 920000],
+          ],
+          dateUnit: "month",
+          field: SUM_FIELD,
+          expected: {
+            ...getMetricProperties({
+              dateStr: "Nov 2019",
+              metricValue: 920000,
+            }),
+            comparison: {
+              ...getComparisonProperties({
+                changeType: "decrease",
+                comparisonValue: 958469,
+                dateStr: "Oct",
+                metricValue: 920000,
+              }),
+            },
+          },
+        },
+      ];
+
+      it.each(testCases)(
+        "$description",
+        ({ rows, expected, dateUnit, field }) => {
+          const insights = [{ unit: dateUnit, col: field }];
+          const trend = computeTrend(
+            series({ rows, cols }),
+            insights,
+            createSettings(field),
+          );
+
+          expect(getTrend(trend)).toEqual(expected);
+        },
+      );
     });
   });
 });
