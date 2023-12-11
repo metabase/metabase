@@ -3,10 +3,10 @@ import {
   LinkContainer,
   PublicLinkCopyButton,
   PublicLinkTextContainer,
+  ExtensionOption,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
 import type { exportFormats } from "metabase/lib/urls";
 import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
-import { ExtensionOption } from "./PublicLinkPopover.styled";
 
 export type ExportFormatType = typeof exportFormats[number] | null;
 

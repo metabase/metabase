@@ -31,7 +31,7 @@ export const DashboardEmbedHeaderMenu = ({
     : t`Public link`;
 
   return (
-    <Menu position="bottom-start" offset={8}>
+    <Menu position="bottom-start" offset={8} withinPortal>
       <Menu.Target>{target}</Menu.Target>
       <Menu.Dropdown data-testid="embed-header-menu">
         <Menu.Item
