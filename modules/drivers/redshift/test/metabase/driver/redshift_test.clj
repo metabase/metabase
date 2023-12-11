@@ -489,7 +489,8 @@
            sql (sql/format honey)
            result (apply run-native-query sql)
            [db-generated ss-generated & debug] (-> result mt/rows first)]
-       (is (= db-generated ss-generated)
+       ;; temp debug not=
+       (is (not= db-generated ss-generated)
            (str
             (format (str "\n---\n"
                          "results timezone == %s\n"
