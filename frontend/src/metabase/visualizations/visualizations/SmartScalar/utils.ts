@@ -86,7 +86,10 @@ export const COMPARISON_TYPES = {
   PERIODS_AGO: "periodsAgo",
 } as const;
 
-const PLACEHOLDER_STR = "[placeholder]";
+export type COMPARISON_TYPES_TYPE =
+  typeof COMPARISON_TYPES[keyof typeof COMPARISON_TYPES];
+
+export const PLACEHOLDER_STR = "[placeholder]";
 export const COMPARISON_SELECT_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
@@ -213,6 +216,12 @@ export function isComparisonValid(
       data: { insights },
     },
   ] = series;
+
+  if (
+    settings["scalar.comparisons"]?.type === COMPARISON_TYPES.PREVIOUS_VALUE
+  ) {
+    return true;
+  }
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
