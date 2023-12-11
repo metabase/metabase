@@ -1,16 +1,17 @@
-import type * as Lib from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase/core/components/Icon";
 
 export interface ColumnItem {
   column: Lib.ColumnMetadata;
-  columnInfo: Lib.ColumnDisplayInfo;
+  displayName: string;
+  stageIndex: number;
 }
 
-export interface ColumnGroupItem {
+export interface GroupItem {
   key: string;
-  group: Lib.ColumnGroup;
-  groupInfo: Lib.ColumnGroupDisplayInfo;
-  columnItems: ColumnItem[];
-  stageIndex: number;
+  displayName: string;
+  icon: IconName;
+  items: ColumnItem[];
 }
 
 export interface FilterEditorProps {

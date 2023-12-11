@@ -2,10 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Button, Flex, Modal, Tabs } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
 import { FilterSearchInput } from "./FilterSearchInput";
@@ -20,7 +16,7 @@ import {
   hasFilters,
   removeFilters,
 } from "./utils";
-import type { ColumnGroupItem } from "./types";
+import type { GroupItem } from "./types";
 import {
   ColumnItemRoot,
   ModalBody,
@@ -112,7 +108,7 @@ export function FilterModal({
 }
 
 interface TabListProps {
-  groupItems: ColumnGroupItem[];
+  groupItems: GroupItem[];
 }
 
 function TabList({ groupItems }: TabListProps) {
@@ -126,28 +122,24 @@ function TabList({ groupItems }: TabListProps) {
 }
 
 interface TabProps {
-  groupItem: ColumnGroupItem;
+  groupItem: GroupItem;
 }
 
 function Tab({ groupItem }: TabProps) {
-  const { groupInfo } = groupItem;
-  const groupName = getColumnGroupName(groupInfo) || t`Summaries`;
-  const groupIcon = getColumnGroupIcon(groupInfo) ?? "sum";
-
   return (
     <Tabs.Tab
       value={groupItem.key}
-      aria-label={groupName}
-      icon={<Icon name={groupIcon} />}
+      aria-label={groupItem.displayName}
+      icon={<Icon name={groupItem.icon} />}
     >
-      {groupName}
+      {groupItem.displayName}
     </Tabs.Tab>
   );
 }
 
 interface TabPanelProps {
   query: Lib.Query;
-  groupItem: ColumnGroupItem;
+  groupItem: GroupItem;
   onChange: (newQuery: Lib.Query) => void;
 }
 
@@ -155,13 +147,13 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
-        {groupItem.columnItems.map((columnItem, index) => {
+        {groupItem.items.map((columnItem, columnIndex) => {
           return (
             <TabPanelItemList
-              key={index}
+              key={columnIndex}
               query={query}
-              stageIndex={groupItem.stageIndex}
               column={columnItem.column}
+              stageIndex={columnItem.stageIndex}
               onChange={onChange}
             />
           );
