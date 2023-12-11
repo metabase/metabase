@@ -86,25 +86,15 @@ export function FilterModal({
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
-          <Tabs
-            value={tab}
+          <TabContent
+            query={query}
+            groupItems={visibleItems}
+            tab={tab}
+            version={version}
+            isSearching={isSearching}
+            onChange={handleChange}
             onTabChange={setTab}
-            orientation="vertical"
-            h="100%"
-          >
-            <Flex direction="row" w="100%">
-              {visibleItems.length > 1 && <TabList groupItems={visibleItems} />}
-              {visibleItems.map(groupItem => (
-                <TabPanel
-                  key={`${groupItem.key}:${version}`}
-                  query={query}
-                  groupItem={groupItem}
-                  isSearching={isSearching}
-                  onChange={handleChange}
-                />
-              ))}
-            </Flex>
-          </Tabs>
+          />
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
           <Button
@@ -124,6 +114,43 @@ export function FilterModal({
   );
 }
 
+interface TabContentProps {
+  query: Lib.Query;
+  groupItems: GroupItem[];
+  tab: string | null;
+  version: number;
+  isSearching: boolean;
+  onChange: (query: Lib.Query) => void;
+  onTabChange: (tab: string | null) => void;
+}
+
+function TabContent({
+  query,
+  groupItems,
+  tab,
+  version,
+  isSearching,
+  onChange,
+  onTabChange,
+}: TabContentProps) {
+  return (
+    <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
+      <Flex direction="row" w="100%">
+        {groupItems.length > 1 && <TabList groupItems={groupItems} />}
+        {groupItems.map(groupItem => (
+          <TabPanel
+            key={`${groupItem.key}:${version}`}
+            query={query}
+            groupItem={groupItem}
+            isSearching={isSearching}
+            onChange={onChange}
+          />
+        ))}
+      </Flex>
+    </Tabs>
+  );
+}
+
 interface TabListProps {
   groupItems: GroupItem[];
 }
@@ -132,25 +159,16 @@ function TabList({ groupItems }: TabListProps) {
   return (
     <Tabs.List w="20%" pt="sm" pl="md">
       {groupItems.map(groupItem => (
-        <Tab key={groupItem.key} groupItem={groupItem} />
+        <Tabs.Tab
+          key={groupItem.key}
+          value={groupItem.key}
+          aria-label={groupItem.displayName}
+          icon={<Icon name={groupItem.icon} />}
+        >
+          {groupItem.displayName}
+        </Tabs.Tab>
       ))}
     </Tabs.List>
-  );
-}
-
-interface TabProps {
-  groupItem: GroupItem;
-}
-
-function Tab({ groupItem }: TabProps) {
-  return (
-    <Tabs.Tab
-      value={groupItem.key}
-      aria-label={groupItem.displayName}
-      icon={<Icon name={groupItem.icon} />}
-    >
-      {groupItem.displayName}
-    </Tabs.Tab>
   );
 }
 
