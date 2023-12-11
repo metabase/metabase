@@ -297,6 +297,7 @@ function computeComparisonPeriodsAgo({
 
   const rowPeriodsAgo = getRowOfPeriodsAgo({
     prevDate,
+    dateUnit: dateUnitSettings.dateUnit,
     dateUnitsAgo,
     dimensionColIndex,
     nextValueRowIndex,
@@ -319,6 +320,7 @@ function computeComparisonPeriodsAgo({
 
 function getRowOfPeriodsAgo({
   prevDate,
+  dateUnit,
   dateUnitsAgo,
   dimensionColIndex,
   nextValueRowIndex,
@@ -339,14 +341,16 @@ function getRowOfPeriodsAgo({
   const searchIndexEnd = lastCandidateIndex >= 0 ? lastCandidateIndex : 0;
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
-    const row = rows[i];
-    const rowDate = moment.parseZone(row[dimensionColIndex]);
+    const candidateRow = rows[i];
+    const candidateRowDate = moment.parseZone(candidateRow[dimensionColIndex]);
 
-    if (targetDate.isSame(rowDate)) {
-      return row;
+    if (targetDate.diff(candidateRowDate, dateUnit) === 0) {
+      return candidateRow;
     }
 
-    if (targetDate.isAfter(rowDate)) {
+    // if current candidate is before the targetDate, we can stop searching
+    // because previous rows will only be further in the past
+    if (targetDate.diff(candidateRowDate, dateUnit) > 0) {
       return undefined;
     }
   }
