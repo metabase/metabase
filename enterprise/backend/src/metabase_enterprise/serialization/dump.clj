@@ -18,7 +18,6 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.files :as u.files]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
@@ -62,11 +61,14 @@
 
   Writes (even nested) yaml keys in a deterministic fashion."
   [filename obj]
-  (if (u.files/make-writable-parents! filename)
+  (io/make-parents filename)
+  (try
     (spit filename (yaml/generate-string (serialization-deep-sort obj)
                                          {:dumper-options {:flow-style :block :split-lines false}}))
-
-    (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))))
+    (catch Exception e
+      (if-not (.canWrite (.getParentFile (io/file filename)))
+        (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
+        (throw e)))))
 
 (defn- as-file?
   [instance]
