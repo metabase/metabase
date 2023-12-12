@@ -349,7 +349,7 @@ describe("entities > collections > utils", () => {
         expectedIcon: "person",
       },
       {
-        name: "Instance Analytics",
+        name: "Metabase Analytics",
         collection: createMockCollection({ type: "instance-analytics" }),
         expectedIcon: "audit",
       },

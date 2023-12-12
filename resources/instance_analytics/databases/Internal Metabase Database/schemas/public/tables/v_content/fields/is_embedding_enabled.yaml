@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: is_embedding_enabled
   model: Field
+database_indexed: null
