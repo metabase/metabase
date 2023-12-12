@@ -436,7 +436,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB*JWT*\*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication (see [`MB_JWT_ENABLED`](#mb_jwt_enabled)).
 
 ### `MB_EMOJI_IN_LOGS`
 
