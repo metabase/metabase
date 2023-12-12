@@ -6,6 +6,9 @@ import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import * as Errors from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+
 import type { ForgotPasswordData } from "../../types";
 import {
   PasswordFormFooter,
@@ -36,6 +39,8 @@ export const ForgotPasswordForm = ({
     [onSubmit],
   );
 
+  const applicationName = useSelector(getApplicationName);
+
   return (
     <div>
       <PasswordFormTitle>{t`Forgot password`}</PasswordFormTitle>
@@ -48,7 +53,7 @@ export const ForgotPasswordForm = ({
           <FormInput
             name="email"
             title={t`Email address`}
-            placeholder={t`The email you use for your Metabase account`}
+            placeholder={t`The email you use for your ${applicationName} account`}
             autoFocus
           />
           <FormSubmitButton
