@@ -15,6 +15,8 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
+const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
+
 const rawDataQuery: StructuredQueryObject = {
   "source-table": ORDERS_ID,
 };
@@ -47,7 +49,6 @@ const postAggregationFilterQuery: StructuredQueryObject = {
 };
 
 const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
-  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
   const question = database.question(query);
   return getQuestionSteps(question, metadata, {});
 };
