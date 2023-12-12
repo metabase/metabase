@@ -86,7 +86,19 @@
                    (qp/process-query
                     {:database perms/audit-db-id
                      :type     :query
-                     :query   {:source-table (u/the-id table)}}))))))))))
+                     :query   {:source-table (u/the-id table)}})))))
+
+          (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
+                                  have data perms for the audit DB"
+            (binding [api/*current-user-permissions-set* (delay #{(perms/data-perms-path perms/audit-db-id)})]
+              (let [audit-view-id (t2/select-one-pk :model/Table :name "v_audit_log")]
+               (is (thrown-with-msg?
+                    clojure.lang.ExceptionInfo
+                    #"You do not have access to the audit database"
+                    (qp/process-query
+                     {:database perms/audit-db-id
+                      :type     :query
+                      :query    {:source-table audit-view-id}})))))))))))
 
 (deftest permissions-instance-analytics-audit-v2-test
   (premium-features-test/with-premium-features #{:audit-app}
