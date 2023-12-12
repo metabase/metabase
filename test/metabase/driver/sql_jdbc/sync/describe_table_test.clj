@@ -524,7 +524,7 @@
                                              (mt/db)
                                              table)))]
          (testing "hashed index"
-           (when (not= :h2 driver/*driver*)
+           (when-not (#{:h2 :sqlite} driver/*driver*)
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
              (is (= #{"id" "column"}

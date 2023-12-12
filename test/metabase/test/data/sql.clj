@@ -195,8 +195,8 @@
 (defmulti create-index-sql
   "Return a `CREATE INDEX` statement.
   `options` is a map. The supported keys are: unique?, method and condition"
-  {:arglists '([driver tabledef fielddef]
-               [driver tabledef fielddef options])}
+  {:arglists '([driver table-name field-names]
+               [driver table-name field-names options])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

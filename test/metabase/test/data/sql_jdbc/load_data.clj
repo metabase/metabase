@@ -206,7 +206,7 @@
     ;; now execute statements to create the DB
     (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
       (execute/execute-sql! driver :server dbdef statement))
-    ;; next, get a set of statements for creating the DB & Tables
+    ;; next, get a set of statements for creating the Tables
     (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
       ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
       ;; DB rather than on `:server` (no DB in particular)

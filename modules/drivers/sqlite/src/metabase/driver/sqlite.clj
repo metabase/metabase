@@ -42,7 +42,8 @@
                               :now                                    true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
-                              :case-sensitivity-string-filter-options false}]
+                              :case-sensitivity-string-filter-options false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
