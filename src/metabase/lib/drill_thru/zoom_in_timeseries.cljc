@@ -1,4 +1,37 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries
+  "\"See this month by weeks\" type of transform.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Requirements:
+
+  - `dimensions` have a date column with `year`, `quarter`, `month`, `week`, `day`, `hour` temporal unit. For other
+    units, or when there is no temporal bucketing this drill cannot be applied. Changing `hour` to `minute` ends the
+    sequence. Only the first matching column would be used in query transformation.
+
+  - `displayInfo` returns `displayName` with `See this {0} by {1}` string using the current and the next available
+    temporal unit.
+
+  Query transformation:
+
+  - Remove breakouts for `dimensions`. Please note that with regular cells and pivot cells it would mean removing all
+    breakouts; but with legend item clicks it would remove the breakout for the legend item column only.
+
+  - Add a filter based on columns and values from `dimensions`. Take temporal units and binning strategies into
+    account
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
+
+  - Add a breakout based on the date column (from requirements), using the next (more granular) temporal unit.
+
+  Question transformation:
+
+  - Set default display"
   (:require
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]

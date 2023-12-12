@@ -6,7 +6,8 @@ import type {
 
 import type { UiParameter } from "metabase-lib/parameters/types";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
+import { clickBehaviorOptions } from "../utils";
+import { useClickBehaviorOptionName } from "../hooks";
 import { CrossfilterOptions } from "../CrossfilterOptions";
 import { LinkOptions } from "../LinkOptions/LinkOptions";
 import { SidebarItem } from "../SidebarItem";
@@ -70,7 +71,7 @@ export function ClickBehaviorSidebarMainView({
   handleShowTypeSelector,
   updateSettings,
 }: ClickBehaviorSidebarMainViewProps) {
-  const clickBehaviorOptionName = getClickBehaviorOptionName(
+  const clickBehaviorOptionName = useClickBehaviorOptionName(
     clickBehavior.type,
     dashcard,
   );

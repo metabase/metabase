@@ -9,6 +9,8 @@ import Confirm from "metabase/components/Confirm";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Description,
   EmbedWidgetHeader,
@@ -57,6 +59,8 @@ export default function SharingPane({
     isAdmin,
     isApplicationEmbeddingEnabled,
   });
+
+  const applicationName = useSelector(getApplicationName);
 
   return (
     <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
