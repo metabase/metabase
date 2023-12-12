@@ -18,6 +18,11 @@ import ExpressionStep from "./ExpressionStep";
 describe("Notebook Editor > Expression Step", () => {
   it("should handle updating existing expression", async () => {
     const expression: Expression = ["abs", ["field", 17, null]];
+    const updatedExpression: Expression = [
+      "abs",
+      ["field", 17, { "base-type": "type/Float" }],
+    ];
+
     const {
       mocks: { addExpression, updateExpression, updateQuery },
     } = setup(undefined, {
@@ -37,7 +42,7 @@ describe("Notebook Editor > Expression Step", () => {
     expect(updateExpression).toHaveBeenCalledTimes(1);
     expect(updateExpression).toHaveBeenCalledWith(
       "new name",
-      expression,
+      updatedExpression,
       "old name",
     );
     expect(addExpression).toHaveBeenCalledTimes(0);

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import type { Expr, Node } from "metabase-lib/expressions/pratt";
 import {
   parse,
@@ -7,7 +8,6 @@ import {
   compile,
   ResolverError,
 } from "metabase-lib/expressions/pratt";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
@@ -39,12 +39,14 @@ export function countMatchingParentheses(tokens: Token[]) {
 export function diagnose({
   source,
   startRule,
-  legacyQuery,
+  query,
+  stageIndex,
   name = null,
 }: {
   source: string;
   startRule: string;
-  legacyQuery: StructuredQuery;
+  query: Lib.Query;
+  stageIndex: number;
   name?: string | null;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
@@ -89,7 +91,7 @@ export function diagnose({
   }
 
   try {
-    return prattCompiler(source, startRule, legacyQuery, name);
+    return prattCompiler({ source, startRule, name, query, stageIndex });
   } catch (err) {
     if (isErrorWithMessage(err)) {
       return err;
@@ -99,14 +101,21 @@ export function diagnose({
   }
 }
 
-function prattCompiler(
-  source: string,
-  startRule: string,
-  legacyQuery: StructuredQuery,
-  name: string | null,
-): ErrorWithMessage | null {
+function prattCompiler({
+  source,
+  startRule,
+  name,
+  query,
+  stageIndex,
+}: {
+  source: string;
+  startRule: string;
+  name: string | null;
+  query: Lib.Query;
+  stageIndex: number;
+}): ErrorWithMessage | null {
   const tokens = lexify(source);
-  const options = { source, startRule, legacyQuery, name };
+  const options = { source, startRule, name, query, stageIndex };
 
   // PARSE
   const { root, errors } = parse(tokens, {
@@ -118,7 +127,8 @@ function prattCompiler(
   }
 
   function resolveMBQLField(kind: string, name: string, node: Node) {
-    if (!legacyQuery) {
+    // @uladzimirdev double check why is this needed
+    if (!query) {
       return [kind, name];
     }
     if (kind === "metric") {
@@ -126,13 +136,15 @@ function prattCompiler(
       if (!metric) {
         throw new ResolverError(t`Unknown Metric: ${name}`, node);
       }
-      return ["metric", metric.id];
+
+      return Lib.legacyFieldRef(metric);
     } else if (kind === "segment") {
       const segment = parseSegment(name, options);
       if (!segment) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
+
+      return Lib.legacyFieldRef(segment);
     } else {
       const reference = options.name ?? ""; // avoid circular reference
 
@@ -141,7 +153,8 @@ function prattCompiler(
       if (!dimension) {
         throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
-      return dimension.mbql();
+
+      return Lib.legacyFieldRef(dimension);
     }
   }
 

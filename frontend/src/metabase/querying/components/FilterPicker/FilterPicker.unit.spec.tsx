@@ -433,8 +433,8 @@ describe("FilterPicker", () => {
       await waitFor(() =>
         expect(onSelectLegacy).toHaveBeenCalledWith([
           ">",
-          ["field", ORDERS.TOTAL, null],
-          ["field", ORDERS.DISCOUNT, null],
+          ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+          ["field", ORDERS.DISCOUNT, { "base-type": "type/Float" }],
         ]),
       );
       expect(onSelect).not.toHaveBeenCalled();
@@ -448,7 +448,7 @@ describe("FilterPicker", () => {
       await waitFor(() =>
         expect(onSelectLegacy).toHaveBeenCalledWith([
           ">",
-          ["field", ORDERS.TOTAL, null],
+          ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
           100,
         ]),
       );

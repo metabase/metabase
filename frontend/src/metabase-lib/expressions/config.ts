@@ -28,7 +28,7 @@ export const EDITOR_FK_SYMBOLS = {
 };
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-export const OPERATOR_PRECEDENCE = {
+export const OPERATOR_PRECEDENCE: Record<string, number> = {
   not: 17,
   "*": 15,
   "/": 15,
