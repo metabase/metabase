@@ -281,13 +281,14 @@
     (testing "Boolean and integers together"
       (is (=? (with-ai-id {:vchar       vchar-type
                            :bool        bool-type
-                           :bool_or_int bool-type})
+                           :bool_or_int bool-type
+                           :int         int-type})
               (@#'upload/detect-schema
-               (csv-file-with ["vchar,bool,bool-or-int"
-                               " true,true,          1"
-                               "    1,   1,          0"
-                               "    2,   0,          0"
-                               "   no,  no,          1"])))))
+               (csv-file-with ["vchar,bool,bool-or-int,int"
+                               " true,true,          1,  1"
+                               "    1,   1,          0,  0"
+                               "    2,   0,          0,  0"
+                               "   no,  no,          1,  2"])))))
     (testing "Order is ensured"
       (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
         (is (= (map keyword (str/split header #","))
@@ -614,20 +615,20 @@
            driver/*driver*
            (mt/id)
            "upload_test"
-           (csv-file-with ["vchar,bool,bool-or-int"
-                           " true,true,          1"
-                           "    1,   1,          0"
-                           "    2,   0,          0"
-                           "   no,  no,          1"]))
+           (csv-file-with ["vchar,bool,bool-or-int,int"
+                           " true,true,          1,  1"
+                           "    1,   1,          0,  0"
+                           "    2,   0,          0,  0"
+                           "   no,  no,          1,  2"]))
           (testing "Table and Fields exist after sync"
             (sync/sync-database! (mt/db))
             (let [table (t2/select-one Table :db_id (mt/id))]
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [[1 " true" true true]
-                        [2 "    1" true false]
-                        [3 "    2" false false]
-                        [4 "   no" false true]]
+                (is (= [[1 " true"  true true  1]
+                        [2 "    1"  true false 0]
+                        [3 "    2" false false 0]
+                        [4 "   no" false true  2]]
                        (rows-for-table table)))))))))))
 
 (deftest load-from-csv-existing-id-column-test
