@@ -110,12 +110,7 @@ export const replaceCard =
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
     await dispatch(loadMetadataForDashboard([dashcard]));
-    dispatch(
-      autoWireParametersToNewCard({
-        dashboard_id: dashcard.dashboard_id,
-        dashcard_id: dashcardId,
-      }),
-    );
+    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
   };
 
 export const removeCardFromDashboard = createThunkAction(
