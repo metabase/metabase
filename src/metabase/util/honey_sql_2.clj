@@ -87,7 +87,7 @@
 (sql/register-fn! ::percentile-cont #'format-percentile-cont)
 
 (def IdentifierType
-  "Malli schema for valid Identifier types."
+  "Malli schema for valid [[identifier]] types."
   [:enum
    :database
    :schema
@@ -108,6 +108,13 @@
   [x]
   (and (vector? x)
        (= (first x) ::identifier)))
+
+(def Identifier
+  "Malli schema for an [[identifier]]."
+  [:tuple
+   [:= ::identifier]
+   IdentifierType
+   [:sequential {:min 1} :string]])
 
 (defn- format-identifier [_tag [_identifier-type components :as _args]]
   ;; don't error if the identifier has something 'suspicious' like a semicolon in it -- it's ok because we're quoting

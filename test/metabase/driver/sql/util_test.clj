@@ -13,6 +13,14 @@
     :h2       "\"wow\""
     :postgres "\"wow\""))
 
+(deftest ^:parallel select-clause-alias-everything-test
+  (testing "first column is just <identifer>, wrap it like [<identifier> <alias>]"
+    (is (= [[(h2x/identifier :field "A" "B" "C" "D") (h2x/identifier :field-alias "D")]
+            [(h2x/identifier :field "F")             (h2x/identifier :field-alias "G")]]
+           (sql.u/select-clause-alias-everything
+            [(h2x/identifier :field "A" "B" "C" "D")
+             [(h2x/identifier :field "F")            (h2x/identifier :field-alias "G")]])))))
+
 (deftest ^:parallel select-clause-deduplicate-aliases
   (testing 'select-clause-deduplicate-aliases
     (testing "should use the last component of an identifier as the alias if it does not already have one"

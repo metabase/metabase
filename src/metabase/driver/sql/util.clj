@@ -51,30 +51,28 @@
 
      (increment-identifier :my_col)   ; -> :my_col_2
      (increment-identifier :my_col_2) ; -> :my_col_3"
-  [identifier :- h2x/identifier]
-  (update
-   identifier
-   :components
-   (fn [components]
-     (conj
-      (vec (butlast components))
-      (increment-identifier-string (u/qualified-name (last components)))))))
+  [[_tag identifier-type components] :- h2x/Identifier]
+  (let [components' (concat
+                     (butlast components)
+                     [(increment-identifier-string (u/qualified-name (last components)))])]
+    (apply h2x/identifier identifier-type components')))
 
 (defn select-clause-alias-everything
   "Make sure all the columns in `select-clause` are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
-  (This faciliates our deduplication logic.)"
+  (This facilitates our deduplication logic.)"
   [select-clause]
   (for [col select-clause]
     (cond
       ;; if something's already an alias form like [:table.col :col] it's g2g
-      (sequential? col)
+      (and (sequential? col)
+           (not (h2x/identifier? col)))
       col
 
       ;; otherwise we *should* be dealing with an Identifier. If so, take the last component of the Identifier and use
       ;; that as the alias.
       ;;
       ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
-      (h2x/identifier col)
+      (h2x/identifier? col)
       (let [[_tag _identifier-type components] col]
         [col (h2x/identifier :field-alias (last components))])
 
