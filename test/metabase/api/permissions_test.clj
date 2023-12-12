@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.permissions :as api.permissions]
+   [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.config :as config]
    [metabase.models
     :refer [Database
@@ -155,6 +156,26 @@
 
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
+
+(deftest fetch-perms-graph-by-group-id-test
+  (testing "GET /api/permissions/graph"
+    (testing "make sure we can fetch the perms graph from the API"
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id :as group}    {}
+                               Database         db                          {}]
+        (perms/grant-permissions! group (perms/data-perms-path db))
+        (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
+          (is (perm-test-util/validate-graph-api-output graph))
+          (is (= #{group-id} (set (keys graph)))))))))
+
+(deftest fetch-perms-graph-by-db-id-test
+  (testing "GET /api/permissions/graph"
+    (testing "make sure we can fetch the perms graph from the API"
+      (t2.with-temp/with-temp [PermissionsGroup group       {}
+                               Database         {db-id :id} {}]
+        (perms/grant-permissions! group (perms/data-perms-path db-id))
+        (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
+          (is (perm-test-util/validate-graph-api-output graph))
+          (is (= #{db-id} (->> graph vals (mapcat keys) set))))))))
 
 (deftest fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"

@@ -8,6 +8,7 @@
    "en"
    "es"
    "fa"
+   "fi"
    "fr"
    "id"
    "it"
