@@ -8,6 +8,9 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 
+import { checkNotNull } from "metabase/lib/types";
+
+import type { CardId, DashCardId, DashboardCard } from "metabase-types/api";
 import {
   createMockDashboard,
   createMockDashboardCard,
@@ -16,8 +19,14 @@ import {
   createMockHeadingDashboardCard,
   createMockLinkDashboardCard,
   createMockTextDashboardCard,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
 import {
   createMockDashboardState,
@@ -30,18 +39,67 @@ import mainReducers from "metabase/reducers-main";
 import { getDashCardById } from "../selectors";
 import { replaceCard } from "./cards";
 
-const TABLE_CARD = createMockCard({ id: 1 });
-const CHART_CARD = createMockCard({ id: 2, display: "line" });
+const DATE_PARAMETER = createMockParameter({
+  id: "1",
+  name: "Created At",
+  type: "date/all-options",
+});
+
+const NUMERIC_PARAMETER = createMockParameter({
+  id: "2",
+  name: "Discount",
+  type: "number/=",
+});
+
+const UNUSED_PARAMETER = createMockParameter({
+  id: "3",
+  name: "Not mapped to anything",
+});
+
+const dataset_query = createMockStructuredDatasetQuery({
+  query: { "source-table": ORDERS_ID },
+});
+
+const ORDERS_TABLE_CARD = createMockCard({ id: 1, dataset_query });
+const ORDERS_LINE_CHART_CARD = createMockCard({
+  id: 2,
+  display: "line",
+  dataset_query,
+});
+const ORDERS_PIE_CHART_CARD = createMockCard({
+  id: 3,
+  display: "pie",
+  dataset_query,
+});
 
 const TABLE_DASHCARD = createMockDashboardCard({
   id: 1,
-  card_id: TABLE_CARD.id,
-  card: TABLE_CARD,
+  card_id: ORDERS_TABLE_CARD.id,
+  card: ORDERS_TABLE_CARD,
 });
 
-const HEADING_DASHCARD = createMockHeadingDashboardCard({ id: 2 });
-const TEXT_DASHCARD = createMockTextDashboardCard({ id: 3 });
-const LINK_DASHCARD = createMockLinkDashboardCard({ id: 4 });
+// For testing parameters auto-wiring
+const PIE_CHART_DASHCARD = createMockDashboardCard({
+  id: 2,
+  card_id: ORDERS_PIE_CHART_CARD.id,
+  card: ORDERS_PIE_CHART_CARD,
+  parameter_mappings: [
+    {
+      card_id: ORDERS_TABLE_CARD.id,
+      parameter_id: "1",
+      target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+    },
+    {
+      card_id: ORDERS_TABLE_CARD.id,
+      parameter_id: "2",
+      target: ["dimension", ["field", ORDERS.DISCOUNT, null]],
+    },
+  ],
+});
+
+const HEADING_DASHCARD = createMockHeadingDashboardCard({ id: 3 });
+const TEXT_DASHCARD = createMockTextDashboardCard({ id: 4 });
+const LINK_DASHCARD = createMockLinkDashboardCard({ id: 5 });
 
 const DASHCARDS = [
   TABLE_DASHCARD,
@@ -53,20 +111,26 @@ const DASHCARDS = [
 const DASHBOARD = createMockDashboard({
   id: 1,
   dashcards: DASHCARDS,
-  parameters: [],
+  parameters: [DATE_PARAMETER, NUMERIC_PARAMETER, UNUSED_PARAMETER],
 });
+
+type RunActionOpts = {
+  dashcardId: DashCardId;
+  nextCardId: CardId;
+  dashcards?: DashboardCard[];
+};
 
 async function runAction({
   dashcardId,
   nextCardId,
-}: {
-  dashcardId: number;
-  nextCardId: number;
-}) {
+  dashcards = DASHCARDS,
+}: RunActionOpts) {
   const dashboardState = createMockDashboardState({
     dashboardId: DASHBOARD.id,
-    dashboards: { [DASHBOARD.id]: { ...DASHBOARD, dashcards: [] } },
-    dashcards: _.indexBy(DASHCARDS, "id"),
+    dashboards: {
+      [DASHBOARD.id]: { ...DASHBOARD, dashcards: dashcards.map(dc => dc.id) },
+    },
+    dashcards: _.indexBy(dashcards, "id"),
   });
 
   // @ts-expect-error we need better redux test tooling
@@ -75,9 +139,9 @@ async function runAction({
     createMockState({ dashboard: dashboardState }),
   ) as Store<State>;
 
-  setupCardsEndpoints([TABLE_CARD, CHART_CARD]);
-  setupCardQueryEndpoints(TABLE_CARD, createMockDataset());
-  setupCardQueryEndpoints(CHART_CARD, createMockDataset());
+  setupCardsEndpoints([ORDERS_TABLE_CARD, ORDERS_LINE_CHART_CARD]);
+  setupCardQueryEndpoints(ORDERS_TABLE_CARD, createMockDataset());
+  setupCardQueryEndpoints(ORDERS_LINE_CHART_CARD, createMockDataset());
   setupDatabasesEndpoints([createSampleDatabase()]);
 
   await replaceCard({ dashcardId, nextCardId })(store.dispatch, store.getState);
@@ -98,13 +162,13 @@ describe("dashboard/actions/cards", () => {
     it("should correctly update the dashcard", async () => {
       const { nextDashCard } = await runAction({
         dashcardId: TABLE_DASHCARD.id,
-        nextCardId: CHART_CARD.id,
+        nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
 
       expect(nextDashCard).toStrictEqual({
         ...TABLE_DASHCARD,
-        card_id: CHART_CARD.id,
-        card: CHART_CARD,
+        card_id: ORDERS_LINE_CHART_CARD.id,
+        card: ORDERS_LINE_CHART_CARD,
 
         // Ensure it resets attributes that
         // no longer make sense with a new card
@@ -120,7 +184,7 @@ describe("dashboard/actions/cards", () => {
     it("should run a new card query", async () => {
       const { cardQueryEndpointSpy } = await runAction({
         dashcardId: TABLE_DASHCARD.id,
-        nextCardId: CHART_CARD.id,
+        nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
 
       // It's important to ensure the `/card/:id/query` endpoint is called
@@ -129,10 +193,33 @@ describe("dashboard/actions/cards", () => {
         expect.objectContaining({
           dashboardId: DASHBOARD.id,
           dashcardId: TABLE_DASHCARD.id,
-          cardId: CHART_CARD.id,
+          cardId: ORDERS_LINE_CHART_CARD.id,
           parameters: [],
         }),
         expect.anything(), // abort signal
+      );
+    });
+
+    it("should auto-wire parameters", async () => {
+      const nextCardId = ORDERS_LINE_CHART_CARD.id;
+      const otherCardParameterMappings = checkNotNull(
+        PIE_CHART_DASHCARD.parameter_mappings,
+      );
+      const expectedParameterMappings = otherCardParameterMappings.map(
+        mapping => ({
+          ...mapping,
+          card_id: nextCardId,
+        }),
+      );
+
+      const { nextDashCard } = await runAction({
+        dashcardId: TABLE_DASHCARD.id,
+        nextCardId: nextCardId,
+        dashcards: [...DASHCARDS, PIE_CHART_DASHCARD],
+      });
+
+      expect(nextDashCard.parameter_mappings).toEqual(
+        expectedParameterMappings.reverse(),
       );
     });
 
@@ -143,7 +230,7 @@ describe("dashboard/actions/cards", () => {
     ])("should ignore %s dashboard cards", async (_, dashcard) => {
       const { nextDashCard, dispatchSpy } = await runAction({
         dashcardId: dashcard.id,
-        nextCardId: CHART_CARD.id,
+        nextCardId: ORDERS_LINE_CHART_CARD.id,
       });
 
       expect(nextDashCard).toEqual(dashcard);
