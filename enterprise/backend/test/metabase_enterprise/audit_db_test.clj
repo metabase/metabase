@@ -48,7 +48,7 @@
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id perms/audit-db-id]}))
           "Cards should be created for Audit DB when the content is there."))
 
-    (testing "Only admins have data perms for the audit DB after it is install"
+    (testing "Only admins have data perms for the audit DB after it is installed"
       (is (not (t2/exists? :model/Permissions {:where [:like :object (str "%" perms/audit-db-id "%")]}))))
 
     (testing "Audit DB does not have scheduled syncs"
