@@ -88,7 +88,7 @@ const getUniqueClauseName = (
   name: string,
 ) => {
   const isUpdate = clause;
-  // exclude the current clause so that its name is available during update (metabase#21135)
+  // exclude the current clause so that it can be updated without renaming
   const queryWithoutCurrentClause = isUpdate
     ? Lib.removeClause(query, stageIndex, clause)
     : query;
