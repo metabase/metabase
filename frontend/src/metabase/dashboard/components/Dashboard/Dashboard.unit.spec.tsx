@@ -1,7 +1,6 @@
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import {
-  // createMockActionDashboardCard,
-  // createMockActionParameter,
+  createMockDashboardCard,
   createMockDashboard,
 } from "metabase-types/api/mocks";
 import type { Dashboard, Parameter } from "metabase-types/api";
@@ -12,9 +11,18 @@ type SetupOpts = {
   dashboard: Dashboard | null;
   selectedTabId: number | null; // when there's no tabs, is null
   parameters: Parameter[]; // when empty, is an empty array
-  parameterValues?: Record<string, any>; // when empty, is undefined
   skipLoader?: boolean;
+  isEditing: boolean;
 };
+
+function dashboardWithCards(first: { isDirty?: boolean } = {}) {
+  return createMockDashboard({
+    dashcards: [
+      createMockDashboardCard({ id: 1, isDirty: first.isDirty } as any),
+      createMockDashboardCard({ id: 2 }),
+    ],
+  });
+}
 
 async function setup(overrides: Partial<SetupOpts> = {}) {
   const mockDashboard = createMockDashboard({ id: 10 }); // value is irrelevant
@@ -24,7 +32,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
     dashboard: mockDashboard,
     selectedTabId: null,
     parameters: [],
-    parameterValues: undefined,
+    isEditing: false,
     ...overrides,
   };
   const mockLoadDashboardParams = jest.fn();
@@ -38,18 +46,18 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
         dashboard={props.dashboard}
         dashboardId={props.dashboardId}
         parameters={props.parameters}
-        parameterValues={props.parameterValues}
         loadDashboardParams={mockLoadDashboardParams}
         fetchDashboard={mockFetchDashboard}
         fetchDashboardCardData={mockFetchDashboardCardData}
         fetchDashboardCardMetadata={mockFetchDashboardCardMetadata}
+        isEditing={props.isEditing}
         // stuff below doesn't change
+        parameterValues={undefined}
         location={global.location}
         isAdmin={false}
         isFullscreen={false}
         isNightMode={false}
         isSharing={false}
-        isEditing={false}
         isEditingParameter={false}
         isNavbarOpen={false}
         isHeaderVisible={false}
@@ -96,7 +104,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
       dashboardId={opts.dashboardId}
       selectedTabId={opts.selectedTabId}
       parameters={opts.parameters}
-      parameterValues={opts.parameterValues}
+      isEditing={opts.isEditing}
     />,
   );
 
@@ -144,8 +152,6 @@ describe("Dashboard data fetching", () => {
     expect(mocks.mockFetchDashboardCardMetadata).toHaveBeenCalledTimes(1);
   });
 
-  // it("should call fetchDashboardCardData when dashboard cards change", async () => {});
-
   it("should fetch card data when dashboard changes to non-empty", async () => {
     const mocks = await setup({
       dashboardId: null,
@@ -159,5 +165,24 @@ describe("Dashboard data fetching", () => {
       dashboard: createMockDashboard({ id: 20 }),
     });
     expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
+  });
+
+  it("should fetch card data when isDirty changes and not editing", async () => {
+    const mocks = await setup({ dashboard: dashboardWithCards() });
+    jest.clearAllMocks();
+
+    mocks.rerender({ dashboard: dashboardWithCards({ isDirty: true }) });
+    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not fetch card data when isDirty changes but is editing", async () => {
+    const mocks = await setup({ dashboard: dashboardWithCards() });
+    jest.clearAllMocks();
+
+    mocks.rerender({
+      dashboard: dashboardWithCards({ isDirty: true }),
+      isEditing: true,
+    });
+    expect(mocks.mockFetchDashboardCardData).toHaveBeenCalledTimes(0);
   });
 });

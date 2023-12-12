@@ -8,6 +8,7 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
+import { getDashcardsDirtyMap } from "metabase/dashboard/actions/utils";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -67,14 +68,24 @@ class DashboardInner extends Component {
       return;
     }
 
+    const isParameterValuesChanged = !_.isEqual(
+      prevProps.parameterValues,
+      this.props.parameterValues,
+    );
+    // This is a way of detecting card parameter mapping changes. Parameter
+    // mappings change happen independently of isEditing because of re-renders,
+    // so we use this heuristic to avoid additional state. The fetching logic
+    // should be moved outside.
+    const isDirtyChanged = !_.isEqual(
+      getDashcardsDirtyMap(prevProps.dashboard?.dashcards ?? []),
+      getDashcardsDirtyMap(this.props.dashboard?.dashcards ?? []),
+    );
+    const isDashboardLoaded = !prevProps.dashboard && this.props.dashboard;
+
     if (
-      !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      (!this.props.isEditing &&
-        !_.isEqual(
-          prevProps.dashboard?.dashcards,
-          this.props.dashboard?.dashcards,
-        )) ||
-      (!prevProps.dashboard && this.props.dashboard)
+      isParameterValuesChanged ||
+      (!this.props.isEditing && isDirtyChanged) ||
+      isDashboardLoaded
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }

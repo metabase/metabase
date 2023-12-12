@@ -18,9 +18,11 @@ export function getSelectedTabId(state: State) {
   return state.dashboard.selectedTabId;
 }
 
-export const getDashcards = (state: State) => state.dashboard.dashcards;
+export function getDashcards(state: State) {
+  return state.dashboard.dashcards;
+}
 
-export const getDashCardById = (state: State, dashcardId: DashCardId) => {
+export function getDashCardById(state: State, dashcardId: DashCardId) {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
-};
+}

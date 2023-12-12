@@ -80,3 +80,10 @@ export const getDashCardMoveToTabUndoMessage = (dashCard: StoreDashcard) => {
       return t`Card moved`;
   }
 };
+
+export function getDashcardsDirtyMap(dashcards: StoreDashcard[]) {
+  return dashcards.reduce((acc, dashcard) => {
+    acc[Number(dashcard.id)] = dashcard.isDirty ?? false;
+    return acc;
+  }, {} as Record<DashCardId, boolean>);
+}
