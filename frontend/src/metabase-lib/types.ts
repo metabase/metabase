@@ -1,4 +1,8 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  FieldValuesType,
+  RowValue,
+} from "metabase-types/api";
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
@@ -492,4 +496,9 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
   data?: ClickObjectDataRow[];
+}
+
+export interface FieldValuesInfo {
+  fieldId: number | null;
+  hasFieldValues: FieldValuesType;
 }

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import * as Lib from "metabase-lib";
 import { Checkbox, MultiSelect, SimpleGrid } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import type { FieldValue } from "metabase-types/api";
@@ -6,6 +7,9 @@ import { MAX_INLINE_OPTIONS } from "./constants";
 import { getFieldOptions, getStaticOptions } from "./utils";
 
 interface FilterValuePickerProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   value: string[];
   placeholder: string;
   getCreateLabel: (query: string) => string | null;
@@ -13,13 +17,23 @@ interface FilterValuePickerProps {
 }
 
 export function FilterValuePicker({
+  query,
+  stageIndex,
+  column,
   value,
   placeholder,
   getCreateLabel,
   onChange,
 }: FilterValuePickerProps) {
+  const { fieldId, hasFieldValues } = Lib.fieldValuesInfo(
+    query,
+    stageIndex,
+    column,
+  );
+
   const { data = [] } = useFieldValuesQuery({
-    id: 1,
+    id: fieldId != null ? fieldId : undefined,
+    enabled: hasFieldValues === "list",
   });
 
   if (data.length > 0 && data.length <= MAX_INLINE_OPTIONS) {
@@ -82,10 +96,8 @@ function SelectValuePicker({
   getCreateLabel,
   onChange,
 }: SelectValuePickerProps) {
-  const options = useMemo(
-    () => (data.length > 0 ? getFieldOptions(data) : getStaticOptions(value)),
-    [data, value],
-  );
+  const options =
+    data.length > 0 ? getFieldOptions(data) : getStaticOptions(value);
 
   return (
     <MultiSelect
