@@ -1,8 +1,9 @@
 import { useState, useCallback } from "react";
 import { t } from "ttag";
-import { Tabs, Modal, Button, Flex } from "metabase/ui";
+import { Tabs, Modal, Button, Flex, Box } from "metabase/ui";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { color } from "metabase/lib/colors";
 import { QuestionPicker } from "./SpecificEntityPickers/QuestionPicker";
 import { TablePicker } from "./SpecificEntityPickers/TablePicker";
 import { CollectionPicker } from "./SpecificEntityPickers/CollectionPicker";
@@ -22,7 +23,7 @@ const tabOptions = {
   },
 };
 
-type ValidTab = (keyof typeof tabOptions);
+type ValidTab = keyof typeof tabOptions;
 
 interface EntityPickerModalProps {
   title: string;
@@ -44,53 +45,97 @@ export function EntityPickerModal({
   const validTabs = tabs.filter(tabName => tabName in tabOptions);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const handleItemSelect = useCallback((item: any) => {
-    if (hasConfirmButtons) {
-      setSelectedItem(item);
-    } else {
-      onChange(item);
-    }
-  }, [onChange, hasConfirmButtons]);
+  const handleItemSelect = useCallback(
+    (item: any) => {
+      if (hasConfirmButtons) {
+        setSelectedItem(item);
+      } else {
+        onChange(item);
+      }
+    },
+    [onChange, hasConfirmButtons],
+  );
 
   const handleConfirm = () => {
     onChange(selectedItem);
   };
 
   return (
-    <Modal title={title} opened onClose={onClose} size="100%" h="800px">
-      <ErrorBoundary>
-        {validTabs.length > 1 ? (
-          <TabsView tabs={validTabs} onItemSelect={handleItemSelect} value={value} />
-        ) : (
-          <SinglePickerView model={tabs[0]} onItemSelect={handleItemSelect} value={value} />
-        )}
-        {hasConfirmButtons && (
-          <ButtonBar
-            onConfirm={handleConfirm}
-            onCancel={onClose}
-          />
-        )}
-      </ErrorBoundary>
-    </Modal>
+    <Modal.Root opened onClose={onClose}>
+      <Modal.Overlay />
+      <Modal.Content
+        style={{
+          height: "100%",
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Modal.Header px="2rem" pt="1rem" pb="1.5rem">
+          <Modal.Title lh="2.5rem">{title}</Modal.Title>
+          <Modal.CloseButton />
+        </Modal.Header>
+        <Modal.Body
+          p="0"
+          style={{
+            flex: "1 1 auto",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <ErrorBoundary>
+            {validTabs.length > 1 ? (
+              <TabsView
+                tabs={validTabs}
+                onItemSelect={handleItemSelect}
+                value={value}
+              />
+            ) : (
+              <SinglePickerView
+                model={tabs[0]}
+                onItemSelect={handleItemSelect}
+                value={value}
+              />
+            )}
+            {hasConfirmButtons && (
+              <ButtonBar onConfirm={handleConfirm} onCancel={onClose} />
+            )}
+          </ErrorBoundary>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 }
 
 export const SinglePickerView = ({
-  model, onItemSelect, value,
+  model,
+  onItemSelect,
+  value,
 }: {
-  model: ValidTab,
-  onItemSelect: (item: any) => void,
-  value?: any
+  model: ValidTab;
+  onItemSelect: (item: any) => void;
+  value?: any;
 }) => {
   const { component: PickerComponent } = tabOptions[model];
 
   return (
-    <PickerComponent onItemSelect={onItemSelect} value={value} />
+    <Box
+      style={{
+        borderTop: `1px solid ${color("border")}`,
+        flexGrow: 1,
+        height: 0,
+      }}
+    >
+      <PickerComponent onItemSelect={onItemSelect} value={value} />
+    </Box>
   );
 };
 
 export const TabsView = ({
-  tabs, onItemSelect, value,
+  tabs,
+  onItemSelect,
+  value,
 }: {
   tabs: ValidTab[];
   onItemSelect: (item: any) => void;
@@ -101,7 +146,11 @@ export const TabsView = ({
       {tabs.map(tabName => {
         const { label } = tabOptions[tabName];
 
-        return (<Tabs.Tab key={tabName} value={tabName}>{label}</Tabs.Tab>);
+        return (
+          <Tabs.Tab key={tabName} value={tabName}>
+            {label}
+          </Tabs.Tab>
+        );
       })}
     </Tabs.List>
 
@@ -124,10 +173,14 @@ export const ButtonBar = ({
   onConfirm: (item: any) => void;
   onCancel: () => void;
 }) => (
-  <Flex justify="space-between" pt="md">
-    <Flex gap="md">
-
-    </Flex>
+  <Flex
+    justify="space-between"
+    p="md"
+    style={{
+      borderTop: `1px solid ${color("border")}`,
+    }}
+  >
+    <Flex gap="md"></Flex>
     <Flex gap="md">
       <Button onClick={onCancel}>{t`Cancel`}</Button>
       <Button ml={1} variant="filled" onClick={onConfirm}>{t`Select`}</Button>

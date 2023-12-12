@@ -48,10 +48,7 @@ export const HomePage = (): JSX.Element => {
 
   return (
     <HomeLayout hasMetabot={getHasMetabot(databases, models, isMetabotEnabled)}>
-      {/* <EntityPickerModal
-        onItemSelect={console.log}
-        tabs={["question", "collection"]}
-      /> */}
+      <EntityPickerModal onItemSelect={console.log} tabs={["question"]} />
       <HomeContent />
     </HomeLayout>
   );
