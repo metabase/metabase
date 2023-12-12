@@ -73,7 +73,6 @@ export function CoordinateFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <NumberValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -85,7 +84,6 @@ export function CoordinateFilterEditor({
 }
 
 interface NumberValueInputProps {
-  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -93,7 +91,6 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -101,7 +98,12 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker value={values} column={column} onChange={onChange} />
+      <FilterValuePicker
+        values={values.map(value => String(value))}
+        placeholder={t`Enter a number`}
+        getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
+        onChange={values => onChange(values.map(value => Number(value)))}
+      />
     );
   }
 

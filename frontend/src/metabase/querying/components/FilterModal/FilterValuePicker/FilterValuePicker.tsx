@@ -1,48 +1,31 @@
-import { Box, Popover } from "metabase/ui";
-import type { LayoutRendererArgs } from "metabase/components/TokenField/TokenField";
-import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
-import type { ColumnValuesWidgetProps } from "metabase/common/components/ColumnValuesWidget";
+import { MultiSelect } from "metabase/ui";
 
-export function FilterValuePicker<T extends string | number>({
-  value,
-  column,
-  onChange,
-  ...props
-}: ColumnValuesWidgetProps<T>) {
-  return (
-    <ColumnValuesWidget
-      {...props}
-      value={value}
-      column={column}
-      layoutRenderer={ColumnValuesWidgetLayout}
-      expand={false}
-      disableList
-      hasMultipleValues
-      onChange={onChange}
-    />
-  );
+interface FilterValuePickerProps {
+  values: string[];
+  placeholder: string;
+  getCreateLabel: (value: string) => string | null;
+  onChange: (newValues: string[]) => void;
 }
 
-// https://v6.mantine.dev/core/modal/?t=props
-const MODAL_Z_INDEX = 200;
-
-export function ColumnValuesWidgetLayout({
-  isFocused,
-  valuesList,
-  optionsList,
-  onClose,
-}: LayoutRendererArgs) {
+export function FilterValuePicker({
+  values,
+  placeholder,
+  getCreateLabel,
+  onChange,
+}: FilterValuePickerProps) {
   return (
-    <Popover
-      opened={isFocused && !!optionsList}
-      position="bottom-start"
-      zIndex={MODAL_Z_INDEX + 1}
-      onClose={onClose}
-    >
-      <Popover.Target>{valuesList}</Popover.Target>
-      <Popover.Dropdown>
-        <Box mah="200px">{optionsList}</Box>
-      </Popover.Dropdown>
-    </Popover>
+    <MultiSelect
+      data={values}
+      value={values}
+      placeholder={placeholder}
+      creatable
+      searchable
+      onChange={onChange}
+      getCreateLabel={getCreateLabel}
+      onCreate={query => {
+        onChange([...values, query]);
+        return query;
+      }}
+    />
   );
 }
