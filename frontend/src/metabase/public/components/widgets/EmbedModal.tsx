@@ -1,6 +1,8 @@
 import { titleize } from "inflection";
 import { useState } from "react";
 import { t } from "ttag";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
@@ -40,6 +42,7 @@ export const EmbedModal = ({
   }) => JSX.Element;
 } & WindowModalProps) => {
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
+  const applicationName = useSelector(getApplicationName);
 
   const onEmbedClose = () => {
     onClose();
@@ -58,8 +61,7 @@ export const EmbedModal = ({
             <EmbedTitle type={titleize(embedType)} />
           </Center>
         ) : (
-          //   TODO: Change the application name manually when the selector is added
-          t`Embed Metabase`
+          t`Embed ${applicationName}`
         )
       }
       fit={!isFullScreen}
