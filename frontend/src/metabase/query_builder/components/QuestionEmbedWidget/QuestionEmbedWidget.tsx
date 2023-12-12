@@ -27,7 +27,7 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
 
   const dispatch = useDispatch();
   const createPublicQuestionLink = () => dispatch(createPublicLink(card));
-  const disablePublicQuestionLink = () => dispatch(deletePublicLink(card));
+  const deletePublicQuestionLink = () => dispatch(deletePublicLink(card));
   const updateQuestionEnableEmbedding = (enableEmbedding: boolean) =>
     dispatch(updateEnableEmbedding(card, enableEmbedding));
   const updateQuestionEmbeddingParams = (embeddingParams: EmbedOptions) =>
@@ -54,11 +54,10 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           resourceType="question"
           resourceParameters={getCardUiParameters(card, metadata)}
           onCreatePublicLink={createPublicQuestionLink}
-          onDisablePublicLink={disablePublicQuestionLink}
+          onDeletePublicLink={deletePublicQuestionLink}
           onUpdateEnableEmbedding={updateQuestionEnableEmbedding}
           onUpdateEmbeddingParams={updateQuestionEmbeddingParams}
           getPublicUrl={getPublicUrl}
-          extensions={Urls.exportFormats}
         />
       )}
     </EmbedModal>
