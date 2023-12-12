@@ -26,13 +26,12 @@ export const DashboardSharingEmbeddingModal = (
 ) => {
   const { className, dashboard, isOpen, onClose, isLinkEnabled } = props;
 
-  const parameters = useSelector(state => getParameters(state));
+  const parameters = useSelector(getParameters);
 
   const dispatch = useDispatch();
 
   const createPublicDashboardLink = () => dispatch(createPublicLink(dashboard));
-  const disablePublicDashboardLink = () =>
-    dispatch(deletePublicLink(dashboard));
+  const deletePublicDashboardLink = () => dispatch(deletePublicLink(dashboard));
   const updateDashboardEnableEmbedding = (enableEmbedding: boolean) =>
     dispatch(updateEnableEmbedding(dashboard, enableEmbedding));
 
@@ -55,7 +54,7 @@ export const DashboardSharingEmbeddingModal = (
           resourceParameters={parameters}
           resourceType="dashboard"
           onCreatePublicLink={createPublicDashboardLink}
-          onDisablePublicLink={disablePublicDashboardLink}
+          onDeletePublicLink={deletePublicDashboardLink}
           onUpdateEnableEmbedding={updateDashboardEnableEmbedding}
           onUpdateEmbeddingParams={updateDashboardEmbeddingParams}
           onClose={onClose}
