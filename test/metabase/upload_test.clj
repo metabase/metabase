@@ -898,7 +898,7 @@
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
 (defn append-csv!
-  "Wrapper for `append-csv!` that sets `upload/*sync-synchronously?*` to true for test purposes."
+  "Wraps [[upload/append-csv!]] setting [[upload/*sync-synchronously?*]] to `true` for test purposes."
   [& args]
   (binding [upload/*sync-synchronously?* true]
     (apply upload/append-csv! args)))
