@@ -28,7 +28,12 @@
   "Writes obj to filename and creates parent directories if necessary"
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block, :split-lines false})))
+  (try
+    (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block, :split-lines false}))
+    (catch Exception e
+      (if-not (.canWrite (.getParentFile (io/file filename)))
+        (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
+        (throw e)))))
 
 (defn- as-file?
   [instance]
