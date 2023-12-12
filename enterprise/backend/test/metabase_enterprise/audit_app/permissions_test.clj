@@ -88,7 +88,7 @@
                      :query   {:source-table (u/the-id table)}})))))
 
           (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
-                                  have data perms for the audit DB"
+                   have data perms for the audit DB"
             (binding [api/*current-user-permissions-set* (delay #{(perms/data-perms-path perms/audit-db-id)})]
               (let [audit-view (t2/select-one :model/Table :db_id perms/audit-db-id)]
                 (is (thrown-with-msg?
