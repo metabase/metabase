@@ -197,18 +197,21 @@ export function getQuestionSteps(
 
     const database = metadata.database(Lib.databaseID(query));
     const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
+    const hasBreakouts = Lib.breakouts(query, -1).length > 0;
 
     // strip empty source queries
     legacyQuery = legacyQuery.cleanNesting();
 
     // add a level of nesting, if valid
-    if (allowsNesting && legacyQuery.hasBreakouts()) {
+    if (allowsNesting && hasBreakouts) {
       legacyQuery = legacyQuery.nest();
       query = Lib.appendStage(query);
     }
 
     const stagedQueries = legacyQuery.queries();
-    for (const [stageIndex, stageQuery] of stagedQueries.entries()) {
+
+    for (let stageIndex = 0; stageIndex < Lib.stageCount(query); ++stageIndex) {
+      const stageQuery = stagedQueries[stageIndex];
       const { steps, actions } = getStageSteps(
         query,
         stageQuery,
