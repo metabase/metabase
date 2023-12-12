@@ -202,7 +202,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const onChangeClause = jest.fn();
   const onClose = jest.fn();
 
-  function getRecentExpressionClause() {
+  function getRecentExpressionClause(): Lib.Clause {
     expect(onChangeClause).toHaveBeenCalled();
     const [_name, clause] = onChangeClause.mock.lastCall;
     return clause;
