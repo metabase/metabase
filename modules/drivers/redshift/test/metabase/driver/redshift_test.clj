@@ -489,7 +489,7 @@
            sql (sql/format honey)
            result (apply run-native-query sql)
            [db-generated ss-generated & debug] (-> result mt/rows first)]
-       ;; temp debug not=
+       ;; temp debug not= to see the debug output on CI instance
        (is (not= db-generated ss-generated)
            (str
             (format (str "\n---\n"
@@ -507,7 +507,7 @@
                                                            db-generated
                                                            ss-generated)))))))))
 
-#_(deftest thunk-dev-test
+(deftest thunk-dev-test
   (mt/test-driver
    :redshift
    (testing "Values of getdate() and server side generated timestamp are equal"
@@ -520,7 +520,7 @@
    :redshift
    (testing "Values of getdate() and server side generated timestamp are equal"
      (mt/with-metadata-provider (mt/id)
-       (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
+       (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :day -1)]
          (doseq [tz-setter [qp.test-util/do-with-report-timezone-id
                             test.tz/do-with-system-timezone-id
                             qp.test-util/do-with-database-timezone-id
@@ -543,7 +543,7 @@
          (mt/with-database-timezone-id "America/Los_Angeles"
            (mt/with-report-timezone-id "America/Los_Angeles"
              (mt/with-system-timezone-id "Europe/Prague"
-               (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator)]
+               (let [test-thunk (getdate-vs-ss-ts-test-thunk-generator :day -1)]
                  (test-thunk))))))))))
 
 (comment
