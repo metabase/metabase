@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 
-import { dataCount } from "dc";
 import type { Collection, CollectionId } from "metabase-types/api";
 import { CollectionsApi, UserApi } from "metabase/services";
+
+import Search from "metabase/entities/search";
 
 import { LoadingSpinner } from "../components/LoadingSpinner";
 import { NestedItemPicker } from "../NestedItemPicker";
@@ -60,7 +61,9 @@ export function CollectionPicker({
 
       if (options.showPersonalCollection) {
         const currentUser = await UserApi.current();
-        const personalCollection = await CollectionsApi.get({ id: currentUser.personal_collection_id });
+        const personalCollection = await CollectionsApi.get({
+           id: currentUser.personal_collection_id
+        });
         collectionsData.push({
           ...personalCollection,
           model: 'collection',
@@ -73,9 +76,10 @@ export function CollectionPicker({
     // because folders are also selectable items in the collection picker, we always select the folder
     onItemSelect(folder ?? { id: 'root', model: 'collection' });
 
-    const items = await CollectionsApi.listItems(
-      { id: folder.id, models: ["collection"] },
-    );
+    const items = await Search.api.list({
+      collection: folder.id,
+      models: ['collection'],
+    });
 
     return items.data;
   }, [onItemSelect, options]);

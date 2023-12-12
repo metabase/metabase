@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import type { Collection } from "metabase-types/api";
+import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 
 export interface MoveCollectionModalProps {
   collection: Collection;
@@ -23,10 +24,11 @@ const MoveCollectionModal = ({
   );
 
   return (
-    <CollectionMoveModal
+    <EntityPickerModal
       title={t`Move "${collection.name}"?`}
-      initialCollectionId={collection.id}
-      onMove={handleMove}
+      tabs={["collection"]}
+      value={{...collection, model: 'collection'}}
+      onChange={handleMove}
       onClose={onClose}
     />
   );

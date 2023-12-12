@@ -6,9 +6,12 @@ import type Question from "metabase-lib/Question";
 
 import { NestedItemPicker } from "../NestedItemPicker";
 
+
+
 interface TablePickerProps {
   onItemSelect: (item: Question) => void;
   initialTableId?: number;
+  options?: any;
 }
 
 export function TablePicker({
