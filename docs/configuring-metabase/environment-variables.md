@@ -887,14 +887,14 @@ The map tile server URL template used in map visualizations, for example from Op
 Type: integer<br>
 Default: 10000 
 
-Maximum number of rows to return for aggregated queries via the API.
+Maximum number of rows to return for aggregated queries via the API. Must less than 1048575.
 
 ### `MB_MAX_UNAGGREGATED_QUERY_ROW_LIMIT`
 
 Type: integer<br>
 Default: 2000
 
-Maximum number of rows to return specifically on `:rows`-type queries via the API.
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575.
 
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
