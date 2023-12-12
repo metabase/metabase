@@ -6,9 +6,9 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 import type { FilterEditorProps } from "../types";
 
 export function CoordinateFilterEditor({
@@ -73,6 +73,9 @@ export function CoordinateFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <NumberValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -84,6 +87,9 @@ export function CoordinateFilterEditor({
 }
 
 interface NumberValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -91,6 +97,9 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -99,6 +108,9 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FilterValuePicker
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
         value={values.map(value => String(value))}
         placeholder={t`Enter a number`}
         getCreateLabel={query => (isFinite(Number(query)) ? query : null)}

@@ -4,12 +4,12 @@ import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 
 export function StringFilterPicker({
   query,
@@ -74,6 +74,9 @@ export function StringFilterPicker({
       </FilterPickerHeader>
       <div>
         <StringValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -93,6 +96,9 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -100,6 +106,9 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -108,7 +117,10 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <FilterValuePicker
-        values={values}
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        value={values}
         placeholder={t`Enter some text`}
         getCreateLabel={query => query}
         onChange={onChange}

@@ -5,12 +5,12 @@ import * as Lib from "metabase-lib";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
-import type { FilterPickerWidgetProps } from "../types";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 
 export function CoordinateFilterPicker({
@@ -87,6 +87,9 @@ export function CoordinateFilterPicker({
           />
         )}
         <CoordinateValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -99,6 +102,9 @@ export function CoordinateFilterPicker({
 }
 
 interface CoordinateValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -106,6 +112,9 @@ interface CoordinateValueInputProps {
 }
 
 function CoordinateValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -116,7 +125,10 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <FilterValuePicker
-        values={values.map(value => String(value))}
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        value={values.map(value => String(value))}
         placeholder={t`Enter a number`}
         getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
         onChange={values => onChange(values.map(value => Number(value)))}

@@ -6,9 +6,9 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
+import { FilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
@@ -74,6 +74,8 @@ export function NumberFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <NumberValueInput
+          query={query}
+          stageIndex={stageIndex}
           column={column}
           values={values}
           valueCount={valueCount}
@@ -86,6 +88,8 @@ export function NumberFilterEditor({
 }
 
 interface NumberValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
   column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
@@ -94,6 +98,9 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -102,6 +109,9 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FilterValuePicker
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
         value={values.map(value => String(value))}
         placeholder={t`Enter a number`}
         getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
