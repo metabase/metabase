@@ -317,7 +317,8 @@
   :hierarchy #'hierarchy)
 
 (defmulti describe-table-indexes
-  "Returns a set of field names that are either indexed or are the first columns in a composite index."
+  "Returns a set of field names that are either indexed or are the first columns in a composite index.
+  Field name can be a string, nested field need to be represented as a sequence of strings."
   {:added "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
