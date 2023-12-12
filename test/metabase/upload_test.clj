@@ -1321,8 +1321,6 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(mt/set-test-drivers! [:postgres])
-
 (deftest append-mb-row-id-3-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed

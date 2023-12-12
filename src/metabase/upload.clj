@@ -8,6 +8,7 @@
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -550,10 +551,8 @@
   [table header]
   ;; Assumes table-cols are unique when normalized
   (let [fields (t2/select :model/Field :table_id (:id table))
-        fields-by-normed-name (-> (into {}
-                                        (map (fn [field]
-                                               [(normalize-column-name (:name field)) field]))
-                                        fields))
+        fields-by-normed-name (m/index-by (comp normalize-column-name :name)
+                                          fields)
         normalized-field-names (keys fields-by-normed-name)
         ;; TODO: use this to create nice error messages when there are extra or missing columns
         normalized-header+header (into []
