@@ -139,17 +139,19 @@ const ViewFooter = ({
               }
             />
           ),
-          <EmbedMenu
-            key="embed"
-            resource={question}
-            resourceType="question"
-            hasPublicLink={!!question.publicUUID()}
-            onModalOpen={() =>
-              question.isSaved()
-                ? onOpenModal("embed")
-                : onOpenModal("save-question-before-embed")
-            }
-          />,
+          !question.isDataset() && (
+            <EmbedMenu
+              key="embed"
+              resource={question}
+              resourceType="question"
+              hasPublicLink={!!question.publicUUID()}
+              onModalOpen={() =>
+                question.isSaved()
+                  ? onOpenModal("embed")
+                  : onOpenModal("save-question-before-embed")
+              }
+            />
+          ),
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
