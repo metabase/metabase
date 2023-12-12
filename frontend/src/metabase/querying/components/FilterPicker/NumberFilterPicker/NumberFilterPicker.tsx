@@ -109,15 +109,17 @@ function NumberValueInput({
 
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        value={values.map(value => String(value))}
-        placeholder={t`Enter a number`}
-        getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
-        onChange={values => onChange(values.map(value => Number(value)))}
-      />
+      <Box p="md">
+        <FilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          value={values.map(value => String(value))}
+          placeholder={placeholder}
+          getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
+          onChange={values => onChange(values.map(value => Number(value)))}
+        />
+      </Box>
     );
   }
 

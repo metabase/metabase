@@ -114,17 +114,21 @@ function StringValueInput({
   hasMultipleValues,
   onChange,
 }: StringValueInputProps) {
+  const placeholder = t`Enter some text`;
+
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        value={values}
-        placeholder={t`Enter some text`}
-        getCreateLabel={query => query}
-        onChange={onChange}
-      />
+      <Box p="md">
+        <FilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          value={values}
+          placeholder={placeholder}
+          getCreateLabel={query => query}
+          onChange={onChange}
+        />
+      </Box>
     );
   }
 
@@ -134,7 +138,7 @@ function StringValueInput({
         <TextInput
           value={values[0]}
           onChange={event => onChange([event.target.value])}
-          placeholder={t`Enter some text`}
+          placeholder={placeholder}
           autoFocus
           w="100%"
         />
