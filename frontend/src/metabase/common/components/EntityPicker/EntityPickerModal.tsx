@@ -60,6 +60,8 @@ export function EntityPickerModal({
     onChange(selectedItem);
   };
 
+  const multiTab = validTabs.length > 1;
+
   return (
     <Modal.Root opened onClose={onClose}>
       <Modal.Overlay />
@@ -71,7 +73,7 @@ export function EntityPickerModal({
           flexDirection: "column",
         }}
       >
-        <Modal.Header px="2rem" pt="1rem" pb="1.5rem">
+        <Modal.Header px="2rem" pt="1rem" pb={multiTab ? "1rem" : "1.5rem"}>
           <Modal.Title lh="2.5rem">{title}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
@@ -85,7 +87,7 @@ export function EntityPickerModal({
           }}
         >
           <ErrorBoundary>
-            {validTabs.length > 1 ? (
+            {multiTab ? (
               <TabsView
                 tabs={validTabs}
                 onItemSelect={handleItemSelect}
@@ -141,13 +143,21 @@ export const TabsView = ({
   onItemSelect: (item: any) => void;
   value?: any;
 }) => (
-  <Tabs defaultValue={tabs[0]}>
+  <Tabs
+    defaultValue={tabs[0]}
+    style={{
+      flexGrow: 1,
+      height: 0,
+      display: "flex",
+      flexDirection: "column",
+    }}
+  >
     <Tabs.List>
       {tabs.map(tabName => {
         const { label } = tabOptions[tabName];
 
         return (
-          <Tabs.Tab key={tabName} value={tabName}>
+          <Tabs.Tab key={tabName} value={tabName} ml="1.5rem">
             {label}
           </Tabs.Tab>
         );
@@ -158,7 +168,14 @@ export const TabsView = ({
       const { component: TabComponent } = tabOptions[tabName];
 
       return (
-        <Tabs.Panel key={tabName} value={tabName}>
+        <Tabs.Panel
+          key={tabName}
+          value={tabName}
+          style={{
+            flexGrow: 1,
+            height: 0,
+          }}
+        >
           <TabComponent onItemSelect={onItemSelect} value={value} />
         </Tabs.Panel>
       );
