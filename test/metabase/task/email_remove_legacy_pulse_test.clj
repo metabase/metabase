@@ -21,7 +21,7 @@
       (let [found-regexes  [#"Hi Ngoc Khuat,"
                             #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Legacy pulse<\/a></li>"]
             not-found-re   #"<li><a href=\"https?://[^\/]+\/pulse/\d+\">Archived pulse<\/a></li>"
-            expected-email {:subject "Removal of Legacy Pulses in Upcoming Metabase Release"
+            expected-email {:subject "[Metabase] Removal of legacy pulses in upcoming Metabase release"
                             :body    (merge (zipmap (map str found-regexes) (repeat true))
                                             {(str not-found-re) false})}]
         (testing "the email should say Hi and contains link to active pulses"
