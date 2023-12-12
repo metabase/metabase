@@ -4199,7 +4199,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.00-003
       author: qnkhuat
-      comment: 'Adds query_execution.cache_hash -> query_cache.query_hash'
+      comment: Add metabase_field.database_indexed
       changes:
         - addColumn:
             tableName: metabase_field
