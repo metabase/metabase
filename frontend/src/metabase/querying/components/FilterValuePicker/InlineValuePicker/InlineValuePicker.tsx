@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Checkbox, SimpleGrid, Stack, Text, TextInput } from "metabase/ui";
+import type { BoxProps } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
 import { getFieldOptions } from "../utils";
 import { searchOptions } from "./utils";
 
-interface InlineValuePickerProps {
+interface InlineValuePickerProps extends BoxProps {
   data: FieldValue[];
   value: string[];
   compact?: boolean;
