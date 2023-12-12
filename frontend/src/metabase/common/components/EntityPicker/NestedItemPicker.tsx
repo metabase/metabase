@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Flex, Text, Box, NavLink, ScrollArea } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
@@ -27,6 +27,7 @@ export function NestedItemPicker({
 }: NestedItemPickerProps<any, any /* how to derive the generic? */>) {
   const [stack, setStack] =
     useState<PickerState<any /* how to derive the generic? */>>(initialState);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFolderSelect = async (folder: any, levelIndex: number) => {
     const children = await onFolderSelect(folder);
@@ -36,6 +37,9 @@ export function NestedItemPicker({
     restOfStack[restOfStack.length - 1].selectedItem = folder;
 
     setStack([...restOfStack, { items: children, selectedItem: null }]);
+    if (containerRef.current) {
+      containerRef.current.scrollLeft += 365;
+    }
   };
 
   const handleItemSelect = (item: any, levelIndex: number) => {
@@ -59,6 +63,7 @@ export function NestedItemPicker({
         height: "100%",
         overflowX: "auto",
       }}
+      ref={containerRef}
     >
       <Flex
         style={{
