@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.api.database :as api.database]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -19,8 +20,7 @@
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [honey.sql :as sql])
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File)))
 
