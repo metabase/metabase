@@ -24,7 +24,6 @@
    [metabase.models.params.chain-filter-test :as chain-filer-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
