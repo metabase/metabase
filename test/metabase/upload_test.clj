@@ -1088,7 +1088,7 @@
      {:field-name "name", :base-type :type/Text}]
     [["Obi-Wan Kenobi"]]]))
 
-(defn- create-upload-table!
+(defn create-upload-table!
   "Creates a table and syncs it in the current test database, as if it were uploaded as a CSV upload. `col->upload-type` should be an ordered map of column names (keywords) to upload types.
   `rows` should be a vector of vectors of values, one for each row.
   Returns the table.
