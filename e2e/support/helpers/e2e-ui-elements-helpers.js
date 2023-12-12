@@ -127,6 +127,10 @@ export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };
 
+export const undoToastList = () => {
+  return cy.findAllByTestId("toast-undo");
+};
+
 export function dashboardCards() {
   return cy.get("#Dashboard-Cards-Container");
 }

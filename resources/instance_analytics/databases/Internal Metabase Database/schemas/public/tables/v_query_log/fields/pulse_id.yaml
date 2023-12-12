@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: pulse_id
   model: Field
+database_indexed: null

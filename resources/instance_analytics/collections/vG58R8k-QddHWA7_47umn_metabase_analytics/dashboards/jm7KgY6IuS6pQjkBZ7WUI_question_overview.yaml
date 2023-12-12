@@ -23,6 +23,12 @@ parameters:
   sectionId: id
   slug: question_id
   type: id
+- id: 34ed3a3a
+  name: Question name
+  sectionId: string
+  slug: question_name
+  type: string/=
+  values_query_type: search
 serdes/meta:
 - id: jm7KgY6IuS6pQjkBZ7WUI
   label: question_overview
@@ -48,6 +54,16 @@ dashcards:
         - v_content
         - entity_id
       - base-type: type/Integer
+  - card_id: XLzhOnMmk3DkefFAMx_Vg
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
   visualization_settings:
     column_settings: null
 - entity_id: jeaMN8dAMxu8cQrKT28nz
@@ -71,6 +87,17 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Entity Qualified
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
   visualization_settings:
     column_settings: null
 - entity_id: ZW-Zh5fCsudRWuc_5-ebV
@@ -93,6 +120,17 @@ dashcards:
         - v_content
         - entity_id
       - base-type: type/Integer
+        join-alias: Content - Card Qualified
+  - card_id: vrez-ciNppijhELOxLJOY
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
         join-alias: Content - Card Qualified
   visualization_settings:
     column_settings:
@@ -168,6 +206,17 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Entity Qualified
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
   visualization_settings:
     column_settings: null
 - entity_id: d6fgUU6_hAqWj_ngoJea_
@@ -190,7 +239,18 @@ dashcards:
         - v_content
         - entity_id
       - base-type: type/Integer
-        join-alias: Question 35
+        join-alias: Content - Entity Qualified
+  - card_id: MOAq881VSlM2BhVUv5e_K
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
   visualization_settings:
     column_settings:
       ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
@@ -230,6 +290,17 @@ dashcards:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Card Qualified
+  - card_id: YiHMsA2dv3iQob11DLTIz
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Card Qualified
   visualization_settings:
     column_settings: null
 - entity_id: 8qi2lYbU4119zouFP9f6M
@@ -251,6 +322,20 @@ dashcards:
         - public
         - v_content
         - entity_id
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - card_qualified_id
+  - card_id: -_XgVaPuz7MY8jlG0wSEC
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
       - source-field:
         - Internal Metabase Database
         - public
@@ -278,6 +363,17 @@ dashcards:
         - v_content
         - entity_id
       - base-type: type/Integer
+        join-alias: Content - Card Qualified
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
         join-alias: Content - Card Qualified
   visualization_settings:
     column_settings:
