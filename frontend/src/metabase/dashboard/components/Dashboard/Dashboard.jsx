@@ -69,6 +69,11 @@ class DashboardInner extends Component {
 
     if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
+      (!this.props.isEditing &&
+        !_.isEqual(
+          prevProps.dashboard?.dashcards,
+          this.props.dashboard?.dashcards,
+        )) ||
       (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
