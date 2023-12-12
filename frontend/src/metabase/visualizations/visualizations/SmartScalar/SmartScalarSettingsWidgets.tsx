@@ -43,7 +43,12 @@ export function SmartScalarComparisonWidget({
   return (
     <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
       <MenuTargetStyled>
-        <Button pr="0" pl="1rem" disabled={isDisabled}>
+        <Button
+          pr="0"
+          pl="1rem"
+          data-testid={"comparisons-widget-button"}
+          disabled={isDisabled}
+        >
           <Group spacing="sm">
             <span>{selectedDisplayName}</span>
             <Icon name="chevrondown" size="14" />
