@@ -129,10 +129,10 @@ function CoordinateValueInput({
       <Flex p="md">
         <NumberInput
           value={values[0]}
-          onChange={(newValue: number) => onChange([newValue])}
           placeholder={placeholder}
           autoFocus
           w="100%"
+          onChange={(newValue: number) => onChange([newValue])}
         />
       </Flex>
     );
@@ -143,15 +143,15 @@ function CoordinateValueInput({
       <Flex align="center" justify="center" p="md">
         <NumberInput
           value={values[0]}
-          onChange={(newValue: number) => onChange([newValue, values[1]])}
           placeholder={placeholder}
           autoFocus
+          onChange={(newValue: number) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
-          onChange={(newValue: number) => onChange([values[0], newValue])}
           placeholder={placeholder}
+          onChange={(newValue: number) => onChange([values[0], newValue])}
         />
       </Flex>
     );
