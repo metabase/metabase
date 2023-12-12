@@ -91,7 +91,7 @@ describe("DashboardPublicLinkPopover", () => {
 
   it("should call the Dashboard public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
-    userEvent.click(screen.getByText("Remove this public link"));
+    userEvent.click(screen.getByText("Remove public link"));
     expect(
       fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
         method: "DELETE",
