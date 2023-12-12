@@ -51,15 +51,14 @@ const dashboardDetails = {
   parameters: [filterDetails],
 };
 
-describe("issue 19745", () => {
+// TODO: unskip both tests when metabase#36574 is resolved
+// @see https://metaboat.slack.com/archives/C04CYTEL9N2/p1702063378269379
+describe.skip("issue 19745", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
-
-  // TODO: unskip when metabase#36574 is resolved
-  // @see https://metaboat.slack.com/archives/C04CYTEL9N2/p1702063378269379
-  it.skip("should unwrap the nested query when removing the last expression (metabase#19745)", () => {
+  it("should unwrap the nested query when removing the last expression (metabase#19745)", () => {
     updateQuestionAndSelectFilter(() => removeExpression("Custom Column"));
   });
 
