@@ -54,25 +54,32 @@ const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
 
 describe("new query", () => {
   const steps = getQuestionStepsForMBQLQuery({});
+  const [dataStep] = steps;
 
   describe("getQuestionSteps", () => {
     it("should return data step with no actions", () => {
       expect(steps.length).toBe(1);
-      expect(steps.map(s => s.type)).toEqual(["data"]);
-      expect(steps.map(s => s.actions.map(a => a.type))).toEqual([[]]);
+      expect(dataStep.type).toBe("data");
+      expect(dataStep.actions).toHaveLength(0);
     });
   });
 });
 
 describe("raw data query", () => {
   const steps = getQuestionStepsForMBQLQuery(rawDataQuery);
+  const [dataStep] = steps;
 
   describe("getQuestionSteps", () => {
     it("should return data step with actions", () => {
       expect(steps.length).toBe(1);
-      expect(steps.map(s => s.type)).toEqual(["data"]);
-      expect(steps.map(s => s.actions.map(a => a.type))).toEqual([
-        ["join", "expression", "filter", "summarize", "sort", "limit"],
+      expect(dataStep.type).toBe("data");
+      expect(dataStep.actions.map(action => action.type)).toEqual([
+        "join",
+        "expression",
+        "filter",
+        "summarize",
+        "sort",
+        "limit",
       ]);
     });
   });
