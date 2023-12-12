@@ -86,18 +86,17 @@ export const COMPARISON_TYPES = {
   PERIODS_AGO: "periodsAgo",
 } as const;
 
-export type COMPARISON_TYPES_TYPE =
+export type ComparisonTypes =
   typeof COMPARISON_TYPES[keyof typeof COMPARISON_TYPES];
 
-export const PLACEHOLDER_STR = "[placeholder]";
-export const COMPARISON_SELECT_OPTIONS = {
+export const COMPARISON_SELECTOR_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-    nameTemplate: t`Previous ${PLACEHOLDER_STR}`,
+    prefix: t`Previous`,
   },
   PERIODS_AGO: {
     type: COMPARISON_TYPES.PERIODS_AGO,
-    nameTemplate: t`${PLACEHOLDER_STR} ago`,
+    suffix: t`ago`,
     MenuItemComponent: PeriodsAgoInputWidget,
   },
   PREVIOUS_VALUE: {
@@ -106,15 +105,24 @@ export const COMPARISON_SELECT_OPTIONS = {
   },
 };
 
-export type ComparisonOption = {
-  type:
-    | typeof COMPARISON_TYPES.PREVIOUS_VALUE
-    | typeof COMPARISON_TYPES.PREVIOUS_PERIOD
-    | typeof COMPARISON_TYPES.PERIODS_AGO;
+type PreviousValueMenuOption = {
+  type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
   name: string;
-  MenuItemComponent?: React.ComponentType<any>;
-  maxValue?: number;
 };
+type PreviousPeriodMenuOption = {
+  type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
+  name: string;
+};
+type PeriodsAgoMenuOption = {
+  type: typeof COMPARISON_TYPES.PERIODS_AGO;
+  name: string;
+  MenuItemComponent: typeof PeriodsAgoInputWidget;
+  maxValue: number;
+};
+export type ComparisonMenuOption =
+  | PreviousValueMenuOption
+  | PreviousPeriodMenuOption
+  | PeriodsAgoMenuOption;
 
 export type SelectedComparisonPeriodsAgo = {
   type: typeof COMPARISON_TYPES.PERIODS_AGO;
@@ -126,7 +134,6 @@ type SelectedComparisonPreviousPeriod = {
 type SelectedComparisonCompareToPrevious = {
   type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
 };
-
 export type SelectedComparison =
   | SelectedComparisonCompareToPrevious
   | SelectedComparisonPreviousPeriod
@@ -144,19 +151,18 @@ export function getDefaultComparison(
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
-  )?.unit;
+  )?.unit as RelativeDatetimeUnit | undefined;
 
   if (!dateUnit) {
-    return COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE;
+    return createComparisonMenuOption({
+      type: COMPARISON_TYPES.PREVIOUS_VALUE,
+    });
   }
 
-  return {
-    ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
-    name: COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
-      PLACEHOLDER_STR,
-      t`${dateUnit}`,
-    ),
-  };
+  return createComparisonMenuOption({
+    type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+    dateUnit,
+  });
 }
 
 export function getComparisonOptions(
@@ -174,17 +180,16 @@ export function getComparisonOptions(
   )?.unit as RelativeDatetimeUnit | undefined;
 
   if (!dateUnit) {
-    return [COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE];
+    return [
+      createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
+    ];
   }
 
-  const options: ComparisonOption[] = [
-    {
-      ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
-      name: COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD.nameTemplate.replace(
-        PLACEHOLDER_STR,
-        t`${dateUnit}`,
-      ),
-    },
+  const options: ComparisonMenuOption[] = [
+    createComparisonMenuOption({
+      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+      dateUnit,
+    }),
   ];
 
   const maxPeriodsAgo = getMaxPeriodsAgo({ cols, rows, dateUnit });
@@ -192,17 +197,18 @@ export function getComparisonOptions(
   // only add this option is # number of selectable periods ago is >= 2
   // since we already have an option for 1 period ago -> PREVIOUS_PERIOD
   if (maxPeriodsAgo && maxPeriodsAgo >= 2) {
-    options.push({
-      ...COMPARISON_SELECT_OPTIONS.PERIODS_AGO,
-      name: COMPARISON_SELECT_OPTIONS.PERIODS_AGO.nameTemplate.replace(
-        PLACEHOLDER_STR,
-        t`${dateUnit}s`,
-      ),
-      maxValue: maxPeriodsAgo,
-    });
+    options.push(
+      createComparisonMenuOption({
+        type: COMPARISON_TYPES.PERIODS_AGO,
+        dateUnit,
+        maxValue: maxPeriodsAgo,
+      }),
+    );
   }
 
-  options.push(COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE);
+  options.push(
+    createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
+  );
 
   return options;
 }
@@ -266,4 +272,51 @@ function getMaxPeriodsAgo({
   }
 
   return dayjs(latestNonEmptyDate).diff(earliestNonEmptyDate, dateUnit);
+}
+
+type GetComparisonMenuOptionParameters =
+  | {
+      type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
+    }
+  | {
+      type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
+      dateUnit: RelativeDatetimeUnit;
+    }
+  | {
+      type: typeof COMPARISON_TYPES.PERIODS_AGO;
+      maxValue: number;
+      dateUnit: RelativeDatetimeUnit;
+    };
+
+function createComparisonMenuOption(
+  comparisonParameters: GetComparisonMenuOptionParameters,
+): ComparisonMenuOption {
+  const { type } = comparisonParameters;
+
+  if (type === COMPARISON_TYPES.PREVIOUS_PERIOD) {
+    const { dateUnit } = comparisonParameters;
+
+    const { prefix } = COMPARISON_SELECTOR_OPTIONS.PREVIOUS_PERIOD;
+
+    return {
+      type,
+      name: `${prefix} ${dateUnit}`,
+    };
+  }
+
+  if (type === COMPARISON_TYPES.PERIODS_AGO) {
+    const { maxValue, dateUnit } = comparisonParameters;
+
+    const { suffix, MenuItemComponent } =
+      COMPARISON_SELECTOR_OPTIONS.PERIODS_AGO;
+
+    return {
+      type,
+      name: `${dateUnit}s ${suffix}`,
+      maxValue,
+      MenuItemComponent,
+    };
+  }
+
+  return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
 }

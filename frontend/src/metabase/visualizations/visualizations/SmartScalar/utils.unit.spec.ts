@@ -8,7 +8,7 @@ import {
 } from "metabase-types/api/mocks";
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import {
-  COMPARISON_SELECT_OPTIONS,
+  COMPARISON_SELECTOR_OPTIONS,
   COMPARISON_TYPES,
   formatChange,
   formatChangeAutoPrecision,
@@ -64,7 +64,7 @@ describe("SmartScalar > utils", () => {
         );
 
         expect(defaultComparison).toBe(
-          COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
         );
       });
 
@@ -81,7 +81,7 @@ describe("SmartScalar > utils", () => {
         );
 
         expect(defaultComparison).toEqual({
-          ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
+          type: COMPARISON_TYPES.PREVIOUS_PERIOD,
           name: "Previous month",
         });
       });
@@ -102,7 +102,7 @@ describe("SmartScalar > utils", () => {
         );
 
         expect(comparisonOptions).toEqual([
-          COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
         ]);
       });
 
@@ -120,10 +120,10 @@ describe("SmartScalar > utils", () => {
 
         expect(comparisonOptions).toEqual([
           {
-            ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
+            type: COMPARISON_TYPES.PREVIOUS_PERIOD,
             name: "Previous month",
           },
-          COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
         ]);
       });
 
@@ -143,15 +143,17 @@ describe("SmartScalar > utils", () => {
 
         expect(comparisonOptions).toEqual([
           {
-            ...COMPARISON_SELECT_OPTIONS.PREVIOUS_PERIOD,
+            type: COMPARISON_TYPES.PREVIOUS_PERIOD,
             name: "Previous month",
           },
           {
-            ...COMPARISON_SELECT_OPTIONS.PERIODS_AGO,
+            type: COMPARISON_TYPES.PERIODS_AGO,
             name: "months ago",
             maxValue: 3,
+            MenuItemComponent:
+              COMPARISON_SELECTOR_OPTIONS.PERIODS_AGO.MenuItemComponent,
           },
-          COMPARISON_SELECT_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
         ]);
       });
     });

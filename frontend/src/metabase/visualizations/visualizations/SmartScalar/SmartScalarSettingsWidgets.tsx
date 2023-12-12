@@ -11,14 +11,14 @@ import {
 } from "./SmartScalarSettingsWidgets.styled";
 
 import type {
-  ComparisonOption,
+  ComparisonMenuOption,
   SelectedComparison,
   SelectedComparisonPeriodsAgo,
 } from "./utils";
 
 interface SmartScalarComparisonWidgetProps {
   onChange: (setting: { type: string; value?: number }) => void;
-  options: ComparisonOption[];
+  options: ComparisonMenuOption[];
   value: SelectedComparison;
 }
 
