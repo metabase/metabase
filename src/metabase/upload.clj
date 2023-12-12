@@ -364,6 +364,12 @@
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))
 
+(defn- get-auto-pk-column [table-id]
+  (some (fn [field]
+          (when (= (normalize-column-name (:name field)) auto-pk-column-name)
+            field))
+        (t2/select :model/Field :table_id table-id)))
+
 ;;;; +------------------+
 ;;;; |  Create upload
 ;;;; +------------------+
@@ -483,8 +489,7 @@
             _sync             (scan-and-sync-table! database table)
             ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
             ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-            auto-pk-field     (t2/select-one :model/Field :table_id (:id table)
-                                             :%lower.name auto-pk-column-name)
+            auto-pk-field     (get-auto-pk-column (:id table))
             _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
             card              (card/create-card!
                                {:collection_id          collection-id
@@ -533,44 +538,50 @@
     :type/Text                   ::text))
 
 (defn- check-schema
-  "Returns a map with two keys:
+  "Returns a map with three keys:
     - `parse-rows`, a function that takes a lazy-seq of rows, and returns a lazy-seq of rows. It parses the
       string values in each row and removes columns that have the same normalized name as the generated columns.
-    - `table-col-names`, a seq of the column names in the table, in the same order as the columns in the CSV file.
+    - `table-col-names`, a seq of the column names in the table, in the same order as the columns in the CSV file. Excludes the auto-pk column.
+    - `table-has-auto-pk?`, a boolean indicating whether the table already contains the auto-pk column.
 
   Throws an exception if:
     - the CSV file contains duplicate column names
     - the schema of the CSV file does not match the schema of the table"
   [table header]
   ;; Assumes table-cols are unique when normalized
-  (let [fields                   (t2/select :model/Field :table_id (:id table))
-        fields-by-normed-name    (-> (into {}
-                                           (map (fn [field]
-                                                  [(normalize-column-name (:name field)) field]))
-                                           fields)
-                                     ;; ignore the _mb_row_id field, it will be filled automatically
-                                     (dissoc "_mb_row_id"))
-        normalized-field-names   (keys fields-by-normed-name)
+  (let [fields (t2/select :model/Field :table_id (:id table))
+        fields-by-normed-name (-> (into {}
+                                        (map (fn [field]
+                                               [(normalize-column-name (:name field)) field]))
+                                        fields))
+        normalized-field-names (keys fields-by-normed-name)
         ;; TODO: use this to create nice error messages when there are extra or missing columns
         normalized-header+header (into []
                                        (map (fn [col]
                                               [(normalize-column-name col) col]))
                                        header)
-        normalized-header        (map first normalized-header+header)
+        normalized-header (map first normalized-header+header)
+        auto-pk-col-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
+        remove-auto-pk-cols (fn [row]
+                              (remove-indices auto-pk-col-indices row))
+        normalized-header (remove-auto-pk-cols normalized-header)
         ;; check for duplicates
         _ (when (some #(< 1 %) (vals (frequencies normalized-header)))
             (throw (ex-info (tru "The CSV file contains duplicate column names.")
                             {:status-code 422})))
         [extra missing _both] (data/diff (set normalized-header)
-                                         (set normalized-field-names))]
-
+                                         ;; ignore the auto-pk field, it will be filled automatically
+                                         (disj (set normalized-field-names) auto-pk-column-name))]
     (if (and (empty? extra) (empty? missing))
       {:parse-rows (fn [rows]
-                     (let [rows' rows ;; TODO: remove auto-pk columns here
+                     (let [rows' (cond->> rows
+                                   (seq auto-pk-col-indices)
+                                   (map remove-auto-pk-cols))
                            col-upload-types (map (comp base-type->upload-type :base_type fields-by-normed-name)
                                                  normalized-header)]
                        (parse-rows* col-upload-types rows')))
-       :table-col-names (map (comp :name fields-by-normed-name) normalized-header)}
+       :table-col-names (map (comp :name fields-by-normed-name) normalized-header)
+       :table-has-auto-pk? (contains? fields-by-normed-name auto-pk-column-name)}
       (throw (ex-info (tru "The schema of the CSV file does not match the schema of the table.")
                       {:status-code 422})))))
 
@@ -578,14 +589,26 @@
   [database table file]
   (with-open [reader (bom/bom-reader file)]
     (let [[header & rows] (csv/read-csv reader)
-          {:keys [parse-rows table-col-names]} (check-schema table header)]
+          {:keys [parse-rows table-col-names table-has-auto-pk?]} (check-schema table header)
+          driver (driver.u/database->driver database)
+          auto-pk-type (driver/upload-type->database-type driver ::auto-incrementing-int-pk)
+          create-auto-pk? (not table-has-auto-pk?)]
       (try
         (let [parsed-rows (parse-rows rows)]
-          (driver/insert-into! (driver.u/database->driver database)
+          (when create-auto-pk?
+            (driver/add-columns! driver
+                                 (:id database)
+                                 (table-identifier table)
+                                 {:_mb_row_id auto-pk-type}))
+          (driver/insert-into! driver
                                (:id database)
                                (table-identifier table)
                                table-col-names
                                parsed-rows)
+          (scan-and-sync-table! database table)
+          (when create-auto-pk?
+            (let [auto-pk-field (get-auto-pk-column (:id table))]
+              (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
           {:row-count (count parsed-rows)})
         (catch Throwable e
           ;; TODO: insert rows failure handling

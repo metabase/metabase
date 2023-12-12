@@ -897,6 +897,12 @@
           (when grant?
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
+(defn append-csv!
+  "Wrapper for `append-csv!` that sets `upload/*sync-synchronously?*` to true for test purposes."
+  [& args]
+  (binding [upload/*sync-synchronously?* true]
+    (apply upload/append-csv! args)))
+
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
     (mt/with-empty-db
@@ -1082,27 +1088,49 @@
      {:field-name "name", :base-type :type/Text}]
     [["Obi-Wan Kenobi"]]]))
 
+(defn- create-upload-table!
+  "Creates a table and syncs it in the current test database, as if it were uploaded as a CSV upload. `col->upload-type` should be an ordered map of column names (keywords) to upload types.
+  `rows` should be a vector of vectors of values, one for each row.
+  Returns the table.
+
+  Defaults to a table with an auto-incrementing integer ID column, and a name column."
+  [& {:keys [table-name col->upload-type rows]
+      :or {table-name       (mt/random-name)
+           col->upload-type (ordered-map/ordered-map
+                             (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                             :name ::upload/varchar-255)
+           rows             [["Obi-Wan Kenobi"]]}}]
+  (let [driver driver/*driver*
+        db-id (mt/id)
+        insert-col-names (remove #{(keyword upload/auto-pk-column-name)} (keys col->upload-type))
+        col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
+        _ (driver/create-table! driver db-id table-name col->database-type)
+        _ (driver/insert-into! driver db-id table-name insert-col-names rows)
+        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema nil})]
+    (t2/update! :model/Table (:id table) {:is_upload true})
+    (binding [upload/*sync-synchronously?* true]
+      (#'upload/scan-and-sync-table! (mt/db) table))
+    table))
+
 (defn append-csv-with-defaults!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
   [& {:keys [uploads-enabled user-id file table-id is-upload]
       :or {uploads-enabled   true
            user-id           (mt/user->id :crowberto)
            file              (csv-file-with
-                              ["id,name"
-                               "2,Luke Skywalker"
-                               "3,Darth Vader"]
+                              ["name"
+                               "Luke Skywalker"
+                               "Darth Vader"]
                               (str (mt/random-name) ".csv"))
            is-upload          true}}]
   (try
     (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
       (mt/with-current-user user-id
-        (mt/dataset (basic-db-definition)
-          (let [tables (t2/select :model/Table :db_id (mt/id))
-                table (first tables)]
-            (assert (= (count tables) 1))
-            (t2/update! :model/Table (:id table) {:is_upload is-upload})
-            (upload/append-csv! {:table-id (or table-id (:id table))
-                                    :file     file})))))
+        (let [table (create-upload-table!)]
+          (when-not is-upload
+            (t2/update! :model/Table (:id table) {:is_upload false}))
+          (append-csv! {:table-id (or table-id (:id table))
+                        :file     file}))))
     (finally
       (io/delete-file file))))
 
@@ -1158,46 +1186,26 @@
 (defmacro with-uploads-allowed [& body]
   `(do-with-uploads-allowed (fn [] ~@body)))
 
-(defn- create-upload-table!
-  "Creates a table and syncs it in the current test database, as if it were uploaded as a CSV upload. `col->upload-type` should be an ordered map of column names (keywords) to upload types.
-  `rows` should be a vector of vectors of values, one for each row.
-  Returns the table.
-
-  Defaults to a table with an auto-incrementing integer ID column, and a name column."
-  [& {:keys [table-name col->upload-type rows]
-      :or {table-name       (mt/random-name)
-           col->upload-type (ordered-map/ordered-map
-                             (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
-                             :name ::upload/varchar-255)
-           rows             [["Obi-Wan Kenobi"]]}}]
-  (let [driver driver/*driver*
-        db-id (mt/id)
-        insert-col-names (remove #{(keyword upload/auto-pk-column-name)} (keys col->upload-type))
-        col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
-        _ (driver/create-table! driver db-id table-name col->database-type)
-        _ (driver/insert-into! driver db-id table-name insert-col-names rows)
-        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema nil})]
-    (t2/update! :model/Table (:id table) {:is_upload true})
-    (#'upload/scan-and-sync-table! (mt/db) table)
-    table))
-
 (deftest append-column-match-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should succeed regardless of CSV column order or case"
-        (doseq [csv-rows [["id,name" "2,Luke Skywalker" "3,Darth Vader"]
-                          ["Id\t,NAmE " "2,Luke Skywalker" "3,Darth Vader"] ;; the same name when normalized
-                          ["name,id" "Luke Skywalker,2" "Darth Vader,3"]]]  ;; different order
-          (mt/dataset (basic-db-definition)
-            (let [table (t2/select-one :model/Table :db_id (mt/id))
-                  _     (t2/update! :model/Table (:id table) {:is_upload true})
+        (doseq [csv-rows [["id,name" "20,Luke Skywalker" "30,Darth Vader"]
+                          ["Id\t,NAmE " "20,Luke Skywalker" "30,Darth Vader"] ;; the same name when normalized
+                          ["name,id" "Luke Skywalker,20" "Darth Vader,30"]]]  ;; different order
+          (mt/with-empty-db
+            (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                  :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                                  :id ::upload/int
+                                                                  :name ::upload/varchar-255)
+                                               :rows             [[10 "Obi-Wan Kenobi"]]})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              (is (some? (upload/append-csv! {:file     file
-                                              :table-id (:id table)})))
+              (is (some? (append-csv! {:file     file
+                                       :table-id (:id table)})))
               (testing "Check the data was uploaded into the table correctly"
-                (is (= [[1 "Obi-Wan Kenobi"]
-                        [2 "Luke Skywalker"]
-                        [3 "Darth Vader"]]
+                (is (= [[1 10 "Obi-Wan Kenobi"]
+                        [2 20 "Luke Skywalker"]
+                        [3 30 "Darth Vader"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
@@ -1214,28 +1222,12 @@
               ;; TODO: specialise this error message
               (is (= {:message "The schema of the CSV file does not match the schema of the table."
                       :data {:status-code 422}}
-                     (catch-ex-info (upload/append-csv! {:file     file
-                                                         :table-id (:id table)}))))
+                     (catch-ex-info (append-csv! {:file     file
+                                                  :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
                 (is (= [[1 "Obi-Wan Kenobi"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
-
-(defn all-types-db-definition
-  "This creates a table with an auto-incrementing integer ID column, and a name column."
-  []
-  (mt/dataset-definition
-   (mt/random-name)
-   ["table_one"
-    [;; 'id' is created automatically
-     {:field-name "biginteger", :base-type :type/BigInteger}
-     {:field-name "float", :base-type :type/Float}
-     {:field-name "text", :base-type :type/Text}
-     {:field-name "boolean", :base-type :type/Boolean}
-     {:field-name "date", :base-type :type/Date}
-     {:field-name "datetime", :base-type :type/DateTime}
-     {:field-name "offset_datetime", :base-type :type/DateTimeWithLocalTZ}]
-    [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00+00:00"]]]))
 
 (deftest append-all-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1243,16 +1235,25 @@
       (with-mysql-local-infile-on-and-off
         (mt/with-report-timezone-id "UTC"
           (testing "Append should succeed for all possible CSV column types"
-            (let [csv-rows ["id,biginteger,float,text,boolean,date,datetime,offset_datetime"
-                            "2,2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
-              (mt/dataset (all-types-db-definition)
+            (let [csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
+                            "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
+              (mt/with-empty-db
                 (with-redefs [driver/db-default-timezone (constantly "Z")
                               upload/current-database    (constantly (mt/db))]
-                  (let [table (t2/select-one :model/Table :db_id (mt/id))
-                        _     (t2/update! :model/Table (:id table) {:is_upload true})
+                  (let [table (create-upload-table!
+                               {:col->upload-type (ordered-map/ordered-map
+                                                   :_mb_row_id      ::upload/auto-incrementing-int-pk
+                                                   :biginteger      ::upload/int
+                                                   :float           ::upload/float
+                                                   :text            ::upload/varchar-255
+                                                   :boolean         ::upload/boolean
+                                                   :date            ::upload/date
+                                                   :datetime        ::upload/datetime
+                                                   :offset_datetime ::upload/offset-datetime)
+                                :rows [[1000000,1.0,"some_text",false,"2020-01-01","2020-01-01T00:00:00","2020-01-01T00:00:00+00:00"]]})
                         file  (csv-file-with csv-rows (mt/random-name))]
-                    (is (some? (upload/append-csv! {:file     file
-                                                    :table-id (:id table)})))
+                    (is (some? (append-csv! {:file     file
+                                             :table-id (:id table)})))
                     (testing "Check the data was uploaded into the table correctly"
                       (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
                               [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
@@ -1268,12 +1269,88 @@
             (let [table (create-upload-table!)
                   file  (csv-file-with csv-rows (mt/random-name))]
               (is (= {:row-count 0}
-                     (upload/append-csv! {:file     file
-                                          :table-id (:id table)})))
+                     (append-csv! {:file     file
+                                   :table-id (:id table)})))
               (testing "Check the data was not uploaded into the table"
                 (is (= [[1 "Obi-Wan Kenobi"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
+
+(deftest append-mb-row-id-1-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
+        (let [csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]]
+          (mt/with-empty-db
+            (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                  :name ::upload/varchar-255)
+                                               :rows [["Obi-Wan Kenobi"]]})
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:row-count 1}
+                     (append-csv! {:file     file
+                                   :table-id (:id table)})))
+              (testing "Check a _mb_row_id column was created"
+                (is (= ["name" "_mb_row_id"]
+                       (column-names-for-table table))))
+              (testing "Check a _mb_row_id column was sync'd"
+                (is (=? {:semantic_type :type/PK
+                         :base_type     :type/BigInteger
+                         :name          "_mb_row_id"
+                         :display_name  "_mb_row_id"}
+                        (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+              (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
+                (is (= [["Obi-Wan Kenobi" 1]
+                        ["Luke Skywalker" 2]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(deftest append-mb-row-id-2-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "Append succeeds if the table has _mb_row_id but the CSV doesn't"
+        (let [csv-rows ["name" "Luke Skywalker"]]
+          (mt/with-empty-db
+            (let [table (create-upload-table!)
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:row-count 1}
+                     (append-csv! {:file     file
+                                   :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+                (is (= [[1 "Obi-Wan Kenobi"]
+                        [2 "Luke Skywalker"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
+
+(mt/set-test-drivers! [:postgres])
+
+(deftest append-mb-row-id-3-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
+        (mt/with-empty-db
+          (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]]
+            (let [table (create-upload-table!)
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:row-count 1}
+                     (append-csv! {:file     file
+                                   :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+                (is (= [[1 "Obi-Wan Kenobi"]
+                        [2 "Luke Skywalker"]]
+                       (rows-for-table table))))
+              (io/delete-file file)))
+          (testing "with duplicate normalized _mb_row_id columns in the CSV file"
+            (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]]
+              (let [table (create-upload-table!)
+                    file  (csv-file-with csv-rows (mt/random-name))]
+                (is (= {:row-count 1}
+                       (append-csv! {:file     file
+                                     :table-id (:id table)})))
+                (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+                  (is (= [[1 "Obi-Wan Kenobi"]
+                          [2 "Luke Skywalker"]]
+                         (rows-for-table table))))
+                (io/delete-file file)))))))))
 
 (deftest append-duplicate-header-csv-test
   (mt/test-driver :h2
@@ -1285,8 +1362,8 @@
                   file  (csv-file-with csv-rows (mt/random-name))]
               (is (= {:message "The CSV file contains duplicate column names."
                       :data    {:status-code 422}}
-                     (catch-ex-info (upload/append-csv! {:file     file
-                                                         :table-id (:id table)}))))
+                     (catch-ex-info (append-csv! {:file     file
+                                                  :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
                 (is (= [[1 "Obi-Wan Kenobi"]]
                        (rows-for-table table))))

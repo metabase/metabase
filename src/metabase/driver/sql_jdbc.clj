@@ -158,6 +158,17 @@
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
 
+(defmethod driver/add-columns! :sql-jdbc
+  [driver db-id table-name col->type]
+  (let [table-name (keyword table-name)
+        sql        (first (sql/format {:alter-table (keyword table-name)
+                                       :add-column (map (fn [[name type-spec]]
+                                                          (vec (cons name type-spec)))
+                                                        col->type)}
+                                      :quoted true
+                                      :dialect (sql.qp/quote-style driver)))]
+    (qp.writeback/execute-write-sql! db-id sql)))
+
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
