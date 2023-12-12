@@ -1,0 +1,1 @@
+export { NormalizedTextSettingInput } from "./NormalizedTextSettingInput";

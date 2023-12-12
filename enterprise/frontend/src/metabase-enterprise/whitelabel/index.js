@@ -16,6 +16,7 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import { Anchor } from "metabase/ui";
+import { NormalizedTextSettingInput } from "metabase/admin/settings/components/widgets/NormalizedTextSettingInput";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
@@ -67,7 +68,7 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "landing-page",
           display_name: t`Landing Page`,
-          type: "string",
+          widget: NormalizedTextSettingInput,
           placeholder: "/",
         },
         {

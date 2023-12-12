@@ -10,7 +10,7 @@ const getValue = (value: string, type: string) => {
   return value;
 };
 
-interface SettingInputProps {
+export interface SettingInputProps {
   setting: {
     key: string;
     value: string | null;
