@@ -8,8 +8,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (com.github.vertical_blank.sqlformatter SqlFormatter SqlFormatter$Formatter)
    (com.github.vertical_blank.sqlformatter.core DialectConfig)
@@ -46,13 +45,13 @@
     ;; otherwise just stick a _2 on the end so it's col_2
     (str last-component "_2")))
 
-(s/defn ^:private increment-identifier
+(mu/defn ^:private increment-identifier
   "Add an appropriate suffix to a keyword `identifier` to make it distinct from previous usages of the same identifier,
   e.g.
 
      (increment-identifier :my_col)   ; -> :my_col_2
      (increment-identifier :my_col_2) ; -> :my_col_3"
-  [identifier :- Identifier]
+  [identifier :- h2x/identifier]
   (update
    identifier
    :components
@@ -75,12 +74,13 @@
       ;; that as the alias.
       ;;
       ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
-      (instance? Identifier col)
-      [col (h2x/identifier :field-alias (last (:components col)))]
+      (h2x/identifier col)
+      (let [[_tag _identifier-type components] col]
+        [col (h2x/identifier :field-alias (last components))])
 
       :else
       (do
-        (log/error (trs "Don''t know how to alias {0}, expected an Identifier." col))
+        (log/errorf "Don't know how to alias %s, expected an h2x/identifier" (pr-str col))
         [col col]))))
 
 (defn select-clause-deduplicate-aliases

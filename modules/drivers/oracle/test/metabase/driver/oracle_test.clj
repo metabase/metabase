@@ -426,7 +426,7 @@
                                 "oracle-connect-with-ssl-test"
                                 "MB_ORACLE_SSL_TEST_SSL")))))
 
-(deftest text-equals-empty-string-test
+(deftest ^:parallel text-equals-empty-string-test
   (mt/test-driver :oracle
     (testing ":= with empty string should work correctly (#13158)"
       (mt/dataset airports
@@ -434,7 +434,7 @@
                (mt/first-row
                 (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))
 
-(deftest custom-expression-between-test
+(deftest ^:parallel custom-expression-between-test
   (mt/test-driver :oracle
     (testing "Custom :between expression should work (#15538)"
       (let [query (mt/mbql-query nil
@@ -451,7 +451,7 @@
           (is (= [42M]
                  (mt/first-row (qp/process-query query)))))))))
 
-(deftest escape-alias-test
+(deftest ^:parallel escape-alias-test
   (testing "Oracle should strip double quotes and null characters from identifiers"
     (is (= "ABC_D_E__FG_H"
            (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))

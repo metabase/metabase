@@ -4,8 +4,8 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [honeysql.format :as hformat]
-   [honeysql.helpers :as hh]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.driver :as driver]
@@ -20,7 +20,6 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
@@ -228,7 +227,7 @@
   [_ _ expr]
   (if (::optimized-bucketing? *field-options*)
     (h2x/month expr)
-    [:DateFromParts (h2x/year expr) (h2x/month expr) 1]))
+    [:DateFromParts (h2x/year expr) (h2x/month expr) [:inline 1]]))
 
 (defmethod sql.qp/date [:sqlserver :month-of-year]
   [_driver _unit expr]
@@ -241,7 +240,7 @@
   [_driver _unit expr]
   (date-add :quarter
             (h2x/dec (date-part :quarter expr))
-            [:DateFromParts (h2x/year expr) 1 1]))
+            [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]))
 
 (defmethod sql.qp/date [:sqlserver :quarter-of-year]
   [_driver _unit expr]
@@ -251,7 +250,7 @@
   [_driver _unit expr]
   (if (::optimized-bucketing? *field-options*)
     (h2x/year expr)
-    [:DateFromParts (h2x/year expr) 1 1]))
+    [:DateFromParts (h2x/year expr) [:inline 1] [:inline 1]]))
 
 (defmethod sql.qp/date [:sqlserver :year-of-era]
   [_driver _unit expr]
@@ -361,11 +360,13 @@
     [:convert [:raw "datetime2"] formatted 20]))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
-  [_ _ honeysql-form {value :limit}]
-  (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
+  [_driver _top-level-clause honeysql-form {value :limit}]
+  (-> honeysql-form
+      (dissoc :select)
+      (assoc :select-top (into [(sql.qp/inline-num value)] (:select honeysql-form)))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
-  [_ _ honeysql-form {{:keys [items page]} :page}]
+  [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset [:raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
                                                (* items (dec page))
                                                items)]))
@@ -427,14 +428,14 @@
       ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
       ;;
       ;;    SELECT DateFromParts(year(field), month(field), 1)
-      (apply hh/merge-select new-hsql (->> breakout-fields
-                                           (remove (set fields-fields))
-                                           (mapv (fn [field-clause]
-                                                   (sql.qp/as driver field-clause unique-name-fn)))))
+      (apply sql.helpers/select new-hsql (->> breakout-fields
+                                              (remove (set fields-fields))
+                                              (mapv (fn [field-clause]
+                                                      (sql.qp/as driver field-clause unique-name-fn)))))
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply hh/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -495,13 +496,19 @@
   [driver [_ arg power]]
   [:power (h2x/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)])
 
-(defmethod hformat/fn-handler (u/qualified-name ::approx-percentile-cont)
-  [_ field p]
-  (str "APPROX_PERCENTILE_CONT(" (hformat/to-sql p) ") WITHIN GROUP (ORDER BY " (hformat/to-sql field) ")"))
+(defn- format-approx-percentile-cont
+  [_tag [expr p :as _args]]
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
+        [p-sql & p-args]       (sql/format-expr p {:nested true})]
+    (into [(str "APPROX_PERCENTILE_CONT(%s) WITHIN GROUP (ORDER BY %s)" p-sql expr-sql)]
+          cat
+          [p-args expr-args])))
+
+(sql/register-fn! ::approx-percentile-cont #'format-approx-percentile-cont)
 
 (defmethod sql.qp/->honeysql [:sqlserver :percentile]
   [driver [_ arg val]]
-  [(u/qualified-name ::approx-percentile-cont)
+  [::approx-percentile-cont
    (sql.qp/->honeysql driver arg)
    (sql.qp/->honeysql driver val)])
 

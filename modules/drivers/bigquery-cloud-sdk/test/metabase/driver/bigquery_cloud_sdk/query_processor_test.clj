@@ -384,16 +384,14 @@
                {:args 3, :mbql :between, :honeysql :between}]]
         (testing (format "\n%s filter clause" (:mbql clause))
           (doseq [[temporal-type field] mock-temporal-fields
-                  field                 [[:field (:id field) {::add/source-table "ABC"}]]
-                  ;; NOCOMMIT
-                  #_[[:field (:id field) {::add/source-table "ABC"}]
-                     [:field (:id field) {:temporal-unit     :default
-                                          ::add/source-table "ABC"}]
-                     [:field (:name field) {:base-type         (:base-type field)
-                                            ::add/source-table "ABC"}]
-                     [:field (:name field) {:base-type         (:base-type field)
-                                            :temporal-unit     :default
-                                            ::add/source-table "ABC"}]]]
+                  field [[:field (:id field) {::add/source-table "ABC"}]
+                         [:field (:id field) {:temporal-unit     :default
+                                              ::add/source-table "ABC"}]
+                         [:field (:name field) {:base-type         (:base-type field)
+                                                ::add/source-table "ABC"}]
+                         [:field (:name field) {:base-type         (:base-type field)
+                                                :temporal-unit     :default
+                                                ::add/source-table "ABC"}]]]
             (testing (format "\nField = %s %s"
                              temporal-type
                              (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
@@ -421,23 +419,6 @@
                                        (pr-str filter-clause))
                         (is (= expected-clause
                                (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))))))))))))))
-
-(defn- x []
-  (binding [*print-meta* true]
-    (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider
-      (sql.qp/->honeysql :bigquery-cloud-sdk
-                         [:=
-                          [:field 1 #:metabase.query-processor.util.add-alias-info{:source-table "ABC"}]
-                          [:metabase.driver.sql.query-processor/compiled
-                           ^{:bigquery-cloud-sdk/temporal-type :timestamp}
-                           [:timestamp_seconds :some_field]]]))))
-
-;; Field = :date [:field 1 #:metabase.query-processor.util.add-alias-info{:source-table "ABC"}]
-;; Value = :timestamp ^#:bigquery-cloud-sdk{:temporal-type :timestamp} [:timestamp_seconds :some_field]
-;; reconcile [:= :date :timestamp] -> [:= :date :date]
-;; inferred field type = :date, inferred value type = :timestamp
-;; filter clause = [:= [:field 1 #:metabase.query-processor.util.add-alias-info{:source-table "ABC"}] ^#:bigquery-cloud-sdk{:temporal-type :timestamp} [:timestamp_seconds :some_field]]
-
 
 (deftest ^:parallel reconcile-temporal-types-date-extraction-filters-test
   (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider

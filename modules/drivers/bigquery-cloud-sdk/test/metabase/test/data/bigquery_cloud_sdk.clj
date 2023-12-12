@@ -189,11 +189,15 @@
   (->insertable [t]
     (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
-  ;; Convert the HoneySQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
-  honeysql.types.SqlCall
-  (->insertable [{[{s :literal}] :args, fn-name :name}]
-    (assert (= (name fn-name) "timestamp"))
-    (->insertable (u.date/parse (str/replace s #"'" "")))))
+  ;; clojure.lang.IPersistentVector
+  ;; (->insertable [xs]
+  ;;   ;; Convert the Honey SQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
+  ;;   (if (and (keyword? (first xs))
+  ;;            (= (first xs) :timestamp))
+  ;;     (let [[_tag s] xs]
+  ;;       (->insertable (u.date/parse (str/replace s #"'" ""))))
+  ;;     xs))
+  )
 
 (defn- ->json [row-map]
   (into {} (for [[k v] row-map]

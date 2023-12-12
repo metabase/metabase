@@ -1009,24 +1009,35 @@
                                                                    :field-alias
                                                                    (driver/escape-alias driver ag-name)))]]
                             [ag-expr [ag-alias]]))]
-    (reduce sql.helpers/select honeysql-form honeysql-ags)))
+    (reduce (if (:select-top honeysql-form)
+              sql.helpers/select-top
+              sql.helpers/select)
+            honeysql-form
+            honeysql-ags)))
 
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
-  (as-> honeysql-form new-hsql
-    (apply sql.helpers/select new-hsql (->> breakout-fields
-                                            (remove (set fields-fields))
-                                            (mapv (fn [field-clause]
-                                                    (as driver field-clause)))))
-    (apply sql.helpers/group-by new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
+  (let [select (if (:select-top honeysql-form)
+                 sql.helpers/select-top
+                 sql.helpers/select)]
+    (as-> honeysql-form new-hsql
+      (apply select new-hsql (->> breakout-fields
+                                  (remove (set fields-fields))
+                                  (mapv (fn [field-clause]
+                                          (as driver field-clause)))))
+      (apply sql.helpers/group-by new-hsql (mapv (partial ->honeysql driver) breakout-fields)))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
-  (apply sql.helpers/select honeysql-form (vec (for [field-clause fields]
-                                                 (as driver field-clause)))))
+  (apply (if (:select-top honeysql-form)
+           sql.helpers/select-top
+           sql.helpers/select)
+         honeysql-form
+         (for [field-clause fields]
+           (as driver field-clause))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -1350,11 +1361,11 @@
 
 (defn- add-default-select
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."
-  [driver {:keys [select], :as honeysql-form}]
+  [driver {:keys [select select-top], :as honeysql-form}]
   ;; TODO - this is hacky -- we should ideally never need to add `SELECT *`, because we should know what fields to
   ;; expect from the source query, and middleware should be handling that for us
   (cond-> honeysql-form
-    (empty? select) (assoc :select (default-select driver honeysql-form))))
+    (and (empty? select) (empty? select-top)) (assoc :select (default-select driver honeysql-form))))
 
 (defn- apply-top-level-clauses
   "`apply-top-level-clause` for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.

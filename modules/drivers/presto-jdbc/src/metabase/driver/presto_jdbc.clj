@@ -5,9 +5,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [honeysql.helpers :as hh]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -27,7 +26,6 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -150,10 +148,17 @@
   [driver [_ arg p]]
   [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
-;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
-(defmethod hformat/fn-handler (u/qualified-name ::mod)
-  [_ x y]
-  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
+;;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
+(defn- format-mod
+  [_fn [x y]]
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
+    (into [(format "mod(%s, %s)" x-sql y-sql)]
+          cat
+          [x-args
+           y-args])))
+
+(sql/register-fn! ::mod #'format-mod)
 
 (def ^:dynamic ^:private *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
@@ -185,21 +190,27 @@
 
 ;;; `:sql-driver` methods
 
+(defn- format-row-number-over
+  [_tag [subquery]]
+  (let [[subquery-sql & subquery-args] (sql/format-expr subquery)]
+    (into [(format "row_number() OVER %s" subquery-sql)]
+          subquery-args)))
+
+(sql/register-fn! ::row-number-over #'format-row-number-over)
+
 (defmethod sql.qp/apply-top-level-clause [:presto-jdbc :page]
-  [_ _ honeysql-query {{:keys [items page]} :page}]
+  [_driver _top-level-clause honeysql-query {{:keys [items page]} :page}]
+  {:pre [(pos-int? items) (pos-int? page)]}
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
-      (hh/limit honeysql-query items)
+      (sql.helpers/limit honeysql-query [:inline items])
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
-      (let [over-clause (format "row_number() OVER (%s)"
-                                (first (hsql/format (select-keys honeysql-query [:order-by])
-                                                    :allow-dashed-names? true
-                                                    :quoting :ansi)))]
-        (-> (apply hh/select (map last (:select honeysql-query)))
-            (hh/from (hh/merge-select honeysql-query [[:raw over-clause] :__rownum__]))
-            (hh/where [:> :__rownum__ offset])
-            (hh/limit items))))))
+      (let [over-clause [::row-number-over (select-keys honeysql-query [:order-by])]]
+        (-> (apply sql.helpers/select (map last (:select honeysql-query)))
+            (sql.helpers/from [(sql.helpers/select honeysql-query [over-clause :__rownum__])])
+            (sql.helpers/where [:> :__rownum__ [:inline offset]])
+            (sql.helpers/limit [:inline items]))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :presto-jdbc
   [_]
@@ -388,26 +399,21 @@
   [_driver _unit expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
-        millis      [::mod expr 1000]]
+        millis      [::mod expr [:inline 1000]]]
     [:date_add
      (h2x/literal "millisecond")
      millis
-     [:from_unixtime [:/ expr 1000] (h2x/literal (or report-zone "UTC"))]]))
+     [:from_unixtime [:/ expr [:inline 1000]] (h2x/literal (or report-zone "UTC"))]]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :microseconds]
   [driver _seconds-or-milliseconds expr]
   ;; Presto can't even represent microseconds, so convert to millis and call that version
-  (sql.qp/unix-timestamp->honeysql driver :milliseconds [:/ expr 1000]))
+  (sql.qp/unix-timestamp->honeysql driver :milliseconds [:/ expr [:inline 1000]]))
 
 (defmethod sql.qp/current-datetime-honeysql-form :presto-jdbc
   [_driver]
   ;; the current_timestamp in Presto returns a `timestamp with time zone`, so this needs to be overridden
   (h2x/with-type-info :%now {::h2x/database-type timestamp-with-time-zone-db-type}))
-
-(defmethod hformat/fn-handler (u/qualified-name ::mod)
-  [_ x y]
-  ;; Presto mod is a function like mod(x, y) rather than an operator like x mod y
-  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Connectivity                                                  |

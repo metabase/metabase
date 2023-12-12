@@ -726,7 +726,7 @@
      ((get-method sql.qp/->honeysql [:sql filter-type])
       driver
       clause
-      ;; NOCOMMIT
+      ;; FIXME
       #_(reconcile-temporal-types clause)))))
 
 

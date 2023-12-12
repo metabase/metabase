@@ -182,7 +182,7 @@
   [_driver]
   :oracle)
 
-;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
+;;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
 (defn- format-mod
   [_fn [x y]]
   (let [[x-sql & x-args] (sql/format-expr x {:nested true})
