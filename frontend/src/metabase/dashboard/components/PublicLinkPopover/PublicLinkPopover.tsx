@@ -46,7 +46,7 @@ export const PublicLinkPopover = ({
   };
 
   return (
-    <Popover opened={isOpen} onClose={onClose} position="bottom-end">
+    <Popover opened={isOpen} onClose={onClose}>
       <Popover.Target>
         <div>{target}</div>
       </Popover.Target>
