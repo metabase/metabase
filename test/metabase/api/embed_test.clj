@@ -33,6 +33,8 @@
   (:import
    (java.io ByteArrayInputStream)))
 
+(set! *warn-on-reflection* true)
+
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
 (def ^:dynamic *secret-key* nil)
@@ -348,22 +350,6 @@
           (let [results (client/client :get 200 (card-query-url card "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
-
-(deftest embed-download-query-execution-test
-  (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
-    (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
-      (with-embedding-enabled-and-new-secret-key
-        (with-temp-card [card {:enable_embedding true
-                               :dataset_query    (assoc (mt/mbql-query venues)
-                                                        :middleware
-                                                        {:add-default-userland-constraints? true
-                                                         :userland-query?                   true})}]
-          (client/client :get 200 (card-query-url card "/csv"))
-          (is (some? (t2/select-one :model/QueryExecution :context "embedded-csv-download")))
-          (client/client :get 200 (card-query-url card "/xlsx"))
-          (is (some? (t2/select-one :model/QueryExecution :context "embedded-xlsx-download")))
-          (client/client :get 200 (card-query-url card "/json"))
-          (is (some? (t2/select-one :model/QueryExecution :context "embedded-json-download"))) )))))
 
 (deftest card-locked-params-test
   (mt/with-ensure-with-temp-no-transaction!
@@ -697,6 +683,25 @@
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
+
+(deftest embed-download-query-execution-test
+  (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
+    ;; Clear out the query execution log so that test doesn't read stale state
+    (t2/delete! :model/QueryExecution)
+    (mt/with-ensure-with-temp-no-transaction!
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:dataset_query (mt/mbql-query venues)}}]
+          (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
+           ;; the query execution is saved async, so we need to sleep a bit
+          (Thread/sleep 200)
+          (is (t2/exists? :model/QueryExecution :context "embedded-csv-download"))
+          (client/client :get 200 (str (dashcard-url dashcard) "/json"))
+          (Thread/sleep 200)
+          (is (t2/exists? :model/QueryExecution :context "embedded-json-download"))
+          (client/client :get 200 (str (dashcard-url dashcard) "/xlsx"))
+          (Thread/sleep 200)
+          (is (t2/exists? :model/QueryExecution :context "embedded-xlsx-download")))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
   (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"

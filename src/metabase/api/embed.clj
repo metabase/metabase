@@ -40,8 +40,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [iapetos.export :as export]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
