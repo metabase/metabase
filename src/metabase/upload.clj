@@ -217,6 +217,12 @@
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
   "_mb_row_id")
 
+(defn- get-auto-pk-column [table-id]
+  (some (fn [field]
+          (when (= (normalize-column-name (:name field)) auto-pk-column-name)
+            field))
+        (t2/select :model/Field :table_id table-id)))
+
 (defn- remove-indices
   "Removes the elements at the given indices from the collection. Indices is a set."
   [indices coll]
@@ -364,12 +370,6 @@
       (catch Throwable e
         (driver/drop-table! driver db-id table-name)
         (throw (ex-info (ex-message e) {:status-code 400}))))))
-
-(defn- get-auto-pk-column [table-id]
-  (some (fn [field]
-          (when (= (normalize-column-name (:name field)) auto-pk-column-name)
-            field))
-        (t2/select :model/Field :table_id table-id)))
 
 ;;;; +------------------+
 ;;;; |  Create upload
@@ -554,23 +554,23 @@
         fields-by-normed-name (m/index-by (comp normalize-column-name :name)
                                           fields)
         normalized-field-names (keys fields-by-normed-name)
-        ;; TODO: use this to create nice error messages when there are extra or missing columns
-        normalized-header+header (into []
-                                       (map (fn [col]
-                                              [(normalize-column-name col) col]))
-                                       header)
-        normalized-header (map first normalized-header+header)
-        auto-pk-col-indices (set (indices-where #(= auto-pk-column-name %) normalized-header))
+        auto-pk-col-indices (set (indices-where #(= auto-pk-column-name (normalize-column-name %)) header))
+        ;; this function removes the auto-pk columns from each row and the header
         remove-auto-pk-cols (fn [row]
                               (remove-indices auto-pk-col-indices row))
-        normalized-header (remove-auto-pk-cols normalized-header)
-        ;; check for duplicates
-        _ (when (some #(< 1 %) (vals (frequencies normalized-header)))
-            (throw (ex-info (tru "The CSV file contains duplicate column names.")
-                            {:status-code 422})))
+        ;; TODO: use this to create nice error messages when there are extra or missing columns
+        normalized-header+header (->> header
+                                      (map (fn [col]
+                                             [(normalize-column-name col) col]))
+                                      remove-auto-pk-cols)
+        normalized-header (map first normalized-header+header)
         [extra missing _both] (data/diff (set normalized-header)
                                          ;; ignore the auto-pk field, it will be filled automatically
                                          (disj (set normalized-field-names) auto-pk-column-name))]
+    ;; check for duplicates
+    (when (some #(< 1 %) (vals (frequencies normalized-header)))
+      (throw (ex-info (tru "The CSV file contains duplicate column names.")
+                      {:status-code 422})))
     (if (and (empty? extra) (empty? missing))
       {:parse-rows (fn [rows]
                      (let [rows' (cond->> rows
