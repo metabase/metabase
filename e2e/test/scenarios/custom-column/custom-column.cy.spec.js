@@ -577,9 +577,9 @@ describe("scenarios > question > custom column", () => {
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates...").click();
-      enterDateFilter("12/10/2024", 0);
-      enterDateFilter("01/05/2025", 1);
+      cy.findByText("Specific dates…").click();
+      cy.findByLabelText("Start date").clear().type("12/10/2024");
+      cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
     });
 
@@ -692,12 +692,3 @@ describe("scenarios > question > custom column", () => {
     });
   });
 });
-
-const enterDateFilter = (value, index = 0) => {
-  cy.findAllByTestId("specific-date-picker")
-    .eq(index)
-    .findByRole("textbox")
-    .clear()
-    .type(value)
-    .blur();
-};

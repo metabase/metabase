@@ -33,14 +33,14 @@ describe("issue 25927", () => {
     cy.findAllByTestId("header-cell").contains("Created At: Month").click();
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Last 30 Days").click();
+      cy.findByText("Last 30 days").click();
     });
 
     cy.wait("@dataset");
 
     // Click on the filter again to try updating it
     cy.findByTestId("qb-filters-panel")
-      .contains("Created At is in the previous 30 days")
+      .contains("Created At: Month is in the previous 30 days")
       .click();
 
     popover().button("Update filter").should("not.be.disabled");
