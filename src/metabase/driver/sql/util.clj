@@ -5,21 +5,20 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [schema.core :as s])
   (:import
    (com.github.vertical_blank.sqlformatter SqlFormatter SqlFormatter$Formatter)
    (com.github.vertical_blank.sqlformatter.core DialectConfig)
-   (com.github.vertical_blank.sqlformatter.languages Dialect)
-   (metabase.util.honey_sql_1 Identifier)))
+   (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
 
-(s/defn quote-name
-  "Quote unqualified string or keyword identifier(s) by passing them to `hx/identifier`, then calling HoneySQL `format`
+(mu/defn quote-name
+  "Quote unqualified string or keyword identifier(s) by passing them to `h2x/identifier`, then calling HoneySQL `format`
   on the resulting `Identifier`. Uses the `sql.qp/quote-style` of the current driver. You can implement `->honeysql`
   for `Identifier` if you need custom behavior here.
 
@@ -28,17 +27,18 @@
 
   You should only use this function for places where you are not using HoneySQL, such as queries written directly in
   SQL. For HoneySQL forms, `Identifier` is converted to SQL automatically when it is compiled."
-  [driver :- s/Keyword identifier-type :- hx/IdentifierType & components]
+  [driver          :- :keyword
+   identifier-type :- h2x/IdentifierType
+   & components]
   (first
-   (sql.qp/with-driver-honey-sql-version driver
-     (sql.qp/format-honeysql driver (apply hx/identifier identifier-type components)))))
+   (sql.qp/format-honeysql driver (apply h2x/identifier identifier-type components))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Deduplicate Field Aliases                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private increment-identifier-string :- s/Str
-  [last-component :- s/Str]
+(mu/defn ^:private increment-identifier-string :- :string
+  [last-component :- :string]
   (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" last-component)]
     ;; if last-component already has an alias like col_2 then increment it to col_3
     (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
@@ -76,7 +76,7 @@
       ;;
       ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
       (instance? Identifier col)
-      [col (hx/identifier :field-alias (last (:components col)))]
+      [col (h2x/identifier :field-alias (last (:components col)))]
 
       :else
       (do

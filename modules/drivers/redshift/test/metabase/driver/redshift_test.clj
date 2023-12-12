@@ -30,8 +30,6 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -42,12 +40,6 @@
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
-
-(use-fixtures :each (fn [thunk]
-                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
-                      ;; tests.
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (deftest ^:parallel correct-driver-test
   (mt/test-driver :redshift

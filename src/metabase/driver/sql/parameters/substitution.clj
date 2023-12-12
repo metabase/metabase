@@ -71,7 +71,7 @@
 
 (s/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
   [driver num]
-  (honeysql->prepared-stmt-subs driver (sql.qp/with-driver-honey-sql-version driver (sql.qp/inline-num num))))
+  (honeysql->prepared-stmt-subs driver (sql.qp/inline-num num)))
 
 (s/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
   [driver b]
@@ -259,11 +259,10 @@
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type]
-  (sql.qp/with-driver-honey-sql-version driver
-    (->> (field->clause driver field param-type)
-         (sql.qp/->honeysql driver)
-         (honeysql->replacement-snippet-info driver)
-         :replacement-snippet)))
+  (->> (field->clause driver field param-type)
+       (sql.qp/->honeysql driver)
+       (honeysql->replacement-snippet-info driver)
+       :replacement-snippet))
 
 (s/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
@@ -273,8 +272,7 @@
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type) " ")))
           (->honeysql [form]
-            (sql.qp/with-driver-honey-sql-version driver
-              (sql.qp/->honeysql driver form)))]
+            (sql.qp/->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
       (->> (assoc params :target [:template-tag (field->clause driver field param-type)])

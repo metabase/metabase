@@ -30,8 +30,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
@@ -881,9 +880,7 @@
   implementation having set that explicitly via `hx/with-type-info`. Returns `nil` if it can't be determined."
   [d]
   (when (isa? driver/hierarchy driver/*driver* :sql)
-    (let [db-type (-> (sql.qp/current-datetime-honeysql-form d)
-                    hx/type-info
-                    hx/type-info->db-type)]
+    (let [db-type (h2x/database-type (sql.qp/current-datetime-honeysql-form d))]
       (when-not (str/blank? db-type)
         (sql-jdbc.sync/database-type->base-type d db-type)))))
 
@@ -907,12 +904,11 @@
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/with-driver-honey-sql-version driver/*driver*
-                            (sql.qp/compiled
-                             (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                                (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                                (* i interval-seconds)
-                                                                :second)))
+                          (sql.qp/compiled
+                           (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                              (* i interval-seconds)
+                                                              :second))
                           (u.date/add :second (* i interval-seconds)))
                  (assert <>))])
             (range -15 15))])))
@@ -1266,24 +1262,23 @@
                             #t "2022-03-31T00:00:00"
                             #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (sql.qp/with-driver-honey-sql-version driver/*driver*
-                (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
-                      june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
-                      checkins     (mt/with-metadata-provider (mt/id)
-                                     (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
-                      honeysql     {:select [[june-31 :june_31]]
-                                    :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
-                      honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
-                      [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
-                      query        (mt/native-query {:query sql, :params args})]
-                  (mt/with-native-query-testing-context query
-                    (is (re= (u.regex/rx #"^2022-"
+              (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                    june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                    checkins     (mt/with-metadata-provider (mt/id)
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
+                    honeysql     {:select [[june-31 :june_31]]
+                                  :from   [[checkins]]}
+                    honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                    [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                    query        (mt/native-query {:query sql, :params args})]
+                (mt/with-native-query-testing-context query
+                  (is (re= (u.regex/rx #"^2022-"
                                        ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
                                        ;; guess you could make a case for either June 30th or July 1st. I don't really know
                                        ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
                                        ;; main thing here is that it's not barfing.
-                                         [:or [:and "06-" [:or "29" "30"]] "07-01"]
+                                       [:or [:and "06-" [:or "29" "30"]] "07-01"]
                                        ;; We also don't really care if this is returned as a date or a timestamp with or
                                        ;; without time zone.
-                                         [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
-                             (first (mt/first-row (qp/process-query query)))))))))))))))
+                                       [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
+                           (first (mt/first-row (qp/process-query query))))))))))))))

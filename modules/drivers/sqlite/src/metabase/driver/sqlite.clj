@@ -26,10 +26,6 @@
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
-(defmethod sql.qp/honey-sql-version :sqlite
-  [_driver]
-  2)
-
 ;; SQLite does not support a lot of features, so do not show the options in the interface
 (doseq [[feature supported?] {:right-join                             false
                               :full-join                              false
@@ -40,8 +36,9 @@
                               :schemas                                false
                               :datetime-diff                          true
                               :now                                    true
-                              ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
-                              ;; we have this 'feature' so the frontend doesn't try to present the option to you.
+                              ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made
+                              ;; case-sensitive. So let people know we have this 'feature' so the frontend doesn't try
+                              ;; to present the option to you.
                               :case-sensitivity-string-filter-options false}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 

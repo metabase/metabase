@@ -36,8 +36,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
@@ -51,8 +49,7 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false
-                                hx/*honey-sql-version*                   2]
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
 (deftest ^:parallel interval-test

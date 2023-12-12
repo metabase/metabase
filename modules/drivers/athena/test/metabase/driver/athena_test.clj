@@ -1,7 +1,6 @@
 (ns metabase.driver.athena-test
   (:require
    [clojure.test :refer :all]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [honeysql.format :as hformat]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
@@ -9,9 +8,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.test :as mt]))
 
 (def ^:private nested-schema
   [{:col_name "key", :data_type "int"}
@@ -74,8 +71,8 @@
     (testing "We should return TIME and TIMESTAMP WITH TIME ZONE columns correctly"
       ;; these both come back as `java.sql.type/VARCHAR` for some wacko reason from the JDBC driver, so let's make sure
       ;; we have code in place to work around that.
-      (let [timestamp-tz (hx/raw "timestamp '2022-11-16 04:21:00 US/Pacific'")
-            time         (hx/raw "time '5:03:00'")
+      (let [timestamp-tz [:raw "timestamp '2022-11-16 04:21:00 US/Pacific'"]
+            time         [:raw "time '5:03:00'"]
             [sql & args] (hformat/format {:select [[timestamp-tz :timestamp-tz]
                                                    [time :time]]})
             query        (-> (mt/native-query {:query sql, :params args})

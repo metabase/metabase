@@ -18,18 +18,10 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each (fn [thunk]
-                      ;; Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these tests.
-                      #_{:clj-kondo/ignore [:unresolved-var]}
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"

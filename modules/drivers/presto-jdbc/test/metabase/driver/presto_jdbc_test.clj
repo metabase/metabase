@@ -18,8 +18,6 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -93,7 +91,7 @@
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
                                  [:default.categories.id "id"]
-                                 [(hx/raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)")
+                                 [[:raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)"]
                                   :__rownum__]]
                       :from     [:default.categories]
                       :order-by [[:default.categories.id :asc]]}]
@@ -133,7 +131,7 @@
                                     :target ["variable" ["template-tag" "date"]]
                                     :value  "2014-08-02"}]}))))))))
 
-(deftest splice-strings-test
+(deftest ^:parallel splice-strings-test
   (mt/test-driver :presto-jdbc
     (let [query (mt/mbql-query venues
                   {:aggregation [[:count]]
@@ -145,7 +143,7 @@
                (:query (qp/compile-and-splice-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
-(deftest connection-tests
+(deftest ^:parallel connection-tests
   (testing "db-name is correct in all cases"
     (doseq [[c s expected] [[nil nil ""]
                             ["" "" ""]
@@ -163,14 +161,14 @@
                                      :schema nil
                                      :additional-options "Option1=Value1&Option2=Value2"})))))
 
-(deftest honeysql-tests
+(deftest ^:parallel honeysql-tests
   (mt/test-driver :presto-jdbc
     (mt/with-metadata-provider (mt/id)
       (testing "Complex HoneySQL conversions work as expected"
         (testing "unix-timestamp with microsecond precision"
           (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"
                        " from_unixtime(((1623963256123456 / 1000) / 1000), 'UTC'))")]
-                 (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hx/raw 1623963256123456))
+                 (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds [:raw 1623963256123456])
                      (hformat/format)))))))))
 
 (defn- clone-db-details
