@@ -16,6 +16,10 @@ interface NestedItemPickerProps<FolderType, ItemType> {
   initialState?: PickerState<FolderType | ItemType>;
 }
 
+function isSelectedItem(item: any, selectedItem: any) {
+  return item.id === selectedItem?.id && item.model === selectedItem?.model;
+}
+
 export function NestedItemPicker({
   onFolderSelect,
   onItemSelect,
@@ -55,7 +59,7 @@ export function NestedItemPicker({
             // key={levelIndex} // FIXME: bad
             items={level?.items}
             onClick={item => handleClick(item, levelIndex)}
-            selectedId={level?.selectedItem?.id}
+            selectedItem={level?.selectedItem}
             folderModel={folderModel}
           />
         ))}
@@ -67,12 +71,12 @@ export function NestedItemPicker({
 function ItemList({
   items,
   onClick,
-  selectedId,
+  selectedItem,
   folderModel,
 }: {
   items: any[];
   onClick: (item: any) => void;
-  selectedId: number;
+  selectedItem: any;
   folderModel: string;
 }) {
   if (!items) {
@@ -89,24 +93,27 @@ function ItemList({
 
   return (
     <ScrollArea miw={310} type="auto">
-      <PickerColumn activeList={!selectedId}>
+      <PickerColumn activeList={!selectedItem}>
         {items.map(item => {
           const isFolder = folderModel.includes(item.model);
-          const isSelected = isFolder && item.id === selectedId;
+          const isSelected = isSelectedItem(item, selectedItem);
           return (
             <div key={item.model + item.id}>
               <NavLink
+                key={item.model + item.id}
                 label={item.name}
                 active={isSelected}
                 icon={
                   <Icon name={isFolder ? "folder" : item.model || "table"} />
                 }
+                rightSection={isFolder ? undefined : null}
                 onClick={e => {
                   e.preventDefault(); // prevent form submission
                   e.stopPropagation(); // prevent parent onClick
                   onClick(item);
                 }}
                 variant="light"
+                mb="xs"
               />
             </div>
           );
