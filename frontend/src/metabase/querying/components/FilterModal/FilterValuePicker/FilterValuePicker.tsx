@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Checkbox, MultiSelect } from "metabase/ui";
+import { Checkbox, MultiSelect, SimpleGrid } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import type { FieldValue } from "metabase-types/api";
 import { MAX_INLINE_OPTIONS } from "./constants";
@@ -54,13 +54,15 @@ function CheckboxValuePicker({
 
   return (
     <Checkbox.Group value={value} onChange={onChange}>
-      {options.map(option => (
-        <Checkbox
-          key={option.value}
-          value={option.value}
-          label={option.label}
-        />
-      ))}
+      <SimpleGrid cols={2}>
+        {options.map(option => (
+          <Checkbox
+            key={option.value}
+            value={option.value}
+            label={option.label}
+          />
+        ))}
+      </SimpleGrid>
     </Checkbox.Group>
   );
 }
