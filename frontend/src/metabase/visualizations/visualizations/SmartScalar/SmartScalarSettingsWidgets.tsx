@@ -58,11 +58,12 @@ export function SmartScalarComparisonWidget({
 
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
-          {options.map(({ type, name, MenuItemComponent, ...rest }) => {
-            const givenValue =
-              selectedValue.type === type ? selectedValue : null;
+          {options.map(comparisonMenuOption => {
+            const { type, name } = comparisonMenuOption;
 
-            if (MenuItemComponent) {
+            if (type === COMPARISON_TYPES.PERIODS_AGO) {
+              const { MenuItemComponent, maxValue } = comparisonMenuOption;
+
               return (
                 <MenuItemComponent
                   key={type}
@@ -70,9 +71,11 @@ export function SmartScalarComparisonWidget({
                   type={type}
                   name={name}
                   onChange={onChange}
-                  givenValue={givenValue}
                   setOpen={setOpen}
-                  {...rest}
+                  maxValue={maxValue}
+                  selectedValue={
+                    selectedValue.type === type ? selectedValue : undefined
+                  }
                 />
               );
             }
@@ -98,10 +101,9 @@ export function SmartScalarComparisonWidget({
 interface PeriodsAgoInputWidget {
   isSelected: boolean;
   maxValue: number;
-  minValue: number;
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
-  givenValue: SelectedComparisonPeriodsAgo | undefined;
+  selectedValue?: SelectedComparisonPeriodsAgo;
   setOpen: (value: boolean) => void;
   type: string;
 }
@@ -111,24 +113,21 @@ export function PeriodsAgoInputWidget({
   maxValue,
   name,
   onChange,
-  givenValue,
+  selectedValue,
   setOpen,
   type,
 }: PeriodsAgoInputWidget) {
   const value = useMemo(() => {
-    if (!givenValue) {
+    if (!selectedValue) {
       return null;
     }
 
-    if (
-      givenValue.type === COMPARISON_TYPES.PERIODS_AGO &&
-      Number.isInteger(givenValue.value)
-    ) {
-      return givenValue.value;
+    if (Number.isInteger(selectedValue.value)) {
+      return selectedValue.value;
     }
 
     return null;
-  }, [givenValue]);
+  }, [selectedValue]);
   const minValue = 2;
 
   const [inputValue, setInputValue] = useState(value ?? minValue);
