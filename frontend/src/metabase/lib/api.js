@@ -24,9 +24,9 @@ const DEFAULT_OPTIONS = {
   retryCount: MAX_RETRIES,
   // Creates an array with exponential backoff in millis
   // i.e. [1000, 2000, 4000, 8000...]
-  retryDelayIntervals: Array.from(new Array(MAX_RETRIES).keys())
-    .map(x => ONE_SECOND * Math.pow(2, x))
-    .reverse(),
+  retryDelayIntervals: new Array(MAX_RETRIES)
+    .fill(1)
+    .map((_, i) => ONE_SECOND * Math.pow(2, i)),
 };
 
 export class Api extends EventEmitter {
@@ -132,8 +132,8 @@ export class Api extends EventEmitter {
   }
 
   async _makeRequestWithRetries(method, url, headers, body, data, options) {
-    // Get a copy of the delay intervals that we can remove items from as we retry
-    const retryDelays = options.retryDelayIntervals.slice();
+    // Get a copy of the delay intervals that we can pop items from as we retry
+    const retryDelays = options.retryDelayIntervals.slice().reverse();
     let retryCount = 0;
     // maxAttempts is the first attempt followed by the number of retries
     const maxAttempts = options.retryCount + 1;
