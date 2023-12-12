@@ -4,6 +4,11 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.49.0
+
+- The multimethod `metabase.driver/add-column!` has been added. This method is used to add a column to a table.
+  Currently it only needs to be implemented if the database supports the `:uploads` feature.
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
