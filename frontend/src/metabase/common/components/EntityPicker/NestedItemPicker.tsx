@@ -1,12 +1,11 @@
 import { useState } from "react";
 
-import { ScrollArea } from "@mantine/core"; // TODO, get this into metabase-ui
-
-import { Flex, Text, Box, NavLink } from "metabase/ui";
+import { Flex, Text, Box, NavLink, ScrollArea } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 
 import type { PickerState } from "./types";
-import { PickerColumn } from "./EntityPicker.styled";
+import { PickerColumn, ListBox } from "./EntityPicker.styled";
+import { entityForObject } from "metabase/lib/schema";
 
 interface NestedItemPickerProps<FolderType, ItemType> {
   onFolderSelect: (folder?: FolderType) => Promise<any[]>;
@@ -39,7 +38,10 @@ export function NestedItemPicker({
     setStack([...restOfStack, { items: children, selectedItem: null }]);
   };
 
-  const handleItemSelect = (item: any) => {
+  const handleItemSelect = (item: any, levelIndex: number) => {
+    const restOfStack = stack.slice(0, levelIndex + 1);
+    restOfStack[restOfStack.length - 1].selectedItem = item;
+    setStack(restOfStack);
     onItemSelect(item);
   };
 
@@ -47,24 +49,36 @@ export function NestedItemPicker({
     if (folderModel.includes(item.model)) {
       handleFolderSelect(item, levelIndex);
     } else {
-      handleItemSelect(item);
+      handleItemSelect(item, levelIndex);
     }
   };
 
   return (
-    <ScrollArea type="hover">
-      <Flex>
+    <Box
+      style={{
+        height: "100%",
+        overflowX: "auto",
+      }}
+    >
+      <Flex
+        style={{
+          width: "fit-content",
+          height: "100%",
+        }}
+      >
         {stack.map((level, levelIndex) => (
-          <ItemList
-            // key={levelIndex} // FIXME: bad
-            items={level?.items}
-            onClick={item => handleClick(item, levelIndex)}
-            selectedItem={level?.selectedItem}
-            folderModel={folderModel}
-          />
+          <ListBox>
+            <ItemList
+              // key={levelIndex} // FIXME: bad
+              items={level?.items}
+              onClick={item => handleClick(item, levelIndex)}
+              selectedItem={level?.selectedItem}
+              folderModel={folderModel}
+            />
+          </ListBox>
         ))}
       </Flex>
-    </ScrollArea>
+    </Box>
   );
 }
 
@@ -86,27 +100,28 @@ function ItemList({
   if (!items.length) {
     return (
       <Box miw={310}>
-        <Text align="center" p="lg">No items</Text>
+        <Text align="center" p="lg">
+          No items
+        </Text>
       </Box>
     );
   }
 
   return (
-    <ScrollArea miw={310} type="auto">
-      <PickerColumn activeList={!selectedItem}>
+    <ScrollArea h="100%">
+      <PickerColumn>
         {items.map(item => {
           const isFolder = folderModel.includes(item.model);
           const isSelected = isSelectedItem(item, selectedItem);
           return (
             <div key={item.model + item.id}>
               <NavLink
-                key={item.model + item.id}
+                rightSection={
+                  isFolder ? <Icon name="chevronright" size={10} /> : null
+                }
                 label={item.name}
                 active={isSelected}
-                icon={
-                  <Icon name={isFolder ? "folder" : item.model || "table"} />
-                }
-                rightSection={isFolder ? undefined : null}
+                icon={<Icon name={isFolder ? "folder" : getIcon(item)} />}
                 onClick={e => {
                   e.preventDefault(); // prevent form submission
                   e.stopPropagation(); // prevent parent onClick
@@ -122,3 +137,8 @@ function ItemList({
     </ScrollArea>
   );
 }
+
+const getIcon = item => {
+  const entity = entityForObject(item);
+  return entity?.objectSelectors?.getIcon?.(item)?.name || "table";
+};

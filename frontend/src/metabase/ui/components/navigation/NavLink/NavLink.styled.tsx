@@ -1,13 +1,8 @@
 import { rem } from "@mantine/core";
 import type { MantineThemeOverride } from "@mantine/core";
 
-import { Icon } from "metabase/core/components/Icon";
-
 export const getNavLinkOverrides = (): MantineThemeOverride["components"] => ({
   NavLink: {
-    defaultProps: {
-      rightSection: <Icon name="chevronright" size={rem(10)} />,
-    },
     styles: theme => {
       return {
         root: {
