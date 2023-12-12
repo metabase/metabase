@@ -36,7 +36,7 @@ jobs:
       uses: actions/github-script@v6
       id: canonical_version
       with:
-        script: |
+        script: | # js
           const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
@@ -83,13 +83,13 @@ jobs:
       uses: actions/github-script@v6
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const fs = require('fs');
 
           const artifacts = await github.rest.actions.listArtifactsForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            name: `metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
+            name: `metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
             per_page: 1,
           });
 
@@ -182,7 +182,7 @@ jobs:
       id: latest_path
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const { isLatestRelease, getCanonicalVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
@@ -197,7 +197,9 @@ jobs:
             version: canonical_version,
           });
 
-          if (isLatest) {
+          console.log("Latest version?", isLatest);
+
+          if (isLatest === "true") {
             return edition === 'ee' ? 'enterprise/latest' : 'latest';
           }
           return "false";
@@ -205,7 +207,7 @@ jobs:
     - name: Upload to S3
       run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
     - name: Upload to s3 latest path
-      if: ${{ steps.is_latest.outputs.result != 'false' }}
+      if: ${{ steps.latest_path.outputs.result != 'false' }}
       run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.latest_path.outputs.result }}/metabase.jar
     - name: Create cloudfront invalidation
       run: |

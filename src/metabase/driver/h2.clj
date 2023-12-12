@@ -17,7 +17,6 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
-   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -79,7 +78,8 @@
                               :datetime-diff             true
                               :now                       true
                               :test/jvm-timezone-setting false
-                              :uploads                   true}]
+                              :uploads                   true
+                              :index-info                true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -573,15 +573,15 @@
 (defmethod driver/upload-type->database-type :h2
   [_driver upload-type]
   (case upload-type
-    ::upload/varchar-255              [:varchar]
-    ::upload/text                     [:varchar]
-    ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity :primary-key]
-    ::upload/float                    [(keyword "DOUBLE PRECISION")]
-    ::upload/boolean                  [:boolean]
-    ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
-    ::upload/offset-datetime          [:timestamp-with-time-zone]))
+    :metabase.upload/varchar-255              [:varchar]
+    :metabase.upload/text                     [:varchar]
+    :metabase.upload/int                      [:bigint]
+    :metabase.upload/auto-incrementing-int-pk [:bigint :generated-always :as :identity :primary-key]
+    :metabase.upload/float                    [(keyword "DOUBLE PRECISION")]
+    :metabase.upload/boolean                  [:boolean]
+    :metabase.upload/date                     [:date]
+    :metabase.upload/datetime                 [:timestamp]
+    :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
 
 (defmethod driver/table-name-length-limit :h2
   [_driver]

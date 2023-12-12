@@ -51,7 +51,7 @@ describe("issue 10803", () => {
 
       // Excel and CSV will have different formats
       if (fileType === "csv") {
-        expect(sheet["A2"].v).to.eq("2026-06-03");
+        expect(sheet["A2"].v).to.eq("2026-06-03T00:00:00");
         expect(sheet["B2"].v).to.eq("2026-06-03T23:41:23");
       } else if (fileType === "xlsx") {
         // We tell the xlsx library to read raw and not parse dates
