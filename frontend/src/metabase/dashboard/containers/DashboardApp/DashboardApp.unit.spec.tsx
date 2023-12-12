@@ -34,6 +34,21 @@ import {
 import { createMockEntitiesState } from "__support__/store";
 import { callMockEvent } from "__support__/events";
 
+const TEST_COLLECTION = createMockCollection();
+
+const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
+  settings: { "database-enable-actions": true },
+});
+
+const TEST_COLLECTION_ITEM = createMockCollectionItem({
+  collection: TEST_COLLECTION,
+  model: "dataset",
+});
+
+const TEST_CARD = createMockCard();
+
+const TEST_TABLE = createMockTable();
+
 const TestHome = () => <div />;
 
 interface Options {
@@ -41,33 +56,22 @@ interface Options {
 }
 
 async function setup({ dashboard }: Options = {}) {
-  const testCollection = createMockCollection();
-
-  const testDatabaseWithActions = createMockDatabase({
-    settings: { "database-enable-actions": true },
-  });
-
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
   const channelData = { channels: {} };
   fetchMock.get("path:/api/pulse/form_input", channelData);
 
-  setupDatabasesEndpoints([testDatabaseWithActions]);
+  setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
-    collection: testCollection,
+    collection: TEST_COLLECTION,
     collectionItems: [],
   });
-  setupSearchEndpoints([
-    createMockCollectionItem({
-      collection: testCollection,
-      model: "dataset",
-    }),
-  ]);
-  setupCardsEndpoints([createMockCard()]);
-  setupTableEndpoints(createMockTable());
+  setupSearchEndpoints([TEST_COLLECTION_ITEM]);
+  setupCardsEndpoints([TEST_CARD]);
+  setupTableEndpoints(TEST_TABLE);
 
   setupBookmarksEndpoints([]);
   setupActionsEndpoints([]);
@@ -95,7 +99,7 @@ async function setup({ dashboard }: Options = {}) {
       storeInitialState: {
         dashboard: createMockDashboardState(),
         entities: createMockEntitiesState({
-          databases: [testDatabaseWithActions],
+          databases: [TEST_DATABASE_WITH_ACTIONS],
         }),
       },
     },
@@ -111,9 +115,15 @@ async function setup({ dashboard }: Options = {}) {
 }
 
 describe("DashboardApp", function () {
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   describe("beforeunload events", () => {
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
     it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
       const { mockEventListener } = await setup();
 

@@ -177,7 +177,13 @@
           agg-expr (-> query lib/aggregations first)
           legacy-agg-expr #js ["count"]
           legacy-agg-expr' (lib.js/legacy-expression-for-expression-clause query -1 agg-expr)]
-      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr'))))))
+      (is (= (js->clj legacy-agg-expr) (js->clj legacy-agg-expr')))))
+  (testing "simple values can be converted properly (#36459)"
+    (let [query lib.tu/venues-query
+          legacy-expr 0
+          expr (lib.js/expression-clause-for-legacy-expression query 0 legacy-expr)
+          legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)]
+      (is (= legacy-expr expr legacy-expr')))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"

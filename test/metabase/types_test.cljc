@@ -4,6 +4,16 @@
    [metabase.types :as types]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]))
 
+(deftest ^:parallel assignable?-test
+  (testing "assignability of numbers"
+    (is (isa? :type/BigInteger :type/Integer))
+    (is (types/assignable? :type/BigInteger :type/Integer))
+    (is (types/assignable? :type/Integer :type/Decimal))
+    (is (types/assignable? :type/BigInteger :type/Decimal)))
+  (testing "assignability of texts"
+    (is (isa? :type/Name :type/Text))
+    (is (types/assignable? :type/Name :type/Text))))
+
 (deftest ^:parallel most-specific-common-ancestor-test
   (are [x y expected] (= expected
                          (types/most-specific-common-ancestor x        y)
@@ -14,10 +24,10 @@
                          (types/most-specific-common-ancestor expected y))
     :type/Integer            :type/Integer                :type/Integer
     :type/Integer            :type/BigInteger             :type/Integer
-    :type/Integer            :type/Float                  :type/Number
-    :type/BigInteger         :type/Float                  :type/Number
-    :type/Integer            :type/Decimal                :type/Number
-    :type/BigInteger         :type/Decimal                :type/Number
+    :type/Integer            :type/Float                  :type/Float
+    :type/BigInteger         :type/Float                  :type/Float
+    :type/Integer            :type/Decimal                :type/Decimal
+    :type/BigInteger         :type/Decimal                :type/Decimal
     :type/Integer            :type/Text                   :type/*
     :type/DateTimeWithZoneID :type/DateTimeWithZoneOffset :type/DateTimeWithTZ
     :type/DateTimeWithZoneID :type/TimeWithZoneOffset     :type/Temporal

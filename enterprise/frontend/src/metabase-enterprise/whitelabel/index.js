@@ -15,6 +15,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { Anchor } from "metabase/ui";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
@@ -24,6 +25,7 @@ import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
 import { updateColors } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
+import { HelpLinkSettings } from "./components/HelpLinkSettings";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -74,6 +76,19 @@ if (hasPremiumFeature("whitelabel")) {
           type: "select",
           options: getLoadingMessageOptions(),
           defaultValue: "doing-science",
+        },
+        {
+          key: "help-link",
+          display_name: t`Help Link in the Settings menu`,
+          description: (
+            <p>
+              {t`The Settings menu includes a Help link that goes to `}
+              <Anchor href="https://www.metabase.com/help">{t`this page`}</Anchor>
+              {t` by default.`}
+            </p>
+          ),
+          widget: HelpLinkSettings,
+          defaultValue: "metabase",
         },
         {
           key: "show-metabot",

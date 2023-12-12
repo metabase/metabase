@@ -38,6 +38,20 @@
   (api/check-superuser)
   (perms/data-perms-graph))
 
+(api/defendpoint GET "/graph/db/:db-id"
+  "Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions)."
+  [db-id]
+  {db-id ms/PositiveInt}
+  (api/check-superuser)
+  (perms/data-graph-for-db db-id))
+
+(api/defendpoint GET "/graph/group/:group-id"
+  "Fetch a graph of all v1 Permissions for group-id `group-id` (excludes v2 query and data permissions)."
+  [group-id]
+  {group-id ms/PositiveInt}
+  (api/check-superuser)
+  (perms/data-graph-for-group group-id))
+
 (api/defendpoint GET "/graph-v2"
   "Fetch a graph of all v2 Permissions (excludes v1 data permissions)."
   []
