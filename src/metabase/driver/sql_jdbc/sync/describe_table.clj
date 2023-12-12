@@ -301,7 +301,8 @@
                          ;; we only sync columns that are either singlely indexed or is the first key in a composite index
                          (first (map :column_name (sort-by :ordinal_position idx-values)))))
           vals
-          set)))))
+          set
+          (disj nil))))))
 
 (def ^:dynamic *nested-field-column-max-row-length*
   "Max string length for a row for nested field column before we just give up on parsing it.
