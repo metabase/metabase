@@ -12,7 +12,7 @@ interface ColumnItemRootProps extends BoxProps {
   component?: string;
 }
 
-export const ColumnItemRoot = styled(Box)<ColumnItemRootProps>`
+export const TabPanelItem = styled(Box)<ColumnItemRootProps>`
   border-bottom: 1px solid ${color("border")};
 
   &:last-of-type {
