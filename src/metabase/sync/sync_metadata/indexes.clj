@@ -42,7 +42,7 @@
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
             indexed-field-ids          (indexes->field-id (:id table) indexes)
-            existing-indexed-field-ids (t2/select-pks-vec :model/Field :table_id (:id table) :database_indexed true)
+            existing-indexed-field-ids (t2/select-pks-set :model/Field :table_id (:id table) :database_indexed true)
             [removing adding]          (data/diff indexed-field-ids existing-indexed-field-ids)]
         (doseq [field-id removing]
           (log/infof "Unmarking Field %d as indexed" field-id))
