@@ -24,9 +24,9 @@ const DEFAULT_OPTIONS = {
   retryCount: MAX_RETRIES,
   // Creates an array with exponential backoff in millis
   // i.e. [1000, 2000, 4000, 8000...]
-  retryDelayIntervals: Array.from(new Array(MAX_RETRIES).keys()).map(
-    x => ONE_SECOND * Math.pow(2, x),
-  ),
+  retryDelayIntervals: new Array(MAX_RETRIES)
+    .fill(1)
+    .map((_, i) => ONE_SECOND * Math.pow(2, i)),
 };
 
 export class Api extends EventEmitter {
