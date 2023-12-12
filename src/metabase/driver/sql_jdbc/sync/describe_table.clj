@@ -467,9 +467,9 @@
   If the table has PKs, try to fetch both first and last rows (see #25744).
   Else fetch the first n rows only."
   [table-identifier json-field-identifiers pk-identifiers]
-  (let [pks-expr         (mapv vec pk-identifiers)
+  (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
-        json-field-exprs (mapv vec json-field-identifiers)]
+        json-field-exprs (mapv vector json-field-identifiers)]
     (if (seq pk-identifiers)
       {:select json-field-exprs
        :from   [table-expr]

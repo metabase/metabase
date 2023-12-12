@@ -1264,7 +1264,7 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
-(deftest set-role-statement-test
+(deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
     (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))
