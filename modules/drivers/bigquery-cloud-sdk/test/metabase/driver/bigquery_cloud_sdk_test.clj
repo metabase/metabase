@@ -371,6 +371,30 @@
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
           (is (true? @fake-execute-called)))))))
 
+(deftest not-retry-cancellation-exception-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [fake-execute-called (atom false)
+          orig-fn        @#'bigquery/execute-bigquery]
+      (testing "Should not retry query on cancellation"
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+                                                  ;; We dont want to retry the db setup queries, so only retry if the query contains "cancel_test"
+                                                  (if (and (re-find #"cancel_test" sql) (not @fake-execute-called))
+                                                    (do (reset! fake-execute-called true)
+                                                        ;; Simulate a CancellationException being thrown
+                                                        (throw (java.util.concurrent.CancellationException. "Query cancelled")))
+                                                    (orig-fn client sql parameters nil nil)))]
+          (try
+            (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS cancel_test"} :database (mt/id)
+                               :type     :native})
+            ;; If no exception is thrown, then the test should fail
+            (is false "Query should have failed")
+            (catch clojure.lang.ExceptionInfo e
+              ;; Verify exception as expected
+              (is (= "Query cancelled" (.getMessage e)))
+              ;; make sure that the fake exception was thrown
+              (is (true? @fake-execute-called))))))))
+)
+
 (deftest query-cancel-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "BigQuery queries can be canceled successfully"
