@@ -202,11 +202,13 @@ function PreviousValueComparison({
   ];
   const detailCandidates = valueCandidates.map(valueStr => {
     if (isEmpty(valueStr)) {
-      return jt`${comparisonDescStr}`;
+      return comparisonDescStr;
     }
 
     if (isEmpty(comparisonDescStr)) {
-      return jt`${(<PreviousValueNumber>{valueStr}</PreviousValueNumber>)}`;
+      return (
+        <PreviousValueNumber key={valueStr}>{valueStr}</PreviousValueNumber>
+      );
     }
 
     return jt`${comparisonDescStr}: ${(
