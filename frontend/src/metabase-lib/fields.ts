@@ -70,5 +70,11 @@ export function findVisibleColumnForLegacyRef(
 export function legacyFieldRef(
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
 ): FieldReference {
-  return ML.legacy_field_ref(column);
+  const fieldRef = ML.legacy_field_ref(column);
+
+  if (fieldRef[0] === "segment" || fieldRef[0] === "metric") {
+    return fieldRef.slice(0, 2);
+  }
+
+  return fieldRef;
 }
