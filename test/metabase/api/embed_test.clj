@@ -693,7 +693,7 @@
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (mt/mbql-query venues)}}]
           (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
-           ;; the query execution is saved async, so we need to sleep a bit
+          ;; the query execution is saved async, so we need to sleep a bit
           (Thread/sleep 200)
           (is (t2/exists? :model/QueryExecution :context "embedded-csv-download"))
           (client/client :get 200 (str (dashcard-url dashcard) "/json"))
