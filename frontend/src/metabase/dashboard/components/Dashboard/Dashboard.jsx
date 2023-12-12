@@ -8,7 +8,6 @@ import SyncedParametersList from "metabase/parameters/components/SyncedParameter
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { DashboardControls } from "metabase/dashboard/hoc/DashboardControls";
-import { getDashcardsDirtyMap } from "metabase/dashboard/actions/utils";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -77,8 +76,8 @@ class DashboardInner extends Component {
     // so we use this heuristic to avoid additional state. The fetching logic
     // should be moved outside.
     const isDirtyChanged = !_.isEqual(
-      getDashcardsDirtyMap(prevProps.dashboard?.dashcards ?? []),
-      getDashcardsDirtyMap(this.props.dashboard?.dashcards ?? []),
+      this._getDashcardsIsDirty(prevProps.dashboard?.dashcards),
+      this._getDashcardsIsDirty(this.props.dashboard?.dashcards),
     );
     const isDashboardLoaded = !prevProps.dashboard && this.props.dashboard;
 
@@ -89,6 +88,13 @@ class DashboardInner extends Component {
     ) {
       this.props.fetchDashboardCardData({ reload: false, clearCache: true });
     }
+  }
+
+  _getDashcardsIsDirty(dashcards = []) {
+    return dashcards.reduce((acc, dashcard) => {
+      acc[dashcard.id] = dashcard.isDirty ?? false;
+      return acc;
+    }, {});
   }
 
   componentWillUnmount() {
