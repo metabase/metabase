@@ -274,6 +274,35 @@
      (fn [^Connection conn]
        (describe-table-fks* driver conn table db-name-or-nil)))))
 
+(defn describe-table-indexes
+  "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver db table]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^Connection conn]
+     ;; https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getIndexInfo-java.lang.String-java.lang.String-java.lang.String-boolean-boolean-
+     (with-open [index-info-rs (.getIndexInfo (.getMetaData conn)
+                                              nil ;; catalog
+                                              (:schema table)
+                                              (:name table)
+                                              ;; when true, return only indices for unique values when
+                                              ;; false, return indices regardless of whether unique or not
+                                              false
+                                              ;; when true, result is allowed to reflect approximate or out of data
+                                              ;; values. when false, results are requested to be accurate
+                                              false)]
+      (-> (group-by :index_name (into []
+                                      ;; filtered indexes are ignored
+                                      (filter #(nil? (:filter_condition %)))
+                                      (jdbc/reducible-result-set index-info-rs {})))
+          (update-vals (fn [idx-values]
+                         ;; we only sync columns that are either singlely indexed or is the first key in a composite index
+                         (first (map :column_name (sort-by :ordinal_position idx-values)))))
+          vals
+          set)))))
+
 (def ^:dynamic *nested-field-column-max-row-length*
   "Max string length for a row for nested field column before we just give up on parsing it.
   Marked as mutable because we mutate it for tests."

@@ -1,4 +1,25 @@
 (ns metabase.lib.drill-thru.fk-filter
+  "Adds a simple `=` filter for the selected FK column. Enables option like `View this Product's Reviews`.
+
+  Entry points:
+
+  - Cell
+
+  Requirements:
+
+  - Selected column is `type/FK`
+
+  - Structured (MBQL) query
+
+  - Return `columnName` and `tableName` for the FK column. On the FE we strip `ID` suffix and turn `Product ID` into
+    `Product's` and pluralize the table name.
+
+  Query transformation:
+
+  - Add a `=` filter for the selected column and value. Make sure to append the query stage when needed.
+
+  Question transformation:
+  - None"
   (:require
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
@@ -25,12 +46,11 @@
   (when (and column
              (some? value)
              (not= value :null)         ; If the FK is null, don't show this option.
+             (lib.drill-thru.common/mbql-stage? query stage-number)
              (not (lib.types.isa/primary-key? column))
              (lib.types.isa/foreign-key? column))
     (let [source (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                     (some->> query lib.util/source-card-id (lib.metadata/card query))
-                     ;; native query
-                     (lib.util/query-stage query 0))]
+                     (some->> query lib.util/source-card-id (lib.metadata/card query)))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
        :filter   (lib.options/ensure-uuid [:= {} (lib.ref/ref column) value])
