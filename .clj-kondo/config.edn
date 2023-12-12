@@ -110,9 +110,7 @@
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
-   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}
-   ;; schema.core            {:message "Use Malli instead of Schema"}
-   }
+   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
   {:exclude
