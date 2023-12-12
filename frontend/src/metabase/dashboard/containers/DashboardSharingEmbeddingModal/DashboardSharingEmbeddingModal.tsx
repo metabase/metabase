@@ -26,7 +26,7 @@ export const DashboardSharingEmbeddingModal = (
 ) => {
   const { className, dashboard, isOpen, onClose, isLinkEnabled } = props;
 
-  const parameters = useSelector(state => getParameters(state));
+  const parameters = useSelector(getParameters);
 
   const dispatch = useDispatch();
 
