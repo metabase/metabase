@@ -58,6 +58,7 @@ describe.skip("issue 19745", () => {
     restore();
     cy.signInAsAdmin();
   });
+
   it("should unwrap the nested query when removing the last expression (metabase#19745)", () => {
     updateQuestionAndSelectFilter(() => removeExpression("Custom Column"));
   });
