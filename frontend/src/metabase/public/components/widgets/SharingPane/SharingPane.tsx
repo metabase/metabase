@@ -23,7 +23,7 @@ interface SharingPaneProps {
   resource: Resource;
   resourceType: string;
   onCreatePublicLink: () => void;
-  onDisablePublicLink: () => void;
+  onDeletePublicLink: () => void;
   extensions: ExportFormatType[];
   getPublicUrl: (resource: Resource, extension?: ExportFormatType) => void;
   onChangeEmbedType: (embedType: string) => void;
@@ -34,7 +34,7 @@ function SharingPane({
   resource,
   resourceType,
   onCreatePublicLink,
-  onDisablePublicLink,
+  onDeletePublicLink,
   getPublicUrl,
   onChangeEmbedType,
 }: SharingPaneProps) {
@@ -68,7 +68,7 @@ function SharingPane({
       "Public Link Disabled",
       resourceType,
     );
-    onDisablePublicLink();
+    onDeletePublicLink();
   };
 
   return (
