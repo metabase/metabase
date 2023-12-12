@@ -83,6 +83,11 @@ export const addCardToDashboard =
 export const replaceCard =
   ({ dashcardId, nextCardId }) =>
   async (dispatch, getState) => {
+    let dashcard = getDashCardById(getState(), dashcardId);
+    if (isVirtualDashCard(dashcard)) {
+      return;
+    }
+
     await dispatch(Questions.actions.fetch({ id: nextCardId }));
     const card = Questions.selectors
       .getObject(getState(), { entityId: nextCardId })
@@ -101,7 +106,7 @@ export const replaceCard =
       }),
     );
 
-    const dashcard = getDashCardById(getState(), dashcardId);
+    dashcard = getDashCardById(getState(), dashcardId);
 
     dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
     await dispatch(loadMetadataForDashboard([dashcard]));
