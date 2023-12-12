@@ -1078,16 +1078,6 @@
 ;;; |                                           append-csv!                                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn basic-db-definition
-  "This creates a table with an auto-incrementing integer ID column, and a name column."
-  []
-  (mt/dataset-definition
-   (mt/random-name)
-   ["table_one"
-    [;; 'id' is created automatically
-     {:field-name "name", :base-type :type/Text}]
-    [["Obi-Wan Kenobi"]]]))
-
 (defn create-upload-table!
   "Creates a table and syncs it in the current test database, as if it were uploaded as a CSV upload. `col->upload-type` should be an ordered map of column names (keywords) to upload types.
   `rows` should be a vector of vectors of values, one for each row.
@@ -1355,7 +1345,7 @@
     (with-uploads-allowed
       (testing "Append should fail if the CSV file contains duplicate column names"
         (doseq [csv-rows [["name,name" "Luke Skywalker,Darth Vader"]]]
-          (mt/dataset (basic-db-definition)
+          (mt/with-empty-db
             (let [table (create-upload-table!)
                   file  (csv-file-with csv-rows (mt/random-name))]
               (is (= {:message "The CSV file contains duplicate column names."
