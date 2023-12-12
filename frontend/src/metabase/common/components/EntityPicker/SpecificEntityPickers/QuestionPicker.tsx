@@ -9,7 +9,8 @@ import { NestedItemPicker } from "../NestedItemPicker";
 
 interface QuestionPickerProps {
   onItemSelect: (item: Question) => void;
-  initialCollectionId?: number
+  initialCollectionId?: number;
+  options?: any;
 }
 
 const collectionList = GET("/api/collection/:collection/items");

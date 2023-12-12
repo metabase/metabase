@@ -3,9 +3,9 @@ import { useRef, useState } from "react";
 import { Flex, Text, Box, NavLink, ScrollArea } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 
+import { entityForObject } from "metabase/lib/schema";
 import type { PickerState } from "./types";
 import { PickerColumn, ListBox } from "./EntityPicker.styled";
-import { entityForObject } from "metabase/lib/schema";
 
 interface NestedItemPickerProps<FolderType, ItemType> {
   onFolderSelect: (folder?: FolderType) => Promise<any[]>;

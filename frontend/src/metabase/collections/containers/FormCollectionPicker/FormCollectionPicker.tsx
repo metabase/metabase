@@ -9,15 +9,14 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import FormField from "metabase/core/components/FormField";
 import SelectButton from "metabase/core/components/SelectButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import Collections from "metabase/entities/collections";
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
-import Collections from "metabase/entities/collections";
+import { canonicalCollectionId , isValidCollectionId } from "metabase/collections/utils";
 import SnippetCollections from "metabase/entities/snippet-collections";
-
-import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
@@ -68,19 +67,10 @@ function FormCollectionPicker({
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
   const formFieldRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(MIN_POPOVER_WIDTH);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  useEffect(() => {
-    const { width: formFieldWidth } =
-      formFieldRef.current?.getBoundingClientRect() || {};
-    if (formFieldWidth) {
-      setWidth(formFieldWidth);
-    }
-  }, []);
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>("root");
 
-  const [openCollectionId, setOpenCollectionId] =
-    useState<CollectionId>("root");
   const openCollection = useSelector(state =>
     Collections.selectors.getObject(state, {
       entityId: openCollectionId,
@@ -96,33 +86,33 @@ function FormCollectionPicker({
   return (
     <>
       <FormField
-          className={className}
-          style={style}
-          title={title}
-          htmlFor={id}
-          error={touched ? error : undefined}
-          ref={formFieldRef}
-        >
-          <SelectButton onClick={() => setIsPickerOpen(true)}>
-            {isValidCollectionId(value) ? (
-              <ItemName id={value} type={type} />
-            ) : (
-              placeholder
-            )}
-          </SelectButton>
-        </FormField>
-        {isPickerOpen && (
-         <EntityPickerModal
+        className={className}
+        style={style}
+        title={title}
+        htmlFor={id}
+        error={touched ? error : undefined}
+        ref={formFieldRef}
+      >
+        <SelectButton onClick={() => setIsPickerOpen(true)}>
+          {isValidCollectionId(value) ? (
+            <ItemName id={value} type={type} />
+          ) : (
+            placeholder
+          )}
+        </SelectButton>
+      </FormField>
+      {isPickerOpen && (
+        <EntityPickerModal
           title={t`Select a collection`}
           tabs={["collection"]}
           value={{ id: value, model: 'collection' }}
           onChange={({ id }) => {
-            setValue(id);
+            setValue(canonicalCollectionId(id));
             setIsPickerOpen(false)
           }}
           onClose={() => setIsPickerOpen(false)}
         />
-        )}
+      )}
     </>
   );
 }
