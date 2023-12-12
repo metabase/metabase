@@ -6,7 +6,7 @@ title: Driver interface changelog
 
 ## Metabase 0.49.0
 
-- The multimethod `metabase.driver/add-column!` has been added. This method is used to add a column to a table.
+- The multimethod `metabase.driver/add-columns!` has been added. This method is used to add a column to a table.
   Currently it only needs to be implemented if the database supports the `:uploads` feature.
 
 ## Metabase 0.48.0
