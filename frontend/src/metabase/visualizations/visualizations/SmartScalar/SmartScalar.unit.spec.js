@@ -52,7 +52,7 @@ const series = (
 };
 
 describe("SmartScalar", () => {
-  describe("Current Metric Display", () => {
+  describe("current metric display", () => {
     it("should show metric value and date", () => {
       const rows = [
         ["2019-10-01T00:00:00", 100],
@@ -67,7 +67,7 @@ describe("SmartScalar", () => {
     });
   });
 
-  describe("Comparison Display", () => {
+  describe("comparison display", () => {
     it("should show increase", () => {
       const rows = [
         ["2019-10-01T00:00:00", 100],
@@ -245,67 +245,6 @@ describe("SmartScalar", () => {
     });
   });
 
-  describe("comparison: previousValue", () => {
-    it("should skip over rows with null values", () => {
-      const rows = [
-        ["2019-09-01T00:00:00", 100],
-        ["2019-10-01T00:00:00", null],
-        ["2019-11-01T00:00:00", 100],
-      ];
-      const insights = [{ unit: "month", col: "Count" }];
-
-      setup(
-        series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
-        400,
-      );
-
-      expect(screen.getByText("100")).toBeInTheDocument();
-      expect(screen.getByText("Nov 2019")).toBeInTheDocument();
-      expect(screen.getByText("No change")).toBeInTheDocument();
-      expect(screen.getByText("vs. Sep")).toBeInTheDocument();
-    });
-
-    it("should handle no previous value to compare to", () => {
-      const rows = [
-        ["2019-10-01T00:00:00", null],
-        ["2019-11-01T00:00:00", 100],
-      ];
-      const insights = [{ unit: "month", col: "Count" }];
-
-      setup(
-        series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
-        400,
-      );
-
-      expect(screen.getByText("100")).toBeInTheDocument();
-      expect(screen.getByText("Nov 2019")).toBeInTheDocument();
-      expect(screen.getByText("N/A")).toBeInTheDocument();
-      expect(screen.queryByText("vs. Oct:")).not.toBeInTheDocument();
-      expect(screen.getByText("(No data)")).toBeInTheDocument();
-    });
-  });
-
-  describe("comparison: periodsAgo", () => {
-    it("should display exact date", () => {
-      const rows = [
-        ["2019-09-01T00:00:00", 100],
-        ["2019-10-01T00:00:00", null],
-        ["2019-11-01T00:00:00", 100],
-      ];
-      const insights = [{ unit: "month", col: "Count" }];
-
-      setup(
-        series({ rows, insights, comparisonType: getPeriodsAgoComparison(2) }),
-        400,
-      );
-
-      expect(screen.getByText("100")).toBeInTheDocument();
-      expect(screen.getByText("Nov 2019")).toBeInTheDocument();
-      expect(screen.getByText("No change")).toBeInTheDocument();
-      expect(screen.getByText("vs. Sep")).toBeInTheDocument();
-    });
-  });
-
   describe("field selection", () => {
     const rows = [
       ["2019-10-01T00:00:00", 100, 200],
@@ -346,6 +285,73 @@ describe("SmartScalar", () => {
       expect(screen.getByText("10%")).toBeInTheDocument();
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
       expect(screen.getByText("200")).toBeInTheDocument();
+    });
+  });
+
+  describe("edge cases", () => {
+    describe("comparison: previousValue", () => {
+      it("should skip over rows with null values", () => {
+        const rows = [
+          ["2019-09-01T00:00:00", 100],
+          ["2019-10-01T00:00:00", null],
+          ["2019-11-01T00:00:00", 100],
+        ];
+        const insights = [{ unit: "month", col: "Count" }];
+
+        setup(
+          series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
+          400,
+        );
+
+        expect(screen.getByText("100")).toBeInTheDocument();
+        expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+        expect(screen.getByText("No change")).toBeInTheDocument();
+        expect(screen.getByText("vs. Sep")).toBeInTheDocument();
+      });
+
+      it("should handle no previous value to compare to", () => {
+        const rows = [
+          ["2019-10-01T00:00:00", null],
+          ["2019-11-01T00:00:00", 100],
+        ];
+        const insights = [{ unit: "month", col: "Count" }];
+
+        setup(
+          series({ rows, insights, comparisonType: PREVIOUS_VALUE_COMPARISON }),
+          400,
+        );
+
+        expect(screen.getByText("100")).toBeInTheDocument();
+        expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+        expect(screen.getByText("N/A")).toBeInTheDocument();
+        expect(screen.queryByText("vs. Oct:")).not.toBeInTheDocument();
+        expect(screen.getByText("(No data)")).toBeInTheDocument();
+      });
+    });
+
+    describe("comparison: periodsAgo", () => {
+      it("should display exact date", () => {
+        const rows = [
+          ["2019-09-01T00:00:00", 100],
+          ["2019-10-01T00:00:00", null],
+          ["2019-11-01T00:00:00", 100],
+        ];
+        const insights = [{ unit: "month", col: "Count" }];
+
+        setup(
+          series({
+            rows,
+            insights,
+            comparisonType: getPeriodsAgoComparison(2),
+          }),
+          400,
+        );
+
+        expect(screen.getByText("100")).toBeInTheDocument();
+        expect(screen.getByText("Nov 2019")).toBeInTheDocument();
+        expect(screen.getByText("No change")).toBeInTheDocument();
+        expect(screen.getByText("vs. Sep")).toBeInTheDocument();
+      });
     });
   });
 });
