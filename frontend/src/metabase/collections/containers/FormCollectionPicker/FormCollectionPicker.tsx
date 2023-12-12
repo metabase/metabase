@@ -115,7 +115,7 @@ function FormCollectionPicker({
          <EntityPickerModal
           title={t`Select a collection`}
           tabs={["collection"]}
-          value={{ id: value }}
+          value={{ id: value, model: 'collection' }}
           onChange={({ id }) => {
             setValue(id);
             setIsPickerOpen(false)
