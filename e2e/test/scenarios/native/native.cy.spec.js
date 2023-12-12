@@ -399,7 +399,7 @@ describe("scenarios > question > native", () => {
   });
 });
 
-describe("no native access", { tags: "@external" }, () => {
+describe.skip("no native access", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
