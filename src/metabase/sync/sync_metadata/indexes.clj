@@ -33,7 +33,7 @@
           nested-indexes           (remove string? indexes)
           normal-indexes-field-ids (when (seq normal-indexes) (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
           nested-indexes-field-ids (remove nil? (map #(nested-field-names->field-id table-id %) nested-indexes))]
-      (set (filter nil? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
+      (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
 (defn maybe-sync-indexes-for-table!
   "Sync the indexes for `table` if the driver supports storing index info."
