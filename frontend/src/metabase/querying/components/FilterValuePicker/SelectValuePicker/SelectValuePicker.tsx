@@ -5,8 +5,8 @@ import { getFieldOptions, getStaticOptions } from "../utils";
 interface SelectValuePickerProps {
   data: FieldValue[];
   value: string[];
-  placeholder: string;
-  getCreateLabel: (value: string) => string | null;
+  placeholder?: string;
+  getCreateLabel?: (value: string) => string | null;
   onChange: (newValue: string[]) => void;
 }
 

@@ -109,6 +109,7 @@ function StringValueInput({
         column={column}
         value={values}
         placeholder={t`Enter some text`}
+        compact
         getCreateLabel={query => query}
         onChange={onChange}
       />

@@ -1,4 +1,5 @@
 import type { FieldValue } from "metabase-types/api";
+import { MAX_INLINE_OPTIONS } from "./constants";
 import type { Option } from "./types";
 
 export function getFieldOptions(values: FieldValue[]): Option[] {
@@ -13,4 +14,8 @@ export function getStaticOptions(values: string[]): Option[] {
     value,
     label: value,
   }));
+}
+
+export function isInlinePicker(data: FieldValue[], compact: boolean) {
+  return compact && data.length > 0 && data.length <= MAX_INLINE_OPTIONS;
 }
