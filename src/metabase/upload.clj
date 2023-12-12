@@ -40,45 +40,83 @@
 ;;;; | Schema detection |
 ;;;; +------------------+
 
+;; Upload types form a DAG (directed acyclic graph) where each type can be coerced into any
+;; of its ancestors types. We parse each value in the CSV file to the most-specific possible
+;; type for each column. The most-specific possible type for a column is the lowest common
+;; ancestor of the types for each value in the column.
+;;
 ;;              text
 ;;               |
 ;;               |
 ;;          varchar-255┐
-;;              / \    │
-;;             /   \   └──────────┬
-;;            /     \             │
-;;         float   datetime  offset-datetime
-;;           │       │
-;;           │       │
-;;          int     date
-;;         /   \
-;;        /     \
-;;    boolean auto-incrementing-int-pk
+;;        /     / \    │
+;;       /     /   \   └──────────┬
+;;      /     /     \             │
+;;  boolean float   datetime  offset-datetime
+;;     |     │       │
+;;     │     │       │
+;;     |    int     date
+;;     |   /   \
+;;     |  /     \
+;;     | /       \
+;;     |/         \
+;; boolean-or-int  auto-incrementing-int-pk
+;;
+;; `boolean-or-int` is a special type with two parents, where we parse it as a boolean if the whole
+;; column's values are of that type. additionally a column cannot have a boolean-or-int type, but
+;; a value can. if there is a column with a boolean-or-int value and an integer value, the column will be int
+;; if there is a column with a boolean-or-int value and a boolean value, the column will be boolean
+;; if there is a column with only boolean-or-int values, the column will be parsed as if it were boolean
 ;;
 ;; </code></pre>
 
-(def ^:private type->parent
+(def ^:private type+parent-pairs
   ;; listed in depth-first order
-  {::text                     nil
-   ::varchar-255              ::text
-   ::float                    ::varchar-255
-   ::int                      ::float
-   ::auto-incrementing-int-pk ::int
-   ::boolean                  ::int
-   ::datetime                 ::varchar-255
-   ::date                     ::datetime
-   ::offset-datetime          ::varchar-255})
+  '([::boolean-or-int ::boolean]
+    [::boolean-or-int ::int]
+    [::auto-incrementing-int-pk ::int]
+    [::int ::float]
+    [::date ::datetime]
+    [::boolean ::varchar-255]
+    [::offset-datetime ::varchar-255]
+    [::datetime ::varchar-255]
+    [::float ::varchar-255]
+    [::varchar-255 ::text]))
 
-(def ^:private types
-  (keys type->parent))
+(defn ^:private column-type
+  "Returns the type of a column given the lowest common ancestor type of the values in the column."
+  [type]
+  (case type
+    ::boolean-or-int ::boolean
+    type))
 
-(def ^:private type->ancestors
-  (into {} (for [type types]
-             [type (loop [ret (ordered-set/ordered-set)
-                          type type]
-                     (if-some [parent (type->parent type)]
-                       (recur (conj ret parent) parent)
-                       ret))])))
+(def ^:private type->parents
+  (reduce
+   (fn [m [type parent]]
+     (update m type conj parent))
+   {}
+   type+parent-pairs))
+
+(def ^:private value-types
+  "All value types including the root type, ::text"
+  (conj (keys type->parents) ::text))
+
+(def ^:private column-types
+  "All column types"
+  (map column-type value-types))
+
+(defn- bfs-ancestors [type]
+  (loop [visit   (list type)
+         visited (ordered-set/ordered-set)]
+    (if (empty? visit)
+      visited
+      (let [parents (mapcat type->parents visit)]
+        (recur parents (into visited parents))))))
+
+(def ^:private type->bfs-ancestors
+  "A map from each type to an ordered set of its ancestors, in breadth-first order"
+  (into {} (for [type value-types]
+             [type (bfs-ancestors type)])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -136,6 +174,9 @@
 (defn- boolean-string? [s]
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
+(defn- boolean-or-int-string? [s]
+  (boolean (#{"0" "1"} s)))
+
 ;; end [[value->type]] helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -159,6 +200,7 @@
   (let [trimmed (str/trim value)]
     (cond
       (str/blank? value)                                        nil
+      (boolean-or-int-string? trimmed)                          ::boolean-or-int
       (boolean-string? trimmed)                                 ::boolean
       (offset-datetime-string? trimmed)                         ::offset-datetime
       (datetime-string? trimmed)                                ::datetime
@@ -168,7 +210,7 @@
       (<= (count trimmed) 255)                                  ::varchar-255
       :else                                                     ::text)))
 
-(defn- row->types
+(defn- row->value-types
   [row settings]
   (map #(value->type % settings) row))
 
@@ -183,9 +225,9 @@
     (nil? type-a) type-b
     (nil? type-b) type-a
     (= type-a type-b) type-a
-    (contains? (type->ancestors type-a) type-b) type-b
-    (contains? (type->ancestors type-b) type-a) type-a
-    :else (lowest-common-member (type->ancestors type-a) (type->ancestors type-b))))
+    (contains? (type->bfs-ancestors type-a) type-b) type-b
+    (contains? (type->bfs-ancestors type-b) type-a) type-a
+    :else (lowest-common-member (type->bfs-ancestors type-a) (type->bfs-ancestors type-b))))
 
 (defn- map-with-nils
   "like map with two args except it continues to apply f until ALL of the colls are
@@ -232,13 +274,25 @@
 (defn- parse-rows*
   "Returns a lazy seq of parsed rows, given a sequence of upload types for each column.
   Replaces empty strings with nil."
-  [col-upload-types rows]
+  [col-types rows]
   (let [settings (upload-parsing/get-settings)
-        parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
+        parsers  (map #(upload-parsing/upload-type->parser % settings) col-types)]
     (for [row rows]
       (for [[value parser] (map-with-nils vector row parsers)]
         (when (not (str/blank? value))
           (parser value))))))
+
+(mu/defn ^:private column-types-from-rows :- [:sequential (into [:enum] column-types)]
+  "Returns a sequence of types, given the unparsed rows in the CSV file"
+  [settings column-count rows]
+  (->> rows
+       (map #(row->value-types % settings))
+       (reduce coalesce-types (repeat column-count nil))
+       (map (fn [type]
+              ;; if there's no values in the column, assume it's a string
+              (if (nil? type)
+                ::text
+                (column-type type))))))
 
 (defn- rows->schema
   "Rows should be a lazy-seq. This function hides the logic for ignoring any columns in the CSV that have the same
@@ -261,9 +315,7 @@
         column-count      (count normalized-header)
         settings          (upload-parsing/get-settings)
         col-name+type-pairs (->> rows
-                                 (map #(row->types % settings))
-                                 (reduce coalesce-types (repeat column-count nil))
-                                 (map #(or % ::text))
+                                 (column-types-from-rows settings column-count)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)
