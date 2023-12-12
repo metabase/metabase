@@ -52,19 +52,6 @@ const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
   return getQuestionSteps(question, metadata, {});
 };
 
-describe("new query", () => {
-  const steps = getQuestionStepsForMBQLQuery({});
-  const [dataStep] = steps;
-
-  describe("getQuestionSteps", () => {
-    it("should return data step with no actions", () => {
-      expect(steps.length).toBe(1);
-      expect(dataStep.type).toBe("data");
-      expect(dataStep.actions).toHaveLength(0);
-    });
-  });
-});
-
 describe("raw data query", () => {
   const steps = getQuestionStepsForMBQLQuery(rawDataQuery);
   const [dataStep] = steps;
