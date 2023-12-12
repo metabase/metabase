@@ -10,7 +10,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -49,9 +48,8 @@ const postAggregationFilterQuery: StructuredQueryObject = {
 
 const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
   const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
-  const legacyQuery = database.question().query() as StructuredQuery;
-
-  return getQuestionSteps(legacyQuery.setQuery(query).question(), metadata, {});
+  const question = database.question(query);
+  return getQuestionSteps(question, metadata, {});
 };
 
 describe("new query", () => {
