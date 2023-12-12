@@ -253,6 +253,21 @@
         (is (= {:query {:schemas :all}, :data {:native :write}}
                (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
 
+(deftest update-perms-graph-with-skip-graph-skips-graph-test
+  (testing "PUT /api/permissions/graph"
+    (testing "permissions graph is not returned when skip-graph"
+      (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
+                               :model/Database         {db-id :id} {}]
+        (let [g (perms/data-perms-graph)
+              returned-g (mt/user-http-request :crowberto :put 200 "permissions/graph"
+                                               (assoc-in g [:groups (u/the-id group) db-id :data :schemas] :all))
+              no-returned-g (mt/user-http-request :crowberto :put 200 "permissions/graph?skip-graph=true"
+                                                  (assoc-in g [:groups (u/the-id group) db-id :data :schemas] :all))]
+          (is (perm-test-util/validate-graph-api-output (:groups g)))
+          (is (perm-test-util/validate-graph-api-output (:groups returned-g)))
+          (is (not (perm-test-util/validate-graph-api-output (:groups no-returned-g))))
+          (is (= {} no-returned-g)))))))
+
 (deftest update-perms-graph-group-has-no-permissions-test
   (testing "PUT /api/permissions/graph"
     (testing "permissions when group has no permissions"

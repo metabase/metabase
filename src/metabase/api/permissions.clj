@@ -5,7 +5,6 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [malli.core :as mc]
-   [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -87,11 +86,10 @@
   `:sandboxes` feature flag is not present.
 
   If the skip-graph query param is truthy, then the graph will not be returned."
-  [:as {body :body params :params}]
+  [:as {body :body
+        {skip-graph :skip-graph} :params}]
   {body :map
-   params [:and
-           [:map-of :keyword :any]
-           [:map [:skip-graph [:maybe :boolean]]]]}
+   skip-graph [:maybe :boolean]}
   (api/check-superuser)
   (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
                          body
@@ -99,13 +97,9 @@
                           mtx/string-transformer
                           (mtx/transformer {:name :perm-graph})))]
     (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
-      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph body)]
-        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
-                             (pr-str explained))
-                        {:status-code 400
-                         :error (str (me/humanize explained)
-                                     "\n"
-                                     (pr-str explained))}))))
+      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph graph)]
+        (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
+                        {:status-code 400 :error (pr-str explained)}))))
     (t2/with-transaction [_conn]
       (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
       (let [sandbox-updates        (:sandboxes graph)
@@ -115,7 +109,7 @@
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
         (merge
-         (if (:skip-graph params) {} (perms/data-perms-graph))
+         (if skip-graph {} (perms/data-perms-graph))
          (when sandboxes {:sandboxes sandboxes})
          (when impersonations {:impersonations impersonations}))))))
 
