@@ -50,6 +50,7 @@ function setup({
   ...props
 }: Partial<DashCardProps> = {}) {
   const onReplaceCard = jest.fn();
+
   renderWithProviders(
     <DashCard
       dashboard={dashboard}
@@ -74,6 +75,8 @@ function setup({
       onChangeLocation={jest.fn()}
     />,
   );
+
+  return { onReplaceCard };
 }
 
 describe("DashCard", () => {
@@ -139,24 +142,53 @@ describe("DashCard", () => {
     expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
   });
 
-  it("should fade link card in parameter editing mode", () => {
-    const linkCard = createMockLinkDashboardCard({
-      url: "https://xkcd.com/327",
-    });
-    setup({
-      dashboard: {
-        ...testDashboard,
-        dashcards: [linkCard],
-      },
-      dashcard: linkCard,
-      dashcardData: {},
-      isEditing: true,
-      isEditingParameter: true,
+  it("should not show a 'replace card' action", () => {
+    setup({ isEditing: false });
+    expect(screen.queryByLabelText("Replace")).not.toBeInTheDocument();
+  });
+
+  describe("edit mode", () => {
+    it("should show a 'replace card' action", async () => {
+      setup({ isEditing: true });
+      expect(screen.getByLabelText("Replace")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
-    expect(screen.getByTestId("custom-view-text-link")).toHaveStyle({
-      opacity: 0.25,
+    it.each([
+      ["heading", createMockHeadingDashboardCard()],
+      ["text", createMockTextDashboardCard()],
+      ["link", createMockLinkDashboardCard()],
+    ])("should not show a 'replace card' action for %s cards", (_, card) => {
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [card],
+        },
+        dashcard: card,
+        dashcardData: {},
+        isEditing: true,
+      });
+      expect(screen.queryByLabelText("Replace")).not.toBeInTheDocument();
+    });
+
+    it("should fade link card in parameter editing mode", () => {
+      const linkCard = createMockLinkDashboardCard({
+        url: "https://xkcd.com/327",
+      });
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [linkCard],
+        },
+        dashcard: linkCard,
+        dashcardData: {},
+        isEditing: true,
+        isEditingParameter: true,
+      });
+
+      expect(screen.getByText("https://xkcd.com/327")).toBeVisible();
+      expect(screen.getByTestId("custom-view-text-link")).toHaveStyle({
+        opacity: 0.25,
+      });
     });
   });
 });
