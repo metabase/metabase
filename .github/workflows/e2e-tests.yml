@@ -146,8 +146,6 @@ jobs:
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
-        env:
-          TERM: xterm
 
       - name: Run slow and resource-intensive Cypress tests
         if: matrix.name == 'slow' && github.event_name != 'schedule'
@@ -159,8 +157,6 @@ jobs:
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
-        env:
-          TERM: xterm
 
       - name: Run Flaky Cypress tests
         if: matrix.name == 'flaky' && github.event_name != 'schedule'
@@ -183,8 +179,6 @@ jobs:
           --record \
           --group ${{ matrix.name }} \
           --ci-build-id ${{ github.sha }}
-        env:
-          TERM: xterm
 
       - name: Run E2E tests that depend on Mongo
         if: matrix.name == 'mongo'
@@ -276,6 +270,6 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Percy Test
-        run: yarn run test-visual-run --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+        run: yarn run test-visual-run --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           PERCY_TOKEN: ${{ github.ref == 'refs/heads/master' && secrets.PERCY_TOKEN || ''}}

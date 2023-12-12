@@ -45,7 +45,8 @@ function generateDashboards(user) {
   cy.createDashboard({ name: `${user} dashboard` });
 }
 
-describe.skip("auditing > Auditv1 deprecation", () => {
+// causes cypress 13 to error in CI
+describe("auditing > Auditv1 deprecation", { tags: "@quarantine" }, () => {
   it("should show an audit deprecation notice", () => {
     restore();
     cy.signInAsAdmin();
@@ -58,7 +59,8 @@ describe.skip("auditing > Auditv1 deprecation", () => {
   });
 });
 
-describe.skip("audit > auditing", () => {
+// causes cypress 13 to error in CI
+describe("audit > auditing", { tags: "@quarantine" }, () => {
   const ADMIN_QUESTION = "admin question";
   const ADMIN_DASHBOARD = "admin dashboard";
   const NORMAL_QUESTION = "normal question";
