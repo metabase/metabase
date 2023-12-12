@@ -10,7 +10,7 @@ declare global {
        * modal().button("Save").click();
        */
       button(
-        button_name: string,
+        buttonName: string,
         timeout?: number,
       ): Cypress.Chainable<JQuery<HTMLElement>>;
     }
@@ -22,9 +22,9 @@ Cypress.Commands.add(
   {
     prevSubject: "optional",
   },
-  (subject, button_name, timeout) => {
+  (subject, buttonName, timeout) => {
     const config = {
-      name: button_name,
+      name: buttonName,
       timeout,
     };
 

@@ -9,7 +9,7 @@ declare global {
        * cy.icon("bolt_filled").should("have.length", 4);
        * cy.findByTestId("app-bar").icon("add").click()
        */
-      icon(icon_name: string): Cypress.Chainable<JQuery<HTMLElement>>;
+      icon(iconName: string): Cypress.Chainable<JQuery<HTMLElement>>;
     }
   }
 }
@@ -19,8 +19,8 @@ Cypress.Commands.add(
   {
     prevSubject: "optional",
   },
-  (subject, icon_name) => {
-    const SELECTOR = `.Icon-${icon_name}`;
+  (subject, iconName) => {
+    const SELECTOR = `.Icon-${iconName}`;
 
     return subject ? cy.wrap(subject).find(SELECTOR) : cy.get(SELECTOR);
   },
