@@ -99,7 +99,7 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <FilterValuePicker
-        values={values.map(value => String(value))}
+        value={values.map(value => String(value))}
         placeholder={t`Enter a number`}
         getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
         onChange={values => onChange(values.map(value => Number(value)))}

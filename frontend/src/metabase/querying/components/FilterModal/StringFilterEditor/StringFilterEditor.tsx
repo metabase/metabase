@@ -95,7 +95,7 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <FilterValuePicker
-        values={values}
+        value={values}
         placeholder={t`Enter some text`}
         getCreateLabel={query => query}
         onChange={onChange}
