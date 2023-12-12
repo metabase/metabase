@@ -23,6 +23,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -83,9 +84,14 @@
   The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with
   this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)
   response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the
-  `:sandboxes` feature flag is not present."
-  [:as {body :body}]
-  {body :map}
+  `:sandboxes` feature flag is not present.
+
+  If the skip-graph query param is truthy, then the graph will not be returned."
+  [:as {body :body params :params}]
+  {body :map
+   params [:and
+           [:map-of :keyword :any]
+           [:map [:skip-graph [:maybe :boolean]]]]}
   (api/check-superuser)
   (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
                          body
@@ -93,7 +99,7 @@
                           mtx/string-transformer
                           (mtx/transformer {:name :perm-graph})))]
     (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
-      (let [explained (mc/explain api.permission-graph/DataPermissionsGraph body)]
+      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph body)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
                              (pr-str explained))
                         {:status-code 400
@@ -109,7 +115,7 @@
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
         (merge
-         (perms/data-perms-graph)
+         (if (:skip-graph params) {} (perms/data-perms-graph))
          (when sandboxes {:sandboxes sandboxes})
          (when impersonations {:impersonations impersonations}))))))
 
