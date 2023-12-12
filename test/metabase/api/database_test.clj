@@ -584,6 +584,7 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
+                                                             :database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one Field :id (mt/id :categories :name)))
@@ -598,6 +599,7 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
+                                                             :database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
