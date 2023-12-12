@@ -34,17 +34,6 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
   return {};
 }
 
-const dropEmptyStages = (query: Lib.Query): Lib.Query => {
-  const stageCount = Lib.stageCount(query);
-  const stageIndexes = Array.from({ length: stageCount }).map(
-    (_, index) => index,
-  );
-
-  return stageIndexes.toReversed().reduce((query, stageIndex) => {
-    return Lib.dropStageIfEmpty(query, stageIndex);
-  }, query);
-};
-
 function NotebookSteps({
   className,
   question,
@@ -81,12 +70,18 @@ function NotebookSteps({
   }, []);
 
   const handleQueryChange = useCallback(
-    async (query: Query) => {
-      const updatedLegacyQuery = Lib.toLegacyQuery(dropEmptyStages(query));
+    async (query: Query, step: INotebookStep) => {
+      const updatedLegacyQuery = Lib.toLegacyQuery(
+        Lib.dropStageIfEmpty(query, step.stageIndex),
+      );
       const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
       await updateQuestion(updatedQuestion);
+
+      // mark the step as "closed" since we can assume
+      // it's been added or removed by the updateQuery
+      handleStepClose(step.id);
     },
-    [question, updateQuestion],
+    [question, updateQuestion, handleStepClose],
   );
 
   if (!question) {
@@ -99,11 +94,7 @@ function NotebookSteps({
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
         const onChange = async (query: Query) => {
-          await handleQueryChange(query);
-
-          // mark the step as "closed" since we can assume
-          // it's been added or removed by the updateQuery
-          handleStepClose(step.id);
+          await handleQueryChange(query, step);
         };
 
         return (
