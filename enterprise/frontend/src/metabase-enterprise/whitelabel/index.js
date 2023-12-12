@@ -9,6 +9,7 @@ import {
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
+  getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
 } from "metabase-enterprise/settings/selectors";
@@ -22,10 +23,7 @@ import LighthouseToggleWidget from "./components/LighthouseToggleWidget";
 import MetabotToggleWidget from "./components/MetabotToggleWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
-import {
-  updateColors,
-  enabledApplicationNameReplacement,
-} from "./lib/whitelabel";
+import { updateColors } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
 
@@ -118,12 +116,11 @@ if (hasPremiumFeature("whitelabel")) {
     MetabaseSettings.on("application-colors", updateColors);
   });
 
-  enabledApplicationNameReplacement();
-
   PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
   PLUGIN_SELECTORS.canWhitelabel = () => true;
 
   // these selectors control whitelabeling UI
   PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
+  PLUGIN_SELECTORS.getApplicationName = getApplicationName;
 }

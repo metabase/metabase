@@ -438,7 +438,7 @@ describeEE("formatting > sandboxes", () => {
       cy.wait("@dataset");
       cy.log("Reported failing on v1.36.4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products → Category is Doohickey");
+      cy.findByText("Category is Doohickey");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
     });

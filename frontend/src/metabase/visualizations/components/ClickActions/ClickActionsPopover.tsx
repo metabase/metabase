@@ -160,7 +160,7 @@ export class ClickActionsPopover extends Component<
           this.close();
         }}
         placement="bottom-start"
-        maxWidth={500}
+        maxWidth={700}
         offset={[0, 8]}
         popperOptions={{
           modifiers: [

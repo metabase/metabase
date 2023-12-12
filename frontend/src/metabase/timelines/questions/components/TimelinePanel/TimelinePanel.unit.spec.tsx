@@ -1,11 +1,15 @@
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockCollection,
   createMockTimeline,
 } from "metabase-types/api/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { TimelinePanelProps } from "./TimelinePanel";
 import TimelinePanel from "./TimelinePanel";
+
+function setup(props: TimelinePanelProps) {
+  renderWithProviders(<TimelinePanel {...props} />);
+}
 
 describe("TimelinePanel", () => {
   it("should allow creating an event and a default timeline", () => {
@@ -14,7 +18,7 @@ describe("TimelinePanel", () => {
       collection: createMockCollection({ can_write: true }),
     });
 
-    render(<TimelinePanel {...props} />);
+    setup(props);
     userEvent.click(screen.getByText("Add an event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
@@ -26,7 +30,7 @@ describe("TimelinePanel", () => {
       collection: createMockCollection({ can_write: true }),
     });
 
-    render(<TimelinePanel {...props} />);
+    setup(props);
     userEvent.click(screen.getByText("Add an event"));
 
     expect(props.onNewEvent).toHaveBeenCalled();
@@ -38,7 +42,7 @@ describe("TimelinePanel", () => {
       collection: createMockCollection({ can_write: false }),
     });
 
-    render(<TimelinePanel {...props} />);
+    setup(props);
 
     expect(screen.queryByText("Add an event")).not.toBeInTheDocument();
   });

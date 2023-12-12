@@ -28,6 +28,7 @@ export default class WhatsAPulse extends Component {
           className="h3 my3 text-centered text-light text-bold"
           style={{ maxWidth: "500px" }}
         >
+          {/* Not translating because pulse is deprecated */}
           {t`Pulses let you send data from Metabase to email or Slack on the schedule of your choice.`}
         </div>
         {this.props.button}
