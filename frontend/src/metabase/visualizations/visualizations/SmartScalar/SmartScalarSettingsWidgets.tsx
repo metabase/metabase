@@ -3,7 +3,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
-import { COMPARISON_SELECT_OPTIONS, COMPARISON_TYPES } from "./utils";
+import { COMPARISON_TYPES } from "./utils";
 import {
   MenuItemStyled,
   MenuTargetStyled,
@@ -34,7 +34,7 @@ export function SmartScalarComparisonWidget({
   );
 
   const selectedDisplayName =
-    selectedValue.type === COMPARISON_SELECT_OPTIONS.PERIODS_AGO.type
+    selectedValue.type === COMPARISON_TYPES.PERIODS_AGO
       ? `${selectedValue.value ?? ""} ${selectedOption?.name}`
       : selectedOption?.name;
 
