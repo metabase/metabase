@@ -11,7 +11,6 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import { FlexWithScroll } from "../FilterPicker.styled";
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 
 export function CoordinateFilterPicker({
@@ -88,7 +87,6 @@ export function CoordinateFilterPicker({
           />
         )}
         <CoordinateValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -101,7 +99,6 @@ export function CoordinateFilterPicker({
 }
 
 interface CoordinateValueInputProps {
-  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -109,7 +106,6 @@ interface CoordinateValueInputProps {
 }
 
 function CoordinateValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -119,14 +115,12 @@ function CoordinateValueInput({
 
   if (hasMultipleValues) {
     return (
-      <FlexWithScroll p="md" mah={300}>
-        <FilterValuePicker
-          column={column}
-          value={values}
-          autoFocus
-          onChange={onChange}
-        />
-      </FlexWithScroll>
+      <FilterValuePicker
+        values={values.map(value => String(value))}
+        placeholder={t`Enter a number`}
+        getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
+        onChange={values => onChange(values.map(value => Number(value)))}
+      />
     );
   }
 

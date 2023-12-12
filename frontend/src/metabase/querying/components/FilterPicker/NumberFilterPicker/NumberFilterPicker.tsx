@@ -11,7 +11,6 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import { FlexWithScroll } from "../FilterPicker.styled";
 
 export function NumberFilterPicker({
   query,
@@ -73,7 +72,6 @@ export function NumberFilterPicker({
       </FilterPickerHeader>
       <div>
         <NumberValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -86,7 +84,6 @@ export function NumberFilterPicker({
 }
 
 interface NumberValueInputProps {
-  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -94,7 +91,6 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -104,14 +100,12 @@ function NumberValueInput({
 
   if (hasMultipleValues) {
     return (
-      <FlexWithScroll p="md" mah={300}>
-        <FilterValuePicker
-          column={column}
-          value={values}
-          autoFocus
-          onChange={onChange}
-        />
-      </FlexWithScroll>
+      <FilterValuePicker
+        values={values.map(value => String(value))}
+        placeholder={t`Enter a number`}
+        getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
+        onChange={values => onChange(values.map(value => Number(value)))}
+      />
     );
   }
 
