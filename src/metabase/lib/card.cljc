@@ -93,7 +93,10 @@
       (when (and *force-broken-card-refs*
                  ;; never force broken refs for datasets, because datasets can have give columns with completely
                  ;; different names the Field ID of a different column, somehow. See #22715
-                 (not (:dataset (lib.metadata/card metadata-providerable (u/the-id card-or-id)))))
+                 (or
+                  ;; we can only do this check if `card-or-id` is passed in.
+                  (not card-or-id)
+                  (not (:dataset (lib.metadata/card metadata-providerable (u/the-id card-or-id))))))
         {::force-broken-id-refs true}
         #_(when-let [legacy-join-alias (:source-alias col)]
             {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))))
