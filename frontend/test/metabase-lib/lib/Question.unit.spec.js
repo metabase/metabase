@@ -689,8 +689,9 @@ describe("Question", () => {
         expect(newQuestion.isDirtyComparedTo(orders_raw_question)).toBe(true);
       });
       it("Changing vis settings makes the question dirty", () => {
-        const underlyingDataQuestion =
-          orders_count_question.toUnderlyingRecords();
+        const underlyingDataQuestion = orders_count_question.setSettings({
+          "table.pivot": false,
+        });
         expect(
           underlyingDataQuestion.isDirtyComparedTo(orders_count_question),
         ).toBe(true);
