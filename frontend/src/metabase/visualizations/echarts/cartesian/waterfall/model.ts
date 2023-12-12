@@ -6,6 +6,7 @@ import {
 } from "metabase/visualizations/lib/graph/columns";
 
 import type { WaterfallDatum } from "./types";
+import { DATASET_DIMENSIONS } from "./constants";
 
 function createDatum({
   dimension,
@@ -21,11 +22,11 @@ function createDatum({
   total?: number;
 }): WaterfallDatum {
   return {
-    dimension,
-    barOffset: barOffset ?? 0,
-    increase: increase ?? null,
-    decrease: decrease ?? null,
-    total: total ?? null,
+    [DATASET_DIMENSIONS.dimension]: dimension,
+    [DATASET_DIMENSIONS.barOffset]: barOffset ?? 0,
+    [DATASET_DIMENSIONS.increase]: increase ?? null,
+    [DATASET_DIMENSIONS.decrease]: decrease ?? null,
+    [DATASET_DIMENSIONS.total]: total ?? null,
   };
 }
 

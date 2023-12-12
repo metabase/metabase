@@ -229,5 +229,6 @@ export const buildEChartsSeries = (
           return buildEChartsWaterfallSeries();
       }
     })
+    .flat()
     .filter(isNotNull);
 };
