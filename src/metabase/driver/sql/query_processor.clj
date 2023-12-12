@@ -299,9 +299,15 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn adjust-start-of-week
-  "Truncate to the day the week starts on."
-  [driver truncate-fn expr]
+(mu/defn adjust-start-of-week
+  "Truncate to the day the week starts on.
+
+  `truncate-fn` is a function with the signature
+
+    (truncate-fn expr) => truncated-expr"
+  [driver      :- :keyword
+   truncate-fn :- [:=> [:cat :any] :any]
+   expr]
   (let [offset (driver.common/start-of-week-offset driver)]
     (if (not= offset 0)
       (add-interval-honeysql-form driver
@@ -347,7 +353,8 @@
 (defmulti quote-style
   "Return the dialect that should be used by Honey SQL 2 when building a SQL statement. Defaults to `:ansi`, but other
   valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in
-  [[metabase.db.setup]]; like `:ansi`, but uppercases the result).
+  [[metabase.util.honey-sql-2]]; like `:ansi`, but uppercases the result). Check [[honey.sql/dialects]] for all
+  available dialects, or register a custom one with [[honey.sql/register-dialect!]].
 
     (honey.sql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
 
@@ -1133,18 +1140,22 @@
     (correct-null-behaviour driver [:not= field value])))
 
 (defmethod ->honeysql [:sql :and]
-  [driver [_ & subclauses]]
-  (apply vector :and (mapv (partial ->honeysql driver) subclauses)))
+  [driver [_tag & subclauses]]
+  (into [:and]
+        (map (partial ->honeysql driver))
+        subclauses))
 
 (defmethod ->honeysql [:sql :or]
-  [driver [_ & subclauses]]
-  (apply vector :or (mapv (partial ->honeysql driver) subclauses)))
+  [driver [_tag & subclauses]]
+  (into [:or]
+        (map (partial ->honeysql driver))
+        subclauses))
 
 (def ^:private clause-needs-null-behaviour-correction?
   (comp #{:contains :starts-with :ends-with} first))
 
 (defmethod ->honeysql [:sql :not]
-  [driver [_ subclause]]
+  [driver [_tag subclause]]
   (if (clause-needs-null-behaviour-correction? subclause)
     (correct-null-behaviour driver [:not subclause])
     [:not (->honeysql driver subclause)]))
@@ -1364,8 +1375,18 @@
   [driver {:keys [select select-top], :as honeysql-form}]
   ;; TODO - this is hacky -- we should ideally never need to add `SELECT *`, because we should know what fields to
   ;; expect from the source query, and middleware should be handling that for us
-  (cond-> honeysql-form
-    (and (empty? select) (empty? select-top)) (assoc :select (default-select driver honeysql-form))))
+  (cond
+    (and (empty? select)
+         (empty? select-top))
+    (assoc honeysql-form :select (default-select driver honeysql-form))
+
+    ;; select-top currently only has the first arg, the limit
+    (= (count select-top) 1)
+    (update honeysql-form :select-top (fn [existing]
+                                        (into existing (default-select driver honeysql-form))))
+
+    :else
+    honeysql-form))
 
 (defn- apply-top-level-clauses
   "`apply-top-level-clause` for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.

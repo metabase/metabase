@@ -62,17 +62,21 @@
    :remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}})
 
 (defn- format-honeysql [honeysql]
-  (let [honeysql (cond-> honeysql
-                   (= driver/*driver* :sqlserver)
-                   (assoc :modifiers ["TOP 1000"])
+  (let [add-top-1000 (fn [honeysql]
+                       (-> honeysql
+                           (dissoc :select)
+                           (assoc :select-top (into [[:inline 1000]] (:select honeysql)))))
+        honeysql     (cond-> honeysql
+                       (= driver/*driver* :sqlserver)
+                       add-top-1000
 
-                   ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
-                   ;; have one.) HACK
-                   (= driver/*driver* :sparksql)
-                   (update :from (fn [[table]]
-                                   [[table [(sql.qp/->honeysql
-                                             :sparksql
-                                             (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
+                       ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
+                       ;; have one.) HACK
+                       (= driver/*driver* :sparksql)
+                       (update :from (fn [[table]]
+                                       [[table [(sql.qp/->honeysql
+                                                 :sparksql
+                                                 (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
     (first (sql.qp/format-honeysql driver/*driver* honeysql))))
 
 (defn- venues-category-native-gtap-def []

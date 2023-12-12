@@ -47,6 +47,11 @@
  (update (sql/get-dialect :ansi) :quote (fn [quote]
                                           (comp english-upper-case quote))))
 
+;;; this is mostly a convenience for tests, disables quoting completely.
+(sql/register-dialect!
+ ::unquoted
+ (assoc (sql/get-dialect :ansi) :quote identity))
+
 ;; register the `::extract` function with HoneySQL
 (defn- format-extract
   "(sql/format-expr [::extract :a :b])

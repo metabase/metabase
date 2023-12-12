@@ -85,9 +85,17 @@
 (defmethod sql-jdbc.sync/database-type->base-type :presto-jdbc [_driver database-type]
   (presto-type->base-type database-type))
 
+(defn- date-add [unit amount expr]
+  (let [amount (if (number? amount)
+                 [:inline amount]
+                 amount)]
+    (cond-> [:date_add (h2x/literal unit) amount expr]
+      (h2x/database-type expr)
+      (h2x/with-database-type-info (h2x/database-type expr)))))
+
 (defmethod sql.qp/add-interval-honeysql-form :presto-jdbc
-  [_ hsql-form amount unit]
-  [:date_add (h2x/literal unit) amount hsql-form])
+  [_driver expr amount unit]
+  (date-add unit amount expr))
 
 (defn- describe-catalog-sql
   "The SHOW SCHEMAS statement that will list all schemas for the given `catalog`."
@@ -213,7 +221,7 @@
             (sql.helpers/limit [:inline items]))))))
 
 (defmethod sql.qp/current-datetime-honeysql-form :presto-jdbc
-  [_]
+  [_driver]
   (h2x/with-database-type-info :%now "timestamp with time zone"))
 
 (defn- date-diff [unit a b] [:date_diff (h2x/literal unit) a b])
@@ -364,7 +372,9 @@
 
 (defmethod sql.qp/date [:presto-jdbc :week]
   [_driver _unit expr]
-  (sql.qp/adjust-start-of-week :presto-jdbc [partial :date_trunc (h2x/literal :week)] (in-report-zone expr)))
+  (letfn [(truncate [x]
+            [:date_trunc (h2x/literal :week) x])]
+    (sql.qp/adjust-start-of-week :presto-jdbc truncate (in-report-zone expr))))
 
 (defmethod sql.qp/date [:presto-jdbc :month]
   [_driver _unit expr]
@@ -399,21 +409,15 @@
   [_driver _unit expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (lib.metadata/database (qp.store/metadata-provider)))
-        millis      [::mod expr [:inline 1000]]]
-    [:date_add
-     (h2x/literal "millisecond")
-     millis
-     [:from_unixtime [:/ expr [:inline 1000]] (h2x/literal (or report-zone "UTC"))]]))
+        millis      [::mod expr [:inline 1000]]
+        expr        [:from_unixtime [:/ expr [:inline 1000]] (h2x/literal (or report-zone "UTC"))]]
+    (date-add :millisecond millis expr)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :microseconds]
   [driver _seconds-or-milliseconds expr]
   ;; Presto can't even represent microseconds, so convert to millis and call that version
   (sql.qp/unix-timestamp->honeysql driver :milliseconds [:/ expr [:inline 1000]]))
 
-(defmethod sql.qp/current-datetime-honeysql-form :presto-jdbc
-  [_driver]
-  ;; the current_timestamp in Presto returns a `timestamp with time zone`, so this needs to be overridden
-  (h2x/with-type-info :%now {::h2x/database-type timestamp-with-time-zone-db-type}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Connectivity                                                  |

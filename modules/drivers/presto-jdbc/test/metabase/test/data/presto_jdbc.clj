@@ -173,5 +173,5 @@
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
-  [_ _ _ _]
+  [_driver _dbdef _tabledef _fielddef]
   nil)

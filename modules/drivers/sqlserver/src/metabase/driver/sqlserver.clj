@@ -134,13 +134,20 @@
     (binding [*field-options* options]
       (parent-method driver field-clause))))
 
+(defn- maybe-inline-number [x]
+  (if (number? x)
+    [:inline x]
+    x))
+
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
   (-> [:datepart [:raw (name unit)] expr]
       (h2x/with-database-type-info "integer")))
 
 (defn- date-add [unit & exprs]
-  (into [:dateadd [:raw (name unit)]] exprs))
+  (into [:dateadd [:raw (name unit)]]
+        (map maybe-inline-number)
+        exprs))
 
 (defn- date-diff [unit x y]
   [:datediff_big [:raw (name unit)] x y])
@@ -157,7 +164,9 @@
   (date-part :second expr))
 
 (defn- time-from-parts [hour minute second fraction precision]
-  (-> [:TimeFromParts hour minute second fraction precision]
+  (-> (into [:TimeFromParts]
+            (map maybe-inline-number)
+            [hour minute second fraction precision])
       (h2x/with-database-type-info "time")))
 
 (defmethod sql.qp/date [:sqlserver :minute]
@@ -171,7 +180,9 @@
   (date-part :minute expr))
 
 (defn- date-time-2-from-parts [year month day hour minute second fraction precision]
-  (-> [:datetime2fromparts year month day hour minute second fraction precision]
+  (-> (into [:datetime2fromparts]
+            (map maybe-inline-number)
+            [year month day hour minute second fraction precision])
       (h2x/with-database-type-info "datetime2")))
 
 (defmethod sql.qp/date [:sqlserver :hour]

@@ -966,33 +966,42 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
-(deftest count-of-grouping-test
+(deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
-              (format "filter by minute = %s" (into [:relative-datetime] args)))))))
+              (format "filter by minute = %s" (into [:relative-datetime] args))))))))
+
+(deftest ^:parallel count-of-grouping-test-2
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-hour :hour args))
-              (format "filter by hour = %s" (into [:relative-datetime] args))))))
+              (format "filter by hour = %s" (into [:relative-datetime] args))))))))
+
+(deftest ^:parallel count-of-grouping-test-3
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "1 checkin per day dataset"
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
           (is (= 1
                  (apply count-of-grouping checkins:1-per-day :day args))
-              (format "filter by day = %s" (into [:relative-datetime] args)))))
+              (format "filter by day = %s" (into [:relative-datetime] args))))))))
+
+(deftest ^:parallel count-of-grouping-test-4
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+    (testing "1 checkin per day dataset"
       (testing "group by week"
         (is (= 7
                (count-of-grouping checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
-(deftest time-interval-test
+(deftest ^:parallel time-interval-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
@@ -1001,8 +1010,12 @@
                 (mt/formatted-rows [int]
                   (mt/run-mbql-query checkins
                     {:aggregation [[:count]]
-                     :filter      [:time-interval $timestamp :current :day]})))))
+                     :filter      [:time-interval $timestamp :current :day]})))))))))
 
+(deftest ^:parallel time-interval-test-2
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+    (testing "Syntactic sugar (`:time-interval` clause)"
+      (mt/dataset checkins:1-per-day
         (is (= 7
                (ffirst
                 (mt/formatted-rows [int]
@@ -1024,7 +1037,7 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(deftest date-bucketing-when-you-test
+(deftest ^:parallel date-bucketing-when-you-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
@@ -1052,15 +1065,16 @@
 ;;
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
-(deftest default-bucketing-test
+(deftest ^:parallel default-bucketing-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]}))))))
+                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
 
+(deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
   ;; created checkins DBs so we can run it against Snowflake as well.
   (mt/test-drivers (mt/normal-drivers)
@@ -1069,8 +1083,11 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] "2019-01-16"]}))))
+                  :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
 
+(deftest ^:parallel default-bucketing-test-3
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset office-checkins
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
                (mt/formatted-rows [int]
@@ -1078,8 +1095,9 @@
                    {:aggregation [[:count]]
                     :filter      [:and
                                   [:= [:field $timestamp nil] "2019-01-16"]
-                                  [:= [:field $id nil] 6]]})))))))
+                                  [:= [:field $id nil] 6]]}))))))))
 
+(deftest ^:parallel default-bucketing-test-4
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
@@ -1129,7 +1147,7 @@
                      filter-value
                      expected-count))))))))))
 
-(deftest legacy-default-datetime-bucketing-test
+(deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
     (is (= (str "SELECT COUNT(*) AS \"count\" "
@@ -1145,7 +1163,7 @@
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
 
-(deftest compile-time-interval-test
+(deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
