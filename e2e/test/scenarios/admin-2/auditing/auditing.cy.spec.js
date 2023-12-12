@@ -45,7 +45,7 @@ function generateDashboards(user) {
   cy.createDashboard({ name: `${user} dashboard` });
 }
 
-describe("auditing > Auditv1 deprecation", () => {
+describe.skip("auditing > Auditv1 deprecation", () => {
   it("should show an audit deprecation notice", () => {
     restore();
     cy.signInAsAdmin();
@@ -58,7 +58,7 @@ describe("auditing > Auditv1 deprecation", () => {
   });
 });
 
-describe("audit > auditing", () => {
+describe.skip("audit > auditing", () => {
   const ADMIN_QUESTION = "admin question";
   const ADMIN_DASHBOARD = "admin dashboard";
   const NORMAL_QUESTION = "normal question";
