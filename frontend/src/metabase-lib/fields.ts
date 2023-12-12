@@ -72,6 +72,7 @@ export function legacyFieldRef(
 ): FieldReference {
   const fieldRef = ML.legacy_field_ref(column);
 
+  // Remove normalization once https://github.com/metabase/metabase/issues/36699 is fixed
   if (fieldRef[0] === "segment" || fieldRef[0] === "metric") {
     return fieldRef.slice(0, 2);
   }

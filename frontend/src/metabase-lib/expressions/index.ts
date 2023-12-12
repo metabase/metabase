@@ -338,13 +338,19 @@ export function isDimension(expr: unknown): boolean {
 
 export function isMetric(expr: unknown): boolean {
   return (
-    Array.isArray(expr) && expr[0] === "metric" && typeof expr[1] === "number"
+    Array.isArray(expr) &&
+    expr[0] === "metric" &&
+    expr.length === 2 &&
+    typeof expr[1] === "number"
   );
 }
 
 export function isSegment(expr: unknown): boolean {
   return (
-    Array.isArray(expr) && expr[0] === "segment" && typeof expr[1] === "number"
+    Array.isArray(expr) &&
+    expr[0] === "segment" &&
+    expr.length === 2 &&
+    typeof expr[1] === "number"
   );
 }
 
