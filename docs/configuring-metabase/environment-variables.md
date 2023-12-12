@@ -436,7 +436,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB*JWT*\*](#mb_jwt_enabled).
 
 ### `MB_EMOJI_IN_LOGS`
 
@@ -885,7 +885,7 @@ The map tile server URL template used in map visualizations, for example from Op
 ### `MB_MAX_AGGREGATED_QUERY_ROW_LIMIT`
 
 Type: integer<br>
-Default: 10000 
+Default: 10000
 
 Maximum number of rows to return for aggregated queries via the API. Must less than 1048575.
 
@@ -1364,11 +1364,3 @@ Default: `null`<br>
 Since: v41.0
 
 Allowed email address domain(s) for new Subscriptions and Alerts. Specify multiple domain comma-separated. When not defined, all domains are allowed.
-
-### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
-
-Type: integer<br>
-Default: 2000 
-
-Maximum number of rows to return specifically on `:rows`-type queries via the API.
-
