@@ -58,6 +58,7 @@ export const EmbedModal = ({
             <EmbedTitle type={titleize(embedType)} />
           </Center>
         ) : (
+          //   TODO: Change the application name manually when the selector is added
           t`Embed Metabase`
         )
       }
