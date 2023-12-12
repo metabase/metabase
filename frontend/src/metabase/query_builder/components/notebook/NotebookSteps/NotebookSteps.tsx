@@ -4,7 +4,6 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
 
@@ -34,6 +33,17 @@ function getInitialOpenSteps(question: Question, readOnly: boolean): OpenSteps {
 
   return {};
 }
+
+const dropEmptyStages = (query: Lib.Query): Lib.Query => {
+  const stageCount = Lib.stageCount(query);
+  const stageIndexes = Array.from({ length: stageCount }).map(
+    (_, index) => index,
+  );
+
+  return stageIndexes.toReversed().reduce((query, stageIndex) => {
+    return Lib.dropStageIfEmpty(query, stageIndex);
+  }, query);
+};
 
 function NotebookSteps({
   className,
@@ -72,11 +82,9 @@ function NotebookSteps({
 
   const handleQueryChange = useCallback(
     async (query: Query) => {
-      const updatedLegacyQuery = Lib.toLegacyQuery(query);
+      const updatedLegacyQuery = Lib.toLegacyQuery(dropEmptyStages(query));
       const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
-      const updatedQuery = updatedQuestion.query() as StructuredQuery;
-      const cleanQuestion = updatedQuery.cleanNesting().question();
-      await updateQuestion(cleanQuestion);
+      await updateQuestion(updatedQuestion);
     },
     [question, updateQuestion],
   );
