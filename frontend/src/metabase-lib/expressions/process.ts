@@ -28,7 +28,9 @@ export function processSource(options: {
         throw new Error(t`Unknown Segment: ${name}`);
       }
 
-      return Lib.legacyFieldRef(segment);
+      // @uladzimirdev ugly hack
+      // remove it once https://github.com/metabase/metabase/pull/36455 is merged
+      return Lib.legacyFieldRef(segment).slice(0, -1);
     } else {
       const reference = options.name ?? ""; // avoid circular reference
 
