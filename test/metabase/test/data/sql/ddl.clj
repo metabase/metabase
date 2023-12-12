@@ -46,24 +46,24 @@
   (let [statements (atom [])
         add!       (fn [& stmnts]
                      (swap! statements concat (filter some? stmnts)))]
-    ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
+      ;; Add the SQL for creating each Table
       (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
-            (sql.tx/create-table-sql driver dbdef tabledef)))
-    ;; Add the SQL for adding FK constraints
-    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
-            {:keys [fk], :as fielddef}                field-definitions]
-      (when fk
-        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef))))
-    ;; Add the SQL for adding table comments
-    (doseq [{:keys [table-comment], :as tabledef} table-definitions]
-      (when table-comment
+            (sql.tx/create-table-sql driver dbdef tabledef))
+      ;; Add the SQL for adding table comments
+      (when (:table-comment tabledef)
         (add! (sql.tx/standalone-table-comment-sql driver dbdef tabledef))))
-    ;; Add the SQL for adding column comments
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions
-            {:keys [field-comment], :as fielddef}     field-definitions
-            :when                                     field-comment]
-      (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef)))
+            {:keys [fk indexed?], :as fielddef}       field-definitions]
+      ;; Add the SQL for adding FK constraints
+      (when fk
+        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))
+      ;; Add the SQL for creating index
+      (when indexed?
+        (add! (sql.tx/create-index-sql driver (:table-name tabledef) [(:field-name fielddef)])))
+      ;; Add the SQL for adding column comments
+      (when (:field-comment fielddef)
+        (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef))))
     @statements))
 
 ;; The methods below are currently only used by `:sql-jdbc` drivers, but you can use them to help implement your
