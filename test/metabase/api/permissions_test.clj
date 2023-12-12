@@ -258,13 +258,15 @@
     (testing "permissions graph is not returned when skip-graph"
       (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
                                :model/Database         {db-id :id} {}]
-        (let [g (perms/data-perms-graph)
-              returned-g (mt/user-http-request :crowberto :put 200 "permissions/graph"
-                                               (assoc-in g [:groups (u/the-id group) db-id :data :schemas] :all))
-              no-returned-g (mt/user-http-request :crowberto :put 200 "permissions/graph?skip-graph=true"
-                                                  (assoc-in g [:groups (u/the-id group) db-id :data :schemas] :all))]
+        (let [g              (perms/data-perms-graph)
+              do-perm-put    (fn [url] (mt/user-http-request :crowberto :put 200 url
+                                                          (assoc-in g [:groups (u/the-id group) db-id :data :schemas] :all)))
+              returned-g     (do-perm-put "permissions/graph")
+              returned-g-two (do-perm-put "permissions/graph?skip-graph=false")
+              no-returned-g  (do-perm-put "permissions/graph?skip-graph=true")]
           (is (perm-test-util/validate-graph-api-output (:groups g)))
           (is (perm-test-util/validate-graph-api-output (:groups returned-g)))
+          (is (perm-test-util/validate-graph-api-output (:groups returned-g-two)))
           (is (not (perm-test-util/validate-graph-api-output (:groups no-returned-g))))
           (is (= {} no-returned-g)))))))
 
