@@ -511,7 +511,7 @@
   [_tag [expr p :as _args]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})
         [p-sql & p-args]       (sql/format-expr p {:nested true})]
-    (into [(str "APPROX_PERCENTILE_CONT(%s) WITHIN GROUP (ORDER BY %s)" p-sql expr-sql)]
+    (into [(format "APPROX_PERCENTILE_CONT(%s) WITHIN GROUP (ORDER BY %s)" p-sql expr-sql)]
           cat
           [p-args expr-args])))
 
