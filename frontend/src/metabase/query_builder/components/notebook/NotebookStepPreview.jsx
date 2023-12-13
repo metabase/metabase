@@ -40,12 +40,12 @@ class NotebookStepPreview extends Component {
   };
 
   getPreviewQuestion(step) {
-    const query = step.previewQuery;
-    const limit = Lib.currentLimit(query, -1);
+    const { previewQuery: query, stageIndex } = step;
+    const limit = Lib.currentLimit(query, stageIndex);
     const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;
     const queryWithLimit = hasSuitableLimit
       ? query
-      : Lib.limit(query, -1, PREVIEW_ROWS_LIMIT);
+      : Lib.limit(query, stageIndex, PREVIEW_ROWS_LIMIT);
 
     return Question.create()
       ._setMLv2Query(queryWithLimit)
