@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -105,3 +106,24 @@
       (t2.with-temp/with-temp [User {user-id :id} {:is_superuser true}]
         (t2/update! User user-id {:is_superuser false})
         (is (false? (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
+
+(deftest data-graph-for-group-check-all-groups-test
+  (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
+    (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
+      (let [graph (perms/data-graph-for-group group-id)]
+        (is (perm-test-util/validate-graph-api-output graph))
+        (is (= #{group-id} (set (keys graph))))))))
+
+(defn- perm-object->db [perm-obj]
+  (some-> (re-find #"/db/(\d+)/" perm-obj) second parse-long))
+
+(deftest data-graph-for-db-check-all-dbs-test
+  (let [perm-objects (t2/select-fn-set :object :model/Permissions)
+        dbs-in-perms (set (keep perm-object->db perm-objects))]
+    (doseq [db-id (t2/select-fn-set :id :model/Database)]
+      (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
+        (let [graph (perms/data-graph-for-db db-id)]
+          (is (perm-test-util/validate-graph-api-output graph))
+          ;; Only check this for dbs with permissions
+          (when (contains? dbs-in-perms db-id)
+            (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))))

@@ -16,7 +16,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -25,10 +25,6 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlite, :parent :sql-jdbc)
-
-(defmethod sql.qp/honey-sql-version :sqlite
-  [_driver]
-  2)
 
 ;; SQLite does not support a lot of features, so do not show the options in the interface
 (doseq [[feature supported?] {:right-join                             false
@@ -40,8 +36,9 @@
                               :schemas                                false
                               :datetime-diff                          true
                               :now                                    true
-                              ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
-                              ;; we have this 'feature' so the frontend doesn't try to present the option to you.
+                              ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made
+                              ;; case-sensitive. So let people know we have this 'feature' so the frontend doesn't try
+                              ;; to present the option to you.
                               :case-sensitivity-string-filter-options false}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
@@ -273,7 +270,7 @@
 ;;
 ;; TIMESTAMP FIXME — this doesn't seem like the correct thing to do for non-Dates. I think params only support dates
 ;; rn however
-(s/defmethod driver.sql/->prepared-substitution [:sqlite Temporal] :- driver.sql/PreparedStatementSubstitution
+(mu/defmethod driver.sql/->prepared-substitution [:sqlite Temporal] :- driver.sql/PreparedStatementSubstitution
   [_driver date]
   ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`

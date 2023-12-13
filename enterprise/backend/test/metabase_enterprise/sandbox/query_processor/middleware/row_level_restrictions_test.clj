@@ -30,8 +30,6 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -64,73 +62,74 @@
    :remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}})
 
 (defn- format-honeysql [honeysql]
-  (let [honeysql (cond-> honeysql
-                   (= driver/*driver* :sqlserver)
-                   (assoc :modifiers ["TOP 1000"])
+  (let [add-top-1000 (fn [honeysql]
+                       (-> honeysql
+                           (dissoc :select)
+                           (assoc :select-top (into [[:inline 1000]] (:select honeysql)))))
+        honeysql     (cond-> honeysql
+                       (= driver/*driver* :sqlserver)
+                       add-top-1000
 
-                   ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
-                   ;; have one.) HACK
-                   (= driver/*driver* :sparksql)
-                   (update :from (fn [[table]]
-                                   [[table [(sql.qp/->honeysql
-                                             :sparksql
-                                             (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
+                       ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
+                       ;; have one.) HACK
+                       (= driver/*driver* :sparksql)
+                       (update :from (fn [[table]]
+                                       [[table [(sql.qp/->honeysql
+                                                 :sparksql
+                                                 (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
     (first (sql.qp/format-honeysql driver/*driver* honeysql))))
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
-    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-      {:query (mt/native-query
-                {:query
-                 (format-honeysql
-                  {:select   [:*]
-                   :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
-                   :where    [:=
-                              (identifier :venues :category_id)
-                              #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{cat}}")]
-                   :order-by [[(identifier :venues :id) :asc]]})
+    {:query (mt/native-query
+              {:query
+               (format-honeysql
+                {:select   [:*]
+                 :from     [[(identifier :venues)]]
+                 :where    [:=
+                            (identifier :venues :category_id)
+                            [:raw "{{cat}}"]]
+                 :order-by [[(identifier :venues :id) :asc]]})
 
-                 :template_tags
-                 {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-       :remappings {:cat ["variable" ["template-tag" "cat"]]}})))
+               :template_tags
+               {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+     :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
-    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-      {:query (mt/native-query
-                {:query
-                 (format-honeysql
-                  {:select    [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins :id))
-                               (sql.qp/maybe-wrap-unaliased-expr (identifier :checkins :user_id))
-                               (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :name))
-                               (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :category_id))]
-                   :from      [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins))]
-                   :left-join [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))
-                               [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                   :where     [:=
-                               (identifier :checkins :user_id)
-                               #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{user}}")]
-                   :order-by  [[(identifier :checkins :id) :asc]]})
+    {:query (mt/native-query
+              {:query
+               (format-honeysql
+                {:select    [[(identifier :checkins :id)]
+                             [(identifier :checkins :user_id)]
+                             [(identifier :venues :name)]
+                             [(identifier :venues :category_id)]]
+                 :from      [[(identifier :checkins)]]
+                 :left-join [[(identifier :venues)]
+                             [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
+                 :where     [:=
+                             (identifier :checkins :user_id)
+                             [:raw "{{user}}"]]
+                 :order-by  [[(identifier :checkins :id) :asc]]})
 
-                 :template_tags
-                 {"user" {:name         "user"
-                          :display-name "User ID"
-                          :type         :number
-                          :required     true}}})
-       :remappings {:user ["variable" ["template-tag" "user"]]}})))
+               :template_tags
+               {"user" {:name         "user"
+                        :display-name "User ID"
+                        :type         :number
+                        :required     true}}})
+     :remappings {:user ["variable" ["template-tag" "user"]]}}))
 
 (defn- venue-names-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-      {:query (mt/native-query
-                {:query
-                 (format-honeysql
-                  {:select   [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues :id))
-                              (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :name))]
-                   :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
-                   :order-by [[(identifier :venues :id) :asc]]})})})))
+    {:query (mt/native-query
+              {:query
+               (format-honeysql
+                {:select   [[(identifier :venues :id)]
+                            [(identifier :venues :name)]]
+                 :from     [[(identifier :venues)]]
+                 :order-by [[(identifier :venues :id) :asc]]})})}))
 
 (defn- run-venues-count-query []
   (mt/format-rows-by [int]
@@ -164,10 +163,9 @@
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]
-  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
-    (-> (qp.store/with-metadata-provider (mt/id)
-          (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
-        remove-metadata)))
+  (-> (qp.store/with-metadata-provider (mt/id)
+        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
+      remove-metadata))
 
 (deftest middleware-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"

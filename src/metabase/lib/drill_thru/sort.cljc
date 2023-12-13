@@ -1,4 +1,23 @@
 (ns metabase.lib.drill-thru.sort
+  "Adds an order by clause on the selected column.
+
+  Entry points:
+
+  - Column header
+
+  Requirements:
+
+  - Column not `type/Structured`
+
+  - If the column is already sorted, allow only the opposite direction to be applied
+
+  Query transformation:
+
+  - Add a sort clause with the selection direction
+
+  Question transformation:
+
+  - None"
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]

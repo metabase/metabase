@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
@@ -17,7 +16,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]))
 
 (deftest ^:parallel explict-join-with-default-options-test
@@ -870,7 +868,7 @@
                               :limit 1}))]
         (is (= 1
                (count expected-rows)))
-        ;; these normally get ESCAPED by [[metabase.util.honeysql-extensions/identifier]] when they're compiled to SQL,
+        ;; these normally get ESCAPED by [[metabase.util.honey-sql-2/identifier]] when they're compiled to SQL,
         ;; but some fussy databases such as Oracle don't even allow escaped double quotes in identifiers. So make sure
         ;; that we don't allow SQL injection AND things still work
         (doseq [evil-join-alias ["users.id\" AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"
@@ -957,15 +955,10 @@
 (deftest ^:parallel join-order-test
   (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
-      ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
-      ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
-      (when (and (or (not (isa? driver/hierarchy driver/*driver* :sql))
-                     (= (sql.qp/honey-sql-version driver/*driver*) 2))
-                 ;; Joins in MongoDB are extremely slow, especially on version 4.2
-                 ;; (version 5 is about two times faster but still very slow) and
-                 ;; this test is flaky on CI. (See #29266.)
-                 (or (not= driver/*driver* :mongo)
-                     (-> (:dbms_version (data/db))
+      ;; this is fixed for all SQL drivers.
+      (when (or (isa? driver/hierarchy driver/*driver* :sql)
+                (and (isa? driver/hierarchy driver/*driver* :mongo)
+                     (-> (:dbms_version (mt/db))
                          :semantic-version
                          (driver.u/semantic-version-gte [5]))))
         (mt/dataset test-data

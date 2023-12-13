@@ -1,4 +1,34 @@
 (ns metabase.lib.drill-thru.underlying-records
+  "\"View these Orders\" transformation.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Requirements:
+
+  - Not empty `dimensions`, i.e. at least 1 breakout in the query
+
+  Query transformation:
+
+
+  - Drop all query stages where there are no aggregation clauses until the last one.
+
+  - Remove all aggregation, breakout, sort, limit, field clauses
+
+  - Add filters for every breakout `dimensions` using this logic
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
+
+  - If there is a selected column (cell only), extract filters associated with this aggregation column. It could be
+    built-in operators (SumIf) or Metrics with filters. Add these filters to the query.
+
+  Question transformation:
+
+  - Set display \"table\""
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -11,6 +41,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
@@ -69,14 +101,27 @@
 (mu/defn ^:private drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata
+   column       :- ::lib.schema.metadata/column
    value        :- :any]
   (let [filter-clauses (or (when (lib.binning/binning column)
-                             (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
-                               (let [unbinned-column (lib.binning/with-binning column nil)]
-                                 [(lib.filter/>= unbinned-column min-value)
-                                  (lib.filter/< unbinned-column max-value)])))
-                           [(lib.filter/= column value)])]
+                             (let [unbinned-column (lib.binning/with-binning column nil)]
+                               (if (some? value)
+                                 (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
+                                   [(lib.filter/>= unbinned-column min-value)
+                                    (lib.filter/< unbinned-column max-value)])
+                                 [(lib.filter/is-null unbinned-column)])))
+                           ;; if the column was temporally bucketed in the top level, make sure the `=` filter we
+                           ;; generate still has that bucket. Otherwise the filter will be something like
+                           ;;
+                           ;;    col = March 2023
+                           ;;
+                           ;; instead of
+                           ;;
+                           ;;    month(col) = March 2023
+                           (let [column (if-let [temporal-unit (::lib.underlying/temporal-unit column)]
+                                          (lib.temporal-bucket/with-temporal-bucket column temporal-unit)
+                                          column)]
+                             [(lib.filter/= column value)]))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))

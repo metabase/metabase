@@ -47,8 +47,8 @@
   ignore that column and return drills for all of the columns specified in `:dimensions`.
   `:return-drills-for-dimensions?` specifies which type we have."
   [{:f #'lib.drill-thru.automatic-insights/automatic-insights-drill,             :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? true}
+   {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
    {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
@@ -115,6 +115,6 @@
     stage-number :- :int
     drill        :- ::lib.schema.drill-thru/drill-thru
     & args]
-   (log/infof "Applying drill thru: %s"
-              (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
+   (log/debugf "Applying drill thru: %s"
+               (u/pprint-to-str {:query query, :stage-number stage-number, :drill drill, :args args}))
    (apply lib.drill-thru.common/drill-thru-method query stage-number drill args)))

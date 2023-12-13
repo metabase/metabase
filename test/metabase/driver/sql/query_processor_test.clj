@@ -18,32 +18,27 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
 
 (deftest ^:parallel compiled-test
-  (binding [hx/*honey-sql-version* 2]
-    (is (= [:raw "x"]
-           (sql.qp/->honeysql :sql (sql.qp/compiled [:raw "x"]))))))
+  (is (= [:raw "x"]
+         (sql.qp/->honeysql :sql (sql.qp/compiled [:raw "x"])))))
 
 (deftest ^:parallel default-select-test
-  (are [hsql-version expected] (= expected
-                                  (binding [hx/*honey-sql-version* hsql-version]
-                                    (->> {:from [[(sql.qp/sql-source-query "SELECT *" nil)
-                                                  (sql.qp/maybe-wrap-unaliased-expr (hx/identifier :table-alias "source"))]]}
-                                         (#'sql.qp/add-default-select :sql)
-                                         (sql.qp/format-honeysql :sql))))
-    1 ["SELECT \"source\".* FROM (SELECT *) \"source\""]
-    2 ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]))
+  (is (= ["SELECT \"source\".* FROM (SELECT *) AS \"source\""]
+         (->> {:from [[(sql.qp/sql-source-query "SELECT *" nil)
+                       [(h2x/identifier :table-alias "source")]]]}
+              (#'sql.qp/add-default-select :sql)
+              (sql.qp/format-honeysql :sql)))))
 
 (deftest ^:parallel sql-source-query-validation-test
   (testing "[[sql.qp/sql-source-query]] should throw Exceptions if you pass in invalid nonsense"
     (doseq [params [nil [1000]]]
       (testing (format "Params = %s" (pr-str params))
-        (is (instance? metabase.driver.sql.query_processor.deprecated.SQLSourceQuery
-                       (sql.qp/sql-source-query "SELECT *" params)))))
+        (is (= [::sql.qp/sql-source-query "SELECT *" params]
+               (sql.qp/sql-source-query "SELECT *" params)))))
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Expected native source query to be a string, got: clojure.lang.PersistentArrayMap"
@@ -207,10 +202,10 @@
     (mt/with-metadata-provider meta/metadata-provider
       (driver/with-driver :h2
         (is (= [[(sql.qp/sql-source-query "SELECT * FROM VENUES;" [])
-                 (hx/identifier :table-alias "card")]
+                 [(h2x/identifier :table-alias "card")]]
                 [:=
-                 (hx/with-database-type-info (hx/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
-                 (hx/identifier :field "card" "id")]]
+                 (h2x/with-database-type-info (h2x/identifier :field "PUBLIC" "CHECKINS" "VENUE_ID") "integer")
+                 (h2x/identifier :field "card" "id")]]
                (sql.qp/join->honeysql :h2
                                       (lib.tu.macros/$ids checkins
                                         {:source-query {:native "SELECT * FROM VENUES;", :params []}
@@ -226,50 +221,46 @@
 
 (defn- compile-join [driver]
   (driver/with-driver driver
-    (sql.qp/with-driver-honey-sql-version driver
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (let [join (sql.qp/join->honeysql
-                    driver
-                    {:source-query {:native "SELECT * FROM VENUES;", :params []}
-                     :alias        "card"
-                     :strategy     :left-join
-                     :condition    [:=
-                                    [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
-                                                                     ::add/source-alias "VENUE_ID"}]
-                                    [:field "id" {:base-type         :type/Text
-                                                  ::add/source-table "card"
-                                                  ::add/source-alias "id"}]]})]
-          (sql.qp/format-honeysql driver {:join join}))))))
+    (qp.store/with-metadata-provider meta/metadata-provider
+      (let [join (sql.qp/join->honeysql
+                  driver
+                  {:source-query {:native "SELECT * FROM VENUES;", :params []}
+                   :alias        "card"
+                   :strategy     :left-join
+                   :condition    [:=
+                                  [:field (meta/id :checkins :id) {::add/source-table (meta/id :checkins)
+                                                                   ::add/source-alias "VENUE_ID"}]
+                                  [:field "id" {:base-type         :type/Text
+                                                ::add/source-table "card"
+                                                ::add/source-alias "id"}]]})]
+        (sql.qp/format-honeysql driver {:join join})))))
 
 (deftest ^:parallel compile-honeysql-test
   (testing "make sure the generated HoneySQL will compile to the correct SQL"
-    (are [driver expected] (= [expected]
+    (are [driver expected] (= ["INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""]
                               (compile-join driver))
-      :sql      "INNER JOIN (SELECT * FROM VENUES) \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""
-      :h2       "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\""
-      :postgres "INNER JOIN (SELECT * FROM VENUES) AS \"card\" ON \"PUBLIC\".\"CHECKINS\".\"VENUE_ID\" = \"card\".\"id\"")))
+      :sql :h2 :postgres)))
 
 (deftest adjust-start-of-week-test
   (driver/with-driver :h2
-    (binding [hx/*honey-sql-version* 2]
-      (with-redefs [driver/db-start-of-week   (constantly :monday)
-                    setting/get-value-of-type (constantly :sunday)]
-        (is (= [:dateadd
-                (hx/literal "day")
-                (hx/with-database-type-info [:cast [:inline -1] [:raw "long"]] "long")
-                (hx/with-database-type-info
-                  [:cast
-                   [:week [:dateadd (hx/literal "day")
-                           (hx/with-database-type-info [:cast [:inline 1] [:raw "long"]] "long")
-                           (hx/with-database-type-info [:cast :created_at [:raw "datetime"]] "datetime")]]
-                   [:raw "datetime"]]
-                  "datetime")]
-               (sql.qp/adjust-start-of-week :h2 (partial hx/call :week) :created_at)))))
+    (with-redefs [driver/db-start-of-week   (constantly :monday)
+                  setting/get-value-of-type (constantly :sunday)]
+      (is (= [:dateadd
+              (h2x/literal "day")
+              (h2x/with-database-type-info [:cast [:inline -1] [:raw "long"]] "long")
+              (h2x/with-database-type-info
+               [:cast
+                [:week [:dateadd (h2x/literal "day")
+                        (h2x/with-database-type-info [:cast [:inline 1] [:raw "long"]] "long")
+                        (h2x/with-database-type-info [:cast :created_at [:raw "datetime"]] "datetime")]]
+                [:raw "datetime"]]
+               "datetime")]
+             (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
       (with-redefs [driver/db-start-of-week   (constantly :monday)
                     setting/get-value-of-type (constantly :monday)]
-        (is (= (hx/call :week :created_at)
-               (sql.qp/adjust-start-of-week :h2 (partial hx/call :week) :created_at)))))))
+        (is (= [:week :created_at]
+               (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at)))))))
 
 (defn- query-on-dataset-with-nils
   [query]
@@ -832,26 +823,17 @@
 
 (deftest ^:parallel floating-point-division-test-2
   (testing "Don't generate unneeded casts to FLOAT for the numerator if it is a number literal"
-    (doseq [honey-sql-version [1 2]]
-      (binding [hx/*honey-sql-version* honey-sql-version]
-        (testing (format "hx/*honey-sql-version* = %d" hx/*honey-sql-version*)
-          (is (= (case hx/*honey-sql-version*
-                   1 '{:select [source.my_cool_new_field AS my_cool_new_field]
-                       :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
-                                 :from   [VENUES]}
-                                AS source]
-                       :limit  [1]}
-                   2 '{:select [source.my_cool_new_field AS my_cool_new_field]
-                       :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
-                                 :from   [VENUES]}
-                                AS source]
-                       :limit  [1]})
-                 (-> (lib.tu.macros/mbql-query venues
-                       {:expressions {:my_cool_new_field [:/ 2 4]}
-                        :fields      [[:expression "my_cool_new_field"]]
-                        :limit       1})
-                     mbql->native
-                     sql.qp-test-util/sql->sql-map))))))))
+    (is (= '{:select [source.my_cool_new_field AS my_cool_new_field]
+             :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
+                       :from   [VENUES]}
+                      AS source]
+             :limit  [1]}
+           (-> (lib.tu.macros/mbql-query venues
+                 {:expressions {:my_cool_new_field [:/ 2 4]}
+                  :fields      [[:expression "my_cool_new_field"]]
+                  :limit       1})
+               mbql->native
+               sql.qp-test-util/sql->sql-map)))))
 
 (deftest ^:parallel duplicate-aggregations-test
   (testing "Make sure multiple aggregations of the same type get unique aliases"
@@ -1018,37 +1000,28 @@
                sql.qp-test-util/sql->sql-map)))))
 
 (deftest ^:parallel format-honeysql-test
-  (are [version honeysql expected] (= expected
-                                      (sql.qp/format-honeysql version :ansi (binding [hx/*honey-sql-version* version]
-                                                                              honeysql)))
-    1 {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
-    2 {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
+  (are [honeysql expected] (= expected
+                              (sql.qp/format-honeysql nil :ansi honeysql))
+    {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
 
-    1 (hx/identifier :field "A" "B") ["\"A\".\"B\""]
-    2 (hx/identifier :field "A" "B") ["\"A\".\"B\""]
+    (h2x/identifier :field "A" "B") ["\"A\".\"B\""]
 
     ;; don't complain on 'suspicious' characters since we're quoting things anyway!
-    1 (hx/identifier :field "A;B") ["\"A;B\""]
-    2 (hx/identifier :field "A;B") ["\"A;B\""]
+    (h2x/identifier :field "A;B") ["\"A;B\""]
 
     ;; but we should be escaping quotes.
-    1 (hx/identifier :field "A\"B") ["\"A\"\"B\""]
-    2 (hx/identifier :field "A\"B") ["\"A\"\"B\""]
+    (h2x/identifier :field "A\"B") ["\"A\"\"B\""]
 
     ;; make sure kebab-case is preserved.
-    1 (hx/identifier :field "test-data") ["\"test-data\""]
-    2 (hx/identifier :field "test-data") ["\"test-data\""]
+    (h2x/identifier :field "test-data") ["\"test-data\""]
 
-    1 {:select [[(hx/identifier :field "test-data") :a]]} ["SELECT \"test-data\" AS \"a\""]
-    2 {:select [[(hx/identifier :field "test-data") :a]]} ["SELECT \"test-data\" AS \"a\""]
+    {:select [[(h2x/identifier :field "test-data") :a]]} ["SELECT \"test-data\" AS \"a\""]
 
     ;; Honey SQL 2 can't be configured to always inline numbers, so we have to remember to do it, otherwise it won't
     ;; do it for us =(
-    1 [:= "A" 1] ["? = 1" "A"]
-    2 [:= "A" 1] ["(? = ?)" "A" 1]
+    [:= "A" 1] ["(? = ?)" "A" 1]
 
-    1 [:or [:not= :state "OR"] [:= :state nil]] ["(\"state\" <> ? OR \"state\" IS NULL)" "OR"]
-    2 [:or [:not= :state "OR"] [:= :state nil]] ["((\"state\" <> ?) OR (\"state\" IS NULL))" "OR"]))
+    [:or [:not= :state "OR"] [:= :state nil]] ["((\"state\" <> ?) OR (\"state\" IS NULL))" "OR"]))
 
 (deftest day-of-week-inline-numbers-test
   (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
@@ -1063,30 +1036,28 @@
                      :friday
                      :saturday]]
           (mt/with-temporary-setting-values [start-of-week day]
-            (sql.qp/with-driver-honey-sql-version driver/*driver*
-              (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
-                                 vec
-                                 (update 0 #(str/split-lines (driver/prettify-native-form driver/*driver* %))))]
-                (testing "this query should not have any parameters"
-                  (is (mc/validate [:cat [:sequential :string]] sql-args)))))))))))
+            (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
+                               vec
+                               (update 0 #(str/split-lines (driver/prettify-native-form driver/*driver* %))))]
+              (testing "this query should not have any parameters"
+                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"
-    (binding [hx/*honey-sql-version* 2]
-      (is (= ["SELECT"
-              "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0 AS QUANTITY,"
-              "  COUNT(*) AS count"
-              "FROM"
-              "  ORDERS"
-              "GROUP BY"
-              "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0"
-              "ORDER BY"
-              "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0 ASC"]
-             (->> (mbql->native (lib.tu.macros/mbql-query orders
-                                  {:aggregation [[:count]]
-                                   :breakout    [:binning-strategy $quantity :num-bins 10]}))
-                  (driver/prettify-native-form :h2)
-                  str/split-lines))))))
+    (is (= ["SELECT"
+            "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0 AS QUANTITY,"
+            "  COUNT(*) AS count"
+            "FROM"
+            "  ORDERS"
+            "GROUP BY"
+            "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0"
+            "ORDER BY"
+            "  FLOOR((ORDERS.QUANTITY / 10.0)) * 10.0 ASC"]
+           (->> (mbql->native (lib.tu.macros/mbql-query orders
+                                {:aggregation [[:count]]
+                                 :breakout    [:binning-strategy $quantity :num-bins 10]}))
+                (driver/prettify-native-form :h2)
+                str/split-lines)))))
 
 (deftest ^:parallel make-nestable-sql-test
   (testing "Native sql query should be modified to be usable in subselect"

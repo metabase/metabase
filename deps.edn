@@ -67,8 +67,6 @@
                                                            org.apache.poi/poi-ooxml]}
   environ/environ                           {:mvn/version "1.2.0"}              ; env vars/Java properties abstraction
   hiccup/hiccup                             {:mvn/version "1.0.5"}              ; HTML templating
-  honeysql/honeysql                         {:mvn/version "1.0.461"             ; Transform Clojure data structures to SQL
-                                             :exclusions  [org.clojure/clojurescript]}
   inflections/inflections                   {:mvn/version "0.14.1"}             ; Clojure/Script library used for prularizing words
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.22.3"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser

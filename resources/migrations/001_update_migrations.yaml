@@ -4186,6 +4186,31 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'Hash of normalized query, calculated in middleware.cache'
 
+  - changeSet:
+      id: v49.00-000
+      author: qnkhuat
+      comment: Remove leagcy pulses
+      changes:
+        - sql: DELETE FROM pulse where dashboard_id is null and alert_condition is null;
+      # pulse has been deprecated in v38(~2.5 years ago), even the UI to view it is broken
+      # so we don't need to worry about recovering it on rollback
+      rollback:
+
+  - changeSet:
+      id: v49.00-003
+      author: qnkhuat
+      comment: Add metabase_field.database_indexed
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_indexed
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'If the database supports indexing, this column indicate whether or not a field is indexed, or is the 1st column in a composite index'
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

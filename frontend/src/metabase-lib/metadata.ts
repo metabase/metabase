@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, FieldReference, TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
@@ -165,18 +165,6 @@ export function tableOrCardMetadata(
   tableID: TableId,
 ): CardMetadata | TableMetadata {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
-}
-
-/**
- * Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacyRef`.
- */
-export function findColumnForLegacyRef(
-  query: Query,
-  stageIndex: number,
-  legacyRef: FieldReference, // actually this will work for expression and aggregation references as well.
-  columns: ColumnMetadata[],
-): ColumnMetadata | null {
-  return ML.find_column_for_legacy_ref(query, stageIndex, legacyRef, columns);
 }
 
 export function visibleColumns(

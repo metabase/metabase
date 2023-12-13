@@ -1,5 +1,37 @@
 (ns metabase.lib.drill-thru.zoom-in-bins
-  "This covers two types of 'zoom in' drills:
+  "\"Zoom\" transform for numeric (including location) columns.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Requirements:
+
+  - `dimensions` have a numeric column with a binning strategy applied. It can be the default one (\"Auto\"). Only the
+    first matching column would be used in query transformation.
+
+  Query transformation:
+
+  - Remove breakouts for `dimensions`. Please note that with regular cells and pivot cells it would mean removing all
+    breakouts; but with legend item clicks it would remove the breakout for the legend item column only.
+
+  - Add a filter based on columns and values from `dimensions`. Take temporal units and binning strategies into
+    account
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
+
+  - Add a breakout based on the numeric column (from requirements). For location columns, use the binning strategy
+    that is 10x more granular (e.g. `Every 1 degree` -> `Every 0.1 degrees`). For numeric columns, use the default
+    binning strategy (\"Auto\").
+
+  Question transformation:
+
+  - Set default display
+
+  This covers two types of 'zoom in' drills:
 
   1. If we have a query with a breakout with binning using the `:num-bins` strategy, return a drill that when applied
      adds a filter for the selected bin ('zooms in') and changes the binning strategy to default. E.g.

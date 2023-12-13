@@ -21,7 +21,9 @@ import {
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
@@ -430,6 +432,38 @@ describe("scenarios > dashboard > subscriptions", () => {
       cy.findByText(TEXT_CARD).click();
       sendEmailAndAssert(email => {
         expect(email.html).to.include(TEXT_CARD);
+      });
+    });
+
+    it(`should load question binned by "Month of year" or similar granularity (metabase#16918)`, () => {
+      const questionDetails = {
+        name: "16918",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "temporal-unit": "month-of-year" },
+            ],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        },
+        display: "line",
+      };
+
+      const dashboardDetails = { name: "Repro Dashboard" };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          assignRecipient({ dashboard_id });
+        },
+      );
+
+      sendEmailAndAssert(email => {
+        expect(email.html).to.include(dashboardDetails.name);
+        expect(email.html).to.include(questionDetails.name);
       });
     });
   });

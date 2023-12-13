@@ -54,19 +54,20 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models          true
-                              :convert-timezone        true
-                              :datetime-diff           true
-                              :now                     true
-                              :regex                   false
-                              :percentile-aggregations false
-                              :full-join               false
-                              :uploads                 true
-                              :schemas                 false
+(doseq [[feature supported?] {:persist-models                         true
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :now                                    true
+                              :regex                                  false
+                              :percentile-aggregations                false
+                              :full-join                              false
+                              :uploads                                true
+                              :schemas                                false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
-                              :case-sensitivity-string-filter-options false}]
+                              :case-sensitivity-string-filter-options false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -225,10 +226,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/honey-sql-version :mysql
-  [_driver]
-  2)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
@@ -672,7 +669,7 @@
   to calculate one by hand."
   [driver database ^OffsetDateTime offset-time]
   (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
-    (t/local-date-time offset-time zone-id )))
+    (t/local-date-time offset-time zone-id)))
 
 (defmulti ^:private value->string
   "Convert a value into a string that's safe for insertion"
