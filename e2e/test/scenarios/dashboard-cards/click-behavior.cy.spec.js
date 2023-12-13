@@ -1048,11 +1048,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getCreatedAtToQuestionMapping().should("not.exist");
           cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-          /**
-           * TODO: remove the next line when metabase#34845 is fixed
-           * @see https://github.com/metabase/metabase/issues/34845
-           */
-          cy.get("aside").findByText("Unknown").click();
+
           addSavedQuestionDestination();
           addSavedQuestionCreatedAtParameter();
           addSavedQuestionQuantityParameter();
@@ -1238,11 +1234,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         getCreatedAtToUrlMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
         addUrlDestination();
         modal().within(() => {
           const urlInput = cy.findAllByRole("textbox").eq(0);

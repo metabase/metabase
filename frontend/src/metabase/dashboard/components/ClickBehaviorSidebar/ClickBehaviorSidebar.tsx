@@ -160,6 +160,7 @@ export function ClickBehaviorSidebar({
     }
     setOriginalColumnVizSettings(null);
     setSelectedColumn(null);
+    setTypeSelectorVisible(true);
   }, [isValidClickBehavior, originalColumnVizSettings, handleChangeSettings]);
 
   const handleCancel = useCallback(() => {
