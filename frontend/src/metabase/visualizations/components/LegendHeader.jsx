@@ -13,13 +13,8 @@ const MIN_WIDTH_PER_SERIES = 100;
 class LegendHeader extends Component {
   static propTypes = {
     series: PropTypes.array.isRequired,
-    hovered: PropTypes.object,
-    onHoverChange: PropTypes.func,
     onChangeCardAndRun: PropTypes.func,
     actionButtons: PropTypes.node,
-    description: PropTypes.string,
-    classNameWidgets: PropTypes.string,
-    icon: PropTypes.object,
   };
 
   static defaultProps = {
@@ -31,17 +26,12 @@ class LegendHeader extends Component {
   render() {
     const {
       series,
-      hovered,
 
       actionButtons,
-      icon,
-      onHoverChange,
       onChangeCardAndRun,
       settings,
-      description,
       onVisualizationClick,
       visualizationIsClickable,
-      classNameWidgets,
       width,
     } = this.props;
 
@@ -72,17 +62,10 @@ class LegendHeader extends Component {
           <LegendHeaderItem
             key={index}
             title={titles[index]}
-            icon={icon}
-            description={description}
             color={colors[index % colors.length]}
             showDot={showDots}
             showTitle={showTitles}
-            isMuted={
-              hovered && hovered.index != null && index !== hovered.index
-            }
             isBreakoutSeries={isBreakoutSeries}
-            onMouseEnter={() => onHoverChange && onHoverChange({ index })}
-            onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
               s.clicked && visualizationIsClickable(s.clicked)
                 ? e =>
@@ -98,16 +81,10 @@ class LegendHeader extends Component {
                     })
                 : null
             }
-            infoClassName={classNameWidgets}
           />,
         ])}
         {actionButtons && (
-          <span
-            className={cx(
-              classNameWidgets,
-              "flex-no-shrink flex-align-right relative",
-            )}
-          >
+          <span className="flex-no-shrink flex-align-right relative">
             {actionButtons}
           </span>
         )}
