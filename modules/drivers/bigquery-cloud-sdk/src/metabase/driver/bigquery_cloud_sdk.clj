@@ -32,7 +32,7 @@
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
                               DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
-                              JobInfo TableDefinition$Type TableId TableResult)))
+                              TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -166,20 +166,19 @@
                set)})
 
 (defn- get-field-parsers [^Schema schema]
-  (when schema
-    (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
-      (into []
-            (map (fn [^Field field]
-                   (let [column-type (.. field getType name)
-                         column-mode (.getMode field)
-                         method      (get-method bigquery.qp/parse-result-of-type column-type)]
-                     (when (= method default-parser)
-                       (let [column-name (.getName field)]
-                         (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
-                                        column-name
-                                        column-type))))
-                     (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
-            (.getFields schema)))))
+  (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
+    (into []
+          (map (fn [^Field field]
+                 (let [column-type (.. field getType name)
+                       column-mode (.getMode field)
+                       method (get-method bigquery.qp/parse-result-of-type column-type)]
+                   (when (= method default-parser)
+                     (let [column-name (.getName field)]
+                       (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
+                                      column-name
+                                      column-type))))
+                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+          (.getFields schema))))
 
 (defn- parse-field-value [^FieldValue cell parser]
   (when-let [v (.getValue cell)]
@@ -245,11 +244,6 @@
   "Callback to execute when a new page is retrieved, used for testing"
   nil)
 
-(def ^:dynamic *dry-run*
-  "Don't actually run the query, just validate it. Throw an exception if query is invalid. Currently only used for
-  tests. See https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query#dryRun"
-  false)
-
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
            {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
@@ -262,7 +256,6 @@
     (let [request (doto (QueryJobConfiguration/newBuilder sql)
                     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
                     (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
-                    (.setDryRun (boolean *dry-run*))
                     (bigquery.params/set-parameters! parameters)
                     ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
                     ;; effect for RPC (a.k.a. "fast") calls
@@ -272,13 +265,7 @@
           ;; as long as we don't set certain additional QueryJobConfiguration options, our queries *should* always be
           ;; following the fast query path (i.e. RPC)
           ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
-          res-fut (future (if *dry-run*
-                            ;; returns a com.google.cloud.bigquery.Job if it validated ok. We can just ignore it since
-                            ;; we can't do anything useful with it.
-                            (do
-                              (.create client (.build (JobInfo/newBuilder (.build request))) (u/varargs BigQuery$JobOption))
-                              nil)
-                            (.query client (.build request) (u/varargs BigQuery$JobOption))))]
+          res-fut (future (.query client (.build request) (u/varargs BigQuery$JobOption)))]
       (when cancel-chan
         (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
           (when (a/<!! cancel-chan)
@@ -332,12 +319,17 @@
 
     (respond results-metadata rows)"
   [respond ^TableResult resp cancel-requested?]
-  (let [^Schema schema (when resp (.getSchema resp))
-        parsers        (get-field-parsers schema)
-        columns        (for [column (some-> schema table-schema->metabase-field-info)]
-                         (-> column
-                             (set/rename-keys {:base-type :base_type})
-                             (dissoc :database-type :database-position)))]
+  (let [^Schema schema
+        (.getSchema resp)
+
+        parsers
+        (get-field-parsers schema)
+
+        columns
+        (for [column (table-schema->metabase-field-info schema)]
+          (-> column
+              (set/rename-keys {:base-type :base_type})
+              (dissoc :database-type :database-position)))]
     (respond
      {:cols columns}
      (for [^FieldValueList row (fetch-page resp cancel-requested?)]

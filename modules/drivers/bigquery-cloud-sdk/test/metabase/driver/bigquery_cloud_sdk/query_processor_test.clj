@@ -820,10 +820,9 @@
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset attempted-murders
         (mt/with-report-timezone-id report-timezone
-          (binding [bigquery/*dry-run* true]
-            (mt/run-mbql-query attempts
-              {:aggregation [[:count]]
-               :filter      [:time-interval (mt/id :attempts field) :last unit]})))))
+          (mt/run-mbql-query attempts
+            {:aggregation [[:count]]
+             :filter      [:time-interval (mt/id :attempts field) :last unit]}))))
     true
     (catch Throwable _
       false)))
@@ -862,10 +861,9 @@
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset attempted-murders
         (mt/with-report-timezone-id report-timezone
-          (binding [bigquery/*dry-run* true]
-            (mt/run-mbql-query attempts
-              {:aggregation [[:count]]
-               :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]})))))
+          (mt/run-mbql-query attempts
+            {:aggregation [[:count]]
+             :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]}))))
     true
     (catch Throwable _
       false)))
