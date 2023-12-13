@@ -1,6 +1,7 @@
 (ns metabase.upload-test
   (:require
    [clj-bom.core :as bom]
+   [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -231,93 +232,100 @@
   {:generated-columns {(keyword @#'upload/auto-pk-column-name) auto-pk-type}
    :extant-columns    col->type})
 
+(defn- detect-schema-with-csv-rows
+  "Calls detect-schema on rows from a CSV file. `rows` is a vector of strings"
+  [rows]
+  (with-open [reader (io/reader (csv-file-with rows))]
+    (let [[header & rows] (csv/read-csv reader)]
+      (#'upload/detect-schema header rows))))
+
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Well-formed CSV file"
       (is (=? (with-ai-id {:name             vchar-type
                            :age              int-type
                            :favorite_pokemon vchar-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Name, Age, Favorite Pokémon"
-                               "Tim, 12, Haunter"
-                               "Ryan, 97, Paras"])))))
+              (detect-schema-with-csv-rows
+               ["Name, Age, Favorite Pokémon"
+                "Tim, 12, Haunter"
+                "Ryan, 97, Paras"]))))
     (testing "CSV missing data"
       (is (=? (with-ai-id {:name       vchar-type
                            :height     int-type
                            :birth_year float-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Name, Height, Birth Year"
-                               "Luke Skywalker, 172, -19"
-                               "Darth Vader, 202, -41.9"
-                               "Watto, 137"          ; missing column
-                               "Sebulba, 112,"]))))) ; comma, but blank column
+              (detect-schema-with-csv-rows
+               ["Name, Height, Birth Year"
+                "Luke Skywalker, 172, -19"
+                "Darth Vader, 202, -41.9"
+                "Watto, 137"          ; missing column
+                "Sebulba, 112,"])))) ; comma, but blank column
     (testing "Type coalescing"
       (is (=? (with-ai-id {:name       vchar-type
                            :height     float-type
                            :birth_year vchar-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Name, Height, Birth Year"
-                               "Rey Skywalker, 170, 15"
-                               "Darth Vader, 202.0, 41.9BBY"])))))
+              (detect-schema-with-csv-rows
+               ["Name, Height, Birth Year"
+                "Rey Skywalker, 170, 15"
+                "Darth Vader, 202.0, 41.9BBY"]))))
     (testing "Boolean coalescing"
       (is (=? (with-ai-id {:name          vchar-type
                            :is_jedi_      bool-type
                            :is_jedi__int_ int-type
                            :is_jedi__vc_  vchar-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
-                               "Rey Skywalker, yes, true, t"
-                               "Darth Vader, YES, TRUE, Y"
-                               "Grogu, 1, 9001, probably?"
-                               "Han Solo, no, FaLsE, 0"])))))
+              (detect-schema-with-csv-rows
+               ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
+                "Rey Skywalker, yes, true, t"
+                "Darth Vader, YES, TRUE, Y"
+                "Grogu, 1, 9001, probably?"
+                "Han Solo, no, FaLsE, 0"]))))
     (testing "Order is ensured"
       (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
         (is (= (map keyword (str/split header #","))
                (keys
                 (:extant-columns
-                 (@#'upload/detect-schema
-                  (csv-file-with [header
-                                  "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"]))))))))
+                 (detect-schema-with-csv-rows
+                  [header
+                   "Luke,ah'm,yer,da,,,missing,columns,should,not,matter"])))))))
     (testing "Empty contents (with header) are okay"
       (is (=? (with-ai-id {:name     text-type
                            :is_jedi_ text-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Name, Is Jedi?"])))))
+              (detect-schema-with-csv-rows
+               ["Name, Is Jedi?"]))))
     (testing "Completely empty contents are okay"
       (is (=? (with-ai-id {})
-              (@#'upload/detect-schema
-               (csv-file-with [""])))))
+              (detect-schema-with-csv-rows
+               [""]))))
     (testing "CSV missing data in the top row"
       (is (=? (with-ai-id {:name       vchar-type
                            :height     int-type
                            :birth_year float-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Name, Height, Birth Year"
-                              ;; missing column
-                               "Watto, 137"
-                               "Luke Skywalker, 172, -19"
-                               "Darth Vader, 202, -41.9"
+              (detect-schema-with-csv-rows
+               ["Name, Height, Birth Year"
+                ;; missing column
+                "Watto, 137"
+                "Luke Skywalker, 172, -19"
+                "Darth Vader, 202, -41.9"
                               ;; comma, but blank column
-                               "Sebulba, 112,"])))))
+                "Sebulba, 112,"]))))
     (testing "Existing _mb_row_id column"
       (is (=? {:extant-columns    {:ship       vchar-type
                                    :name       vchar-type
                                    :weapon     vchar-type}
                :generated-columns {:_mb_row_id auto-pk-type}}
-              (@#'upload/detect-schema
-               (csv-file-with ["_mb_row_id,ship,name,weapon"
-                               "1,Serenity,Malcolm Reynolds,Pistol"
-                               "2,Millennium Falcon, Han Solo,Blaster"])))))
+              (detect-schema-with-csv-rows
+               ["_mb_row_id,ship,name,weapon"
+                "1,Serenity,Malcolm Reynolds,Pistol"
+                "2,Millennium Falcon, Han Solo,Blaster"]))))
     (testing "Existing ID column"
       (is (=? {:extant-columns    {:id         int-type
                                    :ship       vchar-type
                                    :name       vchar-type
                                    :weapon     vchar-type}
                :generated-columns {:_mb_row_id auto-pk-type}}
-              (@#'upload/detect-schema
-               (csv-file-with ["id,ship,name,weapon"
-                               "1,Serenity,Malcolm Reynolds,Pistol"
-                               "2,Millennium Falcon, Han Solo,Blaster"])))))))
+              (detect-schema-with-csv-rows
+               ["id,ship,name,weapon"
+                "1,Serenity,Malcolm Reynolds,Pistol"
+                "2,Millennium Falcon, Han Solo,Blaster"]))))))
 
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -326,21 +334,21 @@
                            :not_date     vchar-type
                            :datetime     datetime-type
                            :not_datetime vchar-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Date      ,Not Date  ,Datetime           ,Not datetime       "
-                               "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
-                               "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"])))))))
+              (detect-schema-with-csv-rows
+               ["Date      ,Not Date  ,Datetime           ,Not datetime       "
+                "2022-01-01,2023-02-28,2022-01-01T00:00:00,2023-02-28T00:00:00"
+                "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
 (deftest ^:parallel detect-schema-offset-datetimes-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Dates"
       (is (=? (with-ai-id {:offset_datetime offset-dt-type
                            :not_datetime   vchar-type})
-              (@#'upload/detect-schema
-               (csv-file-with ["Offset Datetime,Not Datetime"
-                               "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
-                               "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
-                               "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"])))))))
+              (detect-schema-with-csv-rows
+               ["Offset Datetime,Not Datetime"
+                "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
+                "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
+                "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"]))))))
 
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -353,7 +361,7 @@
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
-        (let [file       (csv-file-with ["id" "2" "3"])]
+        (let [file (csv-file-with ["id" "2" "3"])]
           (testing "Can upload two files with the same name"
             (is (some? (@#'upload/load-from-csv! driver/*driver* (mt/id) (format "table_name_%s" driver/*driver*) file)))
             (is (some? (@#'upload/load-from-csv! driver/*driver* (mt/id) (format "table_name_2_%s" driver/*driver*) file)))))))))
