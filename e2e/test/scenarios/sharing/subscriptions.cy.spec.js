@@ -208,107 +208,101 @@ describe("scenarios > dashboard > subscriptions", () => {
       });
     });
 
-    describe(
-      "let non-users unsubscribe from subscriptions",
-      { tags: "@flaky" },
-      () => {
-        it("should allow non-user to unsubscribe from subscription", () => {
-          const nonUserEmail = "non-user@example.com";
-          const otherUserEmail = "other-user@example.com";
-          const dashboardName = "Orders in a dashboard";
+    describe("let non-users unsubscribe from subscriptions", () => {
+      it("should allow non-user to unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const otherUserEmail = "other-user@example.com";
+        const dashboardName = "Orders in a dashboard";
 
-          visitDashboard(ORDERS_DASHBOARD_ID);
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
-          setupSubscriptionWithRecipients([nonUserEmail, otherUserEmail]);
+        setupSubscriptionWithRecipients([nonUserEmail, otherUserEmail]);
 
-          emailSubscriptionRecipients();
+        emailSubscriptionRecipients();
 
-          openEmailPage(dashboardName).then(() => {
-            cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-            cy.findByText("Unsubscribe").click();
-            cy.wait("@unsubscribe");
-            cy.contains(
-              `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-            ).should("exist");
-          });
-
-          openDashboardSubscriptions();
-          openPulseSubscription();
-
-          sidebar().findByText(nonUserEmail).should("not.exist");
-          sidebar().findByText(otherUserEmail).should("exist");
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
         });
 
-        it("should allow non-user to undo-unsubscribe from subscription", () => {
-          const nonUserEmail = "non-user@example.com";
-          const dashboardName = "Orders in a dashboard";
-          visitDashboard(ORDERS_DASHBOARD_ID);
+        openDashboardSubscriptions();
+        openPulseSubscription();
 
-          setupSubscriptionWithRecipients([nonUserEmail]);
+        sidebar().findByText(nonUserEmail).should("not.exist");
+        sidebar().findByText(otherUserEmail).should("exist");
+      });
 
-          emailSubscriptionRecipients();
+      it("should allow non-user to undo-unsubscribe from subscription", () => {
+        const nonUserEmail = "non-user@example.com";
+        const dashboardName = "Orders in a dashboard";
+        visitDashboard(ORDERS_DASHBOARD_ID);
 
-          openEmailPage(dashboardName).then(() => {
-            cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-            cy.intercept("/api/session/pulse/unsubscribe/undo").as(
-              "resubscribe",
-            );
+        setupSubscriptionWithRecipients([nonUserEmail]);
 
-            cy.findByText("Unsubscribe").click();
-            cy.wait("@unsubscribe");
+        emailSubscriptionRecipients();
 
-            cy.contains(
-              `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-            ).should("exist");
+        openEmailPage(dashboardName).then(() => {
+          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+          cy.intercept("/api/session/pulse/unsubscribe/undo").as("resubscribe");
 
-            cy.findByText("Undo").click();
-            cy.wait("@resubscribe");
+          cy.findByText("Unsubscribe").click();
+          cy.wait("@unsubscribe");
 
-            cy.contains(
-              `Okay, ${nonUserEmail} is subscribed to the "${dashboardName}" alert again.`,
-            ).should("exist");
-          });
+          cy.contains(
+            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+          ).should("exist");
 
-          openDashboardSubscriptions();
-          openPulseSubscription();
+          cy.findByText("Undo").click();
+          cy.wait("@resubscribe");
 
-          sidebar().findByText(nonUserEmail).should("exist");
+          cy.contains(
+            `Okay, ${nonUserEmail} is subscribed to the "${dashboardName}" alert again.`,
+          ).should("exist");
         });
 
-        it("should show 404 page when missing required parameters", () => {
-          const nonUserEmail = "non-user@example.com";
+        openDashboardSubscriptions();
+        openPulseSubscription();
 
-          const params = {
-            hash: "459a8e9f8d9e",
-            email: nonUserEmail,
-          }; // missing pulse-id
+        sidebar().findByText(nonUserEmail).should("exist");
+      });
 
-          cy.visit({
-            url: `/unsubscribe`,
-            qs: params,
-          });
+      it("should show 404 page when missing required parameters", () => {
+        const nonUserEmail = "non-user@example.com";
 
-          cy.findByLabelText("error page").should("exist");
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+        }; // missing pulse-id
+
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
         });
 
-        it("should show error message when server responds with an error", () => {
-          const nonUserEmail = "non-user@example.com";
+        cy.findByLabelText("error page").should("exist");
+      });
 
-          const params = {
-            hash: "459a8e9f8d9e",
-            email: nonUserEmail,
-            "pulse-id": "f", // invalid pulse-id
-          };
+      it("should show error message when server responds with an error", () => {
+        const nonUserEmail = "non-user@example.com";
 
-          cy.visit({
-            url: `/unsubscribe`,
-            qs: params,
-          });
+        const params = {
+          hash: "459a8e9f8d9e",
+          email: nonUserEmail,
+          "pulse-id": "f", // invalid pulse-id
+        };
 
-          cy.findByLabelText("error message").should("exist");
+        cy.visit({
+          url: `/unsubscribe`,
+          qs: params,
         });
-      },
-    );
+
+        cy.findByLabelText("error message").should("exist");
+      });
+    });
 
     it("should persist attachments for dashboard subscriptions (metabase#14117)", () => {
       assignRecipient();
