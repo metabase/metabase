@@ -127,7 +127,7 @@
   (let [^Server server (jetty/run-jetty (json-mw
                                          (exception-mw
                                           (wrap-params #'routes))) {:port 0 :join? false})
-        port   (.. server getURI getPort)
+        port (.. server getURI getPort)
         get! (fn [route]
                (http/get (str "http://localhost:" port route)
                          {:throw-exceptions false
