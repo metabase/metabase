@@ -65,7 +65,7 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
         isNavigatingBackToDashboard={false}
         editingOnLoad={false}
         addCardOnLoad={null}
-        isAutoApplyFilters={false} // TODO true or false?
+        isAutoApplyFilters={props.dashboard?.auto_apply_filters}
         dashcardData={{}}
         selectedTabId={props.selectedTabId}
         draftParameterValues={{}}
@@ -123,8 +123,6 @@ async function setup(overrides: Partial<SetupOpts> = {}) {
 }
 
 describe("Dashboard data fetching", () => {
-  afterEach(() => jest.clearAllMocks());
-
   it("should fetch dashboard on first load", async () => {
     const mocks = await setup();
     expect(mocks.mockFetchDashboard).toHaveBeenCalledTimes(1);
