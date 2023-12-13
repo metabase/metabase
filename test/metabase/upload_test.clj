@@ -902,10 +902,6 @@
                           first
                           :value))))))))
 
-;; Cal TODO: move this to driver test multimethod
-(defn- supports-schemas? [driver]
-  (not= driver :mysql))
-
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
   current user is granted data permissions to the database."
@@ -942,7 +938,7 @@
             (perms/revoke-data-perms! group-id (mt/id))))))))
 
 (deftest upload-csv!-schema-test
-  (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
     (mt/with-empty-db
       (let [db                   (mt/db)
             db-id                (u/the-id db)
@@ -996,7 +992,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Happy path with table prefix, and without schema"
-        (if (supports-schemas? driver/*driver*)
+        (if (driver/database-supports? driver/*driver* :schemas (mt/db))
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^A schema has not been set."
@@ -1013,20 +1009,19 @@
   (testing "The auto-generated column display_name should be the same as its name"
    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
      (mt/with-empty-db
-       (let [db-id (u/the-id (mt/db))]
-         (when (supports-schemas? driver/*driver*)
-           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                            ["CREATE SCHEMA \"not_public\";"])))
-         (upload-example-csv! {:schema-name (if (supports-schemas? driver/*driver*)
-                                              "not_public"
-                                              nil)
-                               :table-prefix "uploads_"})
-         (let [new-table (t2/select-one Table :db_id db-id)
-               new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
-           (is (= "_mb_row_id"
-                  (:name new-field)
-                  (:display_name new-field)))))))))
+       (when (driver/database-supports? driver/*driver* :schemas (mt/db))
+         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                          ["CREATE SCHEMA \"not_public\";"])))
+       (upload-example-csv! {:schema-name (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+                                            "not_public"
+                                            nil)
+                             :table-prefix "uploads_"})
+       (let [new-table (t2/select-one Table :db_id (mt/id))
+             new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
+         (is (= "_mb_row_id"
+                (:name new-field)
+                (:display_name new-field))))))))
 
 (deftest csv-upload-snowplow-test
   ;; Just test with h2 because snowplow should be independent of the driver
