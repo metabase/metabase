@@ -932,32 +932,6 @@ describeEE("formatting > sandboxes", () => {
       sidebar().findByText("Email this dashboard").should("exist");
     });
 
-    it.skip("sandboxed user should be able to send pulses to Slack (metabase#14844)", () => {
-      cy.viewport(1400, 1000);
-
-      cy.intercept("GET", "/api/collection/*").as("collection");
-
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: ["dimension", ["field-id", ORDERS.USER_ID]],
-        },
-      });
-
-      cy.signOut();
-      cy.signInAsSandboxedUser();
-
-      cy.visit("/pulse/create");
-      cy.wait("@collection");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Where should this data go?")
-        .parent()
-        .within(() => {
-          cy.findByText("Email");
-          cy.findByText("Slack");
-        });
-    });
-
     it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
       cy.sandboxTable({
         table_id: ORDERS_ID,

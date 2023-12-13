@@ -587,7 +587,7 @@
     (#'driver/notify-all-databases-updated)
     (catch Throwable _))
   (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
-    (testing (format "\nreport timezone id = %s" timezone-id)
+    (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
       (thunk))))
 
 (defmacro with-report-timezone-id

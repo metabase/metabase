@@ -187,10 +187,6 @@
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))
 
-(defmethod sql.qp/honey-sql-version :snowflake
-  [_driver]
-  2)
-
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp expr 6])
@@ -401,8 +397,7 @@
   [driver database table]
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [[(qp.store/with-metadata-provider (u/the-id database)
-                                               (sql.qp/with-driver-honey-sql-version driver
-                                                 (sql.qp/->honeysql driver table)))]]}))
+                                               (sql.qp/->honeysql driver table))]]}))
 
 (defmethod driver/describe-database :snowflake
   [driver database]
