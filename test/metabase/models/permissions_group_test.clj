@@ -111,7 +111,7 @@
   (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
     (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
       (let [graph (perms/data-graph-for-group group-id)]
-        (is (perm-test-util/validate-graph-api-output graph))
+        (is (perm-test-util/validate-graph-api-groups graph))
         (is (= #{group-id} (set (keys graph))))))))
 
 (defn- perm-object->db [perm-obj]
@@ -123,7 +123,7 @@
     (doseq [db-id (t2/select-fn-set :id :model/Database)]
       (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
         (let [graph (perms/data-graph-for-db db-id)]
-          (is (perm-test-util/validate-graph-api-output graph))
+          (is (perm-test-util/validate-graph-api-groups graph))
           ;; Only check this for dbs with permissions
           (when (contains? dbs-in-perms db-id)
             (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))))
