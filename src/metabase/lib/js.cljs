@@ -81,10 +81,13 @@
 
 (defn ^:export query
   "Coerce a plain map `query` to an actual query object that you can use with MLv2."
-  [database-id metadata query-map]
-  (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
-    (log/debugf "query map: %s" (pr-str query-map))
-    (lib.core/query (metadataProvider database-id metadata) query-map)))
+  ([metadata-provider table-or-card-metadata]
+   (lib.core/query metadata-provider table-or-card-metadata))
+
+  ([database-id metadata query-map]
+   (let [query-map (lib.convert/js-legacy-query->pMBQL query-map)]
+     (log/debugf "query map: %s" (pr-str query-map))
+     (lib.core/query (metadataProvider database-id metadata) query-map))))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
