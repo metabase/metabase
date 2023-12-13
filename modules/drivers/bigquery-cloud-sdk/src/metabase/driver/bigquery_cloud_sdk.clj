@@ -31,7 +31,7 @@
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
+                              DatasetId Field Field$Mode FieldValue FieldValueList JobId QueryJobConfiguration Schema Table
                               TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
@@ -265,19 +265,20 @@
           ;; as long as we don't set certain additional QueryJobConfiguration options, our queries *should* always be
           ;; following the fast query path (i.e. RPC)
           ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
-          res-fut (future (.query client (.build request) (u/varargs BigQuery$JobOption)))]
+          ;; Additional configuration here if needed
+          job-builder (-> (JobId/newBuilder)
+                                (.setRandomJob))
+          job-id (.build job-builder)
+          res-fut (future (.query client (.build request) job-id (u/varargs BigQuery$JobOption)))]
       (when cancel-chan
         (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
           (when (a/<!! cancel-chan)
             (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
             (reset! cancel-requested? true) ; signal the page iteration fn to stop
             (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
-              ;; somehow, even the FIRST page hasn't come back yet (i.e. the .query call above), so cancel the future to
-              ;; interrupt the thread waiting on that response to come back
-              ;; unfortunately, with this particular overload of .query, we have no access to (nor the ability to control)
-              ;; the jobId, so we have no way to use the BigQuery client to cancel any job that might be running
-              (future-cancel res-fut)
-              (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
+            (do (.cancel client job-id) ; Cancel running job before canceling task
+                (future-cancel res-fut))
+            (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException e
