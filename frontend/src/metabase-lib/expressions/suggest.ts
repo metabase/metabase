@@ -1,31 +1,27 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
 import {
   enclosingFunction,
   partialMatch,
 } from "metabase-lib/expressions/completer";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import {
   AGGREGATION_FUNCTIONS,
   EDITOR_FK_SYMBOLS,
   EXPRESSION_FUNCTIONS,
   getMBQLName,
-  MBQL_CLAUSES as MBQL_CLAUSES_CONFIG,
+  MBQL_CLAUSES,
 } from "metabase-lib/expressions/config";
 import {
-  formatDimensionName,
-  formatMetricName,
-  formatSegmentName,
-  getDimensionName,
+  formatIdentifier,
+  getDisplayNameWithSeparator,
 } from "metabase-lib/expressions";
 import type {
   HelpText,
   MBQLClauseFunctionConfig,
-  MBQLClauseMap,
 } from "metabase-lib/expressions/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
-
-const MBQL_CLAUSES = MBQL_CLAUSES_CONFIG as MBQLClauseMap;
 
 export type Suggestion = {
   type: string;
@@ -46,15 +42,21 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
 
 type SuggestArgs = {
   source: string;
-  legacyQuery: StructuredQuery;
+  query: Lib.Query;
+  stageIndex: number;
+  metadata: Metadata;
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
+  getColumnIcon: (column: Lib.ColumnMetadata) => string;
 };
 
 export function suggest({
   source,
-  legacyQuery,
+  query,
+  stageIndex,
+  getColumnIcon,
+  metadata,
   reportTimezone,
   startRule,
   targetOffset = source.length,
@@ -72,7 +74,7 @@ export function suggest({
     const functionDisplayName = enclosingFunction(partialSource);
     if (functionDisplayName) {
       const name = getMBQLName(functionDisplayName);
-      const database = legacyQuery.database();
+      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -103,7 +105,7 @@ export function suggest({
     },
   );
 
-  const database = legacyQuery.database();
+  const database = getDatabase(query, metadata);
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({
       type: "functions",
@@ -149,49 +151,62 @@ export function suggest({
 
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
-      ...legacyQuery
-        .dimensionOptions(() => true)
-        .all()
-        .map(dimension => ({
-          type: "fields",
-          name: getDimensionName(dimension),
-          text: formatDimensionName(dimension) + " ",
-          alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
-            getDimensionName(dimension, symbol),
-          ),
-          index: targetOffset,
-          icon: dimension.icon(),
-          order: 2,
-          dimension,
-        })),
+      ...Lib.expressionableColumns(query, stageIndex, targetOffset).map(
+        column => {
+          const displayInfo = Lib.displayInfo(query, stageIndex, column);
+
+          return {
+            type: "fields",
+            name: displayInfo.longDisplayName,
+            text: formatIdentifier(displayInfo.longDisplayName) + " ",
+            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+              getDisplayNameWithSeparator(displayInfo.longDisplayName, symbol),
+            ),
+            index: targetOffset,
+            icon: getColumnIcon(column),
+            order: 2,
+            ...column,
+          };
+        },
+      ),
     );
 
-    const segments = legacyQuery.table()?.segments;
+    const segments = Lib.availableSegments(query, stageIndex);
+
     if (segments) {
       suggestions.push(
-        ...segments.map(segment => ({
-          type: "segments",
-          name: segment.name,
-          text: formatSegmentName(segment),
-          index: targetOffset,
-          icon: "segment",
-          order: 3,
-        })),
+        ...segments.map(segment => {
+          const displayInfo = Lib.displayInfo(query, stageIndex, segment);
+
+          return {
+            type: "segments",
+            name: displayInfo.longDisplayName,
+            text: formatIdentifier(displayInfo.longDisplayName),
+            index: targetOffset,
+            icon: "segment",
+            order: 3,
+          };
+        }),
       );
     }
 
     if (startRule === "aggregation") {
-      const metrics = legacyQuery.table()?.metrics;
+      const metrics = Lib.availableMetrics(query);
+
       if (metrics) {
         suggestions.push(
-          ...metrics.map(metric => ({
-            type: "metrics",
-            name: metric.name,
-            text: formatMetricName(metric),
-            index: targetOffset,
-            icon: "insight",
-            order: 4,
-          })),
+          ...metrics.map(metric => {
+            const displayInfo = Lib.displayInfo(query, stageIndex, metric);
+
+            return {
+              type: "metrics",
+              name: displayInfo.longDisplayName,
+              text: formatIdentifier(displayInfo.longDisplayName),
+              index: targetOffset,
+              icon: "insight",
+              order: 4,
+            };
+          }),
         );
       }
     }
@@ -236,7 +251,7 @@ export function suggest({
     const { icon } = suggestions[0];
     if (icon === "function") {
       const name = getMBQLName(matchPrefix);
-      const database = legacyQuery.database();
+      const database = getDatabase(query, metadata);
 
       if (name && database) {
         const helpText = getHelpText(name, database, reportTimezone);
@@ -249,4 +264,10 @@ export function suggest({
   }
 
   return { suggestions };
+}
+
+function getDatabase(query: Lib.Query, metadata: Metadata) {
+  const databaseId = Lib.databaseID(query);
+
+  return metadata.database(databaseId);
 }

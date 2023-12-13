@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import * as Lib from "metabase-lib";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
@@ -25,11 +25,12 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
     return recentQuery;
   }
 
-  render(
+  renderWithProviders(
     <ExpressionStep
       step={step}
       color="#93A1AB"
       query={step.query}
+      stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       updateQuery={updateQuery}
       isLastOpened={false}
