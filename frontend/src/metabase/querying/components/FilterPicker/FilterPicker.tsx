@@ -7,8 +7,6 @@ import { ExpressionWidgetHeader } from "metabase/query_builder/components/expres
 
 import * as Lib from "metabase-lib";
 
-import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
-
 import { FilterColumnPicker } from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
 import type { ColumnListItem, SegmentListItem } from "./types";
@@ -18,8 +16,6 @@ export interface FilterPickerProps {
   stageIndex: number;
   filter?: Lib.FilterClause;
   filterIndex?: number;
-
-  legacyQuery: LegacyQuery;
 
   onSelect: (
     filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
@@ -32,7 +28,6 @@ export function FilterPicker({
   stageIndex,
   filter: initialFilter,
   filterIndex,
-  legacyQuery,
   onSelect,
   onClose,
 }: FilterPickerProps) {
@@ -84,7 +79,6 @@ export function FilterPicker({
 
   const renderExpressionEditor = () => (
     <ExpressionWidget
-      legacyQuery={legacyQuery}
       query={query}
       stageIndex={stageIndex}
       clause={filter}

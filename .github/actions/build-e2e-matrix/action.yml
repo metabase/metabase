@@ -12,7 +12,7 @@ runs:
     - uses: actions/github-script@v6
       id: matrix
       with:
-        script: |
+        script: | # js
           const java = 11;
 
           const defaultRunner = "ubuntu-22.04";

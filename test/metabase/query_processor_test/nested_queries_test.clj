@@ -408,33 +408,44 @@
                     "      \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
                     "  ) AS \"source\""]
             :params nil}
-           (-> (qp/compile
-                (mt/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :aggregation  [[:stddev $id]]
-                                  :breakout     [$price]
-                                  :order-by     [[[:aggregation 0] :descending]]}
-                   :aggregation  [[:avg *stddev/Integer]]}))
+           (-> (mt/mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :aggregation  [[:stddev $id]]
+                                 :breakout     [$price]
+                                 :order-by     [[[:aggregation 0] :descending]]}
+                  :aggregation  [[:avg *stddev/Integer]]})
+               qp/compile
                (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel handle-incorrect-field-forms-gracefully-test
   (testing "make sure that we handle [:field [:field <name> ...]] forms gracefully, despite that not making any sense"
-    (is (sql= '{:select   [source.CATEGORY_ID AS CATEGORY_ID]
-                :from     [{:select [VENUES.ID          AS ID
-                                     VENUES.NAME        AS NAME
-                                     VENUES.CATEGORY_ID AS CATEGORY_ID
-                                     VENUES.LATITUDE    AS LATITUDE
-                                     VENUES.LONGITUDE   AS LONGITUDE
-                                     VENUES.PRICE       AS PRICE]
-                            :from [VENUES]}
-                           AS source]
-                :group-by [source.CATEGORY_ID]
-                :order-by [source.CATEGORY_ID ASC]
-                :limit    [10]}
-              (mt/mbql-query venues
-                {:source-query {:source-table $$venues}
-                 :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
-                 :limit        10})))))
+    (is (= {:query  ["SELECT"
+                     "  \"source\".\"CATEGORY_ID\" AS \"CATEGORY_ID\""
+                     "FROM"
+                     "  ("
+                     "    SELECT"
+                     "      \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
+                     "      \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
+                     "      \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\","
+                     "      \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\","
+                     "      \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\","
+                     "      \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\""
+                     "    FROM"
+                     "      \"PUBLIC\".\"VENUES\""
+                     "  ) AS \"source\""
+                     "GROUP BY"
+                     "  \"source\".\"CATEGORY_ID\""
+                     "ORDER BY"
+                     "  \"source\".\"CATEGORY_ID\" ASC"
+                     "LIMIT"
+                     "  10"]
+            :params nil}
+           (-> (mt/mbql-query venues
+                 {:source-query {:source-table $$venues}
+                  :breakout     [[:field [:field "category_id" {:base-type :type/Integer}] nil]]
+                  :limit        10})
+               qp/compile
+               (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel filter-by-string-fields-test
   (testing "Make sure we can filter by string fields from a source query"
