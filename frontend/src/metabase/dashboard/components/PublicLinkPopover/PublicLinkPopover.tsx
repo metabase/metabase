@@ -52,9 +52,9 @@ export const PublicLinkPopover = ({
   };
 
   return (
-    <Popover opened={isOpen} onClose={onClose}>
+    <Popover opened={isOpen} onClose={onClose} withinPortal>
       <Popover.Target>
-        <div>{target}</div>
+        <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
       <Popover.Dropdown>
         <Box p="lg" data-testid="public-link-popover-content">
