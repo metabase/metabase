@@ -1,14 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import { checkNotNull } from "metabase/lib/types";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Expression } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
-import {
-  createSampleDatabase,
-  ORDERS_ID,
-} from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
@@ -182,19 +174,6 @@ describe("ExpressionWidget", () => {
   });
 });
 
-const createMockLegacyQueryForExpressions = () => {
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
-    }),
-  });
-
-  const metadata = getMetadata(state);
-  const query = checkNotNull(metadata.table(ORDERS_ID)).query();
-
-  return query;
-};
-
 function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const query = createQuery();
   const stageIndex = 0;
@@ -216,7 +195,6 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     <ExpressionWidget
       expression={undefined}
       clause={undefined}
-      legacyQuery={createMockLegacyQueryForExpressions()}
       name={undefined}
       query={query}
       reportTimezone="UTC"
