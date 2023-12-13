@@ -110,7 +110,7 @@
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
         (merge {:revision (perms-revision/latest-id)}
-               (when skip-graph {:groups (:groups (perms/data-perms-graph))})
+               (when-not skip-graph {:groups (:groups (perms/data-perms-graph))})
                (when sandboxes {:sandboxes sandboxes})
                (when impersonations {:impersonations impersonations}))))))
 
