@@ -6,21 +6,19 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
+import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function NumberFilterEditor({
   query,
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
-}: FilterPickerWidgetProps) {
-  const columnInfo = useMemo(() => {
-    return Lib.displayInfo(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
+}: FilterEditorProps) {
   const { columnIcon, isKey } = useMemo(
     () => ({
       columnIcon: getColumnIcon(column),
@@ -61,9 +59,12 @@ export function NumberFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
-          <Text color="text.2" weight="bold">
-            {columnInfo.displayName}
-          </Text>
+          <FilterColumnName
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            isSearching={isSearching}
+          />
           <FilterOperatorPicker
             value={operator}
             options={availableOptions}

@@ -1,23 +1,23 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import { Button, Flex, Modal, Tabs } from "metabase/ui";
+import { Button, Flex, Modal, Stack, Tabs, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-import {
-  getColumnGroupIcon,
-  getColumnGroupName,
-} from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
+import { FilterSearchInput } from "./FilterSearchInput";
+import { SEARCH_KEY } from "./constants";
 import {
   appendStageIfAggregated,
   dropStageIfEmpty,
   findColumnFilters,
   findVisibleFilters,
-  getColumnGroupItems,
+  getGroupItems,
   getModalTitle,
   getModalWidth,
   hasFilters,
+  isSearchActive,
   removeFilters,
+  searchGroupItems,
 } from "./utils";
 import type { GroupItem } from "./types";
 import {
@@ -44,8 +44,16 @@ export function FilterModal({
   );
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
-  const groupItems = useMemo(() => getColumnGroupItems(query), [query]);
+  const groupItems = useMemo(() => getGroupItems(query), [query]);
+  const [tab, setTab] = useState<string | null>(groupItems[0]?.key);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
+  const [searchText, setSearchText] = useState("");
+  const isSearching = isSearchActive(searchText);
+
+  const visibleItems = useMemo(
+    () => (isSearching ? searchGroupItems(groupItems, searchText) : groupItems),
+    [groupItems, searchText, isSearching],
+  );
 
   const handleChange = (newQuery: Lib.Query) => {
     setQuery(newQuery);
@@ -63,32 +71,34 @@ export function FilterModal({
     onClose();
   };
 
+  const handleSearch = (searchText: string) => {
+    setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
+    setSearchText(searchText);
+  };
+
   return (
     <Modal.Root opened size={getModalWidth(groupItems)} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
+          <FilterSearchInput onChange={handleSearch} />
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
-          <Tabs
-            defaultValue={groupItems[0].key}
-            orientation="vertical"
-            h="100%"
-          >
-            <Flex direction="row" w="100%">
-              {groupItems.length > 1 && <TabList groupItems={groupItems} />}
-              {groupItems.map(groupItem => (
-                <TabPanel
-                  key={`${groupItem.key}:${version}`}
-                  query={query}
-                  groupItem={groupItem}
-                  onChange={handleChange}
-                />
-              ))}
-            </Flex>
-          </Tabs>
+          {visibleItems.length > 0 ? (
+            <TabContent
+              query={query}
+              groupItems={visibleItems}
+              tab={tab}
+              version={version}
+              isSearching={isSearching}
+              onChange={handleChange}
+              onTabChange={setTab}
+            />
+          ) : (
+            <SearchEmptyState />
+          )}
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
           <Button
@@ -108,6 +118,52 @@ export function FilterModal({
   );
 }
 
+interface TabContentProps {
+  query: Lib.Query;
+  groupItems: GroupItem[];
+  tab: string | null;
+  version: number;
+  isSearching: boolean;
+  onChange: (query: Lib.Query) => void;
+  onTabChange: (tab: string | null) => void;
+}
+
+function TabContent({
+  query,
+  groupItems,
+  tab,
+  version,
+  isSearching,
+  onChange,
+  onTabChange,
+}: TabContentProps) {
+  return (
+    <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
+      <Flex direction="row" w="100%">
+        {groupItems.length > 1 && <TabList groupItems={groupItems} />}
+        {groupItems.map(groupItem => (
+          <TabPanel
+            key={`${groupItem.key}:${version}`}
+            query={query}
+            groupItem={groupItem}
+            isSearching={isSearching}
+            onChange={onChange}
+          />
+        ))}
+      </Flex>
+    </Tabs>
+  );
+}
+
+function SearchEmptyState() {
+  return (
+    <Stack c="text.0" h="100%" justify="center" align="center">
+      <Icon name="search" size={40} />
+      <Text c="text.1" mt="lg" fw="bold">{t`Didn't find anything`}</Text>
+    </Stack>
+  );
+}
+
 interface TabListProps {
   groupItems: GroupItem[];
 }
@@ -116,49 +172,38 @@ function TabList({ groupItems }: TabListProps) {
   return (
     <Tabs.List w="20%" pt="sm" pl="md">
       {groupItems.map(groupItem => (
-        <Tab key={groupItem.key} groupItem={groupItem} />
+        <Tabs.Tab
+          key={groupItem.key}
+          value={groupItem.key}
+          aria-label={groupItem.displayName}
+          icon={<Icon name={groupItem.icon} />}
+        >
+          {groupItem.displayName}
+        </Tabs.Tab>
       ))}
     </Tabs.List>
-  );
-}
-
-interface TabProps {
-  groupItem: GroupItem;
-}
-
-function Tab({ groupItem }: TabProps) {
-  const { groupInfo } = groupItem;
-  const groupName = getColumnGroupName(groupInfo) || t`Summaries`;
-  const groupIcon = getColumnGroupIcon(groupInfo) ?? "sum";
-
-  return (
-    <Tabs.Tab
-      value={groupItem.key}
-      aria-label={groupName}
-      icon={<Icon name={groupIcon} />}
-    >
-      {groupName}
-    </Tabs.Tab>
   );
 }
 
 interface TabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
+  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
-function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
+function TabPanel({ query, groupItem, isSearching, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
-        {groupItem.columns.map((column, index) => {
+        {groupItem.columnItems.map((columnItem, columnIndex) => {
           return (
-            <TabPanelItemList
-              key={index}
+            <TabPanelColumnItemList
+              key={columnIndex}
               query={query}
-              stageIndex={groupItem.stageIndex}
-              column={column}
+              column={columnItem.column}
+              stageIndex={columnItem.stageIndex}
+              isSearching={isSearching}
               onChange={onChange}
             />
           );
@@ -168,19 +213,21 @@ function TabPanel({ query, groupItem, onChange }: TabPanelProps) {
   );
 }
 
-interface TabPanelItemListProps {
+interface TabPanelColumnItemListProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
+  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
-function TabPanelItemList({
+function TabPanelColumnItemList({
   query,
   stageIndex,
   column,
+  isSearching,
   onChange,
-}: TabPanelItemListProps) {
+}: TabPanelColumnItemListProps) {
   const currentFilters = findColumnFilters(query, stageIndex, column);
   const [initialFilterCount] = useState(currentFilters.length);
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
@@ -188,12 +235,13 @@ function TabPanelItemList({
   return (
     <div>
       {visibleFilters.map((filter, filterIndex) => (
-        <TabPanelItem
+        <TabPanelColumnItem
           key={filterIndex}
           query={query}
           stageIndex={stageIndex}
           column={column}
           filter={filter}
+          isSearching={isSearching}
           onChange={onChange}
         />
       ))}
@@ -201,21 +249,23 @@ function TabPanelItemList({
   );
 }
 
-interface TabPanelItemProps {
+interface TabPanelColumnItemProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter: Lib.FilterClause | undefined;
+  isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
-function TabPanelItem({
+function TabPanelColumnItem({
   query,
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
-}: TabPanelItemProps) {
+}: TabPanelColumnItemProps) {
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
       onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
@@ -233,6 +283,7 @@ function TabPanelItem({
         stageIndex={stageIndex}
         column={column}
         filter={filter}
+        isSearching={isSearching}
         onChange={handleChange}
       />
     </ColumnItemRoot>

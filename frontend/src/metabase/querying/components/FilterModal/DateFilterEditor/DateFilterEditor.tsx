@@ -1,8 +1,7 @@
 import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
-import * as Lib from "metabase-lib";
-import { Button, Flex, Grid, Popover, Text } from "metabase/ui";
+import { Button, Flex, Grid, Popover } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -14,7 +13,8 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
-import type { FilterPickerWidgetProps } from "../types";
+import { FilterColumnName } from "../FilterColumnName";
+import type { FilterEditorProps } from "../types";
 import { MODAL_Z_INDEX, SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 import { ClearIcon } from "./DateFilterEditor.styled";
@@ -24,13 +24,9 @@ export function DateFilterEditor({
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
-}: FilterPickerWidgetProps) {
-  const columnInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
-
+}: FilterEditorProps) {
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -64,9 +60,12 @@ export function DateFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
-          <Text color="text.2" weight="bold">
-            {columnInfo.displayName}
-          </Text>
+          <FilterColumnName
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            isSearching={isSearching}
+          />
         </Flex>
       </Grid.Col>
       <Grid.Col span={4}>

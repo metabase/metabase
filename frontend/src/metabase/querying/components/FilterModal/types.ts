@@ -1,17 +1,24 @@
-import type * as Lib from "metabase-lib/types";
+import type * as Lib from "metabase-lib";
+import type { IconName } from "metabase/core/components/Icon";
 
-export interface GroupItem {
-  key: string;
-  group: Lib.ColumnGroup;
-  groupInfo: Lib.ColumnGroupDisplayInfo;
-  columns: Lib.ColumnMetadata[];
+export interface ColumnItem {
+  column: Lib.ColumnMetadata;
+  displayName: string;
   stageIndex: number;
 }
 
-export interface FilterPickerWidgetProps {
+export interface GroupItem {
+  key: string;
+  displayName: string;
+  icon: IconName;
+  columnItems: ColumnItem[];
+}
+
+export interface FilterEditorProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter: Lib.FilterClause | undefined;
+  isSearching: boolean;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
 }

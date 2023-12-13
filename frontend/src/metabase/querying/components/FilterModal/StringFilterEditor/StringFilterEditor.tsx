@@ -1,25 +1,23 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Flex, Grid, Text, TextInput } from "metabase/ui";
+import { Flex, Grid, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
+import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterValuePicker } from "../FilterValuePicker";
-import type { FilterPickerWidgetProps } from "../types";
+import type { FilterEditorProps } from "../types";
 
 export function StringFilterEditor({
   query,
   stageIndex,
   column,
   filter,
+  isSearching,
   onChange,
-}: FilterPickerWidgetProps) {
-  const columnInfo = useMemo(() => {
-    return Lib.displayInfo(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
+}: FilterEditorProps) {
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
   }, [column]);
@@ -56,9 +54,12 @@ export function StringFilterEditor({
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
-          <Text color="text.2" weight="bold">
-            {columnInfo.displayName}
-          </Text>
+          <FilterColumnName
+            query={query}
+            stageIndex={stageIndex}
+            column={column}
+            isSearching={isSearching}
+          />
           <FilterOperatorPicker
             value={operator}
             options={availableOptions}
