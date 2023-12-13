@@ -1811,33 +1811,33 @@
           (is (nil? (settings))))
         (testing "Set initial value"
           (testing "response"
-            (is (partial= {:settings {:max-unaggregated-query-row-limit 1337}}
-                          (set-settings! {:max-unaggregated-query-row-limit 1337}))))
+            (is (partial= {:settings {:unaggregated-query-row-limit 1337}}
+                          (set-settings! {:unaggregated-query-row-limit 1337}))))
           (testing "App DB"
-            (is (= {:max-unaggregated-query-row-limit 1337}
+            (is (= {:unaggregated-query-row-limit 1337}
                    (settings)))))
         (testing "Setting a different value should not affect anything not specified (PATCH-style update)"
           (testing "response"
-            (is (partial= {:settings {:max-unaggregated-query-row-limit   1337
+            (is (partial= {:settings {:unaggregated-query-row-limit   1337
                                       :database-enable-actions true}}
                           (set-settings! {:database-enable-actions true}))))
           (testing "App DB"
-            (is (= {:max-unaggregated-query-row-limit   1337
+            (is (= {:unaggregated-query-row-limit   1337
                     :database-enable-actions true}
                    (settings)))))
         (testing "Update existing value"
           (testing "response"
-            (is (partial= {:settings {:max-unaggregated-query-row-limit   1337
+            (is (partial= {:settings {:unaggregated-query-row-limit   1337
                                       :database-enable-actions false}}
                           (set-settings! {:database-enable-actions false}))))
           (testing "App DB"
-            (is (= {:max-unaggregated-query-row-limit   1337
+            (is (= {:unaggregated-query-row-limit   1337
                     :database-enable-actions false}
                    (settings)))))
         (testing "Unset a value"
           (testing "response"
             (is (partial= {:settings {:database-enable-actions false}}
-                          (set-settings! {:max-unaggregated-query-row-limit nil}))))
+                          (set-settings! {:unaggregated-query-row-limit nil}))))
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))
