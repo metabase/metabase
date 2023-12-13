@@ -16,6 +16,7 @@
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
+   [metabase.models.permissions-revision :as perms-revision]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
@@ -99,7 +100,7 @@
     (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
       (let [explained (mu/explain api.permission-graph/DataPermissionsGraph graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
-                        {:status-code 400 :error (pr-str explained)}))))
+                        {:status-code 400}))))
     (t2/with-transaction [_conn]
       (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
       (let [sandbox-updates        (:sandboxes graph)
@@ -108,10 +109,10 @@
             impersonation-updates  (:impersonations graph)
             impersonations         (when impersonation-updates
                                      (insert-impersonations! impersonation-updates))]
-        (merge
-         (if skip-graph {} (perms/data-perms-graph))
-         (when sandboxes {:sandboxes sandboxes})
-         (when impersonations {:impersonations impersonations}))))))
+        (merge {:revision (perms-revision/latest-id)}
+               (when skip-graph {:groups (:groups (perms/data-perms-graph))})
+               (when sandboxes {:sandboxes sandboxes})
+               (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |

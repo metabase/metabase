@@ -164,8 +164,8 @@
                                Database         db                          {}]
         (perms/grant-permissions! group (perms/data-perms-path db))
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
-          (is (perm-test-util/validate-graph-api-output graph))
-          (is (= #{group-id} (set (keys graph)))))))))
+          (is (perm-test-util/validate-graph-api-groups (:groups graph)))
+          (is (= #{group-id} (set (keys (:groups graph))))))))))
 
 (deftest fetch-perms-graph-by-db-id-test
   (testing "GET /api/permissions/graph"
@@ -174,8 +174,8 @@
                                Database         {db-id :id} {}]
         (perms/grant-permissions! group (perms/data-perms-path db-id))
         (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
-          (is (perm-test-util/validate-graph-api-output graph))
-          (is (= #{db-id} (->> graph vals (mapcat keys) set))))))))
+          (is (perm-test-util/validate-graph-api-groups (:groups graph)))
+          (is (= #{db-id} (->> graph :groups vals (mapcat keys) set))))))))
 
 (deftest fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"
@@ -264,10 +264,10 @@
               returned-g     (do-perm-put "permissions/graph")
               returned-g-two (do-perm-put "permissions/graph?skip-graph=false")
               no-returned-g  (do-perm-put "permissions/graph?skip-graph=true")]
-          (is (perm-test-util/validate-graph-api-output (:groups g)))
-          (is (perm-test-util/validate-graph-api-output (:groups returned-g)))
-          (is (perm-test-util/validate-graph-api-output (:groups returned-g-two)))
-          (is (not (perm-test-util/validate-graph-api-output (:groups no-returned-g))))
+          (is (perm-test-util/validate-graph-api-groups (:groups g)))
+          (is (perm-test-util/validate-graph-api-groups (:groups returned-g)))
+          (is (perm-test-util/validate-graph-api-groups (:groups returned-g-two)))
+          (is (not (perm-test-util/validate-graph-api-groups (:groups no-returned-g))))
           (is (= {} no-returned-g)))))))
 
 (deftest update-perms-graph-group-has-no-permissions-test

@@ -896,7 +896,8 @@
   [db-id]
   (let [group-id->permissions (permissions-by-group-ids [:like :object (h2x/literal (str "%/db/" db-id "/%"))])
         group-id->v1-paths (->v1-paths group-id->permissions)]
-    (generate-graph [db-id] group-id->v1-paths)))
+    {:revision (perms-revision/latest-id)
+     :groups (generate-graph [db-id] group-id->v1-paths)}))
 
 (defn data-graph-for-group
   "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
@@ -904,7 +905,8 @@
   (let [db-ids (t2/select-pks-set :model/Database)
         group-id->permissions (permissions-by-group-ids [:= :group_id group-id])
         group-id->paths (select-keys (->v1-paths group-id->permissions) [group-id])]
-    (generate-graph db-ids group-id->paths)))
+    {:revision (perms-revision/latest-id)
+     :groups (generate-graph db-ids group-id->paths)}))
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
