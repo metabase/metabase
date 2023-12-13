@@ -49,15 +49,6 @@ const setup = ({
   const versionMock = createMockVersion({ tag: currentVersion });
 
   const [latest, ...older] = versions;
-  const mockedSettings = mockSettings({
-    version: versionMock,
-    "version-info": createMockVersionInfo({ latest, older }),
-    "last-acknowledged-version": lastAcknowledged,
-    "application-name": isWhiteLabeling ? "My App" : "Metabase",
-    "token-features": createMockTokenFeatures({
-      whitelabel: true,
-    }),
-  });
 
   setupPropertiesEndpoints(createMockSettings());
   setupSettingsEndpoints([createMockSettingDefinition()]);
@@ -67,7 +58,17 @@ const setup = ({
   }
 
   return renderWithProviders(<WhatsNewNotification></WhatsNewNotification>, {
-    storeInitialState: createMockState({ settings: mockedSettings }),
+    storeInitialState: createMockState({
+      settings: mockSettings({
+        version: versionMock,
+        "version-info": createMockVersionInfo({ latest, older }),
+        "last-acknowledged-version": lastAcknowledged,
+        "application-name": isWhiteLabeling ? "My App" : "Metabase",
+        "token-features": createMockTokenFeatures({
+          whitelabel: isWhiteLabeling,
+        }),
+      }),
+    }),
   });
 };
 
