@@ -11,6 +11,8 @@ import Confirm from "metabase/components/Confirm";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Description,
   EmbedWidgetHeader,
@@ -67,6 +69,8 @@ export default function SharingPane({
     isApplicationEmbeddingEnabled,
   });
 
+  const applicationName = useSelector(getApplicationName);
+
   return (
     <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
       {isAdmin && isPublicSharingEnabled && (
@@ -116,7 +120,7 @@ export default function SharingPane({
         }
       >
         <PublicLinkHeader>{t`Public link`}</PublicLinkHeader>
-        <Description className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</Description>
+        <Description className="mb1">{t`Share this ${resourceType} with people who don't have a ${applicationName} account using the URL below:`}</Description>
         <CopyWidget value={publicLink} />
         {extensions && extensions.length > 0 && (
           <div className="mt1">

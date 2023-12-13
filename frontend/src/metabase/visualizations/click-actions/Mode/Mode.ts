@@ -1,3 +1,4 @@
+import { queryDrill } from "metabase/querying";
 import type Question from "metabase-lib/Question";
 import type {
   ClickAction,
@@ -30,8 +31,10 @@ export class Mode {
     const mode = this._queryMode;
     const question = this._question;
     const props = { question, settings, clicked, extraData };
-
-    const actions = mode.clickActions.flatMap(drill => drill(props));
+    const actions = [
+      ...(mode.hasDrills ? queryDrill(question, clicked) : []),
+      ...(mode.clickActions?.flatMap(drill => drill(props)) ?? []),
+    ];
 
     if (!actions.length && mode.fallback) {
       return mode.fallback(props);
