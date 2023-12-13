@@ -35,36 +35,37 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require
-   [clojure.core.async :as a]
-   [clojure.string :as str]
-   [dev.debug-qp :as debug-qp]
-   [dev.model-tracking :as model-tracking]
-   [dev.explain :as dev.explain]
-   [malli.dev :as malli-dev]
-   [metabase.api.common :as api]
-   [metabase.config :as config]
-   [metabase.core :as mbc]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.env :as mdb.env]
-   [metabase.db.setup :as mdb.setup]
-   [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.models.database :refer [Database]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.server :as server]
-   [metabase.server.handler :as handler]
-   [metabase.sync :as sync]
-   [metabase.test :as mt]
-   [metabase.test.data.impl :as data.impl]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [potemkin :as p]
-   [toucan2.connection :as t2.connection]
-   [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]))
+    [clojure.core.async :as a]
+    [clojure.string :as str]
+    [dev.debug-qp :as debug-qp]
+    [dev.model-tracking :as model-tracking]
+    [dev.explain :as dev.explain]
+    [honey.sql :as sql]
+    [malli.dev :as malli-dev]
+    [metabase.api.common :as api]
+    [metabase.config :as config]
+    [metabase.core :as mbc]
+    [metabase.db.connection :as mdb.connection]
+    [metabase.db.env :as mdb.env]
+    [metabase.db.setup :as mdb.setup]
+    [metabase.driver :as driver]
+    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+    [metabase.models.database :refer [Database]]
+    [metabase.query-processor :as qp]
+    [metabase.query-processor.timezone :as qp.timezone]
+    [metabase.server :as server]
+    [metabase.server.handler :as handler]
+    [metabase.sync :as sync]
+    [metabase.test :as mt]
+    [metabase.test.data.impl :as data.impl]
+    [metabase.util :as u]
+    [metabase.util.log :as log]
+    [methodical.core :as methodical]
+    [potemkin :as p]
+    [toucan2.connection :as t2.connection]
+    [toucan2.core :as t2]
+    [toucan2.pipeline :as t2.pipeline]))
 
 (set! *warn-on-reflection* true)
 
@@ -200,7 +201,7 @@
   [driver-or-driver+dataset sql-args]
   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
         [sql & params]   (if (map? sql-args)
-                           (hsql/format sql-args)
+                           (sql/format sql-args)
                            (u/one-or-many sql-args))
         canceled-chan    (a/promise-chan)]
     (try
