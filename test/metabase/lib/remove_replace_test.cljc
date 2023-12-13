@@ -983,3 +983,64 @@
       (is (seq (lib/breakouts result)))
       (is (empty? (lib/aggregations result)))
       (is (= (lib/breakouts query) (lib/breakouts result))))))
+
+(deftest ^:parallel simple-tweak-expression-test
+  (let [table (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        base (lib/expression table "Tax Rate" (lib// (meta/field-metadata :orders :tax)
+                                                     (meta/field-metadata :orders :total)))
+        query (lib/filter base (lib/> (lib/expression-ref base "Tax Rate") 6))
+        orig-expr (first (lib/expressions query))
+        new-expr (-> (lib/* (lib// (meta/field-metadata :orders :tax)
+                                   (meta/field-metadata :orders :total))
+                            100)
+                     (lib/with-expression-name "Tax Rate"))]
+    (is (=? {:lib/type :mbql/query,
+             :stages
+             [{:lib/type :mbql.stage/mbql
+               :source-table (meta/id :orders)
+               :expressions
+               [[:* {:lib/expression-name "Tax Rate"}
+                 [:/ {}
+                  [:field {:effective-type :type/Float} (meta/id :orders :tax)]
+                  [:field {:effective-type :type/Float} (meta/id :orders :total)]]
+                 100]]
+               :filters [[:> {} [:expression {:effective-type :type/Float} "Tax Rate"] 6]]}]}
+            (lib/replace-clause query orig-expr new-expr)))))
+
+(deftest ^:parallel simple-tweak-aggregation-test
+  (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                 (lib/aggregate (lib/with-expression-name
+                                  (lib// (lib/sum (meta/field-metadata :orders :tax))
+                                         (lib/count (meta/field-metadata :orders :tax)))
+                                  "Avg Tax"))
+                 (lib/breakout (meta/field-metadata :orders :user-id))
+                 lib/append-stage)
+        avg-tax-col (second (lib/returned-columns base))
+        query (lib/filter base (lib/> avg-tax-col 0.06))
+        orig-agg (first (lib/aggregations query 0))
+        new-agg (-> (lib/avg (meta/field-metadata :orders :tax))
+                    (lib/with-expression-name "Avg Tax"))]
+    (is (=? {:stages
+             [{:lib/type :mbql.stage/mbql
+               :source-table (meta/id :orders)
+               :aggregation [[:avg {:name "Avg Tax", :display-name "Avg Tax"}
+                              [:field {:effective-type :type/Float} (meta/id :orders :tax)]]]
+               :breakout [[:field {:effective-type :type/Integer} (meta/id :orders :user-id)]]}
+              {:lib/type :mbql.stage/mbql,
+               :filters [[:> {} [:field {:effective-type :type/Float} "Avg Tax"] 0.06]]}]}
+            (lib/replace-clause query 0 orig-agg new-agg)))))
+
+(deftest ^:parallel replace-clause-uses-custom-expression-name-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/expression "expr" (lib/+ 1 1)))]
+    (is (=? [[:+ {:lib/expression-name "expr"} 1 1]]
+            (lib/expressions query)))
+    (is (=? [[:value {:lib/expression-name "evaluated expr"
+                      :name (symbol "nil #_\"key is not present.\"")
+                      :display-name (symbol "nil #_\"key is not present.\"")
+                      :effective-type :type/Integer}
+              2]]
+            (-> query
+                (lib/replace-clause (first (lib/expressions query))
+                                    (lib/with-expression-name 2 "evaluated expr"))
+                lib/expressions)))))
