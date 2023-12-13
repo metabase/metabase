@@ -110,7 +110,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (s/defn identifier :- Identifier
-  "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
+  "Define an identifier of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 
   `identifier-type` represents the type of identifier in question, which is important context for some drivers, such
@@ -130,7 +130,7 @@
      (u/qualified-name component))))
 
 (defn identifier->components
-  "Given an identifer return its components
+  "Given an identifier return its components
   (identifier->components (identifier :field :metabase :user :email))
   => (\"metabase\" \"user\" \"email\"))
   "
