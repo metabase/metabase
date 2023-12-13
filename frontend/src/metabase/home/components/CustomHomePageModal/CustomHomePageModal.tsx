@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Box, Text } from "metabase/ui";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -17,6 +17,7 @@ import Button from "metabase/core/components/Button/Button";
 import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 
 import type { Collection, DashboardId } from "metabase-types/api";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
@@ -86,6 +87,8 @@ export const CustomHomePageModal = ({
     onClose();
   }, [onClose, setDashboardId]);
 
+  const applicationName = useSelector(getApplicationName);
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <ModalContent
@@ -105,7 +108,7 @@ export const CustomHomePageModal = ({
           </Button>,
         ]}
       >
-        <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General.`}</p>
+        <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, ${applicationName} will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General.`}</p>
         <DashboardSelector
           value={dashboardId}
           onChange={handleChange}

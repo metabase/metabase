@@ -231,35 +231,36 @@ export default class Funnel extends Component {
     const { headerIcon, settings, showTitle } = this.props;
     const hasTitle = showTitle && settings["card.title"];
 
+    const { actionButtons, className, onChangeCardAndRun, series } = this.props;
+
+    let component = <FunnelNormal {...this.props} className="flex-full" />;
+
     if (settings["funnel.type"] === "bar") {
-      return <FunnelBar {...this.props} />;
-    } else {
-      const { actionButtons, className, onChangeCardAndRun, series } =
-        this.props;
-      return (
-        <div className={cx(className, "flex flex-column p1")}>
-          {hasTitle && (
-            <ChartCaption
-              series={series}
-              settings={settings}
-              icon={headerIcon}
+      component = <FunnelBar {...this.props} />;
+    }
+
+    return (
+      <div className={cx(className, "flex flex-column p1")}>
+        {hasTitle && (
+          <ChartCaption
+            series={series}
+            settings={settings}
+            icon={headerIcon}
+            actionButtons={actionButtons}
+            onChangeCardAndRun={onChangeCardAndRun}
+          />
+        )}
+        {!hasTitle &&
+          actionButtons && ( // always show action buttons if we have them
+            <LegendHeader
+              series={series._raw || series}
               actionButtons={actionButtons}
               onChangeCardAndRun={onChangeCardAndRun}
             />
           )}
-          {!hasTitle &&
-            actionButtons && ( // always show action buttons if we have them
-              <LegendHeader
-                className="flex-no-shrink"
-                series={series._raw || series}
-                actionButtons={actionButtons}
-                onChangeCardAndRun={onChangeCardAndRun}
-              />
-            )}
-          <FunnelNormal {...this.props} className="flex-full" />
-        </div>
-      );
-    }
+        {component}
+      </div>
+    );
   }
 }
 

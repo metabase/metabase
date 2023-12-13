@@ -474,7 +474,7 @@
               (is (= ["my-dataset" "my-dataset"]
                      (t2/select-fn-vec :schema Table :id [:in [(u/the-id table1) (u/the-id table2)]]))))))))))
 
-(deftest query-drive-external-tables
+(deftest ^:parallel query-drive-external-tables
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Google Sheets external tables can be queried via BigQuery (#4179)"
       ;; link to the underlying Google sheet, which everyone in the Google domain should have edit permission on
@@ -493,7 +493,7 @@
                 qp/process-query
                 mt/rows))))))
 
-(deftest datetime-truncate-field-literal-form-test
+(deftest ^:parallel datetime-truncate-field-literal-form-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Field literal forms should get datetime-truncated correctly (#20806)"
       (let [query (mt/mbql-query nil
@@ -510,11 +510,20 @@
                  (mt/rows
                   (qp/process-query query)))))))))
 
-(deftest format-sql-test
+(defn- pretty-sql-lines [sql]
+  (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))
+
+(deftest ^:parallel format-sql-test
   (mt/test-driver :bigquery-cloud-sdk
-     (testing "native queries are compiled and formatted without whitespace errors (#30676)"
-       (is (= (str (format "SELECT\n  count(*) AS `count`\nFROM\n  `%s.venues`" test-db-name))
-              (->> (mt/mbql-query venues {:aggregation [:count]})
-                   qp/compile-and-splice-parameters
-                   :query
-                   (driver/prettify-native-form :bigquery-cloud-sdk)))))))
+    (testing "native queries are compiled and formatted without whitespace errors (#30676)"
+      (is (= (->> ["SELECT"
+                   "  COUNT(*) AS `count`"
+                   "FROM"
+                   (format "  `%s.venues`" test-db-name)]
+                  ;; re-format the SQL in case formatting has changed once we have the correct test db name in place.
+                  str/join
+                  pretty-sql-lines)
+             (->> (mt/mbql-query venues {:aggregation [:count]})
+                  qp/compile-and-splice-parameters
+                  :query
+                  pretty-sql-lines))))))

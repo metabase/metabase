@@ -71,10 +71,6 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/honey-sql-version :vertica
-  [_driver]
-  2)
-
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_driver]
   (h2x/with-database-type-info [:current_timestamp [:inline 6]] "timestamptz"))

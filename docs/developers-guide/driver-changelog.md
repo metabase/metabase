@@ -4,6 +4,16 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.49.0
+
+- A new driver method has been added `metabase.driver/describe-table-indexes` along with a new feature `:index-info`.
+  This method is used to get a set of column names that are indexed or are the first columns in a composite index.
+
+-  `metabase.util.honeysql-extensions`, deprecated in 0.46.0, has been removed. SQL-based drivers using Honey SQL 1
+   are no longer supported. See 0.46.0 notes for more information.
+   `metabase.driver.sql.query-processor/honey-sql-version` is now deprecated and no longer called. All drivers are
+   assumed to use Honey SQL 2.
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of

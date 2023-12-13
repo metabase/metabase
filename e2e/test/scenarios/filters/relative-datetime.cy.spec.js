@@ -67,7 +67,7 @@ describe("scenarios > question > relative-datetime", () => {
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.icon("chevronleft").should("not.exist");
-        cy.findByText("Last 30 Days").click();
+        cy.findByText("Last 30 days").click();
       });
 
       cy.wait("@dataset");
@@ -98,12 +98,12 @@ describe("scenarios > question > relative-datetime", () => {
       cy.findByTextEnsureVisible("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates...").click();
+        cy.findByText("Relative dates…").click();
       });
 
       addStartingFrom();
 
-      cy.findByTestId("starting-from-unit").click();
+      popover().findByLabelText("Starting from unit").click();
 
       assertOptions([
         "days ago",
@@ -114,7 +114,7 @@ describe("scenarios > question > relative-datetime", () => {
       ]);
 
       setRelativeDatetimeUnit("quarters");
-      cy.findByTestId("starting-from-unit").click();
+      popover().findByLabelText("Starting from unit").click();
 
       assertOptions(["quarters ago", "years ago"]);
     });
@@ -125,9 +125,9 @@ describe("scenarios > question > relative-datetime", () => {
       cy.findByTextEnsureVisible("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Specific dates...").click();
+        cy.findByText("Specific dates…").click();
         cy.icon("chevronleft").first().click();
-        cy.findByText("Specific dates...").should("exist");
+        cy.findByText("Specific dates…").should("exist");
         cy.findByText("Between").should("not.exist");
       });
     });
@@ -138,7 +138,7 @@ describe("scenarios > question > relative-datetime", () => {
       queryBuilderMain().findByText("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates...").click();
+        cy.findByText("Relative dates…").click();
         cy.findByText("Current").click();
         cy.findByText("Year").click();
       });
@@ -159,12 +159,12 @@ describe("scenarios > question > relative-datetime", () => {
       cy.findByTextEnsureVisible("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates...").click();
+        cy.findByText("Relative dates…").click();
         cy.findByText("Day").should("not.exist");
         cy.findByText("Quarter").should("not.exist");
         cy.findByText("Month").should("not.exist");
         cy.findByText("Year").should("not.exist");
-        cy.findByText("days").should("exist");
+        cy.findByDisplayValue("days").should("exist");
       });
     });
 
@@ -175,25 +175,8 @@ describe("scenarios > question > relative-datetime", () => {
       addStartingFrom();
       setRelativeDatetimeUnit("months");
       popover().within(() => {
-        cy.findByText("days ago").should("not.exist");
-        cy.findByText("months ago").should("exist");
-      });
-    });
-
-    it("should show correct datetime preview (metabase#22225)", () => {
-      openOrdersTable();
-
-      openCreatedAt("Past");
-      addStartingFrom();
-      setRelativeDatetimeUnit("quarters");
-      setRelativeDatetimeValue(1);
-      setStartingFromValue(6);
-      popover().within(() => {
-        const start = moment().startOf("quarter").add(-7, "quarter");
-        const end = start.clone().endOf("quarter");
-        cy.findByText(
-          `${start.format("MMM D, YYYY")} - ${end.format("MMM D, YYYY")}`,
-        ).should("exist");
+        cy.findByDisplayValue("days ago").should("not.exist");
+        cy.findByDisplayValue("months ago").should("exist");
       });
     });
 
@@ -277,7 +260,7 @@ const openCreatedAt = tab => {
   cy.findByTextEnsureVisible("Created At").click();
   popover().within(() => {
     cy.findByText("Filter by this column").click();
-    cy.findByText("Relative dates...").click();
+    cy.findByText("Relative dates…").click();
     tab && cy.findByText(tab).click();
   });
 };
@@ -315,7 +298,7 @@ const setStartingFromValue = value => {
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   cy.findByTextEnsureVisible("testcol").click();
   cy.findByTextEnsureVisible("Filter by this column").click();
-  cy.findByTextEnsureVisible("Relative dates...").click();
+  cy.findByTextEnsureVisible("Relative dates…").click();
   popover().within(() => {
     cy.findByText(dir).click();
   });

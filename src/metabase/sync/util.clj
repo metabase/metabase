@@ -16,7 +16,6 @@
    [metabase.sync.interface :as i]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -184,7 +183,7 @@
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
-   (do-with-error-handling (trs "Error running sync step") f))
+   (do-with-error-handling "Error running sync step" f))
 
   ([message f]
    (try
@@ -218,7 +217,7 @@
        (with-start-and-finish-logging message
          (with-db-logging-disabled
            (sync-in-context database
-             (partial do-with-error-handling (trs "Error in sync step {0}" message) f))))))))
+             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -337,17 +336,17 @@
 
 (defmethod name-for-logging :model/Database
   [{database-name :name, id :id, engine :engine,}]
-  (trs "{0} Database {1} ''{2}''" (name engine) (str (or id "")) database-name))
+  (format "%s Database %s ''%s ''" (name engine) (str (or id "")) database-name))
 
 (defmethod name-for-logging :model/Table [{schema :schema, id :id, table-name :name}]
-  (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
+  (format "Table %s ''%s ''" (or (str id) "") (str (when (seq schema) (str schema ".")) table-name)))
 
 (defmethod name-for-logging Field [{field-name :name, id :id}]
-  (trs "Field {0} ''{1}''" (or id "") field-name))
+  (format "Field %s ''%s''" (or (str id) "") field-name))
 
 ;;; this is used for result metadata stuff.
 (defmethod name-for-logging :default [{field-name :name}]
-  (trs "Field ''{0}''" field-name))
+  (format "Field ''%s''" field-name))
 
 (mu/defn calculate-duration-str :- :string
   "Given two datetimes, caculate the time between them, return the result as a string"
@@ -417,16 +416,16 @@
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
   (let [start-time (t/zoned-date-time)
-        results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
-                                                             step-name
-                                                             (name-for-logging database))
+        results    (with-start-and-finish-debug-logging (format "step ''%s'' for %s"
+                                                                step-name
+                                                                (name-for-logging database))
                      (fn [& args]
                        (try
                          (apply sync-fn database args)
                          (catch Throwable e
                            (if *log-exceptions-and-continue?*
                              (do
-                               (log/warn e (trs "Error running step ''{0}'' for {1}" step-name (name-for-logging database)))
+                               (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
                                {:throwable e})
                              (throw (ex-info (format "Error in sync step %s: %s" step-name (ex-message e)) {} e)))))))
         end-time   (t/zoned-date-time)]
@@ -448,10 +447,10 @@
                "# %s\n"
                "# %s\n"
                "# %s\n")
-          [(trs "Completed {0} on {1}" operation (:name database))
-           (trs "Start: {0}" (u.date/format start-time))
-           (trs "End: {0}" (u.date/format end-time))
-           (trs "Duration: {0}" (calculate-duration-str start-time end-time))])
+          [(format "Completed %s on %s" operation (:name database))
+           (format "Start: %s" (u.date/format start-time))
+           (format "End: %s" (u.date/format end-time))
+           (format "Duration: %s" (calculate-duration-str start-time end-time))])
    (apply str (for [[step-name {:keys [start-time end-time log-summary-fn] :as step-info}] steps]
                 (apply format (str "# ---------------------------------------------------------------\n"
                                    "# %s\n"
@@ -460,10 +459,10 @@
                                    "# %s\n"
                                    (when log-summary-fn
                                        (format "# %s\n" (log-summary-fn step-info))))
-                       [(trs "Completed step ''{0}''" step-name)
-                        (trs "Start: {0}" (u.date/format start-time))
-                        (trs "End: {0}" (u.date/format end-time))
-                        (trs "Duration: {0}" (calculate-duration-str start-time end-time))])))
+                       [(format "Completed step ''%s''" step-name)
+                        (format "Start: %s" (u.date/format start-time))
+                        (format "End: %s" (u.date/format end-time))
+                        (format "Duration: %s" (calculate-duration-str start-time end-time))])))
    "#################################################################\n"))
 
 (mu/defn ^:private  log-sync-summary
@@ -508,7 +507,7 @@
          (map first)
          doall)
     (catch Throwable e
-      (log/warn e (trs "Error saving task history")))))
+      (log/warn e  "Error saving task history"))))
 
 (defn- do-not-retry-exception? [e]
   (or (isa? (class e) ::exception-class-not-to-retry)

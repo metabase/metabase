@@ -303,6 +303,46 @@
                          :fields      (symbol "nil #_\"key is not present.\"")}]}
               (lib.drill-thru/drill-thru query -1 drill))))))
 
+(deftest ^:parallel preserve-temporal-bucket-test
+  (testing "preserve the temporal bucket on a breakout column in the previous stage (#13504 #36582)"
+    (let [base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                             (lib/aggregate (lib/count))
+                             (lib/filter (lib/> (meta/field-metadata :orders :total) 50))
+                             (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                               (lib/with-temporal-bucket :month)))
+                             lib/append-stage)
+          count-col      (m/find-first #(= (:name %) "count")
+                                       (lib/returned-columns base-query))
+          _              (is (some? count-col))
+          query          (lib/filter base-query (lib/> count-col 100))
+          created-at-col (m/find-first #(= (:name %) "CREATED_AT")
+                                       (lib/returned-columns query))
+          context        {:column     count-col
+                          :column-ref (lib/ref count-col)
+                          :value      127
+                          :row        [{:column     created-at-col,
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]
+                          :dimensions [{:column     created-at-col
+                                        :column-ref (lib/ref created-at-col)
+                                        :value      "2023-03-01T00:00:00Z"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      127}]}
+          drill          (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:> {}
+                                    [:field {} (meta/id :orders :total)]
+                                    50]
+                                   [:= {}
+                                    [:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    "2023-03-01T00:00:00Z"]]}]}
+              (lib/drill-thru query drill))))))
+
 (deftest ^:parallel negative-aggregation-values-display-info-test
   (testing "should use the default row count for aggregations with negative values (#36143)"
     (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -341,3 +381,35 @@
                  :row-count  2
                  :table-name "Orders"}
                 (lib/display-info query -1 drill)))))))
+
+(deftest ^:parallel nil-aggregation-value-test
+  (testing "nil dimension value for binned column should return a valid query (#11345 #36581)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout (-> (meta/field-metadata :orders :discount)
+                                             (lib/with-binning {:strategy :default}))))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          _            (is (some? count-col))
+          discount-col (m/find-first #(= (:name %) "DISCOUNT")
+                                     (lib/returned-columns query))
+          _            (is (some? discount-col))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      16845
+                        :row        [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      16845}]
+                        :dimensions [{:column     discount-col
+                                      :column-ref (lib/ref discount-col)
+                                      :value      nil}]}
+          drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                              (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (is (=? {:stages [{:filters [[:is-null
+                                    {}
+                                    [:field {:binning (symbol "nil #_\"key is not present.\"")} (meta/id :orders :discount)]]]}]}
+              (lib/drill-thru query drill))))))

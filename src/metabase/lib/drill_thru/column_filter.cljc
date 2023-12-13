@@ -1,4 +1,29 @@
 (ns metabase.lib.drill-thru.column-filter
+  "Enables \"Filter by this column\" menu item.
+
+  The caveat here is that for aggregation and breakout columns we need to append a stage before adding a filter. There
+  is a helper function called `filterDrillDetails` which returns the query with a possibly appended stage, and the
+  corresponding column for that stage. In each test case where drill thru is allowed we need to verify that
+  `filterDrillDetails` appended the stage where needed.
+
+  Another caveat is that we need to verify that `filterDrillDetails` returned a _filterable_ column, i.e. a column
+  obtained from `filterableColumns` call. A good way to verify that is to call `filterableColumnOperators` and check
+  that a non-empty list is returned.
+
+  Entry points:
+
+  - Column header
+
+  Requirements:
+
+  - Column not `type/Structured`
+
+  Query transformation:
+
+  - None/identity. The FE will show the FilterPicker and not call `drillThru` for this drill.
+
+  Question transformation:
+  - None"
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
