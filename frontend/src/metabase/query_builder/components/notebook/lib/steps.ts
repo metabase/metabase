@@ -192,7 +192,7 @@ export function getQuestionSteps(
   const allSteps: NotebookStep[] = [];
 
   let legacyQuery = question.query() as StructuredQuery;
-  let query = legacyQuery.rootQuery().question()._getMLv2Query();
+  let query = question._getMLv2Query();
 
   const database = metadata.database(Lib.databaseID(query));
   const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
@@ -200,6 +200,7 @@ export function getQuestionSteps(
 
   // strip empty source queries
   legacyQuery = legacyQuery.cleanNesting();
+  query = Lib.dropEmptyStages(query);
 
   // add a level of nesting, if valid
   if (allowsNesting && hasBreakouts) {
