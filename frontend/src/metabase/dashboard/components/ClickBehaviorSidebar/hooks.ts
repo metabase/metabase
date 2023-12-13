@@ -5,11 +5,11 @@ import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
 export function useClickBehaviorOptionName(
-  value: ClickBehaviorType | "menu",
+  value: ClickBehaviorType,
   dashcard: DashboardCard,
 ) {
   const applicationName = useSelector(getApplicationName);
-  if (value === "menu") {
+  if (value === "actionMenu") {
     return hasActionsMenu(dashcard)
       ? t`Open the ${applicationName} drill-through menu`
       : t`Do nothing`;
