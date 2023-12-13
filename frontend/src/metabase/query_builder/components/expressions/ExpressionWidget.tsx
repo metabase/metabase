@@ -27,11 +27,6 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
   "questions/query-builder/expressions",
 );
 
-interface QueryProps {
-  query: Lib.Query;
-  stageIndex: number;
-}
-
 export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
   stageIndex: number;
@@ -57,7 +52,7 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
-} & QueryProps;
+};
 
 export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   props: ExpressionWidgetProps<Clause>,
