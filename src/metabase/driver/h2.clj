@@ -49,10 +49,6 @@
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
 
-(defmethod sql.qp/honey-sql-version :h2
-  [_driver]
-  2)
-
 (defn- get-field
   "Returns value of private field. This function is used to bypass field protection to instantiate
    a low-level H2 Parser object in order to detect DDL statements in queries."
