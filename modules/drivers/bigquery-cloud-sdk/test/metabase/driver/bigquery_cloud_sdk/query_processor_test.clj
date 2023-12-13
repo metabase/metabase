@@ -866,6 +866,7 @@
             (mt/run-mbql-query attempts
               {:aggregation [[:count]]
                :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]})))))
+    true
     (catch Throwable _
       false)))
 
