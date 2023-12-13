@@ -64,7 +64,7 @@ export function FilterPopover({
   showCustom = true,
   noCommitButton,
   className,
-  query,
+  query: legacyQuery,
   showOperatorSelector,
   fieldPickerTitle,
   isTopLevel,
@@ -83,14 +83,18 @@ export function FilterPopover({
     !!(filter?.isCustom() && !isStartingFrom(filter)),
   );
 
-  const previousQuery = usePrevious(query);
+  const previousQuery = usePrevious(legacyQuery);
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
-    if (filter && filter.query() === previousQuery && query !== previousQuery) {
-      setFilter(filter.setQuery(query));
+    if (
+      filter &&
+      filter.query() === previousQuery &&
+      legacyQuery !== previousQuery
+    ) {
+      setFilter(filter.setQuery(legacyQuery));
     }
-  }, [query, previousQuery, filter]);
+  }, [legacyQuery, previousQuery, filter]);
 
   useEffect(() => {
     if (typeof onChange === "function" && filter && filter !== filterProp) {
@@ -116,17 +120,17 @@ export function FilterPopover({
   };
 
   const handleUpdateAndCommit = (newFilterMbql: any[]) => {
-    const base = filter || new Filter([], null, query);
+    const base = filter || new Filter([], null, legacyQuery);
     const newFilter = base.set(newFilterMbql) as Filter;
 
     setFilter(newFilter);
-    handleCommitFilter(newFilter, query);
+    handleCommitFilter(newFilter, legacyQuery);
   };
 
   const handleCommit = (newFilterMbql?: any[]) => {
     handleCommitFilter(
       newFilterMbql ? filter?.set(newFilterMbql) : filter,
-      query,
+      legacyQuery,
     );
   };
 
@@ -137,7 +141,7 @@ export function FilterPopover({
         ? new Filter(
             [],
             null,
-            dimension.query() || (filter && filter.query()) || query,
+            dimension.query() || (filter && filter.query()) || legacyQuery,
           )
         : filter;
 
@@ -149,7 +153,9 @@ export function FilterPopover({
   };
 
   const handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
+    const newFilter = filter
+      ? filter.set(mbql)
+      : new Filter(mbql, null, legacyQuery);
     setFilter(newFilter);
     onResize?.();
   };
@@ -169,7 +175,9 @@ export function FilterPopover({
     const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
       <ExpressionWidget
-        legacyQuery={query}
+        // @uladzimirdev double check if stageIndex={-1} is correct
+        query={legacyQuery.question()._getMLv2Query()}
+        stageIndex={-1}
         expression={expression}
         startRule="boolean"
         header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
@@ -195,13 +203,13 @@ export function FilterPopover({
           dimension={dimension}
           sections={
             isTopLevel
-              ? query.topLevelFilterFieldOptionSections()
-              : ((filter && filter.query()) || query).filterFieldOptionSections(
-                  filter,
-                  {
-                    includeSegments: showCustom,
-                  },
-                )
+              ? legacyQuery.topLevelFilterFieldOptionSections()
+              : (
+                  (filter && filter.query()) ||
+                  legacyQuery
+                ).filterFieldOptionSections(filter, {
+                  includeSegments: showCustom,
+                })
           }
           onChangeDimension={(dimension: FieldDimension) =>
             handleDimensionChange(dimension)
@@ -241,7 +249,7 @@ export function FilterPopover({
   };
 
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
-  const supportsExpressions = query.database()?.supportsExpressions();
+  const supportsExpressions = legacyQuery.database()?.supportsExpressions();
 
   const filterOperator = filter.operator();
   const hasPicker = filterOperator && filterOperator.fields.length > 0;

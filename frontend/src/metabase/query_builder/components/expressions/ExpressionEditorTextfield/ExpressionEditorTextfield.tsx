@@ -24,7 +24,6 @@ import type {
   ErrorWithMessage,
   HelpText,
 } from "metabase-lib/expressions/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
 import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
@@ -54,7 +53,6 @@ interface ExpressionEditorTextfieldProps {
   expression: Expression | undefined;
   clause: Lib.ExpressionClause | undefined;
   name: string;
-  legacyQuery: StructuredQuery;
   query: Lib.Query;
   stageIndex: number;
   metadata: Metadata;
@@ -90,7 +88,6 @@ function transformPropsToState(
   props: ExpressionEditorTextfieldProps,
 ): ExpressionEditorTextfieldState {
   const {
-    legacyQuery,
     expression: legacyExpression = ExpressionEditorTextfield.defaultProps
       .expression,
     startRule = ExpressionEditorTextfield.defaultProps.startRule,
@@ -99,17 +96,13 @@ function transformPropsToState(
     stageIndex,
   } = props;
   const expressionFromClause = clause
-    ? Lib.legacyExpressionForExpressionClause(
-        query ?? legacyQuery.question()._getMLv2Query(),
-        stageIndex ?? -1,
-        clause,
-      )
+    ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
     : undefined;
   const expression = expressionFromClause ?? legacyExpression;
   const source = format(expression, {
     startRule,
-    stageIndex: stageIndex ?? -1,
-    query: query ?? legacyQuery.question()._getMLv2Query(),
+    stageIndex,
+    query,
   });
 
   return {
@@ -155,8 +148,7 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, clause, legacyQuery, startRule, query, stageIndex } =
-      newProps;
+    const { expression, clause, startRule, query, stageIndex } = newProps;
     const hasLegacyExpressionChanged = !_.isEqual(
       this.props.expression,
       expression,
@@ -164,19 +156,15 @@ class ExpressionEditorTextfield extends React.Component<
     const hasClauseChanged = !_.isEqual(this.props.clause, clause);
     const hasExpressionChanged = hasLegacyExpressionChanged || hasClauseChanged;
     const expressionFromClause = clause
-      ? Lib.legacyExpressionForExpressionClause(
-          query ?? legacyQuery.question()._getMLv2Query(),
-          stageIndex ?? -1,
-          clause,
-        )
+      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
       : undefined;
     const newExpression = expressionFromClause ?? expression;
 
     if (!this.state || hasExpressionChanged) {
       const source = format(newExpression, {
         startRule,
-        stageIndex: stageIndex ?? -1,
-        query: query ?? legacyQuery.question()._getMLv2Query(),
+        stageIndex,
+        query,
       });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
@@ -392,15 +380,15 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { legacyQuery, query, stageIndex, startRule, name } = this.props;
+    const { query, stageIndex, startRule, name } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
     const { expression, expressionClause } = processSource({
       name,
       source,
-      query: query ?? legacyQuery.question()._getMLv2Query(),
-      stageIndex: stageIndex ?? -1,
+      query,
+      stageIndex,
       startRule,
     });
 
@@ -410,7 +398,6 @@ class ExpressionEditorTextfield extends React.Component<
   diagnoseExpression(): ErrorWithMessage | null {
     const { source } = this.state;
     const {
-      legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       name,
       query,
@@ -423,14 +410,13 @@ class ExpressionEditorTextfield extends React.Component<
       source,
       startRule,
       name,
-      query: query ?? legacyQuery.question()._getMLv2Query(),
-      stageIndex: stageIndex ?? -1,
+      query,
+      stageIndex,
     });
   }
 
   commitExpression() {
     const {
-      legacyQuery,
       query,
       stageIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
@@ -441,8 +427,8 @@ class ExpressionEditorTextfield extends React.Component<
     const errorMessage = diagnose({
       source,
       startRule,
-      query: query ?? legacyQuery.question()._getMLv2Query(),
-      stageIndex: stageIndex ?? -1,
+      query,
+      stageIndex,
     });
     this.setState({ errorMessage });
 
@@ -494,11 +480,8 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
-      // TODO: uladzimir
-      // using stage index apart from -1 is possible only in the notebook editor, filter pills, and the filter modal
-      // first 2 are migrated in the filters integration branch. The latter is in progress
-      query: query ?? this.props.legacyQuery.question()._getMLv2Query(),
-      stageIndex: stageIndex ?? -1,
+      query,
+      stageIndex,
       metadata,
       getColumnIcon,
     });

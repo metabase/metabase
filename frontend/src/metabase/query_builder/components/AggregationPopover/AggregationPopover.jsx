@@ -321,8 +321,8 @@ export default class AggregationPopover extends Component {
   };
 
   render() {
-    const { query } = this.props;
-    const table = query.table();
+    const { query: legacyQuery } = this.props;
+    const table = legacyQuery.table();
     const { choosingField, editingAggregation } = this.state;
     const aggregation = AGGREGATION.getContent(this.state.aggregation);
     const selectedAggregation = this.getSelectedAggregation(table, aggregation);
@@ -332,7 +332,10 @@ export default class AggregationPopover extends Component {
       return (
         <ExpressionWidget
           name={AGGREGATION.getName(this.state.aggregation)}
-          legacyQuery={query}
+          /* @uladzimirdev double check if stageIndex={-1} can be used */
+          query={legacyQuery.question()._getMLv2Query()}
+          stageIndex={-1}
+          legacyQuery={legacyQuery}
           expression={aggregation}
           withName
           startRule="aggregation"
@@ -362,9 +365,9 @@ export default class AggregationPopover extends Component {
           <AggregationFieldList
             width={this.props.width}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
-            query={query}
+            query={legacyQuery}
             field={fieldId}
-            fieldOptions={query.aggregationFieldOptions(agg)}
+            fieldOptions={legacyQuery.aggregationFieldOptions(agg)}
             onFieldChange={this.onPickField}
             enableSubDimensions={true}
             preventNumberSubDimensions={true}
