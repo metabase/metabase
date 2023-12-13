@@ -22,15 +22,14 @@
    (rest (csv/read-csv response))))
 
 (deftest date-columns-should-be-emitted-without-time
-  (mt/with-temporary-setting-values [custom-formatting nil]
-    (is (= [["1" "April 7, 2014" "5" "12"]
-            ["2" "September 18, 2014" "1" "31"]
-            ["3" "September 15, 2014" "8" "56"]
-            ["4" "March 11, 2014" "5" "4"]
-            ["5" "May 5, 2013" "3" "49"]]
-           (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
-                                              (json/generate-string (mt/mbql-query checkins)))]
-             (take 5 (parse-and-sort-csv result)))))))
+  (is (= [["1" "April 7, 2014" "5" "12"]
+          ["2" "September 18, 2014" "1" "31"]
+          ["3" "September 15, 2014" "8" "56"]
+          ["4" "March 11, 2014" "5" "4"]
+          ["5" "May 5, 2013" "3" "49"]]
+         (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
+                                            (json/generate-string (mt/mbql-query checkins)))]
+           (take 5 (parse-and-sort-csv result))))))
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"

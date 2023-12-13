@@ -264,7 +264,9 @@
 
 (defn- sql-time-query
   "Generate a SQL query that produces N identical rows of data, each row containing a variety of different presentations
-  of the input date string. The intent is to provide a wide variety for testing of different data formats."
+  of the input date string. The intent is to provide a wide variety for testing of different row data formats. The
+  reason for the duplication of rows is that some logic (e.g. pulses) may not trigger if N is under a certain threshold
+  (e.g. no attachments if less than 10 rows for an email)."
   [date-str n]
   (format
     "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
