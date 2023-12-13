@@ -50,10 +50,13 @@ export function StringFilterValuePicker({
   }
 
   if (fieldId != null && hasFieldValues === "search") {
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+
     return (
       <SearchValuePicker
         fieldId={fieldId}
         value={value}
+        placeholder={t`Search by ${columnInfo.displayName}`}
         getCreateLabel={getCreateLabel}
         onChange={onChange}
       />
