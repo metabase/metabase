@@ -2111,20 +2111,22 @@
                      Card          {model-id :id} {:dataset true}
                      Card          {model-id-2 :id} {:dataset true}
                      Action        {action-id :id} {:model_id model-id :type :implicit :name "action"}
+                     ;; Put the **same** card on the dashboard as both an action card and a question card
                      DashboardCard action-card {:dashboard_id dashboard-id
                                                 :action_id action-id
                                                 :card_id model-id}
                      DashboardCard question-card {:dashboard_id dashboard-id, :card_id model-id}]
         (with-dashboards-in-writeable-collection [dashboard-id]
           ;; TODO adds test for return
+          ;; Update **both** cards to use the new card id
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
                                        {:dashcards [(assoc action-card :card_id model-id-2)
                                                     (assoc question-card :card_id model-id-2)]
                                         :tabs      []})
-          ;; Only action card should change
-          (is (partial= [{:card_id model-id-2}
-                         {:card_id model-id}]
-                        (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+          (testing "Both updated card ids should be reflected after making the dashcard changes."
+            (is (partial= [{:card_id model-id-2}
+                           {:card_id model-id-2}]
+                          (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]})))))))))
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
