@@ -23,9 +23,9 @@ export function shouldSearch(
   searchValue: string,
   lastSearchValue: string,
 ) {
-  return (
-    data.length === SEARCH_LIMIT ||
-    !searchValue.startsWith(lastSearchValue) ||
-    lastSearchValue === ""
-  );
+  const isLastSearchEmpty = lastSearchValue === "";
+  const isExtensionOfLastSearch = searchValue.startsWith(lastSearchValue);
+  const hasMoreValues = data.length === SEARCH_LIMIT;
+
+  return isLastSearchEmpty || !isExtensionOfLastSearch || hasMoreValues;
 }

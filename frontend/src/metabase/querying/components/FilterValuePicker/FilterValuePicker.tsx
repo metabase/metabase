@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
+import { Loader, Center } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import { SearchValuePicker } from "metabase/querying/components/FilterValuePicker/SearchValuePicker";
 import { ListValuePicker } from "./ListValuePicker";
@@ -33,10 +34,18 @@ export function StringFilterValuePicker({
     [query, stageIndex, column],
   );
 
-  const { data = [] } = useFieldValuesQuery({
+  const { data = [], isLoading } = useFieldValuesQuery({
     id: fieldId != null ? fieldId : undefined,
     enabled: hasFieldValues === "list",
   });
+
+  if (isLoading) {
+    return (
+      <Center h="2.5rem">
+        <Loader />
+      </Center>
+    );
+  }
 
   if (data.length > 0 && (data.length <= MAX_INLINE_OPTIONS || !compact)) {
     return (
