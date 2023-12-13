@@ -21,7 +21,7 @@ export function extractQueryParams(query: Record<string, unknown>) {
 export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
   return new URLSearchParams(
     extractQueryParams(query).map(([key, value]) => {
-      if (value === null) {
+      if (value == null) {
         return [key, ""].map(encodeURIComponent);
       }
       return [key, value].map(encodeURIComponent);
