@@ -307,8 +307,6 @@ class DashboardGrid extends Component {
             attributes: replaceCardModalDashCard,
           }),
       });
-
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Replace Card");
     };
 
     const handleClose = () => {

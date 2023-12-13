@@ -137,7 +137,6 @@ export function DashCardActionsPanel({
           key="replace-question"
           aria-label={t`Replace`}
           tooltip={t`Replace`}
-          analyticsEvent="Dashboard;Replace Question"
           onClick={onReplaceCard}
         >
           <Icon name="refresh_downstream" />
