@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/lib/types";
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Expression } from "metabase-types/api";
@@ -202,7 +202,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
   const onChangeClause = jest.fn();
   const onClose = jest.fn();
 
-  function getRecentExpressionClause() {
+  function getRecentExpressionClause(): Lib.Clause {
     expect(onChangeClause).toHaveBeenCalled();
     const [_name, clause] = onChangeClause.mock.lastCall;
     return clause;
@@ -212,7 +212,7 @@ function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
     return Lib.displayInfo(query, stageIndex, getRecentExpressionClause());
   }
 
-  render(
+  renderWithProviders(
     <ExpressionWidget
       expression={undefined}
       clause={undefined}

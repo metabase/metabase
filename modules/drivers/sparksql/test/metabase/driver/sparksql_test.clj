@@ -7,13 +7,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
-
-(use-fixtures :each (fn [thunk]
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
+   [metabase.test :as mt]))
 
 (deftest ^:parallel apply-page-test
   (testing "Make sure our custom implementation of `apply-page` works the way we'd expect"
