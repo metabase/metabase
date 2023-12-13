@@ -1054,20 +1054,83 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           "custom destination (question) behavior for 'Created at' column",
         );
 
-        getCreatedAtToQuestionMapping().should("not.exist");
-        cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
-        addSavedQuestionDestination();
-        addSavedQuestionCreatedAtParameter();
-        addSavedQuestionQuantityParameter();
-        cy.get("aside")
-          .findByRole("textbox")
-          .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
-            parseSpecialCharSequences: false,
+        editDashboard();
+
+        getDashboardCard().realHover().icon("click").click();
+
+        (function addCustomDashboardDestination() {
+          cy.log("custom destination (dashboard) behavior for 'Count' column");
+
+          getCountToDashboardMapping().should("not.exist");
+          cy.get("aside").findByText(COUNT_COLUMN_NAME).click();
+          addDashboardDestination();
+          cy.get("aside")
+            .findByText("Select a dashboard tab")
+            .should("not.exist");
+          cy.get("aside")
+            .findByText("No available targets")
+            .should("not.exist");
+          addTextParameter();
+          addTimeParameter();
+          cy.get("aside")
+            .findByRole("textbox")
+            .type(`Count: {{${COUNT_COLUMN_ID}}}`, {
+              parseSpecialCharSequences: false,
+            });
+
+          cy.icon("chevronleft").click();
+
+          getCountToDashboardMapping().should("exist");
+          getDashboardCard()
+            .button()
+            .should("have.text", "1 column has custom behavior");
+        })();
+
+        (function addCustomQuestionDestination() {
+          cy.log(
+            "custom destination (question) behavior for 'Created at' column",
+          );
+
+          getCreatedAtToQuestionMapping().should("not.exist");
+          cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
+
+          addSavedQuestionDestination();
+          addSavedQuestionCreatedAtParameter();
+          addSavedQuestionQuantityParameter();
+          cy.get("aside")
+            .findByRole("textbox")
+            .type(`Created at: {{${CREATED_AT_COLUMN_ID}}}`, {
+              parseSpecialCharSequences: false,
+            });
+
+          cy.icon("chevronleft").click();
+
+          getCreatedAtToQuestionMapping().should("exist");
+          getDashboardCard()
+            .button()
+            .should("have.text", "2 columns have custom behavior");
+        })();
+
+        cy.get("aside").button("Done").click();
+        saveDashboard();
+
+        (function testDashboardDestinationClick() {
+          cy.log("it handles 'Count' column click");
+
+          getTableCell(COLUMN_INDEX.COUNT)
+            .should("have.text", `Count: ${POINT_COUNT}`)
+            .click();
+          cy.findAllByTestId("field-set")
+            .should("have.length", 2)
+            .should("contain.text", POINT_COUNT)
+            .should("contain.text", POINT_CREATED_AT_FORMATTED);
+          cy.get("@targetDashboardId").then(targetDashboardId => {
+            cy.location().should(({ pathname, search }) => {
+              expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+              expect(search).to.equal(
+                `?${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=${POINT_CREATED_AT}`,
+              );
+            });
           });
 
         cy.icon("chevronleft").click();
@@ -1245,11 +1308,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
         getCreatedAtToUrlMapping().should("not.exist");
         cy.get("aside").findByText(CREATED_AT_COLUMN_NAME).click();
-        /**
-         * TODO: remove the next line when metabase#34845 is fixed
-         * @see https://github.com/metabase/metabase/issues/34845
-         */
-        cy.get("aside").findByText("Unknown").click();
         addUrlDestination();
         modal().within(() => {
           const urlInput = cy.findAllByRole("textbox").eq(0);
