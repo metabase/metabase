@@ -22,9 +22,9 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
   return new URLSearchParams(
     extractQueryParams(query).map(([key, value]) => {
       if (value == null) {
-        return [key, ""].map(encodeURIComponent);
+        return [key, ""];
       }
-      return [key, value].map(encodeURIComponent);
+      return [key, value];
     }),
   );
 }
