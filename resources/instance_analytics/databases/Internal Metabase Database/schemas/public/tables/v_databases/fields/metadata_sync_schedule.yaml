@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: metadata_sync_schedule
   model: Field
+database_indexed: null

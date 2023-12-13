@@ -166,7 +166,7 @@
             (is-count-= 2
                         :places :liked :boolean true)))))))
 
-(deftest filter-nested-queries-test
+(deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (testing "We should be able to apply filters to queries that use native queries with parameters as their source (#9802)"
       (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (mt/native-query (qp/compile (mt/mbql-query checkins)))}]
@@ -206,8 +206,10 @@
                  :database   (mt/id)
                  :parameters [{:type   :location/country
                                :target [:dimension [:template-tag "country"]]
-                               :value  ["US" "MX"]}]})))))
+                               :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel native-with-spliced-params-test-2
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
@@ -223,7 +225,10 @@
                :database   (mt/id)
                :parameters [{:type   :category
                              :target [:dimension [:template-tag "price"]]
-                             :value  [1 2]}]}))))
+                             :value  [1 2]}]}))))))
+
+(deftest ^:parallel native-with-spliced-params-test-3
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Comma-separated numbers in a number field"
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
@@ -239,7 +244,10 @@
                :database (mt/id)
                :parameters [{:type "number/="
                              :value ["1,2,3"]
-                             :target [:variable [:template-tag "number_comma"]]}]}))))
+                             :target [:variable [:template-tag "number_comma"]]}]}))))))
+
+(deftest ^:parallel native-with-spliced-params-test-4
+  (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Trailing commas do not cause errors"
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
@@ -275,8 +283,10 @@
                            :database   (mt/id)
                            :parameters [{:type   :location/country
                                          :target [:dimension [:template-tag "country"]]
-                                         :value  ["US" "MX"]}]})))))
+                                         :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel params-in-comments-test-2
+  (testing "Params in SQL comments are ignored"
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}

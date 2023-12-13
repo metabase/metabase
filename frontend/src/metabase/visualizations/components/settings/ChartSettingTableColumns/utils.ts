@@ -222,7 +222,7 @@ export const addColumnInSettings = (
   if (settingIndex >= 0) {
     newSettings[settingIndex] = { ...newSettings[settingIndex], enabled: true };
   } else {
-    const fieldRef = Lib.legacyFieldRef(column);
+    const fieldRef = Lib.legacyRef(column);
     newSettings.push({ name, fieldRef, enabled: true });
   }
 

@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: date_joined
   model: Field
+database_indexed: null

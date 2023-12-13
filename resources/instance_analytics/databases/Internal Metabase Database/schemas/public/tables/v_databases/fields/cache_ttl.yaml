@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: cache_ttl
   model: Field
+database_indexed: null

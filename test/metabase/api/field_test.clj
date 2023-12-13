@@ -69,6 +69,7 @@
                  :effective_type   "type/Text"
                  :has_field_values "list"
                  :database_required false
+                 :database_indexed  false
                  :database_is_auto_increment false
                  :dimensions       []
                  :name_field       nil})
