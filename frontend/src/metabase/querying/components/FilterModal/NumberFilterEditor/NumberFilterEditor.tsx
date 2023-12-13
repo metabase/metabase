@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import { isNumber } from "metabase/lib/types";
 import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
@@ -112,7 +113,7 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        value={values}
+        value={values.filter(isNumber)}
         placeholder={t`Enter a number`}
         compact
         onChange={onChange}

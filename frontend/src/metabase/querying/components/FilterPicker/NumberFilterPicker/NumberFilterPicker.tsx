@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
+import { isNumber } from "metabase/lib/types";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
@@ -114,7 +115,7 @@ function NumberValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          value={values}
+          value={values.filter(isNumber)}
           placeholder={placeholder}
           onChange={onChange}
         />

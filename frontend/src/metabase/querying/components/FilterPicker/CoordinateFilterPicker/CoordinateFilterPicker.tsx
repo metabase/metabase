@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
+import { isNumber } from "metabase/lib/types";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
@@ -129,7 +130,7 @@ function CoordinateValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          value={values}
+          value={values.filter(isNumber)}
           placeholder={placeholder}
           onChange={onChange}
         />
