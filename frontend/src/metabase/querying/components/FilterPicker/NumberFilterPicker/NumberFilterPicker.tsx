@@ -5,7 +5,7 @@ import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -110,14 +110,13 @@ function NumberValueInput({
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
-        <FilterValuePicker
+        <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}
           column={column}
-          value={values.map(value => String(value))}
+          value={values}
           placeholder={placeholder}
-          getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
-          onChange={values => onChange(values.map(value => Number(value)))}
+          onChange={onChange}
         />
       </Box>
     );

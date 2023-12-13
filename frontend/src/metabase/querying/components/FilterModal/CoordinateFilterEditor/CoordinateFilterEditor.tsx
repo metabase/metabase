@@ -6,7 +6,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
-import { FilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterEditorProps } from "../types";
@@ -107,15 +107,14 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
+      <NumberFilterValuePicker
         query={query}
         stageIndex={stageIndex}
         column={column}
-        value={values.map(value => String(value))}
+        value={values}
         placeholder={t`Enter a number`}
         compact
-        getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
-        onChange={values => onChange(values.map(value => Number(value)))}
+        onChange={onChange}
       />
     );
   }

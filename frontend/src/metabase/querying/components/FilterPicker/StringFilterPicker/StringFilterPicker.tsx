@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
+import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -119,13 +119,12 @@ function StringValueInput({
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
-        <FilterValuePicker
+        <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
           column={column}
           value={values}
           placeholder={placeholder}
-          getCreateLabel={query => query}
           onChange={onChange}
         />
       </Box>

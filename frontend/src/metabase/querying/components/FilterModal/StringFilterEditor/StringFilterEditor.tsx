@@ -5,7 +5,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import type * as Lib from "metabase-lib";
-import { FilterValuePicker } from "../../FilterValuePicker";
+import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import type { FilterEditorProps } from "../types";
@@ -103,7 +103,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
+      <StringFilterValuePicker
         query={query}
         stageIndex={stageIndex}
         column={column}

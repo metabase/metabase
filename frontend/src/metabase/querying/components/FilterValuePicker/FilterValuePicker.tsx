@@ -5,27 +5,27 @@ import { InlineValuePicker } from "./InlineValuePicker";
 import { SelectValuePicker } from "./SelectValuePicker";
 import { MAX_INLINE_OPTIONS } from "./constants";
 
-interface FilterValuePickerProps {
+interface FilterValuePickerProps<T> {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  value: string[];
+  value: T[];
   placeholder?: string;
   compact?: boolean;
   getCreateLabel?: (query: string) => string | null;
-  onChange: (newValue: string[]) => void;
+  onChange: (newValue: T[]) => void;
 }
 
-export function FilterValuePicker({
+export function StringFilterValuePicker({
   query,
   stageIndex,
   column,
   value,
   placeholder,
   compact,
-  getCreateLabel,
+  getCreateLabel = query => query,
   onChange,
-}: FilterValuePickerProps) {
+}: FilterValuePickerProps<string>) {
   const { fieldId, hasFieldValues } = useMemo(
     () => Lib.fieldValuesInfo(query, stageIndex, column),
     [query, stageIndex, column],
@@ -54,6 +54,29 @@ export function FilterValuePicker({
       placeholder={placeholder}
       onChange={onChange}
       getCreateLabel={getCreateLabel}
+    />
+  );
+}
+
+export function NumberFilterValuePicker({
+  query,
+  stageIndex,
+  column,
+  value,
+  placeholder,
+  compact,
+  onChange,
+}: FilterValuePickerProps<number>) {
+  return (
+    <StringFilterValuePicker
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      value={value.map(value => String(value))}
+      placeholder={placeholder}
+      compact={compact}
+      getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
+      onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );
 }

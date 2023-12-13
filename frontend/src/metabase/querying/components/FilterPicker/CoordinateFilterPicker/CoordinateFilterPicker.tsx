@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
-import { FilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
@@ -125,14 +125,13 @@ function CoordinateValueInput({
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
-        <FilterValuePicker
+        <NumberFilterValuePicker
           query={query}
           stageIndex={stageIndex}
           column={column}
-          value={values.map(value => String(value))}
+          value={values}
           placeholder={placeholder}
-          getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
-          onChange={values => onChange(values.map(value => Number(value)))}
+          onChange={onChange}
         />
       </Box>
     );
