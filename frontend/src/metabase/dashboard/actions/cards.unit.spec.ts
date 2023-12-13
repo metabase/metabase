@@ -130,6 +130,7 @@ async function runAction({
     dashboards: {
       [DASHBOARD.id]: { ...DASHBOARD, dashcards: dashcards.map(dc => dc.id) },
     },
+    isEditing: DASHBOARD,
     dashcards: _.indexBy(dashcards, "id"),
   });
 
