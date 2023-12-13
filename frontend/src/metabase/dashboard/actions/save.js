@@ -11,7 +11,7 @@ import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavi
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
-import { fetchDashboard } from "./data-fetching";
+import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
@@ -131,13 +131,15 @@ export const updateDashboardAndCards = createThunkAction(
       });
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(
+      await dispatch(
         fetchDashboard({
           dashId: dashboard.id,
           queryParams: null,
           options: { preserveParameters: false },
         }),
       ); // disable using query parameters when saving
+
+      dispatch(fetchDashboardCardData({ reload: false, clearCache: false }));
     };
   },
 );
