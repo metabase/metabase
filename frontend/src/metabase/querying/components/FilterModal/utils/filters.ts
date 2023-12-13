@@ -91,15 +91,13 @@ export function removeSegmentFilters(
   query: Lib.Query,
   segmentItems: SegmentItem[],
 ) {
-  const filterGroups = segmentItems.flatMap(
-    ({ stageIndex, filterPositions }) => {
-      const filters = Lib.filters(query, stageIndex);
-      return {
-        filters: filterPositions.map(filterPosition => filters[filterPosition]),
-        stageIndex,
-      };
-    },
-  );
+  const filterGroups = segmentItems.map(({ stageIndex, filterPositions }) => {
+    const filters = Lib.filters(query, stageIndex);
+    return {
+      filters: filterPositions.map(filterPosition => filters[filterPosition]),
+      stageIndex,
+    };
+  });
 
   return filterGroups.reduce((query, { filters, stageIndex }) => {
     return filters.reduce(
