@@ -275,12 +275,12 @@ Object.assign(SmartScalar, {
 
   settings: {
     ...fieldSetting("scalar.field", {
-      section: "Data",
+      section: t`Data`,
       title: t`Primary number`,
       fieldFilter: isNumeric,
     }),
     "scalar.comparisons": {
-      section: "Data",
+      section: t`Data`,
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
       isValid: (series, vizSettings) => isComparisonValid(series, vizSettings),
@@ -291,13 +291,13 @@ Object.assign(SmartScalar, {
       }),
     },
     "scalar.switch_positive_negative": {
-      section: "Display",
+      section: t`Display`,
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
     },
     ...columnSettings({
-      section: "Display",
+      section: t`Display`,
       getColumns: (
         [
           {
