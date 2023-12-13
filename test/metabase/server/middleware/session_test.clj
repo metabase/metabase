@@ -246,10 +246,10 @@
 (deftest current-user-info-for-api-key-test
   (try
     (t2/insert! :model/ApiKey {:id 999
+                               :name "An API Key"
                                :user_id (mt/user->id :lucky)
                                :created_by (mt/user->id :lucky)
-                               :key "mb_foobar"
-                               :key_prefix "mb_foob"})
+                               :unhashed_key "mb_foobar"})
     (testing "a valid API key works"
       (is (= {:metabase-user-id (mt/user->id :lucky) :is-superuser? false :is-group-manager? false :user-locale nil}
              (#'mw.session/current-user-info-for-api-key "mb_foobar"))))
