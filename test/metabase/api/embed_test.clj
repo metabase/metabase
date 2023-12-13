@@ -25,6 +25,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -692,16 +693,31 @@
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (mt/mbql-query venues)}}]
-          (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
-          ;; the query execution is saved async, so we need to sleep a bit
-          (Thread/sleep 200)
-          (is (t2/exists? :model/QueryExecution :context "embedded-csv-download"))
-          (client/client :get 200 (str (dashcard-url dashcard) "/json"))
-          (Thread/sleep 200)
-          (is (t2/exists? :model/QueryExecution :context "embedded-json-download"))
-          (client/client :get 200 (str (dashcard-url dashcard) "/xlsx"))
-          (Thread/sleep 200)
-          (is (t2/exists? :model/QueryExecution :context "embedded-xlsx-download")))))))
+          (let [query (assoc
+                       (mt/mbql-query venues)
+                       :constraints nil
+                       :middleware {:js-int-to-string? false
+                                    :ignore-cached-results? false
+                                    :process-viz-settings? true
+                                    :format-rows? false}
+                       :viz-settings {}
+                       :async? true
+                       :cache-ttl nil)]
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
+              (is (= :embedded-csv-download
+                     (:context
+                      (qe)))))
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str (dashcard-url dashcard) "/json"))
+              (is (= :embedded-json-download
+                     (:context
+                      (qe)))))
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str (dashcard-url dashcard) "/xlsx"))
+              (is (= :embedded-xlsx-download
+                     (:context
+                      (qe)))))))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
   (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
