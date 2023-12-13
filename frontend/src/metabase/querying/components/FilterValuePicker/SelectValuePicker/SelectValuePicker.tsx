@@ -6,7 +6,7 @@ interface SelectValuePickerProps {
   data: FieldValue[];
   value: string[];
   placeholder?: string;
-  getCreateLabel?: (value: string) => string | null;
+  shouldCreate?: (query: string) => boolean;
   onChange: (newValue: string[]) => void;
 }
 
@@ -14,7 +14,7 @@ export function SelectValuePicker({
   data,
   value,
   placeholder,
-  getCreateLabel,
+  shouldCreate,
   onChange,
 }: SelectValuePickerProps) {
   const options = getEffectiveOptions(data, value);
@@ -27,7 +27,7 @@ export function SelectValuePicker({
       creatable
       searchable
       onChange={onChange}
-      getCreateLabel={getCreateLabel}
+      shouldCreate={shouldCreate}
       onCreate={query => {
         onChange([...value, query]);
         return query;

@@ -10,7 +10,7 @@ interface SearchValuePickerProps {
   fieldId: FieldId;
   value: string[];
   placeholder?: string;
-  getCreateLabel?: (value: string) => string | null;
+  shouldCreate?: (query: string) => boolean;
   onChange: (newValue: string[]) => void;
 }
 
@@ -18,7 +18,7 @@ export function SearchValuePicker({
   fieldId,
   value,
   placeholder,
-  getCreateLabel,
+  shouldCreate,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
@@ -47,8 +47,8 @@ export function SearchValuePicker({
       searchValue={searchValue}
       creatable
       searchable
+      shouldCreate={shouldCreate}
       onChange={onChange}
-      getCreateLabel={getCreateLabel}
       onCreate={query => {
         onChange([...value, query]);
         return query;
