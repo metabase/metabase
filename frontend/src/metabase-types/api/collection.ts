@@ -5,7 +5,7 @@ import type { DatabaseId } from "./database";
 
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root" | "users";
+export type CollectionId = RegularCollectionId | "root" | "personal" | "users";
 
 export type CollectionContentModel = "card" | "dataset";
 
