@@ -15,7 +15,7 @@ The **Metabase Analytics** collection is a special collection that contains view
 Some things to keep in mind with this special Metabase analytics collection:
 
 - Metabase analytics is a view-only collection. Even admins can't curate it. It is eternal.
-- By default, only admins and people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) can view the Metabase analytics collection (though admins can grant other groups view access to it).
+- By default, only admins can view the Metabase analytics collection (though admins can grant other groups view access to it). If you're upgrading from a version older than 48, people in groups with [monitoring access](../usage-and-performance-tools/usage-analytics.md) will also get access to the Metabase analytics collection. But after 48, you'll need to specifically grant groups access to the Metabase analytics collection.
 - You can duplicate any item in the Metabase analytics collection, modify the item to your liking, and save the item to another collection.
 
 ## Permissions
@@ -30,7 +30,11 @@ Additionally, this Metabase analytics collection has a default sub-collection ca
 
 You can duplicate any of the questions, dashboards and models in the Metabase analytics collection and tweak them to your liking, but you'll need to save them to a different collection.
 
-We recommend you save your custom reports in the conveniently named "Custom reports" collection, so these items inherit the same permissions, but you can save them wherever you like (except for the Metabase analytics collection).
+### Custom reports collection
+
+While you _can_ save custom questions, models, and dashboards wherever you like (except for the Metabase analytics collection), we recommend that you save your custom Metabase analytics reports in the conveniently named "Custom reports" sub-collection. That way these items inherit the same permissions as the parent Metabase analytics collection. 
+
+There is one thing to know about the Custom reports collection: its metadata resets whenever Metabase restarts. While you are able to temporarily rename the Custom reports collection, or give it a description or an Official badge, Metabase will drop this collection's metadata when it restarts. But rest assured that Metabase will preserve any questions, models, events, or dashboards that you add to the Custom reports collection.
 
 ## Dashboards
 
