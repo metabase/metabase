@@ -191,40 +191,38 @@ export function getQuestionSteps(
 ) {
   const allSteps: NotebookStep[] = [];
 
-  if (question.isStructured()) {
-    let legacyQuery = question.query() as StructuredQuery;
-    let query = legacyQuery.rootQuery().question()._getMLv2Query();
+  let legacyQuery = question.query() as StructuredQuery;
+  let query = legacyQuery.rootQuery().question()._getMLv2Query();
 
-    const database = metadata.database(Lib.databaseID(query));
-    const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
-    const hasBreakouts = Lib.breakouts(query, -1).length > 0;
+  const database = metadata.database(Lib.databaseID(query));
+  const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
+  const hasBreakouts = Lib.breakouts(query, -1).length > 0;
 
-    // strip empty source queries
-    legacyQuery = legacyQuery.cleanNesting();
+  // strip empty source queries
+  legacyQuery = legacyQuery.cleanNesting();
 
-    // add a level of nesting, if valid
-    if (allowsNesting && hasBreakouts) {
-      legacyQuery = legacyQuery.nest();
-      query = Lib.appendStage(query);
+  // add a level of nesting, if valid
+  if (allowsNesting && hasBreakouts) {
+    legacyQuery = legacyQuery.nest();
+    query = Lib.appendStage(query);
+  }
+
+  const stagedQueries = legacyQuery.queries();
+
+  for (let stageIndex = 0; stageIndex < Lib.stageCount(query); ++stageIndex) {
+    const stageQuery = stagedQueries[stageIndex];
+    const { steps, actions } = getStageSteps(
+      query,
+      stageQuery,
+      stageIndex,
+      metadata,
+      openSteps,
+    );
+    // append actions to last step of previous stage
+    if (allSteps.length > 0) {
+      allSteps[allSteps.length - 1].actions.push(...actions);
     }
-
-    const stagedQueries = legacyQuery.queries();
-
-    for (let stageIndex = 0; stageIndex < Lib.stageCount(query); ++stageIndex) {
-      const stageQuery = stagedQueries[stageIndex];
-      const { steps, actions } = getStageSteps(
-        query,
-        stageQuery,
-        stageIndex,
-        metadata,
-        openSteps,
-      );
-      // append actions to last step of previous stage
-      if (allSteps.length > 0) {
-        allSteps[allSteps.length - 1].actions.push(...actions);
-      }
-      allSteps.push(...steps);
-    }
+    allSteps.push(...steps);
   }
 
   // set up pointers to the next and previous steps
