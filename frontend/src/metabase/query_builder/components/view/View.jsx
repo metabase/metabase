@@ -16,7 +16,6 @@ import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
@@ -51,8 +50,7 @@ import {
 } from "./View.styled";
 
 const DEFAULT_POPOVER_STATE = {
-  aggregationIndex: null,
-  aggregationPopoverTarget: null,
+  // aggregationIndex: null,
   breakoutIndex: null,
   breakoutPopoverTarget: null,
 };
@@ -64,26 +62,6 @@ class View extends Component {
 
   onUpdateQuery = (query, options = { run: true }) => {
     this.props.updateQuestion(query.question(), options);
-  };
-
-  handleAddSeries = e => {
-    this.setState({
-      ...DEFAULT_POPOVER_STATE,
-      aggregationPopoverTarget: e.target,
-    });
-  };
-
-  handleEditSeries = (e, index) => {
-    this.setState({
-      ...DEFAULT_POPOVER_STATE,
-      aggregationPopoverTarget: e.target,
-      aggregationIndex: index,
-    });
-  };
-
-  handleRemoveSeries = (e, index) => {
-    const { query } = this.props;
-    this.onUpdateQuery(query.removeAggregation(index));
   };
 
   handleEditBreakout = (e, index) => {
@@ -98,19 +76,6 @@ class View extends Component {
     this.setState({
       ...DEFAULT_POPOVER_STATE,
     });
-  };
-
-  onChangeAggregation = aggregation => {
-    const { query } = this.props;
-    const { aggregationIndex } = this.state;
-    if (aggregationIndex != null) {
-      this.onUpdateQuery(
-        query.updateAggregation(aggregationIndex, aggregation),
-      );
-    } else {
-      this.onUpdateQuery(query.aggregate(aggregation));
-    }
-    this.handleClosePopover();
   };
 
   onChangeBreakout = breakout => {
@@ -340,11 +305,6 @@ class View extends Component {
 
     const topQuery = isStructured && query.topLevelQuery();
 
-    // only allow editing of series for structured queries
-    const onAddSeries = topQuery ? this.handleAddSeries : null;
-    const onEditSeries = topQuery ? this.handleEditSeries : null;
-    const onRemoveSeries =
-      topQuery && topQuery.hasAggregations() ? this.handleRemoveSeries : null;
     const onEditBreakout =
       topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
 
@@ -373,9 +333,6 @@ class View extends Component {
               {...this.props}
               noHeader
               className="spread"
-              onAddSeries={onAddSeries}
-              onEditSeries={onEditSeries}
-              onRemoveSeries={onRemoveSeries}
               onEditBreakout={onEditBreakout}
               mode={queryMode}
             />
@@ -384,27 +341,6 @@ class View extends Component {
         <TimeseriesChrome {...this.props} className="flex-no-shrink" />
         <ViewFooter {...this.props} className="flex-no-shrink" />
       </QueryBuilderMain>
-    );
-  };
-
-  renderAggregationPopover = () => {
-    const { query } = this.props;
-    const { aggregationPopoverTarget, aggregationIndex } = this.state;
-    return (
-      <Popover
-        isOpen={!!aggregationPopoverTarget}
-        target={aggregationPopoverTarget}
-        onClose={this.handleClosePopover}
-      >
-        <AggregationPopover
-          query={query}
-          aggregation={
-            aggregationIndex >= 0 ? query.aggregations()[aggregationIndex] : 0
-          }
-          onChangeAggregation={this.onChangeAggregation}
-          onClose={this.handleClosePopover}
-        />
-      </Popover>
     );
   };
 
@@ -515,7 +451,6 @@ class View extends Component {
 
         <QueryModals {...this.props} />
 
-        {isStructured && this.renderAggregationPopover()}
         {isStructured && this.renderBreakoutPopover()}
         <Toaster
           message={t`Would you like to be notified when this question is done loading?`}
