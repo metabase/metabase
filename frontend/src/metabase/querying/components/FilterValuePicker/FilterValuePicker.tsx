@@ -3,7 +3,7 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import { SearchValuePicker } from "metabase/querying/components/FilterValuePicker/SearchValuePicker";
-import { InlineValuePicker } from "./InlineValuePicker";
+import { ListValuePicker } from "./ListValuePicker";
 import { SelectValuePicker } from "./SelectValuePicker";
 import { MAX_INLINE_OPTIONS } from "./constants";
 
@@ -40,7 +40,7 @@ export function StringFilterValuePicker({
 
   if (data.length > 0 && (data.length <= MAX_INLINE_OPTIONS || !compact)) {
     return (
-      <InlineValuePicker
+      <ListValuePicker
         data={data}
         value={value}
         compact={compact}

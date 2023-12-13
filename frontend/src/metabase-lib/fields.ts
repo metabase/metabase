@@ -42,7 +42,7 @@ export function fieldValuesInfo(
   _stageIndex: number,
   _column: ColumnMetadata,
 ): FieldValuesInfo {
-  return { fieldId: 1, hasFieldValues: "search" };
+  return { fieldId: 1, hasFieldValues: "list" };
 }
 
 export function legacyFieldRef(column: ColumnMetadata): FieldReference {

@@ -1,25 +1,24 @@
 import { useState } from "react";
 import { t } from "ttag";
 import { Checkbox, SimpleGrid, Stack, Text, TextInput } from "metabase/ui";
-import type { BoxProps } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
 import { getEffectiveOptions } from "../utils";
 import { searchOptions } from "./utils";
 
-interface InlineValuePickerProps extends BoxProps {
+interface ListValuePickerProps {
   data: FieldValue[];
   value: string[];
   compact?: boolean;
   onChange: (newValue: string[]) => void;
 }
 
-export function InlineValuePicker({
+export function ListValuePicker({
   data,
   value,
   compact,
   onChange,
-}: InlineValuePickerProps) {
+}: ListValuePickerProps) {
   return compact ? (
     <CompactValuePicker data={data} value={value} onChange={onChange} />
   ) : (
@@ -27,7 +26,7 @@ export function InlineValuePicker({
   );
 }
 
-function DefaultValuePicker({ data, value, onChange }: InlineValuePickerProps) {
+function DefaultValuePicker({ data, value, onChange }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const options = getEffectiveOptions(data, value);
   const visibleOptions = searchOptions(options, searchValue);
@@ -61,7 +60,7 @@ function DefaultValuePicker({ data, value, onChange }: InlineValuePickerProps) {
   );
 }
 
-function CompactValuePicker({ data, value, onChange }: InlineValuePickerProps) {
+function CompactValuePicker({ data, value, onChange }: ListValuePickerProps) {
   const options = getEffectiveOptions(data, value);
 
   return (
