@@ -16,7 +16,7 @@ function getStaticOptions(selectedValues: string[]): Option[] {
   }));
 }
 
-export function getEffectiveOptions(
+export function getMergedOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
 ): Option[] {

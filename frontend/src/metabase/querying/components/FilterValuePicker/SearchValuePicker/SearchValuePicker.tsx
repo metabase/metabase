@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAsyncFn, useDebounce } from "react-use";
 import type { FieldId } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
-import { getEffectiveOptions } from "../utils";
+import { getMergedOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
 
@@ -36,7 +36,7 @@ export function SearchValuePicker({
     }
   };
 
-  const options = getEffectiveOptions(data, value);
+  const options = getMergedOptions(data, value);
   useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
 
   return (

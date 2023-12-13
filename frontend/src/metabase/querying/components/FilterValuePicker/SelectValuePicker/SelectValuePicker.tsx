@@ -1,6 +1,6 @@
 import { MultiSelect } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
-import { getEffectiveOptions } from "../utils";
+import { getMergedOptions } from "../utils";
 
 interface SelectValuePickerProps {
   data: FieldValue[];
@@ -17,7 +17,7 @@ export function SelectValuePicker({
   shouldCreate,
   onChange,
 }: SelectValuePickerProps) {
-  const options = getEffectiveOptions(data, value);
+  const options = getMergedOptions(data, value);
 
   return (
     <MultiSelect

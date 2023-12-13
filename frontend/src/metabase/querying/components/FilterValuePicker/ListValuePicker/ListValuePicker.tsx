@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { Checkbox, SimpleGrid, Stack, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
-import { getEffectiveOptions } from "../utils";
+import { getMergedOptions } from "../utils";
 import { searchOptions } from "./utils";
 
 interface ListValuePickerProps {
@@ -28,7 +28,7 @@ export function ListValuePicker({
 
 function DefaultValuePicker({ data, value, onChange }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const options = getEffectiveOptions(data, value);
+  const options = getMergedOptions(data, value);
   const visibleOptions = searchOptions(options, searchValue);
 
   return (
@@ -61,7 +61,7 @@ function DefaultValuePicker({ data, value, onChange }: ListValuePickerProps) {
 }
 
 function CompactValuePicker({ data, value, onChange }: ListValuePickerProps) {
-  const options = getEffectiveOptions(data, value);
+  const options = getMergedOptions(data, value);
 
   return (
     <Checkbox.Group value={value} onChange={onChange}>
