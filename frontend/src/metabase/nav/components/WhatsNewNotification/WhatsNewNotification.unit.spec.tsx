@@ -53,22 +53,24 @@ const setup = ({
   setupPropertiesEndpoints(createMockSettings());
   setupSettingsEndpoints([createMockSettingDefinition()]);
 
+  const mockState = createMockState({
+    settings: mockSettings({
+      version: versionMock,
+      "version-info": createMockVersionInfo({ latest, older }),
+      "last-acknowledged-version": lastAcknowledged,
+      "application-name": isWhiteLabeling ? "My App" : "Metabase",
+      "token-features": createMockTokenFeatures({
+        whitelabel: isWhiteLabeling,
+      }),
+    }),
+  });
+
   if (isWhiteLabeling) {
     setupEnterprisePlugins();
   }
 
   return renderWithProviders(<WhatsNewNotification></WhatsNewNotification>, {
-    storeInitialState: createMockState({
-      settings: mockSettings({
-        version: versionMock,
-        "version-info": createMockVersionInfo({ latest, older }),
-        "last-acknowledged-version": lastAcknowledged,
-        "application-name": isWhiteLabeling ? "My App" : "Metabase",
-        "token-features": createMockTokenFeatures({
-          whitelabel: isWhiteLabeling,
-        }),
-      }),
-    }),
+    storeInitialState: mockState,
   });
 };
 
