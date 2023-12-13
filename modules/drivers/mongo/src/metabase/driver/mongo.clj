@@ -20,7 +20,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [monger.collection :as mcoll]
    [monger.command :as cmd]
    [monger.conversion :as m.conversion]
    [monger.core :as mg]
@@ -208,17 +207,16 @@
 (defmethod driver/describe-table-indexes :mongo
   [_ database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
-    (->> (mcoll/indexes-on conn (:name table))
+    ;; using raw DBObject instead of calling `monger/indexes-on`
+    ;; because in case a compound index has more than 8 keys, the `key` returned by
+    ;;`monger/indexes-on` will be a hash-map, and with a hash map we can't determine
+    ;; which key is the first key.
+    (->> (.getIndexInfo (.getCollection conn (:name table)))
          (map (fn [index]
                 ;; for text indexes, column names are specified in the weights
-                (if (contains? index :textIndexVersion)
-                  (:weights index)
-                  (:key index))))
-         ;; when the key is not a persistent array map, then the ordered of the key can't be determined
-         ;; so we ignore those.
-         ;; Practically this will be only the case for when an index has more than 8 keys because a map
-         ;; with less than 8 keys are PersistentArrayMap, it's a PersistentHashedMap if it has more than 8 keys.
-         (filter #(instance? clojure.lang.PersistentArrayMap %))
+                (if (contains? index "textIndexVersion")
+                  (get index "weights")
+                  (get index "key"))))
          (map (comp name first keys))
          ;; mongo support multi key index, aka nested fields index, so we need to split the keys
          ;; and represent it as a list of field names

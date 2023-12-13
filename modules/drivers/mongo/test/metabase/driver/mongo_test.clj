@@ -294,11 +294,10 @@
              (is (= #{"_id" "a" "e"}
                     (describe-indexes :compound-index))))
 
-           (testing "compound index that has too many keys will be ignored"
-             ;; see comment in `driver/describe-table-indexes :mongo`
+           (testing "compound index that has many keys can still determine the first key"
              (mcoll/create-index conn "compound-index-big"
-                                 (array-map "a" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "j" 1)) ;; first index column is :a
-             (is (= #{"_id"}
+                                 (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1)) ;; first index column is :j
+             (is (= #{"_id" "j"}
                     (describe-indexes :compound-index-big))))
 
            (testing "multi key indexes"
