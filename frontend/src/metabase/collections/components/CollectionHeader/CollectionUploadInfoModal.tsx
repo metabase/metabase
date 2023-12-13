@@ -3,6 +3,8 @@ import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 
 import {
   InfoModalTitle,
@@ -18,12 +20,13 @@ export const UploadInfoModal = ({
   isAdmin: boolean;
   onClose: () => void;
 }) => {
+  const applicationName = useSelector(getApplicationName);
   return (
     <Modal small>
       <ModalContent title=" " onClose={onClose}>
         <InfoModalContainer>
           <NewBadge>{t`New`}</NewBadge>
-          <InfoModalTitle>{t`Uploads CSVs to Metabase`}</InfoModalTitle>
+          <InfoModalTitle>{t`Uploads CSVs to ${applicationName}`}</InfoModalTitle>
           {isAdmin ? (
             <>
               <InfoModalBody>
