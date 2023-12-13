@@ -427,7 +427,8 @@ export const fetchCardData = createThunkAction(
         );
         const hasReplacedCard =
           dashcard.card_id != null &&
-          dashcardBeforeEditing?.card_id !== dashcard.card_id;
+          dashcardBeforeEditing &&
+          dashcardBeforeEditing.card_id !== dashcard.card_id;
 
         // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
         const endpoint =
