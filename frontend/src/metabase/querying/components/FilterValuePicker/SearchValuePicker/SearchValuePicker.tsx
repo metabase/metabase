@@ -4,7 +4,7 @@ import type { FieldId } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
 import { getEffectiveOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
-import { searchValues } from "./utils";
+import { shouldSearch, getSearchValues } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
@@ -22,14 +22,22 @@ export function SearchValuePicker({
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
+  const [lastSearchValue, setLastSearchValue] = useState(searchValue);
 
   const [{ value: data = [] }, handleSearch] = useAsyncFn(
-    (value: string) => searchValues(fieldId, value),
+    (value: string) => getSearchValues(fieldId, value),
     [fieldId],
   );
 
+  const handleDebounce = async () => {
+    if (shouldSearch(data, searchValue, lastSearchValue)) {
+      await handleSearch(searchValue);
+      setLastSearchValue(searchValue);
+    }
+  };
+
   const options = getEffectiveOptions(data, value);
-  useDebounce(() => handleSearch(searchValue), SEARCH_DEBOUNCE, [searchValue]);
+  useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect

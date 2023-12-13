@@ -2,18 +2,30 @@ import { MetabaseApi } from "metabase/services";
 import type { FieldId, FieldValue } from "metabase-types/api";
 import { SEARCH_LIMIT } from "./constants";
 
-export function searchValues(
+export function getSearchValues(
   fieldId: FieldId,
-  value: string,
+  searchValue: string,
 ): Promise<FieldValue[]> {
-  if (value) {
+  if (searchValue) {
     return MetabaseApi.field_search({
       fieldId,
       searchFieldId: fieldId,
-      value,
+      value: searchValue,
       limit: SEARCH_LIMIT,
     });
   }
 
   return Promise.resolve([]);
+}
+
+export function shouldSearch(
+  data: FieldValue[],
+  searchValue: string,
+  lastSearchValue: string,
+) {
+  return (
+    data.length === SEARCH_LIMIT ||
+    !searchValue.startsWith(lastSearchValue) ||
+    lastSearchValue === ""
+  );
 }
