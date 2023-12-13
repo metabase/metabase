@@ -160,11 +160,11 @@ const hasData = (query: Lib.Query): boolean => {
 };
 
 const hasAnyClauses = (query: Lib.Query, stageIndex: number): boolean => {
-  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
-  const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
   const hasJoins = Lib.joins(query, stageIndex).length > 0;
   const hasExpressions = Lib.expressions(query, stageIndex).length > 0;
   const hasFilters = Lib.filters(query, stageIndex).length > 0;
+  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+  const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
   const hasOrderBys = Lib.orderBys(query, stageIndex).length > 0;
   const hasLimits = Lib.hasLimit(query, stageIndex);
   const hasFields = Lib.fields(query, stageIndex).length > 0;
