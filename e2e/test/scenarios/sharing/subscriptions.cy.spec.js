@@ -13,7 +13,7 @@ import {
   setTokenFeatures,
   emailSubscriptionRecipients,
   openEmailPage,
-  setupSubscriptionWithRecipient,
+  setupSubscriptionWithRecipients,
   openPulseSubscription,
   sendEmailAndVisitIt,
   clickSend,
@@ -214,11 +214,12 @@ describe("scenarios > dashboard > subscriptions", () => {
       () => {
         it("should allow non-user to unsubscribe from subscription", () => {
           const nonUserEmail = "non-user@example.com";
+          const otherUserEmail = "other-user@example.com";
           const dashboardName = "Orders in a dashboard";
 
           visitDashboard(ORDERS_DASHBOARD_ID);
 
-          setupSubscriptionWithRecipient(nonUserEmail);
+          setupSubscriptionWithRecipients([nonUserEmail, otherUserEmail]);
 
           emailSubscriptionRecipients();
 
@@ -235,6 +236,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           openPulseSubscription();
 
           sidebar().findByText(nonUserEmail).should("not.exist");
+          sidebar().findByText(otherUserEmail).should("exist");
         });
 
         it("should allow non-user to undo-unsubscribe from subscription", () => {
@@ -242,7 +244,7 @@ describe("scenarios > dashboard > subscriptions", () => {
           const dashboardName = "Orders in a dashboard";
           visitDashboard(ORDERS_DASHBOARD_ID);
 
-          setupSubscriptionWithRecipient(nonUserEmail);
+          setupSubscriptionWithRecipients([nonUserEmail]);
 
           emailSubscriptionRecipients();
 
