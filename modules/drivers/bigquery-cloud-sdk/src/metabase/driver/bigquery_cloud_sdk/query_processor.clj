@@ -291,10 +291,6 @@
 (defmethod ->temporal-type [:timestamp OffsetDateTime] [_ t] t)
 (defmethod ->temporal-type [:timestamp ZonedDateTime]  [_ t] t)
 
-(defn- report-timezone-id []
-  (let [database (lib.metadata/database (qp.store/metadata-provider))]
-    (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk database)))
-
 (defmethod ->temporal-type :default
   [target-type x]
   (when (some? x)
@@ -311,7 +307,7 @@
                       target-type)
           (let [expr (if-let [report-zone (when (or (= current-type :timestamp)
                                                     (= target-type :timestamp))
-                                            (report-timezone-id))]
+                                            (qp.timezone/report-timezone-id))]
                        [target-type x (h2x/literal report-zone)]
                        [target-type x])]
             (with-temporal-type expr target-type)))
@@ -369,7 +365,7 @@
 (defn- trunc
   "Generate a SQL call an appropriate truncation function, depending on the temporal type of `expr`."
   [unit expr]
-  [::trunc expr unit (report-timezone-id)])
+  [::trunc expr unit (qp.timezone/report-timezone-id)])
 
 (def ^:private valid-date-extract-units
   #{:dayofweek :day :dayofyear :week :isoweek :month :quarter :year :isoyear})
@@ -423,7 +419,7 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (with-temporal-type (extract* unit expr (report-timezone-id)) nil))
+      (with-temporal-type (extract* unit expr (qp.timezone/report-timezone-id)) nil))
 
     ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
     (recur unit (->temporal-type :timestamp expr))))
@@ -893,7 +889,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk
   [_driver]
-  [::current-moment nil (report-timezone-id)])
+  [::current-moment nil (qp.timezone/report-timezone-id)])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :now]
   [driver _clause]
