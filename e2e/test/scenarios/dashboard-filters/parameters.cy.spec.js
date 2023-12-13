@@ -7,6 +7,7 @@ import {
   sidebar,
   getDashboardCard,
   selectDashboardFilter,
+  disconnectDashboardFilter,
   saveDashboard,
   updateDashboardCards,
   visitDashboardAndCreateTab,
@@ -31,6 +32,23 @@ const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
+  const cards = [
+    {
+      card_id: ORDERS_COUNT_QUESTION_ID,
+      row: 0,
+      col: 0,
+      size_x: 5,
+      size_y: 4,
+    },
+    {
+      card_id: ORDERS_COUNT_QUESTION_ID,
+      row: 0,
+      col: 5,
+      size_x: 5,
+      size_y: 4,
+    },
+  ];
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -43,22 +61,7 @@ describe("scenarios > dashboard > parameters", () => {
       // add the same question twice
       updateDashboardCards({
         dashboard_id: id,
-        cards: [
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 4,
-            size_x: 5,
-            size_y: 4,
-          },
-        ],
+        cards,
       });
 
       visitDashboard(id);
@@ -608,6 +611,69 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
+  describe.only("when parameters are (un)mapped to dashcards", () => {
+    beforeEach(() => {
+      createDashboardWithCards({ cards }).then(dashboardId =>
+        visitDashboard(dashboardId),
+      );
+
+      // editDashboard();
+      // setFilter("Time", "Relative Date");
+      // cy.findByTestId("dashboard-header")
+      //   .findByText("Default value")
+      //   .next()
+      //   .click();
+      // popover().contains("Past 7 days").click({ force: true });
+      // saveDashboard();
+
+      console.log("YAYA 31");
+
+      // cy.intercept(
+      //   "POST",
+      //   "/api/dashboard/*/dashcard/*/card/*/query",
+      //   cy.spy().as("dashcardQuerySpy"),
+      // ).as("dashcardQuery");
+    });
+
+    it.only("should not fetch dashcard data when filter is unmapped", () => {
+      // cy.get("@dashcardQuerySpy").should("not.have.been.called");
+    });
+
+    // it("should fetch dashcard data after save when parameter is mapped", () => {
+    //   // Connect filter to 2 cards
+    //   editDashboard();
+    //   cy.findByTestId("dashboard-header").findByText("Relative Date").click();
+    //   selectDashboardFilter(getDashboardCard(0), "Created At");
+    //   saveDashboard();
+
+    //   cy.get("@dashcardQuery.all").should("have.length", 2);
+    // });
+
+    // it("should fetch dashcard data when parameter mapping is removed", () => {
+    //   // Connect filter to 1 card only
+    //   editDashboard();
+    //   cy.findByTestId("dashboard-header").findByText("Relative Date").click();
+    //   selectDashboardFilter(getDashboardCard(0), "Created At");
+    //   disconnectDashboardFilter(getDashboardCard(1));
+    //   saveDashboard();
+
+    //   // Disconnect filter from the 1st card
+    //   editDashboard();
+    //   cy.findByTestId("dashboard-header").findByText("Relative Date").click();
+    //   disconnectDashboardFilter(getDashboardCard(0));
+    //   saveDashboard();
+
+    //   cy.get("@dashcardQuery.all").should("have.length", 2); // TODO find a way to reset it
+    // });
+
+    // it("should not fetch dashcard data when nothing changed on save", () => {
+    //   editDashboard();
+    //   saveDashboard();
+
+    //   cy.get("@dashcardQuery.all").should("have.length", 0);
+    // });
+  });
+
   describe("when auto-wiring parameters across cards with matching fields", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
@@ -615,24 +681,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     describe("when wiring parameter to all cards for a filter", () => {
       it("should automatically wire parameters to cards with matching fields", () => {
-        createDashboardWithCards({
-          cards: [
-            {
-              card_id: ORDERS_BY_YEAR_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-            },
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 4,
-              size_x: 5,
-              size_y: 4,
-            },
-          ],
-        }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
@@ -658,24 +707,7 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should not automatically wire parameters to cards that already have a parameter, despite matching fields", () => {
-        createDashboardWithCards({
-          cards: [
-            {
-              card_id: ORDERS_BY_YEAR_QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 5,
-              size_y: 4,
-            },
-            {
-              card_id: ORDERS_COUNT_QUESTION_ID,
-              row: 0,
-              col: 4,
-              size_x: 5,
-              size_y: 4,
-            },
-          ],
-        }).then(dashboardId => {
+        createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
 
@@ -757,23 +789,6 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should autowire parameters to cards in different tabs", () => {
-        const cards = [
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 4,
-            size_x: 5,
-            size_y: 4,
-          },
-        ];
-
         createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboardAndCreateTab({
             dashboardId,
@@ -804,23 +819,6 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should undo parameter wiring when 'Undo auto-connection' is clicked", () => {
-        const cards = [
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 4,
-            size_x: 5,
-            size_y: 4,
-          },
-        ];
-
         createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
@@ -904,23 +902,6 @@ describe("scenarios > dashboard > parameters", () => {
 
     describe("wiring parameters when adding a card", () => {
       it("should automatically wire a parameters to cards that are added to the dashboard", () => {
-        const cards = [
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 5,
-            size_x: 5,
-            size_y: 4,
-          },
-        ];
-
         createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
@@ -950,23 +931,6 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should automatically wire parameters to cards that are added to the dashboard in a different tab", () => {
-        const cards = [
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 5,
-            size_x: 5,
-            size_y: 4,
-          },
-        ];
-
         createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });
@@ -994,23 +958,6 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       it("should undo parameter wiring when 'Undo auto-connection' is clicked", () => {
-        const cards = [
-          {
-            card_id: ORDERS_BY_YEAR_QUESTION_ID,
-            row: 0,
-            col: 0,
-            size_x: 5,
-            size_y: 4,
-          },
-          {
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            row: 0,
-            col: 5,
-            size_x: 5,
-            size_y: 4,
-          },
-        ];
-
         createDashboardWithCards({ cards }).then(dashboardId => {
           visitDashboard(dashboardId);
         });

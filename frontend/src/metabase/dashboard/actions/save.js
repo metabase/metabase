@@ -139,7 +139,16 @@ export const updateDashboardAndCards = createThunkAction(
         }),
       ); // disable using query parameters when saving
 
-      dispatch(fetchDashboardCardData({ reload: false, clearCache: false }));
+      // There might have been changes to dashboard card-filter wiring,
+      // which require re-fetching card data (issue #35503). We expect
+      // the fetchDashboardCardData to decide which cards to fetch.
+      dispatch(
+        fetchDashboardCardData({
+          reload: false,
+          clearCache: false,
+          // source: "SAVE",
+        }),
+      );
     };
   },
 );

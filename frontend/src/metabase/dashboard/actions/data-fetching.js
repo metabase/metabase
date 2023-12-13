@@ -469,6 +469,8 @@ export const fetchCardData = createThunkAction(
 export const fetchDashboardCardData =
   ({ isRefreshing, ...options } = {}) =>
   (dispatch, getState) => {
+    console.log(`fetchDashboardCardData ${options.source}`);
+
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
 
@@ -489,6 +491,8 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
+      console.log("IS REFRESHING", loadingIds.concat(newLoadingIds));
+
       dispatch({
         type: FETCH_DASHBOARD_CARD_DATA,
         payload: {
@@ -502,10 +506,14 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
+      console.log("NOT REFRESHING CANCEL", loadingIds);
+
       for (const id of loadingIds) {
         const dashcard = getDashCardById(getState(), id);
         dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
       }
+
+      console.log("NOT REFRESHING", newLoadingIds);
 
       dispatch({
         type: FETCH_DASHBOARD_CARD_DATA,
