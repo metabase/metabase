@@ -209,7 +209,11 @@
   [_ database table]
   (with-mongo-connection [^com.mongodb.DB conn database]
     (->> (mcoll/indexes-on conn (:name table))
-         (map :key)
+         (map (fn [index]
+                ;; for text indexes, column names are specified in the weights
+                (if (contains? index :textIndexVersion)
+                  (:weights index)
+                  (:key index))))
          ;; when the key is not a persistent array map, then the ordered of the key can't be determined
          ;; so we ignore those.
          ;; Practically this will be only the case for when an index has more than 8 keys because a map
@@ -219,8 +223,8 @@
          ;; mongo support multi key index, aka nested fields index, so we need to split the keys
          ;; and represent it as a list of field names
          (map #(if (str/includes? % ".")
-                (str/split % #"\.")
-                %))
+                 (str/split % #"\.")
+                 %))
          set)))
 
 (defn- from-db-object

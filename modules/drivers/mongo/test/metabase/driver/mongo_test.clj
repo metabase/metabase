@@ -232,7 +232,7 @@
                     {:field-name "second" :indexed? false :base-type :type/Integer}]
                    [[1 2]]]
                   ["multi-key-index"
-                   [{:field-name "url" :indexed? false :base-type :type/Integer}]
+                   [{:field-name "url" :indexed? false :base-type :type/Text}]
                    [[{:small "http://example.com/small.jpg" :large "http://example.com/large.jpg"}]]])
 
       (try
@@ -242,21 +242,22 @@
 
        (testing "compount index"
          (mongo.util/with-mongo-connection [conn (mt/db)]
-           (mcoll/create-index conn "compound-index" {"first" 1 "second" 1}))
+           (mcoll/create-index conn "compound-index" (array-map "first" 1 "second" 1)))
          (sync/sync-database! (mt/db))
          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
 
        (testing "multi key index"
          (mongo.util/with-mongo-connection [conn (mt/db)]
-           (mcoll/create-index conn "multi-key-index" {"url.small" 1}))
+           (mcoll/create-index conn "multi-key-index" (array-map "url.small" 1)))
          (sync/sync-database! (mt/db))
          (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
          (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
+
        (finally
         (t2/delete! :model/Database (mt/id)))))))
 
-(deftest describe-table-indexes-test
+(deftest describe-table-imndexes-test
   (mt/test-driver :mongo
     (mt/dataset (mt/dataset-definition "indexing"
                   ["singly-index"
@@ -270,7 +271,13 @@
                    [[1]]]
                   ["multi-key-index"
                    [{:field-name "a" :base-type :type/Text}]
-                   [[1]]])
+                   [[1]]]
+                  ["advanced-index"
+                   [{:field-name "hashed-field" :indexed? false :base-type :type/Text}
+                    {:field-name "text-field" :indexed? false :base-type :type/Text}
+                    {:field-name "geospaitial-field" :indexed? false :base-type :type/Text}]
+                   [["Ngoc" "Khuat" [10 20]]]])
+
       (sync/sync-database! (mt/db))
       (try
        (let [describe-indexes (fn [table-name]
@@ -295,10 +302,16 @@
                     (describe-indexes :compound-index-big))))
 
            (testing "multi key indexes"
-             (mcoll/create-index conn "compound-index-big"
-                                 (array-map "a.b" 1)) ;; first index column is :a
+             (mcoll/create-index conn "multi-key-index" (array-map "a.b" 1))
              (is (= #{"_id" ["a" "b"]}
-                    (describe-indexes :compound-index-big))))))
+                    (describe-indexes :multi-key-index))))
+
+           (testing "advanced-index: hashed index, text index, geospatial index"
+             (mcoll/create-index conn "advanced-index" (array-map "hashed-field" "hashed"))
+             (mcoll/create-index conn "advanced-index" (array-map "text-field" "text"))
+             (mcoll/create-index conn "advanced-index" (array-map "geospatial-field" "2d"))
+             (is (= #{"hashed-field" "_id" "text-field" "geospatial-field"}
+                    (describe-indexes :advanced-index))))))
 
        (finally
         (t2/delete! :model/Database (mt/id)))))))
