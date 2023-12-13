@@ -195,3 +195,53 @@
     (testing "converts :null keyword used by drill-thrus back to JS null"
       (is (=? nil
               (.-value (lib.js/filter-drill-details {:value :null})))))))
+
+(deftest ^:parallel legacy-ref-test
+  (let [segment-id 100
+
+        segment-definition
+        {:source-table (meta/id :venues)
+         :aggregation  [[:count]]
+         :filter       [:and
+                        [:> [:field (meta/id :venues :id) nil] [:* [:field (meta/id :venues :price) nil] 11]]
+                        [:contains [:field (meta/id :venues :name) nil] "BBQ" {:case-sensitive true}]]}
+
+        metric-id 101
+
+        metric-definition
+        {:source-table (meta/id :venues)
+         :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
+         :filter       [:= [:field (meta/id :venues :price) nil] 4]}
+
+        metadata-provider
+        (lib.tu/mock-metadata-provider
+         meta/metadata-provider
+         {:segments [{:id          segment-id
+                      :name        "PriceID-BBQ"
+                      :table-id    (meta/id :venues)
+                      :definition  segment-definition
+                      :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
+          :metrics [{:id          metric-id
+                     :name        "Sum of Cans"
+                     :table-id    (meta/id :venues)
+                     :definition  metric-definition
+                     :description "Number of toucans plus number of pelicans"}]})
+
+        query (lib/query metadata-provider (meta/table-metadata :venues))
+
+        array-checker #(when (array? %) (js->clj %))
+        to-legacy-refs (comp array-checker lib.js/legacy-ref)]
+    (testing "field refs come with options"
+      (is (= [["field" (meta/id :venues :id) {"base-type" "type/BigInteger"}]
+              ["field" (meta/id :venues :name) {"base-type" "type/Text"}]
+              ["field" (meta/id :venues :category-id) {"base-type" "type/Integer"}]
+              ["field" (meta/id :venues :latitude) {"base-type" "type/Float"}]
+              ["field" (meta/id :venues :longitude) {"base-type" "type/Float"}]
+              ["field" (meta/id :venues :price) {"base-type" "type/Integer"}]]
+             (->> query lib/returned-columns (map to-legacy-refs)))))
+    (testing "segment refs come without options"
+      (is (= [["segment" segment-id]]
+             (->> query lib/available-segments (map to-legacy-refs)))))
+    (testing "metric refs come without options"
+      (is (= [["metric" metric-id]]
+             (->> query lib/available-metrics (map to-legacy-refs)))))))
