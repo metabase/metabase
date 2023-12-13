@@ -3,10 +3,9 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { getAccentColors } from "metabase/lib/colors/groups";
-import { Icon } from "metabase/core/components/Icon";
 import ExplicitSize from "../../components/ExplicitSize";
 import styles from "./Legend.css";
-import { AddSeriesIcon, LegendHeaderItem } from "./LegendHeader.styled";
+import { LegendHeaderItem } from "./LegendHeader.styled";
 
 const DEFAULT_COLORS = getAccentColors();
 const MIN_WIDTH_PER_SERIES = 100;
@@ -16,9 +15,6 @@ class LegendHeader extends Component {
     series: PropTypes.array.isRequired,
     hovered: PropTypes.object,
     onHoverChange: PropTypes.func,
-    onAddSeries: PropTypes.func,
-    onEditSeries: PropTypes.func,
-    onRemoveSeries: PropTypes.func,
     onChangeCardAndRun: PropTypes.func,
     actionButtons: PropTypes.node,
     description: PropTypes.string,
@@ -51,12 +47,7 @@ class LegendHeader extends Component {
 
     const isBreakoutSeries = !!series[0].card._breakoutColumn;
 
-    // disable these actions for breakout series
-    const { onAddSeries, onEditSeries, onRemoveSeries } = isBreakoutSeries
-      ? {}
-      : this.props;
-
-    const showDots = !!onAddSeries || series.length > 1;
+    const showDots = series.length > 1;
     const isNarrow = width < MIN_WIDTH_PER_SERIES * series.length;
     const showTitles = !showDots || !isNarrow;
 
@@ -93,9 +84,7 @@ class LegendHeader extends Component {
             onMouseEnter={() => onHoverChange && onHoverChange({ index })}
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
-              onEditSeries
-                ? e => onEditSeries(e, index)
-                : s.clicked && visualizationIsClickable(s.clicked)
+              s.clicked && visualizationIsClickable(s.clicked)
                 ? e =>
                     onVisualizationClick({
                       ...s.clicked,
@@ -111,19 +100,7 @@ class LegendHeader extends Component {
             }
             infoClassName={classNameWidgets}
           />,
-          onRemoveSeries && series.length > 1 && (
-            <Icon
-              name="close"
-              className="text-light text-medium-hover flex-no-shrink mr2 cursor-pointer"
-              width={12}
-              height={12}
-              onClick={e => onRemoveSeries(e, index)}
-            />
-          ),
         ])}
-        {onAddSeries && (
-          <AddSeriesIcon name="add" size={12} onClick={e => onAddSeries(e)} />
-        )}
         {actionButtons && (
           <span
             className={cx(
