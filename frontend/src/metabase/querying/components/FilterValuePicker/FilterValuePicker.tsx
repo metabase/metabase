@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import { SearchValuePicker } from "metabase/querying/components/FilterValuePicker/SearchValuePicker";
@@ -24,7 +25,7 @@ export function StringFilterValuePicker({
   value,
   placeholder,
   compact,
-  getCreateLabel = query => query,
+  getCreateLabel = getDefaultCreateLabel,
   onChange,
 }: FilterValuePickerProps<string>) {
   const { fieldId, hasFieldValues } = useMemo(
@@ -87,8 +88,14 @@ export function NumberFilterValuePicker({
       value={value.map(value => String(value))}
       placeholder={placeholder}
       compact={compact}
-      getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
+      getCreateLabel={query =>
+        isFinite(parseFloat(query)) ? getDefaultCreateLabel(query) : null
+      }
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );
+}
+
+function getDefaultCreateLabel(query: string) {
+  return t`Create ${query}`;
 }
