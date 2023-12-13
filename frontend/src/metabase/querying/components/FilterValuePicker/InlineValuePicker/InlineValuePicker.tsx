@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import { Checkbox, SimpleGrid, Stack, Text, TextInput } from "metabase/ui";
 import type { BoxProps } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
-import { getFieldOptions } from "../utils";
+import { getEffectiveOptions } from "../utils";
 import { searchOptions } from "./utils";
 
 interface InlineValuePickerProps extends BoxProps {
@@ -29,7 +29,7 @@ export function InlineValuePicker({
 
 function DefaultValuePicker({ data, value, onChange }: InlineValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const options = getFieldOptions(data);
+  const options = getEffectiveOptions(data, value);
   const visibleOptions = searchOptions(options, searchValue);
 
   return (
@@ -62,7 +62,7 @@ function DefaultValuePicker({ data, value, onChange }: InlineValuePickerProps) {
 }
 
 function CompactValuePicker({ data, value, onChange }: InlineValuePickerProps) {
-  const options = useMemo(() => getFieldOptions(data), [data]);
+  const options = getEffectiveOptions(data, value);
 
   return (
     <Checkbox.Group value={value} onChange={onChange}>

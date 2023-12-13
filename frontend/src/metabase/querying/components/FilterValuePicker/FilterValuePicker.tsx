@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as Lib from "metabase-lib";
 import { useFieldValuesQuery } from "metabase/common/hooks";
+import { SearchValuePicker } from "metabase/querying/components/FilterValuePicker/SearchValuePicker";
 import { InlineValuePicker } from "./InlineValuePicker";
 import { SelectValuePicker } from "./SelectValuePicker";
 import { MAX_INLINE_OPTIONS } from "./constants";
@@ -42,6 +43,17 @@ export function StringFilterValuePicker({
         data={data}
         value={value}
         compact={compact}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (fieldId != null && hasFieldValues === "search") {
+    return (
+      <SearchValuePicker
+        fieldId={fieldId}
+        value={value}
+        getCreateLabel={getCreateLabel}
         onChange={onChange}
       />
     );

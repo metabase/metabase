@@ -1,6 +1,6 @@
 import { MultiSelect } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
-import { getFieldOptions, getStaticOptions } from "../utils";
+import { getEffectiveOptions } from "../utils";
 
 interface SelectValuePickerProps {
   data: FieldValue[];
@@ -17,8 +17,7 @@ export function SelectValuePicker({
   getCreateLabel,
   onChange,
 }: SelectValuePickerProps) {
-  const options =
-    data.length > 0 ? getFieldOptions(data) : getStaticOptions(value);
+  const options = getEffectiveOptions(data, value);
 
   return (
     <MultiSelect
