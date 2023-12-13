@@ -10,6 +10,8 @@ const getValue = (value: string, type: string) => {
   return value;
 };
 
+type Value = string | number | null;
+
 export interface SettingInputProps {
   setting: {
     key: string;
@@ -17,15 +19,16 @@ export interface SettingInputProps {
     default?: string;
     placeholder?: string;
   };
-  onChange: (value: string | number | null) => void;
+  onChange: (value: Value) => void;
   autoFocus?: boolean;
   fireOnChange?: boolean;
   errorMessage?: string;
   id?: string;
   type?: string;
+  normalize?: (value: Value, props: Partial<SettingInputProps>) => Value;
 }
 
-const SettingInput = ({
+export const SettingInput = ({
   setting,
   onChange,
   autoFocus,
@@ -33,10 +36,11 @@ const SettingInput = ({
   fireOnChange,
   id,
   type = "text",
+  normalize = value => value,
 }: SettingInputProps) => {
   const changeHandler = (e: { target: HTMLInputElement }) => {
     const value = getValue(e.target.value, type);
-    onChange(value);
+    onChange(normalize(value, { type }));
   };
 
   return (

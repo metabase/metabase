@@ -16,7 +16,6 @@ import {
 import MetabaseSettings from "metabase/lib/settings";
 
 import { Anchor } from "metabase/ui";
-import { NormalizedTextSettingInput } from "metabase/admin/settings/components/widgets/NormalizedTextSettingInput";
 import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import FontWidget from "./components/FontWidget";
 import FontFilesWidget from "./components/FontFilesWidget";
@@ -68,8 +67,18 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "landing-page",
           display_name: t`Landing Page`,
-          widget: NormalizedTextSettingInput,
+          type: "string",
           placeholder: "/",
+          props: {
+            normalize(value, { type }) {
+              if (type === "text" && typeof value === "string") {
+                const normalizedValue = value.trim();
+                return normalizedValue === "" ? null : normalizedValue;
+              }
+
+              return value;
+            },
+          },
         },
         {
           key: "loading-message",
