@@ -174,10 +174,12 @@
 
 (mr/def ::drill-thru.automatic-insights
   [:merge
-   ::drill-thru.common.with-column
+   ::drill-thru.common
    [:map
     [:type     [:= :drill-thru/automatic-insights]]
-    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]]])
+    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
+    [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
+    [:dimensions [:ref ::context.row]]]])
 
 (mr/def ::drill-thru.zoom-in.timeseries.next-unit
   [:enum :quarter :month :week :day :hour :minute])
@@ -294,6 +296,22 @@
     [:drill-thru/zoom-in.timeseries       ::drill-thru.zoom-in.timeseries]
     [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]
     [:drill-thru/zoom-in.binning          ::drill-thru.zoom-in.binning]]])
+
+;;;
+;;; ## Context
+;;;
+
+;;; There are basically 5 shapes that contexts can come in, see this thread
+;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1701898192634679 and
+;;; https://github.com/metabase/metabase/issues/36253 for more info.
+;;;
+;;;    | Drill Context Shape | column | value | row | dimensions |
+;;;    |---------------------|--------|-------|-----|------------|
+;;;    | Column Header       | ✔      |       |     |            |
+;;;    | "Raw" Cell          | ✔      | ✔     | ✔   |            |
+;;;    | "Aggregated" Cell   | ✔      | ✔     | ✔   | ✔          |
+;;;    | Pivot Cell          |        | ✔     | ✔   | ✔          |
+;;;    | Legend Item         |        |       |     | ✔          |
 
 (mr/def ::context.row.value
   [:map

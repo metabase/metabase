@@ -126,16 +126,13 @@ const mainConfig = {
   viewportHeight: 800,
   viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
-  reporter: "mochawesome",
+  reporter: "junit",
   reporterOptions: {
-    reportDir: "cypress/reports/mochareports",
-    reportFilename: "[status]-[name]",
-    quiet: true,
-    html: false,
-    json: true,
+    mochaFile: "./target/junit/[hash].xml",
+    toConsole: true,
   },
   retries: {
-    runMode: 2,
+    runMode: 1,
     openMode: 0,
   },
 };

@@ -2,12 +2,16 @@ import type { RefObject } from "react";
 import * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
 import type { ICommand, IMarker } from "react-ace";
 import AceEditor from "react-ace";
 import * as ace from "ace-builds/src-noconflict/ace";
 import type { Ace } from "ace-builds";
 import type { Expression } from "metabase-types/api";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import type { State } from "metabase-types/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import * as Lib from "metabase-lib";
 import { format } from "metabase-lib/expressions/format";
 import { processSource } from "metabase-lib/expressions/process";
@@ -16,9 +20,13 @@ import { tokenize } from "metabase-lib/expressions/tokenizer";
 import { isExpression } from "metabase-lib/expressions";
 import type { Suggestion } from "metabase-lib/expressions/suggest";
 import { suggest } from "metabase-lib/expressions/suggest";
-import type { HelpText } from "metabase-lib/expressions/types";
+import type {
+  ErrorWithMessage,
+  HelpText,
+} from "metabase-lib/expressions/types";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
+import type Metadata from "metabase-lib/metadata/Metadata";
 import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
@@ -30,8 +38,6 @@ import {
 
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
-
-type ErrorWithMessage = { message: string; pos?: number; len?: number };
 
 const ACE_OPTIONS = {
   behavioursEnabled: false,
@@ -51,7 +57,8 @@ interface ExpressionEditorTextfieldProps {
   legacyQuery: StructuredQuery;
   query: Lib.Query;
   stageIndex: number;
-  startRule?: string;
+  metadata: Metadata;
+  startRule: string;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -92,10 +99,18 @@ function transformPropsToState(
     stageIndex,
   } = props;
   const expressionFromClause = clause
-    ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
+    ? Lib.legacyExpressionForExpressionClause(
+        query ?? legacyQuery.question()._getMLv2Query(),
+        stageIndex ?? -1,
+        clause,
+      )
     : undefined;
   const expression = expressionFromClause ?? legacyExpression;
-  const source = format(expression, { legacyQuery, startRule });
+  const source = format(expression, {
+    startRule,
+    stageIndex: stageIndex ?? -1,
+    query: query ?? legacyQuery.question()._getMLv2Query(),
+  });
 
   return {
     source,
@@ -107,6 +122,10 @@ function transformPropsToState(
     hasChanges: false,
   };
 }
+
+const mapStateToProps = (state: State) => ({
+  metadata: getMetadata(state),
+});
 
 class ExpressionEditorTextfield extends React.Component<
   ExpressionEditorTextfieldProps,
@@ -145,12 +164,20 @@ class ExpressionEditorTextfield extends React.Component<
     const hasClauseChanged = !_.isEqual(this.props.clause, clause);
     const hasExpressionChanged = hasLegacyExpressionChanged || hasClauseChanged;
     const expressionFromClause = clause
-      ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
+      ? Lib.legacyExpressionForExpressionClause(
+          query ?? legacyQuery.question()._getMLv2Query(),
+          stageIndex ?? -1,
+          clause,
+        )
       : undefined;
     const newExpression = expressionFromClause ?? expression;
 
     if (!this.state || hasExpressionChanged) {
-      const source = format(newExpression, { legacyQuery, startRule });
+      const source = format(newExpression, {
+        startRule,
+        stageIndex: stageIndex ?? -1,
+        query: query ?? legacyQuery.question()._getMLv2Query(),
+      });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
 
@@ -372,9 +399,8 @@ class ExpressionEditorTextfield extends React.Component<
     const { expression, expressionClause } = processSource({
       name,
       source,
-      query,
-      legacyQuery,
-      stageIndex,
+      query: query ?? legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
       startRule,
     });
 
@@ -387,26 +413,37 @@ class ExpressionEditorTextfield extends React.Component<
       legacyQuery,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       name,
+      query,
+      stageIndex,
     } = this.props;
     if (!source || source.length === 0) {
       return { message: t`Empty expression` };
     }
-    return diagnose(source, startRule, legacyQuery, name);
+    return diagnose({
+      source,
+      startRule,
+      name,
+      query: query ?? legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
+    });
   }
 
   commitExpression() {
     const {
       legacyQuery,
+      query,
+      stageIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
     } = this.props;
     const { source } = this.state;
-    const errorMessage = diagnose(
+    const errorMessage = diagnose({
       source,
       startRule,
-      legacyQuery,
-    ) as ErrorWithMessage | null;
+      query: query ?? legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
+    });
     this.setState({ errorMessage });
 
     if (errorMessage) {
@@ -445,17 +482,25 @@ class ExpressionEditorTextfield extends React.Component<
     const cursor = selection.getCursor();
 
     const {
-      legacyQuery,
+      query,
       reportTimezone,
+      stageIndex,
+      metadata,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
     const { suggestions, helpText } = suggest({
-      legacyQuery,
       reportTimezone,
       startRule,
       source,
       targetOffset: cursor.column,
+      // TODO: uladzimir
+      // using stage index apart from -1 is possible only in the notebook editor, filter pills, and the filter modal
+      // first 2 are migrated in the filters integration branch. The latter is in progress
+      query: query ?? this.props.legacyQuery.question()._getMLv2Query(),
+      stageIndex: stageIndex ?? -1,
+      metadata,
+      getColumnIcon,
     });
 
     this.setState({ helpText: helpText || null });
@@ -583,4 +628,7 @@ class ExpressionEditorTextfield extends React.Component<
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExplicitSize()(ExpressionEditorTextfield);
+export default _.compose(
+  ExplicitSize(),
+  connect(mapStateToProps),
+)(ExpressionEditorTextfield);

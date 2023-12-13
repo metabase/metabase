@@ -209,28 +209,19 @@ describe("scenarios > admin > localization", () => {
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates...").click();
+      cy.findByText("Specific dates…").click();
       cy.findByText("On").click();
 
       // ensure the date picker is ready
-      cy.findByTextEnsureVisible("Add a time");
+      cy.findByTextEnsureVisible("Add time");
       cy.findByTextEnsureVisible("Add filter");
 
       // update the date input in the widget
-      const date = new Date();
-      const dateString = `${date.getFullYear()}/${
-        date.getMonth() + 1
-      }/${date.getDate()}`;
-      cy.findByDisplayValue(dateString).clear().type("2024/5/15").blur();
+      cy.findByLabelText("Date").clear().type("2024/5/15").blur();
 
       // add a time to the date
-      const TIME_SELECTOR_DEFAULT_HOUR = 12;
-      const TIME_SELECTOR_DEFAULT_MINUTE = 30;
-      cy.findByText("Add a time").click();
-      cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`).clear().type("19");
-      cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`)
-        .clear()
-        .type("56");
+      cy.findByText("Add time").click();
+      cy.findByLabelText("Time").clear().type("19:56");
 
       // apply the date filter
       cy.button("Add filter").click();
