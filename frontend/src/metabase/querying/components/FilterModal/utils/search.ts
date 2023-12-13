@@ -11,7 +11,7 @@ export function searchGroupItems(
   searchText: string,
 ): GroupItem[] {
   const searchValue = searchText.toLowerCase();
-  const searchValueHasSegments = t`segments`.includes(searchValue);
+  const isSearchingForSegments = t`segments`.includes(searchValue);
 
   const columnItems = groupItems
     .flatMap(groupItem => groupItem.columnItems)
@@ -22,7 +22,7 @@ export function searchGroupItems(
     .flatMap(groupItem => groupItem.segmentItems)
     .filter(
       segmentItem =>
-        searchValueHasSegments ||
+        isSearchingForSegments ||
         segmentItem.displayName.toLowerCase().includes(searchValue),
     );
 

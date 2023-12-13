@@ -115,7 +115,7 @@ function NumberValueInput({
         value={values.map(value => String(value))}
         placeholder={t`Enter a number`}
         compact
-        getCreateLabel={query => (isFinite(Number(query)) ? query : null)}
+        getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
         onChange={values => onChange(values.map(value => Number(value)))}
       />
     );
