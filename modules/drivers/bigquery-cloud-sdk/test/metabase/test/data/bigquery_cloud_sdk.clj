@@ -172,7 +172,13 @@
     (u/qualified-name k))
 
   java.time.temporal.Temporal
-  (->insertable [t] (u.date/format-sql t))
+  (->insertable [t]
+    ;; BigQuery will barf if you try to specify greater than microsecond precision.
+    (u.date/format-sql (t/truncate-to t :micros)))
+
+  java.time.LocalDate
+  (->insertable [t]
+    (u.date/format-sql t))
 
   ;; normalize to UTC. BigQuery normalizes it anyway and tends to complain when inserting values that have an offset
   java.time.OffsetDateTime
@@ -187,17 +193,7 @@
   ;; normalize to UTC, since BigQuery doesn't support TIME WITH TIME ZONE
   java.time.OffsetTime
   (->insertable [t]
-    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-  ;; clojure.lang.IPersistentVector
-  ;; (->insertable [xs]
-  ;;   ;; Convert the Honey SQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
-  ;;   (if (and (keyword? (first xs))
-  ;;            (= (first xs) :timestamp))
-  ;;     (let [[_tag s] xs]
-  ;;       (->insertable (u.date/parse (str/replace s #"'" ""))))
-  ;;     xs))
-  )
+    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))))))
 
 (defn- ->json [row-map]
   (into {} (for [[k v] row-map]
