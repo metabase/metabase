@@ -53,7 +53,7 @@ export const AdminEmbedMenu = ({
     <Menu withinPortal position="bottom-start">
       <Menu.Target>{target}</Menu.Target>
 
-      <Menu.Dropdown w="13.75rem">
+      <Menu.Dropdown w="13.75rem" data-testid="embed-menu-content">
         <Menu.Item
           py={isPublicSharingEnabled ? "md" : "sm"}
           icon={

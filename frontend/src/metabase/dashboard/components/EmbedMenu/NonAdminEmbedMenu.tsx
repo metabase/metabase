@@ -24,7 +24,7 @@ export const NonAdminEmbedMenu = ({
     ? t`Ask your admin to create a public link`
     : t`Public links are disabled`;
 
-  const isDisabled = !hasPublicLink;
+  const isDisabled = !isPublicSharingEnabled || !hasPublicLink;
 
   const target = (
     <DashboardEmbedHeaderButton
