@@ -306,7 +306,7 @@
         (remove-linked-filters-param-values))))
 
 (defn- get-embed-dashboard-context
-  "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
+  "If a certain export-format is given, return the correct embedded dashboard context."
   [export-format]
   (case export-format
     "csv"  :embedded-csv-download
@@ -429,10 +429,9 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (let [dashboard (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])]
+    (u/prog1 (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
-                                                    :object dashboard})
-      dashboard)))
+                                                    :object <>}))))
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the

@@ -251,10 +251,9 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (let [dashboard (dashboard-with-uuid uuid)]
-    (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
-                                                  :object  dashboard})
-    dashboard))
+  (u/prog1 (dashboard-with-uuid uuid)
+           (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                         :object  <>})))
 
 ;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
 ;; [[run-query-for-card-with-id-async]]
