@@ -167,14 +167,16 @@
               (test-results
                (case export-format
                  :csv
+                 ;; With the updates to make CSV exports conform with FE behavior (See #36726) dates and times are now
+                 ;; presented as they are in the FE. This is the eventual design for all exports.
                  {:date           "November 1, 2019"
-                  :datetime       "2019-11-01T00:23:18.331"
-                  :datetime-ltz   "2019-11-01T07:23:18.331"
-                  :datetime-tz    "2019-11-01T07:23:18.331"
-                  :datetime-tz-id "2019-11-01T07:23:18.331"
-                  :time           "00:23:18.331"
-                  :time-ltz       "07:23:18.331"
-                  :time-tz        "07:23:18.331"}
+                  :datetime       "November 1, 2019, 12:23 AM"
+                  :datetime-ltz   "November 1, 2019, 7:23 AM"
+                  :datetime-tz    "November 1, 2019, 7:23 AM"
+                  :datetime-tz-id "November 1, 2019, 7:23 AM"
+                  :time           "12:23 AM"
+                  :time-ltz       "7:23 AM"
+                  :time-tz        "7:23 AM"}
 
                  :json
                  {:date           "2019-11-01"
@@ -211,14 +213,16 @@
               (test-results
                (case export-format
                  :csv
+                 ;; With the updates to make CSV exports conform with FE behavior (See #36726) dates and times are now
+                 ;; presented as they are in the FE. This is the eventual design for all exports.
                  {:date           "November 1, 2019"
-                  :datetime       "2019-11-01T00:23:18.331"
-                  :datetime-ltz   "2019-11-01T00:23:18.331"
-                  :datetime-tz    "2019-11-01T00:23:18.331"
-                  :datetime-tz-id "2019-11-01T00:23:18.331"
-                  :time            "00:23:18.331"
-                  :time-ltz        "23:23:18.331"
-                  :time-tz         "23:23:18.331"}
+                  :datetime       "November 1, 2019, 12:23 AM"
+                  :datetime-ltz   "November 1, 2019, 12:23 AM"
+                  :datetime-tz    "November 1, 2019, 12:23 AM"
+                  :datetime-tz-id "November 1, 2019, 12:23 AM"
+                  :time           "12:23 AM"
+                  :time-ltz       "11:23 PM"
+                  :time-tz        "11:23 PM"}
 
                  :json
                  {:date           "2019-11-01"
