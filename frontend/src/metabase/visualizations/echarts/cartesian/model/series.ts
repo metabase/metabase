@@ -99,6 +99,7 @@ export const getCardSeriesModels = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): SeriesModel[] => {
+  const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
 
   // Charts without breakout have one series per selected metric column.
@@ -130,10 +131,10 @@ export const getCardSeriesModels = (
       return {
         name,
         color,
-        cardId: card.id,
+        cardId,
         column: metric.column,
         columnIndex: metric.index,
-        dataKey: getDatasetKey(metric.column, card.id),
+        dataKey: getDatasetKey(metric.column, cardId),
         vizSettingsKey,
         legacySeriesSettingsObjectKey,
       };
@@ -177,12 +178,12 @@ export const getCardSeriesModels = (
     return {
       name,
       color,
-      cardId: card.id,
+      cardId,
       column: metric.column,
       columnIndex: metric.index,
       vizSettingsKey,
       legacySeriesSettingsObjectKey,
-      dataKey: getDatasetKey(metric.column, card.id, breakoutValue),
+      dataKey: getDatasetKey(metric.column, cardId, breakoutValue),
       breakoutColumnIndex: breakout.index,
       breakoutColumn: breakout.column,
       breakoutValue,
