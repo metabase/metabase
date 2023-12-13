@@ -41,7 +41,7 @@ export const DashCardActionsPanelContainer = styled("div", {
   ${({ onLeftEdge }) =>
     onLeftEdge &&
     css`
-      @container (max-width: 12rem) {
+      @container DashboardCard (max-width: 12rem) {
         right: unset;
         left: 20px;
       }
