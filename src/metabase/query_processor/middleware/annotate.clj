@@ -369,38 +369,40 @@
            :source :fields)))
 
 (mu/defn ^:private cols-for-ags-and-breakouts
-  [inner-query :- :map]
-
-  (let [query (mlv2-query inner-query)
-        columns (lib/returned-columns query)
-        parent-columns (lib/returned-columns (lib/append-stage query))]
-    (mapv (fn [parent-column column]
-            ;; Cols should reference field refs as parent-column aka by name rather than id
-            (let [field-ref (lib.convert/->legacy-MBQL (lib/ref parent-column))]
-              (-> column
-                  qp.store/->legacy-metadata
-                  ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
-                  ;; inside an aggregation clause, e.g.
-                  ;;
-                  ;;    Distinct values of Category → Name
-                  ;;
-                  ;; but `:default` style names when they appear on their own or in breakouts, e.g.
-                  ;;
-                  ;;    Name
-                  ;;
-                  ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
-                  ;; probably going to involve updating a ton of tests that encode the old behavior.
-                  (cond->
-                    (= :source/aggregations (:lib/source column))
-                    (assoc :display_name (lib/display-name query -1 column :long)))
-                  (assoc :source (case (:lib/source column)
-                                   :source/breakouts :breakout
-                                   :source/aggregations :aggregation
-                                   :fields)
-                         :source_alias (second field-ref)
-                         :field_ref field-ref))))
-          parent-columns
-          columns)))
+  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- :map]
+  (when (or (seq breakouts) (seq aggregations))
+    (let [query (mlv2-query inner-query)
+          columns (lib/returned-columns query)
+          parent-columns (lib/returned-columns (lib/append-stage query))]
+      (filterv
+        :source
+        (mapv (fn [parent-column column]
+                ;; Cols should reference field refs as parent-column aka by name rather than id
+                (let [field-ref (lib.convert/->legacy-MBQL (lib/ref parent-column))]
+                  (-> column
+                      qp.store/->legacy-metadata
+                      ;; for some mystery reason it seems like the annotate code uses `:long` style display names when something appears
+                      ;; inside an aggregation clause, e.g.
+                      ;;
+                      ;;    Distinct values of Category → Name
+                      ;;
+                      ;; but `:default` style names when they appear on their own or in breakouts, e.g.
+                      ;;
+                      ;;    Name
+                      ;;
+                      ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
+                      ;; probably going to involve updating a ton of tests that encode the old behavior.
+                      (cond->
+                        (= :source/aggregations (:lib/source column))
+                        (assoc :display_name (lib/display-name query -1 column :long)))
+                      (assoc :source (case (:lib/source column)
+                                       :source/breakouts :breakout
+                                       :source/aggregations :aggregation
+                                       nil)
+                             :source_alias (second field-ref)
+                             :field_ref field-ref))))
+              parent-columns
+              columns)))))
 
 (mu/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
