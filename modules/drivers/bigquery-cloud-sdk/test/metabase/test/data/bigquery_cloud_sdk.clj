@@ -193,7 +193,7 @@
   ;; normalize to UTC, since BigQuery doesn't support TIME WITH TIME ZONE
   java.time.OffsetTime
   (->insertable [t]
-    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))))))
+    (->insertable (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))))))
 
 (defn- ->json [row-map]
   (into {} (for [[k v] row-map]

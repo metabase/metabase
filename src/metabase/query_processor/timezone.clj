@@ -30,11 +30,7 @@
         (log/warn (tru "Invalid timezone ID ''{0}''" timezone-id))
         nil))))
 
-(defn report-timezone-id
-  "Report timezone ID if it is set, regardless of whether or not the current driver supports it. Most of the time, you
-  probably want to use [[report-timezone-id-if-supported]] so you can be sure the current driver/Database supports it;
-  in some special cases if you *know* the driver supports it then you can you use this instead."
-  []
+(defn- report-timezone-id* []
   (or *report-timezone-id-override*
       (driver/report-timezone)))
 
@@ -44,14 +40,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn report-timezone-id-if-supported
-  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports
-  it, this is bound by the `bind-effective-timezone` middleware.)"
+  "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
+  bound by the `bind-effective-timezone` middleware.)"
   (^String []
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
   (^String [driver database]
    (when (driver/database-supports? driver :set-timezone database)
-     (valid-timezone-id (report-timezone-id)))))
+     (valid-timezone-id (report-timezone-id*)))))
 
 (defn database-timezone-id
   "The timezone that the current database is in, as determined by the most recent sync."
@@ -76,7 +72,7 @@
   always equal to the value of the `report-timezone` Setting (if it is set), otherwise the database timezone (if known),
   otherwise the system timezone."
   ^String []
-  (valid-timezone-id (report-timezone-id)))
+  (valid-timezone-id (report-timezone-id*)))
 
 (defn results-timezone-id
   "The timezone that a query is actually ran in ­ report timezone, if set and supported by the current driver;
@@ -93,7 +89,7 @@
    (valid-timezone-id
     (or *results-timezone-id-override*
         (if use-report-timezone-id-if-unsupported?
-          (valid-timezone-id (report-timezone-id))
+          (valid-timezone-id (report-timezone-id*))
           (report-timezone-id-if-supported driver database))
         ;; don't actually fetch DB from store unless needed — that way if `*results-timezone-id-override*` is set we
         ;; don't need to init a store during tests
