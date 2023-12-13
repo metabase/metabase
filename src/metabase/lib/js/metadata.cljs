@@ -443,13 +443,9 @@
     a-segment))
 
 (defn- setting [setting-key ^js unparsed-metadata]
-  (if (and js/describe js/it)
-    ;; Trust the metadata's settings in tests.
-    (-> unparsed-metadata
-        (.-settings)
-        (aget (name setting-key)))
-    ;; And use the global, async-updated one in prod.
-    (.get js/__metabaseSettings (name setting-key))))
+  (-> unparsed-metadata
+    (object-get "settings")
+    (object-get (name setting-key))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

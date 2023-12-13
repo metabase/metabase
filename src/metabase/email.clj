@@ -205,8 +205,6 @@
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
   in `:security`."
   [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
-  {:pre [(string? host)
-         (integer? port)]}
   (try
     (let [ssl?    (= (keyword security) :ssl)
           proto   (if ssl? "smtps" "smtp")
