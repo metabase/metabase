@@ -671,7 +671,6 @@
   and a signed JWT."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-embedding-enabled)
   (t2/select [Card :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"

@@ -746,7 +746,6 @@
   endpoints and a signed JWT."
   []
   (validation/check-has-application-permission :setting)
-  (validation/check-embedding-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
 (api/defendpoint GET "/:id/related"
