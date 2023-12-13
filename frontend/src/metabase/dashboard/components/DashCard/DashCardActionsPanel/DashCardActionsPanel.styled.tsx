@@ -4,7 +4,7 @@ import isPropValid from "@emotion/is-prop-valid";
 
 import { color } from "metabase/lib/colors";
 
-type DashCardActionsPanelContainer = {
+type DashCardActionsPanelContainerProps = {
   isDashCardTabMenuOpen: boolean;
   onLeftEdge: boolean;
 };
@@ -19,7 +19,7 @@ function shouldForwardProp(propName: string) {
 
 export const DashCardActionsPanelContainer = styled("div", {
   shouldForwardProp,
-})<DashCardActionsPanelContainer>`
+})<DashCardActionsPanelContainerProps>`
   padding: 0.125em 0.25em;
   position: absolute;
   background: white;
