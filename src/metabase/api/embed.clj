@@ -332,8 +332,6 @@
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
-   (api/check (pos-int? id)
-              [400 (tru "Dashboard id should be a positive integer.")])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
@@ -343,13 +341,19 @@
    (api/check (:enable_embedding object)
      [400 (tru "Embedding is not enabled for this object.")])))
 
-(def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
+(defn- check-embedding-enabled-for-dashboard
   "Runs check-embedding-enabled-for-object for a given Dashboard id"
-  (partial check-embedding-enabled-for-object Dashboard))
+  [dashboard-id]
+  (api/check (pos-int? dashboard-id)
+    [400 (tru "Dashboard id should be a positive integer.")])
+  (check-embedding-enabled-for-object Dashboard dashboard-id))
 
-(def ^:private ^{:arglists '([card-id])} check-embedding-enabled-for-card
+(defn- check-embedding-enabled-for-card
   "Runs check-embedding-enabled-for-object for a given Card id"
-  (partial check-embedding-enabled-for-object Card))
+  [card-id]
+  (api/check (pos-int? card-id)
+    [400 (tru "Card id should be a positive integer.")])
+  (check-embedding-enabled-for-object Card card-id))
 
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
