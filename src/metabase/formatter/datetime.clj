@@ -215,23 +215,27 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                      date-format)
           temporal-str)))))
 
+(defn- normalize-keys
+  "Update map keys to remove namespaces from keywords and convert from snake to kebab case."
+  [m]
+  (update-keys m (fn [k] (-> k name (str/replace #"_" "-") keyword))))
+
 (defn format-temporal-str
   "Reformat a temporal literal string by combining time zone, column, and viz setting information to create a final
   desired output format."
   ([timezone-id temporal-str col] (format-temporal-str timezone-id temporal-str col {}))
-  ([timezone-id temporal-str col {::mb.viz/keys [global-column-settings] :as viz-settings}]
+  ([timezone-id temporal-str {col-settings :settings :as col} {::mb.viz/keys [global-column-settings] :as viz-settings}]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
-   (let [public-formatting        (-> (:type/Temporal (public-settings/custom-formatting))
-                                      (update-keys (fn [k] (-> k name (str/replace #"_" "-") keyword))))
-         global-temporal-settings (-> (:type/Temporal global-column-settings {})
-                                      (update-keys (comp keyword name)))
-         custom-col-settings      (-> (viz-settings-for-col col viz-settings)
-                                      (update-keys (comp keyword name)))
+   (let [public-formatting        (normalize-keys (:type/Temporal (public-settings/custom-formatting)))
+         global-temporal-settings (normalize-keys (:type/Temporal global-column-settings {}))
+         custom-col-settings      (normalize-keys (viz-settings-for-col col viz-settings))
+         col-settings             (normalize-keys col-settings)
          ;; Merge the column settings by order of precedence.
          merged-viz-settings      (merge
                                     public-formatting
                                     global-temporal-settings
-                                    custom-col-settings)]
+                                    custom-col-settings
+                                    col-settings)]
      (if (str/blank? temporal-str)
        ""
        (format-timestring timezone-id temporal-str col merged-viz-settings)))))

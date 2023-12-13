@@ -145,6 +145,11 @@
           (is (= "Monday, December 11, 2023, 9:51:57.265 PM"
                  (let [col (assoc col :name "CUSTOM_DATETIME")]
                    (datetime/format-temporal-str "UTC" time-str col common-viz-settings)))))
+        (testing "Column metadata settings are applied"
+          (is (= "Dec 11, 2023, 21:51:57"
+                 (let [col (assoc col :settings {:time_enabled "seconds"
+                                                 :date_abbreviate true})]
+                   (datetime/format-temporal-str "UTC" time-str col common-viz-settings)))))
         (testing "Various settings can be merged"
           (testing "We abbreviate the base case..."
             (is (= "Dec 11, 2023, 21:51"

@@ -309,23 +309,34 @@
                                                           :dataset_query {:database (mt/id)
                                                                           :type     :native
                                                                           :native   {:query q}}}
-                               Card {model-card-id :id} {:name          "MODEL"
-                                                         :dataset       true
-                                                         :dataset_query {:database (mt/id)
-                                                                         :type     :query
-                                                                         :query    (model-query native-card-id)}}
+                               Card {model-card-id  :id
+                                     model-metadata :result_metadata} {:name          "MODEL"
+                                                                       :dataset       true
+                                                                       :dataset_query {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    (model-query native-card-id)}}
                                Card {meta-model-card-id :id} {:name                   "METAMODEL"
                                                               :dataset                true
                                                               :dataset_query          {:database (mt/id)
                                                                                        :type     :query
                                                                                        :query    {:source-table
                                                                                                   (format "card__%s" model-card-id)}}
-                                                              :visualization_settings {:table.pivot_column "FULL_DATETIME_UTC",
-                                                                                       :table.cell_column  "EXAMPLE_YEAR",
-                                                                                       :column_settings    {"[\"name\",\"FULL_DATETIME_UTC\"]"
+                                                              :result_metadata        (mapv
+                                                                                        (fn [{column-name :name :as col}]
+                                                                                          (cond-> col
+                                                                                            (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                            (assoc :settings {:date_separator "-"
+                                                                                                              :date_style "YYYY/M/D"
+                                                                                                              :time_style "HH:mm"})
+                                                                                            (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                            (assoc :settings {:time_enabled "seconds"})))
+                                                                                        model-metadata)
+                                                              :visualization_settings {:column_settings    {"[\"name\",\"FULL_DATETIME_UTC\"]"
                                                                                                             {:date_abbreviate true
                                                                                                              :time_enabled    "milliseconds"
-                                                                                                             :time_style      "HH:mm"}}}}
+                                                                                                             :time_style      "HH:mm"}
+                                                                                                            "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
+                                                                                                            {:time_enabled    "milliseconds"}}}}
                                Dashboard {dash-id :id} {:name "The Dashboard"}
                                DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
                                                                       :card_id      native-card-id}
@@ -387,6 +398,12 @@
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
                    model-results)))
-          (testing "Updating column visualization settings updates the output format."
-            (is (=? {"Full Datetime Utc" "Dec 11, 2023, 15:30:45.123"}
-                    metamodel-results))))))))
+          (testing "Visualization settings are applied"
+            (is (= "Dec 11, 2023, 15:30:45.123"
+                   (metamodel-results "Full Datetime Utc"))))
+          (testing "Custom column metadata settings are applied"
+            (is (= "2023-12-11, 15:30"
+                   (metamodel-results "Example Timestamp With Time Zone"))))
+          (testing "Custom column settings metadata takes precedence over visualization settings"
+            (is (= "December 11, 2023, 3:30:45 PM"
+                   (metamodel-results "Example Timestamp")))))))))
