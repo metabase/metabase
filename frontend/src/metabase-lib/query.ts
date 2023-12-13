@@ -48,11 +48,11 @@ export function dropStageIfEmpty(query: Query, stageIndex: number): Query {
 }
 
 export function dropEmptyStages(query: Query): Query {
-  const stageIndexes = Array.from({ length: stageCount(query) })
-    .map((_, index) => index)
-    .reverse();
+  const stageIndexes = Array.from({ length: stageCount(query) }).map(
+    (_, index) => index,
+  );
 
-  return stageIndexes.reduce((query, stageIndex) => {
+  return stageIndexes.reduceRight((query, stageIndex) => {
     return dropStageIfEmpty(query, stageIndex);
   }, query);
 }
