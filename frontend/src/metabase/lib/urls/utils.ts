@@ -14,7 +14,7 @@ function flattenParam([key, value]: [string, unknown]) {
   return [[key, value]];
 }
 
-function extractQueryParams(query: Record<string, unknown>) {
+export function extractQueryParams(query: Record<string, unknown>) {
   return Object.entries(query).map(flattenParam).flat();
 }
 
