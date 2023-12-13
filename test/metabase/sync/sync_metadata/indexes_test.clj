@@ -45,3 +45,20 @@
                    :model/Table    table {:db_id (:id db)}]
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! db)))
       (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! db table))))))
+
+(deftest indexes->field-ids-tests
+  (mt/with-temp
+    [:model/Database {db-id :id}              {}
+     :model/Table    {table-id :id}           {:db_id db-id}
+     :model/Field    {top-level-field-id :id} {:name    "top"
+                                               :table_id table-id}
+     :model/Field    {nested-field-id :id}    {:name    "nested"
+                                               :table_id table-id
+                                               :parent_id top-level-field-id}]
+    (testing "happy path"
+      (is (= #{top-level-field-id nested-field-id}
+             (#'sync.indexes/indexes->field-ids table-id ["top" ["top" "nested"]]))))
+
+    (testing "return nothing if field not found"
+      (is (= #{}
+             (#'sync.indexes/indexes->field-ids table-id ["top-not-exists" ["top" "nested" "not-exists"]]))))))

@@ -26,7 +26,7 @@
           nil))
       field-id)))
 
-(defn- indexes->field-id
+(defn- indexes->field-ids
   [table-id indexes]
   (when (seq indexes)
     (let [normal-indexes           (filter string? indexes)
@@ -41,7 +41,7 @@
   (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
-            indexed-field-ids          (indexes->field-id (:id table) indexes)
+            indexed-field-ids          (indexes->field-ids (:id table) indexes)
             existing-indexed-field-ids (t2/select-pks-set :model/Field :table_id (:id table) :database_indexed true)
             [removing adding]          (data/diff indexed-field-ids existing-indexed-field-ids)]
         (doseq [field-id removing]
