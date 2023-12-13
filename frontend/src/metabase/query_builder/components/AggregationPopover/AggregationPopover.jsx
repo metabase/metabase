@@ -332,7 +332,6 @@ export default class AggregationPopover extends Component {
       return (
         <ExpressionWidget
           name={AGGREGATION.getName(this.state.aggregation)}
-          /* @uladzimirdev double check if stageIndex={-1} can be used */
           query={legacyQuery.question()._getMLv2Query()}
           stageIndex={-1}
           legacyQuery={legacyQuery}

@@ -175,7 +175,6 @@ export function FilterPopover({
     const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
       <ExpressionWidget
-        // @uladzimirdev double check if stageIndex={-1} is correct
         query={legacyQuery.question()._getMLv2Query()}
         stageIndex={-1}
         expression={expression}
