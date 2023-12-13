@@ -16,18 +16,9 @@ export function menu() {
 }
 
 export function modal() {
-  const LEGACY_MODAL_SELECTOR = ".ModalContainer .ModalContent";
-  // Will be used when <Modal /> is used without <ModalContent />
-  const LEGACY_MODAL_FALLBACK_SELECTOR = ".Modal";
-
+  const LEGACY_MODAL_SELECTOR = ".Modal";
   const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
-  return cy.get(
-    [
-      MODAL_SELECTOR,
-      LEGACY_MODAL_SELECTOR,
-      LEGACY_MODAL_FALLBACK_SELECTOR,
-    ].join(","),
-  );
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function sidebar() {
