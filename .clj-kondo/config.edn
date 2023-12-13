@@ -40,7 +40,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= sql= =? malli=])
+    (clojure.test/is [query= =? malli=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)

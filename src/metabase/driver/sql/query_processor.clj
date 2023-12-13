@@ -164,8 +164,9 @@
   [::compiled honeysql-expr])
 
 (defmethod ->honeysql [:sql ::compiled]
-  [_driver [_compiled honeysql-expr]]
-  honeysql-expr)
+  [_driver [_compiled honeysql-expr :as compiled-form]]
+  ;; preserve metadata attached to the compiled form
+  (with-meta honeysql-expr (meta compiled-form)))
 
 (defn- format-compiled
   [_compiled [honeysql-expr]]
@@ -623,9 +624,11 @@
                                     (not outer-select))
           database-type        (or database-type
                                    (:database-type field))
-          identifier           (->honeysql driver
-                                           (apply h2x/identifier :field
-                                                  (concat source-table-aliases [source-alias])))
+          ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
+          identifier           (-> (apply h2x/identifier :field
+                                          (concat source-table-aliases [source-alias]))
+                                   (with-meta (meta field-clause)))
+          identifier           (->honeysql driver identifier)
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr

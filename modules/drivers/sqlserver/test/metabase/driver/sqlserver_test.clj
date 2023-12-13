@@ -114,15 +114,24 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (sql= '{:select [TOP (1048575) source.name AS name]
-                  :from   [{:select   [TOP (1048575) dbo.venues.name AS name]
-                            :from     [dbo.venues]
-                            :order-by [dbo.venues.id ASC]}
-                           AS source]}
-                (mt/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :fields       [$name]
-                                  :order-by     [[:asc $id]]}}))))))
+      (is (= {:query ["SELECT"
+                      "  TOP(1048575) \"source\".\"name\" AS \"name\""
+                      "FROM"
+                      "  ("
+                      "    SELECT"
+                      "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                      "    FROM"
+                      "      \"dbo\".\"venues\""
+                      "    ORDER BY"
+                      "      \"dbo\".\"venues\".\"id\" ASC"
+                      "  ) AS \"source\""]
+              :params nil}
+             (-> (mt/mbql-query venues
+                   {:source-query {:source-table $$venues
+                                   :fields       [$name]
+                                   :order-by     [[:asc $id]]}})
+                 qp/compile
+                 (update :query #(str/split-lines (driver/prettify-native-form :sqlserver %)))))))))
 
 (deftest ^:parallel preserve-existing-top-clauses
   (mt/test-driver :sqlserver
@@ -147,8 +156,7 @@
                                     :order-by     [[:asc $id]]
                                     :limit        20}
                      :limit        10}))
-                 (update :query (fn [sql]
-                                  (str/split-lines (driver/prettify-native-form :sqlserver sql))))))))))
+                 (update :query #(str/split-lines (driver/prettify-native-form :sqlserver %)))))))))
 
 (deftest ^:parallel dont-add-top-clauses-for-top-level-test
   (mt/test-driver :sqlserver

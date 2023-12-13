@@ -49,7 +49,7 @@
 
 ;;; this is mostly a convenience for tests, disables quoting completely.
 (sql/register-dialect!
- ::unquoted
+ ::unquoted-dialect
  (assoc (sql/get-dialect :ansi) :quote identity))
 
 ;; register the `::extract` function with HoneySQL
@@ -62,6 +62,15 @@
           args)))
 
 (sql/register-fn! ::extract #'format-extract)
+
+(defn extract
+  "Create a Honey SQL form that will compile to SQL like
+
+    extract(unit FROM expr)"
+  [unit expr]
+  ;; make sure no one tries to be sneaky and pass some sort of malicious unit in.
+  {:pre [(some-fn keyword? string?) (re-matches #"^[a-zA-Z0-9]+$" (name unit))]}
+  [::extract unit expr])
 
 ;; register the function `::distinct-count` with HoneySQL
 (defn- format-distinct-count
@@ -163,9 +172,9 @@
 ;;; Single-quoted string literal
 
 (defn- escape-and-quote-literal [s]
-  (as-> s <>
-    (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
-    (str \' <> \')))
+  (as-> s s
+    (str/replace s #"(?<![\\'])'(?![\\'])"  "''")
+    (str \' s \')))
 
 (defn- format-literal [_tag [s]]
   [(escape-and-quote-literal s)])

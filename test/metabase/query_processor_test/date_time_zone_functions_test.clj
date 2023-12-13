@@ -107,7 +107,7 @@
     :query-fn    (fn [op field-id] {:expressions {"expr" [op [:field field-id nil]]}
                                     :aggregation [[:count]]
                                     :breakout    [[:expression "expr"]]})}])
-(deftest extraction-function-tests
+(deftest ^:parallel extraction-function-tests
   (mt/dataset times-mixed
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "with datetime columns"

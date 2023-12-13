@@ -1113,13 +1113,17 @@
                                 !month.created_at
                                 !month.id]
                        :limit  1})]
-          (is (sql= '{:select [DATE_TRUNC ("month" people.birth_date)             AS birth_date
-                               DATE_TRUNC ("month" people.created_at)             AS created_at
-                               ;; non-temporal types should still get casted.
-                               DATE_TRUNC ("month" CAST (people.id AS timestamp)) AS id]
-                      :from   [people]
-                      :limit  [1]}
-                    query)))))))
+          (is (= {:query ["SELECT"
+                          "  DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS \"birth_date\","
+                          "  DATE_TRUNC('month', \"public\".\"people\".\"created_at\") AS \"created_at\","
+                          "  DATE_TRUNC('month', CAST(\"public\".\"people\".\"id\" AS timestamp)) AS \"id\""
+                          "FROM"
+                          "  \"public\".\"people\""
+                          "LIMIT"
+                          "  1"]
+                  :params nil}
+                 (-> (qp/compile query)
+                     (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
