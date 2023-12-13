@@ -562,7 +562,7 @@
           (driver/add-columns! driver
                                (:id database)
                                (table-identifier table)
-                               {:_mb_row_id (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
+                               {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
         (driver/insert-into! driver
                              (:id database)
                              (table-identifier table)

@@ -1233,30 +1233,30 @@
       (with-mysql-local-infile-on-and-off
         (mt/with-report-timezone-id "UTC"
           (testing "Append should succeed for all possible CSV column types"
-            (let [csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
-                            "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]]
-              (mt/with-empty-db
-                (with-redefs [driver/db-default-timezone (constantly "Z")
-                              upload/current-database    (constantly (mt/db))]
-                  (let [table (create-upload-table!
-                               {:col->upload-type (ordered-map/ordered-map
-                                                   :_mb_row_id      ::upload/auto-incrementing-int-pk
-                                                   :biginteger      ::upload/int
-                                                   :float           ::upload/float
-                                                   :text            ::upload/varchar-255
-                                                   :boolean         ::upload/boolean
-                                                   :date            ::upload/date
-                                                   :datetime        ::upload/datetime
-                                                   :offset_datetime ::upload/offset-datetime)
-                                :rows [[1000000,1.0,"some_text",false,"2020-01-01","2020-01-01T00:00:00","2020-01-01T00:00:00+00:00"]]})
-                        file  (csv-file-with csv-rows (mt/random-name))]
-                    (is (some? (append-csv! {:file     file
-                                             :table-id (:id table)})))
-                    (testing "Check the data was uploaded into the table correctly"
-                      (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
-                              [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
-                             (rows-for-table table))))
-                    (io/delete-file file)))))))))))
+            (mt/with-empty-db
+              (with-redefs [driver/db-default-timezone (constantly "Z")
+                            upload/current-database    (constantly (mt/db))]
+                (let [table (create-upload-table!
+                             {:col->upload-type (ordered-map/ordered-map
+                                                 :_mb_row_id      ::upload/auto-incrementing-int-pk
+                                                 :biginteger      ::upload/int
+                                                 :float           ::upload/float
+                                                 :text            ::upload/varchar-255
+                                                 :boolean         ::upload/boolean
+                                                 :date            ::upload/date
+                                                 :datetime        ::upload/datetime
+                                                 :offset_datetime ::upload/offset-datetime)
+                              :rows [[1000000,1.0,"some_text",false,"2020-01-01","2020-01-01T00:00:00","2020-01-01T00:00:00+00:00"]]})
+                      csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
+                                "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]
+                      file  (csv-file-with csv-rows (mt/random-name))]
+                  (is (some? (append-csv! {:file     file
+                                           :table-id (:id table)})))
+                  (testing "Check the data was uploaded into the table correctly"
+                    (is (= [[1 1000000 1.0 "some_text" false "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]
+                            [2 2000000 2.0 "some_text" true "2020-02-02T00:00:00Z" "2020-02-02T02:02:02Z" "2020-02-02T00:02:02Z"]]
+                           (rows-for-table table))))
+                  (io/delete-file file))))))))))
 
 (deftest append-no-rows-test
   (mt/test-driver :h2
