@@ -40,7 +40,6 @@
    [dev.debug-qp :as debug-qp]
    [dev.model-tracking :as model-tracking]
    [dev.explain :as dev.explain]
-   [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.config :as config]
