@@ -7,11 +7,19 @@ export interface ColumnItem {
   stageIndex: number;
 }
 
+export interface SegmentItem {
+  segment: Lib.SegmentMetadata;
+  displayName: string;
+  stageIndex: number;
+  filterPositions: number[];
+}
+
 export interface GroupItem {
   key: string;
   displayName: string;
   icon: IconName;
   columnItems: ColumnItem[];
+  segmentItems: SegmentItem[];
 }
 
 export interface FilterEditorProps {

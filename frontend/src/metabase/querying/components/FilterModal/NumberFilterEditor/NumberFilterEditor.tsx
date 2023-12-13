@@ -94,7 +94,6 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -102,7 +101,12 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker value={values} column={column} onChange={onChange} />
+      <FilterValuePicker
+        values={values.map(value => String(value))}
+        placeholder={t`Enter a number`}
+        getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
+        onChange={values => onChange(values.map(value => Number(value)))}
+      />
     );
   }
 
@@ -122,12 +126,14 @@ function NumberValueInput({
         <NumberInput
           value={values[0]}
           placeholder={t`Min`}
+          maw="8rem"
           onChange={(newValue: number) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
           placeholder={t`Max`}
+          maw="8rem"
           onChange={(newValue: number) => onChange([values[0], newValue])}
         />
       </Flex>

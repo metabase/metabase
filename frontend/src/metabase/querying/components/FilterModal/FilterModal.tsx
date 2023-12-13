@@ -5,8 +5,10 @@ import { Icon } from "metabase/core/components/Icon";
 import * as Lib from "metabase-lib";
 import { ColumnFilterSection } from "./ColumnFilterSection";
 import { FilterSearchInput } from "./FilterSearchInput";
+import { SegmentFilterEditor } from "./SegmentFilterEditor";
 import { SEARCH_KEY } from "./constants";
 import {
+  addSegmentFilters,
   appendStageIfAggregated,
   dropStageIfEmpty,
   findColumnFilters,
@@ -17,11 +19,12 @@ import {
   hasFilters,
   isSearchActive,
   removeFilters,
+  removeSegmentFilters,
   searchGroupItems,
 } from "./utils";
-import type { GroupItem } from "./types";
+import type { GroupItem, SegmentItem } from "./types";
 import {
-  ColumnItemRoot,
+  TabPanelItem,
   ModalBody,
   ModalFooter,
   ModalHeader,
@@ -196,6 +199,13 @@ function TabPanel({ query, groupItem, isSearching, onChange }: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
+        {groupItem.segmentItems.length > 0 && (
+          <TabPanelSegmentItem
+            query={query}
+            segmentItems={groupItem.segmentItems}
+            onChange={onChange}
+          />
+        )}
         {groupItem.columnItems.map((columnItem, columnIndex) => {
           return (
             <TabPanelColumnItemList
@@ -233,7 +243,7 @@ function TabPanelColumnItemList({
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
 
   return (
-    <div>
+    <>
       {visibleFilters.map((filter, filterIndex) => (
         <TabPanelColumnItem
           key={filterIndex}
@@ -245,7 +255,7 @@ function TabPanelColumnItemList({
           onChange={onChange}
         />
       ))}
-    </div>
+    </>
   );
 }
 
@@ -277,7 +287,7 @@ function TabPanelColumnItem({
   };
 
   return (
-    <ColumnItemRoot component="li" px="2rem" py="1rem">
+    <TabPanelItem component="li" px="2rem" py="1rem">
       <ColumnFilterSection
         query={query}
         stageIndex={stageIndex}
@@ -286,6 +296,32 @@ function TabPanelColumnItem({
         isSearching={isSearching}
         onChange={handleChange}
       />
-    </ColumnItemRoot>
+    </TabPanelItem>
+  );
+}
+
+interface TabPanelSegmentItemProps {
+  query: Lib.Query;
+  segmentItems: SegmentItem[];
+  onChange: (newQuery: Lib.Query) => void;
+}
+
+function TabPanelSegmentItem({
+  query,
+  segmentItems,
+  onChange,
+}: TabPanelSegmentItemProps) {
+  const handleChange = (newSegmentItems: SegmentItem[]) => {
+    const newQuery = removeSegmentFilters(query, segmentItems);
+    onChange(addSegmentFilters(newQuery, newSegmentItems));
+  };
+
+  return (
+    <TabPanelItem component="li" px="2rem" py="1rem">
+      <SegmentFilterEditor
+        segmentItems={segmentItems}
+        onChange={handleChange}
+      />
+    </TabPanelItem>
   );
 }

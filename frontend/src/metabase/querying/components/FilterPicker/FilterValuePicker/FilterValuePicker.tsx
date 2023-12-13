@@ -1,16 +1,31 @@
-import type { ColumnValuesWidgetProps } from "metabase/common/components/ColumnValuesWidget";
-import { ColumnValuesWidget } from "metabase/common/components/ColumnValuesWidget";
-import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import { MultiSelect } from "metabase/ui";
 
-export function FilterValuePicker<T extends string | number>(
-  props: ColumnValuesWidgetProps<T>,
-) {
+interface FilterValuePickerProps {
+  values: string[];
+  placeholder: string;
+  getCreateLabel: (value: string) => string | null;
+  onChange: (newValues: string[]) => void;
+}
+
+export function FilterValuePicker({
+  values,
+  placeholder,
+  getCreateLabel,
+  onChange,
+}: FilterValuePickerProps) {
   return (
-    <ColumnValuesWidget
-      {...props}
-      minWidth={`${MIN_WIDTH}px`}
-      maxWidth={`${MAX_WIDTH}px`}
-      hasMultipleValues
+    <MultiSelect
+      data={values}
+      value={values}
+      placeholder={placeholder}
+      creatable
+      searchable
+      onChange={onChange}
+      getCreateLabel={getCreateLabel}
+      onCreate={query => {
+        onChange([...values, query]);
+        return query;
+      }}
     />
   );
 }

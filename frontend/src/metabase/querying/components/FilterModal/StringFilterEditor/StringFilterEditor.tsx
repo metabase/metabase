@@ -69,7 +69,6 @@ export function StringFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <StringValueInput
-          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -81,7 +80,6 @@ export function StringFilterEditor({
 }
 
 interface StringValueInputProps {
-  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -89,7 +87,6 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
-  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -97,7 +94,12 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker value={values} column={column} onChange={onChange} />
+      <FilterValuePicker
+        values={values}
+        placeholder={t`Enter some text`}
+        getCreateLabel={query => query}
+        onChange={onChange}
+      />
     );
   }
 
