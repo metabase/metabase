@@ -514,9 +514,9 @@
 
 (defn ^:export find-filterable-column-for-legacy-ref
   "Given a legacy `:field` reference, return the filterable [[ColumnWithOperators]] that best fits it."
-  [a-query stage-number legacy-ref]
+  [a-query stage-number a-legacy-ref]
   ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
-  (lib.core/find-filterable-column-for-legacy-ref a-query stage-number legacy-ref))
+  (lib.core/find-filterable-column-for-legacy-ref a-query stage-number a-legacy-ref))
 
 (defn ^:export fields
   "Get the current `:fields` in a query. Unlike the lib core version, this will return an empty sequence if `:fields` is
@@ -563,15 +563,15 @@
 (defn ^:export find-visible-column-for-legacy-ref
   "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
   only meant for use with `:field` clauses."
-  [a-query stage-number legacy-ref]
+  [a-query stage-number a-legacy-ref]
   ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
-  (lib.core/find-visible-column-for-legacy-ref a-query stage-number legacy-ref))
+  (lib.core/find-visible-column-for-legacy-ref a-query stage-number a-legacy-ref))
 
 (defn ^:export find-column-for-legacy-ref
   "Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacy-ref`."
-  [a-query stage-number legacy-ref columns]
+  [a-query stage-number a-legacy-ref columns]
   ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
-  (lib.core/find-column-for-legacy-ref a-query stage-number legacy-ref columns))
+  (lib.core/find-column-for-legacy-ref a-query stage-number a-legacy-ref columns))
 
 ;; TODO: Added as an expedient to fix metabase/metabase#32373. Due to the interaction with viz-settings, this issue
 ;; was difficult to fix entirely within MLv2. Once viz-settings are ported, this function should not be needed, and the
@@ -594,19 +594,27 @@
          (map #(assoc % :selected? true))
          to-array)))
 
-(defn ^:export legacy-field-ref
-  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref."
+(defn- normalize-legacy-ref
+  [a-ref]
+  (if (#{:metric :segment} (first a-ref))
+    (subvec a-ref 0 2)
+    (update a-ref 2 update-vals #(if (qualified-keyword? %)
+                                   (u/qualified-name %)
+                                   %))))
+
+(defn ^:export legacy-ref
+  "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
+  return it as a legacy JSON field ref.
+  For compatibility reasons, segment and metric references are always returned without options."
   [column]
   (-> column
       lib.core/ref
       lib.convert/->legacy-MBQL
-      (update 2 update-vals #(if (qualified-keyword? %)
-                               (u/qualified-name %)
-                               %))
+      normalize-legacy-ref
       clj->js))
 
-(defn- legacy-ref->pMBQL [legacy-ref]
-  (-> legacy-ref
+(defn- legacy-ref->pMBQL [a-legacy-ref]
+  (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
       lib.convert/->pMBQL))
