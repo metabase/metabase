@@ -459,6 +459,17 @@
             (testing "Query was returned from cache"
               (is (true? (:result-cache-hit cached-row)))))))))))
 
+(deftest show-timezone-and-getdate-test
+  (mt/test-driver
+   :redshift
+   (testing "bla"
+     (let [tz-result (mt/rows (run-native-query "show timezone"))
+           getdate-result (mt/rows (run-native-query "select getdate()::text"))]
+       (is (= 1 2)
+           (str "\n---\n"
+                tz-result "\n"
+                getdate-result "\n"))))))
+
 (defn- getdate-vs-ss-ts-test-thunk-generator
   ([]
    (getdate-vs-ss-ts-test-thunk-generator :week -1))
