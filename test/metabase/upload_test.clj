@@ -1259,7 +1259,7 @@
                   (io/delete-file file))))))))))
 
 (deftest append-no-rows-test
-  (mt/test-driver :h2
+  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should succeed with a CSV with only the header"
         (let [csv-rows ["name"]]
@@ -1274,7 +1274,7 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(deftest append-mb-row-id-1-test
+(deftest append-mb-row-id-csv-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
@@ -1302,7 +1302,7 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(deftest append-mb-row-id-2-test
+(deftest append-mb-row-id-table-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append succeeds if the table has _mb_row_id but the CSV doesn't"
@@ -1319,7 +1319,7 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(deftest append-mb-row-id-3-test
+(deftest append-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
@@ -1349,7 +1349,7 @@
                 (io/delete-file file)))))))))
 
 (deftest append-duplicate-header-csv-test
-  (mt/test-driver :h2
+  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if the CSV file contains duplicate column names"
         (doseq [csv-rows [["name,name" "Luke Skywalker,Darth Vader"]]]

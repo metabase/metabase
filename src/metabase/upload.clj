@@ -216,7 +216,7 @@
   "The lower-case name of the auto-incrementing PK column. The actual name in the database could be in upper-case."
   "_mb_row_id")
 
-(defn- get-auto-pk-column [table-id]
+(defn- table-id->auto-pk-column [table-id]
   (first (filter (fn [field]
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
                  (t2/select :model/Field :table_id table-id :active true))))
@@ -301,7 +301,7 @@
         parsers  (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
     (for [row rows]
       (for [[value parser] (map-with-nils vector row parsers)]
-        (when (not (str/blank? value))
+        (when-not (str/blank? value)
           (parser value))))))
 
 (defn- remove-indices
@@ -325,11 +325,11 @@
   [header]
   (set (indices-where #(= auto-pk-column-name (normalize-column-name %)) header)))
 
-(defn- rows-without-auto-pk-columns
-  [rows]
-  (let [header (first rows)
+(defn- without-auto-pk-columns
+  [header-and-rows]
+  (let [header (first header-and-rows)
         auto-pk-indices (auto-pk-column-indices header)]
-    (cond->> rows
+    (cond->> header-and-rows
       auto-pk-indices
       (map (partial remove-indices auto-pk-indices)))))
 
@@ -338,7 +338,7 @@
    Returns the file size, number of rows, and number of columns."
   [driver db-id table-name ^File csv-file]
   (with-open [reader (bom/bom-reader csv-file)]
-    (let [[header & rows]         (rows-without-auto-pk-columns (csv/read-csv reader))
+    (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
           {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
           cols->upload-type       (merge generated-columns extant-columns)
           col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
@@ -476,7 +476,7 @@
             _sync             (scan-and-sync-table! database table)
             ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
             ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
-            auto-pk-field     (get-auto-pk-column (:id table))
+            auto-pk-field     (table-id->auto-pk-column (:id table))
             _                 (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})
             card              (card/create-card!
                                {:collection_id          collection-id
@@ -548,15 +548,15 @@
 (defn- append-csv!*
   [database table file]
   (with-open [reader (bom/bom-reader file)]
-    (let [[header & rows]       (rows-without-auto-pk-columns (csv/read-csv reader))
-          driver                (driver.u/database->driver database)
-          fields-by-normed-name (m/index-by (comp normalize-column-name :name)
-                                            (t2/select :model/Field :table_id (:id table) :active true))
-          normed-header         (map normalize-column-name header)
-          create-auto-pk?       (not (contains? fields-by-normed-name auto-pk-column-name))
-          _                     (check-schema (dissoc fields-by-normed-name auto-pk-column-name) header)
-          col-upload-types      (map (comp base-type->upload-type :base_type fields-by-normed-name) normed-header)
-          parsed-rows           (parse-rows col-upload-types rows)]
+    (let [[header & rows]    (without-auto-pk-columns (csv/read-csv reader))
+          driver             (driver.u/database->driver database)
+          normed-name->field (m/index-by (comp normalize-column-name :name)
+                                         (t2/select :model/Field :table_id (:id table) :active true))
+          normed-header      (map normalize-column-name header)
+          create-auto-pk?    (not (contains? normed-name->field auto-pk-column-name))
+          _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
+          col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+          parsed-rows        (parse-rows col-upload-types rows)]
       (try
         (when create-auto-pk?
           (driver/add-columns! driver
@@ -570,7 +570,7 @@
                              parsed-rows)
         (scan-and-sync-table! database table)
         (when create-auto-pk?
-          (let [auto-pk-field (get-auto-pk-column (:id table))]
+          (let [auto-pk-field (table-id->auto-pk-column (:id table))]
             (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
         {:row-count (count parsed-rows)}
         (catch Throwable e
