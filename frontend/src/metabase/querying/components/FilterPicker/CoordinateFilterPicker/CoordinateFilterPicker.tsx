@@ -131,7 +131,6 @@ function CoordinateValueInput({
           stageIndex={stageIndex}
           column={column}
           value={values.filter(isNumber)}
-          placeholder={placeholder}
           onChange={onChange}
         />
       </Box>

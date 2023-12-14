@@ -8,6 +8,7 @@ import { shouldSearch, getSearchValues } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
+  searchFieldId: FieldId;
   value: string[];
   placeholder?: string;
   shouldCreate?: (query: string) => boolean;
@@ -16,6 +17,7 @@ interface SearchValuePickerProps {
 
 export function SearchValuePicker({
   fieldId,
+  searchFieldId,
   value,
   placeholder,
   shouldCreate,
@@ -25,7 +27,7 @@ export function SearchValuePicker({
   const [lastSearchValue, setLastSearchValue] = useState(searchValue);
 
   const [{ value: data = [] }, handleSearch] = useAsyncFn(
-    (value: string) => getSearchValues(fieldId, value),
+    (value: string) => getSearchValues(fieldId, searchFieldId, value),
     [fieldId],
   );
 

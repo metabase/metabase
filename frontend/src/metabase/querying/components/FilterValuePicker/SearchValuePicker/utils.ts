@@ -4,12 +4,13 @@ import { SEARCH_LIMIT } from "./constants";
 
 export function getSearchValues(
   fieldId: FieldId,
+  searchFieldId: FieldId,
   searchValue: string,
 ): Promise<FieldValue[]> {
   if (searchValue !== "") {
     return MetabaseApi.field_search({
       fieldId,
-      searchFieldId: fieldId,
+      searchFieldId,
       value: searchValue,
       limit: SEARCH_LIMIT,
     });

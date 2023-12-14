@@ -108,7 +108,7 @@ function StringValueInput({
         stageIndex={stageIndex}
         column={column}
         value={values}
-        compact
+        isCompact
         onChange={onChange}
       />
     );

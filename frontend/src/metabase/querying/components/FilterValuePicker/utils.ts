@@ -1,7 +1,34 @@
 import * as Lib from "metabase-lib";
-import type { FieldValue } from "metabase-types/api";
+import type { FieldId, FieldValue, FieldValuesType } from "metabase-types/api";
 import { MAX_INLINE_OPTIONS } from "./constants";
 import type { Option } from "./types";
+
+export function canLoadFieldValues(
+  fieldId: FieldId | null,
+  hasFieldValues: FieldValuesType,
+) {
+  return fieldId != null && hasFieldValues === "list";
+}
+
+export function canListFieldValues(
+  fieldValues: FieldValue[],
+  isCompact: boolean,
+) {
+  return (
+    fieldValues.length > 0 &&
+    (fieldValues.length <= MAX_INLINE_OPTIONS || !isCompact)
+  );
+}
+
+export function canSearchFieldValues(
+  fieldId: FieldId | null,
+  searchFieldId: FieldId | null,
+  hasFieldValues: FieldValuesType,
+) {
+  return (
+    fieldId != null && searchFieldId != null && hasFieldValues === "search"
+  );
+}
 
 function getFieldOptions(fieldValues: FieldValue[]): Option[] {
   return fieldValues.map(([value, label = value]) => ({
@@ -33,8 +60,4 @@ export function getMergedOptions(
 
 export function isKey(column: Lib.ColumnMetadata) {
   return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-}
-
-export function isInlinePicker(data: FieldValue[], compact: boolean) {
-  return compact && data.length > 0 && data.length <= MAX_INLINE_OPTIONS;
 }

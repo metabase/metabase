@@ -10,18 +10,18 @@ interface ListValuePickerProps {
   data: FieldValue[];
   value: string[];
   placeholder?: string;
-  compact?: boolean;
+  isCompact?: boolean;
   onChange: (newValue: string[]) => void;
 }
 
 export function ListValuePicker({
   data,
   value,
-  compact,
+  isCompact,
   placeholder,
   onChange,
 }: ListValuePickerProps) {
-  return compact ? (
+  return isCompact ? (
     <CompactValuePicker
       data={data}
       value={value}

@@ -1,5 +1,6 @@
 import type {
   DatasetColumn,
+  FieldId,
   FieldValuesType,
   RowValue,
 } from "metabase-types/api";
@@ -499,6 +500,7 @@ export interface ClickObject {
 }
 
 export interface FieldValuesInfo {
-  fieldId: number | null;
+  fieldId: FieldId | null;
+  searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
