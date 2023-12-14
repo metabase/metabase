@@ -1,0 +1,35 @@
+name: Check Release Status
+
+on:
+  workflow_dispatch:
+  schedule:
+    - '0 13 * * *' # every day at 8am US eastern time
+
+jobs:
+  check-release-status:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        sparse-checkout: release
+    - name: Prepare build scripts
+      run: cd ${{ github.workspace }}/release && yarn && yarn build
+    - name: Check release status and post to Slack
+      uses: actions/github-script@v6
+      env:
+        SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+      with:
+        script: | # js
+          const { checkReleaseStatus } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const ossReleased = await checkReleaseStatus({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version: versions.oss,
+            channelName: process.env.SLACK_RELEASE_CHANNEL ?? 'bot-testing',
+          });
+
+
