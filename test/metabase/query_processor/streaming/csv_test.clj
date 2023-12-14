@@ -57,11 +57,11 @@
 (deftest datetime-fields-are-untouched-when-exported
   (let [result (mt/user-http-request :rasta :post 200 "dataset/csv" :query
                                      (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
-    (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
-            ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
-            ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
-            ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
-            ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
+    (is (= [["1" "Plato Yeshua" "April 1, 2014, 8:30 AM"]
+            ["2" "Felipinho Asklepios" "December 5, 2014, 3:15 PM"]
+            ["3" "Kaneonuskatew Eiran" "November 6, 2014, 4:15 PM"]
+            ["4" "Simcha Yan" "January 1, 2014, 8:30 AM"]
+            ["5" "Quentin Sören" "October 3, 2014, 5:30 PM"]]
            (parse-and-sort-csv result)))))
 
 (defn- csv-export

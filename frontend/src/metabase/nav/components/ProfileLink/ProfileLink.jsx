@@ -15,6 +15,10 @@ import Modal from "metabase/components/Modal";
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import {
+  getApplicationName,
+  getIsWhiteLabeling,
+} from "metabase/selectors/whitelabel";
 import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
@@ -28,6 +32,7 @@ export default connect(mapStateToProps)(ProfileLink);
 function ProfileLink({ adminItems, onLogout }) {
   const [modalOpen, setModalOpen] = useState(null);
   const version = useSelector(state => getSetting(state, "version"));
+  const applicationName = useSelector(getApplicationName);
   const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
 
@@ -63,7 +68,7 @@ function ProfileLink({ adminItems, onLogout }) {
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
-        title: t`About Metabase`,
+        title: t`About ${applicationName}`,
         icon: null,
         action: () => openModal("about"),
         event: `Navbar;Profile Dropdown;About ${tag}`,
@@ -77,8 +82,9 @@ function ProfileLink({ adminItems, onLogout }) {
     ].filter(Boolean);
   };
 
-  // don't show trademark if application name is whitelabeled
-  const showTrademark = t`Metabase` === "Metabase";
+  // show trademark if application name is not whitelabeled
+  const isWhiteLabeling = useSelector(getIsWhiteLabeling);
+  const showTrademark = !isWhiteLabeling;
   return (
     <div>
       <EntityMenu
@@ -102,7 +108,7 @@ function ProfileLink({ adminItems, onLogout }) {
             <h2
               style={{ fontSize: "1.75em" }}
               className="text-dark"
-            >{t`Thanks for using Metabase!`}</h2>
+            >{t`Thanks for using ${applicationName}!`}</h2>
             <div className="pt2">
               <h3 className="text-dark mb1">
                 {t`You're on version`} {tag}

@@ -76,7 +76,7 @@ jobs:
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
+    timeout-minutes: 45
     name: e2e-tests-${{ matrix.name }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -86,12 +86,11 @@ jobs:
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-      # Record runs using Deploysentinel except for the release branch
-      CYPRESS_DEPLOYSENTINEL_KEY: ${{ !(startsWith(github.event.pull_request.base.ref, 'release')) && secrets.CYPRESS_DEPLOYSENTINEL_KEY ||  '' }}
+      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
+      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
+      COMMIT_INFO_MESSAGE : ${{ github.event.pull_request.title || github.event.head_commit.message || github.even.head.sha }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
-      TERM: xterm
       TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
@@ -143,7 +142,10 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
 
       - name: Run slow and resource-intensive Cypress tests
         if: matrix.name == 'slow' && github.event_name != 'schedule'
@@ -151,7 +153,10 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
 
       - name: Run Flaky Cypress tests
         if: matrix.name == 'flaky' && github.event_name != 'schedule'
@@ -159,7 +164,10 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@flaky",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
@@ -167,7 +175,10 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
 
       - name: Run E2E tests that depend on Mongo
         if: matrix.name == 'mongo'
@@ -175,7 +186,10 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.js' \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
+          --record \
+          --group ${{ matrix.name }} \
+          --ci-build-id ${{ github.sha }}
         env:
           CYPRESS_QA_DB_MONGO: true
 
