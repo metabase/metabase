@@ -13,7 +13,7 @@ export const ExpressionStep = ({
   readOnly,
   step,
 }: NotebookStepUiComponentProps): JSX.Element => {
-  const { topLevelQuery: query, query: legacyQuery, stageIndex } = step;
+  const { topLevelQuery: query, stageIndex } = step;
   const expressions = Lib.expressions(query, stageIndex);
 
   const renderExpressionName = (expression: Lib.ExpressionClause) =>
@@ -27,7 +27,6 @@ export const ExpressionStep = ({
       readOnly={readOnly}
       renderPopover={({ item }) => (
         <ExpressionWidget
-          legacyQuery={legacyQuery}
           query={query}
           stageIndex={stageIndex}
           name={

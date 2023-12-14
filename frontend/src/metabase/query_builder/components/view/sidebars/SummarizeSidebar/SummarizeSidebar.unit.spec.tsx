@@ -16,7 +16,6 @@ import {
 } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { SummarizeSidebar } from "./SummarizeSidebar";
 
 type SetupOpts = {
@@ -61,14 +60,9 @@ function setup({
   function Wrapper() {
     const [query, setQuery] = useState(question._getMLv2Query());
 
-    const legacyQuery = question
-      .setDatasetQuery(Lib.toLegacyQuery(query))
-      .query() as StructuredQuery;
-
     return (
       <SummarizeSidebar
         query={query}
-        legacyQuery={legacyQuery}
         onQueryChange={nextQuery => {
           setQuery(nextQuery);
           onQueryChange(nextQuery);
