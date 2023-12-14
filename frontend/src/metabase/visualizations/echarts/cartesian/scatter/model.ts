@@ -15,8 +15,6 @@ export function getScatterPlotDataset(
       card,
       data: { rows, cols },
     } = cardSeries;
-    // will be used for breakouts later
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const columnDescs = cardsColumns[index];
 
     rows.forEach(row => {
