@@ -65,29 +65,21 @@
         (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)}))))
 
 (defn- determine-time-format
-  "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string."
-  [{:keys [time-enabled time-style] :or {time-enabled "minutes" time-style "h:mm A"}}]
-  (let [base-time-format (case time-enabled
-                           "minutes" "mm"
-
-                           "seconds" "mm:ss"
-
-                           "milliseconds" "mm:ss.SSS"
-
-                           ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
-                           ;; defaulting to "minutes"
-                           nil nil)]
-    (if base-time-format
-      (case time-style
-        "HH:mm" (format "HH:%s" base-time-format)
-
-        ;; Deprecated time style which should be already converted to HH:mm when viz settings are
-        ;; normalized, but we'll handle it here too just in case. (#18112)
-        "k:mm" (str "h" base-time-format)
-
-        ("h:mm A" "h:mm a") (format "h:%s a" base-time-format)
-
-        time-style)
+  "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string.
+  Note that if the `:time-enabled` key is present but the value is nil, we explicitly do not show the time."
+  [{:keys [time-style] :or {time-style "h:mm A"} :as viz-settings}]
+  ;; NOTE - If :time-enabled is present but nil it will return nil
+  (when-some [base-time-format (case (get viz-settings :time-enabled "minutes")
+                               "minutes" "mm"
+                               "seconds" "mm:ss"
+                               "milliseconds" "mm:ss.SSS"
+                               nil nil)]
+    (case time-style
+      "HH:mm" (format "HH:%s" base-time-format)
+      ;; Deprecated time style which should be already converted to HH:mm when viz settings are
+      ;; normalized, but we'll handle it here too just in case. (#18112)
+      "k:mm" (str "h" base-time-format)
+      ("h:mm A" "h:mm a") (format "h:%s a" base-time-format)
       time-style)))
 
 (defn- fix-time-style
@@ -182,8 +174,13 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
   (x-of-y (parse-long temporal-str)))
 
 (defmethod format-timestring :type/Time [timezone-id temporal-str _col viz-settings]
-  (let [time-style            (fix-time-style (determine-time-format viz-settings) constants/default-time-style)]
-    (reformat-temporal-str timezone-id temporal-str time-style)))
+  (let [time-style (some-> (determine-time-format viz-settings)
+                           (fix-time-style constants/default-time-style))]
+    ;; ATM, the FE can technically say the time style is `nil` via the `:time-enabled` key. While this doesn't really
+    ;; make sense, we should guard against it by returning an empty string if the time style is `nil`.
+    (if time-style
+      (reformat-temporal-str timezone-id temporal-str time-style)
+      "")))
 
 (defmethod format-timestring :type/Date [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
   (let [date-format (post-process-date-style (or date-style "MMMM d, yyyy") viz-settings)]
@@ -191,8 +188,11 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
 
 (defmethod format-timestring :type/DateTime [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
   (let [date-style            (or date-style "MMMM d, yyyy")
-        time-style            (fix-time-style (determine-time-format viz-settings) constants/default-time-style)
-        date-time-style       (format "%s, %s" date-style time-style)
+        time-style            (some-> (determine-time-format viz-settings)
+                                      (fix-time-style constants/default-time-style))
+        date-time-style       (cond-> date-style
+                                time-style
+                                (str ", " time-style))
         default-format-string (post-process-date-style date-time-style viz-settings)]
     (t/format default-format-string (u.date/parse temporal-str timezone-id))))
 

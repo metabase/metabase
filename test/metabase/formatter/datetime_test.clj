@@ -7,6 +7,22 @@
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
+(deftest determine-time-format-test
+  (testing "Capture the behaviors of determine-time-format"
+    (testing "When :time-enabled is set to nil no time format is returned"
+      (is (nil? (#'datetime/determine-time-format {:time-enabled nil}))))
+    (testing "When :time-enabled is set to minutes they are shown"
+      (is (= "h:mm a" (#'datetime/determine-time-format {:time-enabled "minutes"}))))
+    (testing "When :time-enabled is set to seconds they are shown"
+      (is (= "h:mm:ss a" (#'datetime/determine-time-format {:time-enabled "seconds"}))))
+    (testing "When :time-enabled is set to milliseconds are shown"
+      (is (= "h:mm:ss.SSS a" (#'datetime/determine-time-format {:time-enabled "milliseconds"}))))
+    (testing "time-style is modified to use the specified time precision"
+      (is (= "HH:mm:ss.SSS" (#'datetime/determine-time-format {:time-style "HH:mm"
+                                                               :time-enabled "milliseconds"}))))
+    (testing "The default behavior when the :time-enabled key is absent is to show minutes"
+      (is (= "h:mm a" (#'datetime/determine-time-format {}))))))
+
 (deftest format-temporal-str-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (testing "Null values do not blow up"
@@ -62,11 +78,21 @@
     (testing "Can render time types (#15146)"
       (is (= "8:05 AM"
              (datetime/format-temporal-str "UTC" "08:05:06Z"
-                                           {:effective_type :type/Time})))
-      (testing "Can render date time types (Part of resolving #36484)"
-        (is (= "April 1, 2014, 8:30 AM"
-               (datetime/format-temporal-str "UTC" "2014-04-01T08:30:00"
-                                             {:effective_type :type/DateTime})))))))
+                                           {:effective_type :type/Time}))))
+    (testing "Can render date time types (Part of resolving #36484)"
+      (is (= "April 1, 2014, 8:30 AM"
+             (datetime/format-temporal-str "UTC" "2014-04-01T08:30:00"
+                                           {:effective_type :type/DateTime}))))
+    (testing "When `:time_enabled` is `nil` the time is truncated for date times."
+      (is (= "April 1, 2014"
+             (datetime/format-temporal-str "UTC" "2014-04-01T08:30:00"
+                                           {:effective_type :type/DateTime
+                                            :settings       {:time_enabled nil}}))))
+    (testing "When `:time_enabled` is `nil` the time is truncated for times (even though this may not make sense)."
+      (is (= ""
+             (datetime/format-temporal-str "UTC" "08:05:06Z"
+                                           {:effective_type :type/Time
+                                            :settings       {:time_enabled nil}}))))))
 
 (deftest format-temporal-str-column-viz-settings-test
   (mt/with-temporary-setting-values [custom-formatting nil]
