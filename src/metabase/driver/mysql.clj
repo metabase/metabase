@@ -652,7 +652,7 @@
     ::upload/float                    [:double]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
-    ::upload/datetime                 [:timestamp]
+    ::upload/datetime                 [:datetime]
     ::upload/offset-datetime          [:timestamp]))
 
 (defmethod driver/table-name-length-limit :mysql
