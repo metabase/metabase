@@ -19,6 +19,7 @@ import {
   modal,
   dashboardParametersContainer,
   openQuestionActions,
+  spyRequestFinished,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -611,67 +612,76 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  describe.only("when parameters are (un)mapped to dashcards", () => {
+  describe("when parameters are (dis)connected to dashcards", () => {
     beforeEach(() => {
       createDashboardWithCards({ cards }).then(dashboardId =>
         visitDashboard(dashboardId),
       );
 
-      // editDashboard();
-      // setFilter("Time", "Relative Date");
-      // cy.findByTestId("dashboard-header")
-      //   .findByText("Default value")
-      //   .next()
-      //   .click();
-      // popover().contains("Past 7 days").click({ force: true });
-      // saveDashboard();
+      // create a disconnected filter + a default value
+      editDashboard();
+      setFilter("Time", "Relative Date");
 
-      console.log("YAYA 31");
+      sidebar().findByText("Default value").next().click();
+      popover().contains("Past 7 days").click({ force: true });
+      saveDashboard();
 
-      // cy.intercept(
-      //   "POST",
-      //   "/api/dashboard/*/dashcard/*/card/*/query",
-      //   cy.spy().as("dashcardQuerySpy"),
-      // ).as("dashcardQuery");
+      const { interceptor } = spyRequestFinished("dashcardRequestSpy");
+
+      cy.intercept(
+        "POST",
+        "/api/dashboard/*/dashcard/*/card/*/query",
+        interceptor,
+      );
     });
 
-    it.only("should not fetch dashcard data when filter is unmapped", () => {
-      // cy.get("@dashcardQuerySpy").should("not.have.been.called");
+    it("should not fetch dashcard data when filter is disconnected", () => {
+      cy.get("@dashcardRequestSpy").should("not.have.been.called");
     });
 
-    // it("should fetch dashcard data after save when parameter is mapped", () => {
-    //   // Connect filter to 2 cards
-    //   editDashboard();
-    //   cy.findByTestId("dashboard-header").findByText("Relative Date").click();
-    //   selectDashboardFilter(getDashboardCard(0), "Created At");
-    //   saveDashboard();
+    it("should fetch dashcard data after save when parameter is mapped", () => {
+      // Connect filter to 2 cards
+      editDashboard();
+      cy.icon("filter").click();
 
-    //   cy.get("@dashcardQuery.all").should("have.length", 2);
-    // });
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Relative Date")
+        .click();
+      selectDashboardFilter(getDashboardCard(0), "Created At");
+      saveDashboard();
 
-    // it("should fetch dashcard data when parameter mapping is removed", () => {
-    //   // Connect filter to 1 card only
-    //   editDashboard();
-    //   cy.findByTestId("dashboard-header").findByText("Relative Date").click();
-    //   selectDashboardFilter(getDashboardCard(0), "Created At");
-    //   disconnectDashboardFilter(getDashboardCard(1));
-    //   saveDashboard();
+      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
+    });
 
-    //   // Disconnect filter from the 1st card
-    //   editDashboard();
-    //   cy.findByTestId("dashboard-header").findByText("Relative Date").click();
-    //   disconnectDashboardFilter(getDashboardCard(0));
-    //   saveDashboard();
+    it("should fetch dashcard data when parameter mapping is removed", () => {
+      // Connect filter to 1 card only
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Relative Date")
+        .click();
+      selectDashboardFilter(getDashboardCard(0), "Created At");
+      disconnectDashboardFilter(getDashboardCard(1));
+      saveDashboard();
 
-    //   cy.get("@dashcardQuery.all").should("have.length", 2); // TODO find a way to reset it
-    // });
+      cy.get("@dashcardRequestSpy").should("have.callCount", 1);
 
-    // it("should not fetch dashcard data when nothing changed on save", () => {
-    //   editDashboard();
-    //   saveDashboard();
+      // Disconnect filter from the 1st card
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Relative Date")
+        .click();
+      disconnectDashboardFilter(getDashboardCard(0));
+      saveDashboard();
 
-    //   cy.get("@dashcardQuery.all").should("have.length", 0);
-    // });
+      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
+    });
+
+    it("should not fetch dashcard data when nothing changed on save", () => {
+      editDashboard();
+      saveDashboard();
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 0);
+    });
   });
 
   describe("when auto-wiring parameters across cards with matching fields", () => {
