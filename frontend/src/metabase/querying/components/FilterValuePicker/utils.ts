@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import type { FieldValue } from "metabase-types/api";
 import { MAX_INLINE_OPTIONS } from "./constants";
 import type { Option } from "./types";
@@ -28,6 +29,10 @@ export function getMergedOptions(
   return Object.entries(
     Object.fromEntries(options.map(option => [option.value, option.label])),
   ).map(([value, label]) => ({ value, label }));
+}
+
+export function isKey(column: Lib.ColumnMetadata) {
+  return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
 }
 
 export function isInlinePicker(data: FieldValue[], compact: boolean) {
