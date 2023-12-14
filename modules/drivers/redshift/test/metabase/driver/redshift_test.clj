@@ -632,7 +632,8 @@
                 tz-result "\n"
                 getdate-result "\n"))))
    (testing "pre-truncation-thunk"
-     ((getdate-vs-ss-ts-test-thunk-generator :day -1)))
+     (mt/with-metadata-provider (mt/id)
+       ((getdate-vs-ss-ts-test-thunk-generator :day -1))))
    (testing "Datetime _truncation_ works correctly over different timezones"
      ;; Sunday is the first week day. System is in UTC and has 2014 Aug 10 Sunday 12:30:01 AM. Report is required
      ;; for New York, where there's still Saturday. So the time span that we'd like to see the results for
@@ -664,4 +665,5 @@
                   tz-result "\n"
                   getdate-result "\n"))))
      (testing "post-truncation-thunk"
-       ((getdate-vs-ss-ts-test-thunk-generator :day -1))))))
+       (mt/with-metadata-provider (mt/id)
+         ((getdate-vs-ss-ts-test-thunk-generator :day -1)))))))
