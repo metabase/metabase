@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/core/components/Tooltip";
 
 import { color } from "metabase/lib/colors";
@@ -73,34 +74,43 @@ export default class PulseCardPreview extends Component {
           maxWidth: 379,
         }}
       >
-        <div className="flex flex-row justify-between bordered rounded bg-white px1">
-          <p style={{ fontWeight: "bold" }}>{card.name}</p>
-          <div className="flex flex-row align-center">
-            {attachmentsEnabled && !isAttachmentOnly && (
-              <Tooltip
-                tooltip={
-                  hasAttachment
-                    ? t`Remove attachment`
-                    : t`Attach file with results`
-                }
-              >
-                <AttachmentIcon
-                  name="attachment"
-                  size={18}
-                  hasAttachment={this.hasAttachment()}
-                  onClick={this.toggleAttachment}
-                />
-              </Tooltip>
-            )}
-            <RemoveIcon
-              name="close"
-              onClick={this.props.onRemove}
-              style={{
-                marginLeft: attachmentsEnabled && !isAttachmentOnly ? "4px" : 0,
-              }}
-            />
+        {cardPreview ? (
+          <div className="flex flex-row justify-between bordered rounded bg-white px1">
+            <p style={{ fontWeight: "bold" }}>
+              {card.name || cardPreview.pulse_card_name}
+            </p>
+            <div className="flex flex-row align-center">
+              {attachmentsEnabled && !isAttachmentOnly && (
+                <Tooltip
+                  tooltip={
+                    hasAttachment
+                      ? t`Remove attachment`
+                      : t`Attach file with results`
+                  }
+                >
+                  <AttachmentIcon
+                    name="attachment"
+                    size={18}
+                    hasAttachment={this.hasAttachment()}
+                    onClick={this.toggleAttachment}
+                  />
+                </Tooltip>
+              )}
+              <RemoveIcon
+                name="close"
+                onClick={this.props.onRemove}
+                style={{
+                  marginLeft:
+                    attachmentsEnabled && !isAttachmentOnly ? "4px" : 0,
+                }}
+              />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex-full flex align-center layout-centered pt1">
+            <LoadingSpinner className="inline-block" />
+          </div>
+        )}
       </div>
     );
   }
