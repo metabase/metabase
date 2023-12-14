@@ -108,7 +108,6 @@ function StringValueInput({
         stageIndex={stageIndex}
         column={column}
         value={values}
-        placeholder={t`Enter some text`}
         compact
         onChange={onChange}
       />

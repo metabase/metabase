@@ -124,7 +124,6 @@ function StringValueInput({
           stageIndex={stageIndex}
           column={column}
           value={values}
-          placeholder={placeholder}
           onChange={onChange}
         />
       </Box>

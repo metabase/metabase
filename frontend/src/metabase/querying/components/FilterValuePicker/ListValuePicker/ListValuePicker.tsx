@@ -9,6 +9,7 @@ import { searchOptions } from "./utils";
 interface ListValuePickerProps {
   data: FieldValue[];
   value: string[];
+  placeholder?: string;
   compact?: boolean;
   onChange: (newValue: string[]) => void;
 }
@@ -17,16 +18,32 @@ export function ListValuePicker({
   data,
   value,
   compact,
+  placeholder,
   onChange,
 }: ListValuePickerProps) {
   return compact ? (
-    <CompactValuePicker data={data} value={value} onChange={onChange} />
+    <CompactValuePicker
+      data={data}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+    />
   ) : (
-    <DefaultValuePicker data={data} value={value} onChange={onChange} />
+    <DefaultValuePicker
+      data={data}
+      value={value}
+      placeholder={placeholder}
+      onChange={onChange}
+    />
   );
 }
 
-function DefaultValuePicker({ data, value, onChange }: ListValuePickerProps) {
+function DefaultValuePicker({
+  data,
+  value,
+  placeholder,
+  onChange,
+}: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const options = getMergedOptions(data, value);
   const visibleOptions = searchOptions(options, searchValue);
@@ -35,7 +52,7 @@ function DefaultValuePicker({ data, value, onChange }: ListValuePickerProps) {
     <Stack>
       <TextInput
         value={searchValue}
-        placeholder={t`Search the list`}
+        placeholder={placeholder}
         onChange={event => setSearchValue(event.currentTarget.value)}
       />
       <Checkbox.Group value={value} onChange={onChange}>

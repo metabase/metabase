@@ -3,32 +3,36 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { Loader, Center } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
-import { SearchValuePicker } from "metabase/querying/components/FilterValuePicker/SearchValuePicker";
 import { ListValuePicker } from "./ListValuePicker";
+import { SearchValuePicker } from "./SearchValuePicker";
 import { SelectValuePicker } from "./SelectValuePicker";
 import { MAX_INLINE_OPTIONS } from "./constants";
+import { isKey } from "./utils";
 
 interface FilterValuePickerProps<T> {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
   value: T[];
-  placeholder?: string;
   compact?: boolean;
-  shouldCreate?: (query: string) => boolean;
   onChange: (newValue: T[]) => void;
 }
 
-export function StringFilterValuePicker({
+interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
+  placeholder: string;
+  shouldCreate: (query: string) => boolean;
+}
+
+function FilterValuePicker({
   query,
   stageIndex,
   column,
   value,
   placeholder,
   compact,
-  shouldCreate = query => query.length > 0,
+  shouldCreate,
   onChange,
-}: FilterValuePickerProps<string>) {
+}: FilterValuePickerOwnProps) {
   const { fieldId, hasFieldValues } = useMemo(
     () => Lib.fieldValuesInfo(query, stageIndex, column),
     [query, stageIndex, column],
@@ -52,6 +56,7 @@ export function StringFilterValuePicker({
       <ListValuePicker
         data={data}
         value={value}
+        placeholder={t`Search the list`}
         compact={compact}
         onChange={onChange}
       />
@@ -83,22 +88,43 @@ export function StringFilterValuePicker({
   );
 }
 
+export function StringFilterValuePicker({
+  query,
+  stageIndex,
+  column,
+  value,
+  compact,
+  onChange,
+}: FilterValuePickerProps<string>) {
+  return (
+    <FilterValuePicker
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      value={value}
+      placeholder={isKey(column) ? t`Enter an ID` : t`Enter some text`}
+      compact={compact}
+      shouldCreate={query => query.length > 0}
+      onChange={onChange}
+    />
+  );
+}
+
 export function NumberFilterValuePicker({
   query,
   stageIndex,
   column,
   value,
-  placeholder,
   compact,
   onChange,
 }: FilterValuePickerProps<number>) {
   return (
-    <StringFilterValuePicker
+    <FilterValuePicker
       query={query}
       stageIndex={stageIndex}
       column={column}
       value={value.map(value => String(value))}
-      placeholder={placeholder}
+      placeholder={isKey(column) ? t`Enter an ID` : t`Enter a number`}
       compact={compact}
       shouldCreate={query => isFinite(parseFloat(query))}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
