@@ -160,7 +160,7 @@ jobs:
           ./version.properties
 
   upload-to-s3:
-    if: ${{ inputs.skip-s3 !== true }}
+    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 15
@@ -238,7 +238,7 @@ jobs:
 
 
   verify-s3-download:
-    if: ${{ inputs.skip-s3 !== true }}
+    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: upload-to-s3
     timeout-minutes: 15
@@ -272,7 +272,7 @@ jobs:
       run: grep -q $(sha256sum ./metabase-downloaded.jar) SHA256.sum && echo "checksums match" || exit 1
 
   containerize:
-    if: ${{ inputs.skip-docker !== true }}
+    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: [check-version, download-uberjar]
     timeout-minutes: 15
@@ -382,7 +382,7 @@ jobs:
         echo "Finished!"
 
   verify-docker-pull:
-    if: ${{ inputs.skip-docker !== true }}
+    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
@@ -431,7 +431,7 @@ jobs:
       timeout-minutes: 3
 
   push-tags:
-    if: ${{ inputs.skip-tag !== true }}
+    if: ${{ inputs.skip-tag != true }}
     permissions: write-all
     needs: [verify-s3-download, verify-docker-pull, check-version]
     runs-on: ubuntu-22.04
@@ -482,7 +482,7 @@ jobs:
         $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
-    if: ${{ inputs.skip-release-notes !== true }}
+    if: ${{ inputs.skip-release-notes != true }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -501,7 +501,7 @@ jobs:
             });
 
   draft-release-notes:
-    if: ${{ inputs.skip-release-notes !== true }}
+    if: ${{ inputs.skip-release-notes != true }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -553,7 +553,7 @@ jobs:
             });
 
   publish-version-info:
-    if: ${{ inputs.skip-version-info !== true }}
+    if: ${{ inputs.skip-version-info != true }}
     runs-on: ubuntu-22.04
     needs: [push-tags, check-version]
     timeout-minutes: 15
