@@ -68,14 +68,14 @@ function FilterValuePicker({
     );
   }
 
-  if (fieldData && canSearchFieldValues(fieldInfo)) {
+  if (canSearchFieldValues(fieldInfo)) {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return (
       <SearchValuePicker
         fieldId={checkNotNull(fieldInfo.fieldId)}
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
-        fieldValues={fieldData.values}
+        fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
