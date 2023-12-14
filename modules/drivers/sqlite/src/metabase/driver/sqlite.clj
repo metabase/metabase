@@ -88,7 +88,7 @@
     ;; In sqlite a PK will implicitly have a UNIQUE INDEX, but if the PK is integer the getIndexInfo method from
     ;; jdbc doesn't return it as indexed. so we need to manually get mark the pk as indexed here
     (cond-> ((get-method driver/describe-table-indexes :sql-jdbc) driver database table)
-      (string? pk)
+      (some? pk)
       (set/union #{{:type :normal-column-index
                     :value pk}}))))
 
