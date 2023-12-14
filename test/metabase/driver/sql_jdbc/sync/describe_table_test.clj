@@ -483,20 +483,26 @@
                    [[1 2]]])
       (try
        (let [describe-table-indexes (fn [table]
-                                      (into #{} (map u/lower-case-en)
-                                            (sql-jdbc.sync/describe-table-indexes
+                                      (->> (sql-jdbc.sync/describe-table-indexes
                                              driver/*driver*
                                              (mt/db)
-                                             table)))]
+                                             table)
+                                          (map (fn [index]
+                                                 (update index :value #(if (string? %)
+                                                                         (u/lower-case-en %)
+                                                                         (map u/lower-case-en %)))))
+                                          set))]
          (testing "single column indexes are synced correctly"
-           (is (= #{"indexed" "id"}
+           (is (= #{{:type :normal-column-index :value "id"}
+                    {:type :normal-column-index :value "indexed"}}
                   (describe-table-indexes (t2/select-one Table (mt/id :single_index))))))
 
          (testing "for composite indexes, we only care about the 1st column"
            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                           (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
            (sync/sync-database! (mt/db))
-           (is (= #{"id" "first"}
+           (is (= #{{:type :normal-column-index :value "id"}
+                    {:type :normal-column-index :value "first"}}
                   (describe-table-indexes (t2/select-one Table (mt/id :composite_index)))))))
        (finally
         ;; clean the db so this test is repeatable
