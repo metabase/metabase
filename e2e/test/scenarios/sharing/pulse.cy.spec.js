@@ -35,9 +35,6 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
 
     popover().findByText("Orders, Count").click();
 
-    // pulse card preview
-    cy.get("@pulseData").contains("18,760");
-
     cy.findByRole("heading", { name: "Where should this data go?" })
       .parent()
       .within(() => {
@@ -88,8 +85,6 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
       cy.visit("/collection/root");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("pulse title").click({ force: true });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("18,760");
     });
 
     it("should edit existing pulses", () => {

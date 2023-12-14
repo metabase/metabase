@@ -18,7 +18,6 @@ export const AttachmentIcon = styled(Icon)<AttachmentIconProps>`
 
 export const RemoveIcon = styled(Icon)`
   cursor: pointer;
-  padding: 0.5rem 0.5rem 0.5rem 0;
 
   &:hover {
     color: ${color("brand")};

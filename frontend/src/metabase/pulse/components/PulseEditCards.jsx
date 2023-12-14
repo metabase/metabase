@@ -76,67 +76,29 @@ export default class PulseEditCards extends Component {
     this.trackPulseEvent("RemoveCard", index);
   }
 
-  getNotices(card, cardPreview, index) {
-    const showSoftLimitWarning = index === SOFT_LIMIT;
-    const notices = [];
+  maybeRenderAttachmentNotice(card, cardPreview, index) {
     const hasAttachment =
       isAutoAttached(cardPreview) ||
       (this.props.attachmentsEnabled &&
         card &&
         (card.include_csv || card.include_xls));
-    if (hasAttachment) {
-      notices.push({
-        head: t`Attachment`,
-        body: (
+
+    if (!hasAttachment) {
+      return null;
+    }
+
+    return (
+      <CardNotice>
+        <h3 className="mb1">{t`Attachment`}</h3>
+        <div className="h4">
           <AttachmentWidget
             card={card}
             onChange={card => this.setCard(index, card)}
             trackPulseEvent={this.trackPulseEvent}
           />
-        ),
-      });
-    }
-    if (cardPreview) {
-      if (isAutoAttached(cardPreview)) {
-        notices.push({
-          type: "warning",
-          head: t`Heads up`,
-          body: t`We'll show the first 10 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows.`,
-        });
-      }
-      if (cardPreview.pulse_card_type == null && !hasAttachment) {
-        notices.push({
-          type: "warning",
-          head: t`Heads up`,
-          body: t`Raw data questions can only be included as email attachments`,
-        });
-      }
-    }
-    if (showSoftLimitWarning) {
-      notices.push({
-        type: "warning",
-        head: t`Looks like this pulse is getting big`,
-        body: t`We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team.`,
-      });
-    }
-    return notices;
-  }
-
-  renderCardNotices(card, index) {
-    const cardPreview = card && this.props.cardPreviews[card.id];
-    const notices = this.getNotices(card, cardPreview, index);
-    if (notices.length > 0) {
-      return (
-        <div className="absolute" style={{ width: 400, marginLeft: 420 }}>
-          {notices.map((notice, index) => (
-            <CardNotice key={index} isWarning={notice.type === "warning"}>
-              <h3 className="mb1">{notice.head}</h3>
-              <div className="h4">{notice.body}</div>
-            </CardNotice>
-          ))}
         </div>
-      );
-    }
+      </CardNotice>
+    );
   }
 
   render() {
@@ -190,7 +152,11 @@ export default class PulseEditCards extends Component {
                     />
                   )}
                 </div>
-                {this.renderCardNotices(card, index)}
+                {this.maybeRenderAttachmentNotice(
+                  card,
+                  card && this.props.cardPreviews[card.id],
+                  index,
+                )}
               </div>
             </li>
           ))}

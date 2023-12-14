@@ -7,7 +7,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import { color, alpha } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { AttachmentIcon, RemoveIcon } from "./PulseCardPreview.styled";
 
 export default class PulseCardPreview extends Component {
@@ -59,13 +59,14 @@ export default class PulseCardPreview extends Component {
   };
 
   render() {
-    const { cardPreview, attachmentsEnabled } = this.props;
+    const { card, cardPreview, attachmentsEnabled } = this.props;
     const hasAttachment = this.hasAttachment();
     const isAttachmentOnly =
       attachmentsEnabled &&
       hasAttachment &&
       cardPreview &&
       cardPreview.pulse_card_type == null;
+
     return (
       <div
         className="relative full"
@@ -73,61 +74,39 @@ export default class PulseCardPreview extends Component {
           maxWidth: 379,
         }}
       >
-        <div
-          className="absolute p2 text-light"
-          style={{
-            top: 2,
-            right: 2,
-            background: `linear-gradient(to right, ${alpha(
-              color("bg-white"),
-              0.2,
-            )}, white, white)`,
-            paddingLeft: 100,
-          }}
-        >
-          {attachmentsEnabled && !isAttachmentOnly && (
-            <Tooltip
-              tooltip={
-                hasAttachment
-                  ? t`Remove attachment`
-                  : t`Attach file with results`
-              }
-            >
-              <AttachmentIcon
-                name="attachment"
-                size={18}
-                hasAttachment={this.hasAttachment()}
-                onClick={this.toggleAttachment}
+        {cardPreview ? (
+          <div className="flex flex-row justify-between bordered rounded bg-white px1">
+            <p style={{ fontWeight: "bold" }}>
+              {card.name || cardPreview.pulse_card_name}
+            </p>
+            <div className="flex flex-row align-center">
+              {attachmentsEnabled && !isAttachmentOnly && (
+                <Tooltip
+                  tooltip={
+                    hasAttachment
+                      ? t`Remove attachment`
+                      : t`Attach file with results`
+                  }
+                >
+                  <AttachmentIcon
+                    name="attachment"
+                    size={18}
+                    hasAttachment={this.hasAttachment()}
+                    onClick={this.toggleAttachment}
+                  />
+                </Tooltip>
+              )}
+              <RemoveIcon
+                name="close"
+                onClick={this.props.onRemove}
+                style={{
+                  marginLeft:
+                    attachmentsEnabled && !isAttachmentOnly ? "4px" : 0,
+                }}
               />
-            </Tooltip>
-          )}
-          <RemoveIcon name="close" size={18} onClick={this.props.onRemove} />
-        </div>
-        <div
-          className="bordered rounded bg-white scroll-x"
-          style={{ display: !cardPreview && "none" }}
-        >
-          {/* Override backend rendering if pulse_card_type == null */}
-          {cardPreview && cardPreview.pulse_card_type == null ? (
-            <RenderedPulseCardPreview href={cardPreview.pulse_card_url}>
-              <RenderedPulseCardPreviewHeader>
-                {cardPreview.pulse_card_name}
-              </RenderedPulseCardPreviewHeader>
-              <RenderedPulseCardPreviewMessage>
-                {isAttachmentOnly
-                  ? t`This question will be added as a file attachment`
-                  : t`This question won't be included in your Pulse`}
-              </RenderedPulseCardPreviewMessage>
-            </RenderedPulseCardPreview>
-          ) : (
-            <div
-              dangerouslySetInnerHTML={{
-                __html: cardPreview && cardPreview.pulse_card_html,
-              }}
-            />
-          )}
-        </div>
-        {!cardPreview && (
+            </div>
+          </div>
+        ) : (
           <div className="flex-full flex align-center layout-centered pt1">
             <LoadingSpinner className="inline-block" />
           </div>
