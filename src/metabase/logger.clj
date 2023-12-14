@@ -6,13 +6,16 @@
    [amalloy.ring-buffer :refer [ring-buffer]]
    [clj-time.coerce :as time.coerce]
    [clj-time.format :as time.format]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [clojure.tools.logging :as log]
+   [clojure.tools.logging.impl :as log.impl]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader])
   (:import
    (org.apache.commons.lang3.exception ExceptionUtils)
    (org.apache.logging.log4j LogManager)
-   (org.apache.logging.log4j.core Appender LogEvent LoggerContext)
-   (org.apache.logging.log4j.core.config LoggerConfig)))
+   (org.apache.logging.log4j.core Appender LogEvent Logger LoggerContext)
+   (org.apache.logging.log4j.core.config Configuration LoggerConfig)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,14 +50,36 @@
 
 (defonce ^:private has-added-appender? (atom false))
 
+(defn context
+  "Get global logging context."
+  ^LoggerContext []
+  (LogManager/getContext (classloader/the-classloader) false))
+
+(defn configuration
+  "Get global logging configuration"
+  ^Configuration []
+  (.getConfiguration (context)))
+
+(defn logger-name
+  "Get string name from symbol or ns"
+  ^String [a-namespace]
+  (if (instance? clojure.lang.Namespace a-namespace)
+    (recur (ns-name a-namespace))
+    (name a-namespace)))
+
+(defn effective-ns-logger
+  "Get the logger that will be used for the namespace named by `a-namespace`."
+  ^LoggerConfig [a-namespace]
+  (let [^Logger logger (log.impl/get-logger log/*logger-factory* a-namespace)]
+    (.get logger)))
+
 (when-not *compile-files*
   (when-not @has-added-appender?
     (reset! has-added-appender? true)
-    (let [^LoggerContext ctx (LogManager/getContext (classloader/the-classloader) false)
-          config             (.getConfiguration ctx)
-          appender           (metabase-appender)]
+    (let [appender (metabase-appender)
+          config      (configuration)]
       (.start appender)
       (.addAppender config appender)
       (doseq [[_ ^LoggerConfig logger-config] (.getLoggers config)]
         (.addAppender logger-config appender (.getLevel logger-config) (.getFilter logger-config))
-        (.updateLoggers ctx)))))
+        (.updateLoggers (context))))))
