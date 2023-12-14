@@ -24,7 +24,7 @@ describe("SettingsEditor", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should redirect from the full-app embedding page if embedding is not enabled", async () => {
+    it("should allow visiting the full-app embedding page even if embedding is not enabled", async () => {
       await setup({
         settings: [createMockSettingDefinition({ key: "enable-embedding" })],
         settingValues: createMockSettings({ "enable-embedding": false }),
@@ -34,9 +34,7 @@ describe("SettingsEditor", () => {
       expect(
         screen.getByText(/Embed dashboards, questions/),
       ).toBeInTheDocument();
-      expect(
-        screen.queryByText("Interactive embedding"),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
     });
   });
 
