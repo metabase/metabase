@@ -3,10 +3,12 @@ import type { Card, Dashboard } from "metabase-types/api";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { PublicEmbedIcon } from "metabase/public/components/widgets/SharingPane/icons/PublicEmbedIcon/PublicEmbedIcon";
-import { StaticEmbedIcon } from "metabase/public/components/widgets/SharingPane/icons/StaticEmbedIcon/StaticEmbedIcon";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
-import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
+import {
+  PublicEmbedIconWrapper,
+  SharingPaneActionButton,
+  StaticEmbedIconWrapper,
+} from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
 import { Group, Text, Anchor } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
@@ -67,7 +69,7 @@ function SharingPane({
       <SharingPaneButton
         header={t`Static embed`}
         description={t`Securely embed this dashboard in your own application’s server code.`}
-        illustration={<StaticEmbedIcon />}
+        illustration={<StaticEmbedIconWrapper />}
       >
         <SharingPaneActionButton
           fullWidth
@@ -98,7 +100,7 @@ function SharingPane({
             </>
           )
         }
-        illustration={<PublicEmbedIcon />}
+        illustration={<PublicEmbedIconWrapper />}
       >
         {resource.public_uuid ? (
           <PublicLinkCopyPanel

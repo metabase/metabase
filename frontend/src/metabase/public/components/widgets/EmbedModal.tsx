@@ -58,7 +58,10 @@ export const EmbedModal = ({
       title={
         embedType ? (
           <Center>
-            <EmbedTitle type={titleize(embedType)} />
+            <EmbedTitle
+              type={titleize(embedType)}
+              onClick={() => setEmbedType(null)}
+            />
           </Center>
         ) : (
           t`Embed ${applicationName}`

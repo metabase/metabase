@@ -1,15 +1,18 @@
 import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 import { css } from "@emotion/react";
-import { PublicEmbedIconWrapper } from "metabase/public/components/widgets/SharingPane/icons/PublicEmbedIcon/PublicEmbedIcon.styled";
-import { StaticEmbedIconWrapper } from "metabase/public/components/widgets/SharingPane/icons/StaticEmbedIcon/StaticEmbedIcon.styled";
 import type { PaperProps, ButtonProps } from "metabase/ui";
 import { Button, Paper, Title } from "metabase/ui";
+import { PublicEmbedIcon, StaticEmbedIcon } from "../icons";
 
 export const SharingPaneButtonTitle = styled(Title)``;
 export const SharingPaneActionButton = styled(Button)<
   ButtonProps & HTMLAttributes<HTMLButtonElement>
 >``;
+
+export const StaticEmbedIconWrapper = styled(StaticEmbedIcon)``;
+
+export const PublicEmbedIconWrapper = styled(PublicEmbedIcon)``;
 
 export const SharingPaneButtonContent = styled(Paper)<
   PaperProps & { disabled?: boolean }
