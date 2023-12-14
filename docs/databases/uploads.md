@@ -83,20 +83,37 @@ Represents the year, month, and day without time information.
 
 ### Datetimes
 
-Represents the year, month, day, hour, minute, second, and millisecond with optional fractional seconds.
+Represents the year, month, day, hour. Minutes, seconds, and fractional seconds are optional.
 
 **Format**: `yyyy-MM-ddTHH:mm:ss.SSS`. The "T" separator could also be a space (" ").
 
 **Examples**: 
 
+- `2023-01-01 00`
 - `2023-01-01 00:00:00.000`
 - `2023-01-01T00:00:00.000`
+- `2023-01-01 00:00:00.0000000`
 
 ### Datetimes with offsets
 
-Represents the datetime with an offset from Coordinated Universal Time (UTC).
+Represents the datetime with an offset from Coordinated Universal Time (UTC). Minutes and seconds in the offset are optional.
 
-**Format**: `yyyy-MM-ddTHH:mm:ss.SSS±HH:mm:ss`. The "T" separator could also be a space (" ").
+**Formats**: 
+
+Datetime formats:
+
+- `yyyy-MM-ddTHH:mm`. 
+- `yyyy-MM-ddTHH:mm:ss`. 
+- `yyyy-MM-ddTHH:mm:ss.SSS` (and any number of S's).
+
+The "T" separator could also be a space (" ").
+
+Offsets:
+
+- `Z` (for UTC)
+- `+HH` or `-HH` 
+- `+HH:mm` or `-HH:mm` 
+- `+HH:mm:ss` or `-HH:mm:ss` 
 
 **Examples**:
 
