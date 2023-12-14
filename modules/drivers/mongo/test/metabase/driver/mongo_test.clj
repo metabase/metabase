@@ -224,6 +224,109 @@
                        :database-position 0}}}
            (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))
 
+(deftest sync-indexes-info-test
+  (mt/test-driver :mongo
+    (mt/dataset (mt/dataset-definition "composite-index"
+                  ["singly-index"
+                   [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                    {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]]
+                  ["compound-index"
+                   [{:field-name "first" :indexed? false :base-type :type/Integer}
+                    {:field-name "second" :indexed? false :base-type :type/Integer}]
+                   [[1 2]]]
+                  ["multi-key-index"
+                   [{:field-name "url" :indexed? false :base-type :type/Text}]
+                   [[{:small "http://example.com/small.jpg" :large "http://example.com/large.jpg"}]]])
+
+      (try
+       (testing "singly index"
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
+
+       (testing "compount index"
+         (mongo.util/with-mongo-connection [conn (mt/db)]
+           (mcoll/create-index conn "compound-index" (array-map "first" 1 "second" 1)))
+         (sync/sync-database! (mt/db))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
+
+       (testing "multi key index"
+         (mongo.util/with-mongo-connection [conn (mt/db)]
+           (mcoll/create-index conn "multi-key-index" (array-map "url.small" 1)))
+         (sync/sync-database! (mt/db))
+         (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
+         (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
+
+       (finally
+        (t2/delete! :model/Database (mt/id)))))))
+
+(deftest describe-table-indexes-test
+  (mt/test-driver :mongo
+    (mt/dataset (mt/dataset-definition "indexing"
+                  ["singly-index"
+                   [{:field-name "a" :base-type :type/Text}]
+                   [[1]]]
+                  ["compound-index"
+                   [{:field-name "a" :base-type :type/Text}]
+                   [[1]]]
+                  ["compound-index-big"
+                   [{:field-name "a" :base-type :type/Text}]
+                   [[1]]]
+                  ["multi-key-index"
+                   [{:field-name "a" :base-type :type/Text}]
+                   [[1]]]
+                  ["advanced-index"
+                   [{:field-name "hashed-field" :indexed? false :base-type :type/Text}
+                    {:field-name "text-field" :indexed? false :base-type :type/Text}
+                    {:field-name "geospatial-field" :indexed? false :base-type :type/Text}]
+                   [["Ngoc" "Khuat" [10 20]]]])
+
+      (sync/sync-database! (mt/db))
+      (try
+       (let [describe-indexes (fn [table-name]
+                                (driver/describe-table-indexes :mongo (mt/db) (t2/select-one :model/Table (mt/id table-name))))]
+         (mongo.util/with-mongo-connection [conn (mt/db)]
+           (testing "single column index"
+             (mcoll/create-index conn "singly-index" {"a" 1})
+             (is (= #{{:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "a"}}
+                    (describe-indexes :singly-index))))
+
+           (testing "compound index column index"
+             (mcoll/create-index conn "compound-index" (array-map "a" 1 "b" 1 "c" 1)) ;; first index column is :a
+             (mcoll/create-index conn "compound-index" (array-map "e" 1 "d" 1 "f" 1)) ;; first index column is :e
+             (is (= #{{:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "a"}
+                      {:type :normal-column-index :value "e"}}
+                    (describe-indexes :compound-index))))
+
+           (testing "compound index that has many keys can still determine the first key"
+             (mcoll/create-index conn "compound-index-big"
+                                 (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1)) ;; first index column is :j
+             (is (= #{{:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "j"}}
+                    (describe-indexes :compound-index-big))))
+
+           (testing "multi key indexes"
+             (mcoll/create-index conn "multi-key-index" (array-map "a.b" 1))
+             (is (= #{{:type :nested-column-index :value ["a" "b"]}
+                      {:type :normal-column-index :value "_id"}}
+                    (describe-indexes :multi-key-index))))
+
+           (testing "advanced-index: hashed index, text index, geospatial index"
+             (mcoll/create-index conn "advanced-index" (array-map "hashed-field" "hashed"))
+             (mcoll/create-index conn "advanced-index" (array-map "text-field" "text"))
+             (mcoll/create-index conn "advanced-index" (array-map "geospatial-field" "2d"))
+             (is (= #{{:type :normal-column-index :value "geospatial-field"}
+                      {:type :normal-column-index :value "hashed-field"}
+                      {:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "text-field"}}
+                    (describe-indexes :advanced-index))))))
+
+       (finally
+        (t2/delete! :model/Database (mt/id)))))))
+
 (deftest nested-columns-test
   (mt/test-driver :mongo
     (mt/dataset geographical-tips
