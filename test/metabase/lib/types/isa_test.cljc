@@ -162,6 +162,7 @@
              {:pred #'lib.types.isa/foreign-key?,        :positive :type/FK,                :negative :type/ZipCode}
              {:pred #'lib.types.isa/primary-key?,        :positive :type/PK,                :negative :type/ZipCode}
              {:pred #'lib.types.isa/entity-name?,        :positive :type/Name,              :negative :type/Number}
+             {:pred #'lib.types.isa/title?,              :positive :type/Title,             :negative :type/Name}
              {:pred #'lib.types.isa/any?,                :positive :type/*}
              {:pred #'lib.types.isa/numeric-base-type?,  :positive :type/Integer,           :negative :type/String}
              {:pred #'lib.types.isa/date-without-time?,  :positive :type/Date,              :negative :type/Time}
