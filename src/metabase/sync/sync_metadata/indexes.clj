@@ -43,7 +43,7 @@
       (let [indexes                    (fetch-metadata/index-metadata database table)
             indexed-field-ids          (indexes->field-ids (:id table) indexes)
             existing-indexed-field-ids (t2/select-pks-set :model/Field :table_id (:id table) :database_indexed true)
-            [removing adding]          (data/diff indexed-field-ids existing-indexed-field-ids)]
+            [removing adding]          (data/diff existing-indexed-field-ids indexed-field-ids)]
         (doseq [field-id removing]
           (log/infof "Unmarking Field %d as indexed" field-id))
         (doseq [field-id adding]
