@@ -4,9 +4,7 @@ import type { Table } from "metabase-types/api";
 import { databases, schemas, tables } from "metabase/entities";
 import type Question from "metabase-lib/Question";
 
-import { NestedItemPicker } from "../NestedItemPicker";
-
-
+import { NestedItemPicker } from "../components";
 
 interface TablePickerProps {
   onItemSelect: (item: Question) => void;

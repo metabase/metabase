@@ -1,10 +1,13 @@
 import styled from "@emotion/styled";
-import { Box } from "metabase/ui";
-import { color } from "metabase/lib/colors";
+import { Box, BoxProps } from "metabase/ui";
 
-export const PickerColumn = styled(Box)`
-  flex-basis: 310px;
-  padding: 1rem 1rem 1rem 1.5rem;
+import { color } from "metabase/lib/colors";
+import type React from "react";
+
+export const HorizontalScrollBox = styled(Box)<
+  BoxProps & React.HTMLProps<HTMLDivElement>
+>`
+  overflow-x: auto;
 `;
 
 export const ListBox = styled(Box)`
