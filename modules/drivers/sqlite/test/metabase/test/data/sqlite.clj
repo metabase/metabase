@@ -44,13 +44,6 @@
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Integer}))))
 
-(defmethod sql.tx/create-table-sql :sqlite
-  [driver dbdef table-def]
-  ;; Sqlite doesn't automatically create an index for pk, so we need to manually create one
-  (str ((get-method sql.tx/create-table-sql :sql-jdbc/test-extensions) driver dbdef table-def)
-    "\n"
-    (sql.tx/create-index-sql driver (:table-name table-def) [(sql.tx/pk-field-name driver)])))
-
 (defmethod execute/execute-sql! :sqlite [& args]
   (apply execute/sequentially-execute-sql! args))
 
