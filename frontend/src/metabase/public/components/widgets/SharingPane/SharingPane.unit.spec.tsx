@@ -20,13 +20,13 @@ const setup = ({
   isApplicationEmbeddingEnabled?: boolean;
   isPublicSharingEnabled?: boolean;
 }) => {
-  const TEST_RESOURCE = createMockDashboard({
+  const TEST_DASHBOARD = createMockDashboard({
     public_uuid: hasPublicLink ? "mock-uuid" : undefined,
     enable_embedding: isResourcePublished,
   });
 
   const onCreatePublicLink = jest.fn();
-  const onDisablePublicLink = jest.fn();
+  const onDeletePublicLink = jest.fn();
   const getPublicUrl = jest.fn(resource => resource.public_uuid);
   const onChangeEmbedType = jest.fn();
 
@@ -35,11 +35,10 @@ const setup = ({
       path="*"
       component={() => (
         <SharingPane
-          resource={TEST_RESOURCE}
+          resource={TEST_DASHBOARD}
           resourceType="dashboard"
           onCreatePublicLink={onCreatePublicLink}
-          onDisablePublicLink={onDisablePublicLink}
-          extensions={[]}
+          onDeletePublicLink={onDeletePublicLink}
           getPublicUrl={getPublicUrl}
           onChangeEmbedType={onChangeEmbedType}
           isPublicSharingEnabled={isPublicSharingEnabled}
@@ -61,7 +60,7 @@ const setup = ({
   return {
     onChangeEmbedType,
     onCreatePublicLink,
-    onDisablePublicLink,
+    onDeletePublicLink,
     getPublicUrl,
     history: checkNotNull(history),
   };
@@ -138,7 +137,7 @@ describe("SharingPane", () => {
     });
 
     describe("when a public link exists", () => {
-      it("should render iframe link, copy button, and `Copy snippet` description", () => {
+      it("should render iframe link, copy button, `Copy snippet` description, and `Affects public url and link` tooltip", () => {
         setup({ hasPublicLink: true, isPublicSharingEnabled: true });
 
         expect(
@@ -154,17 +153,24 @@ describe("SharingPane", () => {
 
         expect(screen.getByTestId("copy-button")).toBeInTheDocument();
         expect(screen.getByText("Remove public URL")).toBeInTheDocument();
+
+        userEvent.hover(screen.getByText("Remove public URL"));
+        expect(
+          screen.getByText(
+            "Affects both embed URL and public link for this dashboard",
+          ),
+        ).toBeInTheDocument();
       });
 
-      it("should call `onDisablePublicLink` when `Remove public URL` is clicked", () => {
-        const { onDisablePublicLink } = setup({
+      it("should call `onDeletePublicLink` when `Remove public URL` is clicked", () => {
+        const { onDeletePublicLink } = setup({
           hasPublicLink: true,
           isPublicSharingEnabled: true,
         });
 
         userEvent.click(screen.getByText("Remove public URL"));
 
-        expect(onDisablePublicLink).toHaveBeenCalled();
+        expect(onDeletePublicLink).toHaveBeenCalled();
       });
     });
     describe("when a public link doesn't exist", () => {

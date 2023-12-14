@@ -1,8 +1,6 @@
 import type { Card } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -33,15 +31,6 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
   const updateQuestionEmbeddingParams = (embeddingParams: EmbedOptions) =>
     dispatch(updateEmbeddingParams(card, embeddingParams));
 
-  const getPublicUrl = (
-    {
-      public_uuid,
-    }: {
-      public_uuid: string;
-    },
-    extension: ExportFormatType,
-  ) => Urls.publicQuestion({ uuid: public_uuid, type: extension });
-
   return (
     <EmbedModal onClose={onClose}>
       {({ embedType, setEmbedType }) => (
@@ -57,7 +46,6 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           onDeletePublicLink={deletePublicQuestionLink}
           onUpdateEnableEmbedding={updateQuestionEnableEmbedding}
           onUpdateEmbeddingParams={updateQuestionEmbeddingParams}
-          getPublicUrl={getPublicUrl}
         />
       )}
     </EmbedModal>

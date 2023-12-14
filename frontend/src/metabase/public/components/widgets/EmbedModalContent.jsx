@@ -9,8 +9,8 @@ import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { SharingPane } from "./SharingPane";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
+import { SharingPane } from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -112,10 +112,7 @@ class EmbedModalContent extends Component {
     );
 
     return embedType == null ? (
-      <SharingPane
-        {...this.props}
-        onChangeEmbedType={embedType => setEmbedType(embedType)}
-      />
+      <SharingPane {...this.props} onChangeEmbedType={setEmbedType} />
     ) : embedType === "application" ? (
       <div className="flex flex-full" style={{ height: "100%" }}>
         <AdvancedEmbedPane
