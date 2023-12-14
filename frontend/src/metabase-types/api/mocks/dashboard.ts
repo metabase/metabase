@@ -42,7 +42,6 @@ export const createMockDashboardCard = (
   card: createMockCard(),
   created_at: "2020-01-01T12:30:30.000000",
   updated_at: "2020-01-01T12:30:30.000000",
-  justAdded: false,
   parameter_mappings: [],
   ...opts,
 });

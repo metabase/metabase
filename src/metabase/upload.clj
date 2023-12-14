@@ -282,7 +282,7 @@
         (when (not (str/blank? value))
           (parser value))))))
 
-(mu/defn ^:private column-types-from-rows :- [:sequential (into [:enum] column-types)]
+(mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
   "Returns a sequence of types, given the unparsed rows in the CSV file"
   [settings column-count rows]
   (->> rows

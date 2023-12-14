@@ -733,6 +733,44 @@
                                           {:collection_id (u/the-id new-collection)})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    UPDATING DASHBOARD CARD IN DASHCARD                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest update-dashcard-reference-in-dashboard-test
+  (testing "PUT /api/dashboard/:id"
+    (testing "Let creators swap out dashboard questions with a different question (#36497)"
+      (mt/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     Card {card-id        :id
+                           card-entity-id :entity_id} {:name "Original Card"}
+                     DashboardCard {dashcard-entity-id :entity_id
+                                    :as                dashcard} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id}]
+        (let [{original-dashcard-entity-id          :entity_id
+               {original-card-entity-id :entity_id} :card} (-> (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id))
+                                                               dashboard-response
+                                                               (get-in [:dashcards 0]))]
+          (testing "Check that the before state is as expected -- it looks just like our fixture data"
+            (testing "Before the update the dashcard is the same as the one we started with"
+              (is (= dashcard-entity-id original-dashcard-entity-id)))
+            (testing "Before the update, the card on the dashcard is the "
+              (is (= card-entity-id original-card-entity-id))))
+          (mt/with-temp [Card {new-card-id            :id
+                               swapped-card-entity-id :entity_id} {:name "Swapped Card"}]
+            ;; Update the card_id.
+            (let [updated-card-payload {:dashcards [(assoc
+                                                      (select-keys dashcard [:id :entity_id :size_x :size_y :row :col])
+                                                      :card_id new-card-id)]}
+                  {updated-dashcard-entity-id          :entity_id
+                   {updated-card-entity-id :entity_id} :card} (-> (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                                                                        updated-card-payload)
+                                                                  dashboard-response
+                                                                  (get-in [:dashcards 0]))]
+              (testing "After the update the dashcard is the same as the one we started with"
+                (is (= dashcard-entity-id updated-dashcard-entity-id)))
+              (testing "After the update, the card on the dashcard is updated to our newly swapped card"
+                (is (= swapped-card-entity-id updated-card-entity-id))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    UPDATING DASHBOARD COLLECTION POSITIONS                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -2073,20 +2111,22 @@
                      Card          {model-id :id} {:dataset true}
                      Card          {model-id-2 :id} {:dataset true}
                      Action        {action-id :id} {:model_id model-id :type :implicit :name "action"}
+                     ;; Put the **same** card on the dashboard as both an action card and a question card
                      DashboardCard action-card {:dashboard_id dashboard-id
                                                 :action_id action-id
                                                 :card_id model-id}
                      DashboardCard question-card {:dashboard_id dashboard-id, :card_id model-id}]
         (with-dashboards-in-writeable-collection [dashboard-id]
           ;; TODO adds test for return
+          ;; Update **both** cards to use the new card id
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
                                        {:dashcards [(assoc action-card :card_id model-id-2)
                                                     (assoc question-card :card_id model-id-2)]
                                         :tabs      []})
-          ;; Only action card should change
-          (is (partial= [{:card_id model-id-2}
-                         {:card_id model-id}]
-                        (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+          (testing "Both updated card ids should be reflected after making the dashcard changes."
+            (is (partial= [{:card_id model-id-2}
+                           {:card_id model-id-2}]
+                          (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]})))))))))
 
 (deftest update-tabs-test
   (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]

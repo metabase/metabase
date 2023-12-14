@@ -91,7 +91,7 @@ export function saveDashboard({
   buttonLabel = "Save",
   editBarText = "You're editing this dashboard.",
 } = {}) {
-  cy.findByText(buttonLabel).click();
+  cy.button(buttonLabel).click();
   cy.findByText(editBarText).should("not.exist");
   cy.wait(1); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
