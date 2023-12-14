@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [honey.sql :as sql]
-   #_[java-time.api :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.redshift :as redshift]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -624,6 +624,15 @@
 (deftest server-side-relative-datetime-truncation-test
   (mt/test-driver
    :redshift
+   (testing "pre-truncation-show"
+     (let [tz-result (mt/rows (run-native-query "show timezone"))
+           getdate-result (mt/rows (run-native-query "select getdate()::text"))]
+       (is (= 1 2)
+           (str "\n---\n"
+                tz-result "\n"
+                getdate-result "\n"))))
+   (testing "pre-truncation-thunk"
+     ((getdate-vs-ss-ts-test-thunk-generator :day -1)))
    (testing "Datetime _truncation_ works correctly over different timezones"
      ;; Sunday is the first week day. System is in UTC and has 2014 Aug 10 Sunday 12:30:01 AM. Report is required
      ;; for New York, where there's still Saturday. So the time span that we'd like to see the results for
@@ -632,14 +641,13 @@
      ;; to match timezone of the session. However that adjustment would come _after the truncation and addition_
      ;; that :relative-datetime does, hence would produce incorrect results. This test verifies the situation
      ;; is correctly handled.
-     (is (= 1 1))
-     #_(mt/with-report-timezone-id "America/New_York"
+     (mt/with-report-timezone-id "America/New_York"
        (mt/with-system-timezone-id "UTC"
          (mt/with-clock (t/zoned-date-time (t/local-date-time 2014 8 10 0 30 1 0) "UTC")
            (is (= [1] #_[[13 "Dwight Gresham" "2014-08-01T10:30:00-04:00"]
-                   [15 "Rüstem Hebel" "2014-08-01T12:45:00-04:00"]
-                   [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
-                   [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
+                         [15 "Rüstem Hebel" "2014-08-01T12:45:00-04:00"]
+                         [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
+                         [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
                   (->> (mt/run-mbql-query
                         test_data_users
                         {:fields [$id $name $last_login]
@@ -647,4 +655,13 @@
                                   [:>= $last_login [:relative-datetime -1 :week]]
                                   [:< $last_login [:relative-datetime 0 :week]]]
                          :order-by [[:asc $last_login]]})
-                       (mt/formatted-rows [int str str]))))))))))
+                       (mt/formatted-rows [int str str])))))))
+     (testing "post-truncation-show"
+       (let [tz-result (mt/rows (run-native-query "show timezone"))
+             getdate-result (mt/rows (run-native-query "select getdate()::text"))]
+         (is (= 1 2)
+             (str "\n---\n"
+                  tz-result "\n"
+                  getdate-result "\n"))))
+     (testing "post-truncation-thunk"
+       ((getdate-vs-ss-ts-test-thunk-generator :day -1))))))
