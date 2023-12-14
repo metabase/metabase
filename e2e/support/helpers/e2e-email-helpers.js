@@ -81,7 +81,7 @@ export const clickSend = () => {
   cy.wait("@emailSent");
 };
 
-export const openAndAddEmailToSubscriptions = recipients => {
+export const openAndAddEmailsToSubscriptions = recipients => {
   cy.findByLabelText("subscriptions").click();
 
   cy.findByText("Email it").click();
@@ -96,7 +96,7 @@ export const openAndAddEmailToSubscriptions = recipients => {
 };
 
 export const setupSubscriptionWithRecipients = recipients => {
-  openAndAddEmailToSubscriptions(recipients);
+  openAndAddEmailsToSubscriptions(recipients);
   sidebar().findByText("Done").click();
 };
 
@@ -110,7 +110,7 @@ export const emailSubscriptionRecipients = () => {
 };
 
 export const sendSubscriptionsEmail = recipient => {
-  openAndAddEmailToSubscriptions(recipient);
+  openAndAddEmailsToSubscriptions([recipient]);
   clickSend();
 };
 
