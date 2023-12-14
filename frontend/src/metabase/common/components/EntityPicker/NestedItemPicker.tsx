@@ -72,9 +72,8 @@ export function NestedItemPicker({
         }}
       >
         {stack.map((level, levelIndex) => (
-          <ListBox>
+          <ListBox key={JSON.stringify(level).slice(0, 255)}>
             <ItemList
-              // key={levelIndex} // FIXME: bad
               items={level?.items}
               onClick={item => handleClick(item, levelIndex)}
               selectedItem={level?.selectedItem}
