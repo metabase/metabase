@@ -12,12 +12,13 @@ import type {
 
 const BUBBLE_SCALE_FACTOR_MAX = 64;
 
+// TODO: refine the scaling curve when implementing the dynamic scatter plot
 function getBubbleSizeScale(
   dataset: GroupedDataset,
   bubbleSizeDataKey: DataKey | undefined,
 ) {
   if (!bubbleSizeDataKey) {
-    return 8; // TODO confirm with design
+    return 8;
   }
 
   const bubbleSizeDomainMax = d3.max(
@@ -27,9 +28,8 @@ function getBubbleSizeScale(
   );
   const scale = d3.scale
     .sqrt()
-    .domain([0, bubbleSizeDomainMax * BUBBLE_SCALE_FACTOR_MAX]) // TODO figure out if we need to keep scale factor
-    .range([1, 100]); // TODO ask design what are reasonable
-
+    .domain([0, bubbleSizeDomainMax * BUBBLE_SCALE_FACTOR_MAX])
+    .range([1, 100]);
   return (datum: Datum) => scale(Number(datum[bubbleSizeDataKey]));
 }
 
