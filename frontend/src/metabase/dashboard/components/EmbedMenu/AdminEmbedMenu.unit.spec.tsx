@@ -58,7 +58,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       expect(screen.getByText("Public link")).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       userEvent.click(screen.getByText("Public link"));
@@ -98,7 +98,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       userEvent.click(screen.getByText("Embed"));
@@ -121,7 +121,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       expect(screen.getByText("Create a public link")).toBeInTheDocument();
@@ -146,7 +146,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       expect(screen.getByText("Public link")).toBeInTheDocument();
@@ -172,7 +172,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       expect(screen.getByText("Create a public link")).toBeInTheDocument();
@@ -198,7 +198,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       expect(screen.getByText("Public links are off")).toBeInTheDocument();
@@ -224,7 +224,7 @@ describe("AdminEmbedMenu", () => {
       userEvent.click(screen.getByTestId("dashboard-embed-button"));
 
       expect(
-        await screen.findByTestId("embed-menu-content"),
+        await screen.findByTestId("embed-header-menu"),
       ).toBeInTheDocument();
 
       expect(screen.getByText("Public links are off")).toBeInTheDocument();

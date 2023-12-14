@@ -6,10 +6,22 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { DashboardEmbedHeaderButton } from "./DashboardEmbedHeaderButton";
 
-const setup = ({ isPublicSharingEnabled = true, disabled = false } = {}) => {
+const setup = ({
+  isPublicSharingEnabled = true,
+  disabled = false,
+  tooltip = null,
+}: {
+  isPublicSharingEnabled?: boolean;
+  disabled?: boolean;
+  tooltip?: string | null;
+} = {}) => {
   const onClick = jest.fn();
   renderWithProviders(
-    <DashboardEmbedHeaderButton onClick={onClick} disabled={disabled} />,
+    <DashboardEmbedHeaderButton
+      onClick={onClick}
+      disabled={disabled}
+      tooltip={tooltip}
+    />,
     {
       storeInitialState: createMockState({
         settings: createMockSettingsState({
@@ -34,19 +46,23 @@ describe("DashboardEmbedHeaderButton", () => {
     expect(screen.getByText("Embedding")).toBeInTheDocument();
   });
 
-  it('should render "You must enable Embedding" label when the button is disabled', () => {
-    setup({ disabled: true });
+  it("should display the tooltip text when a tooltip is passed", () => {
+    setup({ tooltip: "test tooltip" });
     userEvent.hover(screen.getByLabelText("share icon"));
-    expect(
-      screen.getByText("You must enable Embedding in the settings"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("test tooltip")).toBeInTheDocument();
+  });
+
+  it("should be disabled when disabled=true", () => {
+    const { onClick } = setup({ disabled: true });
+    userEvent.click(screen.getByTestId("dashboard-embed-button"));
+
+    expect(screen.getByTestId("dashboard-embed-button")).toBeDisabled();
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it("should call onClick when the button is clicked", () => {
     const { onClick } = setup();
-
-    userEvent.click(screen.getByLabelText("share icon"));
-
+    userEvent.click(screen.getByTestId("dashboard-embed-button"));
     expect(onClick).toHaveBeenCalled();
   });
 });
