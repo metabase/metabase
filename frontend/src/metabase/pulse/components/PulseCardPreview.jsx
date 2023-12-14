@@ -73,39 +73,33 @@ export default class PulseCardPreview extends Component {
           maxWidth: 379,
         }}
       >
-        <div
-          className="absolute p2 text-light"
-          style={{
-            top: 1,
-            right: -4,
-            paddingLeft: 100,
-          }}
-        >
-          {attachmentsEnabled && !isAttachmentOnly && (
-            <Tooltip
-              tooltip={
-                hasAttachment
-                  ? t`Remove attachment`
-                  : t`Attach file with results`
-              }
-            >
-              <AttachmentIcon
-                name="attachment"
-                size={18}
-                hasAttachment={this.hasAttachment()}
-                onClick={this.toggleAttachment}
-              />
-            </Tooltip>
-          )}
-          <RemoveIcon name="close" onClick={this.props.onRemove} />
-        </div>
-        <div
-          className="bordered rounded bg-white scroll-x"
-          style={{ display: !cardPreview && "none" }}
-        >
-          <p className="ml1" style={{ fontWeight: "bold" }}>
-            {card.name}
-          </p>
+        <div className="flex flex-row justify-between bordered rounded bg-white px1">
+          <p style={{ fontWeight: "bold" }}>{card.name}</p>
+          <div className="flex flex-row align-center">
+            {attachmentsEnabled && !isAttachmentOnly && (
+              <Tooltip
+                tooltip={
+                  hasAttachment
+                    ? t`Remove attachment`
+                    : t`Attach file with results`
+                }
+              >
+                <AttachmentIcon
+                  name="attachment"
+                  size={18}
+                  hasAttachment={this.hasAttachment()}
+                  onClick={this.toggleAttachment}
+                />
+              </Tooltip>
+            )}
+            <RemoveIcon
+              name="close"
+              onClick={this.props.onRemove}
+              style={{
+                marginLeft: attachmentsEnabled && !isAttachmentOnly ? "4px" : 0,
+              }}
+            />
+          </div>
         </div>
       </div>
     );
