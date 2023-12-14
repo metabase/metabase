@@ -3,6 +3,8 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { isSmallScreen } from "metabase/lib/dom";
+
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -27,14 +29,10 @@ import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "./DashboardEmptyState/DashboardEmptyState";
-import { updateParametersWidgetStickiness } from "./stickyParameters";
-
-// NOTE: move DashboardControls HoC to container
 
 class DashboardInner extends Component {
   state = {
     error: null,
-    isParametersWidgetSticky: false,
     parametersListLength: 0,
   };
 
@@ -58,8 +56,6 @@ class DashboardInner extends Component {
   }
 
   async componentDidUpdate(prevProps) {
-    updateParametersWidgetStickiness(this);
-
     if (prevProps.dashboardId !== this.props.dashboardId) {
       await this.loadDashboard(this.props.dashboardId);
       return;
@@ -230,7 +226,7 @@ class DashboardInner extends Component {
       isAutoApplyFilters,
     } = this.props;
 
-    const { error, isParametersWidgetSticky } = this.state;
+    const { error, parametersListLength } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -308,7 +304,9 @@ class DashboardInner extends Component {
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
-                    isSticky={isParametersWidgetSticky}
+                    isSticky={isParametersWidgetContainersSticky(
+                      parametersListLength,
+                    )}
                   >
                     {parametersWidget}
                     <FilterApplyButton />
@@ -396,5 +394,15 @@ DashboardInner.propTypes = {
   closeNavbar: PropTypes.func.isRequired,
   isAutoApplyFilters: PropTypes.bool,
 };
+
+function isParametersWidgetContainersSticky(parameterCount) {
+  if (!isSmallScreen()) {
+    return true;
+  }
+
+  // Sticky header with more than 5 parameters
+  // takes too much space on small screens
+  return parameterCount <= 5;
+}
 
 export const Dashboard = DashboardControls(DashboardInner);
