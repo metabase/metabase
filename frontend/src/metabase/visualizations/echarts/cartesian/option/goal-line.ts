@@ -17,6 +17,7 @@ export function getGoalLineSeriesOption(
 
   return {
     type: "line", // type is irreelevant since we hide the series data with opacity 0
+    silent: true,
     itemStyle: {
       opacity: 0,
     },
