@@ -93,7 +93,7 @@ const BulkFilterModal = ({
 
   const handleApplyQuery = useCallback(() => {
     const preCleanedQuery = fixBetweens(query);
-    onQueryChange(preCleanedQuery.clean());
+    onQueryChange(preCleanedQuery.clean({ skipFilters: false }));
     onClose?.();
   }, [query, onClose, onQueryChange]);
 
