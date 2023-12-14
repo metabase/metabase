@@ -65,7 +65,7 @@ function DataPermissionsPage({
   );
 
   useEffect(() => {
-    initialize();
+    //initialize();
   }, [initialize]);
 
   useEffect(() => {

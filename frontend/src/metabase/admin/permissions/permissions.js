@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { push } from "react-router-redux";
-import { assocIn } from "icepick";
+import { assocIn, merge } from "icepick";
 
 import {
   PLUGIN_DATA_PERMISSIONS,
@@ -46,6 +46,24 @@ export const LOAD_DATA_PERMISSIONS =
 export const loadDataPermissions = createThunkAction(
   LOAD_DATA_PERMISSIONS,
   () => async () => PermissionsApi.graph(),
+);
+
+export const LOAD_DATA_PERMISSIONS_FOR_GROUP =
+  "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
+export const loadDataPermissionsForGroup = createThunkAction(
+  LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  ({ groupId }) =>
+    async () =>
+      PermissionsApi.graphForGroup({ groupId }),
+);
+
+export const LOAD_DATA_PERMISSIONS_FOR_DB =
+  "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
+export const loadDataPermissionsForDB = createThunkAction(
+  LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  ({ databaseId }) =>
+    async () =>
+      PermissionsApi.graphForDB({ databaseId }),
 );
 
 const INITIALIZE_COLLECTION_PERMISSIONS =
@@ -230,6 +248,12 @@ const dataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
     [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
@@ -317,6 +341,12 @@ const originalDataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: (state, { payload }) => merge(payload.groups, state),
+    },
     [SAVE_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.groups,
     },
@@ -328,6 +358,12 @@ const dataPermissionsRevision = handleActions(
   {
     [LOAD_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.revision,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: (state, { payload }) => payload.revision,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: (state, { payload }) => payload.revision,
     },
     [SAVE_DATA_PERMISSIONS]: {
       next: (_state, { payload }) => payload.revision,
