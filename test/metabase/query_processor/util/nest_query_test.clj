@@ -288,7 +288,7 @@
 
 (deftest nest-expressions-ignore-source-queries-from-joins-test-e2e-test
   (testing "Ignores source-query from joins (#20809)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [:model/Card base {:dataset_query
                                                  (mt/mbql-query
                                                    reviews
@@ -566,7 +566,7 @@
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
     (driver/with-driver :h2
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (qp.store/with-metadata-provider meta/metadata-provider
           (is (partial= (lib.tu.macros/$ids orders
                           (merge {:source-query (let [product-id        [:field %product-id {::add/source-table  $$orders
@@ -645,7 +645,7 @@
 
 (deftest ^:parallel uniquify-aliases-test
   (driver/with-driver :h2
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider meta/metadata-provider
         (is (partial= (lib.tu.macros/$ids products
                         {:source-query       {:source-table $$products

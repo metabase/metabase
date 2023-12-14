@@ -14,6 +14,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -221,6 +223,23 @@
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
   (t2/select [FieldValues :field_id :values], :field_id id))
+
+(mu/defn nested-field-names->field-id :- [:maybe ms/PositiveInt]
+  "Recusively find the field id for a nested field name, return nil if not found.
+  Nested field here refer to a field that has another field as its parent_id, like nested field in Mongo DB.
+
+  This is to differentiate from the json nested field in, which the path is defined in metabase_field.nfc_path."
+  [table-id    :- ms/PositiveInt
+   field-names :- [:sequential ms/NonBlankString]]
+  (loop [field-names field-names
+         field-id    nil]
+    (if (seq field-names)
+      (let [field-name (first field-names)
+            field-id   (t2/select-one-pk :model/Field :name field-name :parent_id field-id :table_id table-id)]
+        (if field-id
+          (recur (rest field-names) field-id)
+          nil))
+      field-id)))
 
 (defn- select-field-id->instance
   "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model

@@ -52,7 +52,11 @@
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
    :settings         mi/transform-encrypted-json
-   :sso_source       mi/transform-keyword})
+   :sso_source       mi/transform-keyword
+   :type             mi/transform-keyword})
+
+(def ^:private allowed-user-types
+  #{:internal :personal})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -86,6 +90,9 @@
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
+  (when-let [user-type (:type user)]
+    (assert
+     (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge

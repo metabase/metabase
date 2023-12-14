@@ -28,6 +28,7 @@ The languages you can currently pick from are:
 - Czech
 - Dutch
 - Farsi/Persian
+- Finnish
 - French
 - German
 - Indonesian

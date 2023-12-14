@@ -100,8 +100,6 @@
   - This uses a weird ID because some tests were hardcoded to look for database with ID = 2, and inserting an extra db
   throws that off since these IDs are sequential."
   [engine id]
-  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-  (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
   (t2/insert! Database {:is_audit         true
                         :id               id
                         :name             "Internal Metabase Database"
@@ -110,7 +108,9 @@
                         :is_full_sync     true
                         :is_on_demand     false
                         :creator_id       nil
-                        :auto_run_queries true}))
+                        :auto_run_queries true})
+  ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
+  (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" id "/%")]}))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
