@@ -9,6 +9,7 @@ import {
   createMockTextDashboardCard,
   createMockHeadingDashboardCard,
   createMockLinkDashboardCard,
+  createMockDataset,
 } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
 
@@ -28,7 +29,7 @@ const tableDashcard = createMockDashboardCard({
 
 const tableDashcardData = {
   [tableDashcard.id]: {
-    [tableDashcard.card.id]: {
+    [tableDashcard.card.id]: createMockDataset({
       data: createMockDatasetData({
         rows: [["Davy Crocket"], ["Daniel Boone"]],
       }),
@@ -37,7 +38,26 @@ const tableDashcardData = {
       running_time: 50,
       row_count: 2,
       status: "completed",
-    },
+    }),
+  },
+};
+
+const erroringDashcardData = {
+  [tableDashcard.id]: {
+    [tableDashcard.card.id]: createMockDataset({
+      data: createMockDatasetData({
+        rows: [],
+        cols: [],
+      }),
+      database_id: 1,
+      context: "dashboard",
+      running_time: 50,
+      row_count: 0,
+      status: "error",
+      error: {
+        status: 400,
+      },
+    }),
   },
 };
 
@@ -150,6 +170,11 @@ describe("DashCard", () => {
   describe("edit mode", () => {
     it("should show a 'replace card' action", async () => {
       setup({ isEditing: true });
+      expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should show a 'replace card' action for erroring queries", async () => {
+      setup({ isEditing: true, dashcardData: erroringDashcardData });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
     });
 

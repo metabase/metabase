@@ -130,20 +130,22 @@ export function DashCardActionsPanel({
         </DashCardActionButton>,
       );
     }
+  }
 
-    if (dashcard && !isVirtualDashCard(dashcard)) {
-      buttons.push(
-        <DashCardActionButton
-          key="replace-question"
-          aria-label={t`Replace`}
-          tooltip={t`Replace`}
-          onClick={onReplaceCard}
-        >
-          <Icon name="refresh_downstream" />
-        </DashCardActionButton>,
-      );
-    }
+  if (!isLoading && dashcard && !isVirtualDashCard(dashcard)) {
+    buttons.push(
+      <DashCardActionButton
+        key="replace-question"
+        aria-label={t`Replace`}
+        tooltip={t`Replace`}
+        onClick={onReplaceCard}
+      >
+        <Icon name="refresh_downstream" />
+      </DashCardActionButton>,
+    );
+  }
 
+  if (!isLoading && !hasError) {
     if (supportsSeries) {
       buttons.push(
         <AddSeriesButton
