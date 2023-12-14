@@ -229,10 +229,10 @@
           (testing "Database should be synced"
             (let [db (t2/select-one Database :name db-name)]
               (assert (some? db))
-              (is (= 4
+              (is (= 8
                      (wait-for-result (fn []
                                         (let [cnt (t2/count Table :db_id (u/the-id db))]
-                                          (when (= cnt 4)
+                                          (when (= cnt 8)
                                             cnt)))))))))))))
 
 (deftest create-database-test-error-conditions-test

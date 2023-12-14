@@ -14,7 +14,7 @@
 (deftest metabot-only-works-on-models-test
   (testing "POST /api/metabot/model/:model-id won't work for a table endpoint"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [q        "At what time was the status closed for each user?"
               response (mt/user-http-request :rasta :post 404
                                              (format "/metabot/model/%s" (mt/id :people))
@@ -24,7 +24,7 @@
 (deftest metabot-model-happy-path-test
   (testing "POST /api/metabot/model/:model-id happy path"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
@@ -53,7 +53,7 @@
 (deftest metabot-model-sad-path-test
   (testing "POST /api/metabot/model/:model-id produces a message when no SQL is found"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
@@ -74,7 +74,7 @@
 (deftest metabot-database-happy-path-test
   (testing "POST /api/metabot/database/:database-id happy path"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
@@ -104,7 +104,7 @@
 (deftest metabot-database-no-model-found-test
   (testing "With embeddings, you'll always get _some_ model, unless there aren't any at all."
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card _orders-model {:name    "Not a model"
                                :dataset_query
@@ -125,7 +125,7 @@
 (deftest metabot-database-no-sql-found-test
   (testing "When we can't find sql from the selected model, we return a message"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card orders-model {:name    "Orders Model"
                               :dataset_query
@@ -149,7 +149,7 @@
   ;; We can use the metabot-client/bot-endpoint redefs to simulate various failure modes in the bot server
   (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
     (testing "Too many requests returns a useful message"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card _ {:name    "Orders Model"
                    :dataset_query
@@ -169,7 +169,7 @@
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "The bot server is under heavy load"))))))))
     (testing "Not having the right API keys set returns a useful message"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp
           [Card _ {:name    "Orders Model"
                    :dataset_query
@@ -189,7 +189,7 @@
                                                           {:question "Doesn't matter"})]
               (is (true? (str/includes? message "Bot credentials are incorrect or not set"))))))))
     (testing "Too many tokens used returns a useful message"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temp [Card _ {:name    "Orders Model"
                                :dataset_query
                                {:database (mt/id)
@@ -218,7 +218,7 @@
 (deftest metabot-infer-native-sql-test
   (testing "POST /database/:database-id/query"
     (mt/with-temp-env-var-value [mb-is-metabot-enabled true]
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temp [Card _orders-model {:name    "Orders Model"
                                            :dataset_query
                                            {:database (mt/id)

@@ -36,7 +36,8 @@
                               :now                                    true
                               :datetime-diff                          true
                               :convert-timezone                       true
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]

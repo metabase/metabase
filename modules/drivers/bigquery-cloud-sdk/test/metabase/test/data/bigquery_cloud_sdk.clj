@@ -57,7 +57,7 @@
   up outdated, transient datasets via the `transient-dataset-outdated?` mechanism."
   [database-name]
   (let [s (normalize-name database-name)]
-    (str "v3_" s "__transient_" ns-load-time)))
+    (str "v4_" s "__transient_" ns-load-time)))
 
 (defn- test-db-details []
   (reduce

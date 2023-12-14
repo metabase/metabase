@@ -67,15 +67,8 @@ export function findVisibleColumnForLegacyRef(
   return ML.find_visible_column_for_legacy_ref(query, stageIndex, fieldRef);
 }
 
-export function legacyFieldRef(
+export function legacyRef(
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
 ): FieldReference {
-  const fieldRef = ML.legacy_field_ref(column);
-
-  // Remove normalization once https://github.com/metabase/metabase/issues/36699 is fixed
-  if (fieldRef[0] === "segment" || fieldRef[0] === "metric") {
-    return fieldRef.slice(0, 2);
-  }
-
-  return fieldRef;
+  return ML.legacy_ref(column);
 }
