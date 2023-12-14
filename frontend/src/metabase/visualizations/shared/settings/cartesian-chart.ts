@@ -150,7 +150,7 @@ export const getDefaultXAxisScale = (
 };
 
 /**
- * Returns the default columns to be used for scatter plot viz settings.
+ * Returns the default column names to be used for scatter plot viz settings.
  *
  * @param data - property on the series object from the `rawSeries` array
  * @returns object containing column names
