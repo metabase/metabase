@@ -53,8 +53,9 @@ export const AdminEmbedMenu = ({
     <Menu withinPortal position="bottom-start">
       <Menu.Target>{target}</Menu.Target>
 
-      <Menu.Dropdown w="13.75rem" data-testid="embed-menu-content">
+      <Menu.Dropdown w="13.75rem" data-testid="embed-header-menu">
         <Menu.Item
+          data-testid="embed-menu-public-link-item"
           py={isPublicSharingEnabled ? "md" : "sm"}
           icon={
             <Center mr="xs">
@@ -79,7 +80,8 @@ export const AdminEmbedMenu = ({
         </Menu.Item>
 
         <Menu.Item
-          py={isEmbeddingEnabled ? "md" : "md"}
+          data-testid="embed-menu-embed-modal-item"
+          py="md"
           icon={
             <Center mr="xs">
               <Icon name="embed" />

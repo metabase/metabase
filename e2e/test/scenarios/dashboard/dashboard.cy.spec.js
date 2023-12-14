@@ -29,6 +29,7 @@ import {
   updateDashboardCards,
   getTextCardDetails,
   openDashboardMenu,
+  openEmbedModalFromMenu,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -873,9 +874,8 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
     assertScrollBarExists();
-    cy.icon("share").click();
 
-    cy.findByTestId("embed-header-menu").findByText("Embed").click();
+    openEmbedModalFromMenu();
 
     cy.get(".Modal--full").within(() => {
       cy.icon("close").click();
