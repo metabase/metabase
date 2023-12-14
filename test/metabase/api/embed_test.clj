@@ -15,6 +15,7 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public-test :as public-test]
    [metabase.config :as config]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
@@ -24,6 +25,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -31,6 +33,8 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayInputStream)))
+
+(set! *warn-on-reflection* true)
 
 (defn random-embedding-secret-key [] (crypto-random/hex 32))
 
@@ -503,6 +507,17 @@
              (dissoc-id-and-name
               (client/client :get 200 (dashboard-url dash))))))))
 
+(deftest embedding-logs-view-test
+  (with-embedding-enabled-and-new-secret-key
+    (t2.with-temp/with-temp [Dashboard dash {:enable_embedding true}]
+      (testing "Viewing an embedding logs the correct view log event."
+        (client/client :get 200 (dashboard-url dash))
+        (is (partial=
+             {:model      "dashboard"
+              :model_id   (:id dash)
+              :has_access true}
+             (view-log-test/latest-view nil (:id dash))))))))
+
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key
     (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"}
@@ -669,6 +684,40 @@
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= 101
                    (count (csv/read-csv results))))))))))
+
+(deftest embed-download-query-execution-test
+  (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
+    ;; Clear out the query execution log so that test doesn't read stale state
+    (t2/delete! :model/QueryExecution)
+    (mt/with-ensure-with-temp-no-transaction!
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                       :card {:dataset_query (mt/mbql-query venues)}}]
+          (let [query (assoc
+                       (mt/mbql-query venues)
+                       :constraints nil
+                       :middleware {:js-int-to-string? false
+                                    :ignore-cached-results? false
+                                    :process-viz-settings? true
+                                    :format-rows? false}
+                       :viz-settings {}
+                       :async? true
+                       :cache-ttl nil)]
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str (dashcard-url dashcard) "/csv"))
+              (is (= :embedded-csv-download
+                     (:context
+                      (qe)))))
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str (dashcard-url dashcard) "/json"))
+              (is (= :embedded-json-download
+                     (:context
+                      (qe)))))
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str (dashcard-url dashcard) "/xlsx"))
+              (is (= :embedded-xlsx-download
+                     (:context
+                      (qe)))))))))))
 
 (deftest downloading-csv-json-xlsx-results-from-the-dashcard-endpoint-respects-column-settings
   (testing "Downloading CSV/JSON/XLSX results should respect the column settings of the dashcard, such as column order and hidden/shown setting. (#33727)"
