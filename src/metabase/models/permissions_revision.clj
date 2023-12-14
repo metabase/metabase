@@ -2,6 +2,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -30,3 +31,11 @@
   []
   (or (t2/select-one-pk PermissionsRevision {:order-by [[:id :desc]]})
       0))
+
+(mu/defn latest-id-and-user :- [:map [:revision nat-int?] [:user [:maybe :map]]]
+  "Return the ID of the newest `PermissionsRevision`, or zero if none have been made yet, as well as the user who commited that change.
+   (This is used by the permissions graph update logic that checks for changes since the original graph was fetched)."
+  []
+  (let [{:keys [id user_id]} (t2/select-one :model/PermissionsRevision {:select [:id :user_id] :order-by [[:id :desc]]})
+        user (t2/select-one :model/User :id user_id)]
+    {:revision (or id 0) :user user}))

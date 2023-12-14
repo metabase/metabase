@@ -888,16 +888,16 @@
                                                            [:= :object (h2x/literal "/")]
                                                            [:like :object (h2x/literal "%/db/%")]])
                                 ->v1-paths)]
-    {:revision (perms-revision/latest-id)
-     :groups   (generate-graph @db-ids group-id->v1-paths)}))
+    (assoc (perms-revision/latest-id-and-user)
+           :groups (generate-graph @db-ids group-id->v1-paths))))
 
 (defn data-graph-for-db
   "Efficiently returns a data permissions graph, which has all the permissions info for `db-id`."
   [db-id]
   (let [group-id->permissions (permissions-by-group-ids [:like :object (h2x/literal (str "%/db/" db-id "/%"))])
         group-id->v1-paths (->v1-paths group-id->permissions)]
-    {:revision (perms-revision/latest-id)
-     :groups (generate-graph [db-id] group-id->v1-paths)}))
+    (assoc (perms-revision/latest-id-and-user)
+           :groups (generate-graph [db-id] group-id->v1-paths))))
 
 (defn data-graph-for-group
   "Efficiently returns a data permissions graph, which has all the permissions info for the permission group at `group-id`."
@@ -905,8 +905,8 @@
   (let [db-ids (t2/select-pks-set :model/Database)
         group-id->permissions (permissions-by-group-ids [:= :group_id group-id])
         group-id->paths (select-keys (->v1-paths group-id->permissions) [group-id])]
-    {:revision (perms-revision/latest-id)
-     :groups (generate-graph db-ids group-id->paths)}))
+    (assoc (perms-revision/latest-id-and-user)
+           :groups (generate-graph db-ids group-id->paths))))
 
 (defn data-perms-graph-v2
   "Fetch a graph representing the current *data* permissions status for every Group and all permissioned databases.
@@ -932,8 +932,8 @@
                                               (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]
                                                                   path))
                                                       paths))))]
-    {:revision (perms-revision/latest-id)
-     :groups   (generate-graph @db-ids group-id->v2-paths)}))
+    (assoc (perms-revision/latest-id-and-user)
+           :groups (generate-graph @db-ids group-id->v2-paths))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn execution-perms-graph
