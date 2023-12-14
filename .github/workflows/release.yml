@@ -160,7 +160,7 @@ jobs:
           ./version.properties
 
   upload-to-s3:
-    if: ${{ !inputs.skip-s3 != true }}
+    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 15
