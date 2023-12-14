@@ -28,13 +28,6 @@ const {
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
-    // Cypress analytics and the alternative to Cypress dashboard
-    // Needs to be at the very top in the config!
-    [on, config] = require("@deploysentinel/cypress-debugger/plugin")(
-      on,
-      config,
-    );
-
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
     /********************************************************************
@@ -112,7 +105,6 @@ const defaultConfig = {
     return config;
   },
   supportFile: "e2e/support/cypress.js",
-  videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
   // New `specPattern` is the combination of the old:
@@ -123,6 +115,7 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
+  projectId: "ywjy9z",
   viewportHeight: 800,
   viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
@@ -132,7 +125,7 @@ const mainConfig = {
     toConsole: true,
   },
   retries: {
-    runMode: 2,
+    runMode: 1,
     openMode: 0,
   },
 };

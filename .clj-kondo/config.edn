@@ -40,7 +40,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= sql= =? malli=])
+    (clojure.test/is [query= =? malli=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
@@ -73,53 +73,6 @@
     metabase.public-settings.premium-features/enable-enhancements?               {:namespaces ["metabase\\.models.*"]}
     metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
     metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}
-    metabase.util.honeysql-extensions/*                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/*honey-sql-version*                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/+                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/-                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->boolean                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->date                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->datetime                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->integer                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->time                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->timestamp                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/->timestamp-with-time-zone                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions//                                          {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/IdentifierType                             {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/abs                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/at-time-zone                               {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/call                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/cast                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/cast-unless-type-in                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/ceil                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/concat                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/database-type                              {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/day                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/dec                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/floor                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/format                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/hour                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/identifier                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/identifier?                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/inc                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/is-of-type?                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/literal                                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/maybe-cast                                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/minute                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/mod                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/month                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/quarter                                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/quoted-cast                                {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/raw                                        {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/round                                      {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/second                                     {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/type-info                                  {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/type-info->db-type                         {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/unwrap-typed-honeysql-form                 {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/week                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/with-database-type-info                    {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/with-type-info                             {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
-    metabase.util.honeysql-extensions/year                                       {:namespaces ["^metabase\\.driver\\..*$" "^metabase\\.test\\.data\\..*" "^metabase\\.query-processor-test\\..*$"]}
     schema.core/both                                                             {:namespaces ["metabase.*"]}
     schema.core/either                                                           {:namespaces ["metabase.*"]}}}
 
@@ -152,6 +105,11 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.types         {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
+   honeysql.util          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
@@ -423,9 +381,7 @@
     metabase.util.encryption                                        encryption
     metabase.util.encryption-test                                   encryption-test
     metabase.util.files                                             u.files
-    metabase.util.honey-sql-1                                       h1x
     metabase.util.honey-sql-2                                       h2x
-    metabase.util.honeysql-extensions                               hx
     metabase.util.i18n                                              i18n
     metabase.util.i18n.impl                                         i18n.impl
     metabase.util.jvm                                               u.jvm
@@ -669,33 +625,6 @@
    :name    printable-namespaces}
   {:pattern "^metabase\\.lib\\.*"
    :name    metabase-lib}
-  ;; Basically everything except `metabase.driver.` or `metabase.test-data.` except for the drivers explicitly called
-  ;; out below. Remove these drivers from the regex once we switch to Honey SQL 2.
-  ;;
-  ;; This regex is way too big to easily read or write by hand, so use the [[metabase.util.regex/rx]] macro to
-  ;; generate it. It was generated from the following form:
-  ;;
-  ;; (str
-  ;;  (metabase.util.regex/rx
-  ;;   #"^metabase\."
-  ;;   [:not [:and #"util\." [:or "honeysql-extensions" "honey-sql-1"]]]
-  ;;   [:not "query-processor-test"]
-  ;;   [:not [:and
-  ;;          [:or "driver" #"test\.data"]
-  ;;          #"\."
-  ;;          [:or
-  ;;           [:and "sql" [:? "-jdbc"]]
-  ;;           #"(?:sql(?:-jdbc)?)"
-  ;;           "bigquery-cloud-sdk"
-  ;;           [:and "presto" [:? [:or "-common" "-jdbc"]]]
-  ;;           "sqlserver"]
-  ;;          [:? "-test"]
-  ;;          [:or #"\." #"$"]]]
-  ;;   ".*"))
-  ;;
-  ;; Please keep this form updated when you change the generated regex! <3
-  {:pattern "^metabase\\.(?!util\\.(?:(?:honeysql-extensions)|(?:honey-sql-1)))(?!query-processor-test)(?!(?:(?:driver)|(?:test\\.data))\\.(?:(?:sql(?:-jdbc)?)|(?:(?:sql(?:-jdbc)?))|(?:bigquery-cloud-sdk)|(?:presto(?:(?:(?:-common)|(?:-jdbc)))?)|(?:sqlserver))(?:-test)?(?:(?:\\.)|(?:$))).*"
-   :name    honey-sql-2-namespaces}
   ;;
   ;; QP source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`, and
   ;; `metabase.driver.*`, excluding `-test` namespaces.
@@ -726,18 +655,6 @@
                              clojure.core/println      {:level :off}
                              clojure.string/lower-case {:level :off}
                              clojure.string/upper-case {:level :off}}}}
-
-  honey-sql-2-namespaces
-  {:linters
-   {:discouraged-namespace
-    {clj-yaml.core                     {:message "Use metabase.util.yaml"}
-     honeysql.core                     {:message "Use Honey SQL 2"}
-     honeysql.format                   {:message "Use Honey SQL 2"}
-     honeysql.helpers                  {:message "Use Honey SQL 2"}
-     honeysql.types                    {:message "Use Honey SQL 2"}
-     honeysql.util                     {:message "Use Honey SQL 2"}
-     metabase.util.honeysql-extensions {:message "Use h2x"}
-     metabase.util.honey-sql-1         {:message "Use h2x"}}}}
 
   ;; enable all the extra linters we haven't enabled in the core app yet in MLv2. It's all new code so we can adhere
   ;; to the new stricter rules from day 1

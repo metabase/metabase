@@ -1294,7 +1294,7 @@
 
 (deftest pivot-embed-query-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding false]
@@ -1332,7 +1332,7 @@
 
 (deftest pivot-dashcard-success-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
                                        :card     (api.pivots/pivot-card)
@@ -1345,7 +1345,7 @@
             (is (= 1144 (count rows)))))))))
 
 (deftest pivot-dashcard-embedding-disabled-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-temporary-setting-values [enable-embedding false]
       (with-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
@@ -1355,7 +1355,7 @@
                  (client/client :get 400 (pivot-dashcard-url dashcard)))))))))
 
 (deftest pivot-dashcard-embedding-disabled-for-card-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:parameters []}
                                      :card     (api.pivots/pivot-card)
@@ -1364,7 +1364,7 @@
                (client/client :get 400 (pivot-dashcard-url dashcard))))))))
 
 (deftest pivot-dashcard-signing-check-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are signed "
                   "with the wrong key")
       (with-embedding-enabled-and-new-secret-key
@@ -1375,7 +1375,7 @@
                  (client/client :get 400 (with-new-secret-key (pivot-dashcard-url dashcard))))))))))
 
 (deftest pivot-dashcard-locked-params-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-ensure-with-temp-no-transaction!
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
@@ -1405,7 +1405,7 @@
                    (client/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=100"))))))))))
 
 (deftest pivot-dashcard-disabled-params-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                 :embedding_params {:abc "disabled"}
@@ -1422,7 +1422,7 @@
                  (client/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=200")))))))))
 
 (deftest pivot-dashcard-enabled-params-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                 :embedding_params {:abc "enabled"}
@@ -1470,7 +1470,7 @@
 
 (deftest handle-single-params-for-operator-filters-test
   (testing "Query endpoints should work with a single URL parameter for an operator filter (#20438)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key
         (t2.with-temp/with-temp [Card {card-id :id, :as card} {:dataset_query    (mt/native-query
                                                                                   {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
@@ -1508,7 +1508,7 @@
 
 (deftest pass-numeric-param-as-number-test
   (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key
         (t2.with-temp/with-temp [Card card {:dataset_query    (mt/native-query
                                                                {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"

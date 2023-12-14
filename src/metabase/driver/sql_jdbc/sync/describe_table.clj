@@ -17,8 +17,7 @@
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -70,12 +69,12 @@
   [driver db-name-or-nil schema-name table-name]
   {:pre [(string? table-name)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (sql.qp/with-driver-honey-sql-version driver
-    (let [honeysql {:select [:*]
-                    :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table db-name-or-nil schema-name table-name)))]
-                    :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
-          honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
-      (sql.qp/format-honeysql driver honeysql))))
+  (let [table    (sql.qp/->honeysql driver (h2x/identifier :table db-name-or-nil schema-name table-name))
+        honeysql {:select [:*]
+                  :from   [[table]]
+                  :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
+        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+    (sql.qp/format-honeysql driver honeysql)))
 
 (defn fallback-fields-metadata-from-select-query
   "In some rare cases `:column_name` is blank (eg. SQLite's views with group by) fallback to sniffing the type from a
@@ -293,15 +292,16 @@
                                               ;; when true, result is allowed to reflect approximate or out of data
                                               ;; values. when false, results are requested to be accurate
                                               false)]
-      (-> (group-by :index_name (into []
-                                      ;; filtered indexes are ignored
-                                      (filter #(nil? (:filter_condition %)))
-                                      (jdbc/reducible-result-set index-info-rs {})))
-          (update-vals (fn [idx-values]
-                         ;; we only sync columns that are either singlely indexed or is the first key in a composite index
-                         (first (map :column_name (sort-by :ordinal_position idx-values)))))
-          vals
-          set)))))
+       (->> (vals (group-by :index_name (into []
+                                              ;; filtered indexes are ignored
+                                              (filter #(nil? (:filter_condition %)))
+                                              (jdbc/reducible-result-set index-info-rs {}))))
+            (keep (fn [idx-values]
+                    ;; we only sync columns that are either singlely indexed or is the first key in a composite index
+                    (when-let [index-name (some :column_name (sort-by :ordinal_position idx-values))]
+                      {:type  :normal-column-index
+                       :value index-name})))
+            set)))))
 
 (def ^:dynamic *nested-field-column-max-row-length*
   "Max string length for a row for nested field column before we just give up on parsing it.
@@ -467,55 +467,53 @@
 
   If the table has PKs, try to fetch both first and last rows (see #25744).
   Else fetch the first n rows only."
-  [driver table-identifier json-field-identifiers pk-identifiers]
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-    (let [pks-expr         (mapv sql.qp/maybe-wrap-unaliased-expr pk-identifiers)
-          table-expr       (sql.qp/maybe-wrap-unaliased-expr table-identifier)
-          json-field-exprs (mapv sql.qp/maybe-wrap-unaliased-expr json-field-identifiers)]
-      (if (seq pk-identifiers)
-        {:select json-field-exprs
-         :from   [table-expr]
-         ;; mysql doesn't support limit in subquery, so we're using inner join here
-         :join  [[{:union [{:nest {:select   pks-expr
-                                   :from     [table-expr]
-                                   :order-by (mapv #(vector % :asc) pk-identifiers)
-                                   :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
-                           {:nest {:select   pks-expr
-                                   :from     [table-expr]
-                                   :order-by (mapv #(vector % :desc) pk-identifiers)
-                                   :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
-                  :result]
-                 (into [:and]
-                       (for [pk-identifier pk-identifiers]
-                         [:=
-                          (hx/identifier :field :result (last (hx/identifier->components pk-identifier)))
-                          pk-identifier]))]}
-        {:select json-field-exprs
-         :from   [table-expr]
-         :limit  metadata-queries/nested-field-sample-limit}))))
+  [table-identifier json-field-identifiers pk-identifiers]
+  (let [pks-expr         (mapv vector pk-identifiers)
+        table-expr       [table-identifier]
+        json-field-exprs (mapv vector json-field-identifiers)]
+    (if (seq pk-identifiers)
+      {:select json-field-exprs
+       :from   [table-expr]
+       ;; mysql doesn't support limit in subquery, so we're using inner join here
+       :join  [[{:union [{:nest {:select   pks-expr
+                                 :from     [table-expr]
+                                 :order-by (mapv #(vector % :asc) pk-identifiers)
+                                 :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
+                         {:nest {:select   pks-expr
+                                 :from     [table-expr]
+                                 :order-by (mapv #(vector % :desc) pk-identifiers)
+                                 :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
+                :result]
+               (into [:and]
+                     (for [pk-identifier pk-identifiers]
+                       [:=
+                        (h2x/identifier :field :result (last (h2x/identifier->components pk-identifier)))
+                        pk-identifier]))]}
+      {:select json-field-exprs
+       :from   [table-expr]
+       :limit  metadata-queries/nested-field-sample-limit})))
 
 (defn- describe-json-fields
   [driver jdbc-spec table json-fields pks]
-  (sql.qp/with-driver-honey-sql-version driver
-    (let [table-identifier-info [(:schema table) (:name table)]
-          json-field-identifiers (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
-          table-identifier (apply hx/identifier :table table-identifier-info)
-          pk-identifiers   (when (seq pks)
-                             (mapv #(apply hx/identifier :field (into table-identifier-info [%])) pks))
-          sql-args         (sql.qp/format-honeysql
-                            driver
-                            (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))
-          query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
-          field-types      (transduce describe-json-xform describe-json-rf query)
-          fields           (field-types->fields field-types)]
-      (if (> (count fields) max-nested-field-columns)
-        (do
-          (log/warn
-            (format
-              "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-              max-nested-field-columns))
-          (set (take max-nested-field-columns fields)))
-        fields))))
+  (let [table-identifier-info [(:schema table) (:name table)]
+        json-field-identifiers (mapv #(apply h2x/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+        table-identifier (apply h2x/identifier :table table-identifier-info)
+        pk-identifiers   (when (seq pks)
+                           (mapv #(apply h2x/identifier :field (into table-identifier-info [%])) pks))
+        sql-args         (sql.qp/format-honeysql
+                          driver
+                          (sample-json-row-honey-sql table-identifier json-field-identifiers pk-identifiers))
+        query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
+        field-types      (transduce describe-json-xform describe-json-rf query)
+        fields           (field-types->fields field-types)]
+    (if (> (count fields) max-nested-field-columns)
+      (do
+        (log/warn
+         (format
+          "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+          max-nested-field-columns))
+        (set (take max-nested-field-columns fields)))
+      fields)))
 
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.

@@ -15,7 +15,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [ring.adapter.jetty9 :as jetty])
+   [ring.adapter.jetty9 :as jetty]
+   [ring.middleware.params :refer [wrap-params]])
   (:import
    (org.eclipse.jetty.server Server)))
 
@@ -89,6 +90,19 @@
   (let [{:keys [state po-box archipelago]} body]
     (str/join " | " [state po-box archipelago])))
 
+(api/defendpoint GET "/with-query-params/"
+  [:as {params :params}]
+  {params [:and
+           ;; decodes the keyword _keys_
+           [:map-of :keyword any?]
+           ;; ^ if you don't care about the shape you can stop there
+           [:map
+            [:bool-key {:optional true} :boolean]
+            [:string-key {:optional true} :string]
+            [:enum-key [:enum :a :b :c]]
+            [:kw-key :keyword]]]}
+  (pr-str params))
+
 (api/defendpoint POST "/accept-thing/:a" [a] {a [:re #"a.*"]} "hit route for a.")
 (api/defendpoint POST "/accept-thing/:b" [b] {b [:re #"b.*"]} "hit route for b.")
 (api/defendpoint POST "/accept-thing/:c" [c] {c [:re #"c.*"]} "hit route for c.")
@@ -99,15 +113,29 @@
 
 (defn- json-mw [handler]
   (fn [req]
-    (update
-     (handler
-      (update req :body #(-> % slurp (json/parse-string true))))
-     :body json/generate-string)))
+    (-> req
+        (update :body #(-> % slurp (json/parse-string true)))
+        handler
+        (update :body json/generate-string))))
 
 (defn exception-mw [handler]
   (fn [req] (try
               (handler req)
               (catch Exception e (mw.exceptions/api-exception-response e)))))
+
+(deftest defendpoint-query-params-test
+  (let [^Server server (jetty/run-jetty (json-mw
+                                         (exception-mw
+                                          (wrap-params #'routes))) {:port 0 :join? false})
+        port (.. server getURI getPort)
+        get! (fn [route]
+               (http/get (str "http://localhost:" port route)
+                         {:throw-exceptions false
+                          :accept           :json
+                          :as               :json
+                          :coerce           :always}))]
+    (is (= "{:bool-key true, :string-key \"abc\", :enum-key :a, :kw-key :abc}"
+           (:body (get! "/with-query-params/?bool-key=true&string-key=abc&enum-key=a&kw-key=abc"))))))
 
 (deftest defendpoint-test
   (let [^Server server (jetty/run-jetty (json-mw (exception-mw #'routes)) {:port 0 :join? false})

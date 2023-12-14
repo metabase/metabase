@@ -48,7 +48,7 @@
             (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query (mt/mbql-query products
                   {:joins [{:source-query {:source-table $$orders
                                            :breakout     [$orders.product_id]
