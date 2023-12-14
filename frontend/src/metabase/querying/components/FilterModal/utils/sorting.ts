@@ -1,32 +1,42 @@
 import * as Lib from "metabase-lib";
 import type { ColumnItem } from "../types";
 
-const isPlainCategory = (column: Lib.ColumnMetadata) => {
+function isCreationDateOrTimestamp(column: Lib.ColumnMetadata) {
+  return Lib.isCreationDate(column) || Lib.isCreationTimestamp(column);
+}
+
+function isPlainCategory(column: Lib.ColumnMetadata) {
   return (
     Lib.isCategory(column) &&
     !Lib.isEntityName(column) &&
     !Lib.isTitle(column) &&
     !Lib.isAddress(column)
   );
-};
+}
 
-const isPlainNumber = (column: Lib.ColumnMetadata) => {
+function isPlainNumber(column: Lib.ColumnMetadata) {
   return Lib.isNumber(column) && !Lib.isCoordinate(column);
-};
+}
 
-const isShortText = (column: Lib.ColumnMetadata) =>
-  Lib.isString(column) && !isLongText(column);
+function isShortText(column: Lib.ColumnMetadata) {
+  return Lib.isString(column) && !isLongText(column);
+}
 
-const isLongText = (column: Lib.ColumnMetadata) =>
-  Lib.isComment(column) || Lib.isDescription(column);
+function isLongText(column: Lib.ColumnMetadata) {
+  return Lib.isComment(column) || Lib.isDescription(column);
+}
 
 const PRIORITIES = [
-  Lib.isCreationDate,
+  isCreationDateOrTimestamp,
+  Lib.isCreationTime,
   Lib.isDate,
   Lib.isBoolean,
   isPlainCategory,
   Lib.isCurrency,
-  Lib.isAddress,
+  Lib.isCity,
+  Lib.isState,
+  Lib.isZipCode,
+  Lib.isCountry,
   isPlainNumber,
   isShortText,
   Lib.isPrimaryKey,
