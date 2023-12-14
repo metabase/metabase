@@ -24,7 +24,6 @@ import {
 } from "./selectors-typed";
 
 export const getIsEditing = state => !!state.dashboard.isEditing;
-export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
   const { sidebar, dashcards } = state.dashboard;
   return sidebar.name === SIDEBAR_NAME.clickBehavior
