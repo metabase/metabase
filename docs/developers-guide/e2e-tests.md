@@ -110,13 +110,12 @@ Snapshots are created with a separate set of Cypress tests. These tests start wi
 These snapshot-generating tests have the extension `.cy.snap.js`. When these tests run they create db dumps in `frontend/tests/snapshots/*.sql`. They are run before the tests begin and don't get committed to git.
 
 ## Running in CI
+
 Cypress records videos of each test run, which can be helpful in debugging. Additionally, failed tests have higher quality images saved.
 
 These files can be found under the “Artifacts” section for each run's summary in GitHub Actions.
 The example of the artifacts for a failed test in "Onboarding" directory:
 ![GitHub Actions artifacts section](https://user-images.githubusercontent.com/31325167/241774190-f19da1d5-8fca-4c48-9342-ead18066bd12.png)
-
-Additionally, you will find a handy [DeploySentinel](https://www.deploysentinel.com/ci/dashboard) recording link for each failed test in the logs.
 
 ## Running Cypress tests against Metabase® Enterprise Edition™
 
