@@ -6,7 +6,7 @@ import { Loader, Center } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
-import { SelectValuePicker } from "./SelectValuePicker";
+import { StaticValuePicker } from "./StaticValuePicker";
 import {
   canLoadFieldValues,
   isKey,
@@ -84,7 +84,7 @@ function FilterValuePicker({
   }
 
   return (
-    <SelectValuePicker
+    <StaticValuePicker
       data={data}
       value={value}
       placeholder={placeholder}

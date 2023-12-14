@@ -2,7 +2,7 @@ import { MultiSelect } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 import { getMergedOptions } from "../utils";
 
-interface SelectValuePickerProps {
+interface StaticValuePickerProps {
   data: FieldValue[];
   value: string[];
   placeholder?: string;
@@ -10,13 +10,13 @@ interface SelectValuePickerProps {
   onChange: (newValue: string[]) => void;
 }
 
-export function SelectValuePicker({
+export function StaticValuePicker({
   data,
   value,
   placeholder,
   shouldCreate,
   onChange,
-}: SelectValuePickerProps) {
+}: StaticValuePickerProps) {
   const options = getMergedOptions(data, value);
 
   return (

@@ -37,7 +37,7 @@ function getFieldOptions(fieldValues: FieldValue[]): Option[] {
   }));
 }
 
-function getStaticOptions(selectedValues: string[]): Option[] {
+function getSelectedOptions(selectedValues: string[]): Option[] {
   return selectedValues.map(value => ({
     value,
     label: value,
@@ -49,7 +49,7 @@ export function getMergedOptions(
   selectedValues: string[],
 ): Option[] {
   const options = [
-    ...getStaticOptions(selectedValues),
+    ...getSelectedOptions(selectedValues),
     ...getFieldOptions(fieldValues),
   ];
 
