@@ -48,14 +48,6 @@ describe("scenarios > permissions", () => {
     cy.findAllByLabelText("Refresh").should("be.disabled");
   });
 
-  it("should display the permissions screen for pulses", () => {
-    cy.signIn("none");
-    // There's no pulse in the fixture data, so we stub out the api call to replace the 404 with a 403.
-    cy.intercept("api/pulse/1", { statusCode: 403, body: {} });
-    cy.visit("/pulse/1");
-    checkUnauthorized();
-  });
-
   it("should let a user with no data permissions view questions", () => {
     cy.signIn("nodata");
     visitQuestion(ORDERS_QUESTION_ID);

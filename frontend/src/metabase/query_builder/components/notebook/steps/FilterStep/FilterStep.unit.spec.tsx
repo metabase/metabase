@@ -22,6 +22,7 @@ function setup(step = createMockNotebookStep()) {
     <FilterStep
       step={step}
       query={step.query}
+      stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       color="filter"
       isLastOpened={false}

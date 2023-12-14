@@ -3,20 +3,20 @@ import type { VersionInfoRecord } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
   createMockVersion,
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 import * as domUtils from "metabase/lib/dom";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import { WhatsNewNotification } from "./WhatsNewNotification";
 
 const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;
@@ -24,6 +24,7 @@ const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;
 const notification = () => screen.queryByText("See what's new");
 
 const setup = ({
+  isWhiteLabeling = false,
   isEmbedded = false,
   lastAcknowledged = null,
   currentVersion = "v0.48.0",
@@ -37,6 +38,7 @@ const setup = ({
     mockVersion({ version: "v0.47.0" }),
   ],
 }: {
+  isWhiteLabeling?: boolean;
   isEmbedded?: boolean;
   currentVersion?: string;
   lastAcknowledged?: string | null;
@@ -47,16 +49,28 @@ const setup = ({
   const versionMock = createMockVersion({ tag: currentVersion });
 
   const [latest, ...older] = versions;
-  const mockSettings = createMockSettingsState({
-    version: versionMock,
-    "version-info": createMockVersionInfo({ latest, older }),
-    "last-acknowledged-version": lastAcknowledged,
-  });
+
   setupPropertiesEndpoints(createMockSettings());
   setupSettingsEndpoints([createMockSettingDefinition()]);
 
+  const mockState = createMockState({
+    settings: mockSettings({
+      version: versionMock,
+      "version-info": createMockVersionInfo({ latest, older }),
+      "last-acknowledged-version": lastAcknowledged,
+      "application-name": isWhiteLabeling ? "My App" : "Metabase",
+      "token-features": createMockTokenFeatures({
+        whitelabel: isWhiteLabeling,
+      }),
+    }),
+  });
+
+  if (isWhiteLabeling) {
+    setupEnterprisePlugins();
+  }
+
   return renderWithProviders(<WhatsNewNotification></WhatsNewNotification>, {
-    storeInitialState: createMockState({ settings: mockSettings }),
+    storeInitialState: mockState,
   });
 };
 
@@ -65,6 +79,11 @@ describe("WhatsNewNotification", () => {
     it("should show the notification if the last acknowledged version is null", () => {
       setup({ currentVersion: "v0.48.0", lastAcknowledged: null });
       expect(notification()).toBeInTheDocument();
+    });
+
+    it("should not show the notification is whitelabeling is being used", () => {
+      setup({ currentVersion: "v0.48.0", isWhiteLabeling: true });
+      expect(notification()).not.toBeInTheDocument();
     });
 
     it("should show the notification for a version in the range (last acknowledged, currentVresion]", () => {
