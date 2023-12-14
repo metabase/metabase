@@ -221,8 +221,10 @@
          ;; mongo support multi key index, aka nested fields index, so we need to split the keys
          ;; and represent it as a list of field names
          (map #(if (str/includes? % ".")
-                 (str/split % #"\.")
-                 %))
+                 {:type  :nested-column-index
+                  :value (str/split % #"\.")}
+                 {:type  :normal-column-index
+                  :value %}))
          set)))
 
 (defn- from-db-object

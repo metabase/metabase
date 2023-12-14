@@ -317,8 +317,9 @@
   :hierarchy #'hierarchy)
 
 (defmulti describe-table-indexes
-  "Returns a set of field names that are either indexed or are the first columns in a composite index.
-  Field name can be a string, nested field need to be represented as a sequence of strings."
+  "Returns a set of map containing information about the indexes of a table.
+  Currently we only sync single column indexes or the first column of a composite index.
+  Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
   {:added "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

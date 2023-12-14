@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -469,7 +470,8 @@
                         (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
 
 (deftest describe-table-indexes-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :index-info) :mongo)
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
+                                     (mt/sql-jdbc-drivers))
     (mt/dataset (mt/dataset-definition "indexes"
                   ["single_index"
                    [{:field-name "indexed" :indexed? true :base-type :type/Integer}
@@ -502,7 +504,8 @@
 
 (deftest describe-table-indexes-advanced-index-type-test
   ;; a set of tests for advanced index types
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :index-info) :mongo)
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
+                                     (mt/sql-jdbc-drivers))
     (mt/dataset (mt/dataset-definition "advanced-indexes"
                   ["unique_index"
                    [{:field-name "column" :indexed? false :base-type :type/Integer}]
@@ -518,22 +521,28 @@
                    [[1 2]]])
       (try
        (let [describe-table-indexes (fn [table]
-                                      (into #{} (map u/lower-case-en)
-                                            (sql-jdbc.sync/describe-table-indexes
-                                             driver/*driver*
-                                             (mt/db)
-                                             table)))]
+                                      (->> (sql-jdbc.sync/describe-table-indexes
+                                            driver/*driver*
+                                            (mt/db)
+                                            table)
+                                           (map (fn [index]
+                                                  (update index :value #(if (string? %)
+                                                                          (u/lower-case-en %)
+                                                                          (map u/lower-case-en %)))))
+                                           set))]
          (testing "hashed index"
            (when (not= :h2 driver/*driver*)
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
-             (is (= #{"id" "column"}
+             (is (= #{{:type :normal-column-index :value "id"}
+                      {:type :normal-column-index :value "column"}}
                     (describe-table-indexes (t2/select-one Table (mt/id :unique_index)))))))
 
          (testing "unique index"
            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                           (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
-           (is (= #{"id" "column"}
+           (is (= #{{:type :normal-column-index :value "id"}
+                    {:type :normal-column-index :value "column"}}
                   (describe-table-indexes (t2/select-one Table (mt/id :hashed_index))))))
 
          (testing "clustered index"
@@ -542,14 +551,15 @@
                             (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             "CLUSTER clustered_index USING idx_clustered_index_column;")
-             (is (= #{"id" "column"}
+             (is (= #{{:type :normal-column-index :value "id"}
+                      {:type :normal-column-index :value "column"}}
                     (describe-table-indexes (t2/select-one Table (mt/id :clustered_index)))))))
 
          (testing "conditional index are ignored"
            (when (= :postgres driver/*driver*)
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
-             (is (= #{"id"}
+             (is (= #{{:type :normal-column-index :value "id"}}
                     (describe-table-indexes (t2/select-one Table (mt/id :conditional_index))))))))
        (finally
         ;; clean the db so this test is repeatable

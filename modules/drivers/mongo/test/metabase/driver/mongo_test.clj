@@ -257,7 +257,7 @@
        (finally
         (t2/delete! :model/Database (mt/id)))))))
 
-(deftest describe-table-imndexes-test
+(deftest describe-table-indexes-test
   (mt/test-driver :mongo
     (mt/dataset (mt/dataset-definition "indexing"
                   ["singly-index"
@@ -275,7 +275,7 @@
                   ["advanced-index"
                    [{:field-name "hashed-field" :indexed? false :base-type :type/Text}
                     {:field-name "text-field" :indexed? false :base-type :type/Text}
-                    {:field-name "geospaitial-field" :indexed? false :base-type :type/Text}]
+                    {:field-name "geospatial-field" :indexed? false :base-type :type/Text}]
                    [["Ngoc" "Khuat" [10 20]]]])
 
       (sync/sync-database! (mt/db))
@@ -285,31 +285,39 @@
          (mongo.util/with-mongo-connection [conn (mt/db)]
            (testing "single column index"
              (mcoll/create-index conn "singly-index" {"a" 1})
-             (is (= #{"_id" "a"}
+             (is (= #{{:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "a"}}
                     (describe-indexes :singly-index))))
 
            (testing "compound index column index"
              (mcoll/create-index conn "compound-index" (array-map "a" 1 "b" 1 "c" 1)) ;; first index column is :a
              (mcoll/create-index conn "compound-index" (array-map "e" 1 "d" 1 "f" 1)) ;; first index column is :e
-             (is (= #{"_id" "a" "e"}
+             (is (= #{{:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "a"}
+                      {:type :normal-column-index :value "e"}}
                     (describe-indexes :compound-index))))
 
            (testing "compound index that has many keys can still determine the first key"
              (mcoll/create-index conn "compound-index-big"
                                  (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1)) ;; first index column is :j
-             (is (= #{"_id" "j"}
+             (is (= #{{:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "j"}}
                     (describe-indexes :compound-index-big))))
 
            (testing "multi key indexes"
              (mcoll/create-index conn "multi-key-index" (array-map "a.b" 1))
-             (is (= #{"_id" ["a" "b"]}
+             (is (= #{{:type :nested-column-index :value ["a" "b"]}
+                      {:type :normal-column-index :value "_id"}}
                     (describe-indexes :multi-key-index))))
 
            (testing "advanced-index: hashed index, text index, geospatial index"
              (mcoll/create-index conn "advanced-index" (array-map "hashed-field" "hashed"))
              (mcoll/create-index conn "advanced-index" (array-map "text-field" "text"))
              (mcoll/create-index conn "advanced-index" (array-map "geospatial-field" "2d"))
-             (is (= #{"hashed-field" "_id" "text-field" "geospatial-field"}
+             (is (= #{{:type :normal-column-index :value "geospatial-field"}
+                      {:type :normal-column-index :value "hashed-field"}
+                      {:type :normal-column-index :value "_id"}
+                      {:type :normal-column-index :value "text-field"}}
                     (describe-indexes :advanced-index))))))
 
        (finally
