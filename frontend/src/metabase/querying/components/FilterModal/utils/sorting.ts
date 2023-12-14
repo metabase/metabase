@@ -5,7 +5,7 @@ function isCreationDateOrTimestamp(column: Lib.ColumnMetadata) {
   return Lib.isCreationDate(column) || Lib.isCreationTimestamp(column);
 }
 
-function isPlainCategory(column: Lib.ColumnMetadata) {
+function isCategoryAndNotNameOrAddress(column: Lib.ColumnMetadata) {
   return (
     Lib.isCategory(column) &&
     !Lib.isEntityName(column) &&
@@ -14,7 +14,7 @@ function isPlainCategory(column: Lib.ColumnMetadata) {
   );
 }
 
-function isPlainNumber(column: Lib.ColumnMetadata) {
+function isNumberAndNotCoordinate(column: Lib.ColumnMetadata) {
   return Lib.isNumber(column) && !Lib.isCoordinate(column);
 }
 
@@ -31,13 +31,13 @@ const PRIORITIES = [
   Lib.isCreationTime,
   Lib.isDate,
   Lib.isBoolean,
-  isPlainCategory,
+  isCategoryAndNotNameOrAddress,
   Lib.isCurrency,
   Lib.isCity,
   Lib.isState,
   Lib.isZipCode,
   Lib.isCountry,
-  isPlainNumber,
+  isNumberAndNotCoordinate,
   isShortText,
   Lib.isPrimaryKey,
   Lib.isLatitude,
