@@ -14,17 +14,9 @@ import {
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
   "/admin/settings/embedding-in-other-applications/standalone";
-const licenseUrl = "https://metabase.com/license/embedding";
 const upgradeUrl = "https://www.metabase.com/upgrade";
-const learnEmbeddingUrl =
-  "https://www.metabase.com/learn/embedding/embedding-charts-and-dashboards.html";
-
 const embeddingDescription =
   "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
-const licenseExplanations = [
-  `When you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`,
-  `Your should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`,
-];
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
@@ -62,43 +54,16 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       });
 
       cy.location("pathname").should("eq", embeddingPage);
-      cy.findByRole("heading", { name: "Embedding" });
-
       cy.findByTestId("enable-embedding-setting").within(() => {
-        // Some info we provide to users before they enable embedding
         cy.findByText(embeddingDescription);
-        cy.contains("By enabling embedding you're agreeing to");
-        assertLinkMatchesUrl("our embedding license.", licenseUrl);
 
-        cy.findByRole("tab")
-          .should("have.attr", "aria-expanded", "false")
-          .findByText("More details")
-          .click();
-
-        cy.findByRole("tab")
-          .should("have.attr", "aria-expanded", "true")
-          .within(() => {
-            licenseExplanations.forEach(licenseExplanation => {
-              cy.findByText(licenseExplanation);
-            });
-          });
-
-        cy.button("Enable").click();
+        cy.findByLabelText("Embedding Enabled").click({ force: true });
       });
-
       // The URL should stay the same
       cy.location("pathname").should("eq", embeddingPage);
 
       cy.findByTestId("enable-embedding-setting").within(() => {
-        cy.contains(
-          "Allow questions, dashboards, and more to be embedded. Learn more.",
-        );
-        assertLinkMatchesUrl("Learn more.", learnEmbeddingUrl);
-
-        cy.findByRole("switch")
-          .should("be.checked")
-          .siblings()
-          .should("have.text", "Enabled");
+        cy.findByRole("checkbox").should("be.checked");
       });
 
       cy.log(
