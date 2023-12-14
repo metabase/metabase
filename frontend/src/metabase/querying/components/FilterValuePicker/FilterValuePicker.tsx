@@ -1,21 +1,26 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
+import { checkNotNull } from "metabase/lib/types";
 import { Loader, Center } from "metabase/ui";
 import { useFieldValuesQuery } from "metabase/common/hooks";
 import { ListValuePicker } from "./ListValuePicker";
 import { SearchValuePicker } from "./SearchValuePicker";
-import { SelectValuePicker } from "./SelectValuePicker";
-import { MAX_INLINE_OPTIONS } from "./constants";
-import { isKey } from "./utils";
+import { StaticValuePicker } from "./StaticValuePicker";
+import {
+  canLoadFieldValues,
+  isKey,
+  canListFieldValues,
+  canSearchFieldValues,
+} from "./utils";
 
 interface FilterValuePickerProps<T> {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  value: T[];
-  compact?: boolean;
-  onChange: (newValue: T[]) => void;
+  values: T[];
+  isCompact?: boolean;
+  onChange: (newValues: T[]) => void;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
@@ -27,20 +32,20 @@ function FilterValuePicker({
   query,
   stageIndex,
   column,
-  value,
+  values: selectedValues,
   placeholder,
-  compact,
+  isCompact = false,
   shouldCreate,
   onChange,
 }: FilterValuePickerOwnProps) {
-  const { fieldId, hasFieldValues } = useMemo(
+  const fieldInfo = useMemo(
     () => Lib.fieldValuesInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
-  const { data = [], isLoading } = useFieldValuesQuery({
-    id: fieldId != null ? fieldId : undefined,
-    enabled: hasFieldValues === "list",
+  const { data: fieldData, isLoading } = useFieldValuesQuery({
+    id: fieldInfo.fieldId ?? undefined,
+    enabled: canLoadFieldValues(fieldInfo),
   });
 
   if (isLoading) {
@@ -51,25 +56,27 @@ function FilterValuePicker({
     );
   }
 
-  if (data.length > 0 && (data.length <= MAX_INLINE_OPTIONS || !compact)) {
+  if (fieldData && canListFieldValues(fieldData, isCompact)) {
     return (
       <ListValuePicker
-        data={data}
-        value={value}
+        fieldValues={fieldData.values}
+        selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        compact={compact}
+        isCompact={isCompact}
         onChange={onChange}
       />
     );
   }
 
-  if (fieldId != null && hasFieldValues === "search") {
+  if (canSearchFieldValues(fieldInfo)) {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return (
       <SearchValuePicker
-        fieldId={fieldId}
-        value={value}
+        fieldId={checkNotNull(fieldInfo.fieldId)}
+        searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
+        fieldValues={fieldData?.values ?? []}
+        selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
         onChange={onChange}
@@ -78,9 +85,9 @@ function FilterValuePicker({
   }
 
   return (
-    <SelectValuePicker
-      data={data}
-      value={value}
+    <StaticValuePicker
+      fieldValues={fieldData?.values ?? []}
+      selectedValues={selectedValues}
       placeholder={placeholder}
       shouldCreate={shouldCreate}
       onChange={onChange}
@@ -92,8 +99,8 @@ export function StringFilterValuePicker({
   query,
   stageIndex,
   column,
-  value,
-  compact,
+  values,
+  isCompact,
   onChange,
 }: FilterValuePickerProps<string>) {
   return (
@@ -101,9 +108,9 @@ export function StringFilterValuePicker({
       query={query}
       stageIndex={stageIndex}
       column={column}
-      value={value}
+      values={values}
       placeholder={isKey(column) ? t`Enter an ID` : t`Enter some text`}
-      compact={compact}
+      isCompact={isCompact}
       shouldCreate={query => query.length > 0}
       onChange={onChange}
     />
@@ -114,8 +121,8 @@ export function NumberFilterValuePicker({
   query,
   stageIndex,
   column,
-  value,
-  compact,
+  values,
+  isCompact,
   onChange,
 }: FilterValuePickerProps<number>) {
   return (
@@ -123,9 +130,9 @@ export function NumberFilterValuePicker({
       query={query}
       stageIndex={stageIndex}
       column={column}
-      value={value.map(value => String(value))}
+      values={values.map(value => String(value))}
       placeholder={isKey(column) ? t`Enter an ID` : t`Enter a number`}
-      compact={compact}
+      isCompact={isCompact}
       shouldCreate={query => isFinite(parseFloat(query))}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />

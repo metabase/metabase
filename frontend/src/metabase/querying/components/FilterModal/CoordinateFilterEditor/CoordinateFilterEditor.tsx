@@ -112,9 +112,8 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        value={values.filter(isNumber)}
-        placeholder={t`Enter a number`}
-        compact
+        values={values.filter(isNumber)}
+        isCompact
         onChange={onChange}
       />
     );

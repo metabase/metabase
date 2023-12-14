@@ -107,8 +107,8 @@ function StringValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        value={values}
-        compact
+        values={values}
+        isCompact
         onChange={onChange}
       />
     );

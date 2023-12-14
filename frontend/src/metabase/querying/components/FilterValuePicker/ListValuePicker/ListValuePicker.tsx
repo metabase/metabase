@@ -7,31 +7,31 @@ import { getMergedOptions } from "../utils";
 import { searchOptions } from "./utils";
 
 interface ListValuePickerProps {
-  data: FieldValue[];
-  value: string[];
+  fieldValues: FieldValue[];
+  selectedValues: string[];
   placeholder?: string;
-  compact?: boolean;
-  onChange: (newValue: string[]) => void;
+  isCompact?: boolean;
+  onChange: (newValues: string[]) => void;
 }
 
 export function ListValuePicker({
-  data,
-  value,
-  compact,
+  fieldValues,
+  selectedValues,
+  isCompact,
   placeholder,
   onChange,
 }: ListValuePickerProps) {
-  return compact ? (
+  return isCompact ? (
     <CompactValuePicker
-      data={data}
-      value={value}
+      fieldValues={fieldValues}
+      selectedValues={selectedValues}
       placeholder={placeholder}
       onChange={onChange}
     />
   ) : (
     <DefaultValuePicker
-      data={data}
-      value={value}
+      fieldValues={fieldValues}
+      selectedValues={selectedValues}
       placeholder={placeholder}
       onChange={onChange}
     />
@@ -39,13 +39,13 @@ export function ListValuePicker({
 }
 
 function DefaultValuePicker({
-  data,
-  value,
+  fieldValues,
+  selectedValues,
   placeholder,
   onChange,
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const options = getMergedOptions(data, value);
+  const options = getMergedOptions(fieldValues, selectedValues);
   const visibleOptions = searchOptions(options, searchValue);
 
   return (
@@ -55,7 +55,7 @@ function DefaultValuePicker({
         placeholder={placeholder}
         onChange={event => setSearchValue(event.currentTarget.value)}
       />
-      <Checkbox.Group value={value} onChange={onChange}>
+      <Checkbox.Group value={selectedValues} onChange={onChange}>
         {visibleOptions.length > 0 ? (
           <Stack>
             {visibleOptions.map(option => (
@@ -77,11 +77,15 @@ function DefaultValuePicker({
   );
 }
 
-function CompactValuePicker({ data, value, onChange }: ListValuePickerProps) {
-  const options = getMergedOptions(data, value);
+function CompactValuePicker({
+  fieldValues,
+  selectedValues,
+  onChange,
+}: ListValuePickerProps) {
+  const options = getMergedOptions(fieldValues, selectedValues);
 
   return (
-    <Checkbox.Group value={value} onChange={onChange}>
+    <Checkbox.Group value={selectedValues} onChange={onChange}>
       <SimpleGrid cols={2}>
         {options.map(option => (
           <Checkbox

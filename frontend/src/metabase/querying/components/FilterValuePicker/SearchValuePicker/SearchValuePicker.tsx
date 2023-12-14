@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAsyncFn, useDebounce } from "react-use";
-import type { FieldId } from "metabase-types/api";
+import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
 import { getMergedOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
@@ -8,15 +8,19 @@ import { shouldSearch, getSearchValues } from "./utils";
 
 interface SearchValuePickerProps {
   fieldId: FieldId;
-  value: string[];
+  searchFieldId: FieldId;
+  fieldValues: FieldValue[];
+  selectedValues: string[];
   placeholder?: string;
   shouldCreate?: (query: string) => boolean;
-  onChange: (newValue: string[]) => void;
+  onChange: (newValues: string[]) => void;
 }
 
 export function SearchValuePicker({
   fieldId,
-  value,
+  searchFieldId,
+  fieldValues: initialFieldValues,
+  selectedValues,
   placeholder,
   shouldCreate,
   onChange,
@@ -24,25 +28,27 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [lastSearchValue, setLastSearchValue] = useState(searchValue);
 
-  const [{ value: data = [] }, handleSearch] = useAsyncFn(
-    (value: string) => getSearchValues(fieldId, value),
-    [fieldId],
-  );
+  const [{ value: fieldValues = initialFieldValues }, handleSearch] =
+    useAsyncFn(
+      (value: string) =>
+        getSearchValues(fieldId, searchFieldId, value, initialFieldValues),
+      [fieldId],
+    );
 
   const handleDebounce = async () => {
-    if (shouldSearch(data, searchValue, lastSearchValue)) {
+    if (shouldSearch(fieldValues, searchValue, lastSearchValue)) {
       await handleSearch(searchValue);
       setLastSearchValue(searchValue);
     }
   };
 
-  const options = getMergedOptions(data, value);
+  const options = getMergedOptions(fieldValues, selectedValues);
   useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect
       data={options}
-      value={value}
+      value={selectedValues}
       placeholder={placeholder}
       searchValue={searchValue}
       creatable
@@ -50,7 +56,7 @@ export function SearchValuePicker({
       shouldCreate={shouldCreate}
       onChange={onChange}
       onCreate={query => {
-        onChange([...value, query]);
+        onChange([...selectedValues, query]);
         return query;
       }}
       onSearchChange={setSearchValue}

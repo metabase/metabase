@@ -123,7 +123,7 @@ function StringValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          value={values}
+          values={values}
           onChange={onChange}
         />
       </Box>

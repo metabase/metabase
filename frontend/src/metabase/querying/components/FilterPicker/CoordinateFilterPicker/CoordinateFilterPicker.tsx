@@ -130,8 +130,7 @@ function CoordinateValueInput({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          value={values.filter(isNumber)}
-          placeholder={placeholder}
+          values={values.filter(isNumber)}
           onChange={onChange}
         />
       </Box>

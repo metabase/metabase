@@ -1,7 +1,38 @@
+import type { FieldValuesInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { FieldValue } from "metabase-types/api";
+import type { FieldValue, FieldValuesResult } from "metabase-types/api";
 import { MAX_INLINE_OPTIONS } from "./constants";
 import type { Option } from "./types";
+
+export function canLoadFieldValues({
+  fieldId,
+  hasFieldValues,
+}: FieldValuesInfo) {
+  return fieldId != null && hasFieldValues === "list";
+}
+
+export function canListFieldValues(
+  { values, has_more_values }: FieldValuesResult,
+  isCompact: boolean,
+) {
+  return (
+    values.length > 0 &&
+    (values.length <= MAX_INLINE_OPTIONS || !isCompact) &&
+    !has_more_values
+  );
+}
+
+export function canSearchFieldValues({
+  fieldId,
+  searchFieldId,
+  hasFieldValues,
+}: FieldValuesInfo) {
+  return (
+    fieldId != null &&
+    searchFieldId != null &&
+    (hasFieldValues === "list" || hasFieldValues === "search")
+  );
+}
 
 function getFieldOptions(fieldValues: FieldValue[]): Option[] {
   return fieldValues.map(([value, label = value]) => ({
@@ -10,7 +41,7 @@ function getFieldOptions(fieldValues: FieldValue[]): Option[] {
   }));
 }
 
-function getStaticOptions(selectedValues: string[]): Option[] {
+function getSelectedOptions(selectedValues: string[]): Option[] {
   return selectedValues.map(value => ({
     value,
     label: value,
@@ -22,7 +53,7 @@ export function getMergedOptions(
   selectedValues: string[],
 ): Option[] {
   const options = [
-    ...getStaticOptions(selectedValues),
+    ...getSelectedOptions(selectedValues),
     ...getFieldOptions(fieldValues),
   ];
 
@@ -33,8 +64,4 @@ export function getMergedOptions(
 
 export function isKey(column: Lib.ColumnMetadata) {
   return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
-}
-
-export function isInlinePicker(data: FieldValue[], compact: boolean) {
-  return compact && data.length > 0 && data.length <= MAX_INLINE_OPTIONS;
 }
