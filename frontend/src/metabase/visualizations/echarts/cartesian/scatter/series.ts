@@ -41,7 +41,6 @@ export function buildEChartsScatterSeries(
   yAxisIndex: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["scatter"] {
-  // TODO styles
   return {
     type: "scatter",
     yAxisIndex,
