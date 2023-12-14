@@ -135,23 +135,6 @@ export default class PulseEditCards extends Component {
     return notices;
   }
 
-  renderCardNotices(card, index) {
-    const cardPreview = card && this.props.cardPreviews[card.id];
-    const notices = this.getNotices(card, cardPreview, index);
-    if (notices.length > 0) {
-      return (
-        <div>
-          {notices.map((notice, index) => (
-            <CardNotice key={index} isWarning={notice.type === "warning"}>
-              <h3 className="mb1">{notice.head}</h3>
-              <div className="h4">{notice.body}</div>
-            </CardNotice>
-          ))}
-        </div>
-      );
-    }
-  }
-
   render() {
     const { pulse, cardPreviews } = this.props;
 
