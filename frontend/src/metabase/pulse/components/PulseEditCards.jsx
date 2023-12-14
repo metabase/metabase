@@ -101,40 +101,6 @@ export default class PulseEditCards extends Component {
     );
   }
 
-  getNotices(card, cardPreview, index) {
-    const showSoftLimitWarning = index === SOFT_LIMIT;
-    const notices = [];
-    const hasAttachment =
-      isAutoAttached(cardPreview) ||
-      (this.props.attachmentsEnabled &&
-        card &&
-        (card.include_csv || card.include_xls));
-    if (cardPreview) {
-      if (isAutoAttached(cardPreview)) {
-        notices.push({
-          type: "warning",
-          head: t`Heads up`,
-          body: t`We'll show the first 10 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows.`,
-        });
-      }
-      if (cardPreview.pulse_card_type == null && !hasAttachment) {
-        notices.push({
-          type: "warning",
-          head: t`Heads up`,
-          body: t`Raw data questions can only be included as email attachments`,
-        });
-      }
-    }
-    if (showSoftLimitWarning) {
-      notices.push({
-        type: "warning",
-        head: t`Looks like this pulse is getting big`,
-        body: t`We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team.`,
-      });
-    }
-    return notices;
-  }
-
   render() {
     const { pulse, cardPreviews } = this.props;
 
