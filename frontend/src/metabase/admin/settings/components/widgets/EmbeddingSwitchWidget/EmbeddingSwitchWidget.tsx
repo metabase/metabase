@@ -3,10 +3,12 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Stack, Switch, Text } from "metabase/ui";
 
 interface EmbeddingSwitchWidgetProps {
+  setting: { value: boolean | null };
   onChange: (value: boolean) => void;
 }
 
 export const EmbeddingSwitchWidget = ({
+  setting,
   onChange,
 }: EmbeddingSwitchWidgetProps) => (
   <Stack spacing={"md"} className="text-measure">
@@ -15,6 +17,7 @@ export const EmbeddingSwitchWidget = ({
     </Text>
     <Switch
       labelPosition="left"
+      checked={setting.value ?? false}
       label={<strong>{t`Embedding Enabled`}</strong>}
       onChange={e => {
         onChange(e.currentTarget.checked);
