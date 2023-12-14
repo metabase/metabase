@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 import type * as Lib from "metabase-lib";
+import { isNumber } from "metabase/lib/types";
 import { Flex, Grid, NumberInput, Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
+import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 import type { FilterEditorProps } from "../types";
 
 export function CoordinateFilterEditor({
@@ -73,6 +74,9 @@ export function CoordinateFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <NumberValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -84,6 +88,9 @@ export function CoordinateFilterEditor({
 }
 
 interface NumberValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -91,6 +98,9 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -98,11 +108,14 @@ function NumberValueInput({
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        values={values.map(value => String(value))}
+      <NumberFilterValuePicker
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        value={values.filter(isNumber)}
         placeholder={t`Enter a number`}
-        getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
-        onChange={values => onChange(values.map(value => Number(value)))}
+        compact
+        onChange={onChange}
       />
     );
   }

@@ -4,12 +4,12 @@ import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import * as Lib from "metabase-lib";
+import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 
 export function StringFilterPicker({
   query,
@@ -74,6 +74,9 @@ export function StringFilterPicker({
       </FilterPickerHeader>
       <div>
         <StringValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -93,6 +96,9 @@ export function StringFilterPicker({
 }
 
 interface StringValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -100,19 +106,27 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
   onChange,
 }: StringValueInputProps) {
+  const placeholder = t`Enter some text`;
+
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        values={values}
-        placeholder={t`Enter some text`}
-        getCreateLabel={query => query}
-        onChange={onChange}
-      />
+      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+        <StringFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          value={values}
+          onChange={onChange}
+        />
+      </Box>
     );
   }
 
@@ -122,7 +136,7 @@ function StringValueInput({
         <TextInput
           value={values[0]}
           onChange={event => onChange([event.target.value])}
-          placeholder={t`Enter some text`}
+          placeholder={placeholder}
           autoFocus
           w="100%"
         />

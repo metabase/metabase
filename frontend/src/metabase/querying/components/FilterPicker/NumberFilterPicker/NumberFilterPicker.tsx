@@ -1,16 +1,17 @@
 import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
+import { isNumber } from "metabase/lib/types";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
 import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
-import type { FilterPickerWidgetProps } from "../types";
+import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
+import type { FilterPickerWidgetProps } from "../types";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 
 export function NumberFilterPicker({
   query,
@@ -72,6 +73,9 @@ export function NumberFilterPicker({
       </FilterPickerHeader>
       <div>
         <NumberValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -84,6 +88,9 @@ export function NumberFilterPicker({
 }
 
 interface NumberValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: NumberValue[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -91,6 +98,9 @@ interface NumberValueInputProps {
 }
 
 function NumberValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -100,12 +110,16 @@ function NumberValueInput({
 
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        values={values.map(value => String(value))}
-        placeholder={t`Enter a number`}
-        getCreateLabel={query => (isFinite(parseFloat(query)) ? query : null)}
-        onChange={values => onChange(values.map(value => Number(value)))}
-      />
+      <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
+        <NumberFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          value={values.filter(isNumber)}
+          placeholder={placeholder}
+          onChange={onChange}
+        />
+      </Box>
     );
   }
 

@@ -5,9 +5,9 @@ import { Icon } from "metabase/core/components/Icon";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
 import type * as Lib from "metabase-lib";
+import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterColumnName } from "../FilterColumnName";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
-import { FilterValuePicker } from "../FilterValuePicker";
 import type { FilterEditorProps } from "../types";
 
 export function StringFilterEditor({
@@ -69,6 +69,9 @@ export function StringFilterEditor({
       </Grid.Col>
       <Grid.Col span={4}>
         <StringValueInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
           values={values}
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
@@ -80,6 +83,9 @@ export function StringFilterEditor({
 }
 
 interface StringValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
   values: string[];
   valueCount: number;
   hasMultipleValues?: boolean;
@@ -87,6 +93,9 @@ interface StringValueInputProps {
 }
 
 function StringValueInput({
+  query,
+  stageIndex,
+  column,
   values,
   valueCount,
   hasMultipleValues,
@@ -94,10 +103,12 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
-      <FilterValuePicker
-        values={values}
-        placeholder={t`Enter some text`}
-        getCreateLabel={query => query}
+      <StringFilterValuePicker
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        value={values}
+        compact
         onChange={onChange}
       />
     );
