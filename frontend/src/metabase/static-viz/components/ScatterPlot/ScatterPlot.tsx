@@ -24,7 +24,6 @@ export function ScatterPlot({
 }: IsomorphicStaticChartProps) {
   const chart = init(null, null, { renderer: "svg", ssr: true, width, height });
 
-  // TODO implement bubble size setting default?
   const computedVisualizationSettings = computeStaticComboChartSettings(
     rawSeries,
     dashcardSettings,
