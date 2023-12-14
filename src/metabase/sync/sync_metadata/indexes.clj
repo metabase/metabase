@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.models.field :as field]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
@@ -13,26 +14,14 @@
    :added-indexes 0
    :removed-indexes 0})
 
-(defn- nested-field-names->field-id
-  "Recusively find the field id for a nested field name, return nil if not found."
-  [table-id field-names]
-  (loop [field-names field-names
-          field-id    nil]
-    (if (seq field-names)
-      (let [field-name (first field-names)
-            field-id   (t2/select-one-pk :model/Field :name field-name :parent_id field-id :table_id table-id)]
-        (if field-id
-          (recur (rest field-names) field-id)
-          nil))
-      field-id)))
-
 (defn- indexes->field-ids
   [table-id indexes]
   (when (seq indexes)
     (let [normal-indexes           (->> indexes (filter #(= (:type %) :normal-column-index)) (map :value))
           nested-indexes           (->> indexes (filter #(= (:type %) :nested-column-index)) (map :value))
-          normal-indexes-field-ids (when (seq normal-indexes) (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
-          nested-indexes-field-ids (remove nil? (map #(nested-field-names->field-id table-id %) nested-indexes))]
+          normal-indexes-field-ids (when (seq normal-indexes)
+                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
+          nested-indexes-field-ids (remove nil? (map #(field/nested-field-names->field-id table-id %) nested-indexes))]
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
 (defn maybe-sync-indexes-for-table!
