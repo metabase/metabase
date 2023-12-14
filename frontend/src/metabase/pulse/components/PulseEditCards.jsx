@@ -76,6 +76,31 @@ export default class PulseEditCards extends Component {
     this.trackPulseEvent("RemoveCard", index);
   }
 
+  maybeRenderAttachmentNotice(card, cardPreview, index) {
+    const hasAttachment =
+      isAutoAttached(cardPreview) ||
+      (this.props.attachmentsEnabled &&
+        card &&
+        (card.include_csv || card.include_xls));
+
+    if (!hasAttachment) {
+      return null;
+    }
+
+    return (
+      <CardNotice>
+        <h3 className="mb1">{t`Attachment`}</h3>
+        <div className="h4">
+          <AttachmentWidget
+            card={card}
+            onChange={card => this.setCard(index, card)}
+            trackPulseEvent={this.trackPulseEvent}
+          />
+        </div>
+      </CardNotice>
+    );
+  }
+
   getNotices(card, cardPreview, index) {
     const showSoftLimitWarning = index === SOFT_LIMIT;
     const notices = [];
@@ -84,18 +109,6 @@ export default class PulseEditCards extends Component {
       (this.props.attachmentsEnabled &&
         card &&
         (card.include_csv || card.include_xls));
-    if (hasAttachment) {
-      notices.push({
-        head: t`Attachment`,
-        body: (
-          <AttachmentWidget
-            card={card}
-            onChange={card => this.setCard(index, card)}
-            trackPulseEvent={this.trackPulseEvent}
-          />
-        ),
-      });
-    }
     if (cardPreview) {
       if (isAutoAttached(cardPreview)) {
         notices.push({
@@ -127,7 +140,7 @@ export default class PulseEditCards extends Component {
     const notices = this.getNotices(card, cardPreview, index);
     if (notices.length > 0) {
       return (
-        <div className="absolute" style={{ width: 400, marginLeft: 420 }}>
+        <div>
           {notices.map((notice, index) => (
             <CardNotice key={index} isWarning={notice.type === "warning"}>
               <h3 className="mb1">{notice.head}</h3>
@@ -190,7 +203,11 @@ export default class PulseEditCards extends Component {
                     />
                   )}
                 </div>
-                {this.renderCardNotices(card, index)}
+                {this.maybeRenderAttachmentNotice(
+                  card,
+                  card && this.props.cardPreviews[card.id],
+                  index,
+                )}
               </div>
             </li>
           ))}
