@@ -17,7 +17,7 @@ import { ConnectedAddToDashSelectDashModal } from "metabase/containers/AddToDash
 
 import { CollectionMoveModal } from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
-import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
+import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -280,12 +280,7 @@ class QueryModals extends Component<QueryModalsProps> {
         );
       case MODAL_TYPES.EMBED:
         return (
-          <Modal full onClose={onCloseModal}>
-            <QuestionEmbedWidget
-              card={this.props.card}
-              onClose={onCloseModal}
-            />
-          </Modal>
+          <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
         );
       case MODAL_TYPES.CLONE:
         return (

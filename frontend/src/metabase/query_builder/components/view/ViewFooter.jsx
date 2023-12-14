@@ -5,7 +5,6 @@ import cx from "classnames";
 import ButtonBar from "metabase/components/ButtonBar";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import QuestionEmbedWidget from "metabase/query_builder/components/QuestionEmbedWidget";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
 import ViewButton from "./ViewButton";
 
@@ -33,9 +32,7 @@ const ViewFooter = ({
   isObjectDetail,
   questionAlerts,
   visualizationSettings,
-  isAdmin,
   canManageSubscriptions,
-  isResultDirty,
   isVisualized,
   isTimeseries,
   isShowingTimelineSidebar,
@@ -142,8 +139,9 @@ const ViewFooter = ({
               }
             />
           ),
-          QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
+          !question.isDataset() && (
             <EmbedMenu
+              key="embed"
               resource={question}
               resourceType="question"
               hasPublicLink={!!question.publicUUID()}

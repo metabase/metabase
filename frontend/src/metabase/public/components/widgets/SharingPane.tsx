@@ -9,8 +9,6 @@ import Confirm from "metabase/components/Confirm";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { useSelector } from "metabase/lib/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Description,
   EmbedWidgetHeader,
@@ -30,7 +28,7 @@ interface SharingPaneProps {
   resource: Resource;
   resourceType: string;
   onCreatePublicLink: () => void;
-  onDisablePublicLink: () => void;
+  onDeletePublicLink: () => void;
   extensions: string[];
   getPublicUrl: (resource: Resource, extension?: Extension) => void;
   onChangeEmbedType: (embedType: string) => void;
@@ -44,7 +42,7 @@ export default function SharingPane({
   resource,
   resourceType,
   onCreatePublicLink,
-  onDisablePublicLink,
+  onDeletePublicLink,
   getPublicUrl,
   onChangeEmbedType,
   isAdmin,
@@ -59,8 +57,6 @@ export default function SharingPane({
     isAdmin,
     isApplicationEmbeddingEnabled,
   });
-
-  const applicationName = useSelector(getApplicationName);
 
   return (
     <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
@@ -78,7 +74,7 @@ export default function SharingPane({
                     "Public Link Disabled",
                     resourceType,
                   );
-                  onDisablePublicLink();
+                  onDeletePublicLink();
                 }}
               >
                 <Toggle value={true} />
