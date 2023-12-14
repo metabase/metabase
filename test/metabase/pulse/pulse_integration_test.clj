@@ -338,7 +338,11 @@
                                                                                                              :time_enabled    "milliseconds"
                                                                                                              :time_style      "HH:mm"}
                                                                                                             "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
-                                                                                                            {:time_enabled    "milliseconds"}}}}
+                                                                                                            {:time_enabled    "milliseconds"}
+                                                                                                            "[\"name\",\"EXAMPLE_TIME\"]"
+                                                                                                            {:time_enabled    nil}
+                                                                                                            "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
+                                                                                                            {:time_enabled    nil}}}}
                                Dashboard {dash-id :id} {:name "The Dashboard"}
                                DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
                                                                       :card_id      native-card-id}
@@ -408,4 +412,10 @@
                    (metamodel-results "Example Timestamp With Time Zone"))))
           (testing "Custom column settings metadata takes precedence over visualization settings"
             (is (= "December 11, 2023, 3:30:45 PM"
-                   (metamodel-results "Example Timestamp")))))))))
+                   (metamodel-results "Example Timestamp"))))
+          (testing "Setting time-enabled to nil for a date time column results in only showing the date"
+            (is (= "December 11, 2023"
+                   (metamodel-results "Full Datetime Pacific"))))
+          (testing "Setting time-enabled to nil for a time column just returns an empty string"
+            (is (= ""
+                   (metamodel-results "Example Time")))))))))
