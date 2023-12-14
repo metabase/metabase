@@ -11,7 +11,7 @@ interface ListValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   isCompact?: boolean;
-  onChange: (newValue: string[]) => void;
+  onChange: (newValues: string[]) => void;
 }
 
 export function ListValuePicker({

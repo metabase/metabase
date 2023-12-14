@@ -20,7 +20,7 @@ interface FilterValuePickerProps<T> {
   column: Lib.ColumnMetadata;
   values: T[];
   isCompact?: boolean;
-  onChange: (newValue: T[]) => void;
+  onChange: (newValues: T[]) => void;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {

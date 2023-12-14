@@ -12,7 +12,7 @@ interface SearchValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   shouldCreate?: (query: string) => boolean;
-  onChange: (newValue: string[]) => void;
+  onChange: (newValues: string[]) => void;
 }
 
 export function SearchValuePicker({
