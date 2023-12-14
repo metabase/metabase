@@ -9,7 +9,7 @@ import { shouldSearch, getSearchValues } from "./utils";
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
-  value: string[];
+  selectedValues: string[];
   placeholder?: string;
   shouldCreate?: (query: string) => boolean;
   onChange: (newValue: string[]) => void;
@@ -18,7 +18,7 @@ interface SearchValuePickerProps {
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
-  value,
+  selectedValues,
   placeholder,
   shouldCreate,
   onChange,
@@ -26,25 +26,25 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [lastSearchValue, setLastSearchValue] = useState(searchValue);
 
-  const [{ value: data = [] }, handleSearch] = useAsyncFn(
+  const [{ value: fieldValues = [] }, handleSearch] = useAsyncFn(
     (value: string) => getSearchValues(fieldId, searchFieldId, value),
     [fieldId],
   );
 
   const handleDebounce = async () => {
-    if (shouldSearch(data, searchValue, lastSearchValue)) {
+    if (shouldSearch(fieldValues, searchValue, lastSearchValue)) {
       await handleSearch(searchValue);
       setLastSearchValue(searchValue);
     }
   };
 
-  const options = getMergedOptions(data, value);
+  const options = getMergedOptions(fieldValues, selectedValues);
   useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect
       data={options}
-      value={value}
+      value={selectedValues}
       placeholder={placeholder}
       searchValue={searchValue}
       creatable
@@ -52,7 +52,7 @@ export function SearchValuePicker({
       shouldCreate={shouldCreate}
       onChange={onChange}
       onCreate={query => {
-        onChange([...value, query]);
+        onChange([...selectedValues, query]);
         return query;
       }}
       onSearchChange={setSearchValue}

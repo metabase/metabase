@@ -20,13 +20,13 @@ export function getSearchValues(
 }
 
 export function shouldSearch(
-  data: FieldValue[],
+  fieldValues: FieldValue[],
   searchValue: string,
   lastSearchValue: string,
 ) {
   const isLastSearchEmpty = lastSearchValue === "";
   const isExtensionOfLastSearch = searchValue.startsWith(lastSearchValue);
-  const hasMoreValues = data.length === SEARCH_LIMIT;
+  const hasMoreValues = fieldValues.length === SEARCH_LIMIT;
 
   return isLastSearchEmpty || !isExtensionOfLastSearch || hasMoreValues;
 }

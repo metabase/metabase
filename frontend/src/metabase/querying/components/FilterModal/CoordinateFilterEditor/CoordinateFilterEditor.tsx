@@ -112,7 +112,7 @@ function NumberValueInput({
         query={query}
         stageIndex={stageIndex}
         column={column}
-        value={values.filter(isNumber)}
+        values={values.filter(isNumber)}
         isCompact
         onChange={onChange}
       />

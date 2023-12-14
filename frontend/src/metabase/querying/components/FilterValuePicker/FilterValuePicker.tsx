@@ -18,7 +18,7 @@ interface FilterValuePickerProps<T> {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  value: T[];
+  values: T[];
   isCompact?: boolean;
   onChange: (newValue: T[]) => void;
 }
@@ -32,7 +32,7 @@ function FilterValuePicker({
   query,
   stageIndex,
   column,
-  value,
+  values: selectedValues,
   placeholder,
   isCompact = false,
   shouldCreate,
@@ -43,7 +43,7 @@ function FilterValuePicker({
     [query, stageIndex, column],
   );
 
-  const { data = [], isLoading } = useFieldValuesQuery({
+  const { data: fieldValues = [], isLoading } = useFieldValuesQuery({
     id: fieldId ?? undefined,
     enabled: canLoadFieldValues(fieldId, hasFieldValues),
   });
@@ -56,11 +56,11 @@ function FilterValuePicker({
     );
   }
 
-  if (canListFieldValues(data, isCompact)) {
+  if (canListFieldValues(fieldValues, isCompact)) {
     return (
       <ListValuePicker
-        data={data}
-        value={value}
+        fieldValues={fieldValues}
+        selectedValues={selectedValues}
         placeholder={t`Search the list`}
         isCompact={isCompact}
         onChange={onChange}
@@ -75,7 +75,7 @@ function FilterValuePicker({
       <SearchValuePicker
         fieldId={checkNotNull(fieldId)}
         searchFieldId={checkNotNull(searchFieldId)}
-        value={value}
+        selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
         onChange={onChange}
@@ -85,8 +85,8 @@ function FilterValuePicker({
 
   return (
     <StaticValuePicker
-      data={data}
-      value={value}
+      fieldValues={fieldValues}
+      selectedValues={selectedValues}
       placeholder={placeholder}
       shouldCreate={shouldCreate}
       onChange={onChange}
@@ -98,7 +98,7 @@ export function StringFilterValuePicker({
   query,
   stageIndex,
   column,
-  value,
+  values,
   isCompact,
   onChange,
 }: FilterValuePickerProps<string>) {
@@ -107,7 +107,7 @@ export function StringFilterValuePicker({
       query={query}
       stageIndex={stageIndex}
       column={column}
-      value={value}
+      values={values}
       placeholder={isKey(column) ? t`Enter an ID` : t`Enter some text`}
       isCompact={isCompact}
       shouldCreate={query => query.length > 0}
@@ -120,7 +120,7 @@ export function NumberFilterValuePicker({
   query,
   stageIndex,
   column,
-  value,
+  values,
   isCompact,
   onChange,
 }: FilterValuePickerProps<number>) {
@@ -129,7 +129,7 @@ export function NumberFilterValuePicker({
       query={query}
       stageIndex={stageIndex}
       column={column}
-      value={value.map(value => String(value))}
+      values={values.map(value => String(value))}
       placeholder={isKey(column) ? t`Enter an ID` : t`Enter a number`}
       isCompact={isCompact}
       shouldCreate={query => isFinite(parseFloat(query))}

@@ -3,33 +3,33 @@ import type { FieldValue } from "metabase-types/api";
 import { getMergedOptions } from "../utils";
 
 interface StaticValuePickerProps {
-  data: FieldValue[];
-  value: string[];
+  fieldValues: FieldValue[];
+  selectedValues: string[];
   placeholder?: string;
   shouldCreate?: (query: string) => boolean;
   onChange: (newValue: string[]) => void;
 }
 
 export function StaticValuePicker({
-  data,
-  value,
+  fieldValues,
+  selectedValues,
   placeholder,
   shouldCreate,
   onChange,
 }: StaticValuePickerProps) {
-  const options = getMergedOptions(data, value);
+  const options = getMergedOptions(fieldValues, selectedValues);
 
   return (
     <MultiSelect
       data={options}
-      value={value}
+      value={selectedValues}
       placeholder={placeholder}
       creatable
       searchable
       onChange={onChange}
       shouldCreate={shouldCreate}
       onCreate={query => {
-        onChange([...value, query]);
+        onChange([...selectedValues, query]);
         return query;
       }}
     />
