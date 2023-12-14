@@ -169,7 +169,7 @@
   (clojure.core/isa? (:effective-type column) :type/Date))
 
 (defn ^:export creation-timestamp?
-  "Is `column` a creation date column?"
+  "Is `column` a creation timestamp column?"
   [column]
   (clojure.core/isa? (:semantic-type column) :type/CreationTimestamp))
 
