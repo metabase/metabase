@@ -9,7 +9,13 @@
 (comment change.strict/keep-me)
 
 (s/def ::id (s/and string?
-                   #(re-matches #"^v\d{2,}\.\d{2}-\d{3}$" %)))
+                   (s/or
+                    ;; new ids should conform this format
+                    :id-with-timestamp ;; e.g: v49.2023-12-14T08:54:54
+                    (s/and #(re-matches #"^v\d{2,}\.\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$" %))
+                    :id-with-old-verion-format ;; e.g: v49.00-008
+                    (s/and #(re-matches #"^v\d{2,}\.\d{2}-\d{3}$" %)
+                           #(neg? (compare % "v49.00-009"))))))
 
 (s/def ::author string?)
 
