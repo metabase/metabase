@@ -424,7 +424,7 @@
                        :base_type :type/Date}
                       (t2/select-one Field :database_position 6 :table_id (:id table))))
               (is (=? {:name      #"(?i)datetime"
-                       :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
+                       :base_type :type/DateTime}
                       (t2/select-one Field :database_position 7 :table_id (:id table))))
               (testing "Check the data was uploaded into the table"
                 (is (= 2
@@ -450,7 +450,7 @@
               (is (=? {:name #"(?i)upload_test"} table))
               (testing "Check the datetime column the correct base_type"
                 (is (=? {:name      #"(?i)datetime"
-                         :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
+                         :base_type :type/DateTime}
                       ;; db position is 1; 0 is for the auto-inserted ID
                         (t2/select-one Field :database_position 1 :table_id (:id table)))))
               (is (some? table)))))))))
