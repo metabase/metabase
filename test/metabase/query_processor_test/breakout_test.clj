@@ -308,7 +308,7 @@
 (deftest ^:parallel binning-with-source-card-with-explicit-joins-test
   (testing "Make sure binning works with a source card that contains explicit joins"
     (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [source-card-query (mt/mbql-query orders
                                   {:joins  [{:source-table $$people
                                              :alias        "People"
