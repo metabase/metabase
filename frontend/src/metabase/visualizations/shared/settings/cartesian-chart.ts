@@ -175,7 +175,7 @@ export function getDefaultScatterColumns(data: DatasetData) {
 }
 
 /**
- * Returns the a default column name for the bubble size setting
+ * Returns the default column name for the bubble size setting
  * on the scatter plot. If there is no suitable default, it will return `null`.
  *
  * @param data - property on the series object from the `rawSeries` array
