@@ -221,7 +221,6 @@ class DashboardInner extends Component {
       addParameter,
       dashboard,
       isEditing,
-      isEditingParameter,
       isFullscreen,
       isNightMode,
       isSharing,
@@ -241,6 +240,7 @@ class DashboardInner extends Component {
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
     const visibleParameters = getVisibleParameters(parameters);
+    const hasVisibleParameters = visibleParameters.length > 0;
 
     const parametersWidget = (
       <SyncedParametersList
@@ -260,14 +260,10 @@ class DashboardInner extends Component {
     );
 
     const shouldRenderParametersWidgetInViewMode =
-      !isEditing && !isFullscreen && visibleParameters.length > 0;
+      !isEditing && !isFullscreen && hasVisibleParameters;
 
     const shouldRenderParametersWidgetInEditMode =
-      isEditing && visibleParameters.length > 0;
-
-    const cardsContainerShouldHaveMarginTop =
-      !shouldRenderParametersWidgetInViewMode &&
-      (!isEditing || isEditingParameter);
+      isEditing && hasVisibleParameters;
 
     return (
       <DashboardLoadingAndErrorWrapper
@@ -325,8 +321,8 @@ class DashboardInner extends Component {
                 )}
 
                 <CardsContainer
-                  addMarginTop={cardsContainerShouldHaveMarginTop}
                   id="Dashboard-Cards-Container"
+                  hasMarginTop={!isEditing && hasVisibleParameters}
                 >
                   {this.renderContent()}
                 </CardsContainer>
