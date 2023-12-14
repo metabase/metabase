@@ -38,14 +38,14 @@ function FilterValuePicker({
   shouldCreate,
   onChange,
 }: FilterValuePickerOwnProps) {
-  const { fieldId, searchFieldId, hasFieldValues } = useMemo(
+  const fieldInfo = useMemo(
     () => Lib.fieldValuesInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
-  const { data: fieldValues = [], isLoading } = useFieldValuesQuery({
-    id: fieldId ?? undefined,
-    enabled: canLoadFieldValues(fieldId, hasFieldValues),
+  const { data: fieldData, isLoading } = useFieldValuesQuery({
+    id: fieldInfo.fieldId ?? undefined,
+    enabled: canLoadFieldValues(fieldInfo),
   });
 
   if (isLoading) {
@@ -56,10 +56,10 @@ function FilterValuePicker({
     );
   }
 
-  if (canListFieldValues(fieldValues, isCompact)) {
+  if (fieldData && canListFieldValues(fieldData, isCompact)) {
     return (
       <ListValuePicker
-        fieldValues={fieldValues}
+        fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
         isCompact={isCompact}
@@ -68,13 +68,14 @@ function FilterValuePicker({
     );
   }
 
-  if (canSearchFieldValues(fieldId, searchFieldId, hasFieldValues)) {
+  if (fieldData && canSearchFieldValues(fieldInfo)) {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return (
       <SearchValuePicker
-        fieldId={checkNotNull(fieldId)}
-        searchFieldId={checkNotNull(searchFieldId)}
+        fieldId={checkNotNull(fieldInfo.fieldId)}
+        searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
+        fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
@@ -85,7 +86,7 @@ function FilterValuePicker({
 
   return (
     <StaticValuePicker
-      fieldValues={fieldValues}
+      fieldValues={fieldData?.values ?? []}
       selectedValues={selectedValues}
       placeholder={placeholder}
       shouldCreate={shouldCreate}

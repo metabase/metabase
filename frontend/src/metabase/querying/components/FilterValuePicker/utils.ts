@@ -1,32 +1,36 @@
+import type { FieldValuesInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { FieldId, FieldValue, FieldValuesType } from "metabase-types/api";
+import type { FieldValue, FieldValuesResult } from "metabase-types/api";
 import { MAX_INLINE_OPTIONS } from "./constants";
 import type { Option } from "./types";
 
-export function canLoadFieldValues(
-  fieldId: FieldId | null,
-  hasFieldValues: FieldValuesType,
-) {
+export function canLoadFieldValues({
+  fieldId,
+  hasFieldValues,
+}: FieldValuesInfo) {
   return fieldId != null && hasFieldValues === "list";
 }
 
 export function canListFieldValues(
-  fieldValues: FieldValue[],
+  { values, has_more_values }: FieldValuesResult,
   isCompact: boolean,
 ) {
   return (
-    fieldValues.length > 0 &&
-    (fieldValues.length <= MAX_INLINE_OPTIONS || !isCompact)
+    values.length > 0 &&
+    (values.length <= MAX_INLINE_OPTIONS || !isCompact) &&
+    !has_more_values
   );
 }
 
-export function canSearchFieldValues(
-  fieldId: FieldId | null,
-  searchFieldId: FieldId | null,
-  hasFieldValues: FieldValuesType,
-) {
+export function canSearchFieldValues({
+  fieldId,
+  searchFieldId,
+  hasFieldValues,
+}: FieldValuesInfo) {
   return (
-    fieldId != null && searchFieldId != null && hasFieldValues === "search"
+    fieldId != null &&
+    searchFieldId != null &&
+    (hasFieldValues === "list" || hasFieldValues === "search")
   );
 }
 

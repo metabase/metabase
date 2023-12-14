@@ -6,8 +6,9 @@ export function getSearchValues(
   fieldId: FieldId,
   searchFieldId: FieldId,
   searchValue: string,
+  initialFieldValues: FieldValue[],
 ): Promise<FieldValue[]> {
-  if (searchValue !== "") {
+  if (searchValue) {
     return MetabaseApi.field_search({
       fieldId,
       searchFieldId,
@@ -16,7 +17,7 @@ export function getSearchValues(
     });
   }
 
-  return Promise.resolve([]);
+  return Promise.resolve(initialFieldValues);
 }
 
 export function shouldSearch(
