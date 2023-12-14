@@ -35,7 +35,7 @@ import {
   EmbeddedDashboardListing,
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
@@ -447,7 +447,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "enable-embedding",
         display_name: t`Embedding`,
         description: null,
-        widget: EmbeddingLegalese,
+        widget: EmbeddingSwitchWidget,
         onChanged: async (
           oldValue,
           newValue,
