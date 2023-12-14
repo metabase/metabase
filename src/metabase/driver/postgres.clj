@@ -841,11 +841,10 @@
                                      :columns     (map keyword column-names)
                                      ::from-stdin "''"}
                                     :quoted true
-                                    :dialect (sql.qp/quote-style driver))
-           ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
-           chunks (partition-all (or driver/*insert-chunk-rows* 100) values)]
-       (doseq [chunk chunks]
-         (let [tsvs (->> chunk
+                                    :dialect (sql.qp/quote-style driver))]
+       ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
+       (doseq [slice-of-values (partition-all 100 values)]
+         (let [tsvs (->> slice-of-values
                          (map row->tsv)
                          (str/join "\n")
                          (StringReader.))]

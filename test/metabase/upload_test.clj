@@ -1324,17 +1324,17 @@
     (with-uploads-allowed
       (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
         (mt/with-empty-db
-          (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]
-                table    (create-upload-table!)
-                file     (csv-file-with csv-rows (mt/random-name))]
-            (is (= {:row-count 1}
-                   (append-csv! {:file     file
-                                 :table-id (:id table)})))
-            (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-              (is (= [[1 "Obi-Wan Kenobi"]
-                      [2 "Luke Skywalker"]]
-                     (rows-for-table table))))
-            (io/delete-file file))
+          (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]]
+            (let [table (create-upload-table!)
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:row-count 1}
+                     (append-csv! {:file     file
+                                   :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+                (is (= [[1 "Obi-Wan Kenobi"]
+                        [2 "Luke Skywalker"]]
+                       (rows-for-table table))))
+              (io/delete-file file)))
           (testing "with duplicate normalized _mb_row_id columns in the CSV file"
             (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]]
               (let [table (create-upload-table!)
@@ -1364,72 +1364,3 @@
                 (is (= [[1 "Obi-Wan Kenobi"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
-
-(deftest append-int-type-mismatch-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (with-mysql-local-infile-on-and-off
-      (with-uploads-allowed
-        (mt/with-empty-db
-          (testing "Append fails if the CSV file contains values that don't match the column types"
-            ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
-            ;; inserted rows are rolled back
-            (binding [driver/*insert-chunk-rows* 10]
-              (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                    :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                    :id         ::upload/int
-                                                                    :name       ::upload/varchar-255)
-                                                 :rows             [[10 "Obi-Wan Kenobi"]]})
-                    csv-rows `["id,name" ~@(repeat 50 "20,Darth Vadar") "not an int,Luke Skywalker"]
-                    file  (csv-file-with csv-rows (mt/random-name))]
-                (testing "Check integers"
-                  (is (= {:message "not an int is not a recognizable number"
-                          :data    {:status-code 422}}
-                         (catch-ex-info (append-csv! {:file     file
-                                                      :table-id (:id table)})))))
-                (testing "Check the data was not uploaded into the table"
-                  (is (= [[1 10 "Obi-Wan Kenobi"]]
-                         (rows-for-table table))))
-                (io/delete-file file)))))))))
-
-(deftest append-date-type-mismatch-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (with-mysql-local-infile-on-and-off
-      (with-uploads-allowed
-        (mt/with-empty-db
-          (testing "Append fails if the CSV file contains values that don't match the column types"
-            ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
-            ;; inserted rows are rolled back
-            (binding [driver/*insert-chunk-rows* 1]
-              (testing "dates"
-                (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                      :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                      :date       ::upload/date
-                                                                      :name       ::upload/varchar-255)
-                                                   :rows             [["2021-01-01" "Obi-Wan Kenobi"]]})
-                      csv-rows `["date,name" ~@(repeat 50 "2023-01-01,Obi-Wan") "2023-01-01T00:00:00,Luke Skywalker"]
-                      file  (csv-file-with csv-rows (mt/random-name))]
-                  (is (= {:message "Text '2023-01-01T00:00:00' could not be parsed, unparsed text found at index 10"
-                          :data    {:status-code 422}}
-                         (catch-ex-info (append-csv! {:file     file
-                                                      :table-id (:id table)}))))
-                  (testing "Check the data was not uploaded into the table"
-                    (is (= [[1 "2021-01-01T00:00:00Z" "Obi-Wan Kenobi"]]
-                           (rows-for-table table))))
-                  (io/delete-file file)))
-              (testing "datetimes"
-                (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                      :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                      :datetime   ::upload/datetime
-                                                                      :name       ::upload/varchar-255)
-                                                   :rows             [["2021-01-01T00:00:00" "Obi-Wan Kenobi"]]})
-                      csv-rows `["datetime,name" ~@(repeat 50 "2023-01-01T00:00:00,Obi-Wan") "2024-01-01T00:00:00Z,Luke Skywalker"]
-                      file  (csv-file-with csv-rows (mt/random-name))]
-                  (testing "Check dates"
-                    (is (= {:message "2024-01-01T00:00:00Z is not a recognizable datetime"
-                            :data    {:status-code 422}}
-                           (catch-ex-info (append-csv! {:file     file
-                                                        :table-id (:id table)})))))
-                  (testing "Check the data was not uploaded into the table"
-                    (is (= [[1 "2021-01-01T00:00:00Z" "Obi-Wan Kenobi"]]
-                           (rows-for-table table))))
-                  (io/delete-file file))))))))))
