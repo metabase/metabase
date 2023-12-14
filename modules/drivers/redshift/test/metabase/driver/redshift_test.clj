@@ -472,7 +472,7 @@
      ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
      ;; cacheable.
      (let [honey {:select [[[(with-redefs [redshift/use-server-side-relative-datetime? (constantly false)]
-                                (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
+                               (sql.qp/->honeysql :redshift [:relative-datetime value unit]))]
                             :db_gen]
                            [[(sql.qp/->honeysql :redshift [:relative-datetime value unit])]
                             :ss_gen]
@@ -487,8 +487,7 @@
                            [[:cast [:cast [:dateadd [:raw (str "'" (name unit) "'")] value [:cast [:getdate] :timestamp]] :date] :text]]
                            ;;
                            [[:cast (u.date/format-sql (qp.timezone/now)) :text]]
-                           [[:= :db_gen :ss_gen]]
-                           ]}
+                           [[:= :db_gen :ss_gen]]]}
            sql (sql/format honey)
            result (apply run-native-query sql)
            [db-generated ss-generated & debug] (-> result mt/rows first)]
@@ -636,7 +635,7 @@
      (mt/with-report-timezone-id "America/New_York"
        (mt/with-system-timezone-id "UTC"
          (mt/with-clock (t/zoned-date-time (t/local-date-time 2014 8 10 0 30 1 0) "UTC")
-           (is (= [[13 "Dwight Gresham" "2014-08-01T10:30:00-04:00"]
+           (is (= [1] #_[[13 "Dwight Gresham" "2014-08-01T10:30:00-04:00"]
                    [15 "Rüstem Hebel" "2014-08-01T12:45:00-04:00"]
                    [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
                    [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
