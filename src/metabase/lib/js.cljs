@@ -645,6 +645,13 @@
       #_{:clj-kondo/ignore [:discouraged-var]}
       (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack)))))
 
+(defn ^:export source-table-or-card-id
+  "Returns the ID of the source table (as a number) or the ID of the source card (as a string prefixed
+  with \"card__\") of `a-query`. If `a-query` has none of these, nil is returned."
+  [a-query]
+  (or (lib.util/source-table-id a-query)
+      (some->> (lib.util/source-card-id a-query) (str "card__"))))
+
 (defn ^:export join-strategy
   "Get the strategy (type) of a given join as an opaque JoinStrategy object."
   [a-join]

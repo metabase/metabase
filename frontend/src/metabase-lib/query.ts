@@ -72,3 +72,7 @@ export function replaceClause(
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
+
+export function sourceTableOrCardId(query: Query): TableId | null {
+  return ML.source_table_or_card_id(query);
+}
