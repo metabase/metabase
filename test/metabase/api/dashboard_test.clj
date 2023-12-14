@@ -272,7 +272,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest get-dashboard-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-column-remappings [orders.user_id people.name]
       (binding [api/*current-user-permissions-set* (atom #{"/"})]
         (t2.with-temp/with-temp
@@ -963,7 +963,7 @@
 
 (deftest copy-dashboard-test-3
   (testing "Deep copy: POST /api/dashboard/:id/copy"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp
         [Collection source-coll {:name "Source collection"}
          Collection dest-coll   {:name "Destination collection"}
@@ -1050,7 +1050,7 @@
 
 (deftest copy-dashboard-test-4
   (testing "Deep copy: POST /api/dashboard/:id/copy"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "When there are cards the user lacks write perms for"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Collection no-read-coll {:name "Crowberto lacks write coll"}
@@ -1132,7 +1132,7 @@
 
 (deftest copy-dashboard-test-5
   (testing "Deep copy: POST /api/dashboard/:id/copy"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "When source and destination are the same"
         (mt/with-temp [Collection source-coll {:name "Source collection"}
                        Dashboard  dashboard {:name          "Dashboard to be Copied"
@@ -2791,7 +2791,7 @@
 
 (deftest native-query-get-params-test
   (testing "GET /api/dashboard/:id/params/:param-key/values works for native queries"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; Note that we can directly query the values for the model, but this is
       ;; nonsensical from a dashboard standpoint as the returned values aren't
       ;; usable for filtering...
@@ -3305,7 +3305,7 @@
 ;; see also [[metabase.query-processor.dashboard-test]]
 (deftest dashboard-native-card-query-parameters-test
   (testing "POST /api/dashboard/:dashboard-id/card/:card-id/query"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT * FROM \"PRODUCTS\" WHERE {{cat}}"
                                     :template-tags {"cat" {:id           "__cat__"
                                                            :name         "cat"
@@ -3370,7 +3370,7 @@
 (deftest dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (api.pivots/applicable-drivers)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temp [Dashboard     {dashboard-id :id} {}
                        Card          {card-id :id} (api.pivots/pivot-card)
                        DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id :card_id card-id}]
@@ -3861,7 +3861,7 @@
 (deftest param-values-no-field-ids-test
   (testing "Ensure param value lookup works for values where field ids are not provided, but field refs are."
     ;; This is a common case for nested queries
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :people)))
@@ -3906,7 +3906,7 @@
 
 (deftest param-values-expression-test
   (testing "Ensure param value lookup works for when the value is an expression"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
         (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :products)))

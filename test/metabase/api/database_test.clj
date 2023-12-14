@@ -584,6 +584,7 @@
                                                              :has_field_values  "none"
                                                              :database_position 0
                                                              :database_required false
+                                                             :database_indexed  true
                                                              :database_is_auto_increment true})
                                                            (merge
                                                             (field-details (t2/select-one Field :id (mt/id :categories :name)))
@@ -598,6 +599,7 @@
                                                              :has_field_values  "list"
                                                              :database_position 1
                                                              :database_required true
+                                                             :database_indexed  false
                                                              :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
@@ -667,11 +669,19 @@
                                              :substring search))]
     (testing "GET /api/database/:id/autocomplete_suggestions"
       (doseq [[prefix expected] {"u"   [["USERS" "Table"]
-                                        ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+                                        ["USER_ID" "CHECKINS :type/Integer :type/FK"]
+                                        ["USER_ID" "ORDERS :type/Integer :type/FK"]]
                                  "c"   [["CATEGORIES" "Table"]
                                         ["CHECKINS" "Table"]
-                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+                                        ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
+                                        ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]
+                                        ["CITY" "PEOPLE :type/Text :type/City"]
+                                        ["CREATED_AT" "ORDERS :type/DateTimeWithLocalTZ :type/CreationTimestamp"]
+                                        ["CREATED_AT" "PEOPLE :type/DateTimeWithLocalTZ :type/CreationTimestamp"]
+                                        ["CREATED_AT" "PRODUCTS :type/DateTimeWithLocalTZ :type/CreationTimestamp"]
+                                        ["CREATED_AT" "REVIEWS :type/DateTimeWithLocalTZ :type/CreationTimestamp"]]
                                  "cat" [["CATEGORIES" "Table"]
+                                        ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix))))
       (testing " handles large numbers of tables and fields sensibly with prefix"

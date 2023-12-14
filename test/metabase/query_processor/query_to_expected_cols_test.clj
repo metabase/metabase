@@ -20,7 +20,7 @@
 
 (deftest remapped-fks-test
   (testing "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; Add column remapping from Orders Product ID -> Products.Title
       (t2.with-temp/with-temp [:model/Dimension _ (mt/$ids orders
                                                     {:field_id                %product_id

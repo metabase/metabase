@@ -48,7 +48,7 @@
              #"Invalid parameter type :number/!= for parameter \"_PRICE_\".*"
              (resolve-params [{:id "_PRICE_", :value 4, :type :number/!=}]))))))
   (testing "Resolves new operator type arguments without error (#25031)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query {:query         "select COUNT(*) from \"ORDERS\" where true [[AND quantity={{qty_locked}}]]"
                                     :template-tags {"qty_locked"
                                                     {:id           "_query_id_"
@@ -120,7 +120,7 @@
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp
         [Card {card-id :id} {:dataset_query {:database (mt/id)
                                              :type     :native
@@ -169,7 +169,7 @@
 
 (deftest default-value-precedence-test-raw-values
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp
         [Card {card-id :id} {:dataset_query {:database (mt/id)
                                              :type     :native
@@ -216,7 +216,7 @@
 (deftest do-not-apply-unconnected-filters-for-same-card-test
   (testing (str "If the same Card is added to a Dashboard multiple times but with different filters, only apply the "
                 "filters for the DashCard we're running a query for (#19494)")
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp
         [Card      {card-id :id}      {:dataset_query (mt/mbql-query products {:aggregation [[:count]]})}
          Dashboard {dashboard-id :id} {:parameters [{:name "Category (DashCard 1)"
@@ -260,7 +260,7 @@
 
 (deftest field-filters-should-work-if-no-value-is-specified-test
   (testing "Field Filters should not apply if no value is specified (metabase#20493)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
                                     :template-tags {"cat" {:id           "__cat__"
                                                            :name         "cat"
@@ -309,7 +309,7 @@
 
 (deftest field-filters-with-default-if-no-value-is-specified-test
   (testing "Field Filters work differently if a default on the card parameter is specified"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/native-query {:query         "SELECT COUNT(*) FROM \"PRODUCTS\" WHERE {{cat}}"
                                     :template-tags {"cat" {:id           "__cat__"
                                                            :name         "cat"
@@ -358,7 +358,7 @@
 
 (deftest ignore-default-values-in-request-parameters-test
   (testing "Parameters passed in from the request with only default values (but no actual values) should get ignored (#20516)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card {card-id :id} {:name          "Orders"
                                          :dataset_query (mt/mbql-query products
                                                                        {:fields   [$id $title $category]
