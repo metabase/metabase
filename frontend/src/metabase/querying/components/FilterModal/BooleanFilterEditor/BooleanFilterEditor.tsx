@@ -25,6 +25,7 @@ export function BooleanFilterEditor({
     operator,
     availableOptions,
     values,
+    valueCount,
     isExpanded,
     getFilterClause,
     setOperator,
@@ -72,15 +73,19 @@ export function BooleanFilterEditor({
         <Group spacing="md">
           <Checkbox
             label={t`True`}
-            checked={values[0] ?? false}
-            indeterminate={values[0] == null}
-            onChange={event => handleValuesChange([event.target.checked])}
+            checked={values.length > 0 ? values[0] : false}
+            indeterminate={valueCount === 0}
+            onChange={event =>
+              handleValuesChange(event.target.checked ? [true] : [])
+            }
           />
           <Checkbox
             label={t`False`}
-            checked={!values[0]}
-            indeterminate={values[0] == null}
-            onChange={event => handleValuesChange([!event.target.checked])}
+            checked={values.length > 0 ? !values[0] : false}
+            indeterminate={valueCount === 0}
+            onChange={event =>
+              handleValuesChange(event.target.checked ? [false] : [])
+            }
           />
         </Group>
       </Grid.Col>

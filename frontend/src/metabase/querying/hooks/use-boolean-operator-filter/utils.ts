@@ -19,17 +19,6 @@ export function getOptionByOperator(operator: Lib.BooleanFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
 }
 
-export function getDefaultValues(
-  operator: Lib.BooleanFilterOperatorName,
-  values: boolean[] = [],
-): boolean[] {
-  const { valueCount } = OPERATOR_OPTIONS[operator];
-
-  return Array(valueCount)
-    .fill(false)
-    .map((value, index) => values[index] ?? value);
-}
-
 export function isValidFilter(
   operator: Lib.BooleanFilterOperatorName,
   column: Lib.ColumnMetadata,
