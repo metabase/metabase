@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 import {
   getAvailableOptions,
+  getDefaultValues,
   getFilterClause,
   getOptionByOperator,
 } from "./utils";
@@ -30,7 +31,9 @@ export function useBooleanOperatorFilter({
   );
 
   const [operator, setOperator] = useState(filterParts?.operator ?? "=");
-  const [values, setValues] = useState(() => filterParts?.values ?? []);
+  const [values, setValues] = useState(() =>
+    getDefaultValues(operator, filterParts?.values),
+  );
   const { isAdvanced } = getOptionByOperator(operator);
   const [isExpanded] = useState(isAdvanced);
 

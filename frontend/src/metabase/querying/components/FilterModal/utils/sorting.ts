@@ -2,7 +2,12 @@ import * as Lib from "metabase-lib";
 import type { ColumnItem } from "../types";
 
 const isPlainCategory = (column: Lib.ColumnMetadata) => {
-  return Lib.isCategory(column) && !Lib.isAddress(column);
+  return (
+    Lib.isCategory(column) &&
+    !Lib.isEntityName(column) &&
+    !Lib.isTitle(column) &&
+    !Lib.isAddress(column)
+  );
 };
 
 const isPlainNumber = (column: Lib.ColumnMetadata) => {
@@ -16,6 +21,7 @@ const isLongText = (column: Lib.ColumnMetadata) =>
   Lib.isComment(column) || Lib.isDescription(column);
 
 const PRIORITIES = [
+  Lib.isCreationDate,
   Lib.isDate,
   Lib.isBoolean,
   isPlainCategory,

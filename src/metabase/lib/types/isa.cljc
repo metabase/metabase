@@ -133,6 +133,16 @@
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Name))
 
+(defn ^:export title?
+  "Is `column` a title column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/Title))
+
+(defn ^:export creation-temporal?
+  "Is `column` a creation temporal column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationTemporal))
+
 (defn ^:export json?
   "Is `column` a serialized JSON column?"
   [column]

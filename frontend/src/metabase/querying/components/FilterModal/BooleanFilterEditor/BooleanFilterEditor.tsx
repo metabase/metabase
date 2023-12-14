@@ -74,17 +74,13 @@ export function BooleanFilterEditor({
             label={t`True`}
             checked={values[0] ?? false}
             indeterminate={values[0] == null}
-            onChange={event =>
-              handleValuesChange(event.target.checked ? [true] : [])
-            }
+            onChange={event => handleValuesChange([event.target.checked])}
           />
           <Checkbox
             label={t`False`}
-            checked={values[0] ?? false}
+            checked={!values[0]}
             indeterminate={values[0] == null}
-            onChange={event =>
-              handleValuesChange(event.target.checked ? [false] : [])
-            }
+            onChange={event => handleValuesChange([!event.target.checked])}
           />
         </Group>
       </Grid.Col>
