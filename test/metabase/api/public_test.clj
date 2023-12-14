@@ -1462,7 +1462,7 @@
 
 (deftest pivot-public-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "GET /api/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-card [{uuid :public_uuid} (api.pivots/pivot-card)]
@@ -1485,7 +1485,7 @@
 (deftest pivot-public-dashcard-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (mt/test-drivers (api.pivots/applicable-drivers)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
                                                            :name    "State"

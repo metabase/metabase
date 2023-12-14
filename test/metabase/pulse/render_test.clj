@@ -162,7 +162,7 @@
 
 (deftest table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :query
                                                               :query    {:source-table (mt/id :orders)

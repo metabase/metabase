@@ -20,7 +20,7 @@
   - A model with curated metadata (override on the Tax Rate type)
   - A question based on the above model"
   [[base-card-id model-card-id question-card-id] & body]
-  `(mt/dataset ~'sample-dataset
+  `(mt/dataset ~'test-data
      (mt/with-temp [Card {~base-card-id :id} {:name          "Base question - no special metadata"
                                               :dataset_query {:database (mt/id)
                                                               :type     :query
