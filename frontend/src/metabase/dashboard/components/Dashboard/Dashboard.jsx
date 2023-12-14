@@ -3,7 +3,7 @@ import { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import { isSmallScreen } from "metabase/lib/dom";
+import { isSmallScreen, getMainElement } from "metabase/lib/dom";
 
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
@@ -34,6 +34,7 @@ class DashboardInner extends Component {
   state = {
     error: null,
     parametersListLength: 0,
+    hasScroll: getMainElement()?.scrollTop > 0,
   };
 
   static defaultProps = {
@@ -53,6 +54,10 @@ class DashboardInner extends Component {
 
   async componentDidMount() {
     await this.loadDashboard(this.props.dashboardId);
+    getMainElement().addEventListener("scroll", this.onMainScroll, {
+      capture: false,
+      passive: true,
+    });
   }
 
   async componentDidUpdate(prevProps) {
@@ -77,6 +82,7 @@ class DashboardInner extends Component {
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
+    getMainElement().removeEventListener("scroll", this.onMainScroll);
   }
 
   async loadDashboard(dashboardId) {
@@ -157,6 +163,10 @@ class DashboardInner extends Component {
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
+  onMainScroll = event => {
+    this.setState({ hasScroll: event.target.scrollTop > 0 });
+  };
+
   renderContent = () => {
     const { dashboard, selectedTabId, isNightMode, isFullscreen } = this.props;
 
@@ -226,7 +236,7 @@ class DashboardInner extends Component {
       isAutoApplyFilters,
     } = this.props;
 
-    const { error, parametersListLength } = this.state;
+    const { error, parametersListLength, hasScroll } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
 
@@ -304,6 +314,7 @@ class DashboardInner extends Component {
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
                     data-testid="dashboard-parameters-widget-container"
+                    hasScroll={hasScroll}
                     isSticky={isParametersWidgetContainersSticky(
                       parametersListLength,
                     )}
