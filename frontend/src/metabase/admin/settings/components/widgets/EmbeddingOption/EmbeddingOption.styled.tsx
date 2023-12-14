@@ -4,7 +4,6 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import Card from "metabase/components/Card";
-import { Icon } from "metabase/core/components/Icon";
 
 export const StyledCard = styled(Card)`
   padding: 2rem;
@@ -35,12 +34,4 @@ export const Description = styled.p`
   margin-top: 0;
   margin-bottom: ${space(2)};
   color: ${color("text-medium")};
-`;
-
-export const MoreDetails = styled.span`
-  font-weight: 700;
-`;
-
-export const StyledIcon = styled(Icon)`
-  margin-left: ${space(1)};
 `;
