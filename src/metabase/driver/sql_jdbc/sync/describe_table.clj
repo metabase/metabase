@@ -292,16 +292,16 @@
                                               ;; when true, result is allowed to reflect approximate or out of data
                                               ;; values. when false, results are requested to be accurate
                                               false)]
-       (-> (group-by :index_name (into []
-                                       ;; filtered indexes are ignored
-                                       (filter #(nil? (:filter_condition %)))
-                                       (jdbc/reducible-result-set index-info-rs {})))
-           (update-vals (fn [idx-values]
-                          ;; we only sync columns that are either singlely indexed or is the first key in a composite index
-                          {:type  :normal-column-index
-                           :value (first (map :column_name (sort-by :ordinal_position idx-values)))}))
-           vals
-           set)))))
+       (->> (vals (group-by :index_name (into []
+                                              ;; filtered indexes are ignored
+                                              (filter #(nil? (:filter_condition %)))
+                                              (jdbc/reducible-result-set index-info-rs {}))))
+            (keep (fn [idx-values]
+                    ;; we only sync columns that are either singlely indexed or is the first key in a composite index
+                    (when-let [index-name (some :column_name (sort-by :ordinal_position idx-values))]
+                      {:type  :normal-column-index
+                       :value index-name})))
+            set)))))
 
 (def ^:dynamic *nested-field-column-max-row-length*
   "Max string length for a row for nested field column before we just give up on parsing it.

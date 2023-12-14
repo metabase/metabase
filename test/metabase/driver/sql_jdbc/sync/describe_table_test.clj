@@ -483,19 +483,19 @@
                    [[1 2]]])
       (try
        (let [describe-table-indexes (fn [table]
-                                      (->> (sql-jdbc.sync/describe-table-indexes
-                                             driver/*driver*
-                                             (mt/db)
-                                             table)
-                                          (map (fn [index]
-                                                 (update index :value #(if (string? %)
-                                                                         (u/lower-case-en %)
-                                                                         (map u/lower-case-en %)))))
-                                          set))]
+                                      (->> (driver/describe-table-indexes
+                                            driver/*driver*
+                                            (mt/db)
+                                            table)
+                                           (map (fn [index]
+                                                  (update index :value #(if (string? %)
+                                                                          (u/lower-case-en %)
+                                                                          (map u/lower-case-en %)))))
+                                           set))]
          (testing "single column indexes are synced correctly"
            (is (= #{{:type :normal-column-index :value "id"}
                     {:type :normal-column-index :value "indexed"}}
-                  (describe-table-indexes (t2/select-one Table (mt/id :single_index))))))
+                  (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
 
          (testing "for composite indexes, we only care about the 1st column"
            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -503,7 +503,7 @@
            (sync/sync-database! (mt/db))
            (is (= #{{:type :normal-column-index :value "id"}
                     {:type :normal-column-index :value "first"}}
-                  (describe-table-indexes (t2/select-one Table (mt/id :composite_index)))))))
+                  (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))
        (finally
         ;; clean the db so this test is repeatable
         (t2/delete! :model/Database (mt/id)))))))
@@ -527,7 +527,7 @@
                    [[1 2]]])
       (try
        (let [describe-table-indexes (fn [table]
-                                      (->> (sql-jdbc.sync/describe-table-indexes
+                                      (->> (driver/describe-table-indexes
                                             driver/*driver*
                                             (mt/db)
                                             table)
@@ -537,19 +537,19 @@
                                                                           (map u/lower-case-en %)))))
                                            set))]
          (testing "hashed index"
-           (when (not= :h2 driver/*driver*)
+           (when-not (#{:h2 :sqlite :sqlserver} driver/*driver*)
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
              (is (= #{{:type :normal-column-index :value "id"}
                       {:type :normal-column-index :value "column"}}
-                    (describe-table-indexes (t2/select-one Table (mt/id :unique_index)))))))
+                    (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index)))))))
 
          (testing "unique index"
            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                           (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
            (is (= #{{:type :normal-column-index :value "id"}
                     {:type :normal-column-index :value "column"}}
-                  (describe-table-indexes (t2/select-one Table (mt/id :hashed_index))))))
+                  (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index))))))
 
          (testing "clustered index"
            (when (= :postgres driver/*driver*)
@@ -559,14 +559,16 @@
                             "CLUSTER clustered_index USING idx_clustered_index_column;")
              (is (= #{{:type :normal-column-index :value "id"}
                       {:type :normal-column-index :value "column"}}
-                    (describe-table-indexes (t2/select-one Table (mt/id :clustered_index)))))))
+                    (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index)))))))
 
          (testing "conditional index are ignored"
+           ;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
+           ;; for those indexes so we can't filter those out.
            (when (= :postgres driver/*driver*)
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
              (is (= #{{:type :normal-column-index :value "id"}}
-                    (describe-table-indexes (t2/select-one Table (mt/id :conditional_index))))))))
+                    (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))
        (finally
         ;; clean the db so this test is repeatable
         (t2/delete! :model/Database (mt/id)))))))
