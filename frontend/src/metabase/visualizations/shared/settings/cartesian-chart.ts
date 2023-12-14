@@ -150,35 +150,37 @@ export const getDefaultXAxisScale = (
 };
 
 /**
- * Returns the column name for the bubble size setting
- * on the scatter plot. It will simply use the column name saved
- * in viz settings is there is one, otherwise it will try to choose
- * a default. If there is no suitable default, it will return `null`.
- * Logic is copied from `getScatterColumn` in `visualizations/lib/settings/graph.js`
+ * Returns the default columns to be used for scatter plot viz settings.
  *
- * @param vizSettings - Computed visualization settings
- * @param data - property from the series object from the `rawSeries` array
- * @returns column name string or `null`
- *
- * @example
- * const vizSettings = { "scatter.bubble": "some_col" }
- * const sizeCol = getDefaultBubbleSizeCol(vizSettings, data)
- * console.log(sizeCol)
- * // "some_col"
+ * @param data - property on the series object from the `rawSeries` array
+ * @returns object containing column names
  */
-export function getDefaultBubbleSizeCol(
-  vizSettings: ComputedVisualizationSettings,
-  data: DatasetData,
-) {
-  // TODO remove this it's uncessary
-  if (vizSettings["scatter.bubble"]) {
-    return vizSettings["scatter.bubble"];
-  }
-
-  // TODO use generic getScatterDefaultCols func instead
+export function getDefaultScatterColumns(data: DatasetData) {
   const dimensions = data.cols.filter(isDimension);
   const metrics = data.cols.filter(isMetric);
-  return dimensions.length === 2 && metrics.length === 1
-    ? metrics[0].name
-    : null;
+
+  if (dimensions.length === 2 && metrics.length < 2) {
+    return {
+      dimensions: [dimensions[0].name],
+      metrics: [dimensions[1].name],
+      bubble: metrics.length === 1 ? metrics[0].name : null,
+    };
+  } else {
+    return {
+      dimensions: [null],
+      metrics: [null],
+      bubble: null,
+    };
+  }
+}
+
+/**
+ * Returns the a default column name for the bubble size setting
+ * on the scatter plot. If there is no suitable default, it will return `null`.
+ *
+ * @param data - property on the series object from the `rawSeries` array
+ * @returns column name string or `null`
+ */
+export function getDefaultBubbleSizeCol(data: DatasetData) {
+  return getDefaultScatterColumns(data).bubble;
 }

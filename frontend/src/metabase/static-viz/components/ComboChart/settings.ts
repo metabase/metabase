@@ -230,7 +230,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "scatter.bubble",
-    getDefaultBubbleSizeCol(settings, mainDataset),
+    getDefaultBubbleSizeCol(mainDataset),
   );
 
   return settings;
