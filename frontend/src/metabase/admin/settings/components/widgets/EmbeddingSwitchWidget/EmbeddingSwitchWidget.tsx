@@ -3,11 +3,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Stack, Switch, Text } from "metabase/ui";
 
 interface EmbeddingSwitchWidgetProps {
-  setting: {
-    placeholder: string;
-    is_env_setting: boolean;
-  };
-  onChange: (isEmbeddingEnabled: boolean) => void;
+  onChange: (value: boolean) => void;
 }
 
 export const EmbeddingSwitchWidget = ({
