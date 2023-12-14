@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
-      TZ: 'America/New_York'
       CI: 'true'
       DRIVERS: redshift
       MB_REDSHIFT_TEST_USER: metabase_ci
