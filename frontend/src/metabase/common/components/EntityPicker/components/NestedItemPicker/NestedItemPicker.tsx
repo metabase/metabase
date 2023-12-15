@@ -32,9 +32,17 @@ export function NestedItemPicker({
     restOfStack[restOfStack.length - 1].selectedItem = folder;
 
     setStack([...restOfStack, { items: children, selectedItem: null }]);
-    if (containerRef.current) {
-      containerRef.current.scrollLeft += 365;
-    }
+    const intervalId = setInterval(() => {
+      if (
+        containerRef.current !== null &&
+        containerRef.current.scrollLeft + containerRef.current.clientWidth <
+          containerRef.current.scrollWidth
+      ) {
+        containerRef.current.scrollLeft += 25;
+      } else {
+        clearInterval(intervalId);
+      }
+    }, 10);
   };
 
   const handleItemSelect = (item: any, levelIndex: number) => {
