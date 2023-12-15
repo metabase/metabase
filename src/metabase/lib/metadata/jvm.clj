@@ -63,8 +63,8 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/database
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
-  (merge (next-method query-type model parsed-arg honeysql)
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :engine :name :dbms_version :settings :is_audit :details]}))
 
 (t2/define-after-select :metadata/database
@@ -89,8 +89,8 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/table
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
-  (merge (next-method query-type model parsed-arg honeysql)
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
 
 (t2/define-after-select :metadata/table
@@ -131,9 +131,9 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/column
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
+   (next-method query-type model parsed-args honeysql)
    {:select    [:field/base_type
                 :field/coercion_strategy
                 :field/database_type
@@ -223,9 +223,9 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/card
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
+   (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/database_id
                 :card/dataset
@@ -270,13 +270,30 @@
   (classloader/require 'metabase.models.metric)
   model)
 
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "metric" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/metric
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
-   {:select [:id :table_id :name :description :archived :definition]}))
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:metric/id
+                :metric/table_id
+                :metric/name
+                :metric/description
+                :metric/archived
+                :metric/definition]
+    :from      [[(t2/table-name :model/Metric) :metric]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :metric/table_id :table/id]]}))
 
 (t2/define-after-select :metadata/metric
   [metric]
@@ -294,13 +311,30 @@
                        'metabase.models.table)
   model)
 
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/segment
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "segment" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/segment
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
-   {:select [:id :table_id :name :description :archived :definition]}))
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:segment/id
+                :segment/table_id
+                :segment/name
+                :segment/description
+                :segment/archived
+                :segment/definition]
+    :from      [[(t2/table-name :model/Segment) :segment]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :segment/table_id :table/id]]}))
 
 (t2/define-after-select :metadata/segment
   [segment]
