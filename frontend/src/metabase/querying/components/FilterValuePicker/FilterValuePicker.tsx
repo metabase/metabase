@@ -9,7 +9,7 @@ import { SearchValuePicker } from "./SearchValuePicker";
 import { StaticValuePicker } from "./StaticValuePicker";
 import {
   canLoadFieldValues,
-  isKey,
+  isKeyColumn,
   canListFieldValues,
   canSearchFieldValues,
 } from "./utils";
@@ -111,7 +111,7 @@ export function StringFilterValuePicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      placeholder={isKey(column) ? t`Enter an ID` : t`Enter some text`}
+      placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
       isCompact={isCompact}
       shouldCreate={query => query.length > 0}
       onChange={onChange}
@@ -133,7 +133,7 @@ export function NumberFilterValuePicker({
       stageIndex={stageIndex}
       column={column}
       values={values.map(value => String(value))}
-      placeholder={isKey(column) ? t`Enter an ID` : t`Enter a number`}
+      placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
       isCompact={isCompact}
       shouldCreate={query => isFinite(parseFloat(query))}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}

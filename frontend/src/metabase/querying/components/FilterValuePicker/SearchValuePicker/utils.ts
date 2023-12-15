@@ -20,9 +20,9 @@ export function getSearchValues(
 }
 
 export function shouldSearch(
-  fieldValues: FieldValue[],
   searchValue: string,
   searchQuery: string,
+  fieldValues: FieldValue[],
 ) {
   const isSearchEmpty = searchQuery === "";
   const isExtensionOfLastSearch = searchValue.startsWith(searchQuery);

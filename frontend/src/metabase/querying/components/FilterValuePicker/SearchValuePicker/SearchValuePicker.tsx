@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAsync, useDebounce } from "react-use";
 import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
-import { getMergedOptions } from "../utils";
+import { getMergedOptions, hasDuplicateOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
 
@@ -12,7 +12,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate?: (query: string) => boolean;
+  shouldCreate: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
 }
 
@@ -22,26 +22,25 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
-  shouldCreate = () => false,
+  shouldCreate,
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { value: fieldValues = initialFieldValues, loading } = useAsync(
+  const { value: fieldValues = initialFieldValues } = useAsync(
     () => getSearchValues(fieldId, searchFieldId, searchQuery),
     [fieldId, searchFieldId, searchQuery],
   );
 
   const handleDebounce = () => {
-    if (shouldSearch(fieldValues, searchValue, searchQuery)) {
+    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
       setSearchQuery(searchValue);
     }
   };
 
   useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
   const options = getMergedOptions(fieldValues, selectedValues);
-  const canCreate = !loading;
 
   return (
     <MultiSelect
@@ -51,7 +50,9 @@ export function SearchValuePicker({
       searchValue={searchValue}
       creatable
       searchable
-      shouldCreate={query => canCreate && shouldCreate(query)}
+      shouldCreate={query =>
+        !hasDuplicateOptions(options, query) && shouldCreate(query)
+      }
       onChange={onChange}
       onCreate={query => {
         onChange([...selectedValues, query]);
