@@ -58,3 +58,8 @@
               (humanization/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
                      (t2/select-one-fn :display_name Table, :id table-id))))))))))
+
+(deftest invalid-strategies-default-to-simple
+  (tu/with-temporary-raw-setting-values [humanization-strategy "invalid-choice"]
+    (is (= :simple (humanization/humanization-strategy)))
+    (is (= "Foo Bar" (humanization/name->human-readable-name "foo_bar")))))
