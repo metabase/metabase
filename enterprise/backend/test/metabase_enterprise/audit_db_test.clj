@@ -78,6 +78,14 @@
            "plugins/instance_analytics/databases"}
          (set (map str (fs/list-dir "plugins/instance_analytics"))))))
 
+(deftest audit-db-instance-analytics-content-is-copied-from-mb-plugins-dir-test
+  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+    (let [plugins-dir (plugins/plugins-dir)]
+      (#'audit-db/ia-content->plugins)
+      (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
+                                        (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
+        (is (str/starts-with? top-level-plugin-dir (str (fs/absolutize plugins-dir))))))))
+
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
         audit-db? #(str/includes? % (str perms/audit-db-id))]
