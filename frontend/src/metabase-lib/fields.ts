@@ -1,6 +1,13 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { FieldReference } from "metabase-types/api";
-import type { Clause, ColumnMetadata, FieldValuesInfo, Query } from "./types";
+import type {
+  Clause,
+  ColumnMetadata,
+  FieldValuesInfo,
+  MetricMetadata,
+  Query,
+  SegmentMetadata,
+} from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
   return ML.fields(query, stageIndex);
@@ -45,6 +52,8 @@ export function fieldValuesInfo(
   return { fieldId: 1, searchFieldId: null, hasFieldValues: "list" };
 }
 
-export function legacyFieldRef(column: ColumnMetadata): FieldReference {
-  return ML.legacy_field_ref(column);
+export function legacyRef(
+  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+): FieldReference {
+  return ML.legacy_ref(column);
 }

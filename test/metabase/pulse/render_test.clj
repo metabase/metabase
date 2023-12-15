@@ -162,7 +162,7 @@
 
 (deftest table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :query
                                                               :query    {:source-table (mt/id :orders)
@@ -195,7 +195,7 @@
                            :as            question-card} {:dataset_query {:type     :query
                                                                           :database (mt/id)
                                                                           :query    {:source-table (format "card__%s" model-card-id)}}}]
-        ;; NOTE -- The logic in metabase.pulse.render.common/number-formatter renders values between 1 and 100 as an
+        ;; NOTE -- The logic in metabase.formatter/number-formatter renders values between 1 and 100 as an
         ;; integer value. IDK if this is what we want long term, but this captures the current logic. If we do extend
         ;; the significant digits in the formatter, we'll need to modify this test as well.
         (letfn [(create-comparison-results [query-results card]

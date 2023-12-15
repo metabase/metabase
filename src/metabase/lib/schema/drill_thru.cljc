@@ -297,6 +297,22 @@
     [:drill-thru/zoom-in.geographic       ::drill-thru.zoom-in.geographic]
     [:drill-thru/zoom-in.binning          ::drill-thru.zoom-in.binning]]])
 
+;;;
+;;; ## Context
+;;;
+
+;;; There are basically 5 shapes that contexts can come in, see this thread
+;;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1701898192634679 and
+;;; https://github.com/metabase/metabase/issues/36253 for more info.
+;;;
+;;;    | Drill Context Shape | column | value | row | dimensions |
+;;;    |---------------------|--------|-------|-----|------------|
+;;;    | Column Header       | ✔      |       |     |            |
+;;;    | "Raw" Cell          | ✔      | ✔     | ✔   |            |
+;;;    | "Aggregated" Cell   | ✔      | ✔     | ✔   | ✔          |
+;;;    | Pivot Cell          |        | ✔     | ✔   | ✔          |
+;;;    | Legend Item         |        |       |     | ✔          |
+
 (mr/def ::context.row.value
   [:map
    [:column     [:ref ::lib.schema.metadata/column]]

@@ -57,7 +57,7 @@
   up outdated, transient datasets via the `transient-dataset-outdated?` mechanism."
   [database-name]
   (let [s (normalize-name database-name)]
-    (str "v3_" s "__transient_" ns-load-time)))
+    (str "v4_" s "__transient_" ns-load-time)))
 
 (defn- test-db-details []
   (reduce
@@ -172,7 +172,13 @@
     (u/qualified-name k))
 
   java.time.temporal.Temporal
-  (->insertable [t] (u.date/format-sql t))
+  (->insertable [t]
+    ;; BigQuery will barf if you try to specify greater than microsecond precision.
+    (u.date/format-sql (t/truncate-to t :micros)))
+
+  java.time.LocalDate
+  (->insertable [t]
+    (u.date/format-sql t))
 
   ;; normalize to UTC. BigQuery normalizes it anyway and tends to complain when inserting values that have an offset
   java.time.OffsetDateTime
@@ -187,13 +193,7 @@
   ;; normalize to UTC, since BigQuery doesn't support TIME WITH TIME ZONE
   java.time.OffsetTime
   (->insertable [t]
-    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-  ;; Convert the HoneySQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
-  honeysql.types.SqlCall
-  (->insertable [{[{s :literal}] :args, fn-name :name}]
-    (assert (= (name fn-name) "timestamp"))
-    (->insertable (u.date/parse (str/replace s #"'" "")))))
+    (->insertable (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))))))
 
 (defn- ->json [row-map]
   (into {} (for [[k v] row-map]

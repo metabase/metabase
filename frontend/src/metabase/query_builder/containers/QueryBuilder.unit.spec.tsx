@@ -562,6 +562,9 @@ describe("QueryBuilder", () => {
           card: TEST_STRUCTURED_CARD,
         });
 
+        expect(
+          await screen.findByText(TEST_STRUCTURED_CARD.name),
+        ).toBeInTheDocument();
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
         expect(mockEvent.returnValue).toEqual(undefined);

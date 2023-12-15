@@ -127,13 +127,13 @@
   (testing "column headers: click on"
     (testing "foreign key - distribution, column filter (default: Is), sort, summarize (distinct only)"
       (let [context (basic-context (meta/field-metadata :orders :user-id) nil)]
-        (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru
-                  :type     :drill-thru/distribution
-                  :column   (meta/field-metadata :orders :user-id)}
-                 {:lib/type   :metabase.lib.drill-thru/drill-thru
+        (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
                   :column     (meta/field-metadata :orders :user-id)
                   :initial-op {:short := :display-name-variant :default}}
+                 {:lib/type :metabase.lib.drill-thru/drill-thru
+                  :type     :drill-thru/distribution
+                  :column   (meta/field-metadata :orders :user-id)}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :user-id)
@@ -149,13 +149,13 @@
   (testing "column headers: click on"
     (testing "numeric column - distribution, column filter (default: Equal To), sort, summarize (all 3), summarize by time"
       (let [context (basic-context (meta/field-metadata :orders :subtotal) nil)]
-        (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru
-                  :type     :drill-thru/distribution
-                  :column   (meta/field-metadata :orders :subtotal)}
-                 {:lib/type   :metabase.lib.drill-thru/drill-thru
+        (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
                   :column     (meta/field-metadata :orders :subtotal)
                   :initial-op {:short := :display-name-variant :equal-to}}
+                 {:lib/type :metabase.lib.drill-thru/drill-thru
+                  :type     :drill-thru/distribution
+                  :column   (meta/field-metadata :orders :subtotal)}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :subtotal)
@@ -176,13 +176,13 @@
   (testing "column headers: click on"
     (testing "date column - distribution, column filter (no default), sort, summarize (distinct only)"
       (let [context (basic-context (meta/field-metadata :orders :created-at) nil)]
-        (is (=? [{:lib/type :metabase.lib.drill-thru/drill-thru
-                  :type     :drill-thru/distribution
-                  :column   (meta/field-metadata :orders :created-at)}
-                 {:lib/type   :metabase.lib.drill-thru/drill-thru
+        (is (=? [{:lib/type   :metabase.lib.drill-thru/drill-thru
                   :type       :drill-thru/column-filter
                   :column     (meta/field-metadata :orders :created-at)
                   :initial-op nil}
+                 {:lib/type :metabase.lib.drill-thru/drill-thru
+                  :type     :drill-thru/distribution
+                  :column   (meta/field-metadata :orders :created-at)}
                  {:lib/type        :metabase.lib.drill-thru/drill-thru
                   :type            :drill-thru/sort
                   :column          (meta/field-metadata :orders :created-at)
@@ -197,13 +197,13 @@
 (deftest ^:parallel table-view-available-drill-thrus-headers-sorted-column-test
   (testing "column headers: click on"
     (testing "a sorted column"
-      (let [expected [{:lib/type :metabase.lib.drill-thru/drill-thru
-                       :type     :drill-thru/distribution
-                       :column   (meta/field-metadata :orders :subtotal)}
-                      {:lib/type   :metabase.lib.drill-thru/drill-thru
+      (let [expected [{:lib/type   :metabase.lib.drill-thru/drill-thru
                        :type       :drill-thru/column-filter
                        :column     (meta/field-metadata :orders :subtotal)
                        :initial-op {:short := :display-name-variant :equal-to}}
+                      {:lib/type :metabase.lib.drill-thru/drill-thru
+                       :type     :drill-thru/distribution
+                       :column   (meta/field-metadata :orders :subtotal)}
                       {:lib/type        :metabase.lib.drill-thru/drill-thru
                        :type            :drill-thru/sort
                        :column          (meta/field-metadata :orders :subtotal)
@@ -648,8 +648,8 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "PRODUCT_ID"
-    :expected    [{:type :drill-thru/distribution}
-                  {:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+                  {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
@@ -658,8 +658,8 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "SUBTOTAL"
-    :expected    [{:type :drill-thru/distribution}
-                  {:type :drill-thru/column-filter, :initial-op {:short :=}}
+    :expected    [{:type :drill-thru/column-filter, :initial-op {:short :=}}
+                  {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct :sum :avg]}
                   {:type :drill-thru/summarize-column-by-time}]}))
@@ -669,8 +669,8 @@
    {:click-type  :header
     :query-type  :unaggregated
     :column-name "CREATED_AT"
-    :expected    [{:type :drill-thru/distribution}
-                  {:type :drill-thru/column-filter, :initial-op nil}
+    :expected    [{:type :drill-thru/column-filter, :initial-op nil}
+                  {:type :drill-thru/distribution}
                   {:type :drill-thru/sort, :sort-directions [:asc :desc]}
                   {:type :drill-thru/summarize-column, :aggregations [:distinct]}]}))
 
