@@ -1,1 +1,1 @@
-export { QuestionEmbedWidget } from "./QuestionEmbedWidget";
+export * from "./QuestionEmbedWidget";

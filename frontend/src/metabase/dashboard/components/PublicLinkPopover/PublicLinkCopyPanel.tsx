@@ -1,12 +1,11 @@
 import { t } from "ttag";
 import {
-  LinkContainer,
   PublicLinkCopyButton,
-  PublicLinkTextContainer,
   ExtensionOption,
+  RemoveLinkAnchor,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
 import type { exportFormats } from "metabase/lib/urls";
-import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Group, Stack, Text, TextInput, Tooltip } from "metabase/ui";
 
 export type ExportFormatType = typeof exportFormats[number] | null;
 
@@ -31,22 +30,36 @@ export const PublicLinkCopyPanel = ({
 }) => {
   return (
     <Stack>
-      <LinkContainer noWrap p="sm" align="center">
-        {loading ? (
-          <PublicLinkTextContainer>
-            <Text truncate c="text.0">{t`Loading…`}</Text>
-          </PublicLinkTextContainer>
-        ) : (
-          <>
-            <PublicLinkTextContainer>
-              <Text truncate data-testid="public-link-text">
-                {url}
-              </Text>
-            </PublicLinkTextContainer>
-            <PublicLinkCopyButton value={url} />
-          </>
-        )}
-      </LinkContainer>
+      <TextInput
+        readOnly
+        placeholder={loading ? t`Loading…` : undefined}
+        value={url ?? undefined}
+        inputWrapperOrder={["label", "input", "error", "description"]}
+        rightSection={<PublicLinkCopyButton value={url} />}
+        description={
+          onRemoveLink && (
+            // The box is needed to center the tooltip on the anchor
+            <Box pos="absolute" mt="sm">
+              <Tooltip
+                label={
+                  <Text fw={700} c="inherit">
+                    {removeTooltipLabel}
+                  </Text>
+                }
+              >
+                <RemoveLinkAnchor
+                  fz="sm"
+                  c="error.0"
+                  fw={700}
+                  onClick={onRemoveLink}
+                >
+                  {removeButtonLabel}
+                </RemoveLinkAnchor>
+              </Tooltip>
+            </Box>
+          )
+        }
+      />
       {extensions && extensions.length > 0 && (
         <Group my="sm">
           {extensions.map(extension => (
@@ -64,22 +77,6 @@ export const PublicLinkCopyPanel = ({
             </ExtensionOption>
           ))}
         </Group>
-      )}
-      {onRemoveLink && (
-        // The box is needed to center the tooltip on the anchor
-        <Box>
-          <Tooltip
-            label={
-              <Text fw={700} c="inherit">
-                {removeTooltipLabel}
-              </Text>
-            }
-          >
-            <Anchor fz="sm" c="error.0" fw={700} onClick={onRemoveLink}>
-              {removeButtonLabel}
-            </Anchor>
-          </Tooltip>
-        </Box>
       )}
     </Stack>
   );

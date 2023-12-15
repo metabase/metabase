@@ -51,7 +51,12 @@ export const PublicLinkPopover = ({
         <div>{target}</div>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="lg" w="28rem" data-testid="public-link-popover-content">
+        <Box
+          p="lg"
+          w="28rem"
+          data-testid="public-link-popover-content"
+          mih={isAdmin ? "10rem" : "auto"}
+        >
           <Title order={4}>{t`Public link`}</Title>
           <Text>{t`Anyone can view this if you give them the link.`}</Text>
           <PublicLinkCopyPanel
