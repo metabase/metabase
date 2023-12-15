@@ -381,7 +381,7 @@
                                                   (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
-                                                        (throw (ex-info "Query cancelled" {:metabase.driver.bigquery-cloud-sdk/cancelled? true})))
+                                                        (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
                                                     (orig-fn client sql parameters nil nil)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
