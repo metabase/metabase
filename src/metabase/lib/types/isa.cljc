@@ -1,11 +1,13 @@
 (ns metabase.lib.types.isa
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
+  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
   (:require
    [medley.core :as m]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.types.constants :as lib.types.constants]
    [metabase.lib.util :as lib.util]
-   [metabase.types])
-  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?]))
+   [metabase.types]
+   [metabase.util.malli :as mu]))
 
 (comment metabase.types/keep-me)
 
@@ -275,3 +277,17 @@
       (if (lib.util/legacy-string-table-id->card-id table-id)
         pk?
         (and pk? (= (:table-id column) table-id))))))
+
+;;; TODO -- This stuff should probably use the constants in [[metabase.lib.types.constants]], however this logic isn't
+;;; supposed to include things with semantic type = Category which the `::string` constant define there includes.
+(mu/defn searchable?
+  "Is this column on that we should show a search widget for (to search its values) in the QB filter UI? If so, we can
+  give it a `has-field-values` value of `:search`."
+  [{:keys [base-type effective-type]} :- [:map
+                                          [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                          [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]]]
+  ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
+  ;; filter that powers the search queries (see [[metabase.api.field/search-values]]) doesn't work on anything else
+  (let [column-type (or effective-type base-type)]
+    (or (clojure.core/isa? column-type :type/Text)
+        (clojure.core/isa? column-type :type/TextLike))))
