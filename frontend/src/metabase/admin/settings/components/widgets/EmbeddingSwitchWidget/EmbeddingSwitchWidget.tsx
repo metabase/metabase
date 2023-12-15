@@ -17,7 +17,7 @@ export const EmbeddingSwitchWidget = ({
     </Text>
     <Switch
       labelPosition="left"
-      checked={setting.value ?? false}
+      checked={Boolean(setting.value)}
       label={<strong>{t`Embedding Enabled`}</strong>}
       onChange={e => {
         const newValue = e.currentTarget.checked;
