@@ -96,14 +96,18 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
         });
 
         describe("when user is non-admin", () => {
-          it(`should not show the embed button if the ${resource} doesn't have a public link`, () => {
+          it(`should show a disabled embed button if the ${resource} doesn't have a public link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
-            cy.icon("share").should("not.exist");
+            cy.findByTestId("dashboard-embed-button").should("be.disabled");
+            cy.findByTestId("dashboard-embed-button").realHover();
+            cy.findByRole("tooltip")
+              .findByText("Ask your admin to create a public link")
+              .should("be.visible");
           });
 
           it(`should show the embed button if the ${resource} has a public link`, () => {
@@ -166,14 +170,18 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
           });
         });
         describe("when user is non-admin", () => {
-          it(`should not show the embed button for ${resource}`, () => {
+          it(`should show a disabled button for ${resource}`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
-            cy.icon("share").should("not.exist");
+            cy.findByTestId("dashboard-embed-button").should("be.disabled");
+            cy.findByTestId("dashboard-embed-button").realHover();
+            cy.findByRole("tooltip")
+              .findByText("Public links are disabled")
+              .should("be.visible");
           });
         });
       });
