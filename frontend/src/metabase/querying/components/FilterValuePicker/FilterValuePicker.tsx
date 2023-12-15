@@ -68,7 +68,7 @@ function FilterValuePicker({
     );
   }
 
-  if (canSearchFieldValues(fieldInfo)) {
+  if (canSearchFieldValues(fieldInfo, fieldData)) {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return (

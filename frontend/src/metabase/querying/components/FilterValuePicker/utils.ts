@@ -24,12 +24,12 @@ export function canListFieldValues(
 
 export function canSearchFieldValues(
   { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
-  { has_more_values }: FieldValuesResult,
+  fieldData: FieldValuesResult | undefined,
 ) {
   return (
     fieldId != null &&
     searchFieldId != null &&
-    ((hasFieldValues === "list" && has_more_values) ||
+    ((hasFieldValues === "list" && fieldData?.has_more_values) ||
       hasFieldValues === "search")
   );
 }
