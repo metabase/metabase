@@ -20,7 +20,7 @@ export const EmbeddingSwitchWidget = ({
       checked={Boolean(setting.value)}
       label={<strong>{t`Embedding Enabled`}</strong>}
       onChange={e => {
-        const newValue = e.currentTarget.checked;
+        const newValue = e.target.checked;
         onChange(newValue);
         if (newValue) {
           MetabaseAnalytics.trackStructEvent(
