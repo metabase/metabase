@@ -267,7 +267,7 @@
           ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
           ;; Additional configuration here if needed
           job-builder (-> (JobId/newBuilder)
-                                (.setRandomJob))
+                          (.setRandomJob))
           job-id (.build job-builder)
           res-fut (future (.query client (.build request) job-id (u/varargs BigQuery$JobOption)))]
       (when cancel-chan
@@ -276,8 +276,8 @@
             (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
             (reset! cancel-requested? true) ; signal the page iteration fn to stop
             (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
-            (do (.cancel client job-id) ; Cancel running job before canceling task
-                (future-cancel res-fut))
+              (do (.cancel client job-id) ; Cancel running job before canceling task
+                  (future-cancel res-fut))
             (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
