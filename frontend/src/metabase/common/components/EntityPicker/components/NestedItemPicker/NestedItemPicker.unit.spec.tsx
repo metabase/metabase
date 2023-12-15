@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { screen, render } from "__support__/ui";
+import type { SearchResult } from "metabase-types/api";
+import type { PickerState } from "../../types";
 import { NestedItemPicker } from ".";
 
 const initialState = new Array(3).fill(0).map((_, index, arr) => ({
@@ -15,7 +17,7 @@ const initialState = new Array(3).fill(0).map((_, index, arr) => ({
           id: `${index}-2`,
           model: "collection",
         },
-}));
+})) as unknown as PickerState<SearchResult>;
 
 const setup = ({
   onFolderSelect = jest.fn(),
@@ -26,6 +28,7 @@ const setup = ({
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       folderModel="collection"
+      itemModel="collection"
       initialState={initialState}
     />,
   );

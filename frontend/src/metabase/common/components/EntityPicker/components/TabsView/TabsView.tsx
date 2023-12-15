@@ -22,12 +22,12 @@ export const TabsView = ({
   selectedItem,
 }: {
   tabs: ValidTab[];
-  onItemSelect: (item: Partial<SearchResult>) => void;
-  value?: SearchResult;
+  onItemSelect: (item: SearchResult) => void;
+  value?: Partial<SearchResult>;
   options: EntityPickerOptions;
   searchQuery: string;
   searchResults: SearchResult[] | null;
-  selectedItem: SearchResult;
+  selectedItem: SearchResult | null;
 }) => {
   const hasSearchTab = !!searchQuery;
   const defaultTab = hasSearchTab ? "search" : tabs[0];

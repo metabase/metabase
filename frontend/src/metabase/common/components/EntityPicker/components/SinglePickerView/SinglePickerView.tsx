@@ -11,8 +11,8 @@ export const SinglePickerView = ({
   options,
 }: {
   model: ValidTab;
-  onItemSelect: (item: Partial<SearchResult>) => void;
-  value?: SearchResult;
+  onItemSelect: (item: SearchResult) => void;
+  value?: Partial<SearchResult>;
   options?: EntityPickerOptions;
 }) => {
   const { component: PickerComponent } = tabOptions[model];
