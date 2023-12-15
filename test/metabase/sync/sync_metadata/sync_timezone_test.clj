@@ -55,7 +55,7 @@
               tz-after-update                  (db-timezone db)
               ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
               ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
-              _                                (driver/notify-database-updated driver/*driver* db)
+              _                                (driver/notify-database-updated! driver/*driver* db)
               {:keys [step-info task-history]} (sync.util-test/sync-database! "sync-timezone" db)]
           (testing "only step keys"
             (is (= {:timezone-id "UTC"}

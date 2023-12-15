@@ -153,7 +153,7 @@
                  :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
-    (driver/notify-database-updated driver database)
+    (driver/notify-database-updated! driver database)
     (catch Throwable e
       (log/error e (trs "Error sending database deletion notification")))))
 

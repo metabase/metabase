@@ -77,7 +77,7 @@
   [driver query chans respond]
   (sql-jdbc.execute/execute-reducible-query driver query chans respond))
 
-(defmethod driver/notify-database-updated :sql-jdbc
+(defmethod driver/notify-database-updated! :sql-jdbc
   [_ database]
   (sql-jdbc.conn/invalidate-pool-for-db! database))
 

@@ -396,7 +396,7 @@
   [_]
   :sunday)
 
-(defmethod driver/notify-database-updated :bigquery-cloud-sdk
+(defmethod driver/notify-database-updated! :bigquery-cloud-sdk
   [_ database]
   (bigquery.common/populate-project-id-from-credentials! database))
 

@@ -95,7 +95,7 @@
               (is (true? (binding [h2/*allow-testing-h2-connections* true]
                            (driver/can-connect? driver/*driver* details)))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
-            (driver/notify-database-updated driver/*driver* db)
+            (driver/notify-database-updated! driver/*driver* db)
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
@@ -141,7 +141,7 @@
                 (is (= {:status "ok"}
                        (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
-            (driver/notify-database-updated driver/*driver* db)
+            (driver/notify-database-updated! driver/*driver* db)
             ;; destroy the db
             (if (contains? #{:redshift :snowflake :vertica :presto-jdbc :oracle} driver/*driver*)
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.

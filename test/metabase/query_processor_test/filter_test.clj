@@ -103,7 +103,7 @@
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
       ;; test's results
       (when (= :snowflake driver/*driver*)
-        (driver/notify-database-updated driver/*driver* (mt/id)))
+        (driver/notify-database-updated! driver/*driver* (mt/id)))
       (is (=? {:rows [[29]]
                :cols [(qp.test-util/aggregate-col :count)]}
               (qp.test-util/rows-and-cols

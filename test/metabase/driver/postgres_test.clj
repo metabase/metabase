@@ -704,7 +704,7 @@
   (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
-    (driver/notify-database-updated :postgres database)))
+    (driver/notify-database-updated! :postgres database)))
 
 (deftest enums-test
   (mt/test-driver :postgres

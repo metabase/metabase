@@ -21,7 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
-(declare notify-database-updated)
+(declare notify-database-updated!)
 
 (defn- notify-all-databases-updated
   "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
@@ -31,9 +31,9 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select :model/Database)]
     (try
-      (notify-database-updated driver database)
+      (notify-database-updated! driver database)
       (catch Throwable e
         (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
 
@@ -708,10 +708,7 @@
   query)
 
 ;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
-;;
-;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
-;; effects?
-(defmulti notify-database-updated
+(defmulti notify-database-updated!
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
   release ALL related resources when this is called."
@@ -719,7 +716,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod notify-database-updated ::driver [_ _]
+(defmethod notify-database-updated! ::driver [_ _]
   nil) ; no-op
 
 (defmulti sync-in-context
