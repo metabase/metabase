@@ -338,7 +338,7 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema test-db-name, :name tbl-nm})
+                     {:schema test-db-name, :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
       (is (= {:schema test-db-name
               :name   tbl-nm
