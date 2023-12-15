@@ -69,6 +69,57 @@ If you have a file larger than 200 MB, the workaround here is to:
 2. Upload those files one by one. Metabase will create a new model for each sheet.
 3. Consolidate that data by creating a new question or model that joins the data from those constituent models created by each upload.
 
+## Date formats
+
+For now, Metabase only recognizes dates and datetimes from strings in uploaded CSVs with the following formats:
+
+### Dates
+
+Represents the year, month, and day without time information.
+
+**Format**: `yyyy-MM-dd`
+
+**Example**: `2023-01-01`
+
+### Datetimes
+
+Represents the year, month, day, hour. Minutes, seconds, and fractional seconds are optional.
+
+**Format**: `yyyy-MM-ddTHH:mm:ss.SSS`. The "T" separator could also be a space (" ").
+
+**Examples**: 
+
+- `2023-01-01 00`
+- `2023-01-01 00:00:00.000`
+- `2023-01-01T00:00:00.000`
+- `2023-01-01 00:00:00.0000000`
+
+### Datetimes with offsets
+
+Represents the datetime with an offset from Coordinated Universal Time (UTC). Minutes and seconds in the offset are optional.
+
+**Formats**: 
+
+Datetime formats:
+
+- `yyyy-MM-ddTHH:mm`. 
+- `yyyy-MM-ddTHH:mm:ss`. 
+- `yyyy-MM-ddTHH:mm:ss.SSS` (and any number of S's).
+
+The "T" separator could also be a space (" ").
+
+Offsets:
+
+- `Z` (for UTC)
+- `+HH` or `-HH` 
+- `+HH:mm` or `-HH:mm` 
+- `+HH:mm:ss` or `-HH:mm:ss` 
+
+**Examples**:
+
+- `2023-01-01 00:00:00+00:00:00`
+- `2023-01-01T00:00:00+00:00:00`
+
 ## Deleting models and tables created by uploads
 
 ### Models
