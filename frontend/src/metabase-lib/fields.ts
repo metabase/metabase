@@ -45,10 +45,10 @@ export function fieldableColumns(
 }
 
 export function fieldValuesSearchInfo(
-  _query: Query,
-  _column: ColumnMetadata,
+  query: Query,
+  column: ColumnMetadata,
 ): FieldValuesSearchInfo {
-  return { fieldId: 1, searchFieldId: null, hasFieldValues: "list" };
+  return ML.field_values_search_info(query, column);
 }
 
 export function legacyRef(

@@ -48,6 +48,8 @@ function FilterValuePicker({
     enabled: canLoadFieldValues(fieldInfo),
   });
 
+  const fieldValues = fieldData?.values ?? [];
+
   if (isLoading) {
     return (
       <Center h="2.5rem">
@@ -75,7 +77,7 @@ function FilterValuePicker({
       <SearchValuePicker
         fieldId={checkNotNull(fieldInfo.fieldId)}
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
-        fieldValues={fieldData?.values ?? []}
+        fieldValues={fieldValues}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
@@ -86,9 +88,9 @@ function FilterValuePicker({
 
   return (
     <StaticValuePicker
-      fieldValues={fieldData?.values ?? []}
+      fieldValues={fieldValues}
       selectedValues={selectedValues}
-      placeholder={placeholder}
+      placeholder={fieldValues.length > 0 ? t`Search the list` : placeholder}
       shouldCreate={shouldCreate}
       onChange={onChange}
     />
