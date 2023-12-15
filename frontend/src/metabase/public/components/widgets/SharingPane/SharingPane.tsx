@@ -5,7 +5,6 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import {
-  PublicEmbedIconWrapper,
   SharingPaneActionButton,
   StaticEmbedIconWrapper,
 } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
@@ -15,6 +14,7 @@ import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
+import { PublicEmbedIcon } from "./icons";
 
 export type Resource = Dashboard | Card;
 
@@ -100,7 +100,7 @@ function SharingPane({
             </>
           )
         }
-        illustration={<PublicEmbedIconWrapper />}
+        illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
       >
         {resource.public_uuid ? (
           <PublicLinkCopyPanel
