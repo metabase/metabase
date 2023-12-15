@@ -15,6 +15,10 @@ describe("issue 36422", () => {
 
     cy.intercept("POST", "/api/metric", req => req.reply(400));
     cy.button("Save changes").click();
+    cy.button("Failed")
+      .parent()
+      .parent()
+      .should("contain", "An error occurred");
   });
 });
 
