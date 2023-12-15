@@ -196,7 +196,7 @@
              (or include_csv include_xls))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
-     (trs "More results have been included as a file attachment")]))
+     (trs "Results have been included as a file attachment")]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     render                                                     |
