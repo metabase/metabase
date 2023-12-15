@@ -4358,9 +4358,9 @@ databaseChangeLog:
 #
 #    M         = major version
 #    TIMESTAMP = the current timestamp with format `yyyy-MM-dd'T'HH:mm:ss`
-#                To get this timestamp, evalute this in your REPL: `(dev/migration-timestamp)`
+#                To get this timestamp, evaluate this in your REPL: `(dev/migration-timestamp)`
 #
-#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023,
+#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023 (UTC),
 #    your migration id should be: `v49.2023-04-01T10:30:00`.
 #
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
