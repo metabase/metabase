@@ -122,7 +122,7 @@
      (test-query-results actual)
 
      "/json"
-     (is (= [{:Count 100}]
+     (is (= [{:Count "100"}]
             actual))
 
      "/csv"
