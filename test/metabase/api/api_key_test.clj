@@ -33,19 +33,19 @@
       ;; mock out the `api-key/generate-key` function to generate the same key (with the same prefix) repeatedly
       (let [generated-key  (api-key/generate-key)
             generated-keys (atom [generated-key
-                                    generated-key
-                                    generated-key
-                                    generated-key
-                                    (api-key/generate-key)])]
+                                  generated-key
+                                  generated-key
+                                  generated-key
+                                  (api-key/generate-key)])]
         (with-redefs [api-key/generate-key (fn [] (let [next-val (first @generated-keys)]
                                                     (swap! generated-keys next)
                                                     next-val))]
           ;; put an API Key in the database with that key.
           (t2.with-temp/with-temp
-              [:model/ApiKey _ {:key        generated-key
-                                :name       "my cool name"
-                                :user_id    (mt/user->id :crowberto)
-                                :created_by (mt/user->id :crowberto)}]
+              [:model/ApiKey _ {:unhashed_key generated-key
+                                :name         "my cool name"
+                                :user_id      (mt/user->id :crowberto)
+                                :created_by   (mt/user->id :crowberto)}]
             ;; this will try to generate a new API key
             (mt/user-http-request :crowberto :post 200 "api-key"
                                   {:group_id group-id
@@ -56,10 +56,10 @@
       (let [generated-key (api-key/generate-key)]
         (with-redefs [api-key/generate-key (constantly generated-key)]
           (t2.with-temp/with-temp
-              [:model/ApiKey _ {:key        generated-key
-                                :name       "my cool name"
-                                :user_id    (mt/user->id :crowberto)
-                                :created_by (mt/user->id :crowberto)}]
+              [:model/ApiKey _ {:unhashed_key generated-key
+                                :name         "my cool name"
+                                :user_id      (mt/user->id :crowberto)
+                                :created_by   (mt/user->id :crowberto)}]
             (is (= "could not generate key with unique prefix"
                    (:message (mt/user-http-request :crowberto :post 500 "api-key"
                                                    {:group_id group-id
@@ -91,14 +91,14 @@
   (mt/with-empty-h2-app-db
     (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
     (t2.with-temp/with-temp
-        [:model/ApiKey _ {:key        "prefix_key"
-                          :name       "my cool name"
-                          :user_id    (mt/user->id :crowberto)
-                          :created_by (mt/user->id :crowberto)}]
+        [:model/ApiKey _ {:unhashed_key "prefix_key"
+                          :name         "my cool name"
+                          :user_id      (mt/user->id :crowberto)
+                          :created_by   (mt/user->id :crowberto)}]
       (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
       (t2.with-temp/with-temp
-          [:model/ApiKey _ {:key        "some_other_key"
-                            :name       "my cool OTHER name"
-                            :user_id    (mt/user->id :crowberto)
-                            :created_by (mt/user->id :crowberto)}]
+          [:model/ApiKey _ {:unhashed_key "some_other_key"
+                            :name         "my cool OTHER name"
+                            :user_id      (mt/user->id :crowberto)
+                            :created_by   (mt/user->id :crowberto)}]
         (is (= 2 (mt/user-http-request :crowberto :get 200 "api-key/count")))))))

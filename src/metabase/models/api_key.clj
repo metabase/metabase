@@ -21,9 +21,9 @@
   [key]
   (apply str (take prefix-length key)))
 
-(defn- add-prefix [{:keys [key] :as api-key}]
+(defn- add-prefix [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
-    key (assoc :key_prefix (prefix key))))
+    key (assoc :key_prefix (prefix unhashed_key))))
 
 (defn mask
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
@@ -37,14 +37,21 @@
   []
   (str "mb_" (crypto-random/base64 bytes-key-length)))
 
+(defn- add-key
+  "Adds the `key` based on the `unhashed_key` passed in."
+  [{:keys [unhashed_key] :as api-key}]
+  (cond-> api-key
+    unhashed_key (assoc :key (u.password/hash-bcrypt unhashed_key))
+    true (dissoc :unhashed_key)))
+
 (t2/define-before-insert :model/ApiKey
-  [{:keys [key] :as api-key}]
+  [api-key]
   (-> api-key
       add-prefix
-      (update :key u.password/hash-bcrypt)))
+      add-key))
 
 (t2/define-before-update :model/ApiKey
-  [{:keys [key] :as api-key}]
+  [api-key]
   (-> api-key
       add-prefix
-      (update :key u.password/hash-bcrypt)))
+      add-key))

@@ -8,6 +8,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -19,7 +20,7 @@
      ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
        api-key
-       (throw (ex-info "could not generate key with unique prefix" {}))))))
+       (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
 (api/defendpoint POST "/"
   "Create a new API key (and an associated `User`) with the provided name and group ID."
@@ -37,16 +38,16 @@
                                                          :password (crypto-random/base64 16)
                                                          :type     :api-key}))]
         (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])
-        (u/prog1 (-> (t2/insert-returning-instances! :model/ApiKey
-                                                     {:user_id    (u/the-id user)
-                                                      :name       name
-                                                      :key        api-key
-                                                      :created_by api/*current-user-id*})
-                     (select-keys [:created_at :updated_at :id])
-                     (assoc :name name
-                            :group_id group_id
-                            :unmasked_key api-key
-                            :masked_key (api-key/mask api-key))))))))
+        (-> (t2/insert-returning-instances! :model/ApiKey
+                                            {:user_id      (u/the-id user)
+                                             :name         name
+                                             :unhashed_key api-key
+                                             :created_by   api/*current-user-id*})
+            (select-keys [:created_at :updated_at :id])
+            (assoc :name name
+                   :group_id group_id
+                   :unmasked_key api-key
+                   :masked_key (api-key/mask api-key)))))))
 
 (api/defendpoint GET "/count"
   "Get the count of API keys in the DB"

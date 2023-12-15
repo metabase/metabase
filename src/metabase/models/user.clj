@@ -194,7 +194,7 @@
   (cond-> user
     (= :api-key type)
     (assoc :first_name (i18n/tru "API Key:")
-           :last_name (:name (t2/select-one [:model/ApiKey :name] :user_id (:id user))))))
+           :last_name (t2/select-one-fn :name :model/ApiKey :user_id (:id user)))))
 
 (t2/define-after-select :model/User
   [user]
