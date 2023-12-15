@@ -20,6 +20,7 @@
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
+   (liquibase.changelog.filter ChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.database Database DatabaseFactory)
    (liquibase.database.jvm JdbcConnection)
@@ -254,7 +255,7 @@
      :or {change-set-filters []}}]
    (let [change-log     (.getDatabaseChangeLog liquibase)
          database       (.getDatabase liquibase)
-         log-iterator   (ChangeLogIterator. change-log change-set-filters)
+         log-iterator   (ChangeLogIterator. change-log (into-array ChangeSetFilter change-set-filters))
          update-visitor (UpdateVisitor. database ^ChangeExecListener exec-listener)
          runtime-env    (RuntimeEnvironment. database (Contexts.) nil)]
      (run-in-scope-locked
