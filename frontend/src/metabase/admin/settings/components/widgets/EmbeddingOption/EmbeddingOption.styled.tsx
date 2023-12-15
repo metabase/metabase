@@ -8,11 +8,10 @@ import Card from "metabase/components/Card";
 export const StyledCard = styled(Card)`
   padding: 2rem;
   width: 100%;
-  max-width: 31.25rem;
+  max-width: 34rem;
 `;
 
 export const Label = styled.span`
-  margin-bottom: ${space(2)};
   padding: ${space(0)} ${space(1)};
   display: inline-block;
 
@@ -21,17 +20,6 @@ export const Label = styled.span`
   font-weight: 700;
   border-radius: 0.25rem;
   text-transform: uppercase;
-  color: ${color("brand")};
-  background: ${color("brand-light")};
-`;
-
-export const Header = styled.h2`
-  font-size: 0.875rem;
-  margin-bottom: ${space(1)};
-`;
-
-export const Description = styled.p`
-  margin-top: 0;
-  margin-bottom: ${space(2)};
-  color: ${color("text-medium")};
+  color: ${color("white")};
+  background: ${color("brand")};
 `;

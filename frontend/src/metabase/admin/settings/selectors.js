@@ -469,14 +469,21 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "-static-embedding",
         widget: EmbeddingOption,
         embedName: t`Static embedding`,
-        embedDescription: t`Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.`,
+        embedDescription: t`Use interactive embedding when you want to offer multi-tenant, self-service analytics and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`,
         embedType: "standalone",
       },
       {
         key: "-interactive-embedding",
         widget: EmbeddingOption,
         embedName: t`Interactive embedding`,
-        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.`,
+        embedDescription: jt`Use interactive embedding when you want to ${(
+          <ExternalLink
+            herf="https://www.metabase.com/blog/why-full-app-embedding"
+            key="why-full-app-embedding"
+          >
+            {t`offer multi-tenant, self-service analytics`}
+          </ExternalLink>
+        )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`,
         embedType: "full-app",
       },
     ],
