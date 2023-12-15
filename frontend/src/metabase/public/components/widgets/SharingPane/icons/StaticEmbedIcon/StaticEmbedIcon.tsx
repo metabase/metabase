@@ -1,8 +1,7 @@
 import { StaticEmbedIconRoot } from "metabase/public/components/widgets/SharingPane/icons/StaticEmbedIcon/StaticEmbedIcon.styled";
 
-export const StaticEmbedIcon = ({ className }: { className?: string }) => (
+export const StaticEmbedIcon = () => (
   <StaticEmbedIconRoot
-    className={className}
     width="40"
     height="32"
     viewBox="0 0 40 32"
