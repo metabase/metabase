@@ -286,16 +286,9 @@ class UpdateAlertModalContentInner extends Component {
   onAlertChange = modifiedAlert => this.setState({ modifiedAlert });
 
   onUpdateAlert = async () => {
-    const {
-      question,
-      apiUpdateQuestion,
-      updateAlert,
-      updateUrl,
-      onAlertUpdated,
-    } = this.props;
+    const { question, updateAlert, updateUrl, onAlertUpdated } = this.props;
     const { modifiedAlert } = this.state;
 
-    await apiUpdateQuestion();
     await updateAlert(modifiedAlert);
     await updateUrl(question, { dirty: false });
     onAlertUpdated();
@@ -363,7 +356,7 @@ export const UpdateAlertModalContent = connect(
     question: getQuestion(state),
     visualizationSettings: getVisualizationSettings(state),
   }),
-  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
+  { updateAlert, deleteAlert, updateUrl },
 )(UpdateAlertModalContentInner);
 
 export class DeleteAlertSection extends Component {

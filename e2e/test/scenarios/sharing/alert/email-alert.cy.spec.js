@@ -83,6 +83,37 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       expect(body.channels[0].enabled).to.eq(true);
     });
   });
+
+  it("should enable alert to be updated (without updating question) (metabase#36866)", () => {
+    openTable({
+      table: PEOPLE_ID,
+    });
+
+    cy.findByTestId("view-footer").within(() => {
+      cy.icon("bell").click();
+    });
+
+    cy.findByRole("dialog").within(() => {
+      cy.findByLabelText("Name").type(" alert");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    cy.wait("@saveCard");
+
+    cy.findByTestId("alert-education-screen").within(() => {
+      cy.findByRole("button", { name: "Set up an alert" }).click();
+    });
+    cy.findByRole("button", { name: "Done" }).click();
+
+    cy.wait("@savedAlert").then(({ response: { body } }) => {
+      expect(body.channels[0].channel_type).to.eq("email");
+      expect(body.channels[0].enabled).to.eq(true);
+    });
+
+    cy.findByTestId("view-footer").within(() => {
+      cy.icon("bell").click();
+    });
+  });
 });
 
 function openAlertForQuestion(id) {
