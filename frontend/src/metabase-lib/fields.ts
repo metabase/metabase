@@ -77,7 +77,7 @@ export function legacyRef(
 /**
  * Info about FieldValues/remapping for the purposes of powering search widgets in filter modals.
  */
-function fieldValuesSearchInfo(
+export function fieldValuesSearchInfo(
   metadataProviderable: MetadataProvider | Query,
   column: ColumnMetadata,
 ): FieldValuesSearchInfo {

@@ -37,8 +37,8 @@
             :lib/external-remap {:lib/type :metadata.column.remapping/external
                                  :id       72
                                  :name     "Category ID [external remap]"
-                                 :field-id 67}}))
-    (lib.metadata/field metadata-provider 36)))
+                                 :field-id 67}}
+           (lib.metadata/field metadata-provider 36)))))
 
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33
