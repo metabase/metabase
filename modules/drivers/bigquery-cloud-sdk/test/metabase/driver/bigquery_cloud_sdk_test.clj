@@ -392,8 +392,7 @@
               ;; Verify exception as expected
               (is (= "Query cancelled" (.getMessage e)))
               ;; make sure that the fake exception was thrown
-              (is (true? @fake-execute-called))))))))
-)
+              (is (true? @fake-execute-called)))))))))
 
 (deftest query-cancel-test
   (mt/test-driver :bigquery-cloud-sdk
