@@ -146,7 +146,6 @@ export const updateDashboardAndCards = createThunkAction(
         fetchDashboardCardData({
           reload: false,
           clearCache: false,
-          // source: "SAVE",
         }),
       );
     };
