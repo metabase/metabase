@@ -12,7 +12,7 @@ const initialState = new Array(3).fill(0).map((_, index, arr) => ({
   })),
   selectedItem:
     index === arr.length - 1
-      ? {}
+      ? null
       : {
           id: `${index}-2`,
           model: "collection",
