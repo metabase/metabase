@@ -448,6 +448,7 @@ describeEE("formatting > sandboxes", () => {
       { tags: "@flaky" },
       () => {
         beforeEach(() => {
+          cy.intercept("POST", "/api/dataset").as("datasetQuery");
           cy.log("Remap Product ID's display value to `title`");
           remapDisplayValueToFK({
             display_value: ORDERS.PRODUCT_ID,
@@ -505,9 +506,14 @@ describeEE("formatting > sandboxes", () => {
               callback: xhr => expect(xhr.response.body.error).not.to.exist,
             });
 
-            cy.get(".cellData").contains("Awesome Concrete Shoes").click();
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(/View details/i).click();
+            cy.wait("@datasetQuery");
+
+            cy.findByTestId("TableInteractive-root")
+              .findByText("Awesome Concrete Shoes")
+              .click();
+            popover()
+              .findByText(/View details/i)
+              .click();
 
             cy.log(
               "It should show object details instead of filtering by this Product ID",

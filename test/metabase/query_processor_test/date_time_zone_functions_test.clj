@@ -728,7 +728,7 @@
 
 (deftest ^:parallel datetime-diff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (letfn [(query [x y unit]
                 (mt/mbql-query orders
                   {:limit 1
@@ -1066,7 +1066,7 @@
 
 (deftest datetime-diff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Args can be expressions that return datetime values"
         (let [diffs (fn [x y]
                       (let [units [:second :minute :hour :day :week :month :quarter :year]]

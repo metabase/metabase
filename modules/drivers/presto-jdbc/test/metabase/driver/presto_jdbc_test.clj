@@ -31,9 +31,9 @@
 (deftest describe-database-test
   (mt/test-driver :presto-jdbc
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
-                      {:name "test_data_venues" :schema "default"}
                       {:name "test_data_checkins" :schema "default"}
-                      {:name "test_data_users" :schema "default"}}}
+                      {:name "test_data_users" :schema "default"}
+                      {:name "test_data_venues" :schema "default"}}}
            (-> (driver/describe-database :presto-jdbc (mt/db))
                (update :tables (comp set (partial filter (comp #{"test_data_categories"
                                                                  "test_data_venues"
