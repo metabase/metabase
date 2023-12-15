@@ -180,8 +180,8 @@
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
-    (doseq [[name+schema metabase-table] name+schema->table-metadata]
-      (when-let [table-metadata (name+schema->metabase-table name+schema)]
+    (doseq [[name+schema metabase-table] name+schema->metabase-table]
+      (when-let [table-metadata (name+schema->table-metadata name+schema)]
         (update-table-metadata-if-needed! table-metadata metabase-table)))))
 
 (mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
