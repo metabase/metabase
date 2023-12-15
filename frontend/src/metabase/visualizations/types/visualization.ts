@@ -69,8 +69,6 @@ export interface VisualizationProps {
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
 
-  onAddSeries?: any;
-  onEditSeries?: any;
   onRemoveSeries?: any;
   onUpdateWarnings?: any;
 }

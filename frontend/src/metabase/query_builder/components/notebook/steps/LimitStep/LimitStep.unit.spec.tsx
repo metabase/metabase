@@ -17,6 +17,7 @@ function setup(step = createMockNotebookStep()) {
       query={step.query}
       topLevelQuery={step.topLevelQuery}
       color="brand"
+      stageIndex={step.stageIndex}
       isLastOpened={false}
       reportTimezone="UTC"
       updateQuery={updateQuery}

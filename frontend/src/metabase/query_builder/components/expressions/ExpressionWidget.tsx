@@ -9,7 +9,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/expressions";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
@@ -28,20 +27,9 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
   "questions/query-builder/expressions",
 );
 
-interface LegacyQueryProps {
-  query?: never;
-  stageIndex?: never;
-}
-
-interface QueryProps {
+export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
   stageIndex: number;
-}
-
-export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
-  legacyQuery: StructuredQuery;
-  query?: Lib.Query;
-  stageIndex?: number;
   /**
    * expression should not be present in components migrated to MLv2
    */
@@ -64,13 +52,12 @@ export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
-} & (QueryProps | LegacyQueryProps);
+};
 
 export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
   props: ExpressionWidgetProps<Clause>,
 ): JSX.Element => {
   const {
-    legacyQuery,
     query,
     stageIndex,
     name: initialName,
@@ -163,7 +150,6 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
             clause={clause}
             startRule={startRule}
             name={name}
-            legacyQuery={legacyQuery}
             query={query}
             stageIndex={stageIndex}
             reportTimezone={reportTimezone}

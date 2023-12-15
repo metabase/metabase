@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import type { MBQLClauseMap } from "./types";
 
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
@@ -27,7 +28,7 @@ export const EDITOR_FK_SYMBOLS = {
 };
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-export const OPERATOR_PRECEDENCE = {
+export const OPERATOR_PRECEDENCE: Record<string, number> = {
   not: 17,
   "*": 15,
   "/": 15,
@@ -37,7 +38,7 @@ export const OPERATOR_PRECEDENCE = {
   or: 5,
 };
 
-export const MBQL_CLAUSES = {
+export const MBQL_CLAUSES: MBQLClauseMap = {
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
   "cum-count": {
@@ -101,7 +102,7 @@ export const MBQL_CLAUSES = {
     displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
-    validator: function (_arg, start, _length) {
+    validator: function (_arg: any, start: number, _length: any) {
       if (start <= 0) {
         return t`Expected positive integer but found ${start}`;
       }
@@ -419,10 +420,10 @@ const EXPRESSION_TO_MBQL_NAME = new Map(
     mbql,
   ]),
 );
-export function getExpressionName(mbqlName) {
+export function getExpressionName(mbqlName: string) {
   return MBQL_TO_EXPRESSION_NAME.get(mbqlName);
 }
-export function getMBQLName(expressionName) {
+export function getMBQLName(expressionName: string) {
   // case-insensitive
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.toLowerCase());
 }

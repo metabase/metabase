@@ -16,7 +16,9 @@ export function menu() {
 }
 
 export function modal() {
-  return cy.get(".ModalContainer .ModalContent");
+  const LEGACY_MODAL_SELECTOR = ".Modal";
+  const MODAL_SELECTOR = ".emotion-Modal-content[role='dialog']";
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
 export function sidebar() {
