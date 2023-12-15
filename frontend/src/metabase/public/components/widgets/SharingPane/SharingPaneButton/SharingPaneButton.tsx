@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
+import { Box, Center, Stack, Text } from "metabase/ui";
 import {
   SharingPaneButtonContent,
   SharingPaneButtonTitle,
-} from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Box, Center, Stack, Text } from "metabase/ui";
+} from "./SharingPaneButton.styled";
 
 type SharingOptionProps = {
   illustration: JSX.Element;
@@ -11,6 +11,7 @@ type SharingOptionProps = {
   header: string;
   description: ReactNode | string;
   disabled?: boolean;
+  onClick: () => void;
 };
 
 export const SharingPaneButton = ({
@@ -19,17 +20,16 @@ export const SharingPaneButton = ({
   header,
   description,
   disabled,
-}: SharingOptionProps) => {
-  return (
-    <SharingPaneButtonContent disabled={disabled} withBorder>
-      <Center h="22.5rem" p="8rem">
-        <Stack w="17.5rem" justify="center" align="center">
-          {illustration}
-          <SharingPaneButtonTitle>{header}</SharingPaneButtonTitle>
-          <Text>{description}</Text>
-          <Box w="100%">{children}</Box>
-        </Stack>
-      </Center>
-    </SharingPaneButtonContent>
-  );
-};
+  onClick,
+}: SharingOptionProps) => (
+  <SharingPaneButtonContent withBorder disabled={disabled}>
+    <Center h="22.5rem" p="8rem" onClick={onClick}>
+      <Stack w="17.5rem" justify="center" align="center">
+        {illustration}
+        <SharingPaneButtonTitle>{header}</SharingPaneButtonTitle>
+        <Text>{description}</Text>
+        <Box w="100%">{children}</Box>
+      </Stack>
+    </Center>
+  </SharingPaneButtonContent>
+);

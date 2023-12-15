@@ -3,6 +3,7 @@ import type { HTMLAttributes } from "react";
 import { css } from "@emotion/react";
 import type { PaperProps, ButtonProps } from "metabase/ui";
 import { Button, Paper, Title } from "metabase/ui";
+
 import { PublicEmbedIcon, StaticEmbedIcon } from "../icons";
 
 export const SharingPaneButtonTitle = styled(Title)``;
@@ -15,8 +16,12 @@ export const StaticEmbedIconWrapper = styled(StaticEmbedIcon)``;
 export const PublicEmbedIconWrapper = styled(PublicEmbedIcon)``;
 
 export const SharingPaneButtonContent = styled(Paper)<
-  PaperProps & { disabled?: boolean }
+  PaperProps & {
+    disabled?: boolean;
+  }
 >`
+  cursor: pointer;
+
   ${({ theme }) =>
     css`
       ${StaticEmbedIconWrapper} {
