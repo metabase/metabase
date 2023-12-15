@@ -275,10 +275,7 @@
   See [[lib.field/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib.field/infer-has-field-values
-                            {:base-type        (:base_type field)
-                             :effective-type   (:effective_type field)
-                             :has-field-values (:has-field-values field)})]
+    (let [has-field-values (lib.field/infer-has-field-values (lib.metadata.jvm/instance->metadata field :metadata/column))]
       (assoc field k has-field-values))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
