@@ -1,6 +1,6 @@
 import { Text, Box, ScrollArea, NavLink } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
-
+import type { SearchResult } from "metabase-types/api";
 import { getIcon, isSelectedItem } from "../../utils";
 import { PickerColumn } from "./ItemList.styled";
 
@@ -10,9 +10,9 @@ export const ItemList = ({
   selectedItem,
   folderModel,
 }: {
-  items: any[];
-  onClick: (item: any) => void;
-  selectedItem: any;
+  items: SearchResult[];
+  onClick: (item: SearchResult) => void;
+  selectedItem: SearchResult;
   folderModel: string;
 }) => {
   if (!items) {

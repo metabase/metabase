@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { Collection, SearchResult } from "metabase-types/api";
 import { CollectionsApi, UserApi } from "metabase/services";
 
 import Search from "metabase/entities/search";
@@ -8,11 +8,9 @@ import Search from "metabase/entities/search";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
-type SearchCollection = Partial<Collection> & { model: string };
-
 interface CollectionPickerProps {
-  onItemSelect: (item: SearchCollection) => void;
-  value?: SearchCollection;
+  onItemSelect: (item: Partial<SearchResult>) => void;
+  value?: SearchResult;
   options?: CollectionPickerOptions;
 }
 
@@ -40,10 +38,10 @@ export function CollectionPicker({
   value,
   options = defaultOptions,
 }: CollectionPickerProps) {
-  const [initialState, setInitialState] = useState<PickerState<Collection>>();
+  const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
 
   const onFolderSelect = useCallback(
-    async (folder?: SearchCollection): Promise<SearchCollection[]> => {
+    async (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
       if (!folder?.id) {
         const ourAnalytics = await CollectionsApi.getRoot();
 
@@ -90,7 +88,7 @@ export function CollectionPicker({
         const stack = await Promise.all(
           path.map(async (id, index) => {
             const items = await onFolderSelect({
-              id: id as CollectionId,
+              id: id as unknown as number /* 🥴 */,
               model: "collection",
             });
             const selectedItem =
@@ -108,9 +106,18 @@ export function CollectionPicker({
       // default to showing our analytics selected
       onFolderSelect().then(async items => {
         setInitialState([
-          { items, selectedItem: { id: "root", model: "collection" } },
           {
-            items: await onFolderSelect({ id: "root", model: "collection" }),
+            items,
+            selectedItem: {
+              id: "root" as unknown as number /* 🥴 */,
+              model: "collection"
+            }
+          },
+          {
+            items: await onFolderSelect({
+              id: "root" as unknown as number /* 🥴 */,
+              model: "collection"
+            }),
             selectedItem: null,
           },
         ]);

@@ -1,8 +1,9 @@
 import styled from "@emotion/styled";
-import { Box, BoxProps } from "metabase/ui";
+import type React from "react";
+import type { BoxProps } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
-import type React from "react";
 
 export const HorizontalScrollBox = styled(Box)<
   BoxProps & React.HTMLProps<HTMLDivElement>

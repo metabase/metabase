@@ -3,10 +3,11 @@ import { useDebouncedEffect } from "metabase/hooks/use-debounced-effect";
 import { Stack, Tabs, TextInput } from "metabase/ui";
 import { SearchResult } from "metabase/search/components/SearchResult";
 import type {
-  CollectionItem,
   SearchResult as SearchResultType,
-} from "metabase-types/api";
+  SearchResults as SearchResultsType,
+ } from "metabase-types/api";
 import type { WrappedResult } from "metabase/search/types";
+
 import { useDispatch } from "metabase/lib/redux";
 import { Icon } from "metabase/core/components/Icon";
 
@@ -27,14 +28,15 @@ export function EntityPickerSearchInput({
   useDebouncedEffect(
     () => {
       if (searchQuery) {
-        Search.api.list({ models, q: searchQuery }).then((results: any) => {
-          if (results.data) {
-            setSearchResults(results.data);
-          }
-        });
-      }
-
-      if (!searchQuery) {
+        Search.api.list({ models, q: searchQuery })
+          .then((results: SearchResultsType) => {
+            if (results.data) {
+              setSearchResults(results.data);
+            } else {
+              setSearchResults(null);
+            }
+          });
+      } else {
         setSearchResults(null);
       }
     },
@@ -60,9 +62,9 @@ export const EntityPickerSearchResults = ({
   onItemSelect,
   selectedItem,
 }: {
-  searchResults: CollectionItem[] | null;
+  searchResults: SearchResultType[] | null;
   onItemSelect: (item: WrappedResult) => void;
-  selectedItem: CollectionItem;
+  selectedItem: SearchResultType;
 }) => {
   const dispatch = useDispatch();
 
@@ -96,7 +98,7 @@ export const EntityPickerSearchTab = ({
   searchResults,
   searchQuery,
 }: {
-  searchResults: CollectionItem[] | null;
+  searchResults: SearchResult[] | null;
   searchQuery: string;
 }) => (
   <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>

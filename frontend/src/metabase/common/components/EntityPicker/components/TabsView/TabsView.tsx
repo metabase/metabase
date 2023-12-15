@@ -1,14 +1,14 @@
 import { Tabs } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
+import type { SearchResult } from "metabase-types/api";
 
 import {
   EntityPickerSearchTab,
   EntityPickerSearchResults,
-} from "../../EntityPickerSearch";
+} from "../EntityPickerSearch/";
 
 import { tabOptions } from "../../utils";
-
-import type { EntityPickerModalOptions } from "../../types";
+import type { EntityPickerOptions } from "../../types";
 
 type ValidTab = keyof typeof tabOptions;
 
@@ -22,12 +22,12 @@ export const TabsView = ({
   selectedItem,
 }: {
   tabs: ValidTab[];
-  onItemSelect: (item: any) => void;
-  value?: any;
-  options: EntityPickerModalOptions;
+  onItemSelect: (item: Partial<SearchResult>) => void;
+  value?: SearchResult;
+  options: EntityPickerOptions;
   searchQuery: string;
-  searchResults: any[] | null;
-  selectedItem: any;
+  searchResults: SearchResult[] | null;
+  selectedItem: SearchResult;
 }) => {
   const hasSearchTab = !!searchQuery;
   const defaultTab = hasSearchTab ? "search" : tabs[0];

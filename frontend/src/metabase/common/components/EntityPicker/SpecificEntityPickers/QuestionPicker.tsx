@@ -1,21 +1,20 @@
 import { useState, useEffect } from "react";
 import { GET } from "metabase/lib/api";
 
-import type { Collection } from "metabase-types/api";
-import type Question from "metabase-lib/Question";
+import type { SearchResult } from "metabase-types/api";
 
 import { NestedItemPicker } from "../components";
+import type { PickerState } from "../types";
 
 interface QuestionPickerProps {
-  onItemSelect: (item: Question) => void;
+  onItemSelect: (item: Partial<SearchResult>) => void;
   initialCollectionId?: number;
-  options?: any;
 }
 
 const collectionList = GET("/api/collection/:collection/items");
 const collectionAPI = GET("/api/collection/:id");
 
-const sortFoldersFirst = (a: any, b: any) => {
+const sortFoldersFirst = (a: SearchResult) => {
   return a.model === "collection" ? -1 : 1;
 };
 
@@ -23,9 +22,9 @@ export function QuestionPicker({
   onItemSelect,
   initialCollectionId,
 }: QuestionPickerProps) {
-  const [initialState, setInitialState] = useState<any>();
+  const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
 
-  const onFolderSelect = async (folder: Collection) => {
+  const onFolderSelect = async (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
     const items = !folder
       ? await collectionList(
           { collection: "root" },
@@ -36,13 +35,11 @@ export function QuestionPicker({
           { model: ["question", "collection"] },
         );
 
-    return items.data.sort(sortFoldersFirst) as Collection[];
+    return items.data.sort(sortFoldersFirst);
   };
 
   useEffect(() => {
     if (initialCollectionId) {
-      // FIXME, if the initialCollectionID changes, we'll do all these net requests,
-      // but it won't change anything in entity picker
       collectionAPI({ id: initialCollectionId }).then(async collection => {
         const path = [
           "root",
@@ -61,7 +58,10 @@ export function QuestionPicker({
         setInitialState(stack);
       });
     } else {
-      onFolderSelect({ id: "root" }).then(items => {
+      onFolderSelect({
+        id: "root" as unknown as number,
+        model: 'collection'
+      }).then(items => {
         items.sort(sortFoldersFirst);
         setInitialState([{ items, selectedId: null }]);
       });
