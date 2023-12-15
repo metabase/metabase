@@ -59,6 +59,12 @@
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
     (.. bq-bldr build getService)))
 
+(defn- is-view-table?
+  [^Table table]
+  (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+                      TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+    (.. table getDefinition getType)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -99,8 +105,10 @@
                                ^TableDefinition tabledef   (.getDefinition table)]]
                     {:schema                  dataset-id
                      :name                    (.getTable table-id)
-                     :database_require_filter (boolean (some some? [(.getRangePartitioning tabledef)
-                                                                    (.getTimePartitioning tabledef)]))}))}))
+                     :database_require_filter (and
+                                               (not (is-view-table? table))
+                                               (boolean (some some? [(.getRangePartitioning tabledef)
+                                                                     (.getTimePartitioning tabledef)])))}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
@@ -220,16 +228,16 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
+
+
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
-           ;; We couldn't easily test if the following two can show up as
-           ;; tables and if `.list` is supported for hem, so they are here
-           ;; to make sure we don't break existing instances.
-           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-         (.. bq-table getDefinition getType))
+    ;; We couldn't easily test if the following two can show up as
+    ;; tables and if `.list` is supported for them, so they are here
+    ;; to make sure we don't break existing instances.
+    (if (is-view-table? bq-table)
       (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
