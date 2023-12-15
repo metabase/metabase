@@ -98,7 +98,7 @@
   (mbc/init!)
   (reset! initialized? true))
 
-(defn migration-timetsamp
+(defn migration-timestamp
   "Returns a UTC timestamp in format `yyyy-MM-dd'T'HH:mm:ss` that you can used to postfix for migration ID."
   []
   (t/format (t/formatter "yyyy-MM-dd'T'HH:mm:ss") (t/zoned-date-time (t/zone-id "UTC"))))
