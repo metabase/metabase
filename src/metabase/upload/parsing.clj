@@ -35,7 +35,11 @@
   Supported formats:
     - yyyy-MM-dd"
   [s]
-  (t/local-date s))
+  (try
+    (t/local-date s)
+    (catch Exception _
+      (throw (IllegalArgumentException.
+              (tru "{0} is not a recognizable date" s))))))
 
 (defn parse-datetime
   "Parses a string representing a local datetime into a LocalDateTime.
@@ -81,8 +85,8 @@
   [s]
   (try
     (-> s (str/replace \space \T) t/offset-date-time)
-    (catch Exception e
-      (throw (IllegalArgumentException. (tru "{0} is not a recognizable zoned datetime" s) e)))))
+    (catch Exception _
+      (throw (IllegalArgumentException. (tru "{0} is not a recognizable zoned datetime" s))))))
 
 (defn remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
@@ -113,11 +117,8 @@
          (str/trim)
          (remove-currency-signs)
          (parse-plain-number number-separators))
-    (catch Throwable e
-      (throw (ex-info
-              (tru "{0} is not a recognizable number" s)
-              {}
-              e)))))
+    (catch Exception _
+      (throw (IllegalArgumentException. (tru "{0} is not a recognizable number" s))))))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value

@@ -577,20 +577,18 @@
                                (table-identifier table)
                                normed-header
                                parsed-rows)
-          {:row-count (count parsed-rows)}
           (catch Throwable e
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                            (sql/format {:delete-from (keyword (table-identifier table))
                                         :where       [:> (keyword auto-pk-column-name) max-pk]}
                                        {:quoted  true
                                         :dialect (sql.qp/quote-style driver)}))
-            (throw (ex-info (or (ex-message (ex-cause e))
-                                (ex-message e))
-                            {:status-code 422})))))
+            (throw (ex-info (ex-message e) {:status-code 422})))))
       (scan-and-sync-table! database table)
       (when create-auto-pk?
         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
-          (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)}))))))
+          (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+      {:row-count (count parsed-rows)})))
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."

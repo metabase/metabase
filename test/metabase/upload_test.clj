@@ -50,7 +50,8 @@
 
 (defn- do-with-mysql-local-infile-on
   [thunk]
-  (if (local-infile-on?)
+  (if (or (not= driver/*driver* :mysql)
+          (local-infile-on?))
     (thunk)
     (try
       (set-local-infile! true)
@@ -60,7 +61,8 @@
 
 (defn- do-with-mysql-local-infile-off
   [thunk]
-  (if-not (local-infile-on?)
+  (if-not (and (= driver/*driver* :mysql)
+               (local-infile-on?))
     (thunk)
     (try
       (set-local-infile! false)
@@ -83,6 +85,16 @@
   "Exectute the body with local_infile on, and then again with local_infile off"
   [& body]
   `(do-with-mysql-local-infile-on-and-off (fn [] ~@body)))
+
+(defmacro ^:private with-mysql-local-infile-on
+  "Exectute the body with local_infile on"
+  [& body]
+  `(do-with-mysql-local-infile-on (fn [] ~@body)))
+
+(defmacro ^:private with-mysql-local-infile-off
+  "Exectute the body with local_infile off"
+  [& body]
+  `(do-with-mysql-local-infile-off (fn [] ~@body)))
 
 (deftest type-detection-and-parse-test
   (doseq [[string-value  expected-value expected-type seps]
@@ -1406,11 +1418,11 @@
                           [{:upload-type ::upload/int
                             :valid       1
                             :invalid     "not an int"
-                            :msg         "Unparseable number: \"notanint\""}
+                            :msg         "not an int is not a recognizable number"}
                            {:upload-type ::upload/float
                             :valid       1.1
                             :invalid     "not a float"
-                            :msg         "Unparseable number: \"notafloat\""}
+                            :msg         "not a float is not a recognizable number"}
                            {:upload-type ::upload/boolean
                             :valid       true
                             :invalid     "correct"
@@ -1418,7 +1430,7 @@
                            {:upload-type ::upload/date
                             :valid       #t "2000-01-01"
                             :invalid     "2023-01-01T00:00:00"
-                            :msg         "Text '2023-01-01T00:00:00' could not be parsed, unparsed text found at index 10"}
+                            :msg         "2023-01-01T00:00:00 is not a recognizable date"}
                            {:upload-type ::upload/datetime
                             :valid       #t "2000-01-01T00:00:00"
                             :invalid     "2023-01-01T00:00:00+01"
@@ -1426,7 +1438,7 @@
                            {:upload-type ::upload/offset-datetime
                             :valid       #t "2000-01-01T00:00:00+01"
                             :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
-                            :msg         "Conversion failed"}]]
+                            :msg         "2023-01-01T00:00:00[Europe/Helsinki] is not a recognizable zoned datetime"}]]
                     (testing (str "\nTry to upload an invalid value for " upload-type)
                       (let [table (create-upload-table!
                                    {:col->upload-type (cond-> (ordered-map/ordered-map
@@ -1446,3 +1458,100 @@
                         (testing "\nCheck the data was not uploaded into the table"
                           (is (= 1 (count (rows-for-table table)))))
                         (io/delete-file file)))))))))))))
+
+;; FIXME: uploading to a varchar-255 column can fail if the text is too long
+;; We ideally want to change the column type to text if we detect this will happen, but that's difficult
+;; currently because we don't store the character length of the column. e.g. a varchar(255) column in postgres
+;; will have `varchar` as the database_type in metabase_field.
+;; In any case, this test documents the current behaviour
+(deftest append-too-long-for-varchar-255-test
+  (mt/test-drivers (filter (fn [driver]
+                             ;; use of varchar(255) is not universal for all drivers, so only test drivers that
+                             ;; have different database types for varchar(255) and text
+                             (apply not= (map (partial driver/upload-type->database-type driver) [::upload/varchar-255 ::upload/text])))
+                           (mt/normal-drivers-with-feature :uploads))
+    (with-mysql-local-infile-off
+      (with-uploads-allowed
+        (mt/with-empty-db
+          (testing "Append fails if the CSV file contains string values that are too long for the column"
+            ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
+            ;; inserted rows are rolled back
+            (binding [driver/*insert-chunk-rows* 1]
+              (let [table (create-upload-table!
+                           {:col->upload-type (ordered-map/ordered-map
+                                               (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                               :test_column ::upload/varchar-255)
+                            :rows             [["valid"]]})
+                    csv-rows `["test_column" ~@(repeat 50 "valid too") ~(apply str (repeat 256 "x"))]
+                    file  (csv-file-with csv-rows (mt/random-name))]
+                (testing "\nShould return an appropriate error message"
+                  (is (=? {;; the error message is different for different drivers, but postgres and mysql have "too long" in the message
+                           :message #"[\s\S]*too long[\s\S]*"
+                           :data    {:status-code 422}}
+                          (catch-ex-info (append-csv! {:file     file
+                                                       :table-id (:id table)})))))
+                (testing "\nCheck the data was not uploaded into the table"
+                  (is (= 1 (count (rows-for-table table)))))
+                (io/delete-file file)))))))))
+
+(deftest append-too-long-for-varchar-255-mysql-local-infile-test
+  (mt/test-driver :mysql
+    (with-mysql-local-infile-on
+      (with-uploads-allowed
+        (mt/with-empty-db
+          (testing "Append succeeds if the CSV file is uploaded to MySQL and contains a string value that is too long for the column"
+            ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
+            ;; inserted rows are rolled back
+            (binding [driver/*insert-chunk-rows* 1]
+              (let [upload-type ::upload/varchar-255,
+                    uncoerced   (apply str (repeat 256 "x"))
+                    coerced     (apply str (repeat 255 "x"))]
+                (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
+                                 uncoerced (name upload-type) coerced)
+                  (let [table (create-upload-table!
+                               {:col->upload-type (ordered-map/ordered-map
+                                                   (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                                   :test_column upload-type)
+                                :rows             []})
+                        csv-rows ["test_column" uncoerced]
+                        file  (csv-file-with csv-rows (mt/random-name))]
+                    (testing "\nAppend should succeed"
+                      (is (= {:row-count 1}
+                             (append-csv! {:file     file
+                                           :table-id (:id table)}))))
+                    (testing "\nCheck the value was coerced correctly"
+                      (is (= [[1 coerced]]
+                             (rows-for-table table))))
+                    (io/delete-file file)))))))))))
+
+(deftest append-type-coercion-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-mysql-local-infile-on-and-off
+      (with-uploads-allowed
+        (mt/with-empty-db
+          (testing "Append succeeds if the CSV file contains values that don't match the column types, but are coercible"
+            ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
+            ;; inserted rows are rolled back
+            (binding [driver/*insert-chunk-rows* 1]
+              (doseq [{:keys [upload-type uncoerced coerced]}
+                      [{:upload-type ::upload/int,         :uncoerced "2.1", :coerced 2}
+                       {:upload-type ::upload/int,         :uncoerced "2.5", :coerced 3}
+                       {:upload-type ::upload/float,       :uncoerced "2",   :coerced 2.0}
+                       {:upload-type ::upload/boolean,     :uncoerced "0", :coerced false}]]
+                (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
+                                 uncoerced (name upload-type) coerced)
+                  (let [table (create-upload-table!
+                               {:col->upload-type (ordered-map/ordered-map
+                                                   (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
+                                                   :test_column upload-type)
+                                :rows             []})
+                        csv-rows ["test_column" uncoerced]
+                        file  (csv-file-with csv-rows (mt/random-name))]
+                    (testing "\nAppend should succeed"
+                      (is (= {:row-count 1}
+                             (append-csv! {:file     file
+                                           :table-id (:id table)}))))
+                    (testing "\nCheck the value was coerced correctly"
+                      (is (= [[1 coerced]]
+                             (rows-for-table table))))
+                    (io/delete-file file)))))))))))
