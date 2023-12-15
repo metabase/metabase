@@ -138,14 +138,8 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     `}
 `;
 
-export const CardsContainer = styled(FullWidthContainer)<{
-  hasMarginTop: boolean;
-}>`
-  ${({ hasMarginTop }) =>
-    hasMarginTop &&
-    css`
-      margin-top: 8px;
-    `}
+export const CardsContainer = styled(FullWidthContainer)`
+  margin-top: 8px;
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     padding-bottom: 20px;

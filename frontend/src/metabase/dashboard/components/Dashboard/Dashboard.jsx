@@ -320,10 +320,7 @@ class DashboardInner extends Component {
                   </ParametersWidgetContainer>
                 )}
 
-                <CardsContainer
-                  id="Dashboard-Cards-Container"
-                  hasMarginTop={!isEditing && hasVisibleParameters}
-                >
+                <CardsContainer id="Dashboard-Cards-Container">
                   {this.renderContent()}
                 </CardsContainer>
               </ParametersAndCardsContainer>
