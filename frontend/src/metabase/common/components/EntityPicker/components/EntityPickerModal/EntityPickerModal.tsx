@@ -4,13 +4,14 @@ import { t } from "ttag";
 import { Modal } from "metabase/ui";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { SearchResult } from "metabase-types/api";
+import type { EntityPickerOptions } from "../../types";
 
 import { tabOptions, type ValidTab } from "../../utils";
-import { TabsView, ButtonBar, SinglePickerView } from "../../components";
-import { EntityPickerSearchInput } from "../../EntityPickerSearch";
+import { TabsView, ButtonBar, SinglePickerView } from "../";
+import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 import { GrowFlex, ModalContent, ModalBody } from "./EntityPickerModal.styled";
 
-type EntityPickerModalOptions = {
+export type EntityPickerModalOptions = {
   showPersonalCollection?: boolean;
   showSearch?: boolean;
   showRecents?: boolean;
@@ -26,11 +27,11 @@ const defaultOptions: EntityPickerModalOptions = {
 
 interface EntityPickerModalProps {
   title: string;
-  value?: any;
-  onChange: (item: any) => void;
+  value?: SearchResult;
+  onChange: (item: SearchResult) => void;
   onClose: () => void;
   tabs: ValidTab[];
-  options?: EntityPickerModalOptions;
+  options?: EntityPickerOptions;
 }
 
 export function EntityPickerModal({
@@ -42,7 +43,7 @@ export function EntityPickerModal({
   options = defaultOptions,
 }: EntityPickerModalProps) {
   const validTabs = tabs.filter(tabName => tabName in tabOptions);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
@@ -50,7 +51,7 @@ export function EntityPickerModal({
   );
 
   const handleItemSelect = useCallback(
-    (item: any) => {
+    (item: SearchResult) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else {
@@ -61,7 +62,9 @@ export function EntityPickerModal({
   );
 
   const handleConfirm = () => {
-    onChange(selectedItem);
+    if (selectedItem) {
+      onChange(selectedItem);
+    }
   };
 
   const hasTabs = validTabs.length > 1 || searchQuery;

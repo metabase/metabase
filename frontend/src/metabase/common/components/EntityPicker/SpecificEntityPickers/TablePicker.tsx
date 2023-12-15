@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 
-import type { Table } from "metabase-types/api";
+import type { Table, SearchResult, Database, Schema } from "metabase-types/api";
 import { databases, schemas, tables } from "metabase/entities";
-import type Question from "metabase-lib/Question";
 
 import { NestedItemPicker } from "../components";
+import type { PickerState } from "../types";
 
 interface TablePickerProps {
-  onItemSelect: (item: Question) => void;
+  onItemSelect: (item: Partial<SearchResult>) => void;
   initialTableId?: number;
   options?: any;
 }
@@ -16,13 +16,14 @@ export function TablePicker({
   onItemSelect,
   initialTableId,
 }: TablePickerProps) {
-  const [initialState, setInitialState] = useState<any>();
+  const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
 
-  const onFolderSelect = async (item: any) => {
+  const onFolderSelect = async (item: any /* Database | Schema */): Promise<(Database | Schema | Table)[]> => {
+    // need type guards here
     if (item.model === "database" && item.features.includes("schemas")) {
       return schemas.api
         .list({ dbId: item.id })
-        .then(data => data.map(d => ({ ...d, model: "schema" })));
+        .then((data: Table[])=> data.map(d => ({ ...d, model: "schema" })));
     } else {
       return tables.api.list({
         dbId: item.model === "database" ? item.id : item.database.id,
@@ -38,13 +39,13 @@ export function TablePicker({
           {
             items: await databases.api
               .list()
-              .then(({ data }) => data.map(d => ({ ...d, model: "database" }))),
+              .then(({ data }: { data: Database[] }) => data.map(d => ({ ...d, model: "database" }))),
             selectedId: table.db_id,
           },
           {
             items: await schemas.api
               .list({ dbId: table.db_id })
-              .then(data => data.map(d => ({ ...d, model: "schema" }))),
+              .then(( data: Schema[] ) => data.map(d => ({ ...d, model: "schema" }))),
             selectedId: `${table.db_id}:${table.schema}`,
           },
           {
@@ -53,19 +54,19 @@ export function TablePicker({
                 dbId: table.db_id,
                 schemaName: table.schema,
               })
-              .then(data => data.map(d => ({ ...d, model: "table" }))),
+              .then((data: Table[] )=> data.map(d => ({ ...d, model: "table" }))),
             selectedId: null,
           },
         ];
 
-        setInitialState(state);
+        setInitialState(state as any);
       });
     } else {
       databases.api.list().then(({ data }) => {
         setInitialState([
           {
             items: data.map(d => ({ ...d, model: "database" })),
-            selectedId: "",
+            selectedItem: "",
           },
         ]);
       });

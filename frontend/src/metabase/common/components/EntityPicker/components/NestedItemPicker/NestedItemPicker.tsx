@@ -2,16 +2,17 @@ import { useRef, useState } from "react";
 
 import { Flex } from "metabase/ui";
 
+import type { SearchResult } from "metabase-types/api";
 import type { PickerState } from "../../types";
 import { ItemList } from "../ItemList";
 import { HorizontalScrollBox, ListBox } from "./NestedItemPicker.styled";
 
-interface NestedItemPickerProps<FolderType, ItemType> {
-  onFolderSelect: (folder?: FolderType) => Promise<any[]>;
-  onItemSelect: (item: ItemType) => void;
+interface NestedItemPickerProps<T> {
+  onFolderSelect: (folder?: T) => Promise<T[]>;
+  onItemSelect: (item: T) => void;
   folderModel: string;
   itemModel: string;
-  initialState?: PickerState<FolderType | ItemType>;
+  initialState?: PickerState<T>;
 }
 
 export function NestedItemPicker({
@@ -19,12 +20,11 @@ export function NestedItemPicker({
   onItemSelect,
   folderModel,
   initialState = [],
-}: NestedItemPickerProps<any, any /* how to derive the generic? */>) {
-  const [stack, setStack] =
-    useState<PickerState<any /* how to derive the generic? */>>(initialState);
+}: NestedItemPickerProps<SearchResult>) {
+  const [stack, setStack] = useState(initialState ?? []);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleFolderSelect = async (folder: any, levelIndex: number) => {
+  const handleFolderSelect = async (folder: SearchResult, levelIndex: number) => {
     const children = await onFolderSelect(folder);
 
     // FIXME do better
@@ -45,14 +45,14 @@ export function NestedItemPicker({
     }, 10);
   };
 
-  const handleItemSelect = (item: any, levelIndex: number) => {
+  const handleItemSelect = (item: SearchResult, levelIndex: number) => {
     const restOfStack = stack.slice(0, levelIndex + 1);
     restOfStack[restOfStack.length - 1].selectedItem = item;
     setStack(restOfStack);
     onItemSelect(item);
   };
 
-  const handleClick = (item: any, levelIndex: number) => {
+  const handleClick = (item: SearchResult, levelIndex: number) => {
     if (folderModel.includes(item.model)) {
       handleFolderSelect(item, levelIndex);
     } else {

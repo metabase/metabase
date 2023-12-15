@@ -1,15 +1,17 @@
 import { t } from "ttag";
 
 import { entityForObject } from "metabase/lib/schema";
+import type { SearchResult } from "metabase-types/api";
 import { QuestionPicker } from "./SpecificEntityPickers/QuestionPicker";
 import { TablePicker } from "./SpecificEntityPickers/TablePicker";
 import { CollectionPicker } from "./SpecificEntityPickers/CollectionPicker";
-export const getIcon = (item: any) => {
+
+export const getIcon = (item: SearchResult) => {
   const entity = entityForObject(item);
   return entity?.objectSelectors?.getIcon?.(item)?.name || "table";
 };
 
-export const isSelectedItem = (item: any, selectedItem: any) => {
+export const isSelectedItem = (item: SearchResult, selectedItem: SearchResult) => {
   return item.id === selectedItem?.id && item.model === selectedItem?.model;
 };
 

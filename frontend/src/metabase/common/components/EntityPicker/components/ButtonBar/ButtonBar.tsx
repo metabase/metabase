@@ -8,7 +8,7 @@ export const ButtonBar = ({
   onCancel,
   canConfirm,
 }: {
-  onConfirm: (item: any) => void;
+  onConfirm: () => void;
   onCancel: () => void;
   canConfirm?: boolean;
 }) => (

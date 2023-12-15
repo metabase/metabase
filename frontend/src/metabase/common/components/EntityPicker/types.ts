@@ -1,3 +1,6 @@
+import type { CollectionPickerOptions } from './SpecificEntityPickers/CollectionPicker';
+import type { EntityPickerModalOptions } from './components/EntityPickerModal';
+
 export type PickerState<T> = PickerStateItem<T>[];
 
 export type PickerStateItem<T> = {
@@ -5,9 +8,8 @@ export type PickerStateItem<T> = {
   selectedItem: (Partial<T> & { model: string }) | null;
 };
 
-export type EntityPickerModalOptions = {
-  showPersonalCollection?: boolean;
-  showSearch?: boolean;
-  showRecents?: boolean;
-  hasConfirmButtons?: boolean;
-};
+export type EntityPickerOptions =
+  EntityPickerModalOptions & (
+    CollectionPickerOptions
+  )
+;
