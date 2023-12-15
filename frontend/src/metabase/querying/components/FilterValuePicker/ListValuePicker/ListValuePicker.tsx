@@ -4,6 +4,7 @@ import { Checkbox, Stack, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
 import { getMergedOptions } from "../utils";
+import { LONG_OPTION_LENGTH } from "./constants";
 import { searchOptions } from "./utils";
 import { ColumnGrid } from "./ListValuePicker.styled";
 
@@ -84,7 +85,10 @@ function CompactValuePicker({
   onChange,
 }: ListValuePickerProps) {
   const options = getMergedOptions(fieldValues, selectedValues);
-  const cols = 2;
+  const hasLongOptions = options.some(
+    option => option.label.length > LONG_OPTION_LENGTH,
+  );
+  const cols = hasLongOptions ? 1 : 2;
   const rows = Math.ceil(options.length / cols);
 
   return (
