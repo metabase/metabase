@@ -672,7 +672,7 @@
   to calculate one by hand."
   [driver database ^OffsetDateTime offset-time]
   (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
-    (t/local-date-time offset-time zone-id )))
+    (t/local-date-time offset-time zone-id)))
 
 (defmulti ^:private value->string
   "Convert a value into a string that's safe for insertion"
