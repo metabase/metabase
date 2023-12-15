@@ -21,22 +21,24 @@
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.query :as t2.query]))
 
+(set! *warn-on-reflection* true)
+
 (defn- qualified-key? [k]
   (or (qualified-keyword? k)
       (str/includes? k ".")))
 
-(def ^:private memoized-kebab-key
+(def ^:private ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
-  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever with
-  regular memoization and get a nice performance boost."
-  ;; actually, just using a simple atom like this is 10x faster than [[memoize]], and thus 100x faster
-  ;; than [[metabase.util.memoize/lru]]... see https://metaboat.slack.com/archives/C04CYTEL9N2/p1702610853943109
-  (let [cache (atom (hash-map))]
+  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
+  get a nice performance boost."
+  ;; we spent a lot of time messing around with different ways of doing this and this seems to be the fastest. See
+  ;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1702671632956539 -- Cam
+  (let [cache      (java.util.concurrent.ConcurrentHashMap.)
+        mapping-fn (reify java.util.function.Function
+                     (apply [_this k]
+                       (u/->kebab-case-en k)))]
     (fn [k]
-      (or (get @cache k)
-          (let [k' (u/->kebab-case-en k)]
-            (swap! cache assoc k k')
-            k')))))
+      (.computeIfAbsent cache k mapping-fn))))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
@@ -265,18 +267,8 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/metric
   [model]
-  (classloader/require 'metabase.models.metric
-                       'metabase.models.table)
+  (classloader/require 'metabase.models.metric)
   model)
-
-(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
-                                             #_resolved-query clojure.lang.IPersistentMap
-                                             #_k              :default]
-  [model honeysql k v]
-  (let [k (if (not (qualified-key? k))
-            (keyword "metric" (name k))
-            k)]
-    (next-method model honeysql k v)))
 
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/metric
@@ -284,15 +276,7 @@
   [query-type model parsed-arg honeysql]
   (merge
    (next-method query-type model parsed-arg honeysql)
-   {:select    [:metric/id
-                :metric/table_id
-                :metric/name
-                :metric/description
-                :metric/archived
-                :metric/definition]
-    :from      [[(t2/table-name :model/Metric) :metric]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :metric/table_id :table/id]]}))
+   {:select [:id :table_id :name :description :archived :definition]}))
 
 (t2/define-after-select :metadata/metric
   [metric]
@@ -310,30 +294,13 @@
                        'metabase.models.table)
   model)
 
-(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/segment
-                                             #_resolved-query clojure.lang.IPersistentMap
-                                             #_k              :default]
-  [model honeysql k v]
-  (let [k (if (not (qualified-key? k))
-            (keyword "segment" (name k))
-            k)]
-    (next-method model honeysql k v)))
-
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/segment
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-arg honeysql]
   (merge
    (next-method query-type model parsed-arg honeysql)
-   {:select    [:segment/id
-                :segment/table_id
-                :segment/name
-                :segment/description
-                :segment/archived
-                :segment/definition]
-    :from      [[(t2/table-name :model/Segment) :segment]]
-    :left-join [[(t2/table-name :model/Table) :table]
-                [:= :segment/table_id :table/id]]}))
+   {:select [:id :table_id :name :description :archived :definition]}))
 
 (t2/define-after-select :metadata/segment
   [segment]

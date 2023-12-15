@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
-;;; metabase-lib/metadata/Metadata comes in a object like
+;;; metabase-lib/metadata/Metadata comes in an object like
 ;;;
 ;;;    {
 ;;;      databases: {},
@@ -23,6 +23,11 @@
 ;;;    }
 ;;;
 ;;; where keys are a map of String ID => metadata
+
+(def ^:private ^{:arglists '([k])} memoized-kebab-key
+  "Even tho [[u/->kebab-case-en]] has LRU memoization, plain memoization is significantly faster, and since the keys
+  we're parsing here are bounded it's fine to memoize this stuff forever."
+  (memoize u/->kebab-case-en))
 
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
@@ -101,7 +106,7 @@
     (comp
      ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
-            [(cond-> (keyword (u/->kebab-case-en k))
+            [(cond-> (keyword (memoized-kebab-key k))
                rename-key (#(or (rename-key %) %)))
              v]))
      ;; remove [[excluded-keys]]
@@ -237,7 +242,7 @@
   [m]
   (obj->clj
    (map (fn [[k v]]
-          (let [k (keyword (u/->kebab-case-en k))
+          (let [k (keyword (memoized-kebab-key k))
                 k (if (= k :binning-strategy)
                     :strategy
                     k)
@@ -248,12 +253,14 @@
    m))
 
 (defn- parse-field-values [field-values]
-  (when (= (keyword (object-get field-values "type")) :full)
+  (when (= (object-get field-values "type") "full")
     {:values                (js->clj (object-get field-values "values"))
      :human-readable-values (js->clj (object-get field-values "human_readable_values"))}))
 
 (defn- parse-dimension
-  "Dimensions comes in as an array, but we only want to look at the first one that is either :external or :internal."
+  "`:dimensions` comes in as an array for historical reasons, even tho a Field can only have one. So it should never
+  have more than one element. See #27054. Anyways just to be safe let's make sure it's either `:external` or
+  `:internal`."
   [dimensions]
   (when-let [dimension (m/find-first (fn [dimension]
                                        (#{"external" "internal"} (object-get dimension "type")))

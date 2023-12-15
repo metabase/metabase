@@ -743,7 +743,7 @@
   "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
   filter search widgets, either when returned by the the REST API or in MLv2 with [[field-values-search-info]].
 
-  Note that this value not necessarily the same as the value of `has_field_values` in the application database.
+  Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
   the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
   [{:keys [has-field-values], :as field} :- [:map

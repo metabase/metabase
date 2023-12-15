@@ -279,7 +279,7 @@
 ;;; TODO -- This stuff should probably use the constants in [[metabase.lib.types.constants]], however this logic isn't
 ;;; supposed to include things with semantic type = Category which the `::string` constant define there includes.
 (defn searchable?
-  "Is this column on that we should show a search widget for (to search its values) in the QB filter UI? If so, we can
+  "Is this column one that we should show a search widget for (to search its values) in the QB filter UI? If so, we can
   give it a `has-field-values` value of `:search`."
   [{:keys [base-type effective-type]}]
   ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
