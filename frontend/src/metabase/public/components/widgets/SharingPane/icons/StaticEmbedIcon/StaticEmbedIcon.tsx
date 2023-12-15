@@ -1,5 +1,7 @@
+import { StaticEmbedIconRoot } from "metabase/public/components/widgets/SharingPane/icons/StaticEmbedIcon/StaticEmbedIcon.styled";
+
 export const StaticEmbedIcon = ({ className }: { className?: string }) => (
-  <svg
+  <StaticEmbedIconRoot
     className={className}
     width="40"
     height="32"
@@ -39,5 +41,5 @@ export const StaticEmbedIcon = ({ className }: { className?: string }) => (
       className="outerFill"
       d="M5 6C5 4.89543 5.89543 4 7 4H33C34.1046 4 35 4.89543 35 6V8H5V6Z"
     />
-  </svg>
+  </StaticEmbedIconRoot>
 );
