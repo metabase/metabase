@@ -32,7 +32,7 @@
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
                               DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
-                              TableDefinition$Type TableId TableResult)))
+                              TableDefinition TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -94,9 +94,13 @@
   [_ database]
   (let [tables (list-tables (:details database))]
     {:tables (set (for [^Table table tables
-                        :let  [^TableId table-id  (.getTableId table)
-                               ^String dataset-id (.getDataset table-id)]]
-                    {:schema dataset-id, :name (.getTable table-id)}))}))
+                        :let  [^TableId         table-id   (.getTableId table)
+                               ^String          dataset-id (.getDataset table-id)
+                               ^TableDefinition tabledef   (.getDefinition table)]]
+                    {:schema                  dataset-id
+                     :name                    (.getTable table-id)
+                     :database_require_filter (boolean (some some? [(.getRangePartitioning tabledef)
+                                                                    (.getTimePartitioning tabledef)]))}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]

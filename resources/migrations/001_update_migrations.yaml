@@ -4325,6 +4325,21 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'If the database supports indexing, this column indicate whether or not a field is indexed, or is the 1st column in a composite index'
 
+  - changeSet:
+      id: v49.00-012
+      author: qnkhuat
+      comment: 'metabase_table.database_require_filter'
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: database_require_filter
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'If true, the table requires a filter to be able to query it'
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

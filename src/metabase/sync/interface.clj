@@ -8,10 +8,11 @@
 
 (mr/def ::DatabaseMetadataTable
   [:map
-   [:name   ::lib.schema.common/non-blank-string]
-   [:schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:name           ::lib.schema.common/non-blank-string]
+   [:schema         [:maybe ::lib.schema.common/non-blank-string]]
+   [:require-filter {:optional true} :boolean]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description {:optional true} [:maybe :string]]])
+   [:description    {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."

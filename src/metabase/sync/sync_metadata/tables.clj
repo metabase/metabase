@@ -2,7 +2,7 @@
   "Logic for updating Metabase Table models from metadata fetched from a physical DB."
   (:require
    [clojure.data :as data]
-   [clojure.string :as str]
+   [medley.core :as m]
    [metabase.models.database :refer [Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -16,8 +16,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
@@ -140,27 +140,42 @@
   (log/info "Marking tables as inactive:"
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
-  (doseq [{schema :schema, table-name :name, :as _table} old-tables]
+  (doseq [{schema :schema table-name :name :as _table} old-tables]
     (t2/update! Table {:db_id  (u/the-id database)
                        :schema schema
                        :name   table-name
                        :active true}
                 {:active false})))
 
-(mu/defn ^:private update-table-description!
-  "Update description for any `changed-tables` belonging to `database`."
-  [database       :- i/DatabaseInstance
-   changed-tables :- [:set i/DatabaseMetadataTable]]
-  (log/info "Updating description for tables:"
-            (for [table changed-tables]
-              (sync-util/name-for-logging (mi/instance Table table))))
-  (doseq [{schema :schema, table-name :name, description :description} changed-tables]
-    (when-not (str/blank? description)
-      (t2/update! Table {:db_id       (u/the-id database)
-                         :schema      schema
-                         :name        table-name
-                         :description nil}
-                  {:description description}))))
+(mu/defn ^:private update-table-metadata-if-needed!
+  "Update the table metadata if it has changed."
+  [table-metadata :- i/DatabaseMetadataTable
+   metabase-table :- (ms/InstanceOf :model/Table)]
+  (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
+  (let [to-update-keys [:database_require_filter :description]
+        old-table (select-keys metabase-table to-update-keys)
+        new-table (select-keys (merge
+                                (zipmap to-update-keys (repeat nil))
+                                table-metadata)
+                               to-update-keys)
+        [_ changes _]  (data/diff old-table new-table)]
+    (doseq [[k v] changes]
+      (log/infof "%s of %s changed from %s to %s"
+                 k
+                 (sync-util/name-for-logging metabase-table)
+                 (get metabase-table k)
+                 v))
+    (when (seq changes)
+      (t2/update! :model/Table (:id metabase-table)  changes))))
+
+(mu/defn ^:private update-tables-metadata-if-needed!
+  [table-metadatas :- [:set i/DatabaseMetadataTable]
+   metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
+  (let [name->table-metadata (m/index-by :name table-metadatas)
+        name->metabase-table (m/index-by :name metabase-tables)]
+    (doseq [[name metabase-table] name->metabase-table]
+      (when-let [table-metadata (name->table-metadata name)]
+        (update-table-metadata-if-needed! table-metadata metabase-table)))))
 
 (mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
@@ -173,11 +188,9 @@
 (mu/defn ^:private our-metadata :- [:set i/DatabaseMetadataTable]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
-  (into #{}
-        (map t2.realize/realize)
-        (t2/select [Table :name :schema :description]
-                   :db_id  (u/the-id database)
-                   :active true)))
+  (set (t2/select [:model/Table :id :name :schema :description :database_require_filter]
+                  :db_id  (u/the-id database)
+                  :active true)))
 
 (mu/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
@@ -189,13 +202,12 @@
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
-         our-metadata            (our-metadata database)
-         strip-desc              (fn [metadata]
-                                   (set (map #(dissoc % :description) metadata)))
+         mb-metadata             (our-metadata database)
+         strip-urelated-info     (fn [metadata]
+                                   (set (map #(select-keys % [:name :schema]) metadata)))
          [new-tables old-tables] (data/diff
-                                  (strip-desc db-tables)
-                                  (strip-desc our-metadata))
-         [changed-tables]        (data/diff db-tables our-metadata)]
+                                  (strip-urelated-info db-tables)
+                                  (strip-urelated-info mb-metadata))]
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -211,10 +223,9 @@
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
          (retire-tables! database old-tables)))
 
-     ;; update description for changed tables
-     (when (seq changed-tables)
-       (sync-util/with-error-handling (format "Error updating table description for %s" (sync-util/name-for-logging database))
-         (update-table-description! database changed-tables)))
+     (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
+       ;; we need to fetch the tables because there might be new tables added in previous steps
+       (update-tables-metadata-if-needed! db-tables (our-metadata database)))
 
      ;; update native download perms for all groups if any tables were added or removed
      (when (or (seq new-tables) (seq old-tables))
@@ -223,4 +234,4 @@
            (perms/update-native-download-permissions! id (u/the-id database)))))
 
      {:updated-tables (+ (count new-tables) (count old-tables))
-      :total-tables   (count our-metadata)})))
+      :total-tables   (count mb-metadata)})))
