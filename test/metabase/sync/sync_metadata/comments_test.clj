@@ -118,6 +118,7 @@
         ;; modify the source DB to add the comment and resync
         (driver/notify-database-updated driver/*driver* (mt/db))
         (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" nil))
+        ;; create the comment
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                        [(sql.tx/standalone-table-comment-sql
                          driver/*driver*
