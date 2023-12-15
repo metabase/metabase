@@ -300,6 +300,7 @@ function computeComparisonPeriodsAgo({
     dateUnit: dateUnitSettings.dateUnit,
     dateUnitsAgo,
     dimensionColIndex,
+    metricColIndex,
     nextValueRowIndex,
     rows,
   });
@@ -323,6 +324,7 @@ function getRowOfPeriodsAgo({
   dateUnit,
   dateUnitsAgo,
   dimensionColIndex,
+  metricColIndex,
   nextValueRowIndex,
   rows,
 }) {
@@ -342,20 +344,46 @@ function getRowOfPeriodsAgo({
 
   for (let i = searchIndexStart; i >= searchIndexEnd; i--) {
     const candidateRow = rows[i];
-    const candidateRowDate = moment.parseZone(candidateRow[dimensionColIndex]);
+    const candidateDate = moment.parseZone(candidateRow[dimensionColIndex]);
+    const candidateValue = candidateRow[metricColIndex];
 
-    if (targetDate.diff(candidateRowDate, dateUnit) === 0) {
+    if (
+      areDatesTheSame({ candidateDate, dateUnit, targetDate }) &&
+      !isEmpty(candidateValue)
+    ) {
       return candidateRow;
     }
 
     // if current candidate is before the targetDate, we can stop searching
     // because previous rows will only be further in the past
-    if (targetDate.diff(candidateRowDate, dateUnit) > 0) {
+    if (targetDate.diff(candidateDate, dateUnit) > 0) {
       return undefined;
     }
   }
 
   return undefined;
+}
+
+function areDatesTheSame({ candidateDate, targetDate, dateUnit }) {
+  if (targetDate.diff(candidateDate, dateUnit) !== 0) {
+    return false;
+  }
+
+  // if dates have different time-zones, the above check can be bypassed
+  // i.e. if the candidateDate has a more negative offset than the targetDate
+  // the comparison can result in a diff of 0 because the candidateDate
+  // is not one full dateUnit behind, only partially (0 < x < 1) behind
+  // examples: targetDate: 12-01-2023T00:00-04:00 (-4 offset)
+  //           candidateDate: 11-01-2023T00:00-05:00 (-5 offset)
+  //                       =: 11-01-2023T01:00-04:00
+  //           targetDate.diff(candidateDate, "month") === 0 (true)
+  // so in order to account for this, we should check to make sure the
+  // dateUnit number is the same as well
+  if (targetDate?.[dateUnit]() !== candidateDate?.[dateUnit]()) {
+    return false;
+  }
+
+  return true;
 }
 
 function computeComparisonStrPreviousValue({

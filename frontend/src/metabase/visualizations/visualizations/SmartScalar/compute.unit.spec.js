@@ -329,6 +329,28 @@ describe("SmartScalar > compute", () => {
             },
           },
           {
+            description: "should correctly display previous quarter comparison",
+            rows: [
+              ["2024-07-01T00:00:00", 100],
+              ["2024-10-01T00:00:00", 300],
+            ],
+            dateUnit: "quarter",
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Q4 2024",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "previous quarter",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
             description: "should correctly display previous month comparison",
             rows: [
               ["2018-12-01", 100],
@@ -539,6 +561,29 @@ describe("SmartScalar > compute", () => {
                   changeType: "increase",
                   comparisonValue: 10,
                   dateStr: "2017",
+                  metricValue: 300,
+                }),
+              },
+            },
+          },
+          {
+            description: "should handle comparisons by quarters",
+            rows: [
+              ["2023-07-01T00:00:00", 100],
+              ["2024-10-01T00:00:00", 300],
+            ],
+            dateUnit: "quarter",
+            periodsAgo: 5,
+            expected: {
+              ...getMetricProperties({
+                dateStr: "Q4 2024",
+                metricValue: 300,
+              }),
+              comparison: {
+                ...getComparisonProperties({
+                  changeType: "increase",
+                  comparisonValue: 100,
+                  dateStr: "Q3 2023",
                   metricValue: 300,
                 }),
               },
@@ -1283,7 +1328,7 @@ describe("SmartScalar > compute", () => {
         });
       });
 
-      describe("should correctly handle time-zones", () => {
+      describe("with time-zones", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
@@ -1297,68 +1342,277 @@ describe("SmartScalar > compute", () => {
           NumberColumn({ name: "Count" }),
         ];
 
-        const testCases = [
-          {
-            description: "should handle comparisons by hours",
-            rows: [
-              ["2022-12-01T07:00:00-04:00", 100],
-              ["2022-12-01T10:00:00-04:00", 300],
-            ],
-            dateUnit: "hour",
-            periodsAgo: 3,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "Dec 1, 2022, 10:00–59 AM",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "increase",
-                  comparisonValue: 100,
-                  dateStr: "7:00–59 AM",
+        describe("should handle dates with same time-zones", () => {
+          const testCases = [
+            {
+              description: "should handle comparisons by quarters",
+              rows: [
+                ["2024-01-01T00:00:00-04:00", 100],
+                ["2024-10-01T00:00:00-04:00", 300],
+              ],
+              dateUnit: "quarter",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Q4 2024",
                   metricValue: 300,
                 }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "Q1",
+                    metricValue: 300,
+                  }),
+                },
               },
             },
-          },
-          {
-            description: "should handle comparisons by minutes",
-            rows: [
-              ["2022-12-01T10:15:00-04:00", 100],
-              ["2022-12-01T10:30:00-04:00", 300],
-            ],
-            dateUnit: "minute",
-            periodsAgo: 15,
-            expected: {
-              ...getMetricProperties({
-                dateStr: "Dec 1, 2022, 10:30 AM",
-                metricValue: 300,
-              }),
-              comparison: {
-                ...getComparisonProperties({
-                  changeType: "increase",
-                  comparisonValue: 100,
-                  dateStr: "10:15 AM",
+            {
+              description: "should handle comparisons by months",
+              rows: [
+                ["2023-01-01T00:00:00-04:00", 100],
+                ["2023-04-01T00:00:00-04:00", 300],
+              ],
+              dateUnit: "month",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Apr 2023",
                   metricValue: 300,
                 }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "Jan",
+                    metricValue: 300,
+                  }),
+                },
               },
             },
-          },
-        ];
+            {
+              description: "should handle comparisons by weeks",
+              rows: [
+                ["2022-11-10T00:00-04:00", 100],
+                ["2022-12-01T00:00-04:00", 300],
+              ],
+              dateUnit: "week",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Dec 1–7, 2022",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "Nov 10–16",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description: "should handle comparisons by days",
+              rows: [
+                ["2022-12-01T00:00:00-04:00", 100],
+                ["2022-12-04T00:00:00-04:00", 300],
+              ],
+              dateUnit: "day",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Dec 4, 2022",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "Dec 1",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description: "should handle comparisons by hours",
+              rows: [
+                ["2022-12-01T07:00:00-04:00", 100],
+                ["2022-12-01T10:00:00-04:00", 300],
+              ],
+              dateUnit: "hour",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Dec 1, 2022, 10:00–59 AM",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "7:00–59 AM",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description: "should handle comparisons by minutes",
+              rows: [
+                ["2022-12-01T10:15:00-04:00", 100],
+                ["2022-12-01T10:30:00-04:00", 300],
+              ],
+              dateUnit: "minute",
+              periodsAgo: 15,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Dec 1, 2022, 10:30 AM",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "increase",
+                    comparisonValue: 100,
+                    dateStr: "10:15 AM",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+          ];
 
-        it.each(testCases)(
-          "$description",
-          ({ rows, expected, dateUnit, periodsAgo }) => {
-            const insights = [{ unit: dateUnit, col: "Count" }];
-            const trend = computeTrend(
-              series({ rows, cols }),
-              insights,
-              createSettings(periodsAgo),
-            );
+          it.each(testCases)(
+            "$description",
+            ({ rows, expected, dateUnit, periodsAgo }) => {
+              const insights = [{ unit: dateUnit, col: "Count" }];
+              const trend = computeTrend(
+                series({ rows, cols }),
+                insights,
+                createSettings(periodsAgo),
+              );
 
-            expect(getTrend(trend)).toEqual(expected);
-          },
-        );
+              expect(getTrend(trend)).toEqual(expected);
+            },
+          );
+        });
+
+        // if the date time column has a mix of time-zones - most likely due to
+        // daylight savings time - we want to make sure that the time-zone offsets
+        // do not affect previousPeriod and periodsAgo comparisons
+        // see SmartScalar/compute.js -> areDatesTheSame function for more info
+        describe("should handle dates with differing time-zones", () => {
+          const testCases = [
+            {
+              description: "should handle comparisons by quarters",
+              rows: [
+                ["2023-10-01T00:00:00-05:00", 100],
+                ["2024-01-01T00:00:00-04:00", null],
+                ["2024-10-01T00:00:00-04:00", 300],
+              ],
+              dateUnit: "quarter",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Q4 2024",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "missing",
+                    dateStr: "Q1",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description: "should handle comparisons by months",
+              rows: [
+                ["2022-12-01T00:00:00-05:00", 100],
+                ["2023-01-01T00:00:00-04:00", null],
+                ["2023-04-01T00:00:00-04:00", 300],
+              ],
+              dateUnit: "month",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Apr 2023",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "missing",
+                    dateStr: "Jan",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description: "should handle comparisons by weeks",
+              rows: [
+                ["2022-11-03T00:00-05:00", 100],
+                ["2022-11-10T00:00-04:00", null],
+                ["2022-12-01T00:00-04:00", 300],
+              ],
+              dateUnit: "week",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Dec 1–7, 2022",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "missing",
+                    dateStr: "Nov 10–16",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+            {
+              description: "should handle comparisons by days",
+              rows: [
+                ["2022-12-01T00:00:00-05:00", 100],
+                ["2022-12-02T00:00:00-04:00", null],
+                ["2022-12-05T00:00:00-04:00", 300],
+              ],
+              dateUnit: "day",
+              periodsAgo: 3,
+              expected: {
+                ...getMetricProperties({
+                  dateStr: "Dec 5, 2022",
+                  metricValue: 300,
+                }),
+                comparison: {
+                  ...getComparisonProperties({
+                    changeType: "missing",
+                    dateStr: "Dec 2",
+                    metricValue: 300,
+                  }),
+                },
+              },
+            },
+          ];
+
+          it.each(testCases)(
+            "$description",
+            ({ rows, expected, dateUnit, periodsAgo }) => {
+              const insights = [{ unit: dateUnit, col: "Count" }];
+              const trend = computeTrend(
+                series({ rows, cols }),
+                insights,
+                createSettings(periodsAgo),
+              );
+
+              expect(getTrend(trend)).toEqual(expected);
+            },
+          );
+        });
       });
     });
 
