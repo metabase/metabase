@@ -500,7 +500,7 @@ export interface ClickObject {
   data?: ClickObjectDataRow[];
 }
 
-export interface FieldValuesInfo {
+export interface FieldValuesSearchInfo {
   fieldId: FieldId | null;
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
