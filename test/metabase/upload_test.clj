@@ -1336,17 +1336,17 @@
                      (rows-for-table table))))
             (io/delete-file file))
           (testing "with duplicate normalized _mb_row_id columns in the CSV file"
-            (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]]
-              (let [table (create-upload-table!)
-                    file  (csv-file-with csv-rows (mt/random-name))]
-                (is (= {:row-count 1}
-                       (append-csv! {:file     file
-                                     :table-id (:id table)})))
-                (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-                  (is (= [[1 "Obi-Wan Kenobi"]
-                          [2 "Luke Skywalker"]]
-                         (rows-for-table table))))
-                (io/delete-file file)))))))))
+            (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]
+                  table (create-upload-table!)
+                  file  (csv-file-with csv-rows (mt/random-name))]
+              (is (= {:row-count 1}
+                     (append-csv! {:file     file
+                                   :table-id (:id table)})))
+              (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+                (is (= [[1 "Obi-Wan Kenobi"]
+                        [2 "Luke Skywalker"]]
+                       (rows-for-table table))))
+              (io/delete-file file))))))))
 
 (deftest append-duplicate-header-csv-test
   (mt/test-driver (mt/normal-drivers-with-feature :uploads)
