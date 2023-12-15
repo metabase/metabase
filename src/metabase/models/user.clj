@@ -196,11 +196,17 @@
     (assoc :first_name (i18n/tru "API Key:")
            :last_name (t2/select-one-fn :name :model/ApiKey :user_id (:id user)))))
 
+(defn- remove-type-field
+  "We only need the `type` field during initial loading of the User."
+  [user]
+  (dissoc user :type))
+
 (t2/define-after-select :model/User
   [user]
   (-> user
       maybe-get-name-from-api-key
-      add-common-name))
+      add-common-name
+      remove-type-field))
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
