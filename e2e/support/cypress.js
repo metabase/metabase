@@ -24,7 +24,7 @@ Cypress.on("test:before:run", () => {
   if (feHealthcheck?.enabled) {
     fetch(feHealthcheck.url).catch(() =>
       alert(
-        `⛔️ ${feHealthcheck.url} is not avaiable.\n\nIs dev server running?`,
+        `⛔️ ${feHealthcheck.url} is not available.\n\nIs dev server running?`,
       ),
     );
   }
