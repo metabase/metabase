@@ -877,7 +877,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:dynamic *insert-chunk-rows*
-  "The number of rows to insert at a time when uploading data to a database. This can be rebound for testing purposes."
+  "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
   nil)
 
 (defmulti table-name-length-limit

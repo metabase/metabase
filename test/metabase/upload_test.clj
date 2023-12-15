@@ -1391,7 +1391,7 @@
                          (rows-for-table table))))
                 (io/delete-file file)))))))))
 
-(deftest append-date-type-mismatch-test
+(deftest append-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
       (with-uploads-allowed
@@ -1400,36 +1400,44 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
-              (testing "dates"
-                (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                      :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                      :date       ::upload/date
-                                                                      :name       ::upload/varchar-255)
-                                                   :rows             [["2021-01-01" "Obi-Wan Kenobi"]]})
-                      csv-rows `["date,name" ~@(repeat 50 "2023-01-01,Obi-Wan") "2023-01-01T00:00:00,Luke Skywalker"]
-                      file  (csv-file-with csv-rows (mt/random-name))]
-                  (is (= {:message "Text '2023-01-01T00:00:00' could not be parsed, unparsed text found at index 10"
-                          :data    {:status-code 422}}
-                         (catch-ex-info (append-csv! {:file     file
-                                                      :table-id (:id table)}))))
-                  (testing "Check the data was not uploaded into the table"
-                    (is (= [[1 "2021-01-01T00:00:00Z" "Obi-Wan Kenobi"]]
-                           (rows-for-table table))))
-                  (io/delete-file file)))
-              (testing "datetimes"
-                (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                      :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                      :datetime   ::upload/datetime
-                                                                      :name       ::upload/varchar-255)
-                                                   :rows             [["2021-01-01T00:00:00" "Obi-Wan Kenobi"]]})
-                      csv-rows `["datetime,name" ~@(repeat 50 "2023-01-01T00:00:00,Obi-Wan") "2024-01-01T00:00:00Z,Luke Skywalker"]
-                      file  (csv-file-with csv-rows (mt/random-name))]
-                  (testing "Check dates"
-                    (is (= {:message "2024-01-01T00:00:00Z is not a recognizable datetime"
-                            :data    {:status-code 422}}
-                           (catch-ex-info (append-csv! {:file     file
-                                                        :table-id (:id table)})))))
-                  (testing "Check the data was not uploaded into the table"
-                    (is (= [[1 "2021-01-01T00:00:00Z" "Obi-Wan Kenobi"]]
-                           (rows-for-table table))))
-                  (io/delete-file file))))))))))
+              (doseq [{:keys [upload-type valid invalid msg]}
+                      [{:upload-type ::upload/int
+                        :valid       1
+                        :invalid     "not an int"
+                        :msg         "Unparseable number: \"notanint\""}
+                       {:upload-type ::upload/float
+                        :valid       1.1
+                        :invalid     "not a float"
+                        :msg         "Unparseable number: \"notafloat\""}
+                       {:upload-type ::upload/boolean
+                        :valid       true
+                        :invalid     "correct"
+                        :msg         "correct is not a recognizable boolean"}
+                       {:upload-type ::upload/date
+                        :valid       #t "2000-01-01"
+                        :invalid     "2023-01-01T00:00:00"
+                        :msg         "Text '2023-01-01T00:00:00' could not be parsed, unparsed text found at index 10"}
+                       {:upload-type ::upload/datetime
+                        :valid       #t "2000-01-01T00:00:00"
+                        :invalid     "2023-01-01T00:00:00+01"
+                        :msg         "2023-01-01T00:00:00+01 is not a recognizable datetime"}
+                       {:upload-type ::upload/offset-datetime
+                        :valid       #t "2000-01-01T00:00:00+01"
+                        :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
+                        :msg         "Conversion failed"}]]
+                (testing (str "\nTry to upload an invalid value for " upload-type)
+                  (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                        :test_column upload-type
+                                                                        :name        ::upload/varchar-255)
+                                                     :rows             [[valid "Obi-Wan Kenobi"]]})
+                        ;; The CSV contains 50 valid rows and 1 invalid row
+                        csv-rows `["test_column,name" ~@(repeat 50 (str valid ",Darth Vadar")) ~(str invalid ",Luke Skywalker")]
+                        file  (csv-file-with csv-rows (mt/random-name))]
+                    (testing "\nShould return an appropriate error message"
+                      (is (= {:message msg
+                              :data    {:status-code 422}}
+                             (catch-ex-info (append-csv! {:file     file
+                                                          :table-id (:id table)})))))
+                    (testing "\nCheck the data was not uploaded into the table"
+                      (is (= 1 (count (rows-for-table table)))))
+                    (io/delete-file file)))))))))))
