@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -24,7 +24,10 @@ export function NestedItemPicker({
   const [stack, setStack] = useState(initialState ?? []);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleFolderSelect = async (folder: SearchResult, levelIndex: number) => {
+  const handleFolderSelect = async (
+    folder: SearchResult,
+    levelIndex: number,
+  ) => {
     const children = await onFolderSelect(folder);
 
     // FIXME do better
@@ -44,6 +47,17 @@ export function NestedItemPicker({
       }
     }, 10);
   };
+
+  useEffect(() => {
+    if (
+      containerRef.current !== null &&
+      containerRef.current.clientWidth < containerRef.current.scrollWidth
+    ) {
+      const diff =
+        containerRef.current.scrollWidth - containerRef.current.clientWidth;
+      containerRef.current.scrollLeft += diff;
+    }
+  }, [containerRef]);
 
   const handleItemSelect = (item: SearchResult, levelIndex: number) => {
     const restOfStack = stack.slice(0, levelIndex + 1);
