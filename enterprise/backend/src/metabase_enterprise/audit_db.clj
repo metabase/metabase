@@ -165,7 +165,7 @@
   (if (running-from-jar?)
     (let [path-to-jar (get-jar-path)]
       (log/info "The app is running from a jar, starting copy...")
-      (copy-from-jar! path-to-jar "instance_analytics/" "plugins/")
+      (copy-from-jar! path-to-jar "instance_analytics/" (plugins/plugins-dir))
       (log/info "Copying complete."))
     (let [in-path (fs/path analytics-dir-resource)]
       (log/info "The app is not running from a jar, starting copy...")
