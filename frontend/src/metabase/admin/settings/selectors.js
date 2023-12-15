@@ -35,7 +35,7 @@ import {
   EmbeddedDashboardListing,
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
@@ -445,9 +445,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [
       {
         key: "enable-embedding",
+        display_name: t`Embedding`,
         description: null,
-        widget: EmbeddingLegalese,
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+        widget: EmbeddingSwitchWidget,
         onChanged: async (
           oldValue,
           newValue,
@@ -466,35 +466,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
-        key: "enable-embedding",
-        display_name: t`Embedding`,
-        description: jt`Allow questions, dashboards, and more to be embedded. ${(
-          <ExternalLink
-            key="learn-embedding-link"
-            href={MetabaseSettings.learnUrl(
-              "embedding/embedding-charts-and-dashboards.html",
-            )}
-          >
-            {t`Learn more.`}
-          </ExternalLink>
-        )}`,
-        type: "boolean",
-        showActualValue: true,
-        getProps: setting => {
-          if (setting.is_env_setting) {
-            return {
-              tooltip: setting.placeholder,
-              disabled: true,
-            };
-          }
-          return null;
-        },
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
         key: "-static-embedding",
         widget: EmbeddingOption,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Static embedding`,
         embedDescription: t`Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.`,
         embedType: "standalone",
@@ -502,7 +475,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "-interactive-embedding",
         widget: EmbeddingOption,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
         embedName: t`Interactive embedding`,
         embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.`,
         embedType: "full-app",
