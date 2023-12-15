@@ -25,12 +25,18 @@
   (or (qualified-keyword? k)
       (str/includes? k ".")))
 
+(def ^:private memoized-kebab-key
+  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
+  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever with
+  regular memoization and get a nice performance boost."
+  (memoize u/->kebab-case-en))
+
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance metadata-type]
   (-> instance
-      (update-keys u/->kebab-case-en)
+      (update-keys memoized-kebab-key)
       (assoc :lib/type metadata-type)
       u.snake-hating-map/snake-hating-map))
 
