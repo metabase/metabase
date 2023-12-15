@@ -96,7 +96,7 @@
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
-  [database {schema :schema, table-name :name, :as table}]
+  [database {schema :schema table-name :name :as table}]
   (let [;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
         is-crufty?          (is-crufty-table? table)
         initial-sync-status (if is-crufty? "complete" "incomplete")
@@ -115,6 +115,8 @@
       (first (t2/insert-returning-instances! Table
                                              :db_id (u/the-id database)
                                              :schema schema
+                                             :description (:description table)
+                                             :database_require_filter (:database_require_filter table)
                                              :name table-name
                                              :display_name (humanization/name->human-readable-name table-name)
                                              :active true
@@ -152,13 +154,18 @@
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)]
   (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
-  (let [to-update-keys [:database_require_filter :description]
-        old-table (select-keys metabase-table to-update-keys)
-        new-table (select-keys (merge
-                                (zipmap to-update-keys (repeat nil))
-                                table-metadata)
-                               to-update-keys)
-        [_ changes _]  (data/diff old-table new-table)]
+  (let [to-update-keys [:description :database_require_filter]
+        old-table      (select-keys metabase-table to-update-keys)
+        new-table      (select-keys (merge
+                                     (zipmap to-update-keys (repeat nil))
+                                     table-metadata)
+                                    to-update-keys)
+        [_ changes _]  (data/diff old-table new-table)
+        changes        (cond-> changes
+                         ;; we only update the description if and only if the initial state is nil
+                         ;; because don't want to override the user edited description if it exists
+                         (some? (:description old-table))
+                         (dissoc changes :description))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
                  k
@@ -202,6 +209,7 @@
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
+         name->db-table          (m/index-by :name db-tables)
          our-metadata            (db->our-metadata database)
          keep-table-id-info      (fn [metadata]
                                    (set (map #(select-keys % [:name :schema]) metadata)))
@@ -217,7 +225,7 @@
      (when (seq new-tables)
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                               (sync-util/name-for-logging database))
-         (create-or-reactivate-tables! database new-tables)))
+         (create-or-reactivate-tables! database (set (map #(get name->db-table (:name %)) db-tables)))))
      ;; mark old tables as inactive
      (when (seq old-tables)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
