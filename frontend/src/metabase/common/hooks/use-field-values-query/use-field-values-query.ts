@@ -24,7 +24,7 @@ function getObject(
   state: State,
   options: EntityQueryOptions<FieldId>,
 ): FieldValuesResult | undefined {
-  const field = Fields.selectors.getObject(options);
+  const field = Fields.selectors.getObject(state, options);
   if (field) {
     const { id, values, has_more_values } = field;
     return { field_id: id, values, has_more_values };

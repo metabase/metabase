@@ -1,4 +1,4 @@
-import type { FieldValuesInfo } from "metabase-lib";
+import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { FieldValue, FieldValuesResult } from "metabase-types/api";
 import { MAX_INLINE_OPTIONS } from "./constants";
@@ -7,7 +7,7 @@ import type { Option } from "./types";
 export function canLoadFieldValues({
   fieldId,
   hasFieldValues,
-}: FieldValuesInfo) {
+}: FieldValuesSearchInfo) {
   return fieldId != null && hasFieldValues === "list";
 }
 
@@ -22,15 +22,15 @@ export function canListFieldValues(
   );
 }
 
-export function canSearchFieldValues({
-  fieldId,
-  searchFieldId,
-  hasFieldValues,
-}: FieldValuesInfo) {
+export function canSearchFieldValues(
+  { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
+  fieldData: FieldValuesResult | undefined,
+) {
   return (
     fieldId != null &&
     searchFieldId != null &&
-    (hasFieldValues === "list" || hasFieldValues === "search")
+    ((hasFieldValues === "list" && fieldData?.has_more_values) ||
+      hasFieldValues === "search")
   );
 }
 
@@ -53,15 +53,22 @@ export function getMergedOptions(
   selectedValues: string[],
 ): Option[] {
   const options = [
-    ...getSelectedOptions(selectedValues),
     ...getFieldOptions(fieldValues),
+    ...getSelectedOptions(selectedValues),
   ];
 
-  return Object.entries(
-    Object.fromEntries(options.map(option => [option.value, option.label])),
-  ).map(([value, label]) => ({ value, label }));
+  const mapping = options.reduce((map: Record<string, string>, option) => {
+    map[option.value] ??= option.label;
+    return map;
+  }, {});
+
+  return Object.entries(mapping).map(([value, label]) => ({ value, label }));
 }
 
-export function isKey(column: Lib.ColumnMetadata) {
+export function hasDuplicateOptions(options: Option[], label: string) {
+  return options.some(option => option.label === label);
+}
+
+export function isKeyColumn(column: Lib.ColumnMetadata) {
   return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
 }

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useAsyncFn, useDebounce } from "react-use";
+import { useAsync, useDebounce } from "react-use";
 import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
-import { getMergedOptions } from "../utils";
+import { getMergedOptions, hasDuplicateOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
 
@@ -12,7 +12,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate?: (query: string) => boolean;
+  shouldCreate: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
 }
 
@@ -26,19 +26,16 @@ export function SearchValuePicker({
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const [lastSearchValue, setLastSearchValue] = useState(searchValue);
+  const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const [{ value: fieldValues = initialFieldValues }, handleSearch] =
-    useAsyncFn(
-      (value: string) =>
-        getSearchValues(fieldId, searchFieldId, value, initialFieldValues),
-      [fieldId],
-    );
+  const { value: fieldValues = initialFieldValues } = useAsync(
+    () => getSearchValues(fieldId, searchFieldId, searchQuery),
+    [fieldId, searchFieldId, searchQuery],
+  );
 
-  const handleDebounce = async () => {
-    if (shouldSearch(fieldValues, searchValue, lastSearchValue)) {
-      await handleSearch(searchValue);
-      setLastSearchValue(searchValue);
+  const handleDebounce = () => {
+    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
+      setSearchQuery(searchValue);
     }
   };
 
@@ -53,7 +50,9 @@ export function SearchValuePicker({
       searchValue={searchValue}
       creatable
       searchable
-      shouldCreate={shouldCreate}
+      shouldCreate={query =>
+        !hasDuplicateOptions(options, query) && shouldCreate(query)
+      }
       onChange={onChange}
       onCreate={query => {
         onChange([...selectedValues, query]);

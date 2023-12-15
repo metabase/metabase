@@ -3,7 +3,7 @@ import type { FieldReference } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
-  FieldValuesInfo,
+  FieldValuesSearchInfo,
   MetricMetadata,
   Query,
   SegmentMetadata,
@@ -44,12 +44,11 @@ export function fieldableColumns(
   return ML.fieldable_columns(query, stageIndex);
 }
 
-export function fieldValuesInfo(
-  _query: Query,
-  _stageIndex: number,
-  _column: ColumnMetadata,
-): FieldValuesInfo {
-  return { fieldId: 1, searchFieldId: null, hasFieldValues: "list" };
+export function fieldValuesSearchInfo(
+  query: Query,
+  column: ColumnMetadata,
+): FieldValuesSearchInfo {
+  return ML.field_values_search_info(query, column);
 }
 
 export function legacyRef(

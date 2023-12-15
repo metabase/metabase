@@ -9,7 +9,7 @@ import { SearchValuePicker } from "./SearchValuePicker";
 import { StaticValuePicker } from "./StaticValuePicker";
 import {
   canLoadFieldValues,
-  isKey,
+  isKeyColumn,
   canListFieldValues,
   canSearchFieldValues,
 } from "./utils";
@@ -39,14 +39,16 @@ function FilterValuePicker({
   onChange,
 }: FilterValuePickerOwnProps) {
   const fieldInfo = useMemo(
-    () => Lib.fieldValuesInfo(query, stageIndex, column),
-    [query, stageIndex, column],
+    () => Lib.fieldValuesSearchInfo(query, column),
+    [query, column],
   );
 
   const { data: fieldData, isLoading } = useFieldValuesQuery({
     id: fieldInfo.fieldId ?? undefined,
     enabled: canLoadFieldValues(fieldInfo),
   });
+
+  const fieldValues = fieldData?.values ?? [];
 
   if (isLoading) {
     return (
@@ -68,14 +70,14 @@ function FilterValuePicker({
     );
   }
 
-  if (canSearchFieldValues(fieldInfo)) {
+  if (canSearchFieldValues(fieldInfo, fieldData)) {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return (
       <SearchValuePicker
         fieldId={checkNotNull(fieldInfo.fieldId)}
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
-        fieldValues={fieldData?.values ?? []}
+        fieldValues={fieldValues}
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
@@ -86,9 +88,9 @@ function FilterValuePicker({
 
   return (
     <StaticValuePicker
-      fieldValues={fieldData?.values ?? []}
+      fieldValues={fieldValues}
       selectedValues={selectedValues}
-      placeholder={placeholder}
+      placeholder={fieldValues.length > 0 ? t`Search the list` : placeholder}
       shouldCreate={shouldCreate}
       onChange={onChange}
     />
@@ -109,7 +111,7 @@ export function StringFilterValuePicker({
       stageIndex={stageIndex}
       column={column}
       values={values}
-      placeholder={isKey(column) ? t`Enter an ID` : t`Enter some text`}
+      placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
       isCompact={isCompact}
       shouldCreate={query => query.length > 0}
       onChange={onChange}
@@ -131,7 +133,7 @@ export function NumberFilterValuePicker({
       stageIndex={stageIndex}
       column={column}
       values={values.map(value => String(value))}
-      placeholder={isKey(column) ? t`Enter an ID` : t`Enter a number`}
+      placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
       isCompact={isCompact}
       shouldCreate={query => isFinite(parseFloat(query))}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}

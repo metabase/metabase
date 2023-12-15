@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { Checkbox, SimpleGrid, Stack, Text, TextInput } from "metabase/ui";
+import { Checkbox, Stack, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
 import { getMergedOptions } from "../utils";
 import { searchOptions } from "./utils";
+import { ColumnGrid } from "./ListValuePicker.styled";
 
 interface ListValuePickerProps {
   fieldValues: FieldValue[];
@@ -83,10 +84,12 @@ function CompactValuePicker({
   onChange,
 }: ListValuePickerProps) {
   const options = getMergedOptions(fieldValues, selectedValues);
+  const cols = 2;
+  const rows = Math.ceil(options.length / cols);
 
   return (
     <Checkbox.Group value={selectedValues} onChange={onChange}>
-      <SimpleGrid cols={2}>
+      <ColumnGrid rows={rows}>
         {options.map(option => (
           <Checkbox
             key={option.value}
@@ -94,7 +97,7 @@ function CompactValuePicker({
             label={option.label}
           />
         ))}
-      </SimpleGrid>
+      </ColumnGrid>
     </Checkbox.Group>
   );
 }
