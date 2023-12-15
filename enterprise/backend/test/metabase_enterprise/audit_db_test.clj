@@ -68,23 +68,20 @@
         (is (= ::audit-db/no-op (audit-db/ensure-audit-db-installed!)))
         (t2/update! Database :is_audit true {:engine "h2"})))))
 
-(deftest audit-db-instance-analytics-content-is-copied-properly
-  (fs/delete-tree "plugins/instance_analytics")
-  (is (not (contains? (set (map str (fs/list-dir "plugins")))
-                      "plugins/instance_analytics")))
-
-  (#'audit-db/ia-content->plugins)
-  (is (= #{"plugins/instance_analytics/collections"
-           "plugins/instance_analytics/databases"}
-         (set (map str (fs/list-dir "plugins/instance_analytics"))))))
-
-(deftest audit-db-instance-analytics-content-is-copied-from-mb-plugins-dir-test
+(deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
     (let [plugins-dir (plugins/plugins-dir)]
       (#'audit-db/ia-content->plugins)
       (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
                                         (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
-        (is (str/starts-with? top-level-plugin-dir (str (fs/absolutize plugins-dir))))))))
+        (testing (str top-level-plugin-dir " starts with plugins value")
+          (is (str/starts-with? top-level-plugin-dir (str (fs/absolutize plugins-dir)))))))))
+
+(deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
+  (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
+    (#'audit-db/ia-content->plugins)
+    (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
+           (count (file-seq (io/file (io/resource "instance_analytics"))))))))
 
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
