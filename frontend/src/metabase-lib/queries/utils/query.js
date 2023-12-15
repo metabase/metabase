@@ -90,7 +90,7 @@ export const getExpressions = query => E.getExpressions(query.expressions);
 export const addExpression = (query, name, expression) =>
   setExpressionClause(
     query,
-    +E.addExpression(query.expressions, name, expression),
+    E.addExpression(query.expressions, name, expression),
   );
 export const clearExpressions = query =>
   setExpressionClause(query, E.clearExpressions(query.expressions));
