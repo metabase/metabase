@@ -64,7 +64,7 @@ export const EntityPickerSearchResults = ({
 }: {
   searchResults: SearchResultType[] | null;
   onItemSelect: (item: WrappedResult) => void;
-  selectedItem: SearchResultType;
+  selectedItem: SearchResultType | null;
 }) => {
   const dispatch = useDispatch();
 
@@ -98,7 +98,7 @@ export const EntityPickerSearchTab = ({
   searchResults,
   searchQuery,
 }: {
-  searchResults: SearchResult[] | null;
+  searchResults: SearchResultType[] | null;
   searchQuery: string;
 }) => (
   <Tabs.Tab key="search" value="search" icon={<Icon name="search" />}>

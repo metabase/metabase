@@ -11,8 +11,8 @@ export const getIcon = (item: SearchResult) => {
   return entity?.objectSelectors?.getIcon?.(item)?.name || "table";
 };
 
-export const isSelectedItem = (item: SearchResult, selectedItem: SearchResult) => {
-  return item.id === selectedItem?.id && item.model === selectedItem?.model;
+export const isSelectedItem = (item: SearchResult, selectedItem: SearchResult | null): boolean => {
+  return !!selectedItem && item.id === selectedItem.id && item.model === selectedItem.model;
 };
 
 export const tabOptions = {

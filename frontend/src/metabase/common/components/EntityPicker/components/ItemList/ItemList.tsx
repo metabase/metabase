@@ -12,7 +12,7 @@ export const ItemList = ({
 }: {
   items: SearchResult[];
   onClick: (item: SearchResult) => void;
-  selectedItem: SearchResult;
+  selectedItem: SearchResult | null;
   folderModel: string;
 }) => {
   if (!items) {

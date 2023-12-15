@@ -82,6 +82,9 @@ function FormCollectionPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
+  // Search API doesn't support collection namespaces yet
+  const hasSearch = type === "collections";
+  const entity = type === "collections" ? Collections : SnippetCollections;
 
   return (
     <>
@@ -111,6 +114,11 @@ function FormCollectionPicker({
             setIsPickerOpen(false)
           }}
           onClose={() => setIsPickerOpen(false)}
+          options={{
+            showPersonalCollection: true,
+            showSearch: hasSearch,
+            hasConfirmButtons: true,
+          }}
         />
       )}
     </>

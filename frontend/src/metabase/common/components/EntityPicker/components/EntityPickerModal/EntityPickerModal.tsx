@@ -14,20 +14,18 @@ import { GrowFlex, ModalContent, ModalBody } from "./EntityPickerModal.styled";
 export type EntityPickerModalOptions = {
   showPersonalCollection?: boolean;
   showSearch?: boolean;
-  showRecents?: boolean;
   hasConfirmButtons?: boolean;
 };
 
 const defaultOptions: EntityPickerModalOptions = {
   showPersonalCollection: true,
   showSearch: true,
-  showRecents: true,
   hasConfirmButtons: true,
 };
 
 interface EntityPickerModalProps {
   title: string;
-  value?: SearchResult;
+  value?: Partial<SearchResult>;
   onChange: (item: SearchResult) => void;
   onClose: () => void;
   tabs: ValidTab[];

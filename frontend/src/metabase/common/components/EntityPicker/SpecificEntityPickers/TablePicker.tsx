@@ -7,7 +7,7 @@ import { NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
 interface TablePickerProps {
-  onItemSelect: (item: Partial<SearchResult>) => void;
+  onItemSelect: (item: SearchResult) => void;
   initialTableId?: number;
   options?: any;
 }
@@ -18,7 +18,8 @@ export function TablePicker({
 }: TablePickerProps) {
   const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
 
-  const onFolderSelect = async (item: any /* Database | Schema */): Promise<(Database | Schema | Table)[]> => {
+  // need better generics for this to work properly
+  const onFolderSelect = async (item: any /* Database | Schema */): Promise<(SearchResult | Database | Schema | Table)[]> => {
     // need type guards here
     if (item.model === "database" && item.features.includes("schemas")) {
       return schemas.api
@@ -62,11 +63,11 @@ export function TablePicker({
         setInitialState(state as any);
       });
     } else {
-      databases.api.list().then(({ data }) => {
+      databases.api.list().then(({ data }: { data: Database[] }) => {
         setInitialState([
           {
             items: data.map(d => ({ ...d, model: "database" })),
-            selectedItem: "",
+            selectedItem: null,
           },
         ]);
       });

@@ -8,7 +8,7 @@ import { ItemList } from "../ItemList";
 import { HorizontalScrollBox, ListBox } from "./NestedItemPicker.styled";
 
 interface NestedItemPickerProps<T> {
-  onFolderSelect: (folder?: T) => Promise<T[]>;
+  onFolderSelect: (folder?: Partial<T>) => Promise<T[]>;
   onItemSelect: (item: T) => void;
   folderModel: string;
   itemModel: string;

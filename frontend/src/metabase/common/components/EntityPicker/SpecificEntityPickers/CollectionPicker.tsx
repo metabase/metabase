@@ -8,11 +8,25 @@ import Search from "metabase/entities/search";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
+
+export type CollectionPickerOptions = {
+  showPersonalCollection?: boolean;
+};
+
+const defaultOptions: CollectionPickerOptions = {
+  showPersonalCollection: true,
+};
+
 interface CollectionPickerProps {
-  onItemSelect: (item: Partial<SearchResult>) => void;
-  value?: SearchResult;
+  onItemSelect: (item: SearchResult) => void;
+  value?: Partial<SearchResult>;
   options?: CollectionPickerOptions;
 }
+
+const rootCollection = {
+  id: "root",
+  model: "collection",
+} as unknown as SearchResult;
 
 function getCollectionIdPath(collection: Collection) {
   const pathFromRoot =
@@ -24,14 +38,6 @@ function getCollectionIdPath(collection: Collection) {
 
   return path;
 }
-
-export type CollectionPickerOptions = {
-  showPersonalCollection?: boolean;
-};
-
-const defaultOptions: CollectionPickerOptions = {
-  showPersonalCollection: true,
-};
 
 export function CollectionPicker({
   onItemSelect,
@@ -68,7 +74,7 @@ export function CollectionPicker({
       }
 
       // because folders are also selectable items in the collection picker, we always select the folder
-      onItemSelect(folder ?? { id: "root", model: "collection" });
+      onItemSelect((folder ?? rootCollection) as SearchResult);
 
       const items = await Search.api.list({
         collection: folder.id,
@@ -88,7 +94,7 @@ export function CollectionPicker({
         const stack = await Promise.all(
           path.map(async (id, index) => {
             const items = await onFolderSelect({
-              id: id as unknown as number /* 🥴 */,
+              id: id as unknown as number,
               model: "collection",
             });
             const selectedItem =
@@ -108,16 +114,10 @@ export function CollectionPicker({
         setInitialState([
           {
             items,
-            selectedItem: {
-              id: "root" as unknown as number /* 🥴 */,
-              model: "collection"
-            }
+            selectedItem: rootCollection,
           },
           {
-            items: await onFolderSelect({
-              id: "root" as unknown as number /* 🥴 */,
-              model: "collection"
-            }),
+            items: await onFolderSelect(rootCollection),
             selectedItem: null,
           },
         ]);

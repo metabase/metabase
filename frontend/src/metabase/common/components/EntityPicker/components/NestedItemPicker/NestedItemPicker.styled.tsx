@@ -19,7 +19,6 @@ export const ListBox = styled(Box)`
   background-color: ${color("bg-light")};
 
   &:last-child {
-    border-right: none;
     background-color: white;
   }
 `;

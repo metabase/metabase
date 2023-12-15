@@ -7,7 +7,7 @@ import { NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
 interface QuestionPickerProps {
-  onItemSelect: (item: Partial<SearchResult>) => void;
+  onItemSelect: (item: SearchResult) => void;
   initialCollectionId?: number;
 }
 
@@ -51,7 +51,7 @@ export function QuestionPicker({
           path.map(async (id, index) => {
             return {
               items: (await onFolderSelect({ id })).sort(sortFoldersFirst),
-              selectedId: path[index + 1] ?? null,
+              selectedItem: path[index + 1] ?? null,
             };
           }),
         );
@@ -63,7 +63,7 @@ export function QuestionPicker({
         model: 'collection'
       }).then(items => {
         items.sort(sortFoldersFirst);
-        setInitialState([{ items, selectedId: null }]);
+        setInitialState([{ items, selectedItem: null }]);
       });
     }
   }, [initialCollectionId]);
