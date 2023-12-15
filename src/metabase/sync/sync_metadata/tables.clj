@@ -178,10 +178,10 @@
 (mu/defn ^:private update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
-  (let [name->table-metadata (m/index-by :name table-metadatas)
-        name->metabase-table (m/index-by :name metabase-tables)]
-    (doseq [[name metabase-table] name->metabase-table]
-      (when-let [table-metadata (name->table-metadata name)]
+  (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
+        name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
+    (doseq [[name+schema metabase-table] name+schema->table-metadata]
+      (when-let [table-metadata (name+schema->metabase-table name+schema)]
         (update-table-metadata-if-needed! table-metadata metabase-table)))))
 
 (mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
@@ -233,7 +233,7 @@
          (retire-tables! database old-tables)))
 
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
-       ;; we need to fetch the tables because there might be new tables added in previous steps
+       ;; we need to fetch the tables because there might be new tables are retired in the previous steps
        (update-tables-metadata-if-needed! db-tables (db->our-metadata database)))
 
      ;; update native download perms for all groups if any tables were added or removed
