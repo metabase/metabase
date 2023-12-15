@@ -12,11 +12,11 @@ export const initialState = new Array(3).fill(0).map((_, index, arr) => ({
   items: new Array(10).fill(0).map((__, i) => ({
     id: `${index}-${i}`,
     name: `level-${index}-item-${i}`,
-    isFolder: (i < 5),
     model: i < 5 ? "collection" : "dashboard"
   })),
   selectedItem: index === arr.length - 1 ? {} : {
-    id: `${index}-${Math.floor(Math.random() * 5)}`
+    id: `${index}-${Math.floor(Math.random() * 5)}`,
+    model: "collection"
   }
 }))
 
