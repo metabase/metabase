@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useCallback } from "react";
 import { SettingInputBlurChange } from "./SettingInput.styled";
 
 const getValue = (value: string, type: string) => {
@@ -38,9 +39,13 @@ export const SettingInput = ({
   type = "text",
   normalize = value => value,
 }: SettingInputProps) => {
+  const normalizeWithProps = useCallback(
+    (value: Value) => normalize(value, { type }),
+    [normalize, type],
+  );
   const changeHandler = (e: { target: HTMLInputElement }) => {
     const value = getValue(e.target.value, type);
-    onChange(normalize(value, { type }));
+    onChange(normalizeWithProps(value));
   };
 
   return (
@@ -49,6 +54,7 @@ export const SettingInput = ({
         SettingsInput: type !== "password",
         SettingsPassword: type === "password",
       })}
+      normalize={normalizeWithProps}
       size="large"
       error={!!errorMessage}
       id={id}
