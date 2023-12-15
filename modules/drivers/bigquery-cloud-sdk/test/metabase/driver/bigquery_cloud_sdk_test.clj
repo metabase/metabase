@@ -378,13 +378,13 @@
       (testing "Should not retry query on cancellation"
         (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
                                                   ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
-                                                  (if (and (re-find #"not-retry-cancellation-exception-test" sql) (not @fake-execute-called))
+                                                  (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
-                                                        (throw (ex-info "Query cancelled" {::cancelled? true})))
+                                                        (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
                                                     (orig-fn client sql parameters nil nil)))]
           (try
-            (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS not-retry-cancellation-exception-test"} :database (mt/id)
+            (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
             ;; If no exception is thrown, then the test should fail
             (is false "Query should have failed")

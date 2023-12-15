@@ -354,7 +354,7 @@
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
           (if (and (not (::cancelled? ex-data))
-                   (or (:retryable? e) (not (qp.error-type/client-error? (:type ex-data)))))
+                   (or (:retryable? ex-data) (not (qp.error-type/client-error? (:type ex-data)))))
             (thunk)
             (throw e)))))))
 
