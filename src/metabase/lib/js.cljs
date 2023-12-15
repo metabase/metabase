@@ -1121,4 +1121,7 @@
   "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
   widget in the QB filter modals."
   [metadata-providerable column]
-  (clj->js (lib.field/field-values-search-info metadata-providerable column)))
+  (-> (lib.field/field-values-search-info metadata-providerable column)
+      (update :has-field-values name)
+      (update-keys cljs-key->js-key)
+      clj->js))
