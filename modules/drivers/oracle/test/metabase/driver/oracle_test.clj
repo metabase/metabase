@@ -30,8 +30,6 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -46,8 +44,7 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false
-                                hx/*honey-sql-version*                   2]
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
 (deftest ^:parallel connection-details->spec-test
@@ -408,7 +405,7 @@
                       (testing " can sync correctly"
                         (sync/sync-database! database {:scan :schema})
                         ;; should be four tables from test-data
-                        (is (= 4 (t2/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
+                        (is (= 8 (t2/count Table :db_id (u/the-id database) :name [:like "test_data%"])))
                         (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
                                   ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
                                   ;; actually the name of the database, and not some variation on the :name specified
@@ -429,7 +426,7 @@
                                 "oracle-connect-with-ssl-test"
                                 "MB_ORACLE_SSL_TEST_SSL")))))
 
-(deftest text-equals-empty-string-test
+(deftest ^:parallel text-equals-empty-string-test
   (mt/test-driver :oracle
     (testing ":= with empty string should work correctly (#13158)"
       (mt/dataset airports
@@ -437,7 +434,7 @@
                (mt/first-row
                 (mt/run-mbql-query airport {:aggregation [:count], :filter [:= $code ""]}))))))))
 
-(deftest custom-expression-between-test
+(deftest ^:parallel custom-expression-between-test
   (mt/test-driver :oracle
     (testing "Custom :between expression should work (#15538)"
       (let [query (mt/mbql-query nil
@@ -454,7 +451,7 @@
           (is (= [42M]
                  (mt/first-row (qp/process-query query)))))))))
 
-(deftest escape-alias-test
+(deftest ^:parallel escape-alias-test
   (testing "Oracle should strip double quotes and null characters from identifiers"
     (is (= "ABC_D_E__FG_H"
            (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))

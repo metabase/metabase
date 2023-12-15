@@ -151,6 +151,7 @@ export type SegmentDisplayInfo = {
   longDisplayName: string;
   description: string;
   filterPositions?: number[];
+  effectiveType?: string;
 };
 
 export type AggregationOperatorDisplayInfo = {

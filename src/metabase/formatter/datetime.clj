@@ -4,12 +4,13 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.public-settings :as public-settings]
+   [metabase.shared.formatting.constants :as constants]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
-   (java.time.format DateTimeFormatter)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
@@ -52,80 +53,189 @@
 
 (defn- viz-settings-for-col
   "Get the column-settings map for the given column from the viz-settings."
-  [col viz-settings]
-  (let [[_ field-id]    (:field_ref col)
+  [{column-name :name :keys [field_ref]} viz-settings]
+  (let [[_ field-id-or-name] field_ref
         all-cols-settings (-> viz-settings
                               ::mb.viz/column-settings
                               ;; update the keys so that they will have only the :field-id or :column-name
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
-    (or (all-cols-settings {::mb.viz/field-id field-id})
-        (all-cols-settings {::mb.viz/column-name field-id}))))
+    (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
+        (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)}))))
+
+(defn- determine-time-format
+  "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string.
+  Note that if the `:time-enabled` key is present but the value is nil, we explicitly do not show the time."
+  [{:keys [time-style] :or {time-style "h:mm A"} :as viz-settings}]
+  ;; NOTE - If :time-enabled is present but nil it will return nil
+  (when-some [base-time-format (case (get viz-settings :time-enabled "minutes")
+                               "minutes" "mm"
+                               "seconds" "mm:ss"
+                               "milliseconds" "mm:ss.SSS"
+                               nil nil)]
+    (case time-style
+      "HH:mm" (format "HH:%s" base-time-format)
+      ;; Deprecated time style which should be already converted to HH:mm when viz settings are
+      ;; normalized, but we'll handle it here too just in case. (#18112)
+      "k:mm" (str "h" base-time-format)
+      ("h:mm A" "h:mm a") (format "h:%s a" base-time-format)
+      time-style)))
+
+(defn- fix-time-style
+  "The Java pattern for DateTimeFormatter is `a` for AM/PM and `A` for milli-of-day. However, to reconcile formats with
+  Moment.js on the FE, we use `h:mm A` to denote AM/PM in our code base. This function replaces time format patterns
+  that use the MB 'A' with 'a' so  that DateTimeFormatter properly formats times. We should consider looking into
+  `metabase.shared.util.time` to see if we can eliminate this altogether."
+  [time-style default-time-style]
+  (str/replace (or time-style default-time-style) #"A" "a"))
+
+(defn- post-process-date-style
+  "Potentially modify a date style to abbreviate names or add a different date separator."
+  [date-style {:keys [date-abbreviate date-separator]}]
+  (let [conditional-changes
+        (cond-> (-> date-style (str/replace #"dddd" "EEEE"))
+          date-separator (str/replace #"/" date-separator)
+          date-abbreviate (-> (str/replace #"MMMM" "MMM")
+                         (str/replace #"EEEE" "EEE")
+                         (str/replace #"DDD" "D")))]
+    (-> conditional-changes
+        ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
+        (str/replace #"D" "d"))))
+
+(def ^:private col-type
+  "The dispatch function logic for format format-timestring.
+  Find the first of the unit or highest type of the object."
+  (some-fn :unit :semantic_type :effective_type :base_type))
+
+(defmulti format-timestring
+"Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
+The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
+- `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
+- `:type/Date` - A date without hour and minute information
+- `:type/DateTime` - A full date plus hour, minute, seconds, etc.
+If neither a unit nor a temporal type is provided, just bottom out by assuming a date.
+"
+  (fn [_timezone-id _temporal-str col _viz-settings] (col-type col)))
+
+(defmethod format-timestring :minute [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
+  (reformat-temporal-str timezone-id temporal-str
+                         (-> (or date-style "MMMM, yyyy")
+                             (str ", " (fix-time-style time-style constants/default-time-style))
+                             (post-process-date-style viz-settings))))
+
+(defmethod format-timestring :hour [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
+  (reformat-temporal-str timezone-id temporal-str
+                         (-> (or date-style "MMMM, yyyy")
+                             (str ", " (fix-time-style time-style "h a"))
+                             (post-process-date-style viz-settings))))
+
+(defmethod format-timestring :day [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
+  (reformat-temporal-str timezone-id temporal-str
+                         (-> (or date-style "EEEE, MMMM d, YYYY")
+                             (post-process-date-style viz-settings))))
+
+(defmethod format-timestring :week [timezone-id temporal-str _col _viz-settings]
+  (str (tru "Week ") (reformat-temporal-str timezone-id temporal-str "w - YYYY")))
+
+(defmethod format-timestring :month [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
+  (reformat-temporal-str timezone-id temporal-str
+                         (-> (or date-style "MMMM, yyyy")
+                             (post-process-date-style viz-settings))))
+
+(defmethod format-timestring :quarter [timezone-id temporal-str _col _viz-settings]
+  (reformat-temporal-str timezone-id temporal-str "QQQ - yyyy"))
+
+(defmethod format-timestring :year [timezone-id temporal-str _col _viz-settings]
+  (reformat-temporal-str timezone-id temporal-str "YYYY"))
+
+(defmethod format-timestring :day-of-week [_timezone-id temporal-str _col {:keys [date-abbreviate]}]
+  (day-of-week (parse-long temporal-str) date-abbreviate))
+
+(defmethod format-timestring :month-of-year [_timezone-id temporal-str _col {:keys [date-abbreviate]}]
+  (month-of-year (parse-long temporal-str) date-abbreviate))
+
+(defmethod format-timestring :quarter-of-year [_timezone-id temporal-str _col _viz-settings]
+  (format "Q%s" temporal-str))
+
+(defmethod format-timestring :hour-of-day [_timezone-id temporal-str _col {:keys [time-style]}]
+  (hour-of-day temporal-str (fix-time-style time-style "h a")))
+
+(defmethod format-timestring :week-of-year [_timezone-id temporal-str _col _viz-settings]
+  (x-of-y (parse-long temporal-str)))
+
+(defmethod format-timestring :minute-of-hour [_timezone-id temporal-str _col _viz-settings]
+  (x-of-y (parse-long temporal-str)))
+
+(defmethod format-timestring :day-of-month [_timezone-id temporal-str _col _viz-settings]
+  (x-of-y (parse-long temporal-str)))
+
+(defmethod format-timestring :day-of-year [_timezone-id temporal-str _col _viz-settings]
+  (x-of-y (parse-long temporal-str)))
+
+(defmethod format-timestring :type/Time [timezone-id temporal-str _col viz-settings]
+  (let [time-style (some-> (determine-time-format viz-settings)
+                           (fix-time-style constants/default-time-style))]
+    ;; ATM, the FE can technically say the time style is `nil` via the `:time-enabled` key. While this doesn't really
+    ;; make sense, we should guard against it by returning an empty string if the time style is `nil`.
+    (if time-style
+      (reformat-temporal-str timezone-id temporal-str time-style)
+      "")))
+
+(defmethod format-timestring :type/Date [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
+  (let [date-format (post-process-date-style (or date-style "MMMM d, yyyy") viz-settings)]
+    (reformat-temporal-str timezone-id temporal-str date-format)))
+
+(defmethod format-timestring :type/DateTime [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
+  (let [date-style            (or date-style "MMMM d, yyyy")
+        time-style            (some-> (determine-time-format viz-settings)
+                                      (fix-time-style constants/default-time-style))
+        date-time-style       (cond-> date-style
+                                time-style
+                                (str ", " time-style))
+        default-format-string (post-process-date-style date-time-style viz-settings)]
+    (t/format default-format-string (u.date/parse temporal-str timezone-id))))
+
+(defmethod format-timestring :default [timezone-id temporal-str {:keys [unit] :as col} {:keys [date-style] :as viz-settings}]
+  (if (= :default unit)
+    ;; When the unit is the `:default` literal we want to retry formatting with the data types contained in col.
+    (format-timestring timezone-id temporal-str (dissoc col :unit) viz-settings)
+    ;; We're making an assumption when we bottom out here that the string is compatible with this default format,
+    ;; 'MMMM d, yyyy'. If the time string isn't compatible with this format, we just return the string.
+    ;; This is not likely to happen IRL since you generally have a useful unit or know the type of the colum. A failure
+    ;; mode that can be reproduced in test is trying to format a time string (e.g.'15:30:45Z') when the column has no
+    ;; type information (e.g. a semantic or effective type of `:type/Time`).
+    (let [date-format (post-process-date-style (or date-style "MMMM d, yyyy") viz-settings)]
+      (try
+        (reformat-temporal-str timezone-id temporal-str date-format)
+        (catch Exception _
+          (log/warnf "Could not format temporal string %s in time zone %s with format %s."
+                     temporal-str
+                     timezone-id
+                     date-format)
+          temporal-str)))))
+
+(defn- normalize-keys
+  "Update map keys to remove namespaces from keywords and convert from snake to kebab case."
+  [m]
+  (update-keys m (fn [k] (-> k name (str/replace #"_" "-") keyword))))
 
 (defn format-temporal-str
-  "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
-  column `:unit`."
-  ([timezone-id s col] (format-temporal-str timezone-id s col {}))
-  ([timezone-id s {:keys [effective_type base_type] :as col} viz-settings]
+  "Reformat a temporal literal string by combining time zone, column, and viz setting information to create a final
+  desired output format."
+  ([timezone-id temporal-str col] (format-temporal-str timezone-id temporal-str col {}))
+  ([timezone-id temporal-str {col-settings :settings :as col} {::mb.viz/keys [global-column-settings] :as viz-settings}]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
-   (cond
-     (str/blank? s) ""
-
-     (isa? (or effective_type base_type) :type/DateTime)
-     (t/format DateTimeFormatter/ISO_LOCAL_DATE_TIME (u.date/parse s timezone-id))
-
-     (isa? (or effective_type base_type) :type/Time)
-     (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
-
-     :else
-     (let [col-viz-settings             (viz-settings-for-col col viz-settings)
-           {date-style     :date-style
-            abbreviate     :date-abbreviate
-            date-separator :date-separator
-            time-style     :time-style} (if (seq col-viz-settings)
-                                          (-> col-viz-settings
-                                              (update-keys (comp keyword name)))
-                                          (-> (:type/Temporal (public-settings/custom-formatting))
-                                              (update-keys (fn [k] (-> k name (str/replace #"_" "-") keyword)))))
-           post-process-date-style      (fn [date-style]
-                                          (let [conditional-changes
-                                                (cond-> (-> date-style (str/replace #"dddd" "EEEE"))
-                                                  date-separator (str/replace #"/" date-separator)
-                                                  abbreviate     (-> (str/replace #"MMMM" "MMM")
-                                                                     (str/replace #"EEEE" "EEE")
-                                                                     (str/replace #"DDD" "D")))]
-                                            (-> conditional-changes
-                                                ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
-                                                (str/replace #"D" "d"))))]
-       (case (:unit col)
-         ;; these types have special formatting
-         :minute  (reformat-temporal-str timezone-id s
-                                         (-> (or date-style "MMMM, yyyy")
-                                             (str ", " (str/replace (or time-style "h:mm a") #"A" "a"))
-                                             post-process-date-style))
-         :hour    (reformat-temporal-str timezone-id s
-                                         (-> (or date-style "MMMM, yyyy")
-                                             (str ", " (str/replace (or time-style "h a") #"A" "a"))
-                                             post-process-date-style))
-         :day     (reformat-temporal-str timezone-id s
-                                         (-> (or date-style "EEEE, MMMM d, YYYY")
-                                             post-process-date-style))
-         :week    (str (tru "Week ") (reformat-temporal-str timezone-id s "w - YYYY"))
-         :month   (reformat-temporal-str timezone-id s
-                                         (-> (or date-style "MMMM, yyyy")
-                                             post-process-date-style))
-         :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
-         :year    (reformat-temporal-str timezone-id s "YYYY")
-
-         ;; s is just a number as a string here
-         :day-of-week     (day-of-week (parse-long s) abbreviate)
-         :month-of-year   (month-of-year (parse-long s) abbreviate)
-         :quarter-of-year (format "Q%s" s)
-         :hour-of-day     (hour-of-day s (str/replace (or time-style "h a") #"A" "a"))
-
-         (:week-of-year :minute-of-hour :day-of-month :day-of-year) (x-of-y (parse-long s))
-
-         ;; for everything else return in this format
-         (reformat-temporal-str timezone-id s (-> (or date-style "MMMM d, yyyy")
-                                                  post-process-date-style)))))))
+   (let [public-formatting        (normalize-keys (:type/Temporal (public-settings/custom-formatting)))
+         global-temporal-settings (normalize-keys (:type/Temporal global-column-settings {}))
+         custom-col-settings      (normalize-keys (viz-settings-for-col col viz-settings))
+         col-settings             (normalize-keys col-settings)
+         ;; Merge the column settings by order of precedence.
+         merged-viz-settings      (merge
+                                    public-formatting
+                                    global-temporal-settings
+                                    custom-col-settings
+                                    col-settings)]
+     (if (str/blank? temporal-str)
+       ""
+       (format-timestring timezone-id temporal-str col merged-viz-settings)))))

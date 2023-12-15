@@ -30,8 +30,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
@@ -743,7 +742,7 @@
       ;; 2019-01-01 is Tuesday, so set start-of-week to tuesday so
       ;; breakout by week-of-year will have first row is the 1st week of year
       (mt/with-temporary-setting-values [start-of-week :tuesday]
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (letfn [(test-break-out [unit]
                     (->> (mt/mbql-query orders
                            {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
@@ -881,9 +880,7 @@
   implementation having set that explicitly via `hx/with-type-info`. Returns `nil` if it can't be determined."
   [d]
   (when (isa? driver/hierarchy driver/*driver* :sql)
-    (let [db-type (-> (sql.qp/current-datetime-honeysql-form d)
-                    hx/type-info
-                    hx/type-info->db-type)]
+    (let [db-type (h2x/database-type (sql.qp/current-datetime-honeysql-form d))]
       (when-not (str/blank? db-type)
         (sql-jdbc.sync/database-type->base-type d db-type)))))
 
@@ -907,12 +904,11 @@
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/with-driver-honey-sql-version driver/*driver*
-                            (sql.qp/compiled
-                             (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                                (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                                (* i interval-seconds)
-                                                                :second)))
+                          (sql.qp/compiled
+                           (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                              (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                              (* i interval-seconds)
+                                                              :second))
                           (u.date/add :second (* i interval-seconds)))
                  (assert <>))])
             (range -15 15))])))
@@ -970,33 +966,42 @@
 ;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
-(deftest count-of-grouping-test
+(deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-minute :minute args))
-              (format "filter by minute = %s" (into [:relative-datetime] args)))))))
+              (format "filter by minute = %s" (into [:relative-datetime] args))))))))
+
+(deftest ^:parallel count-of-grouping-test-2
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
           (is (= 4
                  (apply count-of-grouping checkins:4-per-hour :hour args))
-              (format "filter by hour = %s" (into [:relative-datetime] args))))))
+              (format "filter by hour = %s" (into [:relative-datetime] args))))))))
+
+(deftest ^:parallel count-of-grouping-test-3
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "1 checkin per day dataset"
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
           (is (= 1
                  (apply count-of-grouping checkins:1-per-day :day args))
-              (format "filter by day = %s" (into [:relative-datetime] args)))))
+              (format "filter by day = %s" (into [:relative-datetime] args))))))))
+
+(deftest ^:parallel count-of-grouping-test-4
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+    (testing "1 checkin per day dataset"
       (testing "group by week"
         (is (= 7
                (count-of-grouping checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
-(deftest time-interval-test
+(deftest ^:parallel time-interval-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
@@ -1005,8 +1010,12 @@
                 (mt/formatted-rows [int]
                   (mt/run-mbql-query checkins
                     {:aggregation [[:count]]
-                     :filter      [:time-interval $timestamp :current :day]})))))
+                     :filter      [:time-interval $timestamp :current :day]})))))))))
 
+(deftest ^:parallel time-interval-test-2
+  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+    (testing "Syntactic sugar (`:time-interval` clause)"
+      (mt/dataset checkins:1-per-day
         (is (= 7
                (ffirst
                 (mt/formatted-rows [int]
@@ -1028,7 +1037,7 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(deftest date-bucketing-when-you-test
+(deftest ^:parallel date-bucketing-when-you-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
@@ -1056,15 +1065,16 @@
 ;;
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
-(deftest default-bucketing-test
+(deftest ^:parallel default-bucketing-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]}))))))
+                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
 
+(deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
   ;; created checkins DBs so we can run it against Snowflake as well.
   (mt/test-drivers (mt/normal-drivers)
@@ -1073,8 +1083,11 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] "2019-01-16"]}))))
+                  :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
 
+(deftest ^:parallel default-bucketing-test-3
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset office-checkins
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
                (mt/formatted-rows [int]
@@ -1082,8 +1095,9 @@
                    {:aggregation [[:count]]
                     :filter      [:and
                                   [:= [:field $timestamp nil] "2019-01-16"]
-                                  [:= [:field $id nil] 6]]})))))))
+                                  [:= [:field $id nil] 6]]}))))))))
 
+(deftest ^:parallel default-bucketing-test-4
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
@@ -1099,17 +1113,17 @@
                                                                 "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals
-  [[3        :day             "2014-03-03"]
-   [135      :day-of-week     1]
-   [36       :day-of-month    1]
-   [9        :day-of-year     214]
-   [11       :week            "2014-03-03"]
-   [7        :week-of-year    2]
-   [48       :month           "2014-03"]
-   [38       :month-of-year   1]
-   [107      :quarter         "2014-01"]
-   [200      :quarter-of-year 1]
-   [498      :year            "2014"]])
+  [[3   :day             "2014-03-03"]
+   [135 :day-of-week     1]
+   [36  :day-of-month    1]
+   [9   :day-of-year     214]
+   [11  :week            "2014-03-03"]
+   [7   :week-of-year    2]
+   [48  :month           "2014-03"]
+   [38  :month-of-year   1]
+   [107 :quarter         "2014-01"]
+   [200 :quarter-of-year 1]
+   [498 :year            "2014"]])
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst
@@ -1133,7 +1147,7 @@
                      filter-value
                      expected-count))))))))))
 
-(deftest legacy-default-datetime-bucketing-test
+(deftest ^:parallel legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
     (is (= (str "SELECT COUNT(*) AS \"count\" "
@@ -1149,7 +1163,7 @@
                {:aggregation [[:count]]
                 :filter      [:= $date [:relative-datetime :current]]})))))))
 
-(deftest compile-time-interval-test
+(deftest ^:parallel compile-time-interval-test
   (testing "Make sure time-intervals work the way they're supposed to."
     (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
@@ -1266,24 +1280,23 @@
                             #t "2022-03-31T00:00:00"
                             #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (sql.qp/with-driver-honey-sql-version driver/*driver*
-                (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
-                      june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
-                      checkins     (mt/with-metadata-provider (mt/id)
-                                     (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
-                      honeysql     {:select [[june-31 :june_31]]
-                                    :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
-                      honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
-                      [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
-                      query        (mt/native-query {:query sql, :params args})]
-                  (mt/with-native-query-testing-context query
-                    (is (re= (u.regex/rx #"^2022-"
+              (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                    june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                    checkins     (mt/with-metadata-provider (mt/id)
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
+                    honeysql     {:select [[june-31 :june_31]]
+                                  :from   [[checkins]]}
+                    honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                    [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                    query        (mt/native-query {:query sql, :params args})]
+                (mt/with-native-query-testing-context query
+                  (is (re= (u.regex/rx #"^2022-"
                                        ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
                                        ;; guess you could make a case for either June 30th or July 1st. I don't really know
                                        ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
                                        ;; main thing here is that it's not barfing.
-                                         [:or [:and "06-" [:or "29" "30"]] "07-01"]
+                                       [:or [:and "06-" [:or "29" "30"]] "07-01"]
                                        ;; We also don't really care if this is returned as a date or a timestamp with or
                                        ;; without time zone.
-                                         [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
-                             (first (mt/first-row (qp/process-query query)))))))))))))))
+                                       [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
+                           (first (mt/first-row (qp/process-query query))))))))))))))

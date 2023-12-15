@@ -12,7 +12,7 @@ import ListItem from "metabase/components/ListItem";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as metadataActions from "metabase/redux/metadata";
-import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
+import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getDatabases, getError, getLoading } from "../selectors";

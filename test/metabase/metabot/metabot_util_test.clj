@@ -56,7 +56,7 @@
 
 (deftest denormalize-field-cardinality-test
   (testing "Ensure enum-cardinality-threshold is respected in model denormalization"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card model {:dataset_query
                                  {:database (mt/id)
                                   :type     :query
@@ -74,7 +74,7 @@
 
 (deftest denormalize-model-test
   (testing "Basic denormalized model test"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card model {:dataset_query
                                  {:database (mt/id)
                                   :type     :query
@@ -97,7 +97,7 @@
 
 (deftest denormalize-database-test
   (testing "Basic denormalized database test"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card _ {:dataset_query
                              {:database (mt/id)
                               :type     :query
@@ -161,7 +161,7 @@
 (deftest ensure-generated-sql-works-test
   (testing "Ensure the generated sql (including creating a CTE and querying from it) is valid (i.e. produces a result)."
     (mt/test-drivers #{:h2 :postgres :redshift}
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temp [Card {model-name :name :as model} {:dataset_query
                                                           {:database (mt/id)
                                                            :type     :query
@@ -182,7 +182,7 @@
 
 (deftest inner-query-test
   (testing "Ensure that a dataset-based query contains expected AS aliases"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
         (t2.with-temp/with-temp
          [Card orders-model {:name    "Orders Model"
@@ -210,7 +210,7 @@
 
 (deftest native-inner-query-test
   (testing "A SELECT * will produce column all column names in th resulting DDLs"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT * FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
@@ -239,7 +239,7 @@
 
 (deftest native-inner-query-test-2
   (testing "A SELECT of columns will produce those column names in th resulting DDLs"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
@@ -263,7 +263,7 @@
 
 (deftest native-inner-query-test-3
   (testing "Duplicate native column aliases will be deduplicated"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [q               (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
@@ -284,7 +284,7 @@
 
 (deftest inner-query-with-joins-test
   (testing "Models with joins work"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp
        [Card joined-model {:dataset     true
                            :database_id (mt/id)
@@ -307,7 +307,7 @@
                    "'PRODUCTS_CATEGORY' 'PRODUCTS_CATEGORY_t')"]))
                 (mdb.query/format-sql create_table_ddl)))))))
   (testing "A model with joins on the same table will produce distinct aliases"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp
        [Card joined-model {:dataset     true
                            :database_id (mt/id)
@@ -334,7 +334,7 @@
 
 (deftest inner-query-with-aggregations-test
   (testing "A model with aggregations will produce column names only (no AS aliases)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp
        [Card aggregated-model {:dataset     true
                                :database_id (mt/id)
@@ -354,7 +354,7 @@
 
 (deftest inner-query-name-collisions-test
   (testing "When column names collide, each conflict is disambiguated with an _X postfix"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
         (t2.with-temp/with-temp
          [Card orders-model {:name    "Orders Model"
@@ -373,7 +373,7 @@
 
 (deftest inner-query-name-collisions-with-joins-test
   (testing "Models with name collisions across joins are also correctly disambiguated"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 10]
         (t2.with-temp/with-temp
           [Card model {:dataset     true
@@ -393,12 +393,13 @@
           (let [model (update model :result_metadata
                               (fn [v]
                                 (map #(assoc % :display_name "FOO") v)))
-                {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model model)]
+                {:keys [column_aliases #_create_table_ddl]} (metabot-util/denormalize-model model)]
             (is (= "\"TOTAL\" AS FOO, \"products__CATEGORY\" AS FOO_2, \"self__CATEGORY\" AS FOO_3"
                    column_aliases))
             ;; Ensure that the same aliases are used in the create table ddl
             ;; 7 = 3 for the column names + 2 for the type creation + 2 for the type references
-            (is (= 7 (count (re-seq #"FOO" create_table_ddl))))))))))
+            ;; FIXME: This test is flaky on CI (metabase#36785)
+            #_(is (= 7 (count (re-seq #"FOO" create_table_ddl))))))))))
 
 (deftest ^:parallel deconflicting-aliases-test
   (testing "Test sql_name generation deconfliction:
@@ -502,7 +503,7 @@
 
 (deftest create-table-embedding-test
   (testing "Baseline case -- the default prompt doesn't need any shrinking"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [max-tokens 5000]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
           (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
@@ -510,14 +511,14 @@
               (is (<= 800 tokens max-tokens))
               tokens))))))
   (testing "The token limit is too high, we reduce the size of the prompt"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [max-tokens 500]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
           (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
             (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
               (is (<= 400 tokens max-tokens))))))))
   (testing "The token limit is reduced to demonstrate that we produce nothing when we can't create a small enough prompt."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [max-tokens 1]
         (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
           (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]

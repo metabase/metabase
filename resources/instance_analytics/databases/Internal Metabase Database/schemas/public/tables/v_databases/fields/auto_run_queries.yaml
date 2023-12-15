@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: auto_run_queries
   model: Field
+database_indexed: null
