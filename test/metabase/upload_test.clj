@@ -1246,7 +1246,7 @@
                                                  :date            ::upload/date
                                                  :datetime        ::upload/datetime
                                                  :offset_datetime ::upload/offset-datetime)
-                              :rows [[1000000,1.0,"some_text",false,"2020-01-01","2020-01-01T00:00:00","2020-01-01T00:00:00Z"]]})
+                              :rows [[1000000,1.0,"some_text",false,#t "2020-01-01",#t "2020-01-01T00:00:00",#t "2020-01-01T00:00:00"]]})
                       csv-rows ["biginteger,float,text,boolean,date,datetime,offset_datetime"
                                 "2000000,2.0,some_text,true,2020-02-02,2020-02-02T02:02:02,2020-02-02T02:02:02+02:00"]
                       file  (csv-file-with csv-rows (mt/random-name))]
