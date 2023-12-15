@@ -996,11 +996,12 @@ class Question {
   _serializeForUrl({
     includeOriginalCardId = true,
     clean = true,
+    cleanFilters = false,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
     const query = clean
-      ? this.query().clean({ skipFilters: true })
+      ? this.query().clean({ skipFilters: !cleanFilters })
       : this.query();
     const cardCopy = {
       name: this._card.name,
