@@ -8,6 +8,7 @@
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.plugins :as plugins]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
@@ -93,3 +94,7 @@
            #"Cannot sync Database: It is the audit db."
            (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
+
+(deftest plugins-path-is-plugins-str-test
+  (is (= (fs/path (plugins/plugins-dir))
+         (fs/path (str (plugins/plugins-dir))))))
