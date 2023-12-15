@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { unique_expression_name } from "cljs/metabase.domain_entities.queries.util";
 
 export function getExpressions(expressions = {}) {
@@ -7,9 +6,6 @@ export function getExpressions(expressions = {}) {
 
 export function addExpression(expressions = {}, name, expression) {
   return { ...expressions, [name]: expression };
-}
-export function removeExpression(expressions = {}, name) {
-  return _.omit(expressions, name);
 }
 export function clearExpressions(expressions) {
   return {};

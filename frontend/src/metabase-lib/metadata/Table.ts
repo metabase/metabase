@@ -163,16 +163,6 @@ class Table {
       .filter(Boolean) as Table[];
   }
 
-  primaryKeys(): { field: Field; index: number }[] {
-    const pks: { field: Field; index: number }[] = [];
-    this.getFields().forEach((field, index) => {
-      if (field.isPK()) {
-        pks.push({ field, index });
-      }
-    });
-    return pks;
-  }
-
   clone() {
     const table = new Table(this.getPlainObject());
     Object.assign(table, this);
