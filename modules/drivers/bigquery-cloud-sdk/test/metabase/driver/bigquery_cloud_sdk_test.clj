@@ -380,8 +380,8 @@
                                                   ;; We dont want to retry the db setup queries, so only retry if the query contains "cancel_test"
                                                   (if (and (re-find #"cancel_test" sql) (not @fake-execute-called))
                                                     (do (reset! fake-execute-called true)
-                                                        ;; Simulate a CancellationException being thrown
-                                                        (throw (java.util.concurrent.CancellationException. "Query cancelled")))
+                                                        ;; Simulate a cancellation happening
+                                                        (throw (ex-info "Query cancelled" {::cancelled? true})))
                                                     (orig-fn client sql parameters nil nil)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS cancel_test"} :database (mt/id)
