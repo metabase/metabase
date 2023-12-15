@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAsyncFn, useDebounce } from "react-use";
+import { useAsync, useDebounce } from "react-use";
 import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
 import { getMergedOptions } from "../utils";
@@ -26,24 +26,22 @@ export function SearchValuePicker({
   onChange,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const [lastSearchValue, setLastSearchValue] = useState(searchValue);
+  const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const [{ value: fieldValues = initialFieldValues, loading }, handleSearch] =
-    useAsyncFn(
-      (value: string) =>
-        getSearchValues(fieldId, searchFieldId, value, initialFieldValues),
-      [fieldId],
-    );
+  const { value: fieldValues = initialFieldValues, loading } = useAsync(
+    () => getSearchValues(fieldId, searchFieldId, searchQuery),
+    [fieldId, searchFieldId, searchQuery],
+  );
 
-  const handleDebounce = async () => {
-    if (shouldSearch(fieldValues, searchValue, lastSearchValue)) {
-      await handleSearch(searchValue);
-      setLastSearchValue(searchValue);
+  const handleDebounce = () => {
+    if (shouldSearch(fieldValues, searchValue, searchQuery)) {
+      setSearchQuery(searchValue);
     }
   };
 
+  useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
   const options = getMergedOptions(fieldValues, selectedValues);
-  const [isReady] = useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
+  const canCreate = !loading;
 
   return (
     <MultiSelect
@@ -53,9 +51,7 @@ export function SearchValuePicker({
       searchValue={searchValue}
       creatable
       searchable
-      shouldCreate={query =>
-        !loading && isReady() === true && shouldCreate(query)
-      }
+      shouldCreate={query => canCreate && shouldCreate(query)}
       onChange={onChange}
       onCreate={query => {
         onChange([...selectedValues, query]);

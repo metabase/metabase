@@ -5,29 +5,28 @@ import { SEARCH_LIMIT } from "./constants";
 export function getSearchValues(
   fieldId: FieldId,
   searchFieldId: FieldId,
-  searchValue: string,
-  initialFieldValues: FieldValue[],
-): Promise<FieldValue[]> {
-  if (searchValue) {
+  searchQuery: string,
+): Promise<FieldValue[] | undefined> {
+  if (searchQuery) {
     return MetabaseApi.field_search({
       fieldId,
       searchFieldId,
-      value: searchValue,
+      value: searchQuery,
       limit: SEARCH_LIMIT,
     });
   }
 
-  return Promise.resolve(initialFieldValues);
+  return Promise.resolve(undefined);
 }
 
 export function shouldSearch(
   fieldValues: FieldValue[],
   searchValue: string,
-  lastSearchValue: string,
+  searchQuery: string,
 ) {
-  const isLastSearchEmpty = lastSearchValue === "";
-  const isExtensionOfLastSearch = searchValue.startsWith(lastSearchValue);
+  const isSearchEmpty = searchQuery === "";
+  const isExtensionOfLastSearch = searchValue.startsWith(searchQuery);
   const hasMoreValues = fieldValues.length === SEARCH_LIMIT;
 
-  return isLastSearchEmpty || !isExtensionOfLastSearch || hasMoreValues;
+  return isSearchEmpty || !isExtensionOfLastSearch || hasMoreValues;
 }
