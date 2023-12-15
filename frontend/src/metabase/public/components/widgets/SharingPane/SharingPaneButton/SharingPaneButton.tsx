@@ -11,6 +11,7 @@ type SharingOptionProps = {
   header: string;
   description: ReactNode | string;
   disabled?: boolean;
+  onClick?: () => void;
 };
 
 export const SharingPaneButton = ({
@@ -19,9 +20,10 @@ export const SharingPaneButton = ({
   header,
   description,
   disabled,
+  onClick,
 }: SharingOptionProps) => (
   <SharingPaneButtonContent withBorder>
-    <Center h="22.5rem" p="8rem">
+    <Center h="22.5rem" p="8rem" onClick={onClick}>
       <Stack w="17.5rem" justify="center" align="center">
         {illustration}
         <SharingPaneButtonTitle disabled={disabled}>

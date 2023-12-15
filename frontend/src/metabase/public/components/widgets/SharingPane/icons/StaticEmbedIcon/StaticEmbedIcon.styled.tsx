@@ -1,5 +1,5 @@
 import { css } from "@emotion/react";
-import styled from "@emotion/styled/dist/emotion-styled.cjs";
+import styled from "@emotion/styled";
 import { SharingPaneButtonContent } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
 
 export const StaticEmbedIconRoot = styled.svg`
@@ -18,12 +18,16 @@ export const StaticEmbedIconRoot = styled.svg`
       }
 
       ${SharingPaneButtonContent}:hover & {
-        .outerFill {
+        rect.outerFill {
           stroke: ${theme.colors.brand[0]};
         }
 
+        path.outerFill {
+          fill: ${theme.colors.brand[0]};
+        }
+
         .innerFill {
-          stroke: ${theme.colors.brand[1]};
+          fill: ${theme.colors.brand[1]};
         }
       }
     `}

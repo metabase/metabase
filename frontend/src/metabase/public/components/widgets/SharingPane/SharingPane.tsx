@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor } from "metabase/ui";
+import { Group, Text, Anchor, Box } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
@@ -61,9 +61,12 @@ function SharingPane({
     onDeletePublicLink();
   };
 
-  const publicLinkInfoText = hasPublicLink
-    ? t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`
-    : t`Use this to add a publicly-visible iframe embed to your web page or blog post.`;
+  const publicLinkInfoText = hasPublicLink ? (
+    //   TextInput has a hardcoded marginTop that we need to account for here.
+    <Box mb="-0.25rem">{t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`}</Box>
+  ) : (
+    t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
+  );
 
   return (
     <Group p="lg">
@@ -71,6 +74,7 @@ function SharingPane({
         header={t`Static embed`}
         description={t`Securely embed this dashboard in your own application’s server code.`}
         illustration={<StaticEmbedIcon />}
+        onClick={() => onChangeEmbedType("application")}
       >
         <SharingPaneActionButton
           fullWidth
@@ -82,7 +86,6 @@ function SharingPane({
 
       <SharingPaneButton
         header={t`Public embed`}
-        disabled={!isPublicSharingEnabled}
         description={
           isPublicSharingEnabled ? (
             publicLinkInfoText
@@ -95,6 +98,8 @@ function SharingPane({
             </Text>
           )
         }
+        disabled={!isPublicSharingEnabled}
+        onClick={createPublicLink}
         illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
       >
         {resource.public_uuid ? (

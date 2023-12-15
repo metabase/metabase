@@ -8,7 +8,9 @@ type SharingPaneElementProps = {
   disabled?: boolean;
 };
 
-export const SharingPaneButtonContent = styled(Paper)<PaperProps>``;
+export const SharingPaneButtonContent = styled(Paper)<PaperProps>`
+  cursor: pointer;
+`;
 
 export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
   ${({ disabled, theme }) =>
