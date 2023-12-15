@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
+   [medley.core :as m]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -114,20 +115,28 @@
        (map (fn [[k v]]
               [k (parse-field k v)]))))))
 
+(defmulti ^:private parse-object-fn*
+  {:arglists '([object-type opts])}
+  (fn
+    [object-type _opts]
+    object-type))
+
 (defn- parse-object-fn
-  ([object-type]
-   (parse-object-fn object-type {}))
-  ([object-type opts]
-   (let [xform         (parse-object-xform object-type)
-         lib-type-name (lib-type object-type)]
-     (fn [object]
-       (try
-         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
-           (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
-           parsed)
-         (catch js/Error e
-           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
-           nil))))))
+  ([object-type]      (parse-object-fn* object-type {}))
+  ([object-type opts] (parse-object-fn* object-type opts)))
+
+(defmethod parse-object-fn* :default
+  [object-type opts]
+  (let [xform         (parse-object-xform object-type)
+        lib-type-name (lib-type object-type)]
+    (fn [object]
+      (try
+        (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
+          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          parsed)
+        (catch js/Error e
+          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          nil)))))
 
 (defmulti ^:private parse-objects
   {:arglists '([object-type metadata])}
@@ -205,7 +214,6 @@
     :database
     :default-dimension-option
     :dimension-options
-    :dimensions
     :metrics
     :table})
 
@@ -214,7 +222,9 @@
   {:source          :lib/source
    :unit            :metabase.lib.field/temporal-unit
    :expression-name :lib/expression-name
-   :binning-info    :metabase.lib.field/binning})
+   :binning-info    :metabase.lib.field/binning
+   :dimensions      ::dimension
+   :values          ::field-values})
 
 (defn- parse-field-id
   [id]
@@ -237,6 +247,31 @@
             [k v])))
    m))
 
+(defn- parse-field-values [field-values]
+  (when (= (keyword (object-get field-values "type")) :full)
+    {:values                (js->clj (object-get field-values "values"))
+     :human-readable-values (js->clj (object-get field-values "human_readable_values"))}))
+
+(defn- parse-dimension
+  "Dimensions comes in as an array, but we only want to look at the first one that is either :external or :internal."
+  [dimensions]
+  (when-let [dimension (m/find-first (fn [dimension]
+                                       (#{"external" "internal"} (object-get dimension "type")))
+                                     dimensions)]
+    (let [dimension-type (keyword (object-get dimension "type"))]
+      (merge
+       {:id   (object-get dimension "id")
+        :name (object-get dimension "name")}
+       (case dimension-type
+         ;; external = mapped to a different column
+         :external
+         {:lib/type :metadata.column.remapping/external
+          :field-id (object-get dimension "human_readable_field_id")}
+
+         ;; internal = mapped to FieldValues
+         :internal
+         {:lib/type :metadata.column.remapping/internal})))))
+
 (defmethod parse-field-fn :field
   [_object-type]
   (fn [k v]
@@ -257,11 +292,28 @@
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
       :metabase.lib.field/binning       (parse-binning-info v)
+      ::field-values                    (parse-field-values v)
+      ::dimension                       (parse-dimension v)
       v)))
+
+(defmethod parse-object-fn* :field
+  [object-type opts]
+  (let [f ((get-method parse-object-fn* :default) object-type opts)]
+    (fn [unparsed]
+      (let [{{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
+        (-> (case dimension-type
+              :metadata.column.remapping/external
+              (assoc parsed :lib/external-remap dimension)
+
+              :metadata.column.remapping/internal
+              (assoc parsed :lib/internal-remap (merge dimension field-values))
+
+              parsed)
+            (dissoc ::dimension ::field-values))))))
 
 (defmethod parse-objects :field
   [object-type metadata]
-  (let [parse-object (parse-object-fn object-type)
+  (let [parse-object    (parse-object-fn object-type)
         unparsed-fields (object-get metadata "fields")]
     (obj->clj (keep (fn [[k v]]
                       ;; Sometimes fields coming from saved questions are only present with their ID
