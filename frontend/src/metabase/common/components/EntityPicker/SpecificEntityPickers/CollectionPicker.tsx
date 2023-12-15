@@ -11,10 +11,13 @@ import type { PickerState } from "../types";
 
 export type CollectionPickerOptions = {
   showPersonalCollection?: boolean;
+  showRootCollection?: boolean;
+  namespace?: 'snippets';
 };
 
 const defaultOptions: CollectionPickerOptions = {
   showPersonalCollection: true,
+  showRootCollection: true,
 };
 
 interface CollectionPickerProps {
@@ -49,17 +52,18 @@ export function CollectionPicker({
   const onFolderSelect = useCallback(
     async (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
       if (!folder?.id) {
-        const ourAnalytics = await CollectionsApi.getRoot();
+        const collectionsData = [];
 
-        const collectionsData = [
-          {
+        if (options.showRootCollection || options.namespace === "snippets") {
+          const ourAnalytics = await CollectionsApi.getRoot({ namespace: options.namespace });
+          collectionsData.push({
             ...ourAnalytics,
             model: "collection",
             id: "root",
-          },
-        ];
+          });
+        }
 
-        if (options.showPersonalCollection) {
+        if (options.showPersonalCollection && options.namespace !== "snippets") {
           const currentUser = await UserApi.current();
           const personalCollection = await CollectionsApi.get({
             id: currentUser.personal_collection_id,
@@ -79,6 +83,7 @@ export function CollectionPicker({
       const items = await Search.api.list({
         collection: folder.id,
         models: ["collection"],
+        namespace: options.namespace,
       });
 
       return items.data;
