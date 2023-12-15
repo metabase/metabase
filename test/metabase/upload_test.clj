@@ -1562,7 +1562,8 @@
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [{:keys [upload-type uncoerced coerced]}
                       [{:upload-type ::upload/int,         :uncoerced "2.1", :coerced 2}
-                       {:upload-type ::upload/int,         :uncoerced "2.5", :coerced 3}
+                       {:upload-type ::upload/int,         :uncoerced "2.5", :coerced 2}
+                       {:upload-type ::upload/int,         :uncoerced "2.9", :coerced 2}
                        {:upload-type ::upload/float,       :uncoerced "2",   :coerced 2.0}
                        {:upload-type ::upload/boolean,     :uncoerced "0", :coerced false}]]
                 (testing (format "\nUploading %s into a column of type %s should be coerced to %s"

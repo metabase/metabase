@@ -120,6 +120,11 @@
     (catch Exception _
       (throw (IllegalArgumentException. (tru "{0} is not a recognizable number" s))))))
 
+(defn parse-as-int
+  "Parses a string representing a number as an integer, rounding down if necessary."
+  [number-separators s]
+  (int (parse-number number-separators s)))
+
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
   suitable for insertion."
@@ -137,7 +142,7 @@
 
 (defmethod upload-type->parser :metabase.upload/int
   [_ {:keys [number-separators]}]
-  (partial parse-number number-separators))
+  (partial parse-as-int number-separators))
 
 (defmethod upload-type->parser :metabase.upload/float
   [_ {:keys [number-separators]}]
