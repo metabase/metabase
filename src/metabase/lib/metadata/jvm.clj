@@ -29,7 +29,14 @@
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
   caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever with
   regular memoization and get a nice performance boost."
-  (memoize u/->kebab-case-en))
+  ;; actually, just using a simple atom like this is 10x faster than [[memoize]], and thus 100x faster
+  ;; than [[metabase.util.memoize/lru]]... see https://metaboat.slack.com/archives/C04CYTEL9N2/p1702610853943109
+  (let [cache (atom (hash-map))]
+    (fn [k]
+      (or (get @cache k)
+          (let [k' (u/->kebab-case-en k)]
+            (swap! cache assoc k k')
+            k')))))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style

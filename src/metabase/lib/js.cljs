@@ -16,6 +16,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
@@ -1115,3 +1116,9 @@
                  (and (vector? legacy-expr)
                       (= (first legacy-expr) :aggregation-options))
                  (get 1))))))
+
+(defn ^:export field-values-search-info
+  "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
+  widget in the QB filter modals."
+  [metadata-providerable column]
+  (clj->js (lib.field/field-values-search-info metadata-providerable column)))

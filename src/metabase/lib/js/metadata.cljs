@@ -11,13 +11,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
-(def ^:private memoized-kebab-key
-  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
-  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever with
-  regular memoization and get a nice performance boost."
-  (memoize u/->kebab-case-en))
-
-;;; metabase-lib/metadata/Metadata comes in a class like
+;;; metabase-lib/metadata/Metadata comes in a object like
 ;;;
 ;;;    {
 ;;;      databases: {},
@@ -107,7 +101,7 @@
     (comp
      ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
-            [(cond-> (keyword (memoized-kebab-key k))
+            [(cond-> (keyword (u/->kebab-case-en k))
                rename-key (#(or (rename-key %) %)))
              v]))
      ;; remove [[excluded-keys]]
@@ -243,7 +237,7 @@
   [m]
   (obj->clj
    (map (fn [[k v]]
-          (let [k (keyword (memoized-kebab-key k))
+          (let [k (keyword (u/->kebab-case-en k))
                 k (if (= k :binning-strategy)
                     :strategy
                     k)

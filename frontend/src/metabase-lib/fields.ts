@@ -3,6 +3,7 @@ import type { FieldReference } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
+  MetadataProvider,
   MetricMetadata,
   Query,
   SegmentMetadata,
@@ -72,3 +73,22 @@ export function legacyRef(
 ): FieldReference {
   return ML.legacy_ref(column);
 }
+
+/**
+ * Info about FieldValues/remapping for the purposes of powering search widgets in filter modals.
+ */
+function fieldValuesSearchInfo(
+  metadataProviderable: MetadataProvider | Query,
+  column: ColumnMetadata,
+): FieldValuesSearchInfo {
+  return ML.field_values_search_info(metadataProviderable, column);
+}
+
+type FieldValuesSearchInfo = {
+  // null means that the underlying field was not found
+  fieldId: number | null;
+  // a note for it below
+  searchFieldId: number | null;
+  // corresponds to has_field_values property, or "none" if the field is not found
+  hasFieldValues: "list" | "search" | "none";
+};
