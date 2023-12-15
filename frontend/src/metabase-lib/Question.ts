@@ -203,14 +203,6 @@ class Question {
     return this.query() instanceof StructuredQuery;
   }
 
-  setEnableEmbedding(enabled: boolean): Question {
-    return this.setCard(assoc(this._card, "enable_embedding", enabled));
-  }
-
-  setEmbeddingParams(params: Record<string, any> | null): Question {
-    return this.setCard(assoc(this._card, "embedding_params", params));
-  }
-
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
@@ -829,10 +821,6 @@ class Question {
 
   publicUUID(): string {
     return this._card && this._card.public_uuid;
-  }
-
-  setPublicUUID(public_uuid: string | null): Question {
-    return this.setCard({ ...this._card, public_uuid });
   }
 
   database(): Database | null | undefined {

@@ -18,11 +18,6 @@ export function fieldRefForColumn(column) {
   );
 }
 
-export function fieldRefWithOption(fieldRef, key, value) {
-  const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
-  return dimension && dimension.withOption(key, value).mbql();
-}
-
 /**
  * finds the column object from the dataset results for the given `table.columns` column setting
  * @param  {Column[]} columns             Dataset results columns

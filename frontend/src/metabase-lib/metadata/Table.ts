@@ -80,10 +80,6 @@ class Table {
     });
   }
 
-  isSavedQuestion() {
-    return this.savedQuestionId() !== null;
-  }
-
   savedQuestionId() {
     const match = String(this.id).match(/card__(\d+)/);
     return match ? parseInt(match[1]) : null;

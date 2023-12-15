@@ -141,62 +141,6 @@ describe("StructuredQuery", () => {
     });
   });
 
-  describe("updateExpression", () => {
-    it("should update expressions correctly", () => {
-      let query = getQuery({
-        expressions: {
-          double_total: TEST_EXPRESSION,
-        },
-      });
-
-      query = query.updateExpression("double_total", TEST_EXPRESSION_2);
-
-      expect(query.expressions()).toEqual({
-        double_total: TEST_EXPRESSION_2,
-      });
-    });
-
-    it("should update expression names correctly", () => {
-      let query = getQuery({
-        expressions: {
-          double_total: TEST_EXPRESSION,
-        },
-      });
-
-      query = query.updateExpression(
-        "Double Total",
-        TEST_EXPRESSION,
-        "double_total",
-      );
-
-      expect(query.expressions()).toEqual({
-        "Double Total": TEST_EXPRESSION,
-      });
-    });
-
-    it("should handle duplicate expression names", () => {
-      let query = getQuery({
-        expressions: {
-          double_total: TEST_EXPRESSION,
-          "double_total (1)": TEST_EXPRESSION_2,
-          "double_total (2)": TEST_EXPRESSION_3,
-        },
-      });
-
-      query = query.updateExpression(
-        "double_total",
-        TEST_EXPRESSION_3,
-        "double_total (2)",
-      );
-
-      expect(query.expressions()).toEqual({
-        double_total: TEST_EXPRESSION,
-        "double_total (1)": TEST_EXPRESSION_2,
-        "double_total (3)": TEST_EXPRESSION_3,
-      });
-    });
-  });
-
   describe("removeExpression", () => {
     it("should remove expression correctly", () => {
       let query = getQuery({

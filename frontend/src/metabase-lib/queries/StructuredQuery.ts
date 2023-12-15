@@ -654,15 +654,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @returns an array of aggregation options for the currently selected table
-   */
-  aggregationOperatorsWithoutRows(): AggregationOperator[] {
-    return this.aggregationOperators().filter(
-      option => option.short !== "rows",
-    );
-  }
-
-  /**
    * @returns the field options for the provided aggregation
    */
   aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
@@ -1095,31 +1086,6 @@ class StructuredQuery extends AtomicQuery {
     return query;
   }
 
-  updateExpression(name, expression, oldName) {
-    const isRename = oldName && oldName !== name;
-    const uniqueName = isRename
-      ? getUniqueExpressionName(this.expressions(), name)
-      : name;
-
-    let query = this._updateQuery(Q.updateExpression, [
-      uniqueName,
-      expression,
-      oldName,
-    ]);
-
-    // extra logic for renaming expressions in fields clause
-    // TODO: push into query/expression?
-    if (isRename) {
-      const index = query._indexOfField(["expression", oldName]);
-
-      if (index >= 0) {
-        query = query.updateField(index, ["expression", uniqueName]);
-      }
-    }
-
-    return query;
-  }
-
   removeExpression(name) {
     let query = this._updateQuery(Q.removeExpression, arguments);
 
@@ -1182,28 +1148,6 @@ class StructuredQuery extends AtomicQuery {
 
   clearFields() {
     return this._updateQuery(Q.clearFields, arguments);
-  }
-
-  setFields(fields) {
-    return this._updateQuery(q => ({ ...q, fields }));
-  }
-
-  /**
-   * Returns dimension options that can appear in the `fields` clause
-   */
-  fieldsOptions(
-    dimensionFilter: DimensionFilterFn = _dimension => true,
-  ): DimensionOptions {
-    if (this.isBareRows() && !this.hasBreakouts()) {
-      return this.dimensionOptions(dimensionFilter);
-    }
-
-    // TODO: allow adding fields connected by broken out PKs?
-    return new DimensionOptions({
-      count: 0,
-      dimensions: [],
-      fks: [],
-    });
   }
 
   // DIMENSION OPTIONS
@@ -1644,13 +1588,6 @@ class StructuredQuery extends AtomicQuery {
 
     return this.rootQuery().table();
   });
-
-  /**
-   * returns the original Table ID at the beginning of the nested queries
-   */
-  rootTableId(): TableId | null | undefined {
-    return this.rootQuery().sourceTableId();
-  }
 
   setSourceQuery(
     sourceQuery: StructuredQuery | StructuredQueryObject,

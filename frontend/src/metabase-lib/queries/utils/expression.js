@@ -8,12 +8,6 @@ export function getExpressions(expressions = {}) {
 export function addExpression(expressions = {}, name, expression) {
   return { ...expressions, [name]: expression };
 }
-export function updateExpression(expressions = {}, name, expression, oldName) {
-  if (oldName != null) {
-    expressions = removeExpression(expressions, oldName);
-  }
-  return addExpression(expressions, name, expression);
-}
 export function removeExpression(expressions = {}, name) {
   return _.omit(expressions, name);
 }

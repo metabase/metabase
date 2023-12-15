@@ -328,12 +328,6 @@ export default class Dimension {
     return this.field().isDate() ? null : this.filterOperators()[0];
   }
 
-  defaultFilterForDimension() {
-    return new Filter([], null, this.query()).setDimension(this.mbql(), {
-      useDefaultOperator: true,
-    });
-  }
-
   // AGGREGATIONS
 
   /**
@@ -341,10 +335,6 @@ export default class Dimension {
    */
   aggregationOperators(): AggregationOperator[] {
     return this.field().aggregationOperators();
-  }
-
-  defaultAggregationOperator(): AggregationOperator | null | undefined {
-    return this.aggregationOperators()[0];
   }
 
   // BREAKOUTS
@@ -502,15 +492,6 @@ export default class Dimension {
   withTemporalUnit(unit: string): Dimension {
     return this.withOptions({
       "temporal-unit": unit,
-    });
-  }
-
-  /**
-   * Return a copy of this Dimension, with its binning options replaced by the new ones.
-   */
-  withBinningOptions(newBinningOptions) {
-    return this.withOptions({
-      binning: newBinningOptions,
     });
   }
 
