@@ -25,6 +25,7 @@ export * from "./e2e-bi-basics-helpers";
 export * from "./e2e-boolean-helpers";
 export * from "./e2e-embedding-helpers";
 export * from "./e2e-permissions-helpers";
+export * from "./e2e-request-helpers";
 export * from "./e2e-visual-tests-helpers";
 export * from "./e2e-users-helpers";
 export * from "./e2e-viz-settings-helpers";
