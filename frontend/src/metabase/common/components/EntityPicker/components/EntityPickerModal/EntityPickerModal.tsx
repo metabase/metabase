@@ -109,7 +109,7 @@ export function EntityPickerModal({
               <ButtonBar
                 onConfirm={handleConfirm}
                 onCancel={onClose}
-                canConfirm={!!selectedItem}
+                canConfirm={!!selectedItem && selectedItem?.can_write !== false}
               />
             )}
           </ErrorBoundary>

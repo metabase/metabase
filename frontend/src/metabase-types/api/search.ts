@@ -79,6 +79,7 @@ export interface SearchResult {
   creator_id: UserId | null;
   creator_common_name: string | null;
   created_at: string | null;
+  can_write: boolean | null;
 }
 
 export interface SearchListQuery {

@@ -5,6 +5,7 @@ import type { SearchResult } from "metabase-types/api";
 import { QuestionPicker } from "./SpecificEntityPickers/QuestionPicker";
 import { TablePicker } from "./SpecificEntityPickers/TablePicker";
 import { CollectionPicker } from "./SpecificEntityPickers/CollectionPicker";
+import { SnippetCollectionPicker } from "./SpecificEntityPickers/SnippetCollectionPicker";
 
 export const getIcon = (item: SearchResult) => {
   const entity = entityForObject(item);

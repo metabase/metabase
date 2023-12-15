@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useField } from "formik";
 
 import { is } from "immer/dist/internal";
+import { filter } from "underscore";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 import FormField from "metabase/core/components/FormField";
@@ -84,7 +85,7 @@ function FormCollectionPicker({
 
   // Search API doesn't support collection namespaces yet
   const hasSearch = type === "collections";
-  const entity = type === "collections" ? Collections : SnippetCollections;
+  const isSnippetCollection = type === "snippet-collections";
 
   return (
     <>
@@ -115,9 +116,11 @@ function FormCollectionPicker({
           }}
           onClose={() => setIsPickerOpen(false)}
           options={{
-            showPersonalCollection: true,
+            showPersonalCollection: filterPersonalCollections !== "exclude",
+            showRootCollection: filterPersonalCollections !== "only",
             showSearch: hasSearch,
             hasConfirmButtons: true,
+            namespace: isSnippetCollection ? "snippets" : undefined,
           }}
         />
       )}
