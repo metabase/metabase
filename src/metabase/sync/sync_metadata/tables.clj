@@ -185,7 +185,7 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
-(mu/defn ^:private our-metadata :- [:set i/DatabaseMetadataTable]
+(mu/defn ^:private db->our-metadata :- [:set i/DatabaseMetadataTable]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter]
@@ -202,12 +202,12 @@
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
-         mb-metadata             (our-metadata database)
-         strip-urelated-info     (fn [metadata]
+         our-metadata            (db->our-metadata database)
+         keep-table-id-info      (fn [metadata]
                                    (set (map #(select-keys % [:name :schema]) metadata)))
          [new-tables old-tables] (data/diff
-                                  (strip-urelated-info db-tables)
-                                  (strip-urelated-info mb-metadata))]
+                                  (keep-table-id-info db-tables)
+                                  (keep-table-id-info our-metadata))]
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -225,7 +225,7 @@
 
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables because there might be new tables added in previous steps
-       (update-tables-metadata-if-needed! db-tables (our-metadata database)))
+       (update-tables-metadata-if-needed! db-tables (db->our-metadata database)))
 
      ;; update native download perms for all groups if any tables were added or removed
      (when (or (seq new-tables) (seq old-tables))
@@ -234,4 +234,4 @@
            (perms/update-native-download-permissions! id (u/the-id database)))))
 
      {:updated-tables (+ (count new-tables) (count old-tables))
-      :total-tables   (count mb-metadata)})))
+      :total-tables   (count our-metadata)})))
