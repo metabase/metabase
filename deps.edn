@@ -57,8 +57,8 @@
   commons-fileupload/commons-fileupload     {:mvn/version "1.5"}                ; ring/ring-core 1.9.6 uses v1.4, but we want 1.5 due to a CVE. When we upgrade to the forthcoming ring/ring-core 1.10.0 we can remove this.
   commons-codec/commons-codec               {:mvn/version "1.16.0"}             ; Apache Commons -- useful codec util fns
   commons-io/commons-io                     {:mvn/version "2.15.1"}             ; Apache Commons -- useful IO util fns
-  commons-net/commons-net                   {:mvn/version "3.10.0"}              ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
-  commons-validator/commons-validator       {:mvn/version "1.8.0"                 ; Apache Commons -- useful validation util fns
+  commons-net/commons-net                   {:mvn/version "3.10.0"}             ; Apache Commons -- useful network utils. Transitive dep of Snowplow, pinned due to CVE-2021-37533
+  commons-validator/commons-validator       {:mvn/version "1.8.0"               ; Apache Commons -- useful validation util fns
                                              :exclusions  [commons-beanutils/commons-beanutils
                                                            commons-digester/commons-digester
                                                            commons-logging/commons-logging]}
@@ -75,11 +75,11 @@
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
   clj-commons/clj-yaml                      {:mvn/version "1.0.27"}             ; Clojure wrapper for YAML library SnakeYAML
   io.github.camsaul/toucan2                 {:mvn/version "1.0.535"}
-  io.github.eerohele/pp                     {:git/tag "2023-11-25.47"            ; super fast pretty-printing library
+  io.github.eerohele/pp                     {:git/tag "2023-11-25.47"           ; super fast pretty-printing library
                                              :git/sha "d3210d3"
                                              :git/url "https://github.com/eerohele/pp"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
-  io.github.resilience4j/resilience4j-retry {:mvn/version "2.1.0"}              ; Support for retrying operations
+  io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   io.prometheus/simpleclient_jetty          {:mvn/version "0.16.0"}             ; prometheus jetty collector
   javax.servlet/servlet-api                 {:mvn/version "2.5"}                ; used by ring's multipart-params (file upload)
@@ -89,7 +89,7 @@
   lambdaisland/uri                          {:mvn/version "1.16.134"}           ; Used by opanai-clojure. security bump
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "2.2.4"              ; EE SAML integration.
+  metabase/saml20-clj                       {:mvn/version "2.2.4"               ; EE SAML integration.
                                              :exclusions [org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
                                                           org.bouncycastle/bcpkix-jdk18on
@@ -149,7 +149,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
   org.clojure/tools.reader                  {:mvn/version "1.3.7"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.4"}            ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.17"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.4"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.25.0"              ; migration management (Java lib)
@@ -173,7 +173,7 @@
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
-  weavejester/dependency                    {:mvn/version "0.2.1"}}              ; Dependency graphs and topological sorting
+  weavejester/dependency                    {:mvn/version "0.2.1"}}             ; Dependency graphs and topological sorting
 
 
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
