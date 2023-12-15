@@ -566,28 +566,32 @@
                              (:id database)
                              (table-identifier table)
                              {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
-      (let [max-pk (val (ffirst (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+      ;; If the insert fails, we need to delete the rows we just inserted. So we:
+      ;; 1. get the max PK value before inserting
+      ;; 2. insert the rows
+      ;; 3. if insertion fails, delete the rows with PKs greater than the max PK value
+      (let [;; 1.
+            max-pk (val (ffirst (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                                             (sql/format {:select [[[:max (keyword auto-pk-column-name)]]]
                                                          :from (keyword (table-identifier table))}
                                                         {:quoted true
                                                          :dialect (sql.qp/quote-style driver)}))))]
         (try
-          (driver/insert-into! driver
-                               (:id database)
-                               (table-identifier table)
-                               normed-header
-                               parsed-rows)
+          ;; 2.
+          (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
           (catch Throwable e
+            ;; 3.
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
                            (sql/format {:delete-from (keyword (table-identifier table))
                                         :where       [:> (keyword auto-pk-column-name) max-pk]}
                                        {:quoted  true
                                         :dialect (sql.qp/quote-style driver)}))
-            (throw (ex-info (ex-message e) {:status-code 422})))))
-      (scan-and-sync-table! database table)
-      (when create-auto-pk?
-        (let [auto-pk-field (table-id->auto-pk-column (:id table))]
-          (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+            (throw (ex-info (ex-message e) {:status-code 422})))
+          (finally
+            (scan-and-sync-table! database table)
+            (when create-auto-pk?
+              (let [auto-pk-field (table-id->auto-pk-column (:id table))]
+                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)}))))))
       {:row-count (count parsed-rows)})))
 
 (defn- can-append-error

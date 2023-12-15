@@ -1314,6 +1314,33 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
+(deftest append-no-mb-row-id-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (with-uploads-allowed
+      (testing "If the table doesn't have _mb_row_id and a failure occurs, we should create a _mb_row_id column anyway"
+        (mt/with-empty-db
+          (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                :bool_column ::upload/boolean)
+                                             :rows [[true]]})
+                csv-rows ["bool_column" "not a bool"]
+                file  (csv-file-with csv-rows (mt/random-name))]
+            (is (thrown? Exception
+                         (append-csv! {:file     file
+                                       :table-id (:id table)})))
+            (testing "Check a _mb_row_id column was created"
+              (is (= ["bool_column" "_mb_row_id"]
+                     (column-names-for-table table))))
+            (testing "Check a _mb_row_id column was sync'd"
+              (is (=? {:semantic_type :type/PK
+                       :base_type     :type/BigInteger
+                       :name          "_mb_row_id"
+                       :display_name  "_mb_row_id"}
+                      (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+            (testing "Check the data was not uploaded into the table"
+              (is (= [[true 1]]
+                     (rows-for-table table))))
+            (io/delete-file file)))))))
+
 (deftest append-mb-row-id-table-only-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
