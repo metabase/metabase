@@ -39,8 +39,8 @@ export function SearchValuePicker({
     }
   };
 
-  useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
   const options = getMergedOptions(fieldValues, selectedValues);
+  useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect
