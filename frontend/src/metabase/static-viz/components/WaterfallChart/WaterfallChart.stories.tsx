@@ -55,3 +55,10 @@ MixedPositivesNegatives.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const MixedAboveZero = Template.bind({});
+MixedAboveZero.args = {
+  rawSeries: data.mixedAboveZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
