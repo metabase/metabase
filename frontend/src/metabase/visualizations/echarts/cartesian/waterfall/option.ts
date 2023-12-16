@@ -1,5 +1,9 @@
 import type { EChartsOption } from "echarts";
-import type { DatasetOption, YAXisOption } from "echarts/types/dist/shared";
+import type {
+  DatasetOption,
+  YAXisOption,
+  XAXisOption,
+} from "echarts/types/dist/shared";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -14,6 +18,13 @@ import type { TimelineEventsModel } from "../timeline-events/types";
 import type { WaterfallDataset } from "./types";
 import { DATASET_DIMENSIONS } from "./constants";
 import { getWaterfallExtent } from "./model";
+
+function getXAxisType(settings: ComputedVisualizationSettings) {
+  if (settings["graph.x_axis.scale"] === "timeseries") {
+    return "time";
+  }
+  return "category";
+}
 
 // TODO remove all the typecasts
 export function getWaterfallOption(
@@ -36,6 +47,9 @@ export function getWaterfallOption(
   // dataset
   (option.dataset as DatasetOption[])[0].dimensions =
     Object.values(DATASET_DIMENSIONS);
+
+  // x-axis
+  (option.xAxis as XAXisOption).type = getXAxisType(settings);
 
   // y-axis
   if (!chartModel.leftAxisModel) {
