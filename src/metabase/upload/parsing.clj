@@ -123,7 +123,8 @@
 (defn parse-as-int
   "Parses a string representing a number as an integer, rounding down if necessary."
   [number-separators s]
-  (int (parse-number number-separators s)))
+  ;; convert this to a string so we can insert bigints with a prepared statement
+  (str (bigint (parse-number number-separators s))))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
