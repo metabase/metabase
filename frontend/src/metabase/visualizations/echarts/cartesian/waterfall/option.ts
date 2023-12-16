@@ -1,5 +1,5 @@
 import type { EChartsOption } from "echarts";
-import type { DatasetOption } from "echarts/types/dist/shared";
+import type { DatasetOption, YAXisOption } from "echarts/types/dist/shared";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -8,9 +8,14 @@ import type { TimelineEventId } from "metabase-types/api";
 
 import type { CartesianChartModel } from "../model/types";
 import { getCartesianChartOption } from "../option";
+import { buildMetricAxis } from "../option/axis";
+import { getChartMeasurements } from "../utils/layout";
 import type { TimelineEventsModel } from "../timeline-events/types";
+import type { WaterfallDataset } from "./types";
 import { DATASET_DIMENSIONS } from "./constants";
+import { getWaterfallExtent } from "./model";
 
+// TODO remove all the typecasts
 export function getWaterfallOption(
   chartModel: CartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
@@ -28,13 +33,30 @@ export function getWaterfallOption(
     renderingContext,
   );
 
-  // TODO remove typecast
+  // dataset
   (option.dataset as DatasetOption[])[0].dimensions =
     Object.values(DATASET_DIMENSIONS);
-  // TODO full yAxis options
-  option.yAxis = {
-    type: "value",
-  };
+
+  // y-axis
+  if (!chartModel.leftAxisModel) {
+    throw Error("Missing leftAxisModel");
+  }
+  chartModel.leftAxisModel.extent = getWaterfallExtent(
+    chartModel.dataset as WaterfallDataset,
+  );
+  const chartMeasurements = getChartMeasurements(
+    chartModel,
+    settings,
+    timelineEventsModel != null,
+    renderingContext,
+  );
+  option.yAxis = buildMetricAxis(
+    chartModel.leftAxisModel,
+    chartMeasurements.ticksDimensions.yTicksWidthLeft,
+    settings,
+    "left",
+    renderingContext,
+  ) as YAXisOption;
 
   return option;
 }
