@@ -49,16 +49,51 @@ TimeSeriesDataAsOrdinalXScale.args = {
   renderingContext,
 };
 
-export const MixedPositivesNegatives = Template.bind({});
-MixedPositivesNegatives.args = {
-  rawSeries: data.mixedPositivesNegatives as any,
+export const MixedAboveZero = Template.bind({});
+MixedAboveZero.args = {
+  rawSeries: data.mixedAboveZero as any,
   dashcardSettings: {},
   renderingContext,
 };
 
-export const MixedAboveZero = Template.bind({});
-MixedAboveZero.args = {
-  rawSeries: data.mixedAboveZero as any,
+export const MixedBelowZero = Template.bind({});
+MixedBelowZero.args = {
+  rawSeries: data.mixedBelowZero as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NegativeOnly = Template.bind({});
+NegativeOnly.args = {
+  rawSeries: data.negativeOnly as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const StartsAboveZeroEndsBelow = Template.bind({});
+StartsAboveZeroEndsBelow.args = {
+  rawSeries: data.startsAboveZeroEndsBelow as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const StartsBelowZeroEndsAbove = Template.bind({});
+StartsBelowZeroEndsAbove.args = {
+  rawSeries: data.startsBelowZeroEndsAbove as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const StartsAboveZeroCrossesEndsAbove = Template.bind({});
+StartsAboveZeroCrossesEndsAbove.args = {
+  rawSeries: data.startsAboveZeroCrossesEndsAbove as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const StartsBelowZeroCrossesEndsBelow = Template.bind({});
+StartsBelowZeroCrossesEndsBelow.args = {
+  rawSeries: data.startsBelowZeroCrossesEndsBelow as any,
   dashcardSettings: {},
   renderingContext,
 };
