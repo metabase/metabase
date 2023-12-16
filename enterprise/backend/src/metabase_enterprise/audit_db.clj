@@ -160,12 +160,12 @@
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and put it into plugins/instance_analytics"
   []
-  (when (fs/exists? (u.files/relative-path instance-analytics-plugin-dir))
-    (fs/delete-tree (u.files/relative-path instance-analytics-plugin-dir)))
+  (when (fs/exists? instance-analytics-plugin-dir)
+    (fs/delete-tree instance-analytics-plugin-dir))
   (if (running-from-jar?)
     (let [path-to-jar (get-jar-path)]
       (log/info "The app is running from a jar, starting copy...")
-      (copy-from-jar! path-to-jar "instance_analytics/" (plugins/plugins-dir))
+      (copy-from-jar! path-to-jar "instance_analytics/" (str (plugins/plugins-dir)))
       (log/info "Copying complete."))
     (let [in-path (fs/path analytics-dir-resource)]
       (log/info "The app is not running from a jar, starting copy...")
