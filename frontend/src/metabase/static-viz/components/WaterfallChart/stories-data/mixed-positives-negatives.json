@@ -1,0 +1,310 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 157,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1522, null],
+          "effective_type": "type/BigInteger",
+          "id": 1522,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1523, null],
+          "effective_type": "type/BigInteger",
+          "id": 1523,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": { "distinct-count": 10, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 3,
+                "q3": 8,
+                "max": 10,
+                "sd": 3.0276503540974917,
+                "avg": 5.5
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1524, null],
+          "effective_type": "type/BigInteger",
+          "id": 1524,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 10, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -53,
+                "q1": -8,
+                "q3": 5,
+                "max": 27,
+                "sd": 20.55777765767064,
+                "avg": -2.8
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 10,
+      "query_type": "query",
+      "name": "Waterfall Mixed - Waterfall Example",
+      "creator_id": 1,
+      "updated_at": "2023-12-16T16:10:55.602611Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "database": 2,
+        "query": { "source-table": "card__134" }
+      },
+      "id": 137,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "waterfall",
+      "entity_id": "SyQBQGBaAVXPVmkK4K2i0",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.show_values": true,
+        "graph.metrics": ["change"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-09T23:43:11.550352Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1522, null],
+            "effective_type": "type/BigInteger",
+            "id": 1522,
+            "visibility_type": "normal",
+            "display_name": "_mb_row_id",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "x",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1523, null],
+            "effective_type": "type/BigInteger",
+            "id": 1523,
+            "visibility_type": "normal",
+            "display_name": "X",
+            "fingerprint": {
+              "global": { "distinct-count": 10, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 3,
+                  "q3": 8,
+                  "max": 10,
+                  "sd": 3.0276503540974917,
+                  "avg": 5.5
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "change",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1524, null],
+            "effective_type": "type/BigInteger",
+            "id": 1524,
+            "visibility_type": "normal",
+            "display_name": "Change",
+            "fingerprint": {
+              "global": { "distinct-count": 10, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": -53,
+                  "q1": -8,
+                  "q3": 5,
+                  "max": 27,
+                  "sd": 20.55777765767064,
+                  "avg": -2.8
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "rows": [
+        [1, 1, 5],
+        [2, 2, 10],
+        [3, 3, 0],
+        [4, 4, 3],
+        [5, 5, -7],
+        [6, 6, 4],
+        [7, 7, -8],
+        [8, 8, -9],
+        [9, 9, 27],
+        [10, 10, -53]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 157,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1522, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1522,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 157,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1523, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1523,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": { "distinct-count": 10, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 3,
+                "q3": 8,
+                "max": 10,
+                "sd": 3.0276503540974917,
+                "avg": 5.5
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 157,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1524, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1524,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 10, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -53,
+                "q1": -8,
+                "q3": 5,
+                "max": 27,
+                "sd": 20.55777765767064,
+                "avg": -2.8
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.show_values": true,
+        "graph.metrics": ["change"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1522}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1523}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1524}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"x\" AS \"x\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_example_20231209152341\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_example_20231209152341\".\"x\" AS \"x\", \"csv_upload_data\".\"csv_upload_waterfall_example_20231209152341\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_example_20231209152341\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

@@ -48,3 +48,10 @@ TimeSeriesDataAsOrdinalXScale.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const MixedPositivesNegatives = Template.bind({});
+MixedPositivesNegatives.args = {
+  rawSeries: data.mixedPositivesNegatives as any,
+  dashcardSettings: {},
+  renderingContext,
+};
