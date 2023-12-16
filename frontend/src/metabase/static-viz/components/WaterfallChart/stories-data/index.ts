@@ -1,5 +1,5 @@
-import defaultData from "./default.json";
+import withoutTotal from "./without-total.json";
 
 export const data = {
-  default: defaultData,
+  withoutTotal,
 };

@@ -28,9 +28,9 @@ const renderingContext: RenderingContext = {
   fontFamily: "Lato",
 };
 
-export const Default = Template.bind({});
-Default.args = {
-  rawSeries: data.default as any,
+export const WithoutTotal = Template.bind({});
+WithoutTotal.args = {
+  rawSeries: data.withoutTotal as any,
   dashcardSettings: {},
   renderingContext,
 };
