@@ -253,6 +253,7 @@
   ^TableResult [^BigQuery client ^String sql parameters cancel-chan cancel-requested?]
   {:pre [client (not (str/blank? sql))]}
   (try
+    (println "creating request with max results" *page-size*)
     (let [request (doto (QueryJobConfiguration/newBuilder sql)
                     ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
                     (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
