@@ -47,7 +47,7 @@
               (println "Running query")
               (let [rows      (mt/rows (mt/process-query (mt/query orders) {:canceled-chan canceled-chan}))
                     row-count (count rows)]
-                (println "Loaded %d rows before BigQuery query was canceled" row-count)
+                (println "Loaded" row-count "rows before BigQuery query was canceled")
                 (testing "Somewhere between 0 and the size of the orders table rows were loaded before cancellation"
                   (is (< 0 row-count 10000)))))
             (catch clojure.lang.ExceptionInfo e

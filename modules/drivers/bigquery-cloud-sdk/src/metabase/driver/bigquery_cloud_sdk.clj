@@ -273,23 +273,25 @@
       (when cancel-chan
         (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
           (when (a/<!! cancel-chan)
-            (log/debugf "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
+            (println "Received a message on the cancel channel; attempting to stop the BigQuery query execution")
             (reset! cancel-requested? true) ; signal the page iteration fn to stop
-            (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
-              (do (.cancel client job-id) ; Cancel running job before canceling task
-                  (future-cancel res-fut))
-              (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
-                @res-fut)))))
+            (when-not (or (future-cancelled? res-fut) (future-done? res-fut))
+              (println "cancelling job")
+              (.cancel client job-id) ; Cancel running job before canceling task
+              (future-cancel res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
+      (println "cancellation exception received")
       (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
+      (println "bigquery exception received" e)
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
                         {:retryable? (.isRetryable e), :sql sql, :parameters parameters}
                         e))
         (throw-invalid-query e sql parameters)))
     (catch Throwable e
+      (println "throwable received" e)
       (throw-invalid-query e sql parameters))))
 
 (defn- execute-bigquery-on-db
@@ -302,8 +304,10 @@
    cancel-requested?))
 
 (defn- fetch-page [^TableResult response cancel-requested?]
+  (println "fetching page")
   (when response
     (when *page-callback*
+      (println "calling *page-callback*")
       (*page-callback*))
     (lazy-cat
       (.getValues response)
