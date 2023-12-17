@@ -22,11 +22,14 @@ export function getScatterPlotDataset(
 
       cols.forEach((column, columnIndex) => {
         const rowValue = row[columnIndex];
-        datum[getDatasetKey(column, card.id)] = rowValue;
 
+        const dimensionIndex = columnDescs.dimension.index;
         const breakoutIndex =
           "breakout" in columnDescs ? columnDescs.breakout.index : undefined;
-        if (breakoutIndex != null) {
+
+        if (columnIndex === dimensionIndex || breakoutIndex === undefined) {
+          datum[getDatasetKey(column, card.id)] = rowValue;
+        } else {
           datum[getDatasetKey(column, card.id, row[breakoutIndex])] = rowValue;
         }
       });
