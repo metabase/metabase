@@ -1,13 +1,22 @@
-import type { RowValues } from "metabase-types/api";
+import type { RawSeries, RowValues } from "metabase-types/api";
 import { checkNumber } from "metabase/lib/types";
 import {
   assertMultiMetricColumns,
   type CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 
-import type { Extent } from "../model/types";
-import type { WaterfallDataset, WaterfallDatum } from "./types";
-import { DATASET_DIMENSIONS } from "./constants";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type { Extent } from "../../model/types";
+import type {
+  WaterfallChartModel,
+  WaterfallDataset,
+  WaterfallDatum,
+} from "../types";
+import { DATASET_DIMENSIONS } from "../constants";
+import { getCardsColumns, getCartesianChartModel } from "../../model";
 
 export function getWaterfallExtent(dataset: WaterfallDataset) {
   const extent: Extent = [0, 0];
@@ -55,9 +64,32 @@ function createDatum({
   };
 }
 
+export function getWaterfallTranslationConstant(
+  rows: RowValues[],
+  cardColumns: CartesianChartColumns,
+) {
+  const columns = assertMultiMetricColumns(cardColumns);
+
+  const runningSums: number[] = [];
+  rows.forEach((row, index) => {
+    const value = checkNumber(row[columns.metrics[0].index]);
+
+    if (index === 0) {
+      runningSums.push(value);
+      return;
+    }
+
+    runningSums.push(runningSums[runningSums.length - 1] + value);
+  });
+
+  const minSum = Math.min(...runningSums);
+  return minSum < 0 ? -minSum : 0;
+}
+
 export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
+  translationConstant: number,
 ): WaterfallDataset {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
@@ -71,11 +103,21 @@ export function getWaterfallDataset(
     if (value >= 0) {
       increase = value;
     } else {
-      decrease = value;
+      decrease = -value;
     }
 
+    // Since echarts always stacks from below, we translate the first bar
+    // to ensure that the `barOffset` will keep each bar stack above 0 on
+    // the chart. Later when formatting the y-axis ticks we will account
+    // for this offset to make the ticks display the correct values from
+    // the underlying data.
     if (index === 0) {
-      dataset.push(createDatum({ dimension, increase, decrease }));
+      let barOffset = translationConstant;
+      if (decrease !== null) {
+        barOffset -= decrease;
+      }
+
+      dataset.push(createDatum({ barOffset, dimension, increase, decrease }));
       return;
     }
 
@@ -106,8 +148,37 @@ export function getWaterfallDataset(
     dataset.push(createDatum({ dimension, barOffset, increase, decrease }));
   });
 
-  // TODO handle negatives
   // TODO total
 
   return dataset;
+}
+
+export function getWaterfallChartModel(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) {
+  const baseChartModel = getCartesianChartModel(
+    rawSeries,
+    settings,
+    renderingContext,
+  );
+
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const translationConstant = getWaterfallTranslationConstant(
+    rawSeries[0].data.rows,
+    cardsColumns[0],
+  );
+  const dataset = getWaterfallDataset(
+    rawSeries[0].data.rows,
+    cardsColumns[0],
+    translationConstant,
+  );
+
+  const waterfallChartModel: WaterfallChartModel = {
+    ...baseChartModel,
+    dataset,
+    translationConstant,
+  };
+  return waterfallChartModel;
 }

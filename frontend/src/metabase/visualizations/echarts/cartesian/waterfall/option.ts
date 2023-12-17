@@ -4,18 +4,24 @@ import type {
   YAXisOption,
   XAXisOption,
 } from "echarts/types/dist/shared";
+
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
+import type {
+  TimelineEventId,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
 
-import type { CartesianChartModel } from "../model/types";
+import { checkNumber } from "metabase/lib/types";
 import { getCartesianChartOption } from "../option";
 import { buildMetricAxis } from "../option/axis";
 import { getChartMeasurements } from "../utils/layout";
 import type { TimelineEventsModel } from "../timeline-events/types";
-import type { WaterfallDataset } from "./types";
+
+import type { WaterfallChartModel, WaterfallDataset } from "./types";
 import { DATASET_DIMENSIONS } from "./constants";
 import { getWaterfallExtent } from "./model";
 
@@ -26,9 +32,28 @@ function getXAxisType(settings: ComputedVisualizationSettings) {
   return "category";
 }
 
+function getYAxisFormatter(
+  translationConstant: number,
+  column: DatasetColumn,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) {
+  return (rowValue: RowValue) => {
+    const value = checkNumber(rowValue) - translationConstant;
+
+    return renderingContext.formatValue(value, {
+      column,
+      ...(settings.column?.(column) ?? {}),
+      jsx: false,
+    });
+  };
+}
+
 // TODO remove all the typecasts
+
+// TODO before finishing this PR: clean up this func a bit (try not using dot notation), fix type error
 export function getWaterfallOption(
-  chartModel: CartesianChartModel,
+  chartModel: WaterfallChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
@@ -45,6 +70,7 @@ export function getWaterfallOption(
   );
 
   // dataset
+  (option.dataset as DatasetOption[])[0].source = chartModel.dataset;
   (option.dataset as DatasetOption[])[0].dimensions =
     Object.values(DATASET_DIMENSIONS);
 

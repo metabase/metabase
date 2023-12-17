@@ -1,3 +1,5 @@
+import type { CartesianChartModel } from "../model/types";
+
 export type WaterfallDatum = {
   dimension: string;
   barOffset: number;
@@ -7,3 +9,8 @@ export type WaterfallDatum = {
 };
 
 export type WaterfallDataset = WaterfallDatum[];
+
+export type WaterfallChartModel = Omit<CartesianChartModel, "dataset"> & {
+  dataset: WaterfallDataset;
+  translationConstant: number;
+};
