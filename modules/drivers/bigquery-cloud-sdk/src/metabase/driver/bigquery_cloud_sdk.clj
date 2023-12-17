@@ -309,13 +309,15 @@
     (when *page-callback*
       (println "calling *page-callback*")
       (*page-callback*))
-    (lazy-cat
-      (.getValues response)
-      (when (some? (.getNextPageToken response))
-        (if @cancel-requested?
-          (do (log/debug "Cancellation requested; terminating fetching of BigQuery pages")
-              [])
-          (fetch-page (.getNextPage response) cancel-requested?))))))
+    (let [rows (seq (.getValues response))]
+      (println "fetched" (count rows) "rows")
+      (lazy-cat
+       rows
+       (when (some? (.getNextPageToken response))
+         (if @cancel-requested?
+           (do (println "Cancellation requested; terminating fetching of BigQuery pages")
+               [])
+           (fetch-page (.getNextPage response) cancel-requested?)))))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to
