@@ -278,11 +278,11 @@
             (if-not (or (future-cancelled? res-fut) (future-done? res-fut))
               (do (.cancel client job-id) ; Cancel running job before canceling task
                   (future-cancel res-fut))
-            (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
+              (when (future-done? res-fut) ; canceled received after it was finished; may as well return it
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
-      (throw _e))
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -351,8 +351,6 @@
                                                  cancel-requested?))]
     (try
       (thunk)
-      (catch java.util.concurrent.CancellationException _e
-        (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
           (if (and (not (::cancelled? ex-data))
