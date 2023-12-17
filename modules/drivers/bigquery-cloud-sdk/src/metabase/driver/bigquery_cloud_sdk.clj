@@ -282,7 +282,7 @@
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
-      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
+      (throw _e))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -351,6 +351,8 @@
                                                  cancel-requested?))]
     (try
       (thunk)
+      (catch java.util.concurrent.CancellationException _e
+        (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
           (if (and (not (::cancelled? ex-data))
