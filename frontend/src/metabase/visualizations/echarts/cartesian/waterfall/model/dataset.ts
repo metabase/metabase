@@ -37,7 +37,7 @@ function createDatum({
 export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
-  translationConstant: number,
+  negativeTranslation: number,
 ): WaterfallDataset {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
@@ -60,7 +60,7 @@ export function getWaterfallDataset(
     // for this offset to make the ticks display the correct values from
     // the underlying data.
     if (index === 0) {
-      let barOffset = translationConstant;
+      let barOffset = negativeTranslation;
       if (decrease !== "-") {
         barOffset -= decrease;
       }

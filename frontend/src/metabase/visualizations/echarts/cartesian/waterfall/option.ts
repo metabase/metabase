@@ -29,13 +29,13 @@ function getXAxisType(settings: ComputedVisualizationSettings) {
 }
 
 function getYAxisFormatter(
-  translationConstant: number,
+  negativeTranslation: number,
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) {
   return (rowValue: RowValue) => {
-    const value = checkNumber(rowValue) - translationConstant;
+    const value = checkNumber(rowValue) - negativeTranslation;
 
     return renderingContext.formatValue(value, {
       column,
@@ -74,7 +74,7 @@ export function getWaterfallOption(
   }
   chartModel.leftAxisModel.extent = getWaterfallExtent(chartModel.dataset);
   chartModel.leftAxisModel.formatter = getYAxisFormatter(
-    chartModel.translationConstant,
+    chartModel.negativeTranslation,
     chartModel.leftAxisModel.column,
     settings,
     renderingContext,

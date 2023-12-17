@@ -40,7 +40,7 @@ export function getWaterfallExtent(dataset: WaterfallDataset) {
   return extent;
 }
 
-export function getWaterfallTranslationConstant(
+export function getWaterfallNegativeTranslation(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
 ) {
@@ -75,14 +75,14 @@ export function getWaterfallChartModel(
 
   // dataset
   const cardsColumns = getCardsColumns(rawSeries, settings);
-  const translationConstant = getWaterfallTranslationConstant(
+  const negativeTranslation = getWaterfallNegativeTranslation(
     rawSeries[0].data.rows,
     cardsColumns[0],
   );
   const dataset = getWaterfallDataset(
     rawSeries[0].data.rows,
     cardsColumns[0],
-    translationConstant,
+    negativeTranslation,
   );
 
   // y-axis
@@ -91,7 +91,7 @@ export function getWaterfallChartModel(
   const waterfallChartModel: WaterfallChartModel = {
     ...baseChartModel,
     dataset,
-    translationConstant,
+    negativeTranslation,
     yAxisExtents,
   };
   return waterfallChartModel;

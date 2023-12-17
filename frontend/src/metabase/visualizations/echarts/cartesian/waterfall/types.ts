@@ -17,5 +17,5 @@ export type WaterfallDataset = WaterfallDatum[];
 
 export type WaterfallChartModel = Omit<CartesianChartModel, "dataset"> & {
   dataset: WaterfallDataset;
-  translationConstant: number;
+  negativeTranslation: number;
 };
