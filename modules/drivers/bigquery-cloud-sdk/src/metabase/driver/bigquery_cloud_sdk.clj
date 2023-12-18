@@ -99,11 +99,12 @@
                                ^TableDefinition tabledef   (.getDefinition table)]]
                     {:schema                  dataset-id
                      :name                    (.getTable table-id)
-                     :database_require_filter (and
-                                               (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
-                                                (. tabledef getType))
-                                               (boolean (some some? [(.getRangePartitioning tabledef)
-                                                                     (.getTimePartitioning tabledef)])))}))}))
+                     :database_require_filter (boolean
+                                               (and
+                                                (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
+                                                 (. tabledef getType))
+                                                (some some? [(.getRangePartitioning tabledef)
+                                                             (.getTimePartitioning tabledef)])))}))}))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
