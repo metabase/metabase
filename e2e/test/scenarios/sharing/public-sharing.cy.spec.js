@@ -119,6 +119,9 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.get("@dashboardId").then(dashboardId => {
       cy.findByText(expectedDashboardName).click();
+      cy.log(
+        "Sometimes the URL will be updated with the tab ID, so we need to account for that",
+      );
       cy.url().should(
         "match",
         new RegExp(

@@ -17,6 +17,8 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
 
+const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
+
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
@@ -92,6 +94,13 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
+    // Set on local, development-mode runs only
+    config.env.feHealthcheck = {
+      enabled: feHealthcheckEnabled,
+      url: feHealthcheckEnabled
+        ? "http://localhost:8080/webpack-dev-server/"
+        : undefined,
+    };
 
     require("@cypress/grep/src/plugin")(config);
 

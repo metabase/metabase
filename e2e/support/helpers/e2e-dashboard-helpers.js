@@ -7,6 +7,10 @@ export function selectDashboardFilter(selection, filterName) {
   popover().contains(filterName).click({ force: true });
 }
 
+export function disconnectDashboardFilter(selection) {
+  selection.findByLabelText("Disconnect").click();
+}
+
 export function getDashboardCards() {
   return cy.get(".DashCard");
 }
