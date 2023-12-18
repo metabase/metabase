@@ -85,7 +85,6 @@ export interface EmbedDatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
-  // TODO: Correct this type
   insights?: Insight[];
   requested_timezone?: string;
   results_timezone?: string;

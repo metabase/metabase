@@ -40,6 +40,7 @@ export const createMockDatasetData = ({
   cols,
   rows_truncated: 0,
   results_metadata: createMockResultsMetadata(cols),
+  native_form: { query: "" },
   ...opts,
 });
 
