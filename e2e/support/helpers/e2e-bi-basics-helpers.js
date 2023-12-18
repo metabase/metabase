@@ -68,7 +68,10 @@ function changeValue(subject, newValue, placeholder) {
       ? cy.findByPlaceholderText(new RegExp(placeholder, "i"))
       : cy.get("input").last();
 
-    input.clear({ force: true }).type(newValue, { force: true });
+    input
+      .clear({ force: true })
+      .type(newValue, { force: true })
+      .blur({ force: true });
   });
 }
 
