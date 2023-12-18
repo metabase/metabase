@@ -154,7 +154,8 @@
          driver)))
 
 (deftest database-schema-filtering-test
-  (mt/test-drivers (schema-filtering-drivers)
+  ;; BigQuery is tested in metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test
+  (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk)
     (let [driver             (driver.u/database->driver (mt/db))
           schema-filter-prop (find-schema-filters-prop driver)
           filter-type-prop   (keyword (str (:name schema-filter-prop) "-type"))
