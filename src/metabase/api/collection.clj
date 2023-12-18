@@ -151,17 +151,30 @@
     (collection/collections->tree coll-type-ids colls-with-details)))
 
 (api/defendpoint GET "/list"
+  "Similar to `GET /`, but returns only Collections in the provided location, e.g.
+
+  location: /1/
+  ```
+  [{:name     \"A\"
+    :location \"/1/\"
+    :children 1}
+    ...
+    {:name     \"H\"
+     :location \"/1/\"}]
+  ```"
   [location]
   {location ms/NonBlankString}
   (->> (t2/select Collection
                   {:where [:and
-                           [:= :location location]
                            [:= :archived false]
                            (perms/audit-namespace-clause :namespace nil)
                            (collection/visible-collection-ids->honeysql-filter-clause
                             :id (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-   (remove-other-users-personal-collections api/*current-user-id*)
-   (map collection/personal-collection-with-ui-details)))
+       (filter (fn [coll] (str/starts-with? (:location coll) location)))
+       (remove-other-users-personal-collections api/*current-user-id*)
+       (map collection/personal-collection-with-ui-details)
+       (collection/collections->tree nil)
+       (map #(update % :children some?))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
