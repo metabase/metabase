@@ -75,10 +75,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .should("have.attr", "href")
           .and("eq", standalonePath);
         cy.findByText("Static embedding");
-        cy.findByText(
-          "Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.",
-        );
-        cy.findByText("More details").click();
+        cy.findByText("Manage").click();
         cy.location("pathname").should("eq", standalonePath);
       });
 
@@ -120,41 +117,14 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
       cy.log("The second section: 'Interactive embedding'");
       cy.findByTestId("-interactive-embedding-setting").within(() => {
-        const fullAppEmbeddingPath =
-          "/admin/settings/embedding-in-other-applications/full-app";
-
-        cy.findAllByRole("link")
-          .should("have.attr", "href")
-          .and("eq", fullAppEmbeddingPath);
-
-        cy.findByText(/Paid/i);
         cy.findByText("Interactive embedding");
-        cy.findByText(
-          "With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.",
-        );
-        cy.findByText("More details").click();
-        cy.location("pathname").should("eq", fullAppEmbeddingPath);
-      });
 
-      cy.log("Full-app embedding page");
-      mainPage().within(() => {
-        cy.findByText(/Embedding the entire Metabase app/i);
-        // Full app embedding is only available for specific premium tokens
-        cy.contains(
-          "With some of our paid plans, you can embed the full Metabase app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers.",
-        );
-
-        cy.findByTestId("embedding-app-origin-setting").should("not.exist");
-        cy.contains(
-          "Enter the origins for the websites or web apps where you want to allow embedding, separated by a space. Here are the exact specifications for what can be entered.",
-        ).should("not.exist");
-        cy.findByPlaceholderText("https://*.example.com").should("not.exist");
-
-        cy.findByTestId("session-cookie-samesite-setting").should("not.exist");
-        cy.contains(
-          "Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.",
-        ).should("not.exist");
-        cy.findByDisplayValue("Lax (default)").should("not.exist");
+        cy.findByRole("link", { name: "Learn more" })
+          .should("have.attr", "href")
+          .and(
+            "eq",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+          );
       });
     });
 
