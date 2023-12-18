@@ -476,7 +476,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("FIXFLAKY can update various data types via implicit actions", () => {
+        it("can update various data types via implicit actions", () => {
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -690,7 +690,7 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it("FIXFLAKY properly loads and updates date and time fields for implicit update actions", () => {
+        it("properly loads and updates date and time fields for implicit update actions", () => {
           cy.get("@modelId").then(id => {
             createImplicitAction({
               kind: "update",
@@ -1001,7 +1001,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     );
   });
 
-  it("FIXFLAKY should show detailed form errors for constraint violations when executing model actions", () => {
+  it("should show detailed form errors for constraint violations when executing model actions", () => {
     const actionName = "Update";
 
     cy.get("@modelId").then(modelId => {
