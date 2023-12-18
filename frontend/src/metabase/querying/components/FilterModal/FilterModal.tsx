@@ -86,7 +86,7 @@ export function FilterModal({
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <FilterSearchInput onChange={handleSearch} />
+          <FilterSearchInput searchText={searchText} onChange={handleSearch} />
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
@@ -113,7 +113,12 @@ export function FilterModal({
           >
             {t`Clear all filters`}
           </Button>
-          <Button variant="filled" disabled={!isChanged} onClick={handleSubmit}>
+          <Button
+            variant="filled"
+            disabled={!isChanged}
+            data-testid="apply-filters"
+            onClick={handleSubmit}
+          >
             {t`Apply filters`}
           </Button>
         </ModalFooter>
@@ -241,8 +246,7 @@ const TabPanelColumnItemList = ({
         <TabPanelColumnItem
           key={columnIndex}
           query={query}
-          column={columnItem.column}
-          stageIndex={columnItem.stageIndex}
+          columnItem={columnItem}
           isSearching={isSearching}
           onChange={onChange}
         />
@@ -253,19 +257,18 @@ const TabPanelColumnItemList = ({
 
 interface TabPanelColumnItemProps {
   query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
+  columnItem: ColumnItem;
   isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
 }
 
 function TabPanelColumnItem({
   query,
-  stageIndex,
-  column,
+  columnItem,
   isSearching,
   onChange,
 }: TabPanelColumnItemProps) {
+  const { column, stageIndex } = columnItem;
   const currentFilters = findColumnFilters(query, stageIndex, column);
   const [initialFilterCount] = useState(currentFilters.length);
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
@@ -276,8 +279,7 @@ function TabPanelColumnItem({
         <TabPanelFilterItem
           key={filterIndex}
           query={query}
-          stageIndex={stageIndex}
-          column={column}
+          columnItem={columnItem}
           filter={filter}
           isSearching={isSearching}
           onChange={onChange}
@@ -289,8 +291,7 @@ function TabPanelColumnItem({
 
 interface TabPanelFilterItemProps {
   query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
+  columnItem: ColumnItem;
   filter: Lib.FilterClause | undefined;
   isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
@@ -298,12 +299,13 @@ interface TabPanelFilterItemProps {
 
 function TabPanelFilterItem({
   query,
-  stageIndex,
-  column,
+  columnItem,
   filter,
   isSearching,
   onChange,
 }: TabPanelFilterItemProps) {
+  const { column, displayName, stageIndex } = columnItem;
+
   const handleChange = (newFilter: Lib.ExpressionClause | undefined) => {
     if (filter && newFilter) {
       onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
@@ -315,7 +317,12 @@ function TabPanelFilterItem({
   };
 
   return (
-    <TabPanelItem component="li" px="2rem" py="1rem">
+    <TabPanelItem
+      component="li"
+      px="2rem"
+      py="1rem"
+      data-testid={`filter-column-${displayName}`}
+    >
       <ColumnFilterSection
         query={query}
         stageIndex={stageIndex}
@@ -345,7 +352,12 @@ function TabPanelSegmentItem({
   };
 
   return (
-    <TabPanelItem component="li" px="2rem" py="1rem">
+    <TabPanelItem
+      component="li"
+      px="2rem"
+      py="1rem"
+      data-testid="filter-column-segments"
+    >
       <SegmentFilterEditor
         segmentItems={segmentItems}
         onChange={handleChange}
