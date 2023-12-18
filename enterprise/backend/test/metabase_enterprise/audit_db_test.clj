@@ -33,7 +33,7 @@
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
       (with-redefs [audit-db/analytics-dir-resource nil]
-        (is (= nil audit-db/analytics-dir-resource))
+        (is (= nil @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
@@ -73,7 +73,7 @@
     (try
      (let [plugins-dir (plugins/plugins-dir)]
        (fs/create-dirs plugins-dir)
-       (#'audit-db/ia-content->plugins (#'audit-db/instance-analytics-plugin-dir))
+       (#'audit-db/ia-content->plugins plugins-dir)
        (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
                                          (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
          (testing (str top-level-plugin-dir " starts with plugins value")
@@ -83,9 +83,12 @@
 
 (deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
   (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
-    (#'audit-db/ia-content->plugins (#'audit-db/instance-analytics-plugin-dir))
-    (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
-           (count (file-seq (io/file (io/resource "instance_analytics"))))))))
+    (try
+      (#'audit-db/ia-content->plugins (plugins/plugins-dir))
+      (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
+             (count (file-seq (io/file (io/resource "instance_analytics"))))))
+     (finally
+       (fs/delete-tree (plugins/plugins-dir))))))
 
 (defn- get-audit-db-trigger-keys []
   (let [trigger-keys (->> (task/scheduler-info) :jobs (mapcat :triggers) (map :key))
