@@ -63,23 +63,29 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- list-datasets
+  "Fetch all datasets given database `details`, applying dataset filters if specified."
+  [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details}]
+  (let [client (database-details->client details)
+        project-id (or project-id (bigquery.common/database-details->credential-project-id details))
+        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+        inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+        exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
+    (for [^Dataset dataset (.iterateAll datasets)
+          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+          :when (driver.s/include-schema? inclusion-patterns
+                                          exclusion-patterns
+                                          (.getDataset dataset-id))]
+      dataset-id)))
+
 (defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [database-details]
-   (list-tables database-details {:validate-dataset? false}))
-  (^Iterable [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details} {:keys [validate-dataset?]}]
+  (^Iterable [details]
+   (list-tables details {:validate-dataset? false}))
+  (^Iterable [details {:keys [validate-dataset?]}]
    (let [client (database-details->client details)
-         project-id (or project-id (bigquery.common/database-details->credential-project-id details))
-         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
-         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)
-         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
-                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                            :when (driver.s/include-schema? inclusion-patterns
-                                                            exclusion-patterns
-                                                            (.getDataset dataset-id))]
-                        dataset-id)]
-     (when (and (not= dataset-filters-type "all")
+         dataset-iter (list-datasets details)]
+     (when (and (not= (:dataset-filters-type details) "all")
                 validate-dataset?
                 (zero? (count dataset-iter)))
        (throw (ex-info (tru "Looks like we cannot find any matching datasets.")

@@ -154,7 +154,8 @@
          driver)))
 
 (deftest database-schema-filtering-test
-  ;; BigQuery is tested in metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test
+  ;; BigQuery is tested separately in `metabase.driver.bigquery-cloud-sdk-test/dataset-filtering-test`, because
+  ;; otherwise this test takes too long and flakes intermittently
   (mt/test-drivers (disj (schema-filtering-drivers) :bigquery-cloud-sdk)
     (let [driver             (driver.u/database->driver (mt/db))
           schema-filter-prop (find-schema-filters-prop driver)

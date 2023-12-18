@@ -409,30 +409,43 @@
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (t2.with-temp/with-temp [Database db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (doseq [table (t2/select-one Table :db_id (u/the-id db-filtered))]
-      (assert-table-fn table))))
+    (let [tables (t2/select Table :db_id (u/the-id db-filtered))]
+      (is (not-empty tables))
+      (doseq [table tables]
+        (assert-table-fn table)))))
 
 (deftest dataset-filtering-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Filtering BigQuery connections for datasets works as expected"
-      (testing " with an inclusion filter"
-        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
-                                          :engine  :bigquery-cloud-sdk
-                                          :details (-> (mt/db)
-                                                       :details
-                                                       (assoc :dataset-filters-type "inclusion"
-                                                              :dataset-filters-patterns "a*,t*"))}
-                                         (fn [{dataset-id :schema}]
-                                           (is (not (contains? #{\a \t} (first dataset-id)))))))
-      (testing " with an exclusion filter"
-        (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
-                                          :engine  :bigquery-cloud-sdk
-                                          :details (-> (mt/db)
-                                                       :details
-                                                       (assoc :dataset-filters-type "exclusion"
-                                                              :dataset-filters-patterns "v*"))}
-          (fn [{dataset-id :schema}]
-            (is (not= \v (first dataset-id)))))))))
+      (let [datasets (#'bigquery/list-datasets (-> (mt/db)
+                                                   :details
+                                                   (dissoc :dataset-filters-type
+                                                           :dataset-filters-patterns)))
+            dataset-ids (map #(.getDataset %) datasets)
+            prefixes (->> dataset-ids
+                          (map (fn [dataset-id]
+                                 (apply str (take 4 dataset-id)))))
+            include-prefix (first prefixes)
+            inclusion-patterns (str include-prefix "*")
+            exclusion-patterns (str/join "," (map #(str % "*") (rest prefixes)))]
+        (testing " with an inclusion filter"
+          (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
+                                            :engine  :bigquery-cloud-sdk
+                                            :details (-> (mt/db)
+                                                         :details
+                                                         (assoc :dataset-filters-type "inclusion"
+                                                                :dataset-filters-patterns inclusion-patterns))}
+                                           (fn [{dataset-id :schema}]
+                                             (is (str/starts-with? dataset-id include-prefix)))))
+        (testing " with an exclusion filter"
+          (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset exclusion filters"
+                                            :engine  :bigquery-cloud-sdk
+                                            :details (-> (mt/db)
+                                                         :details
+                                                         (assoc :dataset-filters-type "exclusion"
+                                                                :dataset-filters-patterns exclusion-patterns))}
+                                           (fn [{dataset-id :schema}]
+                                             (is (str/starts-with? dataset-id include-prefix)))))))))
 
 (deftest normalize-away-dataset-id-test
   (mt/test-driver :bigquery-cloud-sdk
