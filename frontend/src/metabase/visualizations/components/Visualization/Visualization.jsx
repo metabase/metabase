@@ -543,16 +543,13 @@ class Visualization extends PureComponent {
 }
 
 function checkIsLoading(series, props) {
-  return (
-    props?.isDashcardDataLoading ||
-    !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    )
+  if (props?.isDashcardDataLoading || _.isEmpty(series)) {
+    return true;
+  }
+
+  return !_.every(
+    series,
+    s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
   );
 }
 
