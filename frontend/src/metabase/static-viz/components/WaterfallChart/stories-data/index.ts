@@ -1,5 +1,6 @@
 import withoutTotal from "./without-total.json";
 import ordinalXScale from "./ordinal-x-scale.json";
+import timeseriesXScaleUnsorted from "./timeseries-x-scale-unsorted.json";
 import timeSeriesDataAsOrdinalXScale from "./timeseries-data-as-ordinal-x-scale.json";
 import mixedAboveZero from "./mixed-above-zero.json";
 import mixedBelowZero from "./mixed-below-zero.json";
@@ -12,6 +13,7 @@ import startsBelowZeroCrossesEndsBelow from "./starts-below-zero-crosses-ends-be
 export const data = {
   withoutTotal,
   ordinalXScale,
+  timeseriesXScaleUnsorted,
   timeSeriesDataAsOrdinalXScale,
   mixedAboveZero,
   mixedBelowZero,
