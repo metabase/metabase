@@ -34,7 +34,7 @@ export function canSearchFieldValues(
   );
 }
 
-function getFieldOptions(fieldValues: FieldValue[]): Option[] {
+export function getFieldOptions(fieldValues: FieldValue[]): Option[] {
   return fieldValues.map(([value, label = value]) => ({
     value: String(value),
     label: String(label),
@@ -63,10 +63,6 @@ export function getMergedOptions(
   }, {});
 
   return Object.entries(mapping).map(([value, label]) => ({ value, label }));
-}
-
-export function hasDuplicateOptions(options: Option[], label: string) {
-  return options.some(option => option.label === label);
 }
 
 export function isKeyColumn(column: Lib.ColumnMetadata) {

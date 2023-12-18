@@ -1,6 +1,7 @@
-import { MultiSelect } from "metabase/ui";
+import { useMemo } from "react";
+import { MultiAutocomplete } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
-import { getMergedOptions, hasDuplicateOptions } from "../utils";
+import { getFieldOptions } from "../utils";
 
 interface StaticValuePickerProps {
   fieldValues: FieldValue[];
@@ -17,23 +18,15 @@ export function StaticValuePicker({
   shouldCreate,
   onChange,
 }: StaticValuePickerProps) {
-  const options = getMergedOptions(fieldValues, selectedValues);
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   return (
-    <MultiSelect
+    <MultiAutocomplete
       data={options}
       value={selectedValues}
       placeholder={placeholder}
-      creatable
-      searchable
       onChange={onChange}
-      shouldCreate={query =>
-        !hasDuplicateOptions(options, query) && shouldCreate(query)
-      }
-      onCreate={query => {
-        onChange([...selectedValues, query]);
-        return query;
-      }}
+      shouldCreate={shouldCreate}
     />
   );
 }

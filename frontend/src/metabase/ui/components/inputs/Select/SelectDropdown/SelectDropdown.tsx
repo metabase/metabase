@@ -1,25 +1,17 @@
-import { forwardRef, useEffect, useRef } from "react";
-import type { HTMLAttributes, Ref } from "react";
-import { useMergedRef } from "@mantine/hooks";
+import { useEffect } from "react";
+import type { HTMLAttributes } from "react";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
-// hack to prevent Select from closing TippyPopover when selecting an item
+// hack to prevent parent TippyPopover from closing when selecting an item in Select
 // remove when TippyPopover is no longer used
-export const SelectDropdown = forwardRef(function SelectDropdown(
-  props: HTMLAttributes<HTMLDivElement>,
-  outerRef: Ref<HTMLDivElement>,
-) {
-  const innerRef = useRef<HTMLDivElement>();
-  const mergedRef = useMergedRef(innerRef, outerRef);
+export function SelectDropdown(props: HTMLAttributes<HTMLDivElement>) {
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
   useEffect(() => {
-    if (innerRef.current) {
-      setupCloseHandler(innerRef.current, () => undefined);
-      return () => removeCloseHandler();
-    }
+    setupCloseHandler(document.body, () => undefined);
+    return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler]);
 
-  return <div ref={mergedRef} {...props} />;
-});
+  return <div {...props} />;
+}

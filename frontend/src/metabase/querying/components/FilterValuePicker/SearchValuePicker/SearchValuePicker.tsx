@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
 import type { FieldId, FieldValue } from "metabase-types/api";
-import { MultiSelect } from "metabase/ui";
-import { getMergedOptions, hasDuplicateOptions } from "../utils";
+import { MultiAutocomplete } from "metabase/ui";
+import { getFieldOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
 
@@ -39,25 +39,17 @@ export function SearchValuePicker({
     }
   };
 
-  const options = getMergedOptions(fieldValues, selectedValues);
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
   useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
-    <MultiSelect
+    <MultiAutocomplete
       data={options}
       value={selectedValues}
       placeholder={placeholder}
       searchValue={searchValue}
-      creatable
-      searchable
-      shouldCreate={query =>
-        !hasDuplicateOptions(options, query) && shouldCreate(query)
-      }
+      shouldCreate={shouldCreate}
       onChange={onChange}
-      onCreate={query => {
-        onChange([...selectedValues, query]);
-        return query;
-      }}
       onSearchChange={setSearchValue}
     />
   );
