@@ -21,29 +21,29 @@
 
 (mu/defn ^:private fields->parent-id->fields :- [:map-of common/ParentID :any #_[:set common/TableMetadataFieldWithID]]
   [fields :- [:maybe [:sequential i/FieldInstance]]]
-  #p (->> (for [field fields]
-            {:parent-id                 (:parent_id field)
-             :id                        (:id field)
-             :name                      (:name field)
-             :database-type             (:database_type field)
-             :effective-type            (:effective_type field)
-             :coercion-strategy         (:coercion_strategy field)
-             :base-type                 (:base_type field)
-             :semantic-type             (:semantic_type field)
-             :pk?                       (isa? (:semantic_type field) :type/PK)
-             :field-comment             (:description field)
-             :json-unfolding            (:json_unfolding field)
-             :database-is-auto-increment (:database_is_auto_increment field)
-             :position                  (:position field)
-             :database-position         (:database_position field)
-             :database-partitioned      (:database_partitioned field)
-             :database-required         (:database_required field)})
-          ;; make a map of parent-id -> set of child Fields
-          (group-by :parent-id)
-          ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
-          (m/map-vals (fn [fields]
-                        (set (for [field fields]
-                               (dissoc field :parent-id)))))))
+  (->> (for [field fields]
+         {:parent-id                 (:parent_id field)
+          :id                        (:id field)
+          :name                      (:name field)
+          :database-type             (:database_type field)
+          :effective-type            (:effective_type field)
+          :coercion-strategy         (:coercion_strategy field)
+          :base-type                 (:base_type field)
+          :semantic-type             (:semantic_type field)
+          :pk?                       (isa? (:semantic_type field) :type/PK)
+          :field-comment             (:description field)
+          :json-unfolding            (:json_unfolding field)
+          :database-is-auto-increment (:database_is_auto_increment field)
+          :position                  (:position field)
+          :database-position         (:database_position field)
+          :database-partitioned      (:database_partitioned field)
+          :database-required         (:database_required field)})
+       ;; make a map of parent-id -> set of child Fields
+       (group-by :parent-id)
+       ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
+       (m/map-vals (fn [fields]
+                     (set (for [field fields]
+                            (dissoc field :parent-id)))))))
 
 (mu/defn ^:private add-nested-fields :- common/TableMetadataFieldWithID
   "Recursively add entries for any nested-fields to `field`."
