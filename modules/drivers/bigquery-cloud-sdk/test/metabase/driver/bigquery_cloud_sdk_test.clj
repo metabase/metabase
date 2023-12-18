@@ -302,15 +302,17 @@
                                       :name [:in (keys table-name->is-filter-required?)]))))
 
            (testing "partitioned fields are correctly identified"
-             (is (= {["not_partitioned" "transaction_id"]                false
-                     ["partitioned_marterialized_view" "transaction_id"] false
-                     ["partition_by_range" "customer_id"]                true
-                     ["partition_by_ingestion_time" "transaction_id"]    false
-                     ["partition_by_range" "date1"]                      false
-                     ["partitioned_marterialized_view" "_PARTITIONTIME"] true
-                     ["partition_by_time" "transaction_date"]            true
-                     ["partition_by_time" "transaction_id"]              false
-                     ["partition_by_ingestion_time" "_PARTITIONTIME"]    true}
+             (is (= {["not_partitioned"                 "transaction_id"]   false
+                     ["partition_by_range_not_required" "customer_id"]      true
+                     ["partition_by_range_not_required" "date1"]            false
+                     ["partition_by_range"              "customer_id"]      true
+                     ["partition_by_range"              "date1"]            false
+                     ["partition_by_ingestion_time"     "transaction_id"]   false
+                     ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
+                     ["partitioned_marterialized_view"  "transaction_id"]   false
+                     ["partitioned_marterialized_view"  "_PARTITIONTIME"]   true
+                     ["partition_by_time"               "transaction_date"] true
+                     ["partition_by_time"               "transaction_id"]   false}
                     (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
                                     :from   [[:metabase_field :field]]
                                     :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
@@ -319,6 +321,11 @@
                          (map (fn [{:keys [table_name field_name database_partitioned]}]
                                 [[table_name field_name] database_partitioned]))
                          (into {})))))
+
+           (testing "for ingestion time partitions, make sure we manually add a _PARTITIONTIME field"
+             (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name "partition_by_ingestion_time")]
+               (is (true? (t2/exists? :model/Field :table_id partitioned-by-ingestion-time-table-id :name "_PARTITIONTIME")))))
+
            (finally
             (doseq [table-name (keys table-name->is-filter-required?)]
               (drop-table-if-exists! table-name)))))))))
