@@ -34,7 +34,7 @@ export function canSearchFieldValues(
   );
 }
 
-function getFieldOptions(fieldValues: FieldValue[]): Option[] {
+export function getFieldOptions(fieldValues: FieldValue[]): Option[] {
   return fieldValues.map(([value, label = value]) => ({
     value: String(value),
     label: String(label),
