@@ -15,7 +15,7 @@ import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
 import { FilterColumnName } from "../FilterColumnName";
 import type { FilterEditorProps } from "../types";
-import { MODAL_Z_INDEX, SECONDARY_SHORTCUTS } from "./constants";
+import { SECONDARY_SHORTCUTS } from "./constants";
 import { getFilterName, getSelectedOption, getVisibleOptions } from "./utils";
 import { ClearIcon } from "./DateFilterEditor.styled";
 
@@ -130,7 +130,7 @@ function DateFilterPopover({
   };
 
   return (
-    <Popover opened={isOpened} zIndex={MODAL_Z_INDEX + 1} onClose={handleClose}>
+    <Popover opened={isOpened} onClose={handleClose}>
       <Popover.Target>
         {isExpanded ? (
           <Button
@@ -145,7 +145,11 @@ function DateFilterPopover({
             {title}
           </Button>
         ) : (
-          <Button leftIcon={<Icon name="ellipsis" />} onClick={handleOpen} />
+          <Button
+            leftIcon={<Icon name="ellipsis" />}
+            aria-label={t`More options`}
+            onClick={handleOpen}
+          />
         )}
       </Popover.Target>
       <Popover.Dropdown>

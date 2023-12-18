@@ -14,6 +14,7 @@ interface ColumnFilterSectionProps {
   filter: Lib.FilterClause | undefined;
   isSearching: boolean;
   onChange: (filter: Lib.ExpressionClause | undefined) => void;
+  onInput: () => void;
 }
 
 export function ColumnFilterSection({
@@ -23,6 +24,7 @@ export function ColumnFilterSection({
   filter,
   isSearching,
   onChange,
+  onInput,
 }: ColumnFilterSectionProps) {
   const FilterWidget = getFilterWidget(column);
   if (!FilterWidget) {
@@ -37,6 +39,7 @@ export function ColumnFilterSection({
       filter={filter}
       isSearching={isSearching}
       onChange={onChange}
+      onInput={onInput}
     />
   );
 }

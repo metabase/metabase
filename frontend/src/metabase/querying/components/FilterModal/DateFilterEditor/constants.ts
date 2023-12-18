@@ -1,8 +1,5 @@
 import type { DatePickerShortcut } from "metabase/querying/components/DatePicker";
 
-// https://v6.mantine.dev/core/modal/?t=props
-export const MODAL_Z_INDEX = 200;
-
 export const MAIN_SHORTCUTS: DatePickerShortcut[] = [
   "today",
   "yesterday",
