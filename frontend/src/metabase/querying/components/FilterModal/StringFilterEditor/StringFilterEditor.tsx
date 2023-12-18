@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Flex, Grid, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
@@ -17,10 +17,10 @@ export function StringFilterEditor({
   filter,
   isSearching,
   onChange,
+  onInput,
 }: FilterEditorProps) {
-  const columnIcon = useMemo(() => {
-    return getColumnIcon(column);
-  }, [column]);
+  const columnIcon = useMemo(() => getColumnIcon(column), [column]);
+  const [isFocused, setIsFocused] = useState(false);
 
   const {
     operator,
@@ -46,7 +46,20 @@ export function StringFilterEditor({
 
   const handleInputChange = (newValues: string[]) => {
     setValues(newValues);
-    onChange(getFilterClause(operator, newValues, options));
+    if (isFocused) {
+      onInput();
+    } else {
+      onChange(getFilterClause(operator, newValues, options));
+    }
+  };
+
+  const handleInputFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsFocused(false);
+    onChange(getFilterClause(operator, values, options));
   };
 
   return (
@@ -76,6 +89,8 @@ export function StringFilterEditor({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -90,6 +105,8 @@ interface StringValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: string[]) => void;
+  onFocus: () => void;
+  onBlur: () => void;
 }
 
 function StringValueInput({
@@ -100,6 +117,8 @@ function StringValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
+  onFocus,
+  onBlur,
 }: StringValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -110,6 +129,8 @@ function StringValueInput({
         values={values}
         isCompact
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
@@ -120,6 +141,8 @@ function StringValueInput({
         value={values[0]}
         placeholder={t`Enter some text`}
         onChange={event => onChange([event.target.value])}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }

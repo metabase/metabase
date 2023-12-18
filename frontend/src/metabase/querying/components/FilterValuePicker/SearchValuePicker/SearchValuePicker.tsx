@@ -1,3 +1,4 @@
+import type { FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
 import type { FieldId, FieldValue } from "metabase-types/api";
@@ -14,6 +15,8 @@ interface SearchValuePickerProps {
   placeholder?: string;
   shouldCreate: (query: string) => boolean;
   onChange: (newValues: string[]) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function SearchValuePicker({
@@ -24,6 +27,8 @@ export function SearchValuePicker({
   placeholder,
   shouldCreate,
   onChange,
+  onFocus,
+  onBlur,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
@@ -51,6 +56,8 @@ export function SearchValuePicker({
       shouldCreate={shouldCreate}
       onChange={onChange}
       onSearchChange={setSearchValue}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }

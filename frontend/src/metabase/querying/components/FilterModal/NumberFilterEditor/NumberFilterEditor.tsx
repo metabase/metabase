@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { isNumber } from "metabase/lib/types";
 import { Flex, Grid, NumberInput, Text } from "metabase/ui";
@@ -19,6 +19,7 @@ export function NumberFilterEditor({
   filter,
   isSearching,
   onChange,
+  onInput,
 }: FilterEditorProps) {
   const { columnIcon, isKey } = useMemo(
     () => ({
@@ -27,6 +28,7 @@ export function NumberFilterEditor({
     }),
     [column],
   );
+  const [isFocused, setIsFocused] = useState(false);
 
   const {
     operator,
@@ -52,7 +54,20 @@ export function NumberFilterEditor({
 
   const handleInputChange = (newValues: NumberValue[]) => {
     setValues(newValues);
-    onChange(getFilterClause(operator, newValues));
+    if (isFocused) {
+      onInput();
+    } else {
+      onChange(getFilterClause(operator, newValues));
+    }
+  };
+
+  const handleInputFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsFocused(false);
+    onChange(getFilterClause(operator, values));
   };
 
   return (
@@ -82,6 +97,8 @@ export function NumberFilterEditor({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -96,6 +113,8 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberValue[]) => void;
+  onFocus: () => void;
+  onBlur: () => void;
 }
 
 function NumberValueInput({
@@ -106,6 +125,8 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
+  onFocus,
+  onBlur,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -116,6 +137,8 @@ function NumberValueInput({
         values={values.filter(isNumber)}
         isCompact
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
@@ -126,6 +149,8 @@ function NumberValueInput({
         value={values[0]}
         placeholder={t`Enter a number`}
         onChange={newValue => onChange([newValue])}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
@@ -138,6 +163,8 @@ function NumberValueInput({
           placeholder={t`Min`}
           maw="8rem"
           onChange={(newValue: number) => onChange([newValue, values[1]])}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
@@ -145,6 +172,8 @@ function NumberValueInput({
           placeholder={t`Max`}
           maw="8rem"
           onChange={(newValue: number) => onChange([values[0], newValue])}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
       </Flex>
     );

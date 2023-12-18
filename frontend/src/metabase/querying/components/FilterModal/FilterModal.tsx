@@ -59,6 +59,10 @@ export function FilterModal({
     [groupItems, searchText, isSearching],
   );
 
+  const handleInput = () => {
+    setIsChanged(true);
+  };
+
   const handleChange = (newQuery: Lib.Query) => {
     setQuery(newQuery);
     setIsChanged(true);
@@ -98,6 +102,7 @@ export function FilterModal({
               version={version}
               isSearching={isSearching}
               onChange={handleChange}
+              onInput={handleInput}
               onTabChange={setTab}
             />
           ) : (
@@ -134,6 +139,7 @@ interface TabContentProps {
   version: number;
   isSearching: boolean;
   onChange: (query: Lib.Query) => void;
+  onInput: () => void;
   onTabChange: (tab: string | null) => void;
 }
 
@@ -144,6 +150,7 @@ function TabContent({
   version,
   isSearching,
   onChange,
+  onInput,
   onTabChange,
 }: TabContentProps) {
   return (
@@ -157,6 +164,7 @@ function TabContent({
             groupItem={groupItem}
             isSearching={isSearching}
             onChange={onChange}
+            onInput={onInput}
           />
         ))}
       </Flex>
@@ -199,9 +207,16 @@ interface TabPanelProps {
   groupItem: GroupItem;
   isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
-function TabPanel({ query, groupItem, isSearching, onChange }: TabPanelProps) {
+function TabPanel({
+  query,
+  groupItem,
+  isSearching,
+  onChange,
+  onInput,
+}: TabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
@@ -218,6 +233,7 @@ function TabPanel({ query, groupItem, isSearching, onChange }: TabPanelProps) {
             columnItems={groupItem.columnItems}
             isSearching={isSearching}
             onChange={onChange}
+            onInput={onInput}
           />
         )}
       </ul>
@@ -230,6 +246,7 @@ interface TabPanelColumnItemListProps {
   columnItems: ColumnItem[];
   isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
 const TabPanelColumnItemList = ({
@@ -237,6 +254,7 @@ const TabPanelColumnItemList = ({
   columnItems,
   isSearching,
   onChange,
+  onInput,
 }: TabPanelColumnItemListProps) => {
   const sortedItems = useMemo(() => sortColumns(columnItems), [columnItems]);
 
@@ -249,6 +267,7 @@ const TabPanelColumnItemList = ({
           columnItem={columnItem}
           isSearching={isSearching}
           onChange={onChange}
+          onInput={onInput}
         />
       ))}
     </>
@@ -260,6 +279,7 @@ interface TabPanelColumnItemProps {
   columnItem: ColumnItem;
   isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
 function TabPanelColumnItem({
@@ -267,6 +287,7 @@ function TabPanelColumnItem({
   columnItem,
   isSearching,
   onChange,
+  onInput,
 }: TabPanelColumnItemProps) {
   const { column, stageIndex } = columnItem;
   const currentFilters = findColumnFilters(query, stageIndex, column);
@@ -283,6 +304,7 @@ function TabPanelColumnItem({
           filter={filter}
           isSearching={isSearching}
           onChange={onChange}
+          onInput={onInput}
         />
       ))}
     </>
@@ -295,6 +317,7 @@ interface TabPanelFilterItemProps {
   filter: Lib.FilterClause | undefined;
   isSearching: boolean;
   onChange: (newQuery: Lib.Query) => void;
+  onInput: () => void;
 }
 
 function TabPanelFilterItem({
@@ -303,6 +326,7 @@ function TabPanelFilterItem({
   filter,
   isSearching,
   onChange,
+  onInput,
 }: TabPanelFilterItemProps) {
   const { column, displayName, stageIndex } = columnItem;
 
@@ -330,6 +354,7 @@ function TabPanelFilterItem({
         filter={filter}
         isSearching={isSearching}
         onChange={handleChange}
+        onInput={onInput}
       />
     </TabPanelItem>
   );

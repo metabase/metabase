@@ -17,6 +17,7 @@ export function TimeFilterEditor({
   filter,
   isSearching,
   onChange,
+  onInput,
 }: FilterEditorProps) {
   const columnIcon = useMemo(() => {
     return getColumnIcon(column);
@@ -44,7 +45,11 @@ export function TimeFilterEditor({
 
   const handleInputChange = (newValues: TimeValue[]) => {
     setValues(newValues);
-    onChange(getFilterClause(operator, newValues));
+    onInput();
+  };
+
+  const handleInputBlur = () => {
+    onChange(getFilterClause(operator, values));
   };
 
   return (
@@ -70,6 +75,7 @@ export function TimeFilterEditor({
           values={values}
           valueCount={valueCount}
           onChange={handleInputChange}
+          onBlur={handleInputBlur}
         />
       </Grid.Col>
     </Grid>
@@ -80,9 +86,15 @@ interface TimeValueInputProps {
   values: TimeValue[];
   valueCount: number;
   onChange: (values: TimeValue[]) => void;
+  onBlur: () => void;
 }
 
-function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
+function TimeValueInput({
+  values,
+  valueCount,
+  onChange,
+  onBlur,
+}: TimeValueInputProps) {
   if (valueCount === 1) {
     const [value] = values;
     return (
@@ -90,6 +102,7 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
         value={value}
         clearable
         onChange={newValue => onChange([newValue])}
+        onBlur={onBlur}
       />
     );
   }
@@ -102,12 +115,14 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
           value={value1}
           clearable
           onChange={newValue1 => onChange([newValue1, value2])}
+          onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
         <TimeInput
           value={value2}
           clearable
           onChange={newValue2 => onChange([value1, newValue2])}
+          onBlur={onBlur}
         />
       </Flex>
     );

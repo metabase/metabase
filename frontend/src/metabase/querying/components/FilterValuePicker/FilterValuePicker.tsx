@@ -1,3 +1,4 @@
+import type { FocusEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
@@ -21,6 +22,8 @@ interface FilterValuePickerProps<T> {
   values: T[];
   isCompact?: boolean;
   onChange: (newValues: T[]) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
@@ -37,6 +40,8 @@ function FilterValuePicker({
   isCompact = false,
   shouldCreate,
   onChange,
+  onFocus,
+  onBlur,
 }: FilterValuePickerOwnProps) {
   const fieldInfo = useMemo(
     () => Lib.fieldValuesSearchInfo(query, column),
@@ -82,6 +87,8 @@ function FilterValuePicker({
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
@@ -93,6 +100,8 @@ function FilterValuePicker({
       placeholder={fieldValues.length > 0 ? t`Search the list` : placeholder}
       shouldCreate={shouldCreate}
       onChange={onChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }
@@ -104,6 +113,8 @@ export function StringFilterValuePicker({
   values,
   isCompact,
   onChange,
+  onFocus,
+  onBlur,
 }: FilterValuePickerProps<string>) {
   return (
     <FilterValuePicker
@@ -115,6 +126,8 @@ export function StringFilterValuePicker({
       isCompact={isCompact}
       shouldCreate={query => query.length > 0}
       onChange={onChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }
@@ -126,6 +139,8 @@ export function NumberFilterValuePicker({
   values,
   isCompact,
   onChange,
+  onFocus,
+  onBlur,
 }: FilterValuePickerProps<number>) {
   return (
     <FilterValuePicker
@@ -137,6 +152,8 @@ export function NumberFilterValuePicker({
       isCompact={isCompact}
       shouldCreate={query => isFinite(parseFloat(query))}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }
