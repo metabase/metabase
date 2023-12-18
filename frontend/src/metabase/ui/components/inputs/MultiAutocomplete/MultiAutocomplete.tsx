@@ -6,15 +6,16 @@ import type { MultiSelectProps, SelectItem } from "@mantine/core";
 export function MultiAutocomplete({
   value = [],
   data,
-  shouldCreate = () => false,
+  shouldCreate = query => query.length > 0,
   onChange,
   onFocus,
   onBlur,
   onSearchChange,
   ...props
 }: MultiSelectProps) {
-  const [isFocused, setIsFocused] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const [lastValue, setLastValue] = useState(value);
+  const [isFocused, setIsFocused] = useState(false);
   const visibleValue = isFocused ? lastValue : value;
 
   const options = useMemo(() => {
@@ -39,17 +40,22 @@ export function MultiAutocomplete({
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     setIsFocused(false);
     setLastValue(value);
+    setSearchValue("");
     onBlur?.(event);
   };
 
-  const handleSearchChange = (query: string) => {
-    const shouldCreateOption = shouldCreate(query, visibleOptions);
-    const hasDuplicateOption = hasDuplicate(query, visibleOptions);
-    if (shouldCreateOption && !hasDuplicateOption) {
-      onChange?.([...lastValue, query]);
+  const handleSearchChange = (newSearchValue: string) => {
+    setSearchValue(newSearchValue);
+
+    const isValid = shouldCreate(newSearchValue, visibleOptions);
+    const isDuplicate = hasDuplicateOption(newSearchValue, visibleOptions);
+    if (isValid && !isDuplicate) {
+      onChange?.([...lastValue, newSearchValue]);
+    } else {
+      onChange?.(lastValue);
     }
 
-    onSearchChange?.(query);
+    onSearchChange?.(newSearchValue);
   };
 
   return (
@@ -57,8 +63,8 @@ export function MultiAutocomplete({
       {...props}
       value={visibleValue}
       data={visibleOptions}
+      searchValue={searchValue}
       searchable
-      clearSearchOnBlur
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
@@ -94,6 +100,6 @@ function getVisibleOptions(value: string[], data: SelectItem[]): SelectItem[] {
   }));
 }
 
-function hasDuplicate(value: string, data: SelectItem[]) {
+function hasDuplicateOption(value: string, data: SelectItem[]) {
   return data.some(item => item.value === value);
 }

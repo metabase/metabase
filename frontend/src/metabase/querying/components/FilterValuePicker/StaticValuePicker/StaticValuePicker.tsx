@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { MultiAutocomplete } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 import { getFieldOptions } from "../utils";
@@ -17,7 +18,7 @@ export function StaticValuePicker({
   shouldCreate,
   onChange,
 }: StaticValuePickerProps) {
-  const options = getFieldOptions(fieldValues);
+  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
 
   return (
     <MultiAutocomplete

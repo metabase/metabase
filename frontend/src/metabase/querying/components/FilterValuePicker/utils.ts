@@ -65,10 +65,6 @@ export function getMergedOptions(
   return Object.entries(mapping).map(([value, label]) => ({ value, label }));
 }
 
-export function hasDuplicateOptions(options: Option[], label: string) {
-  return options.some(option => option.label === label);
-}
-
 export function isKeyColumn(column: Lib.ColumnMetadata) {
   return Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
 }
