@@ -85,13 +85,7 @@
   :getter     (fn []
                 (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)
                       valid-values (set (keys (methods u.humanization/name->human-readable-name)))
-                      valid-strategy? (contains? valid-values strategy)
-                      ]
-                  (cond
-                    (and (= strategy :advanced) valid-strategy?) :simple
-                    valid-strategy? strategy
-
-                    :else
-                    (do (log/warn (u/format-color :yellow "Invalid humanization strategy '%s'" strategy))
-                        :simple ))))
+                      valid-strategy? (contains? valid-values strategy)]
+                  (when (not valid-strategy?) (log/warn (u/format-color :yellow "Invalid humanization strategy '%s'. Defaulting to 'simple'" strategy)))
+                  (if valid-strategy? strategy :simple)))
   :setter     set-humanization-strategy!)
