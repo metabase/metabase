@@ -31,16 +31,18 @@
 
 (def ^:private user-defaults
   (delay
-    (merge
-     (mt/object-defaults User)
-     {:date_joined      true
-      :id               true
-      :is_active        true
-      :last_login       false
-      :sso_source       nil
-      :login_attributes nil
-      :updated_at       true
-      :locale           nil})))
+    (dissoc
+     (merge
+      (mt/object-defaults User)
+      {:date_joined      true
+       :id               true
+       :is_active        true
+       :last_login       false
+       :sso_source       nil
+       :login_attributes nil
+       :updated_at       true
+       :locale           nil})
+     :type)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |        Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id, GET /api/user/recipients     |
@@ -298,9 +300,8 @@
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
     (testing "Pagination gets the total users _in query_, not including the Internal User"
-      (let [f (if (t2/exists? User config/internal-mb-user-id) dec identity)] ;; is there a smarter way to do this?
-        (is (= (f (t2/count User))
-               ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total)))))
+      (is (= (t2/count User :type "personal")
+             ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
@@ -388,7 +389,7 @@
       (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "50" :offset "1")
              (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))
     (testing "Limit and offset pagination get the total"
-      (is (= (t2/count User :is_active true)
+      (is (= (t2/count User :is_active true :type "personal")
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
       (let [first-three-users (:data (mt/user-http-request :crowberto :get 200 "user" :limit "3", :offset "0"))]

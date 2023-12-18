@@ -327,7 +327,8 @@
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
-   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]
+   [:is_active        {:optional true} [:maybe :boolean]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
