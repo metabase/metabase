@@ -100,8 +100,8 @@
                     {:schema                  dataset-id
                      :name                    (.getTable table-id)
                      :database_require_filter (and
-                                               (not (#{TableDefinition$Type/VIEW TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-                                                     (. tabledef getType)))
+                                               (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
+                                                (. tabledef getType))
                                                (boolean (some some? [(.getRangePartitioning tabledef)
                                                                      (.getTimePartitioning tabledef)])))}))}))
 
