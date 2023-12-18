@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import Link from "metabase/core/components/Link";
 import {
   ClickIcon,
   CTAContainer,
@@ -6,7 +7,7 @@ import {
   ProBadge,
 } from "metabase/public/components/widgets/SharingPane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.styled";
 import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Text, Anchor, Group, Stack } from "metabase/ui";
+import { Text, Group, Stack } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 
 const getText = (isPaidPlan: boolean) => {
@@ -50,22 +51,27 @@ export const InteractiveEmbeddingCTA = () => {
   );
 
   return (
-    <CTAContainer withBorder p="md">
-      <Group spacing="md" align="flex-start">
-        <ClickIcon name="click" size={32} />
-        <Stack spacing={0}>
-          <Group spacing="sm">
-            <CTAHeader fz="md" order={5}>{t`Interactive Embedding`}</CTAHeader>
-            {showProBadge && badge}
-          </Group>
-          <Text lh="unset" fz="sm">
-            {description}{" "}
-            <Anchor fw={700} fz="sm" href={linkTarget}>
-              {linkText}
-            </Anchor>
-          </Text>
-        </Stack>
-      </Group>
-    </CTAContainer>
+    <Link to={linkTarget}>
+      <CTAContainer withBorder p="md">
+        <Group spacing="md" align="flex-start">
+          <ClickIcon name="click" size={32} />
+          <Stack spacing={0}>
+            <Group spacing="sm">
+              <CTAHeader
+                fz="md"
+                order={5}
+              >{t`Interactive Embedding`}</CTAHeader>
+              {showProBadge && badge}
+            </Group>
+            <Text lh="unset" fz="sm">
+              {description}{" "}
+              <Text color="brand.1" fw={700} fz="sm">
+                {linkText}
+              </Text>
+            </Text>
+          </Stack>
+        </Group>
+      </CTAContainer>
+    </Link>
   );
 };
