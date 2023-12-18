@@ -427,7 +427,7 @@
                                  (apply str (take 4 dataset-id)))))
             include-prefix (first prefixes)
             inclusion-patterns (str include-prefix "*")
-            exclusion-patterns (str/join "," (map #(str % "*") (rest prefixes)))]
+            exclusion-patterns (str/join "," (map #(str % "*") (set (rest prefixes))))]
         (testing " with an inclusion filter"
           (sync-and-assert-filtered-tables {:name    "BigQuery Test DB with dataset inclusion filters"
                                             :engine  :bigquery-cloud-sdk
