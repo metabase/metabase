@@ -152,26 +152,27 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(def instance-analytics-plugin-dir
+(defn- instance-analytics-plugin-dir
   "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
-  (fs/path (plugins/plugins-dir) "instance_analytics"))
+  []
+  (fs/path (fs/absolutize (plugins/plugins-dir)) "instance_analytics"))
 
 (defn- ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
-   and put it into plugins/instance_analytics"
-  []
-  (when (fs/exists? instance-analytics-plugin-dir)
-    (fs/delete-tree instance-analytics-plugin-dir))
+   and copies it into the provided directory (by default, plugins/instance_analytics)."
+  [plugins-dir]
+  (when (fs/exists? plugins-dir)
+    (fs/delete-tree plugins-dir))
   (if (running-from-jar?)
     (let [path-to-jar (get-jar-path)]
       (log/info "The app is running from a jar, starting copy...")
-      (copy-from-jar! path-to-jar "instance_analytics/" (str (plugins/plugins-dir)))
+      (copy-from-jar! path-to-jar "instance_analytics/" plugins-dir)
       (log/info "Copying complete."))
     (let [in-path (fs/path analytics-dir-resource)]
       (log/info "The app is not running from a jar, starting copy...")
-      (log/info (str "Copying " in-path " -> " instance-analytics-plugin-dir))
+      (log/info (str "Copying " in-path " -> " plugins-dir))
       (fs/copy-tree (u.files/relative-path in-path)
-                    (u.files/relative-path instance-analytics-plugin-dir)
+                    (u.files/relative-path plugins-dir)
                     {:replace-existing true})
       (log/info "Copying complete."))))
 
@@ -190,11 +191,11 @@
     (ee.internal-user/ensure-internal-user-exists!)
     (adjust-audit-db-to-source! audit-db)
     (log/info "Loading Analytics Content...")
-    (ia-content->plugins)
-    (log/info (str "Loading Analytics Content from: " instance-analytics-plugin-dir))
+    (ia-content->plugins (instance-analytics-plugin-dir))
+    (log/info (str "Loading Analytics Content from: " (instance-analytics-plugin-dir)))
     ;; The EE token might not have :serialization enabled, but audit features should still be able to use it.
     (let [report (log/with-no-logs
-                   (serialization.cmd/v2-load-internal! (str instance-analytics-plugin-dir)
+                   (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir))
                                                         {}
                                                         :token-check? false))]
       (if (not-empty (:errors report))

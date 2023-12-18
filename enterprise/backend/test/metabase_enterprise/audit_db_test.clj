@@ -70,16 +70,20 @@
 
 (deftest instance-analytics-content-is-copied-to-mb-plugins-dir-test
   (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
-    (let [plugins-dir (plugins/plugins-dir)]
-      (#'audit-db/ia-content->plugins)
-      (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
-                                        (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
-        (testing (str top-level-plugin-dir " starts with plugins value")
-          (is (str/starts-with? top-level-plugin-dir (str (fs/absolutize plugins-dir)))))))))
+    (try
+     (let [plugins-dir (plugins/plugins-dir)]
+       (fs/create-dirs plugins-dir)
+       (#'audit-db/ia-content->plugins (#'audit-db/instance-analytics-plugin-dir))
+       (doseq [top-level-plugin-dir (map (comp str fs/absolutize)
+                                         (fs/list-dir (fs/path plugins-dir "instance_analytics")))]
+         (testing (str top-level-plugin-dir " starts with plugins value")
+           (is (str/starts-with? top-level-plugin-dir (str (fs/absolutize plugins-dir)))))))
+     (finally
+       (fs/delete-tree (plugins/plugins-dir))))))
 
 (deftest all-instance-analytics-content-is-copied-from-mb-plugins-dir-test
   (mt/with-temp-env-var-value [mb-plugins-dir "card_catalogue_dir"]
-    (#'audit-db/ia-content->plugins)
+    (#'audit-db/ia-content->plugins (#'audit-db/instance-analytics-plugin-dir))
     (is (= (count (file-seq (io/file (str (fs/path (plugins/plugins-dir) "instance_analytics")))))
            (count (file-seq (io/file (io/resource "instance_analytics"))))))))
 
