@@ -207,26 +207,6 @@ describe("scenarios > search", () => {
         .findByRole("img")
         .should("not.exist");
     });
-
-    // it.only("should re-fetch recently viewed items when the user clicks the search bar (metabase#35379)", () => {
-    //   cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
-    //   cy.visit("/");
-    //   cy.wait("@getRecentViews");
-    //   getSearchBar().click();
-    //   cy.wait("@getRecentViews");
-    //   cy.findByTestId("search-results-floating-container").within(() => {
-    //     cy.findByText("Orders, Count").should("not.exist");
-    //     cy.findByText("Nothing here").should("exist");
-    //   });
-    //   cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
-    //   getSearchBar().click();
-    //   cy.wait("@getRecentViews");
-    //   cy.findByTestId("search-results-floating-container", {
-    //     timeout: 10000,
-    //   }).within(() => {
-    //     cy.findByText("Orders, Count").should("exist");
-    //   });
-    // });
   });
 
   describe("accessing full page search with `Enter`", () => {
