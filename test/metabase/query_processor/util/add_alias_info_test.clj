@@ -437,6 +437,7 @@
                                                   ::add/desired-alias "COOL.PRICE"
                                                   ::add/position      0}]
                             outer-price (-> price
+                                            (assoc-in [2 :qp/ignore-coercion] true)
                                             (assoc-in [2 ::add/source-table] ::add/source)
                                             (update-in [2 ::add/source-alias] prefix-alias)
                                             (update-in [2 ::add/desired-alias] prefix-alias))
@@ -543,6 +544,7 @@
                                       ::add/position      0
                                       ::add/source-alias  "Products_Renamed__ID"
                                       ::add/source-table  ::add/source
+                                      :qp/ignore-coercion true
                                       :join-alias         "Products Renamed"}]
                                     [:field
                                      "CC"
