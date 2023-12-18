@@ -113,18 +113,18 @@
                       old-database-name
                       new-database-name)
            {:name new-database-name})
-         (when (some? new-db-auto-incremented?)
+         (when new-db-auto-incremented?
            (log/infof "Database auto incremented of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-is-auto-increment
                       new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
-         (when (some? new-db-partitioned?)
+         (when new-db-partitioned?
            (log/infof "Database partitioned of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-partitioned
                       new-db-partitioned))
-         (when (some? new-db-required?)
+         (when new-db-required?
            (log/infof "Database required of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-required
