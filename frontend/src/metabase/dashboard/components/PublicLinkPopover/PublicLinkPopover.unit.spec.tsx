@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import type {
-  ExportFormatType,
-  PublicLinkPopoverProps,
-} from "./PublicLinkPopover";
+import type { PublicLinkPopoverProps } from "./PublicLinkPopover";
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 // https://github.com/nkbt/react-copy-to-clipboard/issues/106#issuecomment-605227151
