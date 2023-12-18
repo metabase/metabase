@@ -157,7 +157,7 @@
                 (map #(lib/display-info agg-query %)
                      (lib.metadata.calculation/returned-columns agg-query))))))))
 
-(deftest ^:synchronized internal-remap-metadata-test
+(deftest ^:synchronized external-remap-metadata-test
   (mt/with-column-remappings [venues.id categories.name]
     (is (=? {:lib/type           :metadata/column
              :name               "ID"
@@ -169,7 +169,7 @@
              (lib.metadata.jvm/application-database-metadata-provider (mt/id))
              (mt/id :venues :id))))))
 
-(deftest ^:synchronized external-remap-metadata-test
+(deftest ^:synchronized internal-remap-metadata-test
   (mt/with-column-remappings [venues.id {1 "African", 2 "American", 3 "Artisan", 4 "BBQ"}]
     (is (=? {:lib/type           :metadata/column
              :name               "ID"
