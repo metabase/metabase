@@ -35,20 +35,16 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
     popover().within(() => {
       // should only have two options
-      cy.get('[role="option"]').should("have.length", 2);
+      cy.findAllByRole("option").should("have.length", 2);
 
       // selected should be highlighted
-      cy.get('[aria-label="Count"]').should(
-        "have.css",
-        "background-color",
-        Color(colors.brand).string(),
-      );
+      cy.findByLabelText("Count").should("have.attr", "aria-selected", "true");
 
       // should not be highlighted b/c not selected
-      cy.get('[aria-label="Sum of Total"]').should(
-        "have.css",
-        "background-color",
-        Color().alpha(0).string(),
+      cy.findByLabelText("Sum of Total").should(
+        "have.attr",
+        "aria-selected",
+        "false",
       );
       cy.findByText("Sum of Total").click();
     });
@@ -115,7 +111,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     );
 
     // scalar.switch_positive_negative setting
-    cy.get('[aria-label="arrow_down icon"]').should(
+    cy.icon("arrow_down").should(
       "have.css",
       "color",
       Color(colors.error).string(),
@@ -125,7 +121,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("Display").click();
       cy.findByLabelText("Switch positive / negative colors?").click();
     });
-    cy.get('[aria-label="arrow_down icon"]').should(
+    cy.icon("arrow_down").should(
       "have.css",
       "color",
       Color(colors.success).string(),
