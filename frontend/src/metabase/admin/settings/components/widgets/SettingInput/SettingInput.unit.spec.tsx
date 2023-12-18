@@ -8,7 +8,7 @@ interface SetupOpts {
   setting: Setting;
   value: Value;
   type: string;
-  normalize?: (value: Value, { type }: { type?: string }) => Value;
+  normalize?: (value: Value) => Value;
 }
 
 interface Setting {
@@ -58,8 +58,8 @@ describe("SettingInput", () => {
       placeholder: "/",
     };
 
-    function normalize(value: Value, { type }: { type?: string }) {
-      if (type === "text" && typeof value === "string") {
+    function normalize(value: Value) {
+      if (typeof value === "string") {
         const normalizedValue = value.trim();
         return normalizedValue === "" ? null : normalizedValue;
       }

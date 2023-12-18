@@ -70,8 +70,8 @@ if (hasPremiumFeature("whitelabel")) {
           type: "string",
           placeholder: "/",
           props: {
-            normalize(value, { type }) {
-              if (type === "text" && typeof value === "string") {
+            normalize(value) {
+              if (typeof value === "string") {
                 const normalizedValue = value.trim();
                 return normalizedValue === "" ? null : normalizedValue;
               }
