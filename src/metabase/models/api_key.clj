@@ -23,7 +23,7 @@
 
 (defn- add-prefix [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
-    key (assoc :key_prefix (prefix unhashed_key))))
+    unhashed_key (assoc :key_prefix (prefix unhashed_key))))
 
 (defn mask
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
