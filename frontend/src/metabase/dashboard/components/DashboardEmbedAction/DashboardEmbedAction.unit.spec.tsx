@@ -76,10 +76,12 @@ describe("DashboardEmbedAction", () => {
           publicLinksEnabled: true,
           embeddingEnabled: false,
         });
-        userEvent.hover(screen.getByLabelText("share icon"));
+        userEvent.click(screen.getByLabelText("share icon"));
         expect(
-          await screen.findByText("You must enable Embedding in the settings"),
+          await screen.findByTestId("embed-header-menu"),
         ).toBeInTheDocument();
+        expect(screen.getByText("Embedding is off")).toBeInTheDocument();
+        expect(screen.getByText("Enable it in settings")).toBeInTheDocument();
       });
 
       it("should have a `Sharing` tooltip if public sharing is enabled", async () => {
@@ -95,22 +97,30 @@ describe("DashboardEmbedAction", () => {
       });
     });
     describe("when user is non-admin", () => {
-      it("should not render the button if there is no public link", () => {
+      it("should render button and disabled tooltip if there is no public link", async () => {
         setup({
           hasPublicLink: false,
           publicLinksEnabled: false,
           isAdmin: false,
         });
-        expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
+
+        userEvent.hover(screen.getByLabelText("share icon"));
+        expect(
+          await screen.findByText("Public links are disabled"),
+        ).toBeInTheDocument();
       });
 
-      it("should not render the button if public sharing is enabled but no public link", () => {
+      it("should render the disabled button and`Ask an admin to create a public link`", async () => {
         setup({
           hasPublicLink: false,
           isAdmin: false,
           publicLinksEnabled: true,
         });
-        expect(screen.queryByLabelText("share icon")).not.toBeInTheDocument();
+
+        userEvent.hover(screen.getByLabelText("share icon"));
+        expect(
+          await screen.findByText("Ask your admin to create a public link"),
+        ).toBeInTheDocument();
       });
 
       it("should render the button if public sharing is enabled and there is a public link", () => {
@@ -133,9 +143,17 @@ describe("DashboardEmbedAction", () => {
       ).toBeInTheDocument();
     });
 
-    it("should render the embedding modal when public sharing is disabled", async () => {
+    it("should render the embedding modal and disabled public sharing item when public sharing is disabled", async () => {
       setup({ publicLinksEnabled: false, isAdmin: true });
-      userEvent.click(await screen.findByLabelText("share icon"));
+
+      userEvent.click(screen.getByLabelText("share icon"));
+
+      expect(
+        await screen.findByText("Public links are off"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Enable them in settings")).toBeInTheDocument();
+
+      userEvent.click(await screen.findByTestId("embed-menu-embed-modal-item"));
 
       expect(
         await screen.findByTestId("dashboard-sharing-embedding-modal"),
@@ -145,6 +163,11 @@ describe("DashboardEmbedAction", () => {
     it("should not render the embedding modal when the modal is closed", async () => {
       setup({ publicLinksEnabled: false, isAdmin: true });
       userEvent.click(await screen.findByLabelText("share icon"));
+      userEvent.click(await screen.findByTestId("embed-menu-embed-modal-item"));
+
+      expect(
+        await screen.findByTestId("dashboard-sharing-embedding-modal"),
+      ).toBeInTheDocument();
 
       userEvent.click(await screen.findByTestId("close-embedding-modal"));
 

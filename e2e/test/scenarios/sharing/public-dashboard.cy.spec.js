@@ -139,13 +139,18 @@ describe("scenarios > public > dashboard", () => {
     });
   });
 
-  it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
+  it("should see a tooltip prompting the user to ask their admin to create a public link", () => {
     cy.signInAsNormalUser();
     cy.get("@dashboardId").then(id => {
       visitDashboard(id);
     });
 
-    cy.findByTestId("dashboard-header").icon("share").should("not.exist");
+    cy.findByTestId("dashboard-header").icon("share").realHover();
+    cy.findByRole("tooltip").within(() => {
+      cy.findByText("Ask your admin to create a public link").should(
+        "be.visible",
+      );
+    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>

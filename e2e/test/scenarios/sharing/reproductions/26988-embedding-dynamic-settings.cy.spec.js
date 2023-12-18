@@ -1,6 +1,7 @@
 import {
   describeEE,
   getIframeBody,
+  openEmbedModalFromMenu,
   popover,
   restore,
   setTokenFeatures,
@@ -33,7 +34,7 @@ describeEE("issue 26988", () => {
       visitDashboard(card.dashboard_id);
     });
 
-    cy.icon("share").click();
+    openEmbedModalFromMenu();
     cy.findByRole("button", { name: "Set up" }).click();
     cy.wait("@dashboard");
 

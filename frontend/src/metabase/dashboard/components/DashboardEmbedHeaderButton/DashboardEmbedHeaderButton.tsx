@@ -10,20 +10,7 @@ export type DashboardEmbedHeaderButtonProps = {
   onClick?: () => void;
   disabled?: boolean;
   hasBackground?: boolean;
-};
-
-const getTooltipLabel = ({
-  isPublicSharingEnabled,
-  disabled,
-}: {
-  isPublicSharingEnabled: boolean;
-  disabled: boolean;
-}) => {
-  if (disabled) {
-    return t`You must enable Embedding in the settings`;
-  }
-
-  return isPublicSharingEnabled ? t`Sharing` : t`Embedding`;
+  tooltip?: string | null;
 };
 
 export const DashboardEmbedHeaderButton = forwardRef(
@@ -32,6 +19,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
       onClick,
       disabled = false,
       hasBackground = true,
+      tooltip = null,
     }: DashboardEmbedHeaderButtonProps,
     ref: Ref<HTMLButtonElement>,
   ) {
@@ -39,10 +27,8 @@ export const DashboardEmbedHeaderButton = forwardRef(
       getSetting(state, "enable-public-sharing"),
     );
 
-    const tooltipLabel = getTooltipLabel({
-      isPublicSharingEnabled,
-      disabled,
-    });
+    const tooltipLabel =
+      tooltip ?? (isPublicSharingEnabled ? t`Sharing` : t`Embedding`);
 
     const onHeaderButtonClick = (event: MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
