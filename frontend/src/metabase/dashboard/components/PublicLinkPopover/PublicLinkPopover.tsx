@@ -1,12 +1,10 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { useSelector } from "metabase/lib/redux";
-import type { exportFormats } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Popover, Text, Title } from "metabase/ui";
-
-export type ExportFormatType = typeof exportFormats[number] | null;
 
 export type PublicLinkPopoverProps = {
   target: JSX.Element;

@@ -62,7 +62,7 @@ describe("NonAdminEmbedMenu", () => {
       expect(
         screen.getByText("Anyone can view this if you give them the link."),
       ).toBeInTheDocument();
-      expect(screen.getByTestId("public-link-text")).toHaveTextContent(
+      expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
         /public\/dashboard\/mock-uuid/,
       );
       expect(screen.getByTestId("copy-button")).toBeInTheDocument();
