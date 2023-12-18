@@ -5,7 +5,7 @@ import { SearchResult } from "metabase/search/components/SearchResult";
 import type {
   SearchResult as SearchResultType,
   SearchResults as SearchResultsType,
- } from "metabase-types/api";
+} from "metabase-types/api";
 import type { WrappedResult } from "metabase/search/types";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -28,7 +28,8 @@ export function EntityPickerSearchInput({
   useDebouncedEffect(
     () => {
       if (searchQuery) {
-        Search.api.list({ models, q: searchQuery })
+        Search.api
+          .list({ models, q: searchQuery })
           .then((results: SearchResultsType) => {
             if (results.data) {
               setSearchResults(results.data);

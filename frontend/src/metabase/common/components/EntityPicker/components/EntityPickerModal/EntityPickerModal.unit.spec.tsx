@@ -1,13 +1,27 @@
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
-import { EntityPickerModal } from "./EntityPickerModal";
+import {
+  EntityPickerModal,
+  EntityPickerModalOptions,
+} from "./EntityPickerModal";
 import fetchMock from "fetch-mock";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockSearchResult,
+  createMockSearchResults,
   createMockUser,
 } from "metabase-types/api/mocks";
 import userEvent from "@testing-library/user-event";
+import type { ValidTab } from "../../utils";
+
+interface setupProps {
+  title?: string;
+  onChange?: () => void;
+  onClose?: () => void;
+  tabs?: ValidTab[];
+  options?: EntityPickerModalOptions;
+}
 
 const setup = ({
   title = "Pick a thing",
@@ -15,11 +29,15 @@ const setup = ({
   onClose = jest.fn(),
   tabs = ["collection"],
   ...rest
-} = {}) => {
+}: setupProps = {}) => {
   fetchMock.get("path:/api/user/current", createMockUser());
   fetchMock.get(
     "path:/api/collection/1",
     createMockCollection({ name: "My Personal Collection" }),
+  );
+  fetchMock.get(
+    "path:/api/collection/root",
+    createMockCollection({ id: "root", name: "Our Analytics" }),
   );
 
   fetchMock.get("path:/api/collection/root/items", {
@@ -42,7 +60,7 @@ const setup = ({
     ],
   });
 
-  render(
+  renderWithProviders(
     <EntityPickerModal
       title={title}
       onChange={onChange}
@@ -55,7 +73,7 @@ const setup = ({
 
 describe("EntityPickerModal", () => {
   it("should render a picker", async () => {
-    setup();
+    setup({});
     expect(
       await screen.findByText("My Personal Collection"),
     ).toBeInTheDocument();
@@ -63,10 +81,12 @@ describe("EntityPickerModal", () => {
     expect(await screen.findByText("Collection 1")).toBeInTheDocument();
   });
 
-  it("should render a search bar by default and show confirmation button", () => {
+  it("should render a search bar by default and show confirmation button", async () => {
     setup();
-    expect(screen.getByPlaceholderText("Search…")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Select" })).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText("Search…")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Select" }),
+    ).toBeInTheDocument();
   });
 
   it("should be able to disable the search bar", () => {
@@ -98,9 +118,44 @@ describe("EntityPickerModal", () => {
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
     setup({
-      tabs: ["collection", "collection"],
+      tabs: ["collection", "question"],
     });
 
     expect(await screen.findByRole("tablist")).toBeInTheDocument();
+  });
+
+  it("should show a search tab list when a we type in the search input", async () => {
+    fetchMock.get(
+      "path:/api/search",
+      createMockSearchResults({
+        items: [
+          createMockSearchResult({
+            name: "Search Result 1",
+            model: "collection",
+            id: 100,
+          }),
+          createMockSearchResult({
+            name: "Search Result 2",
+            model: "collection",
+            id: 101,
+          }),
+        ],
+      }),
+    );
+
+    fetchMock.get("path:/api/user/recipients", []);
+
+    setup({});
+
+    userEvent.type(await screen.findByPlaceholderText("Search…"), "My ", {
+      delay: 50,
+    });
+
+    expect(await screen.findByRole("tablist")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("tab", { name: /2 results for "My "/ }),
+    ).toBeInTheDocument();
+
+    expect(await screen.findAllByTestId("search-result-item")).toHaveLength(2);
   });
 });
