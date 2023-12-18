@@ -4325,6 +4325,31 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'If the database supports indexing, this column indicate whether or not a field is indexed, or is the 1st column in a composite index'
 
+  - changeSet:
+      id: v49.00-009
+      author: adam-james
+      comment: Migrate pulse_card.include_csv to 'true' when the joined card.display is 'table'
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE pulse_card AS pc
+              JOIN report_card AS rc ON rc.id = pc.card_id
+              SET pc.include_csv = TRUE
+              WHERE rc.display = 'table';
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE pulse_card pc
+              SET include_csv = TRUE
+              WHERE pc.card_id IN (
+                  SELECT rc.id
+                  FROM report_card rc
+                  WHERE rc.display = 'table'
+                  AND rc.id = pc.card_id
+              );
+      rollback: # no change
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

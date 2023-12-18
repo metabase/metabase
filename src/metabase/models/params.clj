@@ -148,9 +148,9 @@
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
                                 :table_id      [:in table-ids]
                                 :semantic_type (mdb.u/isa :type/Name))
-                              ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
+                              ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
-                              ;; `list` instead of `auto-list`.)
+                              ;; `:list` instead of `:auto-list`.)
                               (t2/hydrate :has_field_values)))))
 
 (mi/define-batched-hydration-method add-name-field

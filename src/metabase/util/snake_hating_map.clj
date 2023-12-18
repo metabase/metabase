@@ -71,4 +71,4 @@
        (vary-meta assoc :metabase.driver/metadata-type :metabase.driver/metadata-type.mlv2)
        ->SnakeHatingMap))
   ([k v & more]
-   (snake-hating-map (into {} (cons [k v] (partition-all 2 more))))))
+   (snake-hating-map (into {k v} (partition-all 2) more))))

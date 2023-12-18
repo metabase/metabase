@@ -26,13 +26,12 @@
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        ordered-formatters (atom {})]
+        ordered-formatters (volatile! {})]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
-        (swap! ordered-formatters (constantly
-                                    (mapv (fn [col]
+        (vreset! ordered-formatters (mapv (fn [col]
                                             (formatter/create-formatter results_timezone col viz-settings))
-                                          ordered-cols)))
+                                          ordered-cols))
         (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
         (.flush writer))
 
