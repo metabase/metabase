@@ -8,7 +8,7 @@
       {
         "vars": "all",
         "args": "none",
-        "varsIgnorePattern": "^_.+",
+        "varsIgnorePattern": "^_.*",
         "ignoreRestSiblings": true
       }
     ],
