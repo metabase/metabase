@@ -11,7 +11,7 @@
   determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
   both a Category and a `list` Field."
   (:require
-   [metabase.models.field :as field]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.field-values :as field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -47,7 +47,7 @@
 (mu/defn ^:private field-should-be-auto-list? :- [:maybe :boolean]
   "Based on `distinct-count`, should we mark this `field` as `has-field-values` = `auto-list`?"
   [fingerprint :- [:maybe i/Fingerprint]
-   field       :- [:map [:has-field-values {:optional true} [:maybe (into [:enum] field/has-field-values-options)]]]]
+   field       :- [:map [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]
   ;; only update has-field-values if it hasn't been set yet. If it's already been set then it was probably done so
   ;; manually by an admin, and we don't want to stomp over their choices.
   (let [distinct-count (get-in fingerprint [:global :distinct-count])]
