@@ -90,6 +90,16 @@
                          .iterator
                          iterator-seq))))))
 
+(defmethod driver/can-connect? :bigquery-cloud-sdk
+  [_ details-map]
+  ;; check whether we can connect by seeing whether listing tables succeeds
+  (try (some? (list-tables details-map {:validate-dataset? true}))
+       (catch Exception e
+         (when (::driver/can-connect-message? (ex-data e))
+           (throw e))
+         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+         false)))
+
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
@@ -128,17 +138,6 @@
                          ;; see https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
                          ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
                          (.getRequirePartitionFilter (get-table database dataset-id (.getTable table-id))))))}))}))
-
-
-(defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details-map]
-  ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables details-map {:validate-dataset? true}))
-       (catch Exception e
-         (when (::driver/can-connect-message? (ex-data e))
-           (throw e))
-         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
-         false)))
 
 (defn- bigquery-type->base-type
   "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
@@ -233,17 +232,15 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
-
-
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    ;; We couldn't easily test if the following two can show up as
-    ;; tables and if `.list` is supported for them, so they are here
-    ;; to make sure we don't break existing instances.
     (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
            TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+         ;; We couldn't easily test if the following two can show up as
+         ;; tables and if `.list` is supported for them, so they are here
+         ;; to make sure we don't break existing instances.
          (.. bq-table getDefinition getType))
       (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
