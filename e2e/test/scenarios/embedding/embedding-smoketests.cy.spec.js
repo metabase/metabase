@@ -381,10 +381,14 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  cy.icon("share").trigger("mouseenter");
-  cy.findByRole("tooltip", {
-    name: "You must enable Embedding in the settings",
-  }).should("be.visible");
+  cy.icon("share").click();
+
+  cy.findByTestId("embed-menu-embed-modal-item").should("be.disabled");
+
+  cy.findByTestId("embed-menu-embed-modal-item").within(() => {
+    cy.findByText("Embedding is off").should("be.visible");
+    cy.findByText("Enable it in settings").should("be.visible");
+  });
 }
 
 function visitAndEnableSharing(object) {
