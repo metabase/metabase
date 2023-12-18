@@ -35,29 +35,6 @@ export const PublicLinkCopyPanel = ({
         value={url ?? undefined}
         inputWrapperOrder={["label", "input", "error", "description"]}
         rightSection={<PublicLinkCopyButton value={url} />}
-        description={
-          onRemoveLink && (
-            // The box is needed to center the tooltip on the anchor
-            <Box pos="absolute" mt="sm">
-              <Tooltip
-                label={
-                  <Text fw={700} c="inherit">
-                    {removeTooltipLabel}
-                  </Text>
-                }
-              >
-                <RemoveLinkAnchor
-                  fz="sm"
-                  c="error.0"
-                  fw={700}
-                  onClick={onRemoveLink}
-                >
-                  {removeButtonLabel}
-                </RemoveLinkAnchor>
-              </Tooltip>
-            </Box>
-          )
-        }
       />
       {extensions && extensions.length > 0 && (
         <Group my="sm">
@@ -76,6 +53,27 @@ export const PublicLinkCopyPanel = ({
             </ExtensionOption>
           ))}
         </Group>
+      )}
+      {onRemoveLink && (
+        // The box is needed to center the tooltip on the anchor
+        <Box mt="sm">
+          <Tooltip
+            label={
+              <Text fw={700} c="inherit">
+                {removeTooltipLabel}
+              </Text>
+            }
+          >
+            <RemoveLinkAnchor
+              fz="sm"
+              c="error.0"
+              fw={700}
+              onClick={onRemoveLink}
+            >
+              {removeButtonLabel}
+            </RemoveLinkAnchor>
+          </Tooltip>
+        </Box>
       )}
     </Stack>
   );
