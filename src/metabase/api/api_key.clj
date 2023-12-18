@@ -34,9 +34,10 @@
         email   (format "api-key-user-%s@api-key.invalid" name)]
     (t2/with-transaction [_conn]
       (let [user (first (t2/insert-returning-instances! :model/User
-                                                        {:email    email
-                                                         :password (crypto-random/base64 16)
-                                                         :type     :api-key}))]
+                                                        {:email      email
+                                                         :first_name name
+                                                         :password   (crypto-random/base64 16)
+                                                         :type       :api-key}))]
         (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])
         (-> (t2/insert-returning-instances! :model/ApiKey
                                             {:user_id      (u/the-id user)
