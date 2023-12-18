@@ -374,7 +374,7 @@ class StructuredQuery extends AtomicQuery {
     const sourceQuery = query.sourceQuery();
 
     if (sourceQuery) {
-      query = query.setSourceQuery(sourceQuery.clean());
+      query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
     }
 
     query = query.cleanJoins().cleanExpressions().cleanFields();

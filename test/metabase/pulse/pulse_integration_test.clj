@@ -354,13 +354,16 @@
                                       :as      pulse} {:name "Consistent Time Formatting Pulse"}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           native-card-id
-                                            :dashboard_card_id base-dash-card-id}
+                                            :dashboard_card_id base-dash-card-id
+                                            :include_csv       true}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           model-card-id
-                                            :dashboard_card_id model-dash-card-id}
+                                            :dashboard_card_id model-dash-card-id
+                                            :include_csv       true}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           meta-model-card-id
-                                            :dashboard_card_id metamodel-dash-card-id}
+                                            :dashboard_card_id metamodel-dash-card-id
+                                            :include_csv       true}
                                PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                     :pulse_id     pulse-id
                                                                     :enabled      true}
