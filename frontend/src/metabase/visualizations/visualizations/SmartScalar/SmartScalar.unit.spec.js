@@ -7,8 +7,6 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import registerVisualizations from "metabase/visualizations/register";
 import { COMPARISON_TYPES } from "./utils";
 
-console.error = jest.fn();
-
 registerVisualizations();
 
 const setup = (series, width = 800) =>
