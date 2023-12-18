@@ -289,11 +289,31 @@
                         (format "CREATE TABLE %s (transaction_id INT64);"
                                 (fmt-table-name "not_partitioned"))]]
              (bigquery.tx/execute! sql))
-
            (sync/sync-database! (mt/db) {:scan :schema})
-           (is (= table-name->is-filter-required?
-                  (t2/select-fn->fn :name :database_require_filter :model/Table
-                                    :name [:in (keys table-name->is-filter-required?)])))
+
+           (testing "tables that require a filter are correctly identified"
+             (is (= table-name->is-filter-required?
+                    (t2/select-fn->fn :name :database_require_filter :model/Table
+                                      :name [:in (keys table-name->is-filter-required?)]))))
+
+           (testing "partitioned fields are correctly identified"
+             (is (= {["not_partitioned" "transaction_id"]                false
+                     ["partitioned_marterialized_view" "transaction_id"] false
+                     ["partition_by_range" "customer_id"]                true
+                     ["partition_by_ingestion_time" "transaction_id"]    false
+                     ["partition_by_range" "date1"]                      false
+                     ["partitioned_marterialized_view" "_PARTITIONTIME"] true
+                     ["partition_by_time" "transaction_date"]            true
+                     ["partition_by_time" "transaction_id"]              false
+                     ["partition_by_ingestion_time" "_PARTITIONTIME"]    true}
+                    (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
+                                    :from   [[:metabase_field :field]]
+                                    :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
+                                    :where  [:and [:= :table.db_id (mt/id)]
+                                             [:in :table.name (keys table-name->is-filter-required?)]]})
+                         (map (fn [{:keys [table_name field_name database_partitioned]}]
+                                [[table_name field_name] database_partitioned]))
+                         (into {})))))
            (finally
             (doseq [table-name (keys table-name->is-filter-required?)]
               (drop-table-if-exists! table-name)))))))))

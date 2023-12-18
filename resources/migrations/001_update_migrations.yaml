@@ -4353,7 +4353,7 @@ databaseChangeLog:
   - changeSet:
       id: v49.00-011
       author: qnkhuat
-      comment: 'metabase_table.database_require_filter'
+      comment: Add metabase_table.database_require_filter
       changes:
         - addColumn:
             tableName: metabase_table
@@ -4364,6 +4364,21 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: 'If true, the table requires a filter to be able to query it'
+
+  - changeSet:
+      id: v49.00-012
+      author: qnkhuat
+      comment: Add metabase_field.database_partitioned
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_partitioned
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'Whether the field is a partitioned field'
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

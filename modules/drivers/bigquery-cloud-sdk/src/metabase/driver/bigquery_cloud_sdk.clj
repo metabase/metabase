@@ -167,11 +167,30 @@
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
-  {:schema dataset-id
-   :name   table-name
-   :fields (-> (.. (get-table database dataset-id table-name) getDefinition getSchema)
-               table-schema->metabase-field-info
-               set)})
+  (let [table                  (get-table database dataset-id table-name)
+        tabledef               (.getDefinition table)
+        ;; a table can only have one partitioned field
+        partitioned-field-name (some-> (or (.getTimePartitioning tabledef)
+                                           (.getRangePartitioning tabledef))
+                                       .getField)
+        fields                 (set
+                                (map
+                                 #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
+                                 (table-schema->metabase-field-info (. tabledef getSchema))))]
+    {:schema dataset-id
+     :name   table-name
+     :fields (cond-> fields
+               ;; if table has time partition but no field is specified as partitioned
+               ;; meaning this table is partitioned by ingestion time
+               ;; so we manually sync this virtual column
+               (and (some? (.getTimePartitioning tabledef))
+                    (nil? partitioned-field-name))
+               (conj
+                {:name                 "_PARTITIONTIME"
+                 :database-type        "TIMESTAMP"
+                 :base-type            :type/DateTimeWithLocalTZ
+                 :database-position    (count fields)
+                 :database-partitioned true}))}))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]

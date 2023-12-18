@@ -44,6 +44,7 @@
    [:nfc-path                   {:optional true} [:any]]
    [:custom                     {:optional true} :map]
    [:database-is-auto-increment {:optional true} :boolean]
+   [:database-partitioned       {:optional true} :boolean]
    [:database-required          {:optional true} :boolean]])
 
 (def TableMetadataField

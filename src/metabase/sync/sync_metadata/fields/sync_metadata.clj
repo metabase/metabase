@@ -28,6 +28,7 @@
          old-position                   :position
          old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
+         old-db-partitioned             :database-partitioned
          old-db-required                :database-required} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
@@ -35,6 +36,7 @@
          new-database-position          :database-position
          new-database-name              :name
          new-database-is-auto-increment :database-is-auto-increment
+         new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
         new-database-is-auto-increment             (boolean new-database-is-auto-increment)
         new-db-required                            (boolean new-db-required)
@@ -64,7 +66,8 @@
         new-name? (not= old-database-name new-database-name)
 
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
-        new-db-required? (not= old-db-required new-db-required)
+        new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
+        new-db-required?         (not= old-db-required new-db-required)
 
         ;; calculate combined updates
         updates
@@ -110,13 +113,18 @@
                       old-database-name
                       new-database-name)
            {:name new-database-name})
-         (when new-db-auto-incremented?
+         (when (some? new-db-auto-incremented?)
            (log/infof "Database auto incremented of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-is-auto-increment
                       new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
-         (when new-db-required?
+         (when (some? new-db-partitioned?)
+           (log/infof "Database partitioned of %s has changed from ''%s'' to ''%s''."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-db-partitioned
+                      new-db-partitioned))
+         (when (some? new-db-required?)
            (log/infof "Database required of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-required
