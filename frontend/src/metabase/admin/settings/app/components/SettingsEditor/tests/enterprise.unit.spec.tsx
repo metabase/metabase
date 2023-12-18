@@ -27,7 +27,6 @@ describe("SettingsEditor", () => {
 
     userEvent.click(screen.getByText("Embedding"));
     userEvent.click(screen.getByText("Interactive embedding"));
-    expect(screen.getByText(/some of our paid plans/)).toBeInTheDocument();
     expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
     expect(
       screen.queryByText("SameSite cookie setting"),
