@@ -19,6 +19,9 @@ export const HeaderText = styled.h2`
   font-weight: 700;
 
   flex-grow: 1;
+
+  display: flex;
+  align-items: center;
 `;
 
 export const ActionsWrapper = styled.div`

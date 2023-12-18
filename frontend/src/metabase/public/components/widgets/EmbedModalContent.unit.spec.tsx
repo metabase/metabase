@@ -4,9 +4,9 @@ import { renderWithProviders } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
+import type { EmbedResource } from "./EmbeddingModal/EmbeddingModalContent.types";
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
-import type { EmbedResource } from "./types";
 
 describe("EmbedModalContent", () => {
   it("should render", () => {
@@ -125,7 +125,7 @@ function setup({
   getPublicUrl,
 }: Partial<EmbedModalContentProps> = {}) {
   const mocks = {
-    getPublicUrl: getPublicUrl || jest.fn(resource => "some URL"),
+    getPublicUrl: getPublicUrl || jest.fn(_resource => "some URL"),
     onUpdateEmbeddingParams: jest.fn(),
     onUpdateEnableEmbedding: jest.fn(),
     onClose: jest.fn(),

@@ -57,7 +57,7 @@ class DashboardSharingEmbeddingModal extends Component {
     return (
       <ModalWithTrigger
         ref={m => (this._modal = m)}
-        full
+        fit
         disabled={!isLinkEnabled}
         as={ModalTrigger}
         triggerElement={

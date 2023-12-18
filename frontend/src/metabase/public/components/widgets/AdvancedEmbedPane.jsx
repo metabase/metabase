@@ -2,12 +2,17 @@
 import _ from "underscore";
 
 import { t } from "ttag";
-import ToggleLarge from "metabase/components/ToggleLarge";
-import Button from "metabase/core/components/Button";
-import ActionButton from "metabase/components/ActionButton";
-import AdvancedSettingsPane from "./AdvancedSettingsPane";
-import PreviewPane from "./PreviewPane";
-import EmbedCodePane from "./EmbedCodePane";
+import { Tabs } from "metabase/ui";
+import { EmbeddingModalContentParametersSettings } from "./EmbeddingModal/EmbeddingModalContentParametersSettings";
+import { EmbeddingModalContentAppearanceSettings } from "./EmbeddingModal/EmbeddingModalContentAppearanceSettings";
+import { EmbeddingModalContentStatusBar } from "./EmbeddingModal/EmbeddingModalContentStatusBar";
+import { EmbeddingModalContentOverviewSettings } from "./EmbeddingModal/EmbeddingModalContentOverviewSettings";
+
+const TABS = {
+  Overview: "overview",
+  Parameters: "parameters",
+  Appearance: "appearance",
+};
 
 const AdvancedEmbedPane = ({
   pane,
@@ -31,87 +36,86 @@ const AdvancedEmbedPane = ({
   onSave,
   onUnpublish,
   onDiscard,
-}) => (
-  <div className="full flex">
-    <div
-      className="flex-full p4 flex flex-column"
-      data-testid="embedding-preview"
-    >
-      {!resource.enable_embedding ||
-      !_.isEqual(resource.embedding_params, embeddingParams) ? (
-        <div className="mb2 p2 bordered rounded flex align-center flex-no-shrink">
-          <div className="flex-full mr1">
-            {resource.enable_embedding
-              ? t`You’ve made changes that need to be published before they will be reflected in your application embed.`
-              : t`You will need to publish this ${resourceType} before you can embed it in another application.`}
-          </div>
-          <div className="flex-no-shrink">
-            {resource.enable_embedding &&
-            !_.isEqual(resource.embedding_params, embeddingParams) ? (
-              <Button
-                className="ml1"
-                medium
-                onClick={onDiscard}
-              >{t`Discard Changes`}</Button>
-            ) : null}
-            <ActionButton
-              className="ml1"
-              primary
-              medium
-              actionFn={onSave}
-              activeText={t`Updating...`}
-              successText={t`Updated`}
-              failedText={t`Failed!`}
-            >{t`Publish`}</ActionButton>
-          </div>
-        </div>
-      ) : null}
-      <ToggleLarge
-        className="mb2 flex-no-shrink"
-        style={{ width: 244, height: 34 }}
-        value={pane === "preview"}
-        textLeft={t`Preview`}
-        textRight={t`Code`}
-        onChange={() => onChangePane(pane === "preview" ? "code" : "preview")}
-      />
-      {pane === "preview" ? (
-        <PreviewPane
-          className="flex-full"
-          previewUrl={iframeUrl}
-          isTransparent={displayOptions.theme === "transparent"}
-        />
-      ) : pane === "code" ? (
-        <EmbedCodePane
-          className="flex-full"
-          embedType={embedType}
-          resource={resource}
+}) => {
+  const hasSettingsChanges = !_.isEqual(
+    resource.embedding_params,
+    embeddingParams,
+  );
+
+  return (
+    <div className="full flex">
+      <div
+        className="flex-full flex flex-column"
+        data-testid="embedding-preview"
+      >
+        <EmbeddingModalContentStatusBar
           resourceType={resourceType}
-          iframeUrl={iframeUrl}
-          token={token}
-          siteUrl={siteUrl}
-          secretKey={secretKey}
-          params={params}
-          displayOptions={displayOptions}
+          isEmbeddingEnabled={resource.enable_embedding}
+          hasSettingsChanges={hasSettingsChanges}
+          onSave={onSave}
+          onUnpublish={onUnpublish}
+          onDiscard={onDiscard}
         />
-      ) : null}
+        <Tabs defaultValue={TABS.Overview}>
+          <Tabs.List p="0 1.5rem">
+            <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
+            <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
+            <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
+          </Tabs.List>
+          <Tabs.Panel value={TABS.Overview}>
+            <EmbeddingModalContentOverviewSettings
+              embedType={embedType}
+              resource={resource}
+              resourceType={resourceType}
+              iframeUrl={iframeUrl}
+              token={token}
+              siteUrl={siteUrl}
+              secretKey={secretKey}
+              params={params}
+              displayOptions={displayOptions}
+            />
+          </Tabs.Panel>
+          <Tabs.Panel value={TABS.Parameters}>
+            <EmbeddingModalContentParametersSettings
+              activePane={pane}
+              resource={resource}
+              resourceType={resourceType}
+              resourceParameters={resourceParameters}
+              embeddingParams={embeddingParams}
+              previewParameters={previewParameters}
+              parameterValues={parameterValues}
+              embedType={embedType}
+              iframeUrl={iframeUrl}
+              token={token}
+              siteUrl={siteUrl}
+              secretKey={secretKey}
+              params={params}
+              displayOptions={displayOptions}
+              onChangeEmbeddingParameters={onChangeEmbeddingParameters}
+              onChangeParameterValue={onChangeParameterValue}
+              onChangePane={onChangePane}
+            />
+          </Tabs.Panel>
+          <Tabs.Panel value={TABS.Appearance}>
+            <EmbeddingModalContentAppearanceSettings
+              activePane={pane}
+              embedType={embedType}
+              resource={resource}
+              resourceType={resourceType}
+              iframeUrl={iframeUrl}
+              token={token}
+              siteUrl={siteUrl}
+              secretKey={secretKey}
+              params={params}
+              displayOptions={displayOptions}
+              onChangePane={onChangePane}
+              onChangeDisplayOptions={onChangeDisplayOptions}
+            />
+          </Tabs.Panel>
+        </Tabs>
+      </div>
     </div>
-    <AdvancedSettingsPane
-      pane={pane}
-      embedType={embedType}
-      onChangePane={onChangePane}
-      resource={resource}
-      resourceType={resourceType}
-      resourceParameters={resourceParameters}
-      embeddingParams={embeddingParams}
-      onChangeEmbeddingParameters={onChangeEmbeddingParameters}
-      displayOptions={displayOptions}
-      onChangeDisplayOptions={onChangeDisplayOptions}
-      previewParameters={previewParameters}
-      parameterValues={parameterValues}
-      onChangeParameterValue={onChangeParameterValue}
-      onUnpublish={onUnpublish}
-    />
-  </div>
-);
+  );
+};
 
 export default AdvancedEmbedPane;

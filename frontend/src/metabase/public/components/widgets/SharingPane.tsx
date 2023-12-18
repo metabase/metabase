@@ -12,7 +12,11 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
-import type { EmbedResource, EmbedResourceType, EmbedType } from "./types";
+import type {
+  EmbedResource,
+  EmbedResourceType,
+  EmbedType,
+} from "./EmbeddingModal/EmbeddingModalContent.types";
 import {
   Description,
   EmbedWidgetHeader,

@@ -1,29 +1,25 @@
 import { useState } from "react";
-import { titleize } from "inflection";
-import { t } from "ttag";
-
 import _ from "underscore";
-import { Icon } from "metabase/core/components/Icon";
-
+import { t } from "ttag";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
-import { color } from "metabase/lib/colors";
-
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
+import { ModalContentActionIcon } from "metabase/components/ModalContent";
 import type {
+  ActivePreviewPane,
+  EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbeddingParametersValues,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
   EmbedType,
-} from "metabase/public/components/widgets/types";
+} from "./EmbeddingModal/EmbeddingModalContent.types";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
 import SharingPane from "./SharingPane";
-import { EmbedTitleLabel } from "./EmbedModalContent.styled";
+import { EmbedModalHeader } from "./EmbedModalContent.styled";
 
 export interface EmbedModalContentProps {
   resource: EmbedResource;
@@ -59,7 +55,7 @@ export const EmbedModalContent = (
     onClose,
   } = props;
 
-  const [pane, setPane] = useState<"preview">("preview");
+  const [pane, setPane] = useState<ActivePreviewPane>("code");
 
   const isAdmin = useSelector(getUserIsAdmin);
   const siteUrl = useSelector(state => getSetting(state, "site-url"));
@@ -79,12 +75,14 @@ export const EmbedModalContent = (
   const [embedType, setEmbedType] = useState<EmbedType>(null);
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
-  const [displayOptions, setDisplayOptions] = useState({
-    font: null,
-    theme: null,
-    bordered: true,
-    titled: true,
-  });
+  const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
+    {
+      font: null,
+      theme: null,
+      bordered: true,
+      titled: true,
+    },
+  );
 
   const handleSave = async () => {
     try {
@@ -132,38 +130,24 @@ export const EmbedModalContent = (
     embeddingParams,
   );
 
-  const embedTypeTitle = embedType && titleize(embedType);
-
   return (
     <div className="flex flex-column full-height">
-      <div
-        className="px2 py1 z1 flex align-center"
-        style={{
-          boxShadow:
-            embedType === "application"
-              ? `0px 8px 15px -9px ${color("text-dark")}`
-              : undefined,
-        }}
-      >
-        <h2 className="ml-auto">
-          <a className="flex align-center" onClick={() => setEmbedType(null)}>
-            <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
-            {embedTypeTitle && (
-              <Icon name="chevronright" className="mx1 text-medium" />
-            )}
-            {embedTypeTitle}
-          </a>
-        </h2>
-        <Icon
-          className="text-light text-medium-hover cursor-pointer p2 ml-auto"
-          name="close"
-          size={24}
-          onClick={() => {
+      {embedType !== null && (
+        <EmbedModalHeader
+          onClose={() => {
             MetabaseAnalytics.trackStructEvent("Sharing Modal", "Modal Closed");
             onClose();
           }}
-        />
-      </div>
+        >
+          <ModalContentActionIcon
+            name="chevronleft"
+            onClick={() => setEmbedType(null)}
+          />
+
+          {t`Static embedding`}
+        </EmbedModalHeader>
+      )}
+
       {embedType == null ? (
         <div className="flex-full">
           <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>

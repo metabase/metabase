@@ -112,10 +112,13 @@ const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
 interface ModalHeaderProps extends CommonModalProps {
   children: ReactNode;
+
+  className?: string;
 }
 
 export const ModalHeader = ({
   children,
+  className,
   fullPageModal,
   centeredTitle,
   headerActions,
@@ -125,7 +128,7 @@ export const ModalHeader = ({
   const actionIconSize = fullPageModal ? 24 : 16;
 
   return (
-    <HeaderContainer data-testid="modal-header">
+    <HeaderContainer className={className} data-testid="modal-header">
       <HeaderText
         className={cx({
           "text-centered": fullPageModal || centeredTitle,

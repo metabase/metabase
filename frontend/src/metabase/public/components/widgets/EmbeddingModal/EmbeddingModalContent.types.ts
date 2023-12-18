@@ -1,3 +1,5 @@
+export type ActivePreviewPane = "preview" | "code";
+
 export type EmbedType = "application" | null;
 
 export type EmbedResource = {
@@ -24,4 +26,11 @@ export type EmbeddingParameters = {
 
 export type EmbeddingParametersValues = {
   [key: string]: string;
+};
+
+export type EmbeddingDisplayOptions = {
+  font: null | string;
+  theme: null | string;
+  bordered: boolean;
+  titled: boolean;
 };
