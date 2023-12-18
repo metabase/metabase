@@ -59,7 +59,7 @@ describe("search > recently viewed", () => {
     cy.findByTextEnsureVisible("Address");
 
     cy.findByPlaceholderText("Search…").click();
-    // cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-spinner").should("not.exist");
 
     assertRecentlyViewedItem(0, "People", "Table");
     assertRecentlyViewedItem(1, "Orders in a dashboard", "Dashboard");
