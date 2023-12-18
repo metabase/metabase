@@ -89,8 +89,7 @@ export function GridLayout({
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
-    // eslint-disable-next-line no-unused-vars
-    const [horizontalMargin, verticalMargin] = margin;
+    const [_, verticalMargin] = margin;
     return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
   }, [cellSize.height, layout, margin, isEditing]);
 

@@ -76,6 +76,7 @@ interface DashCardVisualizationProps {
   isNightMode?: boolean;
   isPublic?: boolean;
   isXray?: boolean;
+  isDashcardDataLoading?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -122,6 +123,7 @@ export function DashCardVisualization({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
+  isDashcardDataLoading = false,
   isEditingParameter,
   onChangeCardAndRun,
   showClickBehaviorSidebar,
@@ -257,6 +259,7 @@ export function DashCardVisualization({
       isPreviewing={isPreviewing}
       isEditingParameter={isEditingParameter}
       isMobile={isMobile}
+      isDashcardDataLoading={isDashcardDataLoading}
       actionButtons={renderActionButtons()}
       replacementContent={renderVisualizationOverlay()}
       onUpdateVisualizationSettings={onUpdateVisualizationSettings}

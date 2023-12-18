@@ -56,6 +56,7 @@ const defaultProps = {
   isEditing: false,
   isSettings: false,
   isQueryBuilder: false,
+  isDashcardDataLoading: false,
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
   onChangeLocation: location => {
@@ -142,9 +143,11 @@ class Visualization extends PureComponent {
       : null;
     const series = transformed && transformed.series;
     const visualization = transformed && transformed.visualization;
-    const computedSettings = !this.isLoading(series)
+
+    const computedSettings = !checkIsLoading(series, newProps)
       ? getComputedSettingsForSeries(series)
       : {};
+
     this.setState({
       hovered: null,
       error: null,
@@ -155,17 +158,6 @@ class Visualization extends PureComponent {
       computedSettings: computedSettings,
     });
   }
-
-  isLoading = series => {
-    return !(
-      series &&
-      series.length > 0 &&
-      _.every(
-        series,
-        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
-      )
-    );
-  };
 
   handleHoverChange = hovered => {
     if (hovered) {
@@ -364,12 +356,12 @@ class Visualization extends PureComponent {
     let error = this.props.error || this.state.error;
     let noResults = false;
     let isPlaceholder = false;
-    const loading = this.isLoading(series);
+    const isLoading = checkIsLoading(series, this.props);
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
 
-    if (!loading && !error) {
+    if (!isLoading && !error) {
       settings = this.props.settings || this.state.computedSettings;
       if (!visualization) {
         error = t`Could not find visualization`;
@@ -416,7 +408,7 @@ class Visualization extends PureComponent {
 
     const extra = (
       <VisualizationActionButtonsContainer>
-        {isSlow && !loading && (
+        {isSlow && !isLoading && (
           <VisualizationSlowSpinner
             className="Visualization-slow-spinner"
             size={18}
@@ -461,7 +453,7 @@ class Visualization extends PureComponent {
     const hasHeader =
       (showTitle &&
         hasHeaderContent &&
-        (loading || error || noResults || isHeaderEnabled)) ||
+        (isLoading || error || noResults || isHeaderEnabled)) ||
       (replacementContent && (dashcard.size_y !== 1 || isMobile));
 
     return (
@@ -498,7 +490,7 @@ class Visualization extends PureComponent {
               isSmall={small}
               isDashboard={isDashboard}
             />
-          ) : loading ? (
+          ) : isLoading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
             <div
@@ -548,6 +540,20 @@ class Visualization extends PureComponent {
       </ErrorBoundary>
     );
   }
+}
+
+function checkIsLoading(series, props) {
+  return (
+    props?.isDashcardDataLoading ||
+    !(
+      series &&
+      series.length > 0 &&
+      _.every(
+        series,
+        s => s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      )
+    )
+  );
 }
 
 Visualization.defaultProps = defaultProps;

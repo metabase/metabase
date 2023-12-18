@@ -59,6 +59,7 @@ export interface DashCardProps {
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   metadata: Metadata;
   mode?: Mode;
+  loadingDashcardIds?: number[];
 
   clickBehaviorSidebarDashcard?: DashboardCard | null;
 
@@ -95,6 +96,7 @@ function DashCardInner({
   gridItemWidth,
   totalNumGridCols,
   mode,
+  loadingDashcardIds = [],
   isEditing = false,
   isNightMode = false,
   isFullscreen = false,
@@ -160,8 +162,10 @@ function DashCardInner({
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
   const isLoading = useMemo(
-    () => isDashcardLoading(dashcard, dashcardData),
-    [dashcard, dashcardData],
+    () =>
+      isDashcardLoading(dashcard, dashcardData) ||
+      loadingDashcardIds.includes(dashcard.id),
+    [dashcard, dashcardData, loadingDashcardIds],
   );
 
   const isAction = isActionCard(mainCard);
@@ -308,6 +312,7 @@ function DashCardInner({
           isNightMode={isNightMode}
           isMobile={isMobile}
           isPublic={isPublic}
+          isDashcardDataLoading={isLoading}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={changeCardAndRunHandler}

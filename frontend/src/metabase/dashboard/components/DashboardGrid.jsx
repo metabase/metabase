@@ -27,6 +27,8 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { addUndo } from "metabase/redux/undo";
+import { getLoadingDashCards } from "../selectors";
+
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
@@ -40,6 +42,10 @@ import { generateMobileLayout } from "./grid/utils";
 import { AddSeriesModal } from "./AddSeriesModal/AddSeriesModal";
 import { QuestionPickerModal } from "./QuestionPickerModal";
 import { DashCard } from "./DashCard/DashCard";
+
+const mapStateToProps = state => ({
+  loadingDashcardIds: getLoadingDashCards(state).loadingIds,
+});
 
 const mapDispatchToProps = { addUndo };
 
@@ -419,6 +425,7 @@ class DashboardGrid extends Component {
         dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
+        loadingDashcardIds={this.props.loadingDashcardIds}
       />
     );
   }
@@ -509,5 +516,5 @@ function isEditingTextOrHeadingCard(display, isEditing) {
 
 export const DashboardGridConnected = _.compose(
   ExplicitSize(),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(DashboardGrid);
