@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -75,10 +75,7 @@ describe("SmartScalar", () => {
 
       setup(series({ rows, insights }));
 
-      expect(screen.getByRole("img")).toHaveAttribute(
-        "aria-label",
-        "arrow_up icon",
-      );
+      expect(getIcon("arrow_up")).toBeInTheDocument();
       expect(screen.getByText("20%")).toBeInTheDocument();
 
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
@@ -96,10 +93,8 @@ describe("SmartScalar", () => {
 
       expect(screen.getByText("100")).toBeInTheDocument();
       expect(screen.getByText("Nov 2019")).toBeInTheDocument();
-      expect(screen.getByRole("img")).toHaveAttribute(
-        "aria-label",
-        "arrow_up icon",
-      );
+      expect(getIcon("arrow_up")).toBeInTheDocument();
+
       expect(screen.getByText("∞%")).toBeInTheDocument();
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
       expect(screen.getByText("0")).toBeInTheDocument();
@@ -117,10 +112,8 @@ describe("SmartScalar", () => {
       expect(screen.getByText("80")).toBeInTheDocument();
       expect(screen.getByText("Nov 2019")).toBeInTheDocument();
 
-      expect(screen.getByRole("img")).toHaveAttribute(
-        "aria-label",
-        "arrow_down icon",
-      );
+      expect(getIcon("arrow_down")).toBeInTheDocument();
+
       expect(screen.getByText("20%")).toBeInTheDocument();
 
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
@@ -138,10 +131,8 @@ describe("SmartScalar", () => {
 
       expect(screen.getByText("-100")).toBeInTheDocument();
       expect(screen.getByText("Nov 2019")).toBeInTheDocument();
-      expect(screen.getByRole("img")).toHaveAttribute(
-        "aria-label",
-        "arrow_down icon",
-      );
+      expect(getIcon("arrow_down")).toBeInTheDocument();
+
       expect(screen.getByText("∞%")).toBeInTheDocument();
       expect(screen.getByText("vs. previous month:")).toBeInTheDocument();
       expect(screen.getByText("0")).toBeInTheDocument();
@@ -223,10 +214,8 @@ describe("SmartScalar", () => {
       expect(screen.getByText("Nov 2019")).toBeInTheDocument();
 
       // can see arrow and percent change
-      expect(screen.getByRole("img")).toHaveAttribute(
-        "aria-label",
-        "arrow_up icon",
-      );
+      expect(getIcon("arrow_up")).toBeInTheDocument();
+
       const lastChange = screen.getByText("100%");
       expect(lastChange).toBeInTheDocument();
 
