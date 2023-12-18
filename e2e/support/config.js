@@ -17,6 +17,8 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
 
+const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
+
 // This function is called when a project is opened or re-opened (e.g. due to
 // the project's config changing)
 
@@ -28,13 +30,6 @@ const {
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
-    // Cypress analytics and the alternative to Cypress dashboard
-    // Needs to be at the very top in the config!
-    [on, config] = require("@deploysentinel/cypress-debugger/plugin")(
-      on,
-      config,
-    );
-
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
     /********************************************************************
@@ -99,6 +94,13 @@ const defaultConfig = {
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
     config.env.SOURCE_VERSION = sourceVersion;
     config.env.TARGET_VERSION = targetVersion;
+    // Set on local, development-mode runs only
+    config.env.feHealthcheck = {
+      enabled: feHealthcheckEnabled,
+      url: feHealthcheckEnabled
+        ? "http://localhost:8080/webpack-dev-server/"
+        : undefined,
+    };
 
     require("@cypress/grep/src/plugin")(config);
 
@@ -112,7 +114,6 @@ const defaultConfig = {
     return config;
   },
   supportFile: "e2e/support/cypress.js",
-  videoUploadOnPasses: false,
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
   // New `specPattern` is the combination of the old:
@@ -123,6 +124,7 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
+  projectId: "ywjy9z",
   viewportHeight: 800,
   viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
@@ -132,7 +134,7 @@ const mainConfig = {
     toConsole: true,
   },
   retries: {
-    runMode: 2,
+    runMode: 1,
     openMode: 0,
   },
 };

@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
 import type {
+  CardMetadata,
   Clause,
   ColumnMetadata,
   Join,
@@ -8,6 +9,7 @@ import type {
   MetricMetadata,
   Query,
   SegmentMetadata,
+  TableMetadata,
 } from "./types";
 import type LegacyMetadata from "./metadata/Metadata";
 
@@ -17,6 +19,17 @@ export function fromLegacyQuery(
   datasetQuery: DatasetQuery,
 ): Query {
   return ML.query(databaseId, metadata, datasetQuery);
+}
+
+/**
+ * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
+   Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
+ */
+export function queryFromTableOrCardMetadata(
+  metadataProvider: MetadataProvider,
+  tableOrCardMetadata: TableMetadata | CardMetadata,
+): Query {
+  return ML.query(metadataProvider, tableOrCardMetadata);
 }
 
 export function toLegacyQuery(query: Query): DatasetQuery {
@@ -58,4 +71,8 @@ export function replaceClause(
   newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
+}
+
+export function sourceTableOrCardId(query: Query): TableId | null {
+  return ML.source_table_or_card_id(query);
 }

@@ -36,7 +36,8 @@ describe("UserCollectionList", () => {
 
     expect(await screen.findByText("28 - 54")).toBeInTheDocument();
 
-    expect(await screen.findByText("big boi 29")).toBeInTheDocument();
     expect(await screen.findByTestId("previous-page-btn")).toBeEnabled();
+
+    expect(await screen.findByText("big boi 29")).toBeInTheDocument();
   });
 });

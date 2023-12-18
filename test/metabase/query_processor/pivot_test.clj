@@ -86,7 +86,7 @@
 
 
 (defn- test-query []
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/$ids orders
       {:database     (mt/id)
        :type         :query
@@ -110,7 +110,7 @@
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [request {:database   (mt/db)
                      :query      {:source-table (mt/$ids $$orders)
                                   :aggregation  [[:count] [:sum (mt/$ids $orders.quantity)]]
@@ -173,7 +173,7 @@
         4 [[0 1 2 3] [1 2] [2] [1 0] [1] []]))))
 
 (deftest ^:parallel ignore-bad-pivot-options-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query         (mt/mbql-query products
                           {:breakout    [$category
                                          [:field
@@ -194,7 +194,7 @@
 
 (deftest ^:parallel nested-question-pivot-options-test
   (testing "#35025"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (doseq [[message query] {"Query (incorrectly) uses :field ID refs in second stage"
                                (mt/mbql-query products
                                  {:source-query {:source-table $$products}
@@ -253,7 +253,7 @@
 
 (defn- distinct-values [table col]
   (->> (mt/rows
-         (mt/dataset sample-dataset
+         (mt/dataset test-data
            (qp/process-query
             {:database (mt/id)
              :type     :query
@@ -300,13 +300,13 @@
            (qp.pivot/run-pivot-query (api.pivots/pivot-query) nil rff nil)))))
 
 (deftest ^:parallel parameters-query-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (is (=? {:status    :completed
              :row_count 137}
             (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
                           :breakout    [$user_id->people.source $product_id->products.category]})
@@ -322,7 +322,7 @@
                    (m/dissoc-in [:data :native_form]))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query (assoc (mt/mbql-query orders
                          {:aggregation [[:count]]
                           :breakout    [$user_id->people.source $product_id->products.category]})
@@ -348,7 +348,7 @@
                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-3
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "We should still be able to use expressions inside the aggregations"
       (is (=? {:status   :completed}
               (qp.pivot/run-pivot-query
@@ -359,7 +359,7 @@
 
 (deftest pivot-query-should-work-without-data-permissions-test
   (testing "Pivot queries should work if the current user only has permissions to view the Card -- no data perms (#14989)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
@@ -387,7 +387,7 @@
 
 (deftest ^:parallel pivot-with-order-by-test
   (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query products
                     {:breakout    [$category]
                      :aggregation [[:count]]
@@ -402,7 +402,7 @@
 
 (deftest ^:parallel pivot-with-order-by-metric-test
   (testing "Pivot queries should allow ordering by aggregation (#22872)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let  [query (mt/mbql-query reviews
                      {:breakout [$rating [:field (mt/id :reviews :created_at) {:temporal-unit :year}]]
                       :aggregation [[:count]]

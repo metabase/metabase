@@ -1,6 +1,7 @@
 (ns metabase.models.permissions-group-test
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
@@ -111,8 +112,9 @@
   (doseq [group-id (t2/select-fn-set :id :model/PermissionsGroup)]
     (testing (str "testing data-graph-for-group with group-id: [" group-id "].")
       (let [graph (perms/data-graph-for-group group-id)]
-        (is (perm-test-util/validate-graph-api-output graph))
-        (is (= #{group-id} (set (keys graph))))))))
+        (is (mc/validate pos-int? (:revision graph)))
+        (is (perm-test-util/validate-graph-api-groups (:groups graph)))
+        (is (= #{group-id} (set (keys (:groups graph)))))))))
 
 (defn- perm-object->db [perm-obj]
   (some-> (re-find #"/db/(\d+)/" perm-obj) second parse-long))
@@ -123,7 +125,8 @@
     (doseq [db-id (t2/select-fn-set :id :model/Database)]
       (testing (str "testing data-graph-for-db with db-id: [" db-id "].")
         (let [graph (perms/data-graph-for-db db-id)]
-          (is (perm-test-util/validate-graph-api-output graph))
+          (is (mc/validate pos-int? (:revision graph)))
+          (is (perm-test-util/validate-graph-api-groups (:groups graph)))
           ;; Only check this for dbs with permissions
           (when (contains? dbs-in-perms db-id)
-            (is (= #{db-id} (->> graph vals (mapcat keys) set)))))))))
+            (is (= #{db-id} (->> graph :groups vals (mapcat keys) set)))))))))

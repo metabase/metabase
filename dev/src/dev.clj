@@ -40,7 +40,7 @@
    [dev.debug-qp :as debug-qp]
    [dev.model-tracking :as model-tracking]
    [dev.explain :as dev.explain]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -201,7 +201,7 @@
   [driver-or-driver+dataset sql-args]
   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
         [sql & params]   (if (map? sql-args)
-                           (hsql/format sql-args)
+                           (sql/format sql-args)
                            (u/one-or-many sql-args))
         canceled-chan    (a/promise-chan)]
     (try
