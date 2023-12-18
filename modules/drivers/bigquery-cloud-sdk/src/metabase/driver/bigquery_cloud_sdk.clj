@@ -90,32 +90,6 @@
                          .iterator
                          iterator-seq))))))
 
-(defmethod driver/describe-database :bigquery-cloud-sdk
-  [_ database]
-  (let [tables (list-tables (:details database))]
-    {:tables (set (for [^Table table tables
-                        :let  [^TableId         table-id   (.getTableId table)
-                               ^String          dataset-id (.getDataset table-id)
-                               ^TableDefinition tabledef   (.getDefinition table)]]
-                    {:schema                  dataset-id
-                     :name                    (.getTable table-id)
-                     :database_require_filter (boolean
-                                               (and
-                                                (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
-                                                 (. tabledef getType))
-                                                (some some? [(.getRangePartitioning tabledef)
-                                                             (.getTimePartitioning tabledef)])))}))}))
-
-(defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details-map]
-  ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables details-map {:validate-dataset? true}))
-       (catch Exception e
-         (when (::driver/can-connect-message? (ex-data e))
-           (throw e))
-         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
-         false)))
-
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
@@ -130,6 +104,41 @@
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
+
+(defmethod driver/describe-database :bigquery-cloud-sdk
+  [_ database]
+  (let [tables (list-tables (:details database))]
+    {:tables (set (for [^Table table tables
+                        :let  [^TableId         table-id   (.getTableId table)
+                               ^String          dataset-id (.getDataset table-id)
+                               ^TableDefinition tabledef   (.getDefinition table)]]
+                    {:schema                  dataset-id
+                     :name                    (.getTable table-id)
+                     :database_require_filter
+                     (boolean
+                      (and
+                       (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
+                        (. tabledef getType))
+                       (when (or (.getRangePartitioning tabledef)
+                                 (.getTimePartitioning tabledef))
+                         ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
+                         ;; on the `table` object from `list-tables` will return `nil` even though the table require a
+                         ;; partition filter.
+                         ;; This is probably an upstream bug where the v2 API is incomplete when setting object values
+                         ;; see https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
+                         ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
+                         (.getRequirePartitionFilter (get-table database dataset-id (.getTable table-id))))))}))}))
+
+
+(defmethod driver/can-connect? :bigquery-cloud-sdk
+  [_ details-map]
+  ;; check whether we can connect by seeing whether listing tables succeeds
+  (try (some? (list-tables details-map {:validate-dataset? true}))
+       (catch Exception e
+         (when (::driver/can-connect-message? (ex-data e))
+           (throw e))
+         (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
+         false)))
 
 (defn- bigquery-type->base-type
   "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has

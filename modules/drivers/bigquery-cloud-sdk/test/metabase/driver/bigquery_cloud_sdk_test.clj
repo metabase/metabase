@@ -253,17 +253,17 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "tables that require a partition filters are synced correctly"
       (mt/with-model-cleanup [:model/Table]
-        (let [table-name->is-filter-required? {"partition_by_range"             true
-                                               "partition_by_time"              true
-                                               "partition_by_ingestion_time"    true
-                                               "partitioned_marterialized_view" true
-                                               "not_partitioned"                false}]
+        (let [table-name->is-filter-required? {"partition_by_range"              true
+                                               "partition_by_time"               true
+                                               "partition_by_ingestion_time"     true
+                                               "partitioned_marterialized_view"  true
+                                               "partition_by_range_not_required" false
+                                               "not_partitioned"                 false}]
           (try
            (doseq [sql [(format "CREATE TABLE %s (customer_id INT64, date1 DATE)
                                 PARTITION BY
                                 RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
-                                OPTIONS (
-                                require_partition_filter = TRUE);"
+                                OPTIONS (require_partition_filter = TRUE);"
                                 (fmt-table-name "partition_by_range"))
                         (format "CREATE TABLE %s (transaction_id INT64, transaction_date DATE)
                                 PARTITION BY
@@ -286,6 +286,11 @@
                                 partition_expiration_days = 3,
                                 require_partition_filter = TRUE);"
                                 (fmt-table-name "partitioned_marterialized_view"))
+                        (format "CREATE TABLE %s (customer_id INT64, date1 DATE)
+                                PARTITION BY
+                                RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
+                                OPTIONS (require_partition_filter = FALSE);"
+                                (fmt-table-name "partition_by_range_not_required"))
                         (format "CREATE TABLE %s (transaction_id INT64);"
                                 (fmt-table-name "not_partitioned"))]]
              (bigquery.tx/execute! sql))
