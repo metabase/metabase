@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { Modal } from "metabase/ui";
@@ -10,15 +10,18 @@ import { tabOptions, type ValidTab } from "../../utils";
 import { TabsView, ButtonBar, SinglePickerView } from "../";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 import { GrowFlex, ModalContent, ModalBody } from "./EntityPickerModal.styled";
+import { useModalOpen } from "metabase/hooks/use-modal-open";
 
 export type EntityPickerModalOptions = {
   showPersonalCollection?: boolean;
+  showRootCollection?: boolean;
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
 };
 
 const defaultOptions: EntityPickerModalOptions = {
   showPersonalCollection: true,
+  showRootCollection: true,
   showSearch: true,
   hasConfirmButtons: true,
 };
@@ -40,13 +43,18 @@ export function EntityPickerModal({
   value,
   options = defaultOptions,
 }: EntityPickerModalProps) {
-  const validTabs = tabs.filter(tabName => tabName in tabOptions);
+  const validTabs = useMemo(
+    () => tabs.filter(tabName => tabName in tabOptions),
+    [tabs],
+  );
   const [selectedItem, setSelectedItem] = useState<SearchResult | null>(null);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
+
+  const { open } = useModalOpen();
 
   const handleItemSelect = useCallback(
     (item: SearchResult) => {
@@ -68,7 +76,7 @@ export function EntityPickerModal({
   const hasTabs = validTabs.length > 1 || searchQuery;
 
   return (
-    <Modal.Root opened onClose={onClose}>
+    <Modal.Root opened={open} onClose={onClose}>
       <Modal.Overlay />
       <ModalContent h="100%">
         <Modal.Header px="2rem" pt="1rem" pb={hasTabs ? "1rem" : "1.5rem"}>
