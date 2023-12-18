@@ -59,12 +59,6 @@
                   (.setCredentials (.createScoped creds bigquery-scopes)))]
     (.. bq-bldr build getService)))
 
-(defn- is-view-table?
-  [^Table table]
-  (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
-                      TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-    (.. table getDefinition getType)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -106,7 +100,8 @@
                     {:schema                  dataset-id
                      :name                    (.getTable table-id)
                      :database_require_filter (and
-                                               (not (is-view-table? table))
+                                               (not (#{TableDefinition$Type/VIEW TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+                                                     (. tabledef getType)))
                                                (boolean (some some? [(.getRangePartitioning tabledef)
                                                                      (.getTimePartitioning tabledef)])))}))}))
 
@@ -237,7 +232,9 @@
     ;; We couldn't easily test if the following two can show up as
     ;; tables and if `.list` is supported for them, so they are here
     ;; to make sure we don't break existing instances.
-    (if (is-view-table? bq-table)
+    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+         (.. bq-table getDefinition getType))
       (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
