@@ -57,7 +57,9 @@ export interface DatasetData {
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
-  native_form?: any;
+  native_form: {
+    query: string;
+  };
 }
 
 export type JsonQuery = DatasetQuery & {
