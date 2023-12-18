@@ -44,18 +44,16 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
       });
 
       describe("when user is non-admin", () => {
-        it(`should show disabled button and tooltip for ${resource}`, () => {
+        it(`should show disabled embed button and tooltip for ${resource}`, () => {
           cy.signInAsNormalUser();
 
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("dashboard-embed-button").should("be.disabled");
-          cy.findByTestId("dashboard-embed-button").realHover();
-          cy.findByRole("tooltip")
-            .findByText("Ask your admin to create a public link")
-            .should("be.visible");
+          expectDisabledButtonWithTooltipLabel(
+            "Ask your admin to create a public link",
+          );
         });
       });
     });
@@ -103,11 +101,9 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
               visitResource(resource, id);
             });
 
-            cy.findByTestId("dashboard-embed-button").should("be.disabled");
-            cy.findByTestId("dashboard-embed-button").realHover();
-            cy.findByRole("tooltip")
-              .findByText("Ask your admin to create a public link")
-              .should("be.visible");
+            expectDisabledButtonWithTooltipLabel(
+              "Ask your admin to create a public link",
+            );
           });
 
           it(`should show the embed button if the ${resource} has a public link`, () => {
@@ -177,17 +173,19 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
               visitResource(resource, id);
             });
 
-            cy.findByTestId("dashboard-embed-button").should("be.disabled");
-            cy.findByTestId("dashboard-embed-button").realHover();
-            cy.findByRole("tooltip")
-              .findByText("Public links are disabled")
-              .should("be.visible");
+            expectDisabledButtonWithTooltipLabel("Public links are disabled");
           });
         });
       });
     });
   });
 });
+
+function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
+  cy.findByTestId("dashboard-embed-button").should("be.disabled");
+  cy.findByTestId("dashboard-embed-button").realHover();
+  cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
+}
 
 function createResource(resource) {
   if (resource === "card") {
