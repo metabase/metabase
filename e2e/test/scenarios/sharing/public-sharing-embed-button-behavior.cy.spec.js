@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createPublicDashboardLink,
   createPublicQuestionLink,
+  getEmbedModalSharingPane,
   openPublicLinkPopoverFromMenu,
   restore,
   visitDashboard,
@@ -87,7 +88,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-text").should("be.visible");
+              cy.findByTestId("public-link-input").should("be.visible");
               cy.findByText("Remove public link").should("be.visible");
             });
           });
@@ -116,7 +117,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-text").should("be.visible");
+              cy.findByTestId("public-link-input").should("be.visible");
               cy.findByText("Remove public link").should("be.visible");
             });
 
@@ -130,7 +131,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-text").should("be.visible");
+              cy.findByTestId("public-link-input").should("be.visible");
               cy.findByText("Remove public link").should("not.exist");
             });
           });
@@ -160,9 +161,10 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("embed-menu-embed-modal-item").click();
 
-            cy.get(".Modal--full")
-              .findByText("Embed in your application")
-              .should("be.visible");
+            getEmbedModalSharingPane().within(() => {
+              cy.findByText("Static embed").should("be.visible");
+              cy.findByText("Public embed").should("be.visible");
+            });
           });
         });
         describe("when user is non-admin", () => {

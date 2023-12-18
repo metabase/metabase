@@ -40,13 +40,12 @@ describeEE("issue 30535", () => {
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
     openStaticEmbeddingModal();
 
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-
+    cy.findByTestId("public-link-input").then($input => {
+      const iframeText = $input.val();
+      const publicLink = iframeText.match(/src="([^"]+)"/)[1];
       cy.signOut();
       cy.signInAsSandboxedUser();
-
-      cy.visit(iframe.src);
+      cy.visit(publicLink);
     });
 
     cy.findByRole("table").within(() => {

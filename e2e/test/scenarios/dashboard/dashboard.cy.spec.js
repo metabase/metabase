@@ -877,10 +877,10 @@ describe("scenarios > dashboard", () => {
 
     openEmbedModalFromMenu();
 
-    cy.get(".Modal--full").within(() => {
+    modal().within(() => {
       cy.icon("close").click();
     });
-    cy.get(".Modal--full").should("not.exist");
+    modal().should("not.exist");
     assertScrollBarExists();
   });
 

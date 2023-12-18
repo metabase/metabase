@@ -45,9 +45,8 @@ describe("EmbedModalContent", () => {
       />,
     );
 
-    // expect(screen.getByText("Sharing")).toBeInTheDocument();
     expect(screen.getByText("Public embed")).toBeInTheDocument();
-    expect(screen.getByText("Embed in your application")).toBeInTheDocument();
+    expect(screen.getByText("Static embed")).toBeInTheDocument();
   });
 
   it("should render parameters", () => {
@@ -187,7 +186,7 @@ function renderWithConfiguredProviders(element: JSX.Element) {
 function openEmbedModal() {
   screen
     .getByRole("button", {
-      name: "Set up",
+      name: "Set this up",
     })
     .click();
 }

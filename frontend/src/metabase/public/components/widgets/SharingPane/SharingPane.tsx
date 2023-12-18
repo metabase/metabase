@@ -69,7 +69,7 @@ function SharingPane({
   );
 
   return (
-    <Group p="lg">
+    <Group p="lg" data-testid="sharing-pane-container">
       <SharingPaneButton
         header={t`Static embed`}
         description={t`Securely embed this dashboard in your own application’s server code.`}
@@ -77,6 +77,7 @@ function SharingPane({
         onClick={() => onChangeEmbedType("application")}
       >
         <SharingPaneActionButton
+          data-testid="sharing-pane-static-embed-button"
           fullWidth
           onClick={() => onChangeEmbedType("application")}
         >

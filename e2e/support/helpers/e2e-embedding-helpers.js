@@ -129,6 +129,10 @@ export function getIframeBody(selector = "iframe") {
     .then(cy.wrap);
 }
 
+export function getEmbedModalSharingPane() {
+  return cy.findByTestId("sharing-pane-container");
+}
+
 export function openPublicLinkPopoverFromMenu() {
   cy.icon("share").click();
   cy.findByTestId("embed-header-menu")
@@ -144,12 +148,9 @@ export function openEmbedModalFromMenu() {
 }
 
 export function openStaticEmbeddingModal() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
   openEmbedModalFromMenu();
 
-  cy.get(".Modal--full").findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
+  cy.findByTestId("sharing-pane-static-embed-button").click();
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing

@@ -75,7 +75,7 @@ describe("QuestionPublicLinkPopover", () => {
     setup();
 
     expect(
-      await screen.findByText(`${SITE_URL}/public/question/mock-uuid`),
+      await screen.findByDisplayValue(`${SITE_URL}/public/question/mock-uuid`),
     ).toBeInTheDocument();
   });
 

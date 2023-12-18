@@ -146,9 +146,8 @@ describe("SharingPane", () => {
           ),
         ).toBeInTheDocument();
 
-        expect(screen.getByTestId("public-link-text")).toBeInTheDocument();
-        expect(screen.getByTestId("public-link-text")).toHaveTextContent(
-          /<iframe src="mock-uuid".*<\/iframe>/i,
+        expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
+          /<iframe(\s+)src="mock-uuid".*<\/iframe>/s,
         );
 
         expect(screen.getByTestId("copy-button")).toBeInTheDocument();

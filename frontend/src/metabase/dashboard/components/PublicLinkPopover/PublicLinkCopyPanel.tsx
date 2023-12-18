@@ -4,10 +4,8 @@ import {
   ExtensionOption,
   RemoveLinkAnchor,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
-import type { exportFormats } from "metabase/lib/urls";
 import { Box, Group, Stack, Text, TextInput, Tooltip } from "metabase/ui";
-
-export type ExportFormatType = typeof exportFormats[number] | null;
+import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -32,6 +30,7 @@ export const PublicLinkCopyPanel = ({
     <Stack>
       <TextInput
         readOnly
+        data-testid="public-link-input"
         placeholder={loading ? t`Loading…` : undefined}
         value={url ?? undefined}
         inputWrapperOrder={["label", "input", "error", "description"]}

@@ -86,11 +86,15 @@ describe("AdminEmbedMenu", () => {
       expect(
         screen.getByText("Anyone can view this if you give them the link."),
       ).toBeInTheDocument();
-      expect(screen.getByTestId("public-link-text")).toHaveTextContent(
-        /public\/dashboard\/mock-uuid/,
-      );
+
+      const inputValue = screen
+        .getByTestId("public-link-input")
+        .getAttribute("value");
+
+      expect(inputValue).toMatch(/\/public\/dashboard\/mock-uuid/i);
+
       expect(screen.getByTestId("copy-button")).toBeInTheDocument();
-      expect(screen.getByText("Remove this public link")).toBeInTheDocument();
+      expect(screen.getByText("Remove public link")).toBeInTheDocument();
     });
 
     it("should open the embed modal when `Embed` is clicked", async () => {
