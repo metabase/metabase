@@ -60,7 +60,9 @@ export function FilterModal({
   );
 
   const handleInput = () => {
-    setIsChanged(true);
+    if (!isChanged) {
+      setIsChanged(true);
+    }
   };
 
   const handleChange = (newQuery: Lib.Query) => {
@@ -290,7 +292,10 @@ function TabPanelColumnItem({
   onInput,
 }: TabPanelColumnItemProps) {
   const { column, stageIndex } = columnItem;
-  const currentFilters = findColumnFilters(query, stageIndex, column);
+  const currentFilters = useMemo(
+    () => findColumnFilters(query, stageIndex, column),
+    [query, stageIndex, column],
+  );
   const [initialFilterCount] = useState(currentFilters.length);
   const visibleFilters = findVisibleFilters(currentFilters, initialFilterCount);
 

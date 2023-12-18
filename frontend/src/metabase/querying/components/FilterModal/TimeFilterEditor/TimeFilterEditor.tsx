@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import { Flex, Grid, Text, TimeInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
@@ -19,9 +19,8 @@ export function TimeFilterEditor({
   onChange,
   onInput,
 }: FilterEditorProps) {
-  const columnIcon = useMemo(() => {
-    return getColumnIcon(column);
-  }, [column]);
+  const columnIcon = useMemo(() => getColumnIcon(column), [column]);
+  const [isFocused, setIsFocused] = useState(false);
 
   const {
     operator,
@@ -45,10 +44,19 @@ export function TimeFilterEditor({
 
   const handleInputChange = (newValues: TimeValue[]) => {
     setValues(newValues);
-    onInput();
+    if (isFocused) {
+      onInput();
+    } else {
+      onChange(getFilterClause(operator, newValues));
+    }
+  };
+
+  const handleInputFocus = () => {
+    setIsFocused(true);
   };
 
   const handleInputBlur = () => {
+    setIsFocused(false);
     onChange(getFilterClause(operator, values));
   };
 
@@ -75,6 +83,7 @@ export function TimeFilterEditor({
           values={values}
           valueCount={valueCount}
           onChange={handleInputChange}
+          onFocus={handleInputFocus}
           onBlur={handleInputBlur}
         />
       </Grid.Col>
@@ -86,6 +95,7 @@ interface TimeValueInputProps {
   values: TimeValue[];
   valueCount: number;
   onChange: (values: TimeValue[]) => void;
+  onFocus: () => void;
   onBlur: () => void;
 }
 
@@ -93,6 +103,7 @@ function TimeValueInput({
   values,
   valueCount,
   onChange,
+  onFocus,
   onBlur,
 }: TimeValueInputProps) {
   if (valueCount === 1) {
@@ -102,6 +113,7 @@ function TimeValueInput({
         value={value}
         clearable
         onChange={newValue => onChange([newValue])}
+        onFocus={onFocus}
         onBlur={onBlur}
       />
     );
@@ -115,6 +127,7 @@ function TimeValueInput({
           value={value1}
           clearable
           onChange={newValue1 => onChange([newValue1, value2])}
+          onFocus={onFocus}
           onBlur={onBlur}
         />
         <Text mx="sm">{t`and`}</Text>
@@ -122,6 +135,7 @@ function TimeValueInput({
           value={value2}
           clearable
           onChange={newValue2 => onChange([value1, newValue2])}
+          onFocus={onFocus}
           onBlur={onBlur}
         />
       </Flex>
