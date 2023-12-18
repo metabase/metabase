@@ -92,6 +92,7 @@ modules/drivers/*/.lsp/*
 
 # clj-kondo: ignore all excepts our defined config
 .clj-kondo/*
+!.clj-kondo/README.md
 !.clj-kondo/config.edn
 !.clj-kondo/hooks/
 !.clj-kondo/macros/
