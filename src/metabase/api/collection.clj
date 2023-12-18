@@ -150,6 +150,18 @@
         colls-with-details (map collection/personal-collection-with-ui-details colls)]
     (collection/collections->tree coll-type-ids colls-with-details)))
 
+(api/defendpoint GET "/list"
+  [location]
+  {location ms/NonBlankString}
+  (->> (t2/select Collection
+                  {:where [:and
+                           [:= :location location]
+                           [:= :archived false]
+                           (perms/audit-namespace-clause :namespace nil)
+                           (collection/visible-collection-ids->honeysql-filter-clause
+                            :id (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+   (remove-other-users-personal-collections api/*current-user-id*)
+   (map collection/personal-collection-with-ui-details)))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
