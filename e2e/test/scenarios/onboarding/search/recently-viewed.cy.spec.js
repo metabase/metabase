@@ -53,6 +53,18 @@ describe("search > recently viewed", () => {
 
     cy.url().should("match", /\/question\/\d+-orders$/);
   });
+
+  it("shows up-to-date list of recently viewed items after another page is visited", () => {
+    openPeopleTable();
+    cy.findByTextEnsureVisible("Address");
+
+    cy.findByPlaceholderText("Search…").click();
+    // cy.findByTestId("loading-spinner").should("not.exist");
+
+    assertRecentlyViewedItem(0, "People", "Table");
+    assertRecentlyViewedItem(1, "Orders in a dashboard", "Dashboard");
+    assertRecentlyViewedItem(2, "Orders", "Question");
+  });
 });
 
 describeEE("search > recently viewed > enterprise features", () => {
