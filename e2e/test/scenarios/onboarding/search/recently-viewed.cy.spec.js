@@ -54,7 +54,7 @@ describe("search > recently viewed", () => {
     cy.url().should("match", /\/question\/\d+-orders$/);
   });
 
-  it("shows up-to-date list of recently viewed items after another page is visited", () => {
+  it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
     openPeopleTable();
     cy.findByTextEnsureVisible("Address");
 
