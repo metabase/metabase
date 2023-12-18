@@ -10,22 +10,27 @@ const getValue = (value: string, type: string) => {
   return value;
 };
 
-interface SettingInputProps {
+type Value = string | number | null;
+
+export interface SettingInputProps {
   setting: {
     key: string;
     value: string | null;
     default?: string;
     placeholder?: string;
   };
-  onChange: (value: string | number | null) => void;
+  onChange: (value: Value) => void;
   autoFocus?: boolean;
   fireOnChange?: boolean;
   errorMessage?: string;
   id?: string;
   type?: string;
+  normalize?: (value: Value) => Value;
 }
 
-const SettingInput = ({
+const identity = (value: Value) => value;
+
+export const SettingInput = ({
   setting,
   onChange,
   autoFocus,
@@ -33,10 +38,11 @@ const SettingInput = ({
   fireOnChange,
   id,
   type = "text",
+  normalize = identity,
 }: SettingInputProps) => {
   const changeHandler = (e: { target: HTMLInputElement }) => {
     const value = getValue(e.target.value, type);
-    onChange(value);
+    onChange(normalize(value));
   };
 
   return (
@@ -45,6 +51,7 @@ const SettingInput = ({
         SettingsInput: type !== "password",
         SettingsPassword: type === "password",
       })}
+      normalize={normalize}
       size="large"
       error={!!errorMessage}
       id={id}
