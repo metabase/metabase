@@ -68,9 +68,9 @@ export type JsonQuery = DatasetQuery & {
 
 export interface Dataset {
   data: DatasetData;
-  database_id?: DatabaseId;
+  database_id: DatabaseId;
   row_count: number;
-  running_time?: number;
+  running_time: number;
   json_query?: JsonQuery;
   error_type?: string;
   error?: {
