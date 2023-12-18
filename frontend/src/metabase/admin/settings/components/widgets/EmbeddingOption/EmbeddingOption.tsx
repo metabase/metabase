@@ -18,6 +18,12 @@ interface EmbeddingOptionProps {
   };
 }
 
+const interactiveEmbedQuickStartOSSLink =
+  "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta";
+
+const interactiveEmbedQuickStartEELink =
+  "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-ee-cta";
+
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
   const settingValue = useSelector(state =>
@@ -61,14 +67,20 @@ const StaticEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
 };
 
 const InteractiveEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
-  const isFullAppEnabled = PLUGIN_EMBEDDING.isEnabled();
+  const isEE = PLUGIN_EMBEDDING.isEnabled();
 
-  if (isFullAppEnabled) {
-    return (
-      <>
-        <ExternalLink href="https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta">
-          {t`Check out our Quick Start`}
-        </ExternalLink>
+  return (
+    <>
+      <ExternalLink
+        href={
+          isEE
+            ? interactiveEmbedQuickStartEELink
+            : interactiveEmbedQuickStartOSSLink
+        }
+      >
+        {t`Check out our Quick Start`}
+      </ExternalLink>
+      {isEE ? (
         <Button
           component={Link}
           to={"/admin/settings/embedding-in-other-applications/full-app"}
@@ -76,20 +88,16 @@ const InteractiveEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
         >
           {t`Configure`}
         </Button>
-      </>
-    );
-  } else {
-    return (
-      <>
+      ) : (
         <Button
           component={ExternalLink}
           href="https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
         >
           {t`Learn more`}
         </Button>
-      </>
-    );
-  }
+      )}
+    </>
+  );
 };
 
 const Icons = {
