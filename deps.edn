@@ -234,6 +234,8 @@
     lambdaisland/deep-diff2      {:mvn/version "2.10.211"}                  ; way better diffs
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
+    peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
+                                  :sha "7a191b11f1ed07a76834fc581b81140131eee03f"} ; mocking Ring requests; update to upstream when it merges changes
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure

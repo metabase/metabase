@@ -2,35 +2,109 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.api :as api.serialization]
    [metabase.models :refer [Card Collection Dashboard]]
-   [metabase.test :as mt])
+   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
-   (java.io File ByteArrayOutputStream)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream)))
 
 (set! *warn-on-reflection* true)
 
-(defn- entries [^TarArchiveInputStream tar]
-  (lazy-seq
-   (when-let [entry (.getNextEntry tar)]
-     (cons entry (entries tar)))))
+(defn open-tar ^TarArchiveInputStream [f]
+  (-> (io/input-stream f)
+      (GzipCompressorInputStream.)
+      (TarArchiveInputStream.)))
+
+(def entries #(#'api.serialization/entries %))
+
+(defn file-type [fname]
+  (condp re-find fname
+    #"/$"                                   :dir
+    #"/settings.yaml$"                      :settings
+    #"/export.log$"                         :log
+    #"/collections/.*/cards/.*\.yaml$"      :card
+    #"/collections/.*/dashboards/.*\.yaml$" :dashboard
+    #"/collections/.*\.yaml$"               :collection
+    #"/snippets/.*\.yaml"                   :snippet
+    #"/databases/.*/schemas/"               :schema
+    #"/databases/.*\.yaml"                  :database
+    fname))
 
 (deftest export-test
-  (testing "POST /api/ee/serialization/export"
-    (mt/with-temp [Collection {coll :id} {}
-                   Dashboard  {_dash :id} {:collection_id coll}
-                   Card       {_card :id} {:collection_id coll}]
-      (let [f (mt/user-http-request :rasta :post 200  "ee/serialization/export" {}
-                                    :collection coll :data-model  false :settings false)]
-        (is (instance? File f))
+  (testing "Serialization API export"
+    (testing "Should require a token with `:serialization`"
+      (premium-features-test/with-premium-features #{}
+        (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+               (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))
+    (premium-features-test/with-premium-features #{:serialization}
+      (testing "POST /api/ee/serialization/export"
+        (mt/with-temp [Collection coll  {}
+                       Dashboard  _dash {:collection_id (:id coll)}
+                       Card       _card {:collection_id (:id coll)}]
+          (testing "API respects parameters"
+            (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                          :all-collections false :data-model false :settings true)]
+              (is (= #{:log :dir :settings}
+                     (with-open [tar (open-tar f)]
+                       (->> (entries tar)
+                            (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
+                            set))))))
 
-        (with-open [tar (-> (io/input-stream f)
-                            (GzipCompressorInputStream.)
-                            (TarArchiveInputStream.))]
-          (doseq [^TarArchiveEntry e (entries tar)]
-            (cond
-              (re-find #"/log.txt$" (.getName e))
-              (let [s (ByteArrayOutputStream.)]
-                (io/copy tar s)
-                (is (= 3 (count (re-seq #"\n" (.toString s "UTF-8")))))))))))))
+          (testing "We can export just a single collection"
+            (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                          :collection (:id coll) :data-model false :settings false)]
+              (is (= #{:log :dir :dashboard :card :collection}
+                     (with-open [tar (open-tar f)]
+                       (->> (entries tar)
+                            (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
+                            set))))))
+
+          (testing "Default export: all-collections, data-model, settings"
+            (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
+              (is (= #{:log :dir :dashboard :card :collection :snippet :settings :schema :database}
+                     (with-open [tar (open-tar f)]
+                       (->> (entries tar)
+                            (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
+                            set)))))))))))
+
+(deftest export-import-test
+  (testing "Serialization API e2e"
+    (premium-features-test/with-premium-features #{:serialization}
+      (testing "POST /api/ee/serialization/export"
+        (mt/with-temp [Collection coll  {}
+                       Dashboard  _dash {:collection_id (:id coll)}
+                       Card       card  {:collection_id (:id coll)}]
+          (let [f      (mt/user-http-request :crowberto :post 200  "ee/serialization/export" {}
+                                             :collection (:id coll) :data-model false :settings false)
+                files* (atom [])]
+            (with-open [tar (open-tar f)]
+              (doseq [^TarArchiveEntry e (entries tar)]
+                (when (.isFile e)
+                  (swap! files* conj (.getName e)))
+                (condp re-find (.getName e)
+                  #"/export.log$" (testing "Three lines in a log for data files"
+                                    (is (= 3 (count (line-seq (io/reader tar))))))
+                  nil)))
+
+            (testing "We get only our data and a log file in an archive"
+              (is (= 4 (count @files*))))
+
+            (testing "POST /api/ee/serialization/import"
+              (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
+
+              (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
+                                              {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                              {:file f})]
+                (testing "We get our data items back"
+                  (is (= #{:collection :dashboard :card :database}
+                         (->> (line-seq (io/reader res))
+                              (keep #(second (re-find #"Loading (\w+)" %)))
+                              (map (comp keyword u/lower-case-en))
+                              set))))
+                (testing "And they hit the db"
+                  (is (= (:name card)
+                         (t2/select-one-fn :name :model/Card :id (:id card)))))))))))))

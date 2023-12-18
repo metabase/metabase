@@ -4,18 +4,24 @@
    [compojure.core :refer [POST]]
    [java-time.api :as t]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.api.common :as api]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.logger :as logger]
+   [metabase.models.serialization :as serdes]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.io File)
    (java.lang AutoCloseable)
-   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
-   (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream GzipParameters)
+   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream TarArchiveOutputStream)
+   (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream GzipCompressorOutputStream GzipParameters)
+   (org.apache.logging.log4j Level)
    (org.apache.logging.log4j.core.appender AbstractAppender FileAppender)
    (org.apache.logging.log4j.core.config AbstractConfiguration LoggerConfig)))
 
@@ -46,10 +52,30 @@
           (with-open [s (io/input-stream f)]
             (io/copy s tar)))
         (.closeArchiveEntry tar)))
-
     dst))
 
-(defn- find-logger-layout [^LoggerConfig logger]
+(defn- entries [^TarArchiveInputStream tar]
+  (lazy-seq
+   (when-let [entry (.getNextEntry tar)]
+     (cons entry (entries tar)))))
+
+(defn- uncompress-tgz [^File archive ^File dst]
+  (let [dir-name (atom nil)]
+    (with-open [tar (-> (io/input-stream archive)
+                        (GzipCompressorInputStream.)
+                        (TarArchiveInputStream.))]
+      (doseq [^TarArchiveEntry e (entries tar)]
+        (when-not @dir-name
+          (reset! dir-name (.getName e)))
+        (let [f (io/file dst (.getName e))]
+          (if (.isFile e)
+            (io/copy tar f)
+            (.mkdirs f)))))
+    @dir-name))
+
+(defn- find-logger-layout
+  "Find any logger with a specified layout"
+  [^LoggerConfig logger]
   (when logger
     (or (first (keep #(.getLayout ^AbstractAppender (val %)) (.getAppenders logger)))
         (recur (.getParent logger)))))
@@ -62,9 +88,7 @@
                          (.withName (.getPath f))
                          (.withFileName (.getPath f))
                          (.withLayout (find-logger-layout parent-logger))))
-        logger        (LoggerConfig. (logger/logger-name ns)
-                                     (.getLevel parent-logger)
-                                     true)]
+        logger        (LoggerConfig. (logger/logger-name ns) Level/INFO true)]
     (.start appender)
     (.addAppender config appender)
     (.addAppender logger appender (.getLevel logger) nil)
@@ -82,19 +106,37 @@
 
 (defn- serialize&pack ^File [opts]
   ;; TODO: how to get time in local timezone?
-  (let [id     (str (u/slugify (public-settings/site-name)) "-"
-                    (u.date/format "YYYY-MM-dd_hh-mm" (t/zoned-date-time)))
+  (let [id     (format "%s-%s"
+                       (u/slugify (public-settings/site-name))
+                       (u.date/format "YYYY-MM-dd_hh-mm" (t/zoned-date-time)))
         path   (io/file parent-dir id)
-        dest   (io/file (str (.getPath path) ".tgz"))]
-    (with-open [_logger (make-logger 'metabase-enterprise.serialization (io/file path "log.txt"))]
+        dest   (io/file (str (.getPath path) ".tar.gz"))]
+    (with-open [_logger (make-logger 'metabase-enterprise.serialization (io/file path "export.log"))]
       (-> (extract/extract opts)
           (storage/store! path)))
     (compress-tgz path dest)
     (run! io/delete-file (reverse (file-seq path)))
     dest))
 
+(defn- unpack&import [^File file & [size]]
+  (let [dst      (io/file parent-dir (apply str (repeatedly 20 #(char (+ 65 (rand-int 26))))))
+        log-file (io/file (str dst ".import.log"))]
+    (try
+      (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
+        (log/infof "Serdes import, size %s" size)
+        (let [path (uncompress-tgz file dst)]
+          (serdes/with-cache
+            (-> (v2.ingest/ingest-yaml (.getPath (io/file dst path)))
+                (v2.load/load-metabase! {:abort-on-error true})))))
+      (finally
+        (when (.exists dst)
+          (run! io/delete-file (reverse (file-seq dst))))))
+    log-file))
+
 (comment
-  (serialize&pack {:no-data-model true :no-settings true :targets [["Collection" 31409]]}))
+  ;; dump on disk and see that it works
+  (serialize&pack {:no-data-model true :no-settings true :targets [["Collection" 31409]]})
+  (unpack&import (io/file "metabase_test.tar.gz")))
 
 (api/defendpoint POST "/export"
   "Serialize and retrieve Metabase data."
@@ -110,6 +152,7 @@
    field-values     [:maybe ms/BooleanValue]
    database-secrets [:maybe ms/BooleanValue]
    logs             [:maybe ms/NonBlankString]}
+  (api/check-superuser)
   (let [collection (cond (vector? collection) collection collection [collection])
         opts       {:targets                  (mapv #(vector "Collection" %)
                                                     collection)
@@ -125,4 +168,16 @@
                "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName archive))}
      :body    archive}))
 
-(api/define-routes #_+auth)
+(api/defendpoint ^:multipart POST "/import"
+  [:as {raw-params :params}]
+  (api/check-superuser)
+  (try
+    (let [log-file (unpack&import (get-in raw-params ["file" :tempfile])
+                                  (get-in raw-params ["file" :size]))]
+      {:status  200
+       :headers {"Content-Type" "text/plain"}
+       :body    log-file})
+    (finally
+      (io/delete-file (get-in raw-params ["file" :tempfile])))))
+
+(api/define-routes +auth)
