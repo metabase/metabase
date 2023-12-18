@@ -183,13 +183,13 @@ describe("scenarios > search", () => {
         description: `![alt](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg)
 
         Lorem ipsum dolor sit amet.
-
+        
         ----
-
+        
         ## Heading 1
-
+        
         This is a [link](https://upload.wikimedia.org/wikipedia/commons/a/a2/Cat_outside.jpg).
-
+        
         Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. `,
       }).then(() => {
         cy.signInAsNormalUser();
@@ -208,7 +208,6 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
   });
-
   describe("accessing full page search with `Enter`", () => {
     it("should not render full page search if user has not entered a text query", () => {
       cy.intercept("GET", "/api/activity/recent_views").as("getRecentViews");
