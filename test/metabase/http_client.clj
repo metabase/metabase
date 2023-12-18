@@ -63,6 +63,22 @@
          (when (seq query-parameters)
            (str "?" (build-query-string query-parameters))))))
 
+(defn- build-body-params [http-body content-type]
+  (when http-body
+    (cond
+      (string? http-body)
+      {:body (ByteArrayInputStream. (.getBytes ^String http-body "UTF-8"))}
+
+      (= "application/json" content-type)
+      {:body (ByteArrayInputStream. (.getBytes (json/generate-string http-body) "UTF-8"))}
+
+      (= "multipart/form-data" content-type)
+      (peridot.multipart/build http-body)
+
+      :else
+      (throw (ex-info "If you want this content-type to work, improve me"
+                      {:content-type content-type})))))
+
 ;;; parse-response
 
 (def ^:private auto-deserialize-dates-keys
@@ -153,18 +169,19 @@
 (defn build-request-map
   "Build the request map we ultimately pass to [[clj-http.client]]. Add user credential headers, specify JSON encoding,
   and encode body as JSON."
-  [credentials http-body]
-  (merge
-   {:accept       :json
-    :headers      {@#'mw.session/metabase-session-header
-                   (when credentials
-                     (if (map? credentials)
-                       (authenticate credentials)
-                       credentials))}
-    :cookie-policy :standard
-    :content-type :json}
-   (when (seq http-body)
-     {:body (json/generate-string http-body)})))
+  [credentials http-body request-options]
+  (let [content-type (or (get-in request-options [:headers "content-type"]) "application/json")]
+    (merge-with merge
+                {:accept        :json
+                 :headers       {"content-type" content-type
+                                 @#'mw.session/metabase-session-header
+                                 (when credentials
+                                   (if (map? credentials)
+                                     (authenticate credentials)
+                                     credentials))}
+                 :cookie-policy :standard}
+                request-options
+                (build-body-params http-body content-type))))
 
 (defn- check-status-code
   "If an `expected-status-code` was passed to the client, check that the actual status code matches, or throw an
@@ -210,7 +227,7 @@
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
-        request-map (merge (build-request-map credentials http-body) request-options)
+        request-map (build-request-map credentials http-body request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))
@@ -280,33 +297,19 @@
         url              (cond->> (first (str/split url #"\?")) ;; strip out the query param parts if any
                            (not= (first url) \/)
                            (str "/"))
-        content-type     (or (get-in request-options [:headers "content-type"]) "application/json")
-        body-params      (when http-body
-                           (cond
-                             (string? http-body)
-                             {:body (ByteArrayInputStream. (.getBytes ^String http-body "UTF-8"))}
-
-                             (= "application/json" content-type)
-                             {:body (ByteArrayInputStream. (.getBytes (json/generate-string http-body) "UTF-8"))}
-
-                             (= "multipart/form-data" content-type)
-                             (peridot.multipart/build http-body)
-
-                             :else
-                             (throw (ex-info "If you want this content-type to work, improve me"
-                                             {:content-type content-type}))))]
+        content-type     (or (get-in request-options [:headers "content-type"]) "application/json")]
     (merge-with merge
-     {:accept         "json"
-      :headers        {"content-type"                        content-type
-                       @#'mw.session/metabase-session-header (when credentials
-                                                               (if (map? credentials)
-                                                                 (authenticate credentials)
-                                                                 credentials))}
-      :query-string   (build-query-string query-parameters)
-      :request-method method
-      :uri            (str *url-prefix* url)}
-     request-options
-     body-params)))
+                {:accept         "json"
+                 :headers        {"content-type"                        content-type
+                                  @#'mw.session/metabase-session-header (when credentials
+                                                                          (if (map? credentials)
+                                                                            (authenticate credentials)
+                                                                            credentials))}
+                 :query-string   (build-query-string query-parameters)
+                 :request-method method
+                 :uri            (str *url-prefix* url)}
+                request-options
+                (build-body-params http-body content-type))))
 
 (mu/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
