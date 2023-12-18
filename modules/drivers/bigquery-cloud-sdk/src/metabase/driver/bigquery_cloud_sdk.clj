@@ -90,22 +90,6 @@
                          .iterator
                          iterator-seq))))))
 
-(defmethod driver/describe-database :bigquery-cloud-sdk
-  [_ database]
-  (let [tables (list-tables (:details database))]
-    {:tables (set (for [^Table table tables
-                        :let  [^TableId         table-id   (.getTableId table)
-                               ^String          dataset-id (.getDataset table-id)
-                               ^TableDefinition tabledef   (.getDefinition table)]]
-                    {:schema                  dataset-id
-                     :name                    (.getTable table-id)
-                     :database_require_filter (boolean
-                                               (and
-                                                (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
-                                                 (. tabledef getType))
-                                                (some some? [(.getRangePartitioning tabledef)
-                                                             (.getTimePartitioning tabledef)])))}))}))
-
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
   ;; check whether we can connect by seeing whether listing tables succeeds
@@ -130,6 +114,30 @@
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
+
+(defmethod driver/describe-database :bigquery-cloud-sdk
+  [_ database]
+  (let [tables (list-tables (:details database))]
+    {:tables (set (for [^Table table tables
+                        :let  [^TableId         table-id   (.getTableId table)
+                               ^String          dataset-id (.getDataset table-id)
+                               ^TableDefinition tabledef   (.getDefinition table)]]
+                    {:schema                  dataset-id
+                     :name                    (.getTable table-id)
+                     :database_require_filter
+                     (boolean
+                      (and
+                       (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
+                        (. tabledef getType))
+                       (when (or (.getRangePartitioning tabledef)
+                                 (.getTimePartitioning tabledef))
+                         ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
+                         ;; on the `table` object from `list-tables` will return `nil` even though the table require a
+                         ;; partition filter.
+                         ;; This is probably an upstream bug where the v2 API is incomplete when setting object values
+                         ;; see https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
+                         ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
+                         (.getRequirePartitionFilter (get-table database dataset-id (.getTable table-id))))))}))}))
 
 (defn- bigquery-type->base-type
   "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
@@ -243,17 +251,15 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
-
-
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    ;; We couldn't easily test if the following two can show up as
-    ;; tables and if `.list` is supported for them, so they are here
-    ;; to make sure we don't break existing instances.
     (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
            TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+         ;; We couldn't easily test if the following two can show up as
+         ;; tables and if `.list` is supported for them, so they are here
+         ;; to make sure we don't break existing instances.
          (.. bq-table getDefinition getType))
       (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
