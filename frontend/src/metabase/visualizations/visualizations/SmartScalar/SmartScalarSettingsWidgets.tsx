@@ -3,6 +3,10 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
+import type {
+  SelectedComparison,
+  SelectedComparisonPeriodsAgo,
+} from "metabase-types/api";
 import { COMPARISON_TYPES } from "./utils";
 import {
   MenuItemStyled,
@@ -10,11 +14,7 @@ import {
   NumberInputStyled,
 } from "./SmartScalarSettingsWidgets.styled";
 
-import type {
-  ComparisonMenuOption,
-  SelectedComparison,
-  SelectedComparisonPeriodsAgo,
-} from "./utils";
+import type { ComparisonMenuOption } from "./utils";
 
 interface SmartScalarComparisonWidgetProps {
   onChange: (setting: { type: string; value?: number }) => void;

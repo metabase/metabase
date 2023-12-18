@@ -86,9 +86,6 @@ export const COMPARISON_TYPES = {
   PERIODS_AGO: "periodsAgo",
 } as const;
 
-export type ComparisonTypes =
-  typeof COMPARISON_TYPES[keyof typeof COMPARISON_TYPES];
-
 export const COMPARISON_SELECTOR_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
@@ -123,21 +120,6 @@ export type ComparisonMenuOption =
   | PreviousValueMenuOption
   | PreviousPeriodMenuOption
   | PeriodsAgoMenuOption;
-
-export type SelectedComparisonPeriodsAgo = {
-  type: typeof COMPARISON_TYPES.PERIODS_AGO;
-  value: number;
-};
-type SelectedComparisonPreviousPeriod = {
-  type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
-};
-type SelectedComparisonCompareToPrevious = {
-  type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
-};
-export type SelectedComparison =
-  | SelectedComparisonCompareToPrevious
-  | SelectedComparisonPreviousPeriod
-  | SelectedComparisonPeriodsAgo;
 
 export function getDefaultComparison(
   series: RawSeries,
