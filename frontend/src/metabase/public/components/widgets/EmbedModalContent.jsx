@@ -1,19 +1,16 @@
-/* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
 
 import _ from "underscore";
-import { Icon } from "metabase/core/components/Icon";
 
+import PropTypes from "prop-types";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import { SharingPane } from "./SharingPane";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
-import { EmbedTitleLabel } from "./EmbedModalContent.styled";
+import { SharingPane } from "./SharingPane";
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
@@ -115,10 +112,7 @@ class EmbedModalContent extends Component {
     );
 
     return embedType == null ? (
-      <SharingPane
-        {...this.props}
-        onChangeEmbedType={embedType => setEmbedType(embedType)}
-      />
+      <SharingPane {...this.props} onChangeEmbedType={setEmbedType} />
     ) : embedType === "application" ? (
       <div className="flex flex-full" style={{ height: "100%" }}>
         <AdvancedEmbedPane
@@ -174,6 +168,22 @@ class EmbedModalContent extends Component {
   }
 }
 
+EmbedModalContent.propTypes = {
+  resource: PropTypes.object.isRequired,
+  resourceType: PropTypes.string,
+  resourceParameters: PropTypes.array.isRequired,
+
+  siteUrl: PropTypes.string.isRequired,
+  secretKey: PropTypes.string.isRequired,
+
+  onCreatePublicLink: PropTypes.func,
+  onUpdateEnableEmbedding: PropTypes.func,
+  onUpdateEmbeddingParams: PropTypes.func,
+
+  embedType: PropTypes.string,
+  setEmbedType: PropTypes.func.isRequired,
+};
+
 function getDefaultEmbeddingParams(props) {
   const { resource, resourceParameters } = props;
 
@@ -188,13 +198,5 @@ function filterValidResourceParameters(embeddingParams, resourceParameters) {
 
   return _.pick(embeddingParams, validParameters);
 }
-
-export const EmbedTitle = ({ type, onClick = undefined }) => (
-  <a className="flex align-center" onClick={onClick}>
-    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
-    {type && <Icon name="chevronright" className="mx1 text-medium" />}
-    {type}
-  </a>
-);
 
 export default connect(mapStateToProps)(EmbedModalContent);

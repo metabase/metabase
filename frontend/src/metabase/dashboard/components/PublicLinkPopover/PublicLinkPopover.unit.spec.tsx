@@ -1,12 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
-import type {
-  ExportFormatType,
-  PublicLinkPopoverProps,
-} from "./PublicLinkPopover";
+import type { PublicLinkPopoverProps } from "./PublicLinkPopover";
 import { PublicLinkPopover } from "./PublicLinkPopover";
 
 // https://github.com/nkbt/react-copy-to-clipboard/issues/106#issuecomment-605227151
@@ -99,7 +97,9 @@ describe("PublicLinkPopover", () => {
       expect(
         screen.getByText("Anyone can view this if you give them the link."),
       ).toBeInTheDocument();
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
     });
 
     it("should render public link information for non-admins", async () => {
@@ -109,7 +109,9 @@ describe("PublicLinkPopover", () => {
       expect(
         screen.getByText("Anyone can view this if you give them the link."),
       ).toBeInTheDocument();
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
     });
 
     it("should render `Remove public link` and warning tooltip for admins", async () => {
@@ -166,7 +168,9 @@ describe("PublicLinkPopover", () => {
       userEvent.click(screen.getByTestId("target"));
 
       expect(createPublicLink).not.toHaveBeenCalled();
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -189,7 +193,9 @@ describe("PublicLinkPopover", () => {
     it("should allow admins to copy the link to the clipboard", async () => {
       setup({ hasUUID: true, isOpen: true });
 
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByLabelText("copy icon"));
 
@@ -199,7 +205,9 @@ describe("PublicLinkPopover", () => {
     it("should allow non-admins to copy the link to the clipboard", async () => {
       setup({ hasUUID: true, isOpen: true, isAdmin: false });
 
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByLabelText("copy icon"));
 
@@ -215,10 +223,14 @@ describe("PublicLinkPopover", () => {
         await screen.findByTestId("public-link-popover-content"),
       ).toBeInTheDocument();
 
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByText("csv"));
-      expect(screen.getByText("sample-public-link.csv")).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("sample-public-link.csv"),
+      ).toBeInTheDocument();
     });
 
     it("should remove the extension when the extension is clicked on again", async () => {
@@ -228,14 +240,20 @@ describe("PublicLinkPopover", () => {
         await screen.findByTestId("public-link-popover-content"),
       ).toBeInTheDocument();
 
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByText("csv"));
-      expect(screen.getByText("sample-public-link.csv")).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("sample-public-link.csv"),
+      ).toBeInTheDocument();
 
       userEvent.click(screen.getByText("csv"));
 
-      expect(await screen.findByText("sample-public-link")).toBeInTheDocument();
+      expect(
+        await screen.findByDisplayValue("sample-public-link"),
+      ).toBeInTheDocument();
     });
   });
 });

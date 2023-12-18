@@ -2,8 +2,10 @@
   "Tests for `/api/permissions` endpoints."
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.permissions :as api.permissions]
+   [metabase.api.permissions-test-util :as perm-test-util]
    [metabase.config :as config]
    [metabase.models
     :refer [Database
@@ -156,6 +158,28 @@
     (testing "make sure a non-admin cannot fetch the perms graph from the API"
       (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
+(deftest fetch-perms-graph-by-group-id-test
+  (testing "GET /api/permissions/graph"
+    (testing "make sure we can fetch the perms graph from the API"
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id :as group}    {}
+                               Database         db                          {}]
+        (perms/grant-permissions! group (perms/data-perms-path db))
+        (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/group/%s" group-id))]
+          (is (mc/validate nat-int? (:revision graph)))
+          (is (perm-test-util/validate-graph-api-groups (:groups graph)))
+          (is (= #{group-id} (set (keys (:groups graph))))))))))
+
+(deftest fetch-perms-graph-by-db-id-test
+  (testing "GET /api/permissions/graph"
+    (testing "make sure we can fetch the perms graph from the API"
+      (t2.with-temp/with-temp [PermissionsGroup group       {}
+                               Database         {db-id :id} {}]
+        (perms/grant-permissions! group (perms/data-perms-path db-id))
+        (let [graph (mt/user-http-request :crowberto :get 200 (format "permissions/graph/db/%s" db-id))]
+          (is (mc/validate nat-int? (:revision graph)))
+          (is (perm-test-util/validate-graph-api-groups (:groups graph)))
+          (is (= #{db-id} (->> graph :groups vals (mapcat keys) set))))))))
+
 (deftest fetch-perms-graph-v2-test
   (testing "GET /api/permissions/graph-v2"
     (testing "make sure we can fetch the perms graph from the API"
@@ -231,6 +255,34 @@
                (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id])))
         (is (= {:query {:schemas :all}, :data {:native :write}}
                (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group) db-id])))))))
+
+(deftest update-perms-graph-with-skip-graph-skips-graph-test
+  (testing "PUT /api/permissions/graph"
+    (testing "permissions graph is not returned when skip-graph"
+      (t2.with-temp/with-temp [:model/PermissionsGroup group       {}
+                               :model/Database         {db-id :id} {}]
+        (let [do-perm-put    (fn [url] (mt/user-http-request
+                                        :crowberto :put 200 url
+                                        (assoc-in (perms/data-perms-graph)
+                                                  ;; Get a new revision number each time
+                                                  [:groups (u/the-id group) db-id :data :schemas] :all)))
+              returned-g     (do-perm-put "permissions/graph")
+              returned-g-two (do-perm-put "permissions/graph?skip-graph=false")
+              no-returned-g  (do-perm-put "permissions/graph?skip-graph=true")]
+
+          (testing "returned-g"
+            (is (perm-test-util/validate-graph-api-groups (:groups returned-g)))
+            (is (mc/validate [:map [:revision pos-int?]] returned-g)))
+
+          (testing "return-g-two"
+            (is (perm-test-util/validate-graph-api-groups (:groups returned-g-two)))
+            (is (mc/validate [:map [:revision pos-int?]] returned-g-two)))
+
+          (testing "no returned g"
+            (is (not (perm-test-util/validate-graph-api-groups (:groups no-returned-g))))
+            (is (mc/validate [:map {:closed true}
+                              [:revision pos-int?]] no-returned-g))))))))
+
 
 (deftest update-perms-graph-group-has-no-permissions-test
   (testing "PUT /api/permissions/graph"

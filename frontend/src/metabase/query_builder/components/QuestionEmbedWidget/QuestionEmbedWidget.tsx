@@ -1,8 +1,8 @@
 import type { Card } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { publicQuestion } from "metabase/lib/urls";
 import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -27,20 +27,20 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
 
   const dispatch = useDispatch();
   const createPublicQuestionLink = () => dispatch(createPublicLink(card));
-  const disablePublicQuestionLink = () => dispatch(deletePublicLink(card));
+  const deletePublicQuestionLink = () => dispatch(deletePublicLink(card));
   const updateQuestionEnableEmbedding = (enableEmbedding: boolean) =>
     dispatch(updateEnableEmbedding(card, enableEmbedding));
   const updateQuestionEmbeddingParams = (embeddingParams: EmbedOptions) =>
     dispatch(updateEmbeddingParams(card, embeddingParams));
 
-  const getPublicUrl = (
+  const getPublicQuestionUrl = (
     {
       public_uuid,
     }: {
       public_uuid: string;
     },
     extension: ExportFormatType,
-  ) => Urls.publicQuestion({ uuid: public_uuid, type: extension });
+  ) => publicQuestion({ uuid: public_uuid, type: extension });
 
   return (
     <EmbedModal onClose={onClose}>
@@ -54,11 +54,10 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           resourceType="question"
           resourceParameters={getCardUiParameters(card, metadata)}
           onCreatePublicLink={createPublicQuestionLink}
-          onDisablePublicLink={disablePublicQuestionLink}
+          onDeletePublicLink={deletePublicQuestionLink}
           onUpdateEnableEmbedding={updateQuestionEnableEmbedding}
           onUpdateEmbeddingParams={updateQuestionEmbeddingParams}
-          getPublicUrl={getPublicUrl}
-          extensions={Urls.exportFormats}
+          getPublicUrl={getPublicQuestionUrl}
         />
       )}
     </EmbedModal>

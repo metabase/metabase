@@ -37,6 +37,7 @@ export const EmbedWidgetHeader = styled(OptionHeader)`
 interface DescriptionProps {
   enableMouseEvents?: boolean;
 }
+
 export const Description = styled.p<DescriptionProps>`
   margin-top: 0;
   line-height: 1.5;
@@ -44,26 +45,5 @@ export const Description = styled.p<DescriptionProps>`
 
   &:not(:last-of-type) {
     margin-bottom: ${space(2)};
-  }
-`;
-
-interface ExtensionOptionProps {
-  isSelected: boolean;
-}
-
-export const ExtensionOption = styled.span<ExtensionOptionProps>`
-  cursor: pointer;
-  font-weight: bold;
-  text-transform: uppercase;
-  color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
-
-  &:hover {
-    color: ${color("brand")};
-  }
-`;
-
-export const SharingPaneImg = styled.img`
-  &:hover {
-    color: ${color("brand")};
   }
 `;

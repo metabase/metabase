@@ -112,19 +112,26 @@ describe("scenarios > public > question", () => {
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByTestId("public-link-text").contains(PUBLIC_QUESTION_REGEX);
+        cy.findByTestId("public-link-input").then($input =>
+          expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
+        );
         cy.findByText("Remove public URL").should("not.exist");
       });
     });
   });
 
-  it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
+  it("should see a tooltip prompting the user to ask their admin to create a public link", () => {
     cy.signInAsNormalUser();
     cy.get("@questionId").then(id => {
       visitQuestion(id);
     });
 
-    cy.findByTestId("view-footer").icon("share").should("not.exist");
+    cy.findByTestId("view-footer").icon("share").realHover();
+    cy.findByRole("tooltip").within(() => {
+      cy.findByText("Ask your admin to create a public link").should(
+        "be.visible",
+      );
+    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>
@@ -151,8 +158,8 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  cy.findByTestId("public-link-text")
-    .invoke("text")
+  cy.findByTestId("public-link-input")
+    .invoke("val")
     .then(publicURL => {
       // Copied URL has no get params
       expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);

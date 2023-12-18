@@ -148,12 +148,9 @@ export function openEmbedModalFromMenu() {
 }
 
 export function openStaticEmbeddingModal() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
   openEmbedModalFromMenu();
 
   cy.findByTestId("sharing-pane-static-embed-button").click();
-  cy.wait("@sessionProperties");
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing

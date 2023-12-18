@@ -1,7 +1,11 @@
-import { PublicEmbedIconWrapper } from "metabase/public/components/widgets/SharingPane/icons/PublicEmbedIcon/PublicEmbedIcon.styled";
+import { PublicEmbedIconRoot } from "./PublicEmbedIcon.styled";
 
-export const PublicEmbedIcon = () => (
-  <PublicEmbedIconWrapper
+interface PublicEmbedIconProps {
+  disabled: boolean;
+}
+export const PublicEmbedIcon = ({ disabled }: PublicEmbedIconProps) => (
+  <PublicEmbedIconRoot
+    disabled={disabled}
     width="42"
     height="34"
     viewBox="0 0 42 34"
@@ -26,5 +30,5 @@ export const PublicEmbedIcon = () => (
     <rect x="5" y="5" width="30" height="2" className="outerFill" />
     <rect x="5" y="22" width="30" height="2" className="outerFill" />
     <rect x="5" y="26" width="30" height="2" className="outerFill" />
-  </PublicEmbedIconWrapper>
+  </PublicEmbedIconRoot>
 );

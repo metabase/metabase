@@ -502,7 +502,7 @@
                              :semantic_type :type/Number}]})
 
 (deftest sereies-are-compatible-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "area-line-bar charts"
       (t2.with-temp/with-temp
         [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -1817,12 +1817,12 @@
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{(keyword "COUNT(*)") 75}]
+        (is (= [{(keyword "COUNT(*)") "75"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{(keyword "COUNT(*)") 8}]
+        (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
                                      :parameters encoded-params)))))))
 
@@ -2305,7 +2305,7 @@
 
 (deftest pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "POST /api/card/pivot/:card-id/query"
         (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
@@ -2890,7 +2890,7 @@
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "visualization_settings references field by id"
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
                                                     :dataset true}

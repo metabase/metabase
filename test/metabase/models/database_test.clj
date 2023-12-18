@@ -76,7 +76,7 @@
                         :name        "testpg"
                         :details     {}
                         :settings    {:database-enable-actions          true   ; visibility: :public
-                                      :max-unaggregated-query-row-limit 2000}  ; visibility: :authenticated
+                                      :unaggregated-query-row-limit 2000}  ; visibility: :authenticated
                         :id          3})]
     (testing "authenticated users should see settings with authenticated visibility"
       (mw.session/with-current-user
@@ -84,7 +84,7 @@
         (is (= {"description" nil
                 "name"        "testpg"
                 "settings"    {"database-enable-actions"          true
-                               "max-unaggregated-query-row-limit" 2000}
+                               "unaggregated-query-row-limit" 2000}
                 "id"          3}
                (encode-decode pg-db)))))
     (testing "non-authenticated users shouldn't see settings with authenticated visibility"

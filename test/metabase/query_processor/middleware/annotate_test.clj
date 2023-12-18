@@ -821,7 +821,7 @@
 (deftest ^:parallel preserve-original-join-alias-e2e-test
   (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [join-alias "Products with a very long name - Product ID with a very long name"
               results    (mt/run-mbql-query orders
                            {:joins  [{:source-table $$products

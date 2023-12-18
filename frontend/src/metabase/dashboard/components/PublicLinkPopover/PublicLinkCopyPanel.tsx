@@ -1,14 +1,11 @@
 import { t } from "ttag";
 import {
-  LinkContainer,
   PublicLinkCopyButton,
-  PublicLinkTextContainer,
   ExtensionOption,
+  RemoveLinkAnchor,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
-import type { exportFormats } from "metabase/lib/urls";
-import { Anchor, Box, Group, Stack, Text, Tooltip } from "metabase/ui";
-
-export type ExportFormatType = typeof exportFormats[number] | null;
+import { Box, Group, Stack, Text, TextInput, Tooltip } from "metabase/ui";
+import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -31,22 +28,14 @@ export const PublicLinkCopyPanel = ({
 }) => {
   return (
     <Stack>
-      <LinkContainer noWrap p="sm" align="center">
-        {loading ? (
-          <PublicLinkTextContainer>
-            <Text truncate c="text.0">{t`Loading…`}</Text>
-          </PublicLinkTextContainer>
-        ) : (
-          <>
-            <PublicLinkTextContainer>
-              <Text truncate data-testid="public-link-text">
-                {url}
-              </Text>
-            </PublicLinkTextContainer>
-            <PublicLinkCopyButton value={url} />
-          </>
-        )}
-      </LinkContainer>
+      <TextInput
+        readOnly
+        data-testid="public-link-input"
+        placeholder={loading ? t`Loading…` : undefined}
+        value={url ?? undefined}
+        inputWrapperOrder={["label", "input", "error", "description"]}
+        rightSection={<PublicLinkCopyButton value={url} />}
+      />
       {extensions && extensions.length > 0 && (
         <Group my="sm">
           {extensions.map(extension => (
@@ -67,7 +56,7 @@ export const PublicLinkCopyPanel = ({
       )}
       {onRemoveLink && (
         // The box is needed to center the tooltip on the anchor
-        <Box>
+        <Box pos="absolute" mt="sm">
           <Tooltip
             label={
               <Text fw={700} c="inherit">
@@ -75,9 +64,14 @@ export const PublicLinkCopyPanel = ({
               </Text>
             }
           >
-            <Anchor fz="sm" c="error.0" fw={700} onClick={onRemoveLink}>
+            <RemoveLinkAnchor
+              fz="sm"
+              c="error.0"
+              fw={700}
+              onClick={onRemoveLink}
+            >
               {removeButtonLabel}
-            </Anchor>
+            </RemoveLinkAnchor>
           </Tooltip>
         </Box>
       )}

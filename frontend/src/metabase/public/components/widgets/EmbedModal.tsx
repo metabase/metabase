@@ -1,12 +1,29 @@
 import { titleize } from "inflection";
 import { useState } from "react";
 import { t } from "ttag";
-import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
+import { useSelector } from "metabase/lib/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
 import { Box, Center } from "metabase/ui";
+import { EmbedTitleLabel } from "./EmbedModal.styled";
 
 type EmbedModalStep = "application" | null;
+
+const EmbedTitle = ({
+  type,
+  onClick = undefined,
+}: {
+  type: string;
+  onClick?: () => void;
+}) => (
+  <a className="flex align-center" onClick={onClick}>
+    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
+    {type && <Icon name="chevronright" className="mx1 text-medium" />}
+    {type}
+  </a>
+);
 
 export const EmbedModal = ({
   children,
@@ -25,6 +42,7 @@ export const EmbedModal = ({
   }) => JSX.Element;
 } & WindowModalProps) => {
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
+  const applicationName = useSelector(getApplicationName);
 
   const onEmbedClose = () => {
     onClose();
@@ -40,10 +58,13 @@ export const EmbedModal = ({
       title={
         embedType ? (
           <Center>
-            <EmbedTitle type={titleize(embedType)} />
+            <EmbedTitle
+              type={titleize(embedType)}
+              onClick={() => setEmbedType(null)}
+            />
           </Center>
         ) : (
-          t`Embed Metabase`
+          t`Embed ${applicationName}`
         )
       }
       fit={!isFullScreen}

@@ -1,12 +1,10 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { useSelector } from "metabase/lib/redux";
-import type { exportFormats } from "metabase/lib/urls";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Popover, Text, Title } from "metabase/ui";
-
-export type ExportFormatType = typeof exportFormats[number] | null;
 
 export type PublicLinkPopoverProps = {
   target: JSX.Element;
@@ -46,12 +44,17 @@ export const PublicLinkPopover = ({
   };
 
   return (
-    <Popover opened={isOpen} onClose={onClose} position="bottom-end">
+    <Popover opened={isOpen} onClose={onClose} withinPortal>
       <Popover.Target>
-        <div>{target}</div>
+        <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box p="lg" w="28rem" data-testid="public-link-popover-content">
+        <Box
+          p="lg"
+          w="28rem"
+          data-testid="public-link-popover-content"
+          mih={isAdmin ? "10rem" : "auto"}
+        >
           <Title order={4}>{t`Public link`}</Title>
           <Text>{t`Anyone can view this if you give them the link.`}</Text>
           <PublicLinkCopyPanel

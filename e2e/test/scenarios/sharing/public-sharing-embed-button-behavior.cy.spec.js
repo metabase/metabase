@@ -33,23 +33,28 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
             visitResource(resource, id);
           });
 
-          cy.findByTestId("dashboard-embed-button").should("be.disabled");
-          cy.findByTestId("dashboard-embed-button").realHover();
-          cy.findByRole("tooltip", {
-            name: "You must enable Embedding in the settings",
-          }).should("be.visible");
+          cy.findByTestId("dashboard-embed-button").click();
+          cy.findByTestId("embed-header-menu").within(() => {
+            cy.findByTestId("embed-menu-embed-modal-item").should(
+              "be.disabled",
+            );
+            cy.findByText("Embedding is off").should("be.visible");
+            cy.findByText("Enable it in settings").should("be.visible");
+          });
         });
       });
 
       describe("when user is non-admin", () => {
-        it(`should not show the embed button for ${resource}`, () => {
+        it(`should show disabled embed button and tooltip for ${resource}`, () => {
           cy.signInAsNormalUser();
 
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("dashboard-embed-button").should("not.exist");
+          expectDisabledButtonWithTooltipLabel(
+            "Ask your admin to create a public link",
+          );
         });
       });
     });
@@ -83,21 +88,23 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-text").should("be.visible");
+              cy.findByTestId("public-link-input").should("be.visible");
               cy.findByText("Remove public link").should("be.visible");
             });
           });
         });
 
         describe("when user is non-admin", () => {
-          it(`should not show the embed button if the ${resource} doesn't have a public link`, () => {
+          it(`should show a disabled embed button if the ${resource} doesn't have a public link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
-            cy.icon("share").should("not.exist");
+            expectDisabledButtonWithTooltipLabel(
+              "Ask your admin to create a public link",
+            );
           });
 
           it(`should show the embed button if the ${resource} has a public link`, () => {
@@ -110,7 +117,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-text").should("be.visible");
+              cy.findByTestId("public-link-input").should("be.visible");
               cy.findByText("Remove public link").should("be.visible");
             });
 
@@ -124,7 +131,7 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
             cy.findByTestId("public-link-popover-content").within(() => {
               cy.findByText("Public link").should("be.visible");
-              cy.findByTestId("public-link-text").should("be.visible");
+              cy.findByTestId("public-link-input").should("be.visible");
               cy.findByText("Remove public link").should("not.exist");
             });
           });
@@ -140,12 +147,19 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
         });
 
         describe("when user is admin", () => {
-          it(`should show the embed modal for ${resource} immediately when embed button is clicked`, () => {
+          it(`should show a disabled menu item for public links for ${resource} and allow the user to access the embed modal`, () => {
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
             cy.icon("share").click();
+
+            cy.findByTestId("embed-menu-public-link-item").within(() => {
+              cy.findByText("Public links are off").should("be.visible");
+              cy.findByText("Enable them in settings").should("be.visible");
+            });
+
+            cy.findByTestId("embed-menu-embed-modal-item").click();
 
             getEmbedModalSharingPane().within(() => {
               cy.findByText("Static embed").should("be.visible");
@@ -154,20 +168,26 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
           });
         });
         describe("when user is non-admin", () => {
-          it(`should not show the embed button for ${resource}`, () => {
+          it(`should show a disabled button for ${resource}`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
-            cy.icon("share").should("not.exist");
+            expectDisabledButtonWithTooltipLabel("Public links are disabled");
           });
         });
       });
     });
   });
 });
+
+function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
+  cy.findByTestId("dashboard-embed-button").should("be.disabled");
+  cy.findByTestId("dashboard-embed-button").realHover();
+  cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
+}
 
 function createResource(resource) {
   if (resource === "card") {

@@ -102,19 +102,10 @@ describe("scenarios > public > dashboard", () => {
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
 
-      cy.findByRole("heading", { name: "Public link" })
-        // This click doesn't have any meaning in the context of the correctness of this test!
-        // It's simply here to prevent test flakiness, which happens because the Modal overlay
-        // is animating (disappearing) and we need to wait for it to stop the transition.
-        // Cypress will retry clicking this text until the DOM element is "actionable", or in
-        // our case - until there's no element on top of it blocking it. That's also when we
-        // expect this input field to be populated with the actual value.
-        .click()
-        .parent()
-        .findByText(/^http/)
-        .then($input => {
-          expect($input.text()).to.match(PUBLIC_DASHBOARD_REGEX);
-        });
+      cy.findByTestId("public-link-input").should("be.visible");
+      cy.findByTestId("public-link-input").then($input => {
+        expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+      });
     });
   });
 
@@ -133,19 +124,26 @@ describe("scenarios > public > dashboard", () => {
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByTestId("public-link-text").contains(PUBLIC_DASHBOARD_REGEX);
+        cy.findByTestId("public-link-input").then($input =>
+          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX),
+        );
         cy.findByText("Remove public URL").should("not.exist");
       });
     });
   });
 
-  it("should not allow users to see the embed button or the public link dropdown if a link hasn't been created", () => {
+  it("should see a tooltip prompting the user to ask their admin to create a public link", () => {
     cy.signInAsNormalUser();
     cy.get("@dashboardId").then(id => {
       visitDashboard(id);
     });
 
-    cy.findByTestId("dashboard-header").icon("share").should("not.exist");
+    cy.findByTestId("dashboard-header").icon("share").realHover();
+    cy.findByRole("tooltip").within(() => {
+      cy.findByText("Ask your admin to create a public link").should(
+        "be.visible",
+      );
+    });
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>

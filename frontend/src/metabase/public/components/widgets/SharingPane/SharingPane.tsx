@@ -1,20 +1,17 @@
-import { useCallback } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
-import { InteractiveEmbeddingCTA } from "metabase/public/components/widgets/SharingPane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA";
 import type { Card, Dashboard } from "metabase-types/api";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { PublicEmbedIcon } from "metabase/public/components/widgets/SharingPane/icons/PublicEmbedIcon/PublicEmbedIcon";
-import { StaticEmbedIcon } from "metabase/public/components/widgets/SharingPane/icons/StaticEmbedIcon/StaticEmbedIcon";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor, Stack } from "metabase/ui";
+import { Group, Text, Anchor, Box } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import Link from "metabase/core/components/Link";
+import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
 
 export type Resource = Dashboard | Card;
 
@@ -24,8 +21,7 @@ interface SharingPaneProps {
   resource: Resource;
   resourceType: string;
   onCreatePublicLink: () => void;
-  onDisablePublicLink: () => void;
-  extensions: ExportFormatType[];
+  onDeletePublicLink: () => void;
   getPublicUrl: (resource: Resource, extension?: ExportFormatType) => void;
   onChangeEmbedType: (embedType: string) => void;
   isPublicSharingEnabled: boolean;
@@ -35,7 +31,7 @@ function SharingPane({
   resource,
   resourceType,
   onCreatePublicLink,
-  onDisablePublicLink,
+  onDeletePublicLink,
   getPublicUrl,
   onChangeEmbedType,
 }: SharingPaneProps) {
@@ -47,13 +43,6 @@ function SharingPane({
     getSetting(state, "enable-public-sharing"),
   );
 
-  const dispatch = useDispatch();
-
-  const onChangeLocation = useCallback(
-    () => dispatch(push("/admin/settings/public-sharing")),
-    [dispatch],
-  );
-
   const createPublicLink = () => {
     MetabaseAnalytics.trackStructEvent(
       "Sharing Modal",
@@ -63,22 +52,30 @@ function SharingPane({
     onCreatePublicLink();
   };
 
-  const disablePublicLink = () => {
+  const deletePublicLink = () => {
     MetabaseAnalytics.trackStructEvent(
       "Sharing Modal",
       "Public Link Disabled",
       resourceType,
     );
-    onDisablePublicLink();
+    onDeletePublicLink();
   };
+
+  const publicLinkInfoText = hasPublicLink ? (
+    //   TextInput has a hardcoded marginTop that we need to account for here.
+    <Box mb="-0.25rem">{t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`}</Box>
+  ) : (
+    t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
+  );
 
   return (
     <Stack p="lg">
-      <Group data-testid="sharing-pane-container">
+      <Group p="lg" data-testid="sharing-pane-container">
         <SharingPaneButton
           header={t`Static embed`}
           description={t`Securely embed this dashboard in your own application’s server code.`}
           illustration={<StaticEmbedIcon />}
+          onClick={() => onChangeEmbedType("application")}
         >
           <SharingPaneActionButton
             data-testid="sharing-pane-static-embed-button"
@@ -91,38 +88,31 @@ function SharingPane({
 
         <SharingPaneButton
           header={t`Public embed`}
-          disabled={!isPublicSharingEnabled}
           description={
             isPublicSharingEnabled ? (
-              hasPublicLink ? (
-                t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`
-              ) : (
-                t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
-              )
+              publicLinkInfoText
             ) : (
-              <>
-                <Text>
-                  {t`Public embeds and links are disabled.`}{" "}
-                  <Anchor
-                    data-testid="sharing-pane-settings-link"
-                    onClick={onChangeLocation}
-                  >{t`Settings`}</Anchor>
-                </Text>
-              </>
+              <Text>
+                {t`Public embeds and links are disabled.`}{" "}
+                <Link to="/admin/settings/public-sharing">
+                  <Anchor data-testid="sharing-pane-settings-link">{t`Settings`}</Anchor>
+                </Link>
+              </Text>
             )
           }
-          illustration={<PublicEmbedIcon />}
+          disabled={!isPublicSharingEnabled}
+          onClick={createPublicLink}
+          illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
         >
           {resource.public_uuid ? (
             <PublicLinkCopyPanel
               url={iframeSource}
-              onRemoveLink={disablePublicLink}
+              onRemoveLink={deletePublicLink}
               removeButtonLabel={t`Remove public URL`}
               removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
             />
           ) : (
             <SharingPaneActionButton
-              data-testid="sharing-pane-public-embed-button"
               fullWidth
               disabled={!isPublicSharingEnabled}
               onClick={createPublicLink}

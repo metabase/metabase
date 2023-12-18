@@ -65,11 +65,11 @@ const setup = ({
   );
 };
 describe("DashboardPublicLinkPopover", () => {
-  it("should display a question-specific public url", async () => {
+  it("should display a dashboard-specific public url", async () => {
     setup();
 
     expect(
-      await screen.findByText(`${SITE_URL}/public/dashboard/mock-uuid`),
+      await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`),
     ).toBeInTheDocument();
   });
 
