@@ -4351,7 +4351,7 @@ databaseChangeLog:
       rollback: # no change
 
   - changeSet:
-      id: v49.00-012
+      id: v49.00-011
       author: qnkhuat
       comment: 'metabase_table.database_require_filter'
       changes:
