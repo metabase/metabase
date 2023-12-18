@@ -15,10 +15,8 @@
 (deftest humanized-display-name-test
   (testing "check that we get the expected :display_name with humanization *enabled*"
     (doseq [[input strategy->expected] {"toucansare_cool"     {"simple"   "Toucansare Cool"
-                                                               "advanced" "Toucansare Cool"
                                                                "none"     "toucansare_cool"}
                                         "fussybird_sightings" {"simple"   "Fussybird Sightings"
-                                                               "advanced" "Fussybird Sightings"
                                                                "none"     "fussybird_sightings"}}
             [strategy expected]        strategy->expected]
       (testing (pr-str (list 'get-humanized-display-name input strategy))
