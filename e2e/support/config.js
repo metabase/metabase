@@ -37,12 +37,12 @@ const defaultConfig = {
      ********************************************************************/
 
 
-     if (runWithReplay) {
+    if (runWithReplay) {
+      on = replay.wrapOn(on);
       replay.default(on, config, {
         upload: true,
         apiKey: process.env.REPLAY_API_KEY,
       });
-      on = replay.wrapOn(on);
     }
 
     on(
