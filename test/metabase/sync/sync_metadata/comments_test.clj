@@ -114,17 +114,18 @@
 (deftest sync-existing-table-comment-test
   (testing "test adding a comment to the source table that was initially empty, so we can check that the resync picks it up"
     (mt/test-drivers #{:h2 :postgres}
-      (mt/dataset (basic-table "table_with_comment_after_sync" nil)
-        ;; modify the source DB to add the comment and resync
-        (driver/notify-database-updated driver/*driver* (mt/db))
-        (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" nil))
-        ;; create the comment
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                       [(sql.tx/standalone-table-comment-sql
-                         driver/*driver*
-                         {:name "table_with_comment_after_sync_db"}
-                         {:table-name "table_with_comment_after_sync"
-                          :table-comment "added comment"})])
-        (sync-tables/sync-tables-and-database! (mt/db))
-        (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
-               (db->tables (mt/db))))))))
+      (let [dbdef (basic-table "table_with_comment_after_sync" nil)]
+       (mt/dataset dbdef
+         ;; modify the source DB to add the comment and resync
+         (driver/notify-database-updated driver/*driver* (mt/db))
+         (tx/create-db! driver/*driver* (basic-table "table_with_comment_after_sync" nil))
+         ;; create the comment
+         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                        [(sql.tx/standalone-table-comment-sql
+                          driver/*driver*
+                          dbdef
+                          (tx/map->TableDefinition {:table-name "table_with_comment_after_sync"
+                                                    :table-comment "added comment"}))])
+         (sync-tables/sync-tables-and-database! (mt/db))
+         (is (= #{{:name (mt/format-name "table_with_comment_after_sync"), :description "added comment"}}
+                (db->tables (mt/db)))))))))

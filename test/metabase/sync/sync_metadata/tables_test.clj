@@ -45,18 +45,18 @@
              (t2/select-fn->fn :name :active Table :db_id (u/the-id db)))))))
 
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
-  (testing "during sync, if a table is reactived, make sure we do updates the table info if needed"
-    (mt/dataset (mt/dataset-definition "sync-retired-table"
-                  ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])
-      (t2/update! :model/Table (mt/id :user) {:active false})
-      ;; table description is changed
-      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                     [(sql.tx/standalone-table-comment-sql
-                       (:engine (mt/db))
-                       {:name "sync-retired-table"}
-                       {:table-name "user"
-                        :table-comment "added comment"})])
-      (sync/sync-database! (mt/db) {:sync :schema})
-      (is (=? {:active true
-               :description "added comment"}
-              (t2/select-one :model/Table (mt/id :user)))))))
+  (testing "during sync, if a table is reactivated, we should update the table info if needed"
+    (let [dbdef (mt/dataset-definition "sync-retired-table"
+                  ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
+      (mt/dataset dbdef
+        (t2/update! :model/Table (mt/id :user) {:active false})
+        ;; table description is changed
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       [(sql.tx/standalone-table-comment-sql
+                         (:engine (mt/db))
+                         dbdef
+                         (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
+        (sync/sync-database! (mt/db) {:sync :schema})
+        (is (=? {:active true
+                 :description "added comment"}
+                (t2/select-one :model/Table (mt/id :user))))))))

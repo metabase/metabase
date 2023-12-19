@@ -2,7 +2,9 @@
   "Logic for updating Metabase Table models from metadata fetched from a physical DB."
   (:require
    [clojure.data :as data]
+   [clojure.set :as set]
    [medley.core :as m]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.database :refer [Database]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -138,7 +140,9 @@
 (mu/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
-   old-tables :- [:set i/DatabaseMetadataTable]]
+   old-tables :- [:set [:map
+                        [:name ::lib.schema.common/non-blank-string]
+                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
   (log/info "Marking tables as inactive:"
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
@@ -173,16 +177,15 @@
                  (get metabase-table k)
                  v))
     (when (seq changes)
-      (t2/update! :model/Table (:id metabase-table)  changes))))
+      (t2/update! :model/Table (:id metabase-table) changes))))
 
 (mu/defn ^:private update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
         name+schema->metabase-table (m/index-by (juxt :name :schema) metabase-tables)]
-    (doseq [[name+schema metabase-table] name+schema->metabase-table]
-      (when-let [table-metadata (name+schema->table-metadata name+schema)]
-        (update-table-metadata-if-needed! table-metadata metabase-table)))))
+    (doseq [name+schema (set/intersection (set (keys name+schema->table-metadata)) (set (keys name+schema->metabase-table)))]
+      (update-table-metadata-if-needed! (name+schema->table-metadata name+schema) (name+schema->metabase-table name+schema)))))
 
 (mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
@@ -233,7 +236,7 @@
          (retire-tables! database old-tables)))
 
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
-       ;; we need to fetch the tables because there might be new tables are retired in the previous steps
+       ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-tables (db->our-metadata database)))
 
      ;; update native download perms for all groups if any tables were added or removed
