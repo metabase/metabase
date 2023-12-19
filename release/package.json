@@ -11,7 +11,8 @@
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "prettier": "prettier --write",
     "release-offline": "tsx release-offline.ts",
-    "test": "jest"
+    "test:unit": "jest --testPathPattern unit",
+    "test:integration": "jest --testPathPattern integration"
   },
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
