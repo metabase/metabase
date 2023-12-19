@@ -20,7 +20,8 @@ interface FilterValuePickerProps<T> {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   values: T[];
-  isCompact?: boolean;
+  autoFocus?: boolean;
+  compact?: boolean;
   onChange: (newValues: T[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -37,7 +38,8 @@ function FilterValuePicker({
   column,
   values: selectedValues,
   placeholder,
-  isCompact = false,
+  autoFocus = false,
+  compact = false,
   shouldCreate,
   onChange,
   onFocus,
@@ -63,13 +65,14 @@ function FilterValuePicker({
     );
   }
 
-  if (fieldData && canListFieldValues(fieldData, isCompact)) {
+  if (fieldData && canListFieldValues(fieldData, compact)) {
     return (
       <ListValuePicker
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
-        isCompact={isCompact}
+        autoFocus={autoFocus}
+        compact={compact}
         onChange={onChange}
       />
     );
@@ -86,6 +89,7 @@ function FilterValuePicker({
         selectedValues={selectedValues}
         placeholder={t`Search by ${columnInfo.displayName}`}
         shouldCreate={shouldCreate}
+        autoFocus={autoFocus}
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -99,6 +103,7 @@ function FilterValuePicker({
       selectedValues={selectedValues}
       placeholder={fieldValues.length > 0 ? t`Search the list` : placeholder}
       shouldCreate={shouldCreate}
+      autoFocus={autoFocus}
       onChange={onChange}
       onFocus={onFocus}
       onBlur={onBlur}
@@ -107,53 +112,35 @@ function FilterValuePicker({
 }
 
 export function StringFilterValuePicker({
-  query,
-  stageIndex,
   column,
   values,
-  isCompact,
-  onChange,
-  onFocus,
-  onBlur,
+  ...props
 }: FilterValuePickerProps<string>) {
   return (
     <FilterValuePicker
-      query={query}
-      stageIndex={stageIndex}
+      {...props}
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      isCompact={isCompact}
       shouldCreate={query => query.length > 0}
-      onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />
   );
 }
 
 export function NumberFilterValuePicker({
-  query,
-  stageIndex,
   column,
   values,
-  isCompact,
   onChange,
-  onFocus,
-  onBlur,
+  ...props
 }: FilterValuePickerProps<number>) {
   return (
     <FilterValuePicker
-      query={query}
-      stageIndex={stageIndex}
+      {...props}
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      isCompact={isCompact}
       shouldCreate={query => isFinite(parseFloat(query))}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
-      onFocus={onFocus}
-      onBlur={onBlur}
     />
   );
 }

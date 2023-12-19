@@ -15,6 +15,7 @@ interface SearchValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   shouldCreate: (query: string) => boolean;
+  autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -27,6 +28,7 @@ export function SearchValuePicker({
   selectedValues,
   placeholder,
   shouldCreate,
+  autoFocus,
   onChange,
   onFocus,
   onBlur,
@@ -55,6 +57,7 @@ export function SearchValuePicker({
       placeholder={placeholder}
       searchValue={searchValue}
       shouldCreate={shouldCreate}
+      autoFocus={autoFocus}
       aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={setSearchValue}

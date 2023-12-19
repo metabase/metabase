@@ -12,18 +12,20 @@ interface ListValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  isCompact?: boolean;
+  autoFocus?: boolean;
+  compact?: boolean;
   onChange: (newValues: string[]) => void;
 }
 
 export function ListValuePicker({
   fieldValues,
   selectedValues,
-  isCompact,
   placeholder,
+  autoFocus,
+  compact,
   onChange,
 }: ListValuePickerProps) {
-  return isCompact ? (
+  return compact ? (
     <CompactValuePicker
       fieldValues={fieldValues}
       selectedValues={selectedValues}
@@ -35,6 +37,7 @@ export function ListValuePicker({
       fieldValues={fieldValues}
       selectedValues={selectedValues}
       placeholder={placeholder}
+      autoFocus={autoFocus}
       onChange={onChange}
     />
   );
@@ -44,6 +47,7 @@ function DefaultValuePicker({
   fieldValues,
   selectedValues,
   placeholder,
+  autoFocus,
   onChange,
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
@@ -55,6 +59,7 @@ function DefaultValuePicker({
       <TextInput
         value={searchValue}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         onChange={event => setSearchValue(event.currentTarget.value)}
       />
       <Checkbox.Group value={selectedValues} onChange={onChange}>

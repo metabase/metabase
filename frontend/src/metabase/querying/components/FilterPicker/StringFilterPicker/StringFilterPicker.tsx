@@ -122,6 +122,7 @@ function StringValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values}
+          autoFocus
           onChange={onChange}
         />
       </Box>

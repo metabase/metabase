@@ -127,7 +127,7 @@ function StringValueInput({
         stageIndex={stageIndex}
         column={column}
         values={values}
-        isCompact
+        compact
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}

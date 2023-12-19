@@ -132,7 +132,7 @@ function NumberValueInput({
         stageIndex={stageIndex}
         column={column}
         values={values.filter(isNumber)}
-        isCompact
+        compact
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}

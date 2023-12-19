@@ -95,8 +95,9 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
     return (
       <TimeInput
         value={value}
-        onChange={newValue => onChange([newValue])}
         w="100%"
+        autoFocus
+        onChange={newValue => onChange([newValue])}
       />
     );
   }
@@ -107,14 +108,15 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
       <Flex direction="row" align="center" gap="sm" w="100%">
         <TimeInput
           value={value1}
-          onChange={newValue1 => onChange([newValue1, value2])}
           w="100%"
+          autoFocus
+          onChange={newValue1 => onChange([newValue1, value2])}
         />
         <Text>{t`and`}</Text>
         <TimeInput
           value={value2}
-          onChange={newValue2 => onChange([value1, newValue2])}
           w="100%"
+          onChange={newValue2 => onChange([value1, newValue2])}
         />
       </Flex>
     );
