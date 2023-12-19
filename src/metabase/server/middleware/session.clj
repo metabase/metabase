@@ -349,7 +349,7 @@
 (defn- current-user-info-for-api-key
   "Return User ID and superuser status for an API Key with `api-key-id"
   [api-key]
-  (when api-key
+  (when (and api-key (init-status/complete?))
     (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                  (premium-features/enable-advanced-permissions?))
                                                 [(api-key/prefix api-key)]))
@@ -361,8 +361,8 @@
   [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
-   (current-user-info-for-session metabase-session-id anti-csrf-token)
-   (current-user-info-for-api-key x-api-key)
+   (or (current-user-info-for-session metabase-session-id anti-csrf-token)
+       (current-user-info-for-api-key x-api-key))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
