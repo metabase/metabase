@@ -15,7 +15,6 @@ import { isEmpty } from "metabase/lib/validate";
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { PeriodsAgoInputWidget } from "./SmartScalarSettingsWidgets";
 
 import {
   ICON_MARGIN_RIGHT,
@@ -94,7 +93,6 @@ export const COMPARISON_SELECTOR_OPTIONS = {
   PERIODS_AGO: {
     type: COMPARISON_TYPES.PERIODS_AGO,
     suffix: t`ago`,
-    MenuItemComponent: PeriodsAgoInputWidget,
   },
   PREVIOUS_VALUE: {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
@@ -113,7 +111,6 @@ type PreviousPeriodMenuOption = {
 type PeriodsAgoMenuOption = {
   type: typeof COMPARISON_TYPES.PERIODS_AGO;
   name: string;
-  MenuItemComponent: typeof PeriodsAgoInputWidget;
   maxValue: number;
 };
 export type ComparisonMenuOption =
@@ -289,14 +286,12 @@ function createComparisonMenuOption(
   if (type === COMPARISON_TYPES.PERIODS_AGO) {
     const { maxValue, dateUnit } = comparisonParameters;
 
-    const { suffix, MenuItemComponent } =
-      COMPARISON_SELECTOR_OPTIONS.PERIODS_AGO;
+    const { suffix } = COMPARISON_SELECTOR_OPTIONS.PERIODS_AGO;
 
     return {
       type,
       name: `${dateUnit}s ${suffix}`,
       maxValue,
-      MenuItemComponent,
     };
   }
 

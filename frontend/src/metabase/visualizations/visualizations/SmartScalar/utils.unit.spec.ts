@@ -150,8 +150,6 @@ describe("SmartScalar > utils", () => {
             type: COMPARISON_TYPES.PERIODS_AGO,
             name: "months ago",
             maxValue: 3,
-            MenuItemComponent:
-              COMPARISON_SELECTOR_OPTIONS.PERIODS_AGO.MenuItemComponent,
           },
           COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
         ]);

@@ -1,102 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { Icon } from "metabase/core/components/Icon";
-import { Group, Menu, Stack, Text, Box } from "metabase/ui";
-import { isEmpty } from "metabase/lib/validate";
-import type {
-  SelectedComparison,
-  SelectedComparisonPeriodsAgo,
-} from "metabase-types/api";
-import { COMPARISON_TYPES } from "./utils";
-import {
-  ButtonStyled,
-  MenuItemStyled,
-  NumberInputStyled,
-} from "./SmartScalarSettingsWidgets.styled";
+import { Group, Text, Box } from "metabase/ui";
+import type { SelectedComparisonPeriodsAgo } from "metabase-types/api";
+import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
+import { MenuItemStyled } from "./MenuItem.styled";
 
-import type { ComparisonMenuOption } from "./utils";
-
-interface SmartScalarComparisonWidgetProps {
-  onChange: (setting: { type: string; value?: number }) => void;
-  options: ComparisonMenuOption[];
-  value: SelectedComparison;
-}
-
-export function SmartScalarComparisonWidget({
-  onChange,
-  options,
-  value: selectedValue,
-}: SmartScalarComparisonWidgetProps) {
-  const [open, setOpen] = useState(false);
-
-  const selectedOption = options.find(
-    ({ type }) => type === selectedValue.type,
-  );
-
-  const selectedDisplayName =
-    selectedValue.type === COMPARISON_TYPES.PERIODS_AGO
-      ? `${selectedValue.value ?? ""} ${selectedOption?.name}`
-      : selectedOption?.name;
-
-  const isDisabled = options.length === 1 && !isEmpty(selectedOption);
-
-  return (
-    <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
-      <Menu.Target>
-        <ButtonStyled
-          data-testid={"comparisons-widget-button"}
-          disabled={isDisabled}
-        >
-          <Group spacing="sm">
-            {selectedDisplayName}
-            <Icon name="chevrondown" size="14" />
-          </Group>
-        </ButtonStyled>
-      </Menu.Target>
-
-      <Menu.Dropdown miw="18.25rem">
-        <Stack spacing="sm">
-          {options.map(comparisonMenuOption => {
-            const { type, name } = comparisonMenuOption;
-
-            if (type === COMPARISON_TYPES.PERIODS_AGO) {
-              const { MenuItemComponent, maxValue } = comparisonMenuOption;
-
-              return (
-                <MenuItemComponent
-                  key={type}
-                  isSelected={selectedOption?.type === type}
-                  type={type}
-                  name={name}
-                  onChange={onChange}
-                  setOpen={setOpen}
-                  maxValue={maxValue}
-                  selectedValue={
-                    selectedValue.type === type ? selectedValue : undefined
-                  }
-                />
-              );
-            }
-
-            return (
-              <MenuItemStyled
-                key={type}
-                isSelected={selectedOption?.type === type}
-                onClick={() => onChange({ type })}
-              >
-                <Text fw="bold" ml="0.5rem">
-                  {name}
-                </Text>
-              </MenuItemStyled>
-            );
-          })}
-        </Stack>
-      </Menu.Dropdown>
-    </Menu>
-  );
-}
-
-interface PeriodsAgoInputWidget {
+type PeriodsAgoOptionComponentProps = {
   isSelected: boolean;
   maxValue: number;
   name: string;
@@ -104,9 +13,9 @@ interface PeriodsAgoInputWidget {
   selectedValue?: SelectedComparisonPeriodsAgo;
   setOpen: (value: boolean) => void;
   type: string;
-}
+};
 
-export function PeriodsAgoInputWidget({
+export function PeriodsAgoOptionComponent({
   isSelected,
   maxValue,
   name,
@@ -114,7 +23,7 @@ export function PeriodsAgoInputWidget({
   selectedValue,
   setOpen,
   type,
-}: PeriodsAgoInputWidget) {
+}: PeriodsAgoOptionComponentProps) {
   const value = useMemo(() => {
     if (!selectedValue) {
       return null;

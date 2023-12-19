@@ -24,7 +24,7 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { isNumeric } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "../Scalar/Scalar.styled";
-import { SmartScalarComparisonWidget } from "./SmartScalarSettingsWidgets";
+import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 
 import {
   DASHCARD_HEADER_HEIGHT,
