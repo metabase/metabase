@@ -193,6 +193,7 @@ export default _.compose(
   Collections.loadList({
     query: () => ({
       tree: true,
+      shallow: true,
       "exclude-other-user-collections": true,
       "exclude-archived": true,
     }),

@@ -121,6 +121,8 @@ function MainNavbarView({
             currentUser={currentUser}
             handleCreateNewCollection={handleCreateNewCollection}
           />
+          {/* TODO: Create <AsyncTree/> component? */}
+          {/* <AsyncTree data={collections} onExpand={} /> */}
           <Tree
             data={collections}
             selectedId={collectionItem?.id}
