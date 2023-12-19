@@ -12,46 +12,178 @@ import { COMPARISON_TYPES, formatChange } from "./utils";
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {
     describe("comparisonVal = 0", () => {
-      it("should evaluate: 0 → < 0 = -∞%", () => {
-        expect(computeChange(0, -1)).toBe(-Infinity);
-        expect(computeChange(0, -10)).toBe(-Infinity);
-      });
-      it("should evaluate: 0 → > 0 = ∞%", () => {
-        expect(computeChange(0, 1)).toBe(Infinity);
-        expect(computeChange(0, 10)).toBe(Infinity);
-      });
-      it("should evaluate: 0 → 0 =  0%", () => {
-        expect(computeChange(0, 0)).toBe(0);
+      const cases = [
+        {
+          description: "should evaluate: 0 → < 0 = -∞%",
+          subCases: [
+            {
+              previous: 0,
+              next: -1,
+              expected: -Infinity,
+            },
+            {
+              previous: 0,
+              next: -10,
+              expected: -Infinity,
+            },
+          ],
+        },
+        {
+          description: "should evaluate: 0 → > 0 = ∞%",
+          subCases: [
+            {
+              previous: 0,
+              next: 1,
+              expected: Infinity,
+            },
+            {
+              previous: 0,
+              next: 10,
+              expected: Infinity,
+            },
+          ],
+        },
+        {
+          description: "should evaluate: 0 → 0 =  0%",
+          subCases: [
+            {
+              previous: 0,
+              next: 0,
+              expected: 0,
+            },
+          ],
+        },
+      ];
+
+      describe.each(cases)("$description", ({ subCases }) => {
+        it.each(subCases)(
+          "$previous -> $next = $expected",
+          ({ previous, next, expected }) => {
+            expect(computeChange(previous, next)).toBe(expected);
+          },
+        );
       });
     });
 
     describe("comparisonVal < 0", () => {
-      it("should evaluate: - → 0 = 100%", () => {
-        expect(computeChange(-1, 0)).toBe(1);
-        expect(computeChange(-10, 0)).toBe(1);
-      });
-      it("should evaluate: - → - =  (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
-        expect(computeChange(-3, -5)).toBe((-5 - -3) / Math.abs(-3));
-        expect(computeChange(-12, -3)).toBe((-3 - -12) / Math.abs(-12));
-      });
-      it("should evaluate: - → + = (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
-        expect(computeChange(-3, 5)).toBe((5 - -3) / Math.abs(-3));
-        expect(computeChange(-12, 3)).toBe((3 - -12) / Math.abs(-12));
+      const cases = [
+        {
+          description: "should evaluate: - → 0 = 100%",
+          subCases: [
+            {
+              previous: -1,
+              next: 0,
+              expected: 1,
+            },
+            {
+              previous: -10,
+              next: 0,
+              expected: 1,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: - → - =  (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: -3,
+              next: -5,
+              expected: -2 / 3,
+            },
+            {
+              previous: -12,
+              next: -3,
+              expected: 9 / 12,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: - → + = (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: -3,
+              next: 5,
+              expected: 8 / 3,
+            },
+            {
+              previous: -12,
+              next: 3,
+              expected: 15 / 12,
+            },
+          ],
+        },
+      ];
+
+      describe.each(cases)("$description", ({ subCases }) => {
+        it.each(subCases)(
+          "$previous -> $next = $expected",
+          ({ previous, next, expected }) => {
+            expect(computeChange(previous, next)).toBe(expected);
+          },
+        );
       });
     });
 
     describe("comparisonVal > 0", () => {
-      it("should evaluate: + → 0 = -100%", () => {
-        expect(computeChange(1, 0)).toBe(-1);
-        expect(computeChange(10, 0)).toBe(-1);
-      });
-      it("should evaluate: + → + = (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
-        expect(computeChange(3, 5)).toBe((5 - 3) / Math.abs(3));
-        expect(computeChange(12, 3)).toBe((3 - 12) / Math.abs(12));
-      });
-      it("should evaluate: + → - = (currVal - comparisonVal) / Math.abs(comparisonVal)", () => {
-        expect(computeChange(3, -5)).toBe((-5 - 3) / Math.abs(3));
-        expect(computeChange(12, -3)).toBe((-3 - 12) / Math.abs(12));
+      const cases = [
+        {
+          description: "should evaluate: + → 0 = -100%",
+          subCases: [
+            {
+              previous: 1,
+              next: 0,
+              expected: -1,
+            },
+            {
+              previous: 10,
+              next: 0,
+              expected: -1,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: + → + = (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: 3,
+              next: 5,
+              expected: 2 / 3,
+            },
+            {
+              previous: 12,
+              next: 3,
+              expected: -9 / 12,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: + → - = (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: 3,
+              next: -5,
+              expected: -8 / 3,
+            },
+            {
+              previous: 12,
+              next: -3,
+              expected: -15 / 12,
+            },
+          ],
+        },
+      ];
+
+      describe.each(cases)("$description", ({ subCases }) => {
+        it.each(subCases)(
+          "$previous -> $next = $expected",
+          ({ previous, next, expected }) => {
+            expect(computeChange(previous, next)).toBe(expected);
+          },
+        );
       });
     });
   });
