@@ -1,7 +1,7 @@
 import type { DatabaseId } from "./database";
 import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
-import type { Parameter } from "./parameters";
+import type { ResourceEmbeddingParams, Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
 import type { Collection } from "./collection";
@@ -16,6 +16,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
 
   /* Indicates whether static embedding for this card has been published */
   enable_embedding: boolean;
+  embedding_params: ResourceEmbeddingParams | null;
   can_write: boolean;
 
   database_id?: DatabaseId;

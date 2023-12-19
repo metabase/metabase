@@ -1,10 +1,10 @@
-import type { Card } from "metabase-types/api";
-import type { EmbedOptions } from "metabase-types/store";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+import type { ResourceEmbeddingParams, Card } from "metabase-types/api";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
 import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
+import { EmbedModalContent } from "metabase/public/components/widgets/EmbedModalContent";
+import type { ExportFormatType } from "metabase/public/components/widgets/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
@@ -30,8 +30,9 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
   const deletePublicQuestionLink = () => dispatch(deletePublicLink(card));
   const updateQuestionEnableEmbedding = (enableEmbedding: boolean) =>
     dispatch(updateEnableEmbedding(card, enableEmbedding));
-  const updateQuestionEmbeddingParams = (embeddingParams: EmbedOptions) =>
-    dispatch(updateEmbeddingParams(card, embeddingParams));
+  const updateQuestionEmbeddingParams = (
+    embeddingParams: ResourceEmbeddingParams,
+  ) => dispatch(updateEmbeddingParams(card, embeddingParams));
 
   const getPublicQuestionUrl = (
     {

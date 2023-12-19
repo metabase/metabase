@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ExportFormatType } from "metabase/public/components/widgets/types";
 import { useDispatch } from "metabase/lib/redux";
 import {
   exportFormats,
@@ -10,7 +11,6 @@ import {
 } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/Question";
 import { PublicLinkPopover } from "./PublicLinkPopover";
-import type { ExportFormatType } from "./types";
 
 export const QuestionPublicLinkPopover = ({
   question,

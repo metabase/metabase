@@ -2,11 +2,11 @@ import { screen, waitFor, within } from "@testing-library/react";
 
 import { useState } from "react";
 import { renderWithProviders } from "__support__/ui";
-import type { Parameter } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
+import type { UiParameter } from "metabase-lib/parameters/types";
 
-import EmbedModalContent from "./EmbedModalContent";
+import { EmbedModalContent } from "./EmbedModalContent";
 
 const TestEmbedModalContent = ({
   resource,
@@ -16,7 +16,7 @@ const TestEmbedModalContent = ({
   onUpdateEnableEmbedding,
 }: {
   resource: { embedding_params?: Record<string, unknown> };
-  resourceParameters: Partial<Parameter>[];
+  resourceParameters: Partial<UiParameter>[];
   getPublicUrl: () => void;
   onUpdateEmbeddingParams?: () => void;
   onUpdateEnableEmbedding?: () => void;

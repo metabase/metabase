@@ -1,22 +1,22 @@
 import { t } from "ttag";
-import type { Card, Dashboard } from "metabase-types/api";
+import Link from "metabase/core/components/Link";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
-import { useSelector } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
-import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor, Box, Stack } from "metabase/ui";
-
-import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import Link from "metabase/core/components/Link";
+import { useSelector } from "metabase/lib/redux";
+import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
+import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
+import type {
+  EmbedModalStep,
+  ExportFormatType,
+  Resource,
+} from "metabase/public/components/widgets/types";
+
+import { getPublicEmbedHTML } from "metabase/public/lib/code";
+import { getSetting } from "metabase/selectors/settings";
+import { Anchor, Box, Group, Stack, Text } from "metabase/ui";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
-
-export type Resource = Dashboard | Card;
-
-type ExportFormatType = string | null;
 
 interface SharingPaneProps {
   resource: Resource;
@@ -24,8 +24,7 @@ interface SharingPaneProps {
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
   getPublicUrl: (resource: Resource, extension?: ExportFormatType) => void;
-  onChangeEmbedType: (embedType: string) => void;
-  isPublicSharingEnabled: boolean;
+  onChangeEmbedType: (embedType: EmbedModalStep) => void;
 }
 
 function SharingPane({

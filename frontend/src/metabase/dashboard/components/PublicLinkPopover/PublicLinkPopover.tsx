@@ -1,6 +1,6 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+import type { ExportFormatType } from "metabase/public/components/widgets/types";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";

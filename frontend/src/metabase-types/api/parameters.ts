@@ -104,3 +104,7 @@ export type ParameterQueryObject = {
   target: ParameterTarget;
   value: ParameterValueOrArray;
 };
+
+type ParameterEmbedPermission = "enabled" | "locked" | "disabled";
+
+export type ResourceEmbeddingParams = Record<string, ParameterEmbedPermission>;

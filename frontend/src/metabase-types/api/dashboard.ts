@@ -3,6 +3,7 @@ import type {
   Parameter,
   ParameterId,
   ParameterTarget,
+  ResourceEmbeddingParams,
 } from "metabase-types/api";
 
 import type { ActionDashboardCard } from "./actions";
@@ -38,6 +39,7 @@ export interface Dashboard {
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+  embedding_params: ResourceEmbeddingParams | null;
 }
 
 export type DashCardId = number;

@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+import type { ExportFormatType } from "metabase/public/components/widgets/types";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";

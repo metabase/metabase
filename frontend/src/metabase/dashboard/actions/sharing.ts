@@ -1,5 +1,9 @@
-import type { Dashboard, DashboardId } from "metabase-types/api";
-import type { Dispatch, EmbedOptions } from "metabase-types/store";
+import type {
+  Dashboard,
+  DashboardId,
+  ResourceEmbeddingParams,
+} from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 import { createAction } from "metabase/lib/redux";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -36,7 +40,7 @@ export const UPDATE_EMBEDDING_PARAMS =
   "metabase/dashboard/UPDATE_EMBEDDING_PARAMS";
 export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
-  ({ id }: DashboardIdPayload, embedding_params: EmbedOptions) =>
+  ({ id }: DashboardIdPayload, embedding_params: ResourceEmbeddingParams) =>
     DashboardApi.update({ id, embedding_params }),
 );
 

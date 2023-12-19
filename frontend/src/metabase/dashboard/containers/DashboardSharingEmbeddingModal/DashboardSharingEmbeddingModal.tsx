@@ -3,7 +3,7 @@ import type { EmbedOptions } from "metabase-types/store";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
-import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
+import { EmbedModalContent } from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 
 import {

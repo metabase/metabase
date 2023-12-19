@@ -1,11 +1,11 @@
 import { t } from "ttag";
+import type { ExportFormatType } from "metabase/public/components/widgets/types";
 import {
   PublicLinkCopyButton,
   ExtensionOption,
   RemoveLinkAnchor,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
 import { Box, Group, Stack, Text, TextInput, Tooltip } from "metabase/ui";
-import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
   loading = false,

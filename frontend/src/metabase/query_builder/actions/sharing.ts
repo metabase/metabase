@@ -1,6 +1,6 @@
 import { createAction } from "redux-actions";
-import type { Card, CardId } from "metabase-types/api";
-import type { EmbedOptions } from "metabase-types/store";
+import type { ResourceEmbeddingParams, Card, CardId } from "metabase-types/api";
+
 import { CardApi } from "metabase/services";
 
 type CardIdPayload = {
@@ -38,6 +38,6 @@ export const updateEnableEmbedding = createAction(
 export const UPDATE_EMBEDDING_PARAMS = "metabase/card/UPDATE_EMBEDDING_PARAMS";
 export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
-  ({ id }: CardIdPayload, embedding_params: EmbedOptions) =>
+  ({ id }: CardIdPayload, embedding_params: ResourceEmbeddingParams) =>
     CardApi.update({ id, embedding_params }),
 );
