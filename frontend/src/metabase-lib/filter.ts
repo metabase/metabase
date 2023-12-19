@@ -25,6 +25,7 @@ import {
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
+import { removeClause } from "./query";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -87,6 +88,13 @@ export function filter(
 
 export function filters(query: Query, stageIndex: number): FilterClause[] {
   return ML.filters(query, stageIndex);
+}
+
+export function removeFilters(query: Query, stageIndex: number): Query {
+  return filters(query, stageIndex).reduce(
+    (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
+    query,
+  );
 }
 
 export function filterArgsDisplayName(

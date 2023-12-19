@@ -8,6 +8,10 @@ export const isNotFalsy = <T>(
   return value != null;
 };
 
+export const isNumber = (value: unknown): value is number => {
+  return typeof value === "number";
+};
+
 export const checkNotNull = <T>(value: T | null | undefined): T => {
   if (value != null) {
     return value;

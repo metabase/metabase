@@ -66,9 +66,10 @@
         (let [result (->> ((mt/user-http-request :crowberto :get 200 "user") :data)
                           (filter mt/test-user?))]
           ;; since this is an admin, all keys are available on each user
-          (is (= (set (concat
-                       user/admin-or-self-visible-columns
-                       [:common_name :group_ids :personal_collection_id]))
+          (is (= (set
+                  (concat
+                   user/admin-or-self-visible-columns
+                   [:common_name :group_ids :personal_collection_id]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails
           (is (= #{"crowberto@metabase.com"
