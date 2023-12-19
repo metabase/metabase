@@ -2,7 +2,6 @@
   "/api/api-key endpoints for CRUD management of API Keys"
   (:require
    [compojure.core :refer [POST GET]]
-   [crypto.random :as crypto-random]
    [metabase.api.common :as api]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
@@ -31,19 +30,17 @@
   (api/checkp (not (t2/exists? :model/ApiKey :name name))
     "name" "An API key with this name already exists.")
   (let [api-key (key-with-unique-prefix)
-        email   (format "api-key-user-%s@api-key.invalid" name)]
+        email   (format "api-key-user-%s@api-key.invalid" (u/slugify name))]
     (t2/with-transaction [_conn]
-      (let [user (first (t2/insert-returning-instances! :model/User
-                                                        {:email      email
-                                                         :first_name name
-                                                         :password   (crypto-random/base64 16)
-                                                         :type       :api-key}))]
-        (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])
-        (-> (t2/insert-returning-instances! :model/ApiKey
-                                            {:user_id      (u/the-id user)
-                                             :name         name
-                                             :unhashed_key api-key
-                                             :created_by   api/*current-user-id*})
+      (let [user (user/insert-new-user! {:email      email
+                                         :first_name name
+                                         :type       :api-key})]
+        (user/set-permissions-groups! user [(perms-group/all-users) group_id])
+        (-> (t2/insert-returning-instance! :model/ApiKey
+                                           {:user_id      (u/the-id user)
+                                            :name         name
+                                            :unhashed_key api-key
+                                            :created_by   api/*current-user-id*})
             (select-keys [:created_at :updated_at :id])
             (assoc :name name
                    :group_id group_id

@@ -15,13 +15,13 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group_id :unmasked_key :masked_key}
+        (is (= #{:name :group_id :unmasked_key :masked_key :id :created_at :updated_at}
                (-> resp keys set)))
         (is (= name (:name resp)))))
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group_id :name}
+        (is (= #{:unmasked_key :masked_key :group_id :name :id :created_at :updated_at}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
