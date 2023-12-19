@@ -37,7 +37,6 @@ import {
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 
@@ -558,17 +557,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
-        key: "-link-widget",
-        widget: FullAppEmbeddingLinkWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
-      },
-      {
         key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+        getHidden: () => PLUGIN_EMBEDDING.isEnabled(),
       },
     ],
   },

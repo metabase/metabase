@@ -1,1 +1,0 @@
-export { FullAppEmbeddingLinkWidget } from "./FullAppEmbeddingLinkWidget";
