@@ -65,13 +65,9 @@ function changeOperator(subject, operator) {
 function changeValue(subject, newValue, placeholder) {
   subject.within(() => {
     const input = placeholder
-      ? cy.findByPlaceholderText(new RegExp(placeholder, "i"))
-      : cy.get("input").last();
-
-    input
-      .clear({ force: true })
-      .type(newValue, { force: true })
-      .blur({ force: true });
+      ? cy.findByPlaceholderText(placeholder)
+      : cy.findByLabelText("Filter value");
+    input.focus().clear().type(newValue).blur();
   });
 }
 
