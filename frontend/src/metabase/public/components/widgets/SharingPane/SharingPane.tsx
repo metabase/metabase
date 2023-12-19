@@ -83,6 +83,33 @@ function SharingPane({
       t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
     );
 
+  const getPublicLinkChild = () => {
+    if (isLoadingLink) {
+      return (
+        <SharingPaneActionButton
+          fullWidth
+          disabled
+        >{t`Loading…`}</SharingPaneActionButton>
+      );
+    }
+
+    if (hasPublicLink) {
+      <PublicLinkCopyPanel
+        url={iframeSource}
+        onRemoveLink={deletePublicLink}
+        removeButtonLabel={t`Remove public URL`}
+        removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
+      />;
+    }
+
+    return (
+      <SharingPaneActionButton
+        fullWidth
+        disabled={!isPublicSharingEnabled}
+      >{t`Get an embed link`}</SharingPaneActionButton>
+    );
+  };
+
   return (
     <Group p="lg" data-testid="sharing-pane-container">
       <SharingPaneButton
@@ -118,24 +145,7 @@ function SharingPane({
         onClick={createPublicLink}
         illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
       >
-        {isLoadingLink ? (
-          <SharingPaneActionButton
-            fullWidth
-            disabled
-          >{t`Loading…`}</SharingPaneActionButton>
-        ) : resource.public_uuid ? (
-          <PublicLinkCopyPanel
-            url={iframeSource}
-            onRemoveLink={deletePublicLink}
-            removeButtonLabel={t`Remove public URL`}
-            removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
-          />
-        ) : (
-          <SharingPaneActionButton
-            fullWidth
-            disabled={!isPublicSharingEnabled}
-          >{t`Get an embed link`}</SharingPaneActionButton>
-        )}
+        {getPublicLinkChild()}
       </SharingPaneButton>
     </Group>
   );
