@@ -742,8 +742,7 @@
           (let [db-id       (u/the-id (mt/db))
                 table-a     (upload-test/create-upload-table! :schema-name "not_public")
                 table-b     (upload-test/create-upload-table! :schema-name "not_public")
-                append-csv! (fn []
-                              (upload-test/append-csv-with-defaults! :table-id (:id table-a), :user-id (mt/user->id :rasta)))]
+                append-csv! #(upload-test/append-csv-with-defaults! :table-id (:id table-a), :user-id (mt/user->id :rasta))]
             (doseq [[schema-perms          can-append? test-string]
                     [[:all                 true        "Data permissions on schema should succeed"]
                      [:none                false       "No permissions on schema should fail"]
@@ -764,7 +763,7 @@
           (let [db-id       (u/the-id (mt/db))
                 table-a     (upload-test/create-upload-table!)
                 table-b     (upload-test/create-upload-table!)
-                append-csv! (fn [] (upload-test/append-csv-with-defaults! :table-id (:id table-a), :user-id (mt/user->id :rasta)))]
+                append-csv! #(upload-test/append-csv-with-defaults! :table-id (:id table-a), :user-id (mt/user->id :rasta))]
             (doseq [[perms                 can-append? test-string]
                     [[:all                 true        "Data permissions for database should succeed"]
                      [:none                false       "No permissions for database should fail"]
