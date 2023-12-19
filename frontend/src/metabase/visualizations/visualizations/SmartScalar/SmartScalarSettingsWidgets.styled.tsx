@@ -34,11 +34,8 @@ export const MenuItemStyled = styled(Menu.Item)<MenuItemProps>`
 `;
 
 export const NumberInputStyled = styled(NumberInput)`
-  .emotion-Input-wrapper {
-    margin-top: 0;
-  }
-
-  .emotion-Input-input {
+  input {
     text-align: center;
+    padding: 0.25rem;
   }
 `;
