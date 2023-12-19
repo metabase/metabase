@@ -3,14 +3,18 @@
    [clj-bom.core :as bom]
    [clojure.data :as data]
    [clojure.data.csv :as csv]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [flatland.ordered.set :as ordered-set]
+   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.mbql.util :as mbql.u]
@@ -557,25 +561,41 @@
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
           parsed-rows        (parse-rows col-upload-types rows)]
-      (try
-        (when create-auto-pk?
-          (driver/add-columns! driver
-                               (:id database)
-                               (table-identifier table)
-                               {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
-        (driver/insert-into! driver
+      (when create-auto-pk?
+        (driver/add-columns! driver
                              (:id database)
                              (table-identifier table)
-                             normed-header
-                             parsed-rows)
-        (scan-and-sync-table! database table)
-        (when create-auto-pk?
+                             {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
+      ;; If the insert fails, we need to delete the rows we just inserted. So we:
+      ;; 1. get the max PK value before inserting
+      ;; 2. insert the rows
+      ;; 3. if insertion fails, delete the rows with PKs greater than the max PK value
+      (let [;; 1.
+            max-pk (val (ffirst (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
+                                            (sql/format {:select [[[:max (keyword auto-pk-column-name)]]]
+                                                         :from (keyword (table-identifier table))}
+                                                        {:quoted true
+                                                         :dialect (sql.qp/quote-style driver)}))))]
+        (try
+          ;; 2.
+          (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
+          (scan-and-sync-table! database table)
           (let [auto-pk-field (table-id->auto-pk-column (:id table))]
-            (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-        {:row-count (count parsed-rows)}
-        (catch Throwable e
-          ;; TODO: insert rows failure handling
-          (throw (ex-info (ex-message e) {:status-code 400})))))))
+            (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)}))
+          (catch Throwable e
+            ;; 3.
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+                           (sql/format {:delete-from (keyword (table-identifier table))
+                                        :where       [:> (keyword auto-pk-column-name) max-pk]}
+                                       {:quoted  true
+                                        :dialect (sql.qp/quote-style driver)}))
+            (when create-auto-pk?
+              ;; sync the table again just to pick up the new auto-pk column
+              (scan-and-sync-table! database table)
+              (let [auto-pk-field (table-id->auto-pk-column (:id table))]
+                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+            (throw (ex-info (ex-message e) {:status-code 422})))))
+      {:row-count (count parsed-rows)})))
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
