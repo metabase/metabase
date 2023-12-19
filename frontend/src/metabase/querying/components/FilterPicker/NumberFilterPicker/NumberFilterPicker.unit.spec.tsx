@@ -168,12 +168,9 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-
-          const [leftInput, rightInput] =
-            screen.getAllByPlaceholderText("Enter a number");
+          const leftInput = screen.getByPlaceholderText("Min");
+          const rightInput = screen.getByPlaceholderText("Max");
           userEvent.type(leftInput, String(leftValue));
-          expect(addFilterButton).toBeDisabled();
-
           userEvent.type(rightInput, String(rightValue));
           userEvent.click(addFilterButton);
 
@@ -194,12 +191,9 @@ describe("NumberFilterPicker", () => {
         });
 
         await setOperator("Between");
-
-        const [leftInput, rightInput] =
-          screen.getAllByPlaceholderText("Enter a number");
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
         userEvent.type(leftInput, "5");
-        expect(addFilterButton).toBeDisabled();
-
         userEvent.type(rightInput, "-10.5");
         userEvent.click(addFilterButton);
 
@@ -217,12 +211,11 @@ describe("NumberFilterPicker", () => {
           setup();
 
         await setOperator("Between");
-        const [leftInput, rightInput] =
-          screen.getAllByPlaceholderText("Enter a number");
-        userEvent.type(leftInput, "5{enter}");
-        expect(onChange).not.toHaveBeenCalled();
-
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
+        userEvent.type(leftInput, "5");
         userEvent.type(rightInput, "-10.5{enter}");
+
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
           operator: "between",
@@ -373,9 +366,8 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-
-          const [leftInput, rightInput] =
-            screen.getAllByPlaceholderText("Enter a number");
+          const leftInput = screen.getByPlaceholderText("Min");
+          const rightInput = screen.getByPlaceholderText("Max");
           userEvent.type(leftInput, `{selectall}{backspace}${leftValue}`);
           expect(updateButton).toBeEnabled();
 
