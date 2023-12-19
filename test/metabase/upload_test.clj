@@ -1139,8 +1139,7 @@
   (try
     (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
       (mt/with-current-user user-id
-        (let [table-id (or table-id
-                         (:id (create-upload-table!)))]
+        (let [table-id (or table-id (:id (create-upload-table!)))]
           (t2/update! :model/Table table-id {:is_upload is-upload})
           (append-csv! {:table-id table-id
                         :file     file}))))
