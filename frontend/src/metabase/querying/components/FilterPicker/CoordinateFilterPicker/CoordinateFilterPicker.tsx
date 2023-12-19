@@ -54,7 +54,7 @@ export function CoordinateFilterPicker({
     newOperator: Lib.CoordinateFilterOperatorName,
   ) => {
     setOperator(newOperator);
-    setValues(getDefaultValues(newOperator));
+    setValues(getDefaultValues(newOperator, values));
   };
 
   const handleSubmit = (event: FormEvent) => {
