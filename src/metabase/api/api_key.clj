@@ -34,8 +34,7 @@
     (t2/with-transaction [_conn]
       (let [user (user/insert-new-user! {:email      email
                                          :first_name name
-                                         :type       :api-key
-                                         :is_active  false})]
+                                         :type       :api-key})]
         (user/set-permissions-groups! user [(perms-group/all-users) group_id])
         (-> (t2/insert-returning-instance! :model/ApiKey
                                            {:user_id      (u/the-id user)

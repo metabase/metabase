@@ -64,7 +64,7 @@
            [400 (tru "Not able to modify the internal user")]))
 
 (defn- fetch-user [& query-criteria]
-  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) :type "personal" query-criteria))
+  (apply t2/select-one (vec (cons User user/admin-or-self-visible-columns)) :type :personal query-criteria))
 
 (defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
   (when (and new-groups-or-ids
@@ -487,7 +487,7 @@
   (api/check-superuser)
   (check-not-internal-user id)
   (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
-                            :type "personal"
+                            :type :personal
                             :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
@@ -508,7 +508,7 @@
   (check-self-or-superuser id)
   (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password],
                                     :id id,
-                                    :type "personal",
+                                    :type :personal,
                                     :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
@@ -536,7 +536,7 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (api/check-500
-   (when (pos? (t2/update! User id {:type "personal"} {:is_active false}))
+   (when (pos? (t2/update! User id {:type :personal} {:is_active false}))
      (events/publish-event! :event/user-deactivated {:object (t2/select-one User :id id) :user-id api/*current-user-id*})))
   {:success true})
 
@@ -557,7 +557,7 @@
               (throw (ex-info (tru "Unrecognized modal: {0}" modal)
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
-    (api/check-500 (pos? (t2/update! User id {:type "personal"} {k false}))))
+    (api/check-500 (pos? (t2/update! User id {:type :personal} {k false}))))
   {:success true})
 
 (api/defendpoint POST "/:id/send_invite"
@@ -566,7 +566,7 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (check-not-internal-user id)
-  (when-let [user (t2/select-one User :id id, :is_active true, :type "personal")]
+  (when-let [user (t2/select-one User :id id, :is_active true, :type :personal)]
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
