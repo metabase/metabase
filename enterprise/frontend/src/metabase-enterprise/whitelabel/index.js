@@ -67,6 +67,16 @@ if (hasPremiumFeature("whitelabel")) {
           display_name: t`Landing Page`,
           type: "string",
           placeholder: "/",
+          props: {
+            normalize(value) {
+              if (typeof value === "string") {
+                const normalizedValue = value.trim();
+                return normalizedValue === "" ? null : normalizedValue;
+              }
+
+              return value;
+            },
+          },
         },
         {
           key: "loading-message",
