@@ -17,6 +17,7 @@ import { measureText } from "metabase/lib/measure-text";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 import {
+  COMPARISON_TYPES,
   ICON_MARGIN_RIGHT,
   ICON_SIZE,
   PERIOD_HIDE_HEIGHT_THRESHOLD,
@@ -24,6 +25,7 @@ import {
   SCALAR_TITLE_LINE_HEIGHT,
   SPACING,
 } from "./constants";
+import type { ComparisonMenuOption } from "./types";
 
 export const isPeriodVisible = (height: number) =>
   height > PERIOD_HIDE_HEIGHT_THRESHOLD;
@@ -79,12 +81,6 @@ export const getChangeWidth = (width: number): number => {
   return Math.max(width - ICON_SIZE - ICON_MARGIN_RIGHT - 2 * SPACING, 0);
 };
 
-export const COMPARISON_TYPES = {
-  PREVIOUS_VALUE: "previousValue",
-  PREVIOUS_PERIOD: "previousPeriod",
-  PERIODS_AGO: "periodsAgo",
-} as const;
-
 export const COMPARISON_SELECTOR_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
@@ -99,24 +95,6 @@ export const COMPARISON_SELECTOR_OPTIONS = {
     name: t`Previous value`,
   },
 };
-
-type PreviousValueMenuOption = {
-  type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
-  name: string;
-};
-type PreviousPeriodMenuOption = {
-  type: typeof COMPARISON_TYPES.PREVIOUS_PERIOD;
-  name: string;
-};
-type PeriodsAgoMenuOption = {
-  type: typeof COMPARISON_TYPES.PERIODS_AGO;
-  name: string;
-  maxValue: number;
-};
-export type ComparisonMenuOption =
-  | PreviousValueMenuOption
-  | PreviousPeriodMenuOption
-  | PeriodsAgoMenuOption;
 
 export function getDefaultComparison(
   series: RawSeries,

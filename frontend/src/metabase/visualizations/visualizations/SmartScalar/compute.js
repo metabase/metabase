@@ -5,10 +5,8 @@ import * as Lib from "metabase-lib";
 import { formatValue } from "metabase/lib/formatting/value";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { color, colors } from "metabase/lib/colors";
-import {
-  COMPARISON_TYPES,
-  formatChange,
-} from "metabase/visualizations/visualizations/SmartScalar/utils";
+import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 

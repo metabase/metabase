@@ -7,9 +7,9 @@ import {
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
+import { COMPARISON_TYPES } from "./constants";
 import {
   COMPARISON_SELECTOR_OPTIONS,
-  COMPARISON_TYPES,
   formatChange,
   formatChangeAutoPrecision,
   getChangeWidth,
