@@ -19,11 +19,13 @@ export const ButtonStyled = styled(Button)<ButtonProps>`
   }
 `;
 
-export const MenuItemStyled = styled(Menu.Item)<{
+type MenuItemProps = {
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   isSelected?: boolean;
   py?: string;
-}>`
+};
+
+export const MenuItemStyled = styled(Menu.Item)<MenuItemProps>`
   ${({ theme, isSelected }) =>
     isSelected &&
     `
