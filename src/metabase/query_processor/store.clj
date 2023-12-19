@@ -241,14 +241,14 @@
 (def ^:private ^{:deprecated "0.48.0"} LegacyFieldMetadata
   [:map
    [:name          ms/NonBlankString]
-   [:table_id      ::lib.schema.common/positive-int]
+   [:table_id      ::lib.schema.id/table]
    [:display_name  ms/NonBlankString]
    [:description   [:maybe :string]]
    [:database_type ms/NonBlankString]
    [:base_type     ms/FieldType]
    [:semantic_type [:maybe ms/FieldSemanticOrRelationType]]
    [:fingerprint   [:maybe :map]]
-   [:parent_id     [:maybe ::lib.schema.common/positive-int]]
+   [:parent_id     [:maybe ::lib.schema.id/field]]
    [:nfc_path      [:maybe [:sequential ms/NonBlankString]]]
    ;; there's a tension as we sometimes store fields from the db, and sometimes store computed fields. ideally we
    ;; would make everything just use base_type.

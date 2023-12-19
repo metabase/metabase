@@ -417,13 +417,12 @@
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
 (defn- fk-mappings []
-  (if (str/includes? (:name (data/db)) "sample")
-    {[:orders :product_id]  [:products :id]
-     [:orders :user_id]     [:people :id]
-     [:reviews :product_id] [:products :id]}
-    {[:checkins :user_id]   [:users :id]
-     [:checkins :venue_id]  [:venues :id]
-     [:venues :category_id] [:categories :id]}))
+  {[:checkins :user_id]   [:users :id]
+   [:checkins :venue_id]  [:venues :id]
+   [:orders :product_id]  [:products :id]
+   [:orders :user_id]     [:people :id]
+   [:reviews :product_id] [:products :id]
+   [:venues :category_id] [:categories :id]})
 
 (def ^:dynamic *enable-fk-support-for-disabled-drivers-in-tests*
   "Whether to enable `:foreign-keys` in drivers like `:bigquery-cloud-sdk` that don't have formal FKs
@@ -459,7 +458,7 @@
 
 (defmacro with-mock-fks-for-drivers-without-fk-constraints
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
-  other relevant columns (for `sample-database`) marked as foreign keys and with `:foreign-keys` a supported feature
+  other relevant columns (for `test-data`) marked as foreign keys and with `:foreign-keys` a supported feature
   when testing against BigQuery or similar drivers that do not support Foreign Key constraints. (We still let people
   mark FKs manually.) The macro helps replicate the situation where somebody has manually marked FK relationships."
   {:style/indent 0}

@@ -189,14 +189,14 @@
         " of "     (strong-limit-text row-count)
         " rows."]])))
 
-(defn- attached-results-text
+(defn attached-results-text
   "Returns hiccup structures to indicate truncated results are available as an attachment"
-  [render-type rows rows-limit]
+  [render-type {:keys [include_csv include_xls]}]
   (when (and (not= :inline render-type)
-             (< rows-limit (count rows)))
+             (or include_csv include_xls))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
-     (trs "More results have been included as a file attachment")]))
+     (trs "Results have been included as a file attachment")]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     render                                                     |
@@ -219,7 +219,7 @@
     [(:cols data) (:rows data)]))
 
 (s/defmethod render :table :- formatter/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
+  [_ _ timezone-id :- (s/maybe s/Str) card _dashcard {:keys [rows viz-settings] :as data}]
   (let [[ordered-cols ordered-rows] (order-data data viz-settings)
         data                        (-> data
                                         (assoc :rows ordered-rows)
@@ -234,9 +234,7 @@
      nil
 
      :content
-     (if-let [results-attached (attached-results-text render-type rows rows-limit)]
-       (list results-attached table-body)
-       (list table-body))}))
+     table-body}))
 
 (def ^:private default-date-styles
   {:year "YYYY"

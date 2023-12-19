@@ -204,7 +204,7 @@
   ;; now execute statements to create the DB
   (doseq [statement (ddl/create-db-ddl-statements driver dbdef)]
     (execute/execute-sql! driver :server dbdef statement))
-  ;; next, get a set of statements for creating the DB & Tables
+  ;; next, get a set of statements for creating the tables
   (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
     ;; exec the combined statement. Notice we're now executing in the `:db` context e.g. executing them for a specific
     ;; DB rather than on `:server` (no DB in particular)
@@ -216,13 +216,13 @@
                                            "NONE")]]
     (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
                        (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-      (try
-        (load-data! driver dbdef tabledef)
-        (catch Throwable e
-          (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                          {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                              (concat (take 10 rows) ['...])))}
-                          e)))))))
+               (try
+                (load-data! driver dbdef tabledef)
+                (catch Throwable e
+                  (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                                  {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                                      (concat (take 10 rows) ['...])))}
+                                  e)))))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."

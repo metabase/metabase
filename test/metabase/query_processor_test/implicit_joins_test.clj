@@ -150,7 +150,7 @@
 (deftest ^:parallel implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
     (testing "Should be able to run query with multiple implicit joins and breakouts"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
                        :breakout    [$product_id->products.category
@@ -174,7 +174,7 @@
 
 (deftest ^:parallel test-23293
   (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider (lib/composed-metadata-provider
                                         (lib.tu/mock-metadata-provider
                                          {:cards [{:id            1

@@ -21,16 +21,31 @@
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.query :as t2.query]))
 
+(set! *warn-on-reflection* true)
+
 (defn- qualified-key? [k]
   (or (qualified-keyword? k)
       (str/includes? k ".")))
+
+(def ^:private ^{:arglists '([k])} memoized-kebab-key
+  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU
+  caching [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
+  get a nice performance boost."
+  ;; we spent a lot of time messing around with different ways of doing this and this seems to be the fastest. See
+  ;; https://metaboat.slack.com/archives/C04CYTEL9N2/p1702671632956539 -- Cam
+  (let [cache      (java.util.concurrent.ConcurrentHashMap.)
+        mapping-fn (reify java.util.function.Function
+                     (apply [_this k]
+                       (u/->kebab-case-en k)))]
+    (fn [k]
+      (.computeIfAbsent cache k mapping-fn))))
 
 (defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance metadata-type]
   (-> instance
-      (update-keys u/->kebab-case-en)
+      (update-keys memoized-kebab-key)
       (assoc :lib/type metadata-type)
       u.snake-hating-map/snake-hating-map))
 
@@ -48,8 +63,8 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/database
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
-  (merge (next-method query-type model parsed-arg honeysql)
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :engine :name :dbms_version :settings :is_audit :details]}))
 
 (t2/define-after-select :metadata/database
@@ -74,8 +89,8 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/table
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
-  (merge (next-method query-type model parsed-arg honeysql)
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
 
 (t2/define-after-select :metadata/table
@@ -116,9 +131,9 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/column
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
+   (next-method query-type model parsed-args honeysql)
    {:select    [:field/base_type
                 :field/coercion_strategy
                 :field/database_type
@@ -208,9 +223,9 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/card
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
+   (next-method query-type model parsed-args honeysql)
    {:select    [:card/collection_id
                 :card/database_id
                 :card/dataset
@@ -252,8 +267,7 @@
 
 (methodical/defmethod t2.model/resolve-model :metadata/metric
   [model]
-  (classloader/require 'metabase.models.metric
-                       'metabase.models.table)
+  (classloader/require 'metabase.models.metric)
   model)
 
 (methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/metric
@@ -268,9 +282,9 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/metric
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
+   (next-method query-type model parsed-args honeysql)
    {:select    [:metric/id
                 :metric/table_id
                 :metric/name
@@ -309,9 +323,9 @@
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/segment
                                          #_resolved-query clojure.lang.IPersistentMap]
-  [query-type model parsed-arg honeysql]
+  [query-type model parsed-args honeysql]
   (merge
-   (next-method query-type model parsed-arg honeysql)
+   (next-method query-type model parsed-args honeysql)
    {:select    [:segment/id
                 :segment/table_id
                 :segment/name

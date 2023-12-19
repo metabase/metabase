@@ -21,7 +21,7 @@
       (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :not-indexed)))))))
 
 (deftest sync-composite-indexed-columns-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :index-info)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :index-info) :mongo)
     (mt/dataset (mt/dataset-definition "composite-index"
                   ["table"
                    [{:field-name "first" :indexed? false :base-type :type/Integer}

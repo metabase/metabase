@@ -20,7 +20,7 @@
   - A model with curated metadata (override on the Tax Rate type)
   - A question based on the above model"
   [[base-card-id model-card-id question-card-id] & body]
-  `(mt/dataset ~'sample-dataset
+  `(mt/dataset ~'test-data
      (mt/with-temp [Card {~base-card-id :id} {:name          "Base question - no special metadata"
                                               :dataset_query {:database (mt/id)
                                                               :type     :query
@@ -338,7 +338,11 @@
                                                                                                              :time_enabled    "milliseconds"
                                                                                                              :time_style      "HH:mm"}
                                                                                                             "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
-                                                                                                            {:time_enabled    "milliseconds"}}}}
+                                                                                                            {:time_enabled    "milliseconds"}
+                                                                                                            "[\"name\",\"EXAMPLE_TIME\"]"
+                                                                                                            {:time_enabled    nil}
+                                                                                                            "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
+                                                                                                            {:time_enabled    nil}}}}
                                Dashboard {dash-id :id} {:name "The Dashboard"}
                                DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
                                                                       :card_id      native-card-id}
@@ -350,13 +354,16 @@
                                       :as      pulse} {:name "Consistent Time Formatting Pulse"}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           native-card-id
-                                            :dashboard_card_id base-dash-card-id}
+                                            :dashboard_card_id base-dash-card-id
+                                            :include_csv       true}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           model-card-id
-                                            :dashboard_card_id model-dash-card-id}
+                                            :dashboard_card_id model-dash-card-id
+                                            :include_csv       true}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           meta-model-card-id
-                                            :dashboard_card_id metamodel-dash-card-id}
+                                            :dashboard_card_id metamodel-dash-card-id
+                                            :include_csv       true}
                                PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                     :pulse_id     pulse-id
                                                                     :enabled      true}
@@ -408,4 +415,10 @@
                    (metamodel-results "Example Timestamp With Time Zone"))))
           (testing "Custom column settings metadata takes precedence over visualization settings"
             (is (= "December 11, 2023, 3:30:45 PM"
-                   (metamodel-results "Example Timestamp")))))))))
+                   (metamodel-results "Example Timestamp"))))
+          (testing "Setting time-enabled to nil for a date time column results in only showing the date"
+            (is (= "December 11, 2023"
+                   (metamodel-results "Full Datetime Pacific"))))
+          (testing "Setting time-enabled to nil for a time column just returns an empty string"
+            (is (= ""
+                   (metamodel-results "Example Time")))))))))
