@@ -39,16 +39,11 @@ export function useNumberFilter({
   );
 
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
+    getDefaultValues(operator, filterParts?.values ?? []),
   );
 
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);
-
-  const setOperatorAndValues = (newOperator: Lib.NumberFilterOperatorName) => {
-    setOperator(newOperator);
-    setValues(getDefaultValues(newOperator, values));
-  };
 
   return {
     operator,
@@ -57,11 +52,12 @@ export function useNumberFilter({
     valueCount,
     hasMultipleValues,
     isValid,
+    getDefaultValues,
     getFilterClause: (
       operator: Lib.NumberFilterOperatorName,
       values: NumberValue[],
     ) => getFilterClause(operator, column, values),
-    setOperator: setOperatorAndValues,
+    setOperator,
     setValues,
   };
 }

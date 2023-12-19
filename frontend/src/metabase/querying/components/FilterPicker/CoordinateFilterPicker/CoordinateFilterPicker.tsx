@@ -38,6 +38,7 @@ export function CoordinateFilterPicker({
     valueCount,
     hasMultipleValues,
     isValid,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setSecondColumn,
@@ -48,6 +49,13 @@ export function CoordinateFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (
+    newOperator: Lib.CoordinateFilterOperatorName,
+  ) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -73,7 +81,7 @@ export function CoordinateFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <Box>

@@ -30,6 +30,7 @@ export function TimeFilterPicker({
     values,
     valueCount,
     availableOptions,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -39,6 +40,11 @@ export function TimeFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -64,7 +70,7 @@ export function TimeFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <Box>

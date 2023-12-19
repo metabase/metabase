@@ -33,15 +33,10 @@ export function useTimeFilter({
 
   const [operator, setOperator] = useState(filterParts?.operator ?? "<");
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
+    getDefaultValues(operator, filterParts?.values ?? []),
   );
   const { valueCount } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);
-
-  const setOperatorAndValues = (newOperator: Lib.TimeFilterOperatorName) => {
-    setOperator(newOperator);
-    setValues(getDefaultValues(newOperator, values));
-  };
 
   return {
     operator,
@@ -49,11 +44,12 @@ export function useTimeFilter({
     valueCount,
     availableOptions,
     isValid,
+    getDefaultValues,
     getFilterClause: (
       operator: Lib.TimeFilterOperatorName,
       values: TimeValue[],
     ) => getFilterClause(operator, column, values),
-    setOperator: setOperatorAndValues,
+    setOperator,
     setValues,
   };
 }

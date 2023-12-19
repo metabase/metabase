@@ -36,6 +36,7 @@ export function NumberFilterEditor({
     values,
     valueCount,
     hasMultipleValues,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -48,8 +49,10 @@ export function NumberFilterEditor({
   });
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+    const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, values));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, newValues));
   };
 
   const handleInputChange = (newValues: NumberValue[]) => {

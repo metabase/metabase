@@ -29,6 +29,7 @@ export function StringFilterEditor({
     valueCount,
     hasMultipleValues,
     options,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -40,8 +41,10 @@ export function StringFilterEditor({
   });
 
   const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+    const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, values, options));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, newValues, options));
   };
 
   const handleInputChange = (newValues: string[]) => {

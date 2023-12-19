@@ -27,6 +27,7 @@ export function TimeFilterEditor({
     values,
     valueCount,
     availableOptions,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -38,8 +39,10 @@ export function TimeFilterEditor({
   });
 
   const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+    const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, values));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, newValues));
   };
 
   const handleInputChange = (newValues: TimeValue[]) => {

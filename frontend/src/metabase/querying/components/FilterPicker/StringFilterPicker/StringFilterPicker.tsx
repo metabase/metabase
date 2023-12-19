@@ -34,6 +34,7 @@ export function StringFilterPicker({
     hasCaseSensitiveOption,
     options,
     isValid,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -44,6 +45,11 @@ export function StringFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -69,7 +75,7 @@ export function StringFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>

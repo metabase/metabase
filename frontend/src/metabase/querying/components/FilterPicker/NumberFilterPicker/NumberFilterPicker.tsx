@@ -34,6 +34,7 @@ export function NumberFilterPicker({
     valueCount,
     hasMultipleValues,
     isValid,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -43,6 +44,11 @@ export function NumberFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -68,7 +74,7 @@ export function NumberFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>

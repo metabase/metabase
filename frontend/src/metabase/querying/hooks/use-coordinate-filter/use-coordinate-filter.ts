@@ -56,11 +56,6 @@ export function useCoordinateFilter({
   const { valueCount, hasMultipleValues } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, secondColumn, values);
 
-  const setOperatorAndValues = (operator: Lib.CoordinateFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
-
   return {
     operator,
     availableOptions,
@@ -71,12 +66,13 @@ export function useCoordinateFilter({
     secondColumn,
     canPickColumns: canPickColumns(operator, availableColumns),
     isValid,
+    getDefaultValues,
     getFilterClause: (
       operator: Lib.CoordinateFilterOperatorName,
       secondColumn: Lib.ColumnMetadata | undefined,
       values: NumberValue[],
     ) => getFilterClause(operator, column, secondColumn, values),
-    setOperator: setOperatorAndValues,
+    setOperator,
     setValues,
     setSecondColumn,
   };

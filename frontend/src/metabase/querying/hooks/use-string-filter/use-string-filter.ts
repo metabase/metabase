@@ -36,7 +36,7 @@ export function useStringFilter({
   );
 
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values),
+    getDefaultValues(operator, filterParts?.values ?? []),
   );
 
   const [options, setOptions] = useState(
@@ -47,11 +47,6 @@ export function useStringFilter({
     getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values, options);
 
-  const setOperatorAndValues = (operator: Lib.StringFilterOperatorName) => {
-    setOperator(operator);
-    setValues(getDefaultValues(operator, values));
-  };
-
   return {
     operator,
     availableOptions,
@@ -61,12 +56,13 @@ export function useStringFilter({
     hasCaseSensitiveOption,
     options,
     isValid,
+    getDefaultValues,
     getFilterClause: (
       operator: Lib.StringFilterOperatorName,
       values: string[],
       options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, column, values, options),
-    setOperator: setOperatorAndValues,
+    setOperator,
     setValues,
     setOptions,
   };
