@@ -11,6 +11,7 @@
    [metabase.test.util.log :as tu.log]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (com.fasterxml.jackson.core JsonParseException)))
@@ -135,9 +136,16 @@
                          :pie.show_data_labels     labels})))))))
 
 (deftest encrypted-data-with-no-secret-test
-  (is (= {:a 1}
-         (mi/encrypted-json-out "{\"a\": 1}")))
-  (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
-          (tu.log/with-log-messages-for-level :error
-            (mi/encrypted-json-out
-             (encryption/encrypt (encryption/secret-key->hash "qwe") "qwe"))))))
+  (testing "Just parses string normally when there is no key and the string is JSON"
+    (is (= {:a 1}
+           (mi/encrypted-json-out "{\"a\": 1}"))))
+  (testing "Also parses string if it's encrypted and JSON"
+    (is (= {:a 1}
+           (encryption-test/with-secret-key "qwe"
+             (mi/encrypted-json-out
+              (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+  (testing "Logs an error message when incoming data looks encrypted"
+    (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
+            (tu.log/with-log-messages-for-level :error
+              (mi/encrypted-json-out
+               (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}")))))))
