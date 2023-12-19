@@ -5,13 +5,14 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor, Box } from "metabase/ui";
+import { Group, Text, Anchor, Box, Stack } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
+import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
 export type Resource = Dashboard | Card;
 
