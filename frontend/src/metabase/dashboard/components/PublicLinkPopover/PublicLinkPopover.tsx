@@ -43,6 +43,18 @@ export const PublicLinkPopover = ({
     deletePublicLink();
   };
 
+  const getMinDropdownHeight = () => {
+    if (isAdmin && extensions.length > 0) {
+      return "12rem";
+    }
+
+    if (!isAdmin && extensions.length === 0) {
+      return "8rem";
+    }
+
+    return "10rem";
+  };
+
   return (
     <Popover opened={isOpen} onClose={onClose} withinPortal>
       <Popover.Target>
@@ -53,7 +65,7 @@ export const PublicLinkPopover = ({
           p="lg"
           w="28rem"
           data-testid="public-link-popover-content"
-          mih={isAdmin ? "10rem" : "auto"}
+          mih={getMinDropdownHeight()}
         >
           <Title order={4}>{t`Public link`}</Title>
           <Text>{t`Anyone can view this if you give them the link.`}</Text>
