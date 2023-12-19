@@ -16,6 +16,7 @@
    [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -269,21 +270,18 @@
                                 PARTITION BY
                                 transaction_date
                                 OPTIONS (
-                                partition_expiration_days = 3,
                                 require_partition_filter = TRUE);"
                                 (fmt-table-name "partition_by_time"))
                         (format "CREATE TABLE %s (transaction_id INT64)
                                 PARTITION BY
                                 _PARTITIONDATE
                                 OPTIONS (
-                                partition_expiration_days = 3,
                                 require_partition_filter = TRUE);"
                                 (fmt-table-name "partition_by_ingestion_time"))
                         (format "CREATE TABLE %s (transaction_id INT64)
                                 PARTITION BY
                                 _PARTITIONDATE
                                 OPTIONS (
-                                partition_expiration_days = 3,
                                 require_partition_filter = TRUE);"
                                 (fmt-table-name "partitioned_marterialized_view"))
                         (format "CREATE TABLE %s (customer_id INT64, date1 DATE)
@@ -322,13 +320,36 @@
                                 [[table_name field_name] database_partitioned]))
                          (into {})))))
 
-           (testing "for ingestion time partitions, make sure we manually add a _PARTITIONTIME field"
-             (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name "partition_by_ingestion_time")]
-               (is (true? (t2/exists? :model/Field :table_id partitioned-by-ingestion-time-table-id :name "_PARTITIONTIME")))))
-
            (finally
             (doseq [table-name (keys table-name->is-filter-required?)]
               (drop-table-if-exists! table-name)))))))))
+
+(deftest sync-pseudocolumn-for-ingestion-time-partitioned-table-test
+  (testing "for ingestion time partitioned tables, we should syncs the pseudocolumn _PARTITIONTIME"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/with-model-cleanup [:model/Table]
+        (let [table-name "partition_by_ingestion_time"]
+          (try
+           (doseq [sql [(format "CREATE TABLE %s (transaction_id INT64)
+                                PARTITION BY _PARTITIONDATE;"
+                                (fmt-table-name table-name))
+                        (format "INSERT INTO %s(transaction_id) VALUES(1);"
+                                (fmt-table-name table-name))]]
+             (bigquery.tx/execute! sql))
+           (sync/sync-database! (mt/db) {:scan :schema})
+
+           (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)]
+             (is (=? {:name           "_PARTITIONTIME"
+                      :database_type "TIMESTAMP"
+                      :base_type     :type/DateTimeWithLocalTZ}
+                     (t2/select-one :model/Field :table_id partitioned-by-ingestion-time-table-id :name "_PARTITIONTIME"))))
+           (testing "and query this table should return the column pseudocolumn as well"
+             (is (malli=
+                  [:tuple :int ms/TemporalString]
+                  (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time))))))
+
+           (finally
+            (drop-table-if-exists! table-name))))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
