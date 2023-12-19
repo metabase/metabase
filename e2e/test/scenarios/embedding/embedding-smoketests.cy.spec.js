@@ -119,7 +119,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByTestId("-interactive-embedding-setting").within(() => {
         cy.findByText("Interactive embedding");
 
-        cy.findByRole("link", { name: "Learn more" })
+        cy.findByRole("link", { name: "Learn More" })
           .should("have.attr", "href")
           .and(
             "eq",
