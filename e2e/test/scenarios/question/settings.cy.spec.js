@@ -283,7 +283,7 @@ describe("scenarios > question > settings", () => {
       const questionDetails = {
         dataset_query: {
           database: SAMPLE_DB_ID,
-          query: { "source-table": 2 },
+          query: { "source-table": ORDERS_ID },
           type: "query",
         },
         display: "table",

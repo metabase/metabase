@@ -140,12 +140,12 @@
 (mu/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
-   old-tables :- [:map
-                  [:name ::lib.schema.common/non-blank-string]
-                  [:schema [:maybe ::lib.schema.common/non-blank-string]]]]
+   old-tables :- [:set [:map
+                        [:name ::lib.schema.common/non-blank-string]
+                        [:schema [:maybe ::lib.schema.common/non-blank-string]]]]]
   (log/info "Marking tables as inactive:"
-   (for [table old-tables]
-     (sync-util/name-for-logging (mi/instance Table table))))
+            (for [table old-tables]
+              (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema table-name :name :as _table} old-tables]
     (t2/update! Table {:db_id  (u/the-id database)
                        :schema schema
