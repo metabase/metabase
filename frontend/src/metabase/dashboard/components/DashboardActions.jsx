@@ -71,7 +71,12 @@ export const getDashboardActions = (
       );
     }
 
-    buttons.push(<DashboardEmbedAction dashboard={dashboard} />);
+    buttons.push(
+      <DashboardEmbedAction
+        key="dashboard-embed-action"
+        dashboard={dashboard}
+      />,
+    );
   }
 
   if (!isEditing && !isEmpty) {
