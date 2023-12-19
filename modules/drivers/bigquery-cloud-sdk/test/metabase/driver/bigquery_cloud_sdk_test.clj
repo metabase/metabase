@@ -256,52 +256,36 @@
         (let [table-name->is-filter-required? {"partition_by_range"              true
                                                "partition_by_time"               true
                                                "partition_by_ingestion_time"     true
-                                               "partitioned_marterialized_view"  true
                                                "partition_by_range_not_required" false
                                                "not_partitioned"                 false}]
-          (try
-           (doseq [sql [(format "CREATE TABLE %s (customer_id INT64, date1 DATE)
-                                PARTITION BY
-                                RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
+         (try
+          (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
+                                PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
                                 OPTIONS (require_partition_filter = TRUE);"
-                                (fmt-table-name "partition_by_range"))
-                        (format "CREATE TABLE %s (transaction_id INT64, transaction_date DATE)
-                                PARTITION BY
-                                transaction_date
-                                OPTIONS (
-                                partition_expiration_days = 3,
-                                require_partition_filter = TRUE);"
-                                (fmt-table-name "partition_by_time"))
-                        (format "CREATE TABLE %s (transaction_id INT64)
-                                PARTITION BY
-                                _PARTITIONDATE
-                                OPTIONS (
-                                partition_expiration_days = 3,
-                                require_partition_filter = TRUE);"
-                                (fmt-table-name "partition_by_ingestion_time"))
-                        (format "CREATE TABLE %s (transaction_id INT64)
-                                PARTITION BY
-                                _PARTITIONDATE
-                                OPTIONS (
-                                partition_expiration_days = 3,
-                                require_partition_filter = TRUE);"
-                                (fmt-table-name "partitioned_marterialized_view"))
-                        (format "CREATE TABLE %s (customer_id INT64, date1 DATE)
-                                PARTITION BY
-                                RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
+                               (fmt-table-name "partition_by_range"))
+                       (format "CREATE TABLE %s (transaction_id INT64, transaction_time TIMESTAMP)
+                                PARTITION BY DATE(transaction_time)
+                                OPTIONS (require_partition_filter = TRUE);"
+                               (fmt-table-name "partition_by_time"))
+                       (format "CREATE TABLE %s (transaction_id INT64)
+                                PARTITION BY _PARTITIONDATE
+                                OPTIONS (require_partition_filter = TRUE);"
+                               (fmt-table-name "partition_by_ingestion_time"))
+                       (format "CREATE TABLE %s (customer_id INT64, transaction_date DATE)
+                                PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
                                 OPTIONS (require_partition_filter = FALSE);"
-                                (fmt-table-name "partition_by_range_not_required"))
-                        (format "CREATE TABLE %s (transaction_id INT64);"
-                                (fmt-table-name "not_partitioned"))]]
-             (bigquery.tx/execute! sql))
+                               (fmt-table-name "partition_by_range_not_required"))
+                       (format "CREATE TABLE %s (transaction_id INT64);"
+                               (fmt-table-name "not_partitioned"))]]
+            (bigquery.tx/execute! sql))
 
-           (sync/sync-database! (mt/db) {:scan :schema})
-           (is (= table-name->is-filter-required?
-                  (t2/select-fn->fn :name :database_require_filter :model/Table
-                                    :name [:in (keys table-name->is-filter-required?)])))
-           (finally
-            (doseq [table-name (keys table-name->is-filter-required?)]
-              (drop-table-if-exists! table-name)))))))))
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (is (= table-name->is-filter-required?
+                 (t2/select-fn->fn :name :database_require_filter :model/Table
+                                   :name [:in (keys table-name->is-filter-required?)])))
+          (finally
+           (doall (map drop-table-if-exists! (keys table-name->is-filter-required?)))
+           nil)))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk

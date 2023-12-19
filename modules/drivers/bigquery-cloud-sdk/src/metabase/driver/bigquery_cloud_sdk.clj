@@ -121,14 +121,18 @@
     {:tables (set (for [^Table table tables
                         :let  [^TableId         table-id   (.getTableId table)
                                ^String          dataset-id (.getDataset table-id)
-                               ^TableDefinition tabledef   (.getDefinition table)]]
+                               ^TableDefinition tabledef   (.getDefinition table)
+                               table-name                  (str (.getTable table-id))]]
                     {:schema                  dataset-id
-                     :name                    (.getTable table-id)
+                     :name                    #pp table-name
                      :database_require_filter
                      (boolean
                       (and
-                       (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/TABLE}
-                        (. tabledef getType))
+                       ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
+                       ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                       ;; thus we can't know whether the view require a filter or not.
+                       ;; Maybe this is something we can do once we can parse sql
+                       (= TableDefinition$Type/TABLE (. tabledef getType))
                        (when (or (.getRangePartitioning tabledef)
                                  (.getTimePartitioning tabledef))
                          ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
@@ -137,7 +141,7 @@
                          ;; This is an upstream bug where the v2 API is incomplete when setting object values see
                          ;; https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
                          ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
-                         (.getRequirePartitionFilter (get-table database dataset-id (.getTable table-id))))))}))}))
+                         (.getRequirePartitionFilter (get-table database dataset-id table-name)))))}))}))
 
 (defn- bigquery-type->base-type
   "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
