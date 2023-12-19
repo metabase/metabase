@@ -31,8 +31,7 @@ import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
   PublicLinksActionListing,
-  EmbeddedQuestionListing,
-  EmbeddedDashboardListing,
+  EmbeddedResources,
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
@@ -510,16 +509,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
           },
         },
       },
+
       {
-        key: "-embedded-dashboards",
-        display_name: t`Embedded Dashboards`,
-        widget: EmbeddedDashboardListing,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        key: "-embedded-questions",
-        display_name: t`Embedded Questions`,
-        widget: EmbeddedQuestionListing,
+        key: "-embedded-resources",
+        display_name: t`Manage embeds`,
+
+        widget: EmbeddedResources,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {

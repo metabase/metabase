@@ -90,13 +90,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.button("Regenerate key");
         });
 
-        cy.findByTestId("-embedded-dashboards-setting").within(() => {
-          cy.findByText(/Embedded dashboards/i);
-          cy.findByText("No dashboards have been embedded yet.");
-        });
-
-        cy.findByTestId("-embedded-questions-setting")
+        cy.findByTestId("-embedded-resources-setting")
           .within(() => {
+            cy.findByText(/Embedded dashboards/i);
+            cy.findByText("No dashboards have been embedded yet.");
+
             cy.findByText(/Embedded questions/i);
             cy.findByText("No questions have been embedded yet.");
           })
