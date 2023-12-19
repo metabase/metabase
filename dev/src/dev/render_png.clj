@@ -2,9 +2,9 @@
   "Improve feedback loop for dealing with png rendering code. Will create images using the rendering that underpins
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require
+    [clojure.data.csv :as csv]
     [clojure.java.io :as io]
     [clojure.java.shell :as sh]
-    [clojure.string :as str]
     [hiccup.core :as hiccup]
     [metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
@@ -116,25 +116,20 @@
         (.deleteOnExit tmp-file)
         (open tmp-file)))))
 
-(def ^:private dashcard-style
-  {:background    "white"
-   :border        "1px solid #ededf0"
-   :border-radius "8px"
-   :margin        "10px"
-   :padding       "10px"})
+(def ^:private table-style-map
+  {:border          "1px solid black"
+   :border-collapse "collapse"
+   :padding         "5px"})
 
 (def ^:private table-style
-  (style/style
-   {:border          "1px solid black"
-    :border-collapse "collapse"}))
+  (style/style table-style-map))
 
 (def ^:private csv-row-limit 10)
 
 (defn- csv-to-html-table [csv-string]
-  (let [rows (map #(str/split % #",")
-                  (str/split csv-string #"\n"))]
+  (let [rows (csv/read-csv csv-string)]
     [:table {:style table-style}
-     (for [row (take csv-row-limit rows)]
+     (for [row (take (inc csv-row-limit) rows)] ;; inc row-limit to include the header and the expected # of rows
        [:tr {:style table-style}
         (for [cell row]
           [:td {:style table-style} cell])])]))
@@ -153,35 +148,32 @@
 
 (defn- render-one-dashcard
   [{:keys [card dashcard result] :as dashboard-result}]
-  [:div {:style (style/style dashcard-style)}
-   (if card
-     (let [section-style {:border  "1px solid black"
-                          :padding "10px"}
-           base-render   (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
-           html-src      (-> base-render
-                             :content)
-           img-src       (-> base-render
-                             (png/render-html-to-png 1200)
-                             img/render-img-data-uri)
-           csv-src       (render-csv-for-dashcard dashboard-result)]
-       [:div {:style (style/style (merge section-style {:display "flex"}))}
-        [:div {:style (style/style section-style)}
-         [:h4 "PNG"]
-         [:img {:style (style/style {:max-width "400px"})
-                :src   img-src}]]
-        [:div {:style (style/style (merge section-style {:max-width "400px"}))}
-           [:h4 "HTML"]
-           html-src]
-        [:div {:style (style/style section-style)}
-           [:h4 "CSV"]
-           csv-src]])
-     [:div {:style (style/style {:font-family             "Lato"
-                                 :font-size               "13px" #_ "0.875em"
-                                 :font-weight             "400"
-                                 :font-style              "normal"
-                                 :color                   "#4c5773"
-                                 :-moz-osx-font-smoothing "grayscale"})}
-      (markdown/process-markdown (:text dashboard-result) :html)])])
+  (letfn [(cellfn [content]
+            [:td {:style (style/style (merge table-style-map {:max-width "400px"}))}
+             content])]
+    (if card
+      (let [base-render (render/render-pulse-card :inline (pulse/defaulted-timezone card) card dashcard result)
+            html-src    (-> base-render :content)
+            img-src     (-> base-render
+                            (png/render-html-to-png 1200)
+                            img/render-img-data-uri)
+            csv-src (render-csv-for-dashcard dashboard-result)]
+        [:tr
+         (cellfn (:name card))
+         (cellfn [:img {:style (style/style {:max-width "400px"}) :src img-src}])
+         (cellfn html-src)
+         (cellfn csv-src)])
+      [:tr
+       (cellfn nil)
+       (cellfn
+        [:div {:style (style/style {:font-family             "Lato"
+                                    :font-size               "13px" #_ "0.875em"
+                                    :font-weight             "400"
+                                    :font-style              "normal"
+                                    :color                   "#4c5773"
+                                    :-moz-osx-font-smoothing "grayscale"})}
+         (markdown/process-markdown (:text dashboard-result) :html)])
+       (cellfn nil)])))
 
 (defn render-dashboard-to-hiccup
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
@@ -189,14 +181,20 @@
   (let [user              (t2/select-one :model/User)
         dashboard         (t2/select-one :model/Dashboard :id dashboard-id)
         dashboard-results (execute-dashboard {:creator_id (:id user)} dashboard)
-        render            (->> (map render-one-dashcard (map #(assoc % :dashboard dashboard) dashboard-results))
-                               (into [:div]))]
+        render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
+                               (into [[:tr
+                                       [:th {:style (style/style table-style-map)} "Card Name"]
+                                       [:th {:style (style/style table-style-map)} "PNG"]
+                                       [:th {:style (style/style table-style-map)} "HTML"]
+                                       [:th {:style (style/style table-style-map)} "CSV"]]])
+                               (into [:table {:style (style/style table-style-map)}]))]
     render))
 
 (defn render-dashboard-to-html
   "Given a dashboard ID, renders all of the dashcards into an html document."
   [dashboard-id]
   (hiccup/html (render-dashboard-to-hiccup dashboard-id)))
+
 
 (defn render-dashboard-to-html-and-open
   "Given a dashboard ID, renders all of the dashcards to an html file and opens it."
@@ -218,16 +216,17 @@
   ;; - The plain question will not have custom formatting applied
   ;; - The model and derived query will have custom formatting applied
   (mt/dataset sample-dataset
-    (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
-                                                            :type     :query
-                                                            :query    {:source-table (mt/id :orders)
-                                                                       :expressions  {"Tax Rate" [:/
-                                                                                                  [:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                                  [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                       :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
-                                                                                      [:field (mt/id :orders :total) {:base-type :type/Float}]
-                                                                                      [:expression "Tax Rate"]]
-                                                                       :limit        10}}}
+    (mt/with-temp [Card {base-card-id :id}
+                   {:dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)
+                                               :expressions  {"Tax Rate" [:/
+                                                                          [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                                          [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                                               :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                              [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                                              [:expression "Tax Rate"]]
+                                               :limit        10}}}
                    Card {model-card-id :id} {:dataset         true
                                              :dataset_query   {:type     :query
                                                                :database (mt/id)
