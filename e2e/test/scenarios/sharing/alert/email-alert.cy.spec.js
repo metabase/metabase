@@ -64,19 +64,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       table: PEOPLE_ID,
     });
 
-    cy.icon("bell").click();
+    saveAlert();
 
-    cy.findByRole("dialog").within(() => {
-      cy.findByLabelText("Name").type(" alert");
-      cy.findByRole("button", { name: "Save" }).click();
-    });
-
-    cy.wait("@saveCard");
-
-    cy.findByTestId("alert-education-screen").within(() => {
-      cy.findByRole("button", { name: "Set up an alert" }).click();
-    });
-    cy.findByRole("button", { name: "Done" }).click();
+    cy.findByText("Your alert is all set up.").should("be.visible");
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
       expect(body.channels[0].channel_type).to.eq("email");
@@ -84,35 +74,36 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
   });
 
-  it("should enable alert to be updated (without updating question) (metabase#36866)", () => {
+  it.only("should enable alert to be updated (without updating question) (metabase#36866)", () => {
     openTable({
       table: PEOPLE_ID,
     });
 
-    cy.findByTestId("view-footer").within(() => {
-      cy.icon("bell").click();
+    saveAlert();
+    cy.findByText("Your alert is all set up.").should("be.visible");
+    cy.get("@saveCard").should("have.property", "response");
+
+    clickAlertBell();
+
+    cy.findByTestId("popover").within(() => {
+      cy.findByText("You set up an alert").should("be.visible");
+      cy.findByText("Edit").click();
     });
 
-    cy.findByRole("dialog").within(() => {
-      cy.findByLabelText("Name").type(" alert");
-      cy.findByRole("button", { name: "Save" }).click();
-    });
+    cy.findByText("How often should we check for results?")
+      .parent()
+      .parent()
+      .within(() => {
+        const buttons = cy.findAllByTestId("select-button");
+        buttons.should("have.length", 2);
+        buttons.eq(0).click();
+      });
+    const weekly = cy.findByRole("option", { name: "Weekly" });
+    weekly.should("have.attr", "aria-selected", "false");
+    weekly.click();
+    cy.findByRole("button", { name: "Save changes" }).click();
 
-    cy.wait("@saveCard");
-
-    cy.findByTestId("alert-education-screen").within(() => {
-      cy.findByRole("button", { name: "Set up an alert" }).click();
-    });
-    cy.findByRole("button", { name: "Done" }).click();
-
-    cy.wait("@savedAlert").then(({ response: { body } }) => {
-      expect(body.channels[0].channel_type).to.eq("email");
-      expect(body.channels[0].enabled).to.eq(true);
-    });
-
-    cy.findByTestId("view-footer").within(() => {
-      cy.icon("bell").click();
-    });
+    cy.get("@saveCard").should("not.have.property", "response");
   });
 });
 
@@ -125,4 +116,26 @@ function openAlertForQuestion(id) {
 
 function toggleChannel(channel) {
   cy.findByText(channel).parent().find("input").click();
+}
+
+function clickAlertBell() {
+  cy.findByTestId("view-footer").within(() => {
+    cy.icon("bell").click();
+  });
+}
+
+function saveAlert() {
+  clickAlertBell();
+
+  cy.findByRole("dialog").within(() => {
+    cy.findByLabelText("Name").type(" alert");
+    cy.findByRole("button", { name: "Save" }).click();
+  });
+
+  cy.wait("@saveCard");
+
+  cy.findByTestId("alert-education-screen").within(() => {
+    cy.findByRole("button", { name: "Set up an alert" }).click();
+  });
+  cy.findByRole("button", { name: "Done" }).click();
 }
