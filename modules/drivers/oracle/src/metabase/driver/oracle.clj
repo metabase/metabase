@@ -627,7 +627,8 @@
 
 (defmethod unprepare/unprepare-value [:oracle ZonedDateTime]
   [_ t]
-  (format "timestamp '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)))
+  (format "timestamp '%s'" (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)
+                               (str/replace #"Z$" "UTC"))))
 
 (defmethod unprepare/unprepare-value [:oracle Instant]
   [driver t]
