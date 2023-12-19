@@ -43,7 +43,7 @@ const productVendors = PRODUCT_VENDOR_VALUES.values.flat() as string[];
 
 function createQueryWithMultipleValuesFilter() {
   const query = createQuery();
-  const column = findStringColumn(query, { fieldValues: "search" });
+  const column = findStringColumn(query, "PRODUCTS", "VENDOR");
 
   const clause = Lib.stringFilterClause({
     operator: "!=",
@@ -380,7 +380,8 @@ describe("FilterPicker", () => {
       );
 
       userEvent.click(screen.getByText("Total"));
-      userEvent.type(screen.getByPlaceholderText("Enter a number"), "100");
+      const input = screen.getByPlaceholderText("Enter a number");
+      userEvent.type(input, "100");
       userEvent.click(screen.getByText("Update filter"));
 
       const filter = getNextFilter();

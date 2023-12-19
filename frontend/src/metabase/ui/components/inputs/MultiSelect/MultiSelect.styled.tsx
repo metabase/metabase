@@ -7,5 +7,13 @@ export const getMultiSelectOverrides =
         dropdownComponent: "div",
         withinPortal: true,
       },
+      styles: () => ({
+        wrapper: {
+          position: "relative",
+          "&:has(input:disabled)": {
+            pointerEvents: "auto",
+          },
+        },
+      }),
     },
   });

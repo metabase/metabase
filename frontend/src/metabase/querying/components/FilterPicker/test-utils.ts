@@ -3,7 +3,6 @@ import dayjs from "dayjs";
 import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { FieldValuesType } from "metabase-types/api";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
@@ -200,14 +199,10 @@ export function createQueryWithNumberFilter({
 
 export function findStringColumn(
   query: Lib.Query,
-  { fieldValues = "none" }: { fieldValues?: FieldValuesType } = {},
+  tableName = "PRODUCTS",
+  columnName = "DESCRIPTION",
 ) {
-  const fieldNameMap = {
-    none: "DESCRIPTION",
-    list: "CATEGORY",
-    search: "VENDOR",
-  };
-  return findFilteredColumn(query, "PRODUCTS", fieldNameMap[fieldValues]);
+  return findFilteredColumn(query, tableName, columnName);
 }
 
 type StringFilterOpts = Partial<Lib.StringFilterParts> & {
