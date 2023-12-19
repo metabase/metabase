@@ -49,7 +49,7 @@ describe("[EE] embedding settings", () => {
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-ee-cta",
+          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-pro-cta",
         );
       });
     });
