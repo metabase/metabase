@@ -51,8 +51,11 @@ import {
   trackCustomHomepageDashboardEnabled,
 } from "./analytics";
 
-import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import RedirectWidget from "./components/widgets/RedirectWidget";
+import {
+  InteractiveEmbeddingOptionCard,
+  StaticEmbeddingOptionCard,
+} from "./components/widgets/EmbeddingOption/EmbeddingOption";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -468,24 +471,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "-static-embedding",
-        widget: EmbeddingOption,
-        embedName: t`Static embedding`,
-        embedDescription: t`Use interactive embedding when you want to offer multi-tenant, self-service analytics and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`,
-        embedType: "standalone",
+        widget: StaticEmbeddingOptionCard,
       },
       {
         key: "-interactive-embedding",
-        widget: EmbeddingOption,
-        embedName: t`Interactive embedding`,
-        embedDescription: jt`Use interactive embedding when you want to ${(
-          <ExternalLink
-            href="https://www.metabase.com/blog/why-full-app-embedding"
-            key="why-full-app-embedding"
-          >
-            {t`offer multi-tenant, self-service analytics`}
-          </ExternalLink>
-        )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`,
-        embedType: "full-app",
+        widget: InteractiveEmbeddingOptionCard,
       },
     ],
   },

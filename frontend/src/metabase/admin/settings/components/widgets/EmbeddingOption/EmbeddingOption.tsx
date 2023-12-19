@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
@@ -11,11 +11,11 @@ import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
 import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";
 import StaticEmbeddingOn from "./StaticEmbeddingOn.svg?component";
 interface EmbeddingOptionProps {
-  setting: {
-    embedName: string;
-    embedDescription: string;
-    embedType: "standalone" | "full-app";
-  };
+  title: string;
+  label?: string;
+  children?: React.ReactNode;
+  description: React.ReactNode;
+  icon: React.ReactNode;
 }
 
 const interactiveEmbedQuickStartOSSLink =
@@ -24,36 +24,36 @@ const interactiveEmbedQuickStartOSSLink =
 const interactiveEmbedQuickStartEELink =
   "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-ee-cta";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
-  const settingValue = useSelector(state =>
-    getSetting(state, "enable-embedding"),
-  );
-
-  const Icon = Icons[setting.embedType][settingValue ? "on" : "off"];
-
+function EmbeddingOption({
+  title,
+  label,
+  description,
+  children,
+  icon,
+}: EmbeddingOptionProps) {
   return (
     <StyledCard compact>
-      <Icon />
+      {icon}
       <Flex gap="md" my="md" direction={"row"}>
-        <Title order={2}>{setting.embedName}</Title>
-        {setting.embedType === "full-app" && <Label>{t`PRO/ENTERPRISE`}</Label>}
+        <Title order={2}>{title}</Title>
+        {label && <Label>{label}</Label>}
       </Flex>
-      <Text mb={"lg"}>{setting.embedDescription}</Text>
+      <Text mb={"lg"}>{description}</Text>
       <Flex gap="md" direction="column" align="flex-start">
-        {setting.embedType === "standalone" ? (
-          <StaticEmbeddingButtons enabled={settingValue} />
-        ) : (
-          <InteractiveEmbeddingButtons enabled={settingValue} />
-        )}
+        {children}
       </Flex>
     </StyledCard>
   );
 }
 
-const StaticEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
+export const StaticEmbeddingOptionCard = () => {
+  const enabled = useSelector(state => getSetting(state, "enable-embedding"));
   return (
-    <>
+    <EmbeddingOption
+      icon={enabled ? <StaticEmbeddingOn /> : <StaticEmbeddingOff />}
+      title={t`Static embedding`}
+      description={t`Use interactive embedding when you want to offer multi-tenant, self-service analytics and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
+    >
       <Button
         variant="default"
         disabled={!enabled}
@@ -62,15 +62,28 @@ const StaticEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
       >
         {t`Manage`}
       </Button>
-    </>
+    </EmbeddingOption>
   );
 };
 
-const InteractiveEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
+export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
+  const enabled = useSelector(state => getSetting(state, "enable-embedding"));
 
   return (
-    <>
+    <EmbeddingOption
+      icon={enabled ? <InteractiveEmbeddingOn /> : <InteractiveEmbeddingOff />}
+      title={t`Interactive embedding`}
+      label={t`PRO/ENTERPRISE`}
+      description={jt`Use interactive embedding when you want to ${(
+        <ExternalLink
+          href="https://www.metabase.com/blog/why-full-app-embedding"
+          key="why-full-app-embedding"
+        >
+          {t`offer multi-tenant, self-service analytics`}
+        </ExternalLink>
+      )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
+    >
       <ExternalLink
         href={
           isEE
@@ -96,17 +109,6 @@ const InteractiveEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
           {t`Learn More`}
         </Button>
       )}
-    </>
+    </EmbeddingOption>
   );
 };
-
-const Icons = {
-  standalone: {
-    on: StaticEmbeddingOn,
-    off: StaticEmbeddingOff,
-  },
-  "full-app": {
-    on: InteractiveEmbeddingOn,
-    off: InteractiveEmbeddingOff,
-  },
-} as const;
