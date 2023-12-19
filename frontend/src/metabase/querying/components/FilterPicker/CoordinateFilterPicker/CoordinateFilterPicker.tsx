@@ -4,8 +4,8 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { isNumber } from "metabase/lib/types";
 import { Box, Flex, NumberInput, Stack, Text } from "metabase/ui";
-import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-coordinate-filter";
+import { useCoordinateFilter } from "metabase/querying/hooks/use-coordinate-filter";
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
@@ -121,8 +121,6 @@ function CoordinateValueInput({
   hasMultipleValues,
   onChange,
 }: CoordinateValueInputProps) {
-  const placeholder = t`Enter a number`;
-
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
@@ -142,9 +140,10 @@ function CoordinateValueInput({
       <Flex p="md">
         <NumberInput
           value={values[0]}
-          placeholder={placeholder}
+          placeholder={t`Enter a number`}
           autoFocus
           w="100%"
+          aria-label={t`Filter value`}
           onChange={(newValue: number) => onChange([newValue])}
         />
       </Flex>
@@ -156,14 +155,14 @@ function CoordinateValueInput({
       <Flex align="center" justify="center" p="md">
         <NumberInput
           value={values[0]}
-          placeholder={placeholder}
+          placeholder={t`Min`}
           autoFocus
           onChange={(newValue: number) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
-          placeholder={placeholder}
+          placeholder={t`Max`}
           onChange={(newValue: number) => onChange([values[0], newValue])}
         />
       </Flex>

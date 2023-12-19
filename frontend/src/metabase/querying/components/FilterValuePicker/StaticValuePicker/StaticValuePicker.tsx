@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { FocusEvent } from "react";
+import { t } from "ttag";
 import { MultiAutocomplete } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 import { getFieldOptions } from "../utils";
@@ -31,6 +32,7 @@ export function StaticValuePicker({
       value={selectedValues}
       placeholder={placeholder}
       shouldCreate={shouldCreate}
+      aria-label={t`Filter value`}
       onChange={onChange}
       onFocus={onFocus}
       onBlur={onBlur}

@@ -140,6 +140,7 @@ function StringValueInput({
       <TextInput
         value={values[0]}
         placeholder={t`Enter some text`}
+        aria-label={t`Filter value`}
         onChange={event => onChange([event.target.value])}
         onFocus={onFocus}
         onBlur={onBlur}

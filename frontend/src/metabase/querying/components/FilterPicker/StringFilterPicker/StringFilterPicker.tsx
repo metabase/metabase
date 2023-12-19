@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
@@ -114,8 +114,6 @@ function StringValueInput({
   hasMultipleValues,
   onChange,
 }: StringValueInputProps) {
-  const placeholder = t`Enter some text`;
-
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
@@ -135,10 +133,11 @@ function StringValueInput({
       <Flex p="md">
         <TextInput
           value={values[0]}
-          onChange={event => onChange([event.target.value])}
-          placeholder={placeholder}
+          placeholder={t`Enter some text`}
           autoFocus
           w="100%"
+          aria-label={t`Filter value`}
+          onChange={event => onChange([event.target.value])}
         />
       </Flex>
     );
