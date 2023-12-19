@@ -8,7 +8,7 @@ import Card from "metabase/components/Card";
 export const StyledCard = styled(Card)`
   padding: 2rem;
   width: 100%;
-  max-width: 34rem;
+  max-width: 40rem;
 `;
 
 export const Label = styled.span`
