@@ -614,7 +614,7 @@ jobs:
   manage-milestones:
     permissions: write-all
     runs-on: ubuntu-22.04
-    needs: push-tags
+    needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
