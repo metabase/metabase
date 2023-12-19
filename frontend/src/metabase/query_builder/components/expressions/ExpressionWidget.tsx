@@ -9,7 +9,6 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/expressions";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
 import {
@@ -28,20 +27,9 @@ const EXPRESSIONS_DOCUMENTATION_URL = MetabaseSettings.docsUrl(
   "questions/query-builder/expressions",
 );
 
-interface LegacyQueryProps {
-  query?: never;
-  stageIndex?: never;
-}
-
-interface QueryProps {
+export type ExpressionWidgetProps<Clause = Lib.ExpressionClause> = {
   query: Lib.Query;
   stageIndex: number;
-}
-
-export type ExpressionWidgetProps = {
-  legacyQuery: StructuredQuery;
-  query?: Lib.Query;
-  stageIndex?: number;
   /**
    * expression should not be present in components migrated to MLv2
    */
@@ -50,7 +38,7 @@ export type ExpressionWidgetProps = {
    * Presence of this prop is not enforced due to backwards-compatibility
    * with ExpressionWidget usages outside of GUI editor.
    */
-  clause?: Lib.AggregationClause | Lib.ExpressionClause | undefined;
+  clause?: Clause | undefined;
   name?: string;
   withName?: boolean;
   startRule?: string;
@@ -60,15 +48,16 @@ export type ExpressionWidgetProps = {
   onChangeExpression?: (name: string, expression: Expression) => void;
   onChangeClause?: (
     name: string,
-    clause: Lib.AggregationClause | Lib.ExpressionClause,
+    clause: Clause | Lib.ExpressionClause,
   ) => void;
   onRemoveExpression?: (name: string) => void;
   onClose?: () => void;
-} & (QueryProps | LegacyQueryProps);
+};
 
-export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
+export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
+  props: ExpressionWidgetProps<Clause>,
+): JSX.Element => {
   const {
-    legacyQuery,
     query,
     stageIndex,
     name: initialName,
@@ -88,9 +77,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   const [expression, setExpression] = useState<Expression | null>(
     initialExpression ?? null,
   );
-  const [clause, setClause] = useState<
-    Lib.AggregationClause | Lib.ExpressionClause | null
-  >(initialClause ?? null);
+  const [clause, setClause] = useState<Clause | Lib.ExpressionClause | null>(
+    initialClause ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const helpTextTargetRef = useRef(null);
@@ -103,7 +92,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleCommit = (
     expression: Expression | null,
-    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+    clause: Clause | Lib.ExpressionClause | null,
   ) => {
     const isValidExpression = isNotNull(expression) && isExpression(expression);
     const isValidExpressionClause = isNotNull(clause);
@@ -127,7 +116,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
 
   const handleExpressionChange = (
     expression: Expression | null,
-    clause: Lib.AggregationClause | Lib.ExpressionClause | null,
+    clause: Lib.ExpressionClause | null,
   ) => {
     setExpression(expression);
     setClause(clause);
@@ -161,7 +150,6 @@ export const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
             clause={clause}
             startRule={startRule}
             name={name}
-            legacyQuery={legacyQuery}
             query={query}
             stageIndex={stageIndex}
             reportTimezone={reportTimezone}

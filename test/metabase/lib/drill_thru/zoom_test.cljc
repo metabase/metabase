@@ -17,14 +17,15 @@
                   :many-pks? false}}))
 
 (deftest ^:parallel returns-zoom-test-2
-  (lib.drill-thru.tu/test-returns-drill
-   {:drill-type  :drill-thru/zoom
-    :click-type  :cell
-    :query-type  :unaggregated
-    :column-name "TAX"
-    :expected    {:type      :drill-thru/zoom
-                  :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
-                  :many-pks? false}}))
+  (testing ":zoom drill should get returned when you click on a non-PK column in a Table with one PK"
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom
+      :click-type  :cell
+      :query-type  :unaggregated
+      :column-name "TAX"
+      :expected    {:type      :drill-thru/zoom
+                    :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                    :many-pks? false}})))
 
 (deftest ^:parallel returns-zoom-test-3
   (lib.drill-thru.tu/test-returns-drill

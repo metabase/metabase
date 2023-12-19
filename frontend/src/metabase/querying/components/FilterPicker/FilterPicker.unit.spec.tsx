@@ -11,18 +11,13 @@ import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 
 import { checkNotNull } from "metabase/lib/types";
 
-import type { StructuredDatasetQuery } from "metabase-types/api";
 import {
-  createAdHocCard,
-  ORDERS,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
 } from "metabase-types/api/mocks/presets";
 
 import * as Lib from "metabase-lib";
 import * as Lib_ColumnTypes from "metabase-lib/column_types";
-import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import {
   createQuery,
@@ -35,7 +30,6 @@ import {
   findBooleanColumn,
   findNumericColumn,
   findStringColumn,
-  metadata,
   storeInitialState,
   createQueryWithSpecificDateFilter,
   findDateColumn,
@@ -145,12 +139,7 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
 ];
 
 function setup({ query = createQuery(), filter }: SetupOpts = {}) {
-  const dataset_query = Lib.toLegacyQuery(query) as StructuredDatasetQuery;
-  const question = new Question(createAdHocCard({ dataset_query }), metadata);
-  const legacyQuery = question.query() as StructuredQuery;
-
   const onSelect = jest.fn();
-  const onSelectLegacy = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
 
@@ -160,14 +149,13 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
       stageIndex={0}
       filter={filter}
       filterIndex={0}
-      legacyQuery={legacyQuery}
       onSelect={onSelect}
-      onSelectLegacy={onSelectLegacy}
     />,
     { storeInitialState },
   );
 
   function getNextFilter() {
+    expect(onSelect).toHaveBeenCalledWith(expect.anything());
     const [filter] = onSelect.mock.lastCall;
     return filter;
   }
@@ -184,7 +172,6 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
     getNextFilter,
     getNextFilterColumnName,
     onSelect,
-    onSelectLegacy,
   };
 }
 
@@ -408,7 +395,10 @@ describe("FilterPicker", () => {
   });
 
   describe("custom expression", () => {
-    async function editExpressionAndSubmit(text: string) {
+    async function editExpressionAndSubmit(
+      text: string,
+      { delay }: { delay: number } = { delay: 0 },
+    ) {
       const input = screen.getByLabelText("Expression");
       const button = screen.getByRole("button", { name: "Done" });
 
@@ -416,7 +406,7 @@ describe("FilterPicker", () => {
       // but for some reason it doesn't work without `act`.
       // eslint-disable-next-line testing-library/no-unnecessary-act
       await act(async () => {
-        await userEvent.type(input, text);
+        await userEvent.type(input, text, { delay });
         await userEvent.tab();
       });
 
@@ -425,34 +415,30 @@ describe("FilterPicker", () => {
     }
 
     it("should create a filter with a custom expression", async () => {
-      const { onSelect, onSelectLegacy } = setup();
+      const { query, getNextFilter } = setup();
 
       userEvent.click(screen.getByText(/Custom expression/i));
       await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
 
-      await waitFor(() =>
-        expect(onSelectLegacy).toHaveBeenCalledWith([
-          ">",
-          ["field", ORDERS.TOTAL, null],
-          ["field", ORDERS.DISCOUNT, null],
-        ]),
+      const filter = getNextFilter();
+
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "Total is greater than Discount",
       );
-      expect(onSelect).not.toHaveBeenCalled();
     });
 
     it("should update a filter with a custom expression", async () => {
-      const { onSelect, onSelectLegacy } = setup(createQueryWithCustomFilter());
+      const { query, getNextFilter } = setup(createQueryWithCustomFilter());
 
-      await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100");
+      await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100", {
+        delay: 50,
+      });
 
-      await waitFor(() =>
-        expect(onSelectLegacy).toHaveBeenCalledWith([
-          ">",
-          ["field", ORDERS.TOTAL, null],
-          100,
-        ]),
+      const filter = getNextFilter();
+
+      expect(Lib.displayInfo(query, 0, filter).displayName).toBe(
+        "Total is greater than 100",
       );
-      expect(onSelect).not.toHaveBeenCalled();
     });
   });
 });

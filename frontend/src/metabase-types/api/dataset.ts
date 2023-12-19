@@ -10,12 +10,19 @@ import type { TableId } from "./table";
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
 
+export type BinningMetadata = {
+  binning_strategy?: "default" | "bin-width" | "num-bins";
+  bin_width?: number;
+  num_bins?: number;
+};
+
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
   display_name: string;
   description?: string | null;
   source: string;
+  aggregation_index?: number;
   coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   table_id?: TableId;
@@ -29,9 +36,7 @@ export interface DatasetColumn {
   remapped_from?: string;
   remapped_to?: string;
   effective_type?: string;
-  binning_info?: {
-    bin_width?: number;
-  };
+  binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
 

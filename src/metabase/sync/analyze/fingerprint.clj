@@ -15,7 +15,6 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -29,7 +28,7 @@
 (mu/defn ^:private save-fingerprint!
   [field       :- i/FieldInstance
    fingerprint :- [:maybe i/Fingerprint]]
-  (log/debug (trs "Saving fingerprint for {0}" (sync-util/name-for-logging field)))
+  (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
   ;; latest fingerprints.

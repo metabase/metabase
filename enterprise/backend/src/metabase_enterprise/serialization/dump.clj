@@ -62,8 +62,13 @@
   Writes (even nested) yaml keys in a deterministic fashion."
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string (serialization-deep-sort obj)
-                                       {:dumper-options {:flow-style :block :split-lines false}})))
+  (try
+    (spit filename (yaml/generate-string (serialization-deep-sort obj)
+                                         {:dumper-options {:flow-style :block :split-lines false}}))
+    (catch Exception e
+      (if-not (.canWrite (.getParentFile (io/file filename)))
+        (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
+        (throw e)))))
 
 (defn- as-file?
   [instance]

@@ -90,7 +90,7 @@ function MappedFieldPicker({
 
   return (
     <SchemaTableAndFieldDataSelector
-      className="flex flex-full justify-center align-center"
+      className="flex flex-full flex-basis-none justify-center align-center"
       selectedDatabaseId={databaseId}
       selectedTableId={selectedTableId}
       selectedSchemaId={fieldObject?.table?.schema?.id}

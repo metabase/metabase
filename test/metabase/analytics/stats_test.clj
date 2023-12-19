@@ -84,7 +84,8 @@
                        :email_configured    false
                        :slack_configured    false
                        :sso_configured      false
-                       :has_sample_data     false}
+                       :has_sample_data     false
+                       :help_link           :metabase}
                       stats))
         (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                     (-> stats :stats :database :dbms_versions)))))))

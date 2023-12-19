@@ -222,15 +222,15 @@
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? Field :id fk_target_field_id)}))]
         (testing "before"
-          (is (= {:step-info         {:total-fks 3, :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 3, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
         (t2/update! Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
-          (is (= {:step-info         {:total-fks 3, :updated-fks 1, :total-failed 0}
-                  :task-details      {:total-fks 3, :updated-fks 1, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
+                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))))))

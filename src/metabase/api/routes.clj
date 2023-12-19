@@ -5,6 +5,7 @@
    [metabase.api.action :as api.action]
    [metabase.api.activity :as api.activity]
    [metabase.api.alert :as api.alert]
+   [metabase.api.api-key :as api.api-key]
    [metabase.api.automagic-dashboards :as api.magic]
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.card :as api.card]
@@ -113,5 +114,6 @@
   (context "/timeline-event"       [] (+auth api.timeline-event/routes))
   (context "/transform"            [] (+auth api.transform/routes))
   (context "/user"                 [] (+auth api.user/routes))
+  (context "/api-key"              [] (+auth api.api-key/routes))
   (context "/util"                 [] api.util/routes)
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))

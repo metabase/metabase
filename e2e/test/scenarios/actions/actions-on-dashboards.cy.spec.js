@@ -476,32 +476,34 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it(
-          "can update various data types via implicit actions",
-          { tags: "@flaky" },
-          () => {
-            cy.get("@modelId").then(id => {
-              createImplicitAction({
-                kind: "update",
-                model_id: id,
-              });
+        it("can update various data types via implicit actions", () => {
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "update",
+              model_id: id,
             });
+          });
 
-            createDashboardWithActionButton({
-              actionName: "Update",
-              idFilter: true,
-            });
+          createDashboardWithActionButton({
+            actionName: "Update",
+            idFilter: true,
+          });
 
-            filterWidget().click();
-            addWidgetStringFilter("1");
+          cy.wait("@getModel");
+          cy.findByRole("button", { name: "Update" });
 
-            cy.findByRole("button", { name: "Update" }).click();
+          filterWidget().click();
+          addWidgetStringFilter("1");
 
-            cy.wait("@prefetchValues");
+          cy.findByRole("button", { name: "Update" }).click();
 
-            const oldRow = many_data_types_rows[0];
+          cy.wait("@prefetchValues");
 
-            modal().within(() => {
+          const oldRow = many_data_types_rows[0];
+
+          modal()
+            .first()
+            .within(() => {
               changeValue({
                 fieldName: "UUID",
                 fieldType: "text",
@@ -549,32 +551,31 @@ const MODEL_NAME = "Test Action Model";
               cy.button("Update").click();
             });
 
-            cy.wait("@executeAction");
+          cy.wait("@executeAction");
 
-            queryWritableDB(
-              `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
-              dialect,
-            ).then(result => {
-              expect(result.rows.length).to.equal(1);
+          queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+            dialect,
+          ).then(result => {
+            expect(result.rows.length).to.equal(1);
 
-              const row = result.rows[0];
+            const row = result.rows[0];
 
-              expect(row).to.have.property(
-                "uuid",
-                "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
-              );
-              expect(row).to.have.property("integer", 123);
-              expect(row).to.have.property("float", 2.2);
-              expect(row).to.have.property("string", "new string");
-              expect(row).to.have.property(
-                "boolean",
-                dialect === "mysql" ? 0 : false,
-              );
-              expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
-              expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
-            });
-          },
-        );
+            expect(row).to.have.property(
+              "uuid",
+              "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+            );
+            expect(row).to.have.property("integer", 123);
+            expect(row).to.have.property("float", 2.2);
+            expect(row).to.have.property("string", "new string");
+            expect(row).to.have.property(
+              "boolean",
+              dialect === "mysql" ? 0 : false,
+            );
+            expect(row.date).to.include("2020-05-01"); // js converts this to a full date obj
+            expect(row.timestampTZ).to.include("2020-05-01"); // we got timezone issues here
+          });
+        });
 
         it("can insert various data types via implicit actions", () => {
           cy.get("@modelId").then(id => {
@@ -689,33 +690,35 @@ const MODEL_NAME = "Test Action Model";
           });
         });
 
-        it(
-          "properly loads and updates date and time fields for implicit update actions",
-          { tags: "@flaky" },
-          () => {
-            cy.get("@modelId").then(id => {
-              createImplicitAction({
-                kind: "update",
-                model_id: id,
-              });
+        it("properly loads and updates date and time fields for implicit update actions", () => {
+          cy.get("@modelId").then(id => {
+            createImplicitAction({
+              kind: "update",
+              model_id: id,
             });
+          });
 
-            createDashboardWithActionButton({
-              actionName: "Update",
-              idFilter: true,
-            });
+          createDashboardWithActionButton({
+            actionName: "Update",
+            idFilter: true,
+          });
 
-            filterWidget().click();
-            addWidgetStringFilter("1");
+          cy.wait("@getModel");
+          cy.findByRole("button", { name: "Update" });
 
-            cy.findByRole("button", { name: "Update" }).click();
+          filterWidget().click();
+          addWidgetStringFilter("1");
 
-            cy.wait("@prefetchValues");
+          cy.findByRole("button", { name: "Update" }).click();
 
-            const oldRow = many_data_types_rows[0];
-            const newTime = "2020-01-10T01:35:55";
+          cy.wait("@prefetchValues");
 
-            modal().within(() => {
+          const oldRow = many_data_types_rows[0];
+          const newTime = "2020-01-10T01:35:55";
+
+          modal()
+            .first()
+            .within(() => {
               changeValue({
                 fieldName: "Date",
                 fieldType: "date",
@@ -780,28 +783,27 @@ const MODEL_NAME = "Test Action Model";
               cy.button("Update").click();
             });
 
-            cy.wait("@executeAction");
+          cy.wait("@executeAction");
 
-            queryWritableDB(
-              `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
-              dialect,
-            ).then(result => {
-              const row = result.rows[0];
+          queryWritableDB(
+            `SELECT * FROM ${TEST_COLUMNS_TABLE} WHERE id = 1`,
+            dialect,
+          ).then(result => {
+            const row = result.rows[0];
 
-              // the driver adds a time to this date so we have to use .include
-              expect(row.date).to.include(newTime.slice(0, 10));
-              expect(row.time).to.equal(newTime.slice(-8));
+            // the driver adds a time to this date so we have to use .include
+            expect(row.date).to.include(newTime.slice(0, 10));
+            expect(row.time).to.equal(newTime.slice(-8));
 
-              // metabase is smart and localizes these, so all of these are +8 hours
-              const newTimeAdjusted = newTime.replace("T01", "T09");
-              // we need to use .include because the driver adds milliseconds to the timestamp
-              expect(row.datetime).to.include(newTimeAdjusted);
-              expect(row.timestamp).to.include(newTimeAdjusted);
-              expect(row.datetimeTZ).to.include(newTimeAdjusted);
-              expect(row.timestampTZ).to.include(newTimeAdjusted);
-            });
-          },
-        );
+            // metabase is smart and localizes these, so all of these are +8 hours
+            const newTimeAdjusted = newTime.replace("T01", "T09");
+            // we need to use .include because the driver adds milliseconds to the timestamp
+            expect(row.datetime).to.include(newTimeAdjusted);
+            expect(row.timestamp).to.include(newTimeAdjusted);
+            expect(row.datetimeTZ).to.include(newTimeAdjusted);
+            expect(row.timestampTZ).to.include(newTimeAdjusted);
+          });
+        });
       });
 
       describe("editing action before executing it", () => {
@@ -990,6 +992,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     });
 
     cy.intercept("GET", "/api/action").as("getActions");
+    cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
     cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
       "prefetchValues",
     );
@@ -998,25 +1001,27 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     );
   });
 
-  it(
-    "should show detailed form errors for constraint violations when executing model actions",
-    { tags: "@flaky" },
-    () => {
-      const actionName = "Update";
+  it("should show detailed form errors for constraint violations when executing model actions", () => {
+    const actionName = "Update";
 
-      cy.get("@modelId").then(modelId => {
-        createImplicitAction({ kind: "update", model_id: modelId });
-      });
+    cy.get("@modelId").then(modelId => {
+      createImplicitAction({ kind: "update", model_id: modelId });
+    });
 
-      createDashboardWithActionButton({ actionName, idFilter: true });
+    createDashboardWithActionButton({ actionName, idFilter: true });
 
-      filterWidget().click();
-      addWidgetStringFilter("5");
-      cy.button(actionName).click();
+    cy.wait("@getModel");
+    cy.findByRole("button", { name: "Update" });
 
-      cy.wait("@prefetchValues");
+    filterWidget().click();
+    addWidgetStringFilter("5");
+    cy.button(actionName).click();
 
-      modal().within(() => {
+    cy.wait("@prefetchValues");
+
+    modal()
+      .first()
+      .within(() => {
         cy.findByLabelText("Team Name").clear().type("Kind Koalas");
         cy.button(actionName).click();
         cy.wait("@executeAction");
@@ -1028,8 +1033,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
 
         cy.findByText("Team_name already exists.").should("exist");
       });
-    },
-  );
+  });
 });
 
 describe(

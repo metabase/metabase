@@ -36,9 +36,9 @@
         #_#_boolean-field (lib/->= 1 (meta/field-metadata :venues :category-id))]
     (doseq [[expr typ] (partition-all
                          2
-                         [(lib/+ 1.1 2 int-field) :type/Number
-                          (lib/- 1.1 2 int-field) :type/Number
-                          (lib/* 1.1 2 int-field) :type/Number
+                         [(lib/+ 1.1 2 int-field) :type/Float
+                          (lib/- 1.1 2 int-field) :type/Float
+                          (lib/* 1.1 2 int-field) :type/Float
                           (lib// 1.1 2 int-field) :type/Float
                           #_#_(lib/case boolean-field int-field boolean-field int-field) :type/Integer
                           (lib/coalesce string-field "abc") :type/Text
@@ -226,7 +226,7 @@
                    (lib.schema.expression/type-of clause))))
           (is (= (condp = arg-2
                    1   :type/Integer
-                   1.0 :type/Number)
+                   1.0 :type/Float)
                  (lib/type-of lib.tu/venues-query clause)))))
       (testing "/ should always return type/Float"
         (doseq [arg-2 [1 1.0]
@@ -402,3 +402,8 @@
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
                 (lib.options/uuid agg))))))
+
+(deftest ^:parallel simple-value-with-expression-name-test
+  (testing "simple values can be named (#36459)"
+    (is (=? [:value {:name "zero", :display-name "zero", :effective-type :type/Integer} 0]
+            (lib/with-expression-name 0 "zero")))))
