@@ -27,7 +27,7 @@
     (re-matches #"(?i)true|t|yes|y|1" s) true
     (re-matches #"(?i)false|f|no|n|0" s) false
     :else                                (throw (IllegalArgumentException.
-                                                 (tru "'{0}' is not a recognizable boolean" s)))))
+                                                 (tru "''{0}'' is not a recognizable boolean" s)))))
 
 (defn- parse-date
   "Parses a date.
@@ -39,7 +39,7 @@
     (t/local-date s)
     (catch Exception _
       (throw (IllegalArgumentException.
-              (tru "'{0}' is not a recognizable date" s))))))
+              (tru "''{0}'' is not a recognizable date" s))))))
 
 (defn parse-datetime
   "Parses a string representing a local datetime into a LocalDateTime.
@@ -64,7 +64,7 @@
         (parse-datetime s)
         (catch Exception _
           (throw (IllegalArgumentException.
-                  (tru "'{0}' is not a recognizable datetime" s))))))))
+                  (tru "''{0}'' is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
   "Parses a string representing an offset datetime into an OffsetDateTime.
@@ -86,7 +86,7 @@
   (try
     (-> s (str/replace \space \T) t/offset-date-time)
     (catch Exception _
-      (throw (IllegalArgumentException. (tru "'{0}' is not a recognizable zoned datetime" s))))))
+      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s))))))
 
 (defn- remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
@@ -118,13 +118,13 @@
          (remove-currency-signs)
          (parse-plain-number number-separators))
     (catch Exception _
-      (throw (IllegalArgumentException. (tru "'{0}' is not a recognizable number" s))))))
+      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s))))))
 
 (defn- parse-as-int
   "Parses a string representing a number as an integer, rounding down if necessary."
   [number-separators s]
   ;; convert this to a string so we can insert bigints with a prepared statement
-  (str (bigint (parse-number number-separators s))))
+  (bigint (parse-number number-separators s)))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
