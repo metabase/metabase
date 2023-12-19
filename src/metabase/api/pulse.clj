@@ -4,6 +4,7 @@
    [clojure.set :refer [difference]]
    [compojure.core :refer [GET POST PUT]]
    [hiccup.core :refer [html]]
+   [hiccup.page :refer [html5]]
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -269,7 +270,7 @@
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
     {:status 200
-     :body   (html
+     :body   (html5
               [:html
                [:body {:style "margin: 0;"}
                 (binding [render/*include-title*   true
@@ -277,16 +278,20 @@
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_dashboard/:id"
-  "Get HTML rendering of a Dashboard with `id`."
+  "Get HTML rendering of a Dashboard with `id`.
+
+  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
+  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
   [id]
   {id ms/PositiveInt}
   (api/read-check :model/Dashboard id)
   {:status  200
    :headers {"Content-Type" "text/html"}
-   :body    (html
-               [:html
-                [:body {:style "margin: 0;"}
-                 (preview/render-dashboard-to-html id)]])})
+   :body    (preview/style-tag-from-inline-styles
+             (html5
+                 [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
+                  (preview/render-dashboard-to-html id)]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -345,4 +350,7 @@
     (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(api/define-routes)
+(def ^:private style-nonce-middleware
+  (partial preview/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+
+(api/define-routes style-nonce-middleware)
