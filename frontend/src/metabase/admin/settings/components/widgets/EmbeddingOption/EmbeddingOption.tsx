@@ -93,7 +93,7 @@ const InteractiveEmbeddingButtons = ({ enabled }: { enabled: boolean }) => {
           component={ExternalLink}
           href="https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
         >
-          {t`Learn more`}
+          {t`Learn More`}
         </Button>
       )}
     </>

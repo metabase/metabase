@@ -440,6 +440,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     ],
   },
   "embedding-in-other-applications": {
+    key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
     settings: [
@@ -491,6 +492,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "embedding-in-other-applications/standalone": {
     settings: [
       {
+        key: "-breadcrumb",
         widget: () => {
           return (
             <Breadcrumbs
@@ -532,11 +534,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
+        key: "-customization",
         widget: EmbeddingCustomizationWidget,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
+        key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
@@ -547,6 +551,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "embedding-in-other-applications/full-app": {
     settings: [
       {
+        key: "-breadcrumbs",
         widget: () => {
           return (
             <Breadcrumbs
@@ -563,11 +568,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
+        key: "-link-widget",
         widget: FullAppEmbeddingLinkWidget,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
+        key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
