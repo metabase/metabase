@@ -12,12 +12,14 @@ export type TimeInputProps = Omit<
 > & {
   value?: Date | null;
   defaultValue?: Date | null;
-  onChange?: (value: Date) => void;
+  clearable?: boolean;
+  onChange?: (value: Date | null) => void;
 };
 
 export function TimeInput({
   value,
   defaultValue = value,
+  clearable,
   onChange,
   onFocus,
   onBlur,
@@ -33,6 +35,8 @@ export function TimeInput({
     const newValue = parseValue(newInputValue);
     if (newValue != null) {
       onChange?.(newValue);
+    } else if (newInputValue === "" && clearable) {
+      onChange?.(null);
     }
   };
 

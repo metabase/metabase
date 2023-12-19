@@ -6,11 +6,10 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
     defaultProps: {
       radius: "sm",
       shadow: "md",
-      withinPortal: false,
+      withinPortal: true,
     },
     styles: theme => ({
       dropdown: {
-        position: "fixed",
         padding: "0.75rem !important",
         minWidth: "11.5rem",
       },
