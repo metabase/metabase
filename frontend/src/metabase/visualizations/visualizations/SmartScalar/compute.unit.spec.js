@@ -5,11 +5,11 @@ import {
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import {
+  createMockColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import { colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { COMPARISON_TYPES, formatChange } from "./utils";
@@ -208,8 +208,8 @@ describe("SmartScalar > compute", () => {
       });
 
       const cols = [
-        DateTimeColumn({ name: "Month" }),
-        NumberColumn({ name: "Count" }),
+        createMockDateTimeColumn({ name: "Month" }),
+        createMockNumberColumn({ name: "Count" }),
       ];
 
       const testCases = [
@@ -360,8 +360,8 @@ describe("SmartScalar > compute", () => {
         });
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         const testCases = [
@@ -443,8 +443,8 @@ describe("SmartScalar > compute", () => {
         });
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         const testCases = [
@@ -640,8 +640,8 @@ describe("SmartScalar > compute", () => {
           });
 
           const cols = [
-            DateTimeColumn({ name: "Month" }),
-            NumberColumn({ name: "Count" }),
+            createMockDateTimeColumn({ name: "Month" }),
+            createMockNumberColumn({ name: "Count" }),
           ];
 
           const testCases = [
@@ -677,8 +677,8 @@ describe("SmartScalar > compute", () => {
           });
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         const testCases = [
@@ -979,8 +979,8 @@ describe("SmartScalar > compute", () => {
             });
 
           const cols = [
-            DateTimeColumn({ name: "Month" }),
-            NumberColumn({ name: "Count" }),
+            createMockDateTimeColumn({ name: "Month" }),
+            createMockNumberColumn({ name: "Count" }),
           ];
 
           const testCases = [
@@ -1055,8 +1055,8 @@ describe("SmartScalar > compute", () => {
           });
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         const testCases = [
@@ -1107,8 +1107,8 @@ describe("SmartScalar > compute", () => {
         });
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         const testCases = [
@@ -1481,8 +1481,8 @@ describe("SmartScalar > compute", () => {
           });
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         describe("should handle dates with same time-zones", () => {
@@ -1773,9 +1773,9 @@ describe("SmartScalar > compute", () => {
       const SUM_FIELD = "Sum";
 
       const cols = [
-        DateTimeColumn({ name: "Month" }),
-        NumberColumn({ name: COUNT_FIELD }),
-        NumberColumn({ name: SUM_FIELD }),
+        createMockDateTimeColumn({ name: "Month" }),
+        createMockNumberColumn({ name: COUNT_FIELD }),
+        createMockNumberColumn({ name: SUM_FIELD }),
       ];
 
       const testCases = [
@@ -2046,4 +2046,20 @@ function getTrend(trend) {
     },
     comparison: getComparison(comparison),
   };
+}
+
+function createMockDateTimeColumn(opts) {
+  return createMockColumn({
+    base_type: "type/DateTime",
+    semantic_type: null,
+    ...opts,
+  });
+}
+
+function createMockNumberColumn(opts) {
+  return createMockColumn({
+    base_type: "type/Integer",
+    semantic_type: "type/Number",
+    ...opts,
+  });
 }
