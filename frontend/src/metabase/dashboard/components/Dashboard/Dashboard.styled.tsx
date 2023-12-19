@@ -104,13 +104,14 @@ export const ParametersAndCardsContainer = styled.div<{
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isEditing: boolean;
   isSticky: boolean;
+  hasScroll: boolean;
 }>`
   align-items: flex-start;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
   flex-direction: row;
-  padding-top: ${space(2)};
+  padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   /* z-index should be higher than in dashcards */
   z-index: 3;
@@ -128,22 +129,17 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     `}
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isSticky }) =>
+  ${({ isSticky, hasScroll }) =>
     isSticky &&
     css`
       position: sticky;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid
+        ${hasScroll ? color("border") : color("bg-light")};
     `}
 `;
 
-export const CardsContainer = styled(FullWidthContainer)<{
-  addMarginTop: boolean;
-}>`
-  ${({ addMarginTop }) =>
-    addMarginTop &&
-    css`
-      margin-top: ${space(2)};
-    `}
+export const CardsContainer = styled(FullWidthContainer)`
+  margin-top: 8px;
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     padding-bottom: 20px;

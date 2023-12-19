@@ -67,13 +67,11 @@ export const removeJoin = (query, index) =>
 // ORDER_BY
 
 export const getOrderBys = query => O.getOrderBys(query["order-by"]);
-export const addOrderBy = (query, orderBy) =>
-  setOrderByClause(query, O.addOrderBy(query["order-by"], orderBy));
-export const updateOrderBy = (query, index, orderBy) =>
+const updateOrderBy = (query, index, orderBy) =>
   setOrderByClause(query, O.updateOrderBy(query["order-by"], index, orderBy));
-export const removeOrderBy = (query, index) =>
+const removeOrderBy = (query, index) =>
   setOrderByClause(query, O.removeOrderBy(query["order-by"], index));
-export const clearOrderBy = query =>
+const clearOrderBy = query =>
   setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
@@ -94,13 +92,6 @@ export const addExpression = (query, name, expression) =>
     query,
     E.addExpression(query.expressions, name, expression),
   );
-export const updateExpression = (query, name, expression, oldName) =>
-  setExpressionClause(
-    query,
-    E.updateExpression(query.expressions, name, expression, oldName),
-  );
-export const removeExpression = (query, name) =>
-  setExpressionClause(query, E.removeExpression(query.expressions, name));
 export const clearExpressions = query =>
   setExpressionClause(query, E.clearExpressions(query.expressions));
 
