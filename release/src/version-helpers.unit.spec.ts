@@ -249,6 +249,13 @@ describe("version-helpers", () => {
       expect(isLatestVersion("v0.25.2", ["v0.25.2", "v0.25.1"])).toEqual(true);
     });
 
+    it("should return true for an equal release of ee/oss", () => {
+      // this is important because if we release 0.25.2 and 1.25.2 at the same time,
+      // they should both be "latest" - and one of them will always be tagged first
+      expect(isLatestVersion("v0.25.2", ["v1.25.2", "v0.25.1"])).toEqual(true);
+      expect(isLatestVersion("v1.25.2", ["v0.25.2", "v0.25.1"])).toEqual(true);
+    });
+
     it("should filter out invalid versions", () => {
       const trueCases: [string, string[]][] = [
         ["v0.25.2.1", ["v0.24", "v0.25.1", "99"]],
