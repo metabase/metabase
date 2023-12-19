@@ -6,6 +6,7 @@
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest api-key-creation-test
@@ -15,13 +16,14 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group_id :unmasked_key :masked_key :id :created_at :updated_at}
+        (is (= #{:name :group_name :unmasked_key :masked_key :id :created_at :updated_at}
                (-> resp keys set)))
+        (is (= "Cool Friends" (:group_name resp)))
         (is (= name (:name resp)))))
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group_id :name :id :created_at :updated_at}
+        (is (= #{:unmasked_key :masked_key :group_name :name :id :created_at :updated_at}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
@@ -71,7 +73,11 @@
     (testing "The group can be 'All Users'"
       (is (mt/user-http-request :crowberto :post 200 "api-key"
                                 {:group_id (:id (perms-group/all-users))
-                                 :name     (str (random-uuid))})))
+                                 :name     (str (random-uuid))}))
+      (is (= "All Users"
+             (:group_name (mt/user-http-request :crowberto :post 200 "api-key"
+                                                {:group_id (:id (perms-group/all-users))
+                                                 :name (str (random-uuid))})))))
     (testing "A non-empty name is required"
       (is (= {:errors          {:name "value must be a non-blank string."}
               :specific-errors {:name ["should be at least 1 characters, received: \"\"" "non-blank string, received: \"\""]}}
@@ -109,3 +115,84 @@
       (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))
       (is (= "Unauthenticated"
              (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" "mb_not_an_api_key"}}}))))))
+
+(deftest api-keys-can-be-updated
+  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
+                           :model/PermissionsGroup {group-id-2 :id} {:name "Uncool Friends"}]
+    ;; create the API Key
+    (let [{id :id :as create-resp}
+          (mt/user-http-request :crowberto
+                                :post 200 "api-key"
+                                {:group_id group-id-1
+                                 :name     (str (random-uuid))})
+          _ (is (= "Cool Friends" (:group_name create-resp)))
+          api-user-id (:id (:user (t2/hydrate (t2/select-one :model/ApiKey :id id) :user)))
+          member-of-group? (fn [group-id]
+                             (t2/exists? :model/PermissionsGroupMembership
+                                         :user_id api-user-id
+                                         :group_id group-id))]
+      (is (member-of-group? group-id-1))
+      (is (not (member-of-group? group-id-2)))
+      (testing "You can change the group of an API key"
+        (is (= "Uncool Friends"
+               (:group_name (mt/user-http-request :crowberto :put 200 (format "api-key/%s" id) {:group_id group-id-2}))))
+        (is (not (member-of-group? group-id-1)))
+        (is (member-of-group? group-id-2))))
+    (testing "You can change the name of an API key"
+      (let [name-1 (str "My First Name" (random-uuid))
+            name-2 (str "My Second Name" (random-uuid))
+            {id :id} (mt/user-http-request :crowberto
+                                           :post 200 "api-key"
+                                           {:group_id group-id-1
+                                            :name name-1})
+            api-user-id (-> (t2/select-one :model/ApiKey :id id) (t2/hydrate :user) :user :id)]
+        (testing "before the change..."
+          (is (= name-1 (:common_name (t2/select-one :model/User api-user-id)))))
+        (testing "after the change..."
+          (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
+                                {:name name-2})
+          (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))))))
+
+(deftest api-keys-can-be-regenerated
+  (testing "You can regenerate an API key"
+    (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
+      (let [{id :id old-key :unmasked_key}
+            (mt/user-http-request :crowberto
+                                  :post 200 "api-key"
+                                  {:group_id group-id
+                                   :name (str (random-uuid))})
+            _ (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" old-key}}}))
+            {:as resp new-key :unmasked_key}
+            (mt/user-http-request :crowberto
+                                  :put 200 (format "api-key/%s/regenerate" id))]
+        ;; NOTE: This is missing `group_id`.
+        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name}
+               (set (keys resp))))
+        (is (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" old-key}}}))
+        (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" new-key}}}))))))
+
+(deftest api-keys-can-be-listed
+  (mt/with-empty-h2-app-db
+    (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
+      (is (= [] (mt/user-http-request :crowberto :get 200 "api-key")))
+
+      (mt/user-http-request :crowberto
+                            :post 200 "api-key"
+                            {:group_id group-id
+                             :name     "My First API Key"})
+      (is (= [{:name       "My First API Key"
+               :group_name "Cool Friends"}]
+             (map #(select-keys % [:name :group_name])
+                  (mt/user-http-request :crowberto :get 200 "api-key"))))
+
+      (mt/user-http-request :crowberto
+                            :post 200 "api-key"
+                            {:group_id (:id (perms-group/all-users))
+                             :name "My Second API Key"})
+
+      (is (= [{:name "My First API Key"
+               :group_name "Cool Friends"}
+              {:name "My Second API Key"
+               :group_name "All Users"}]
+             (map #(select-keys % [:name :group_name])
+                  (mt/user-http-request :crowberto :get 200 "api-key")))))))
