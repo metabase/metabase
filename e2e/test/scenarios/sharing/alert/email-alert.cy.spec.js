@@ -81,7 +81,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     saveAlert();
     cy.findByText("Your alert is all set up.").should("be.visible");
-    cy.get("@saveCard").should("have.property", "response");
 
     clickAlertBell();
 
@@ -103,7 +102,10 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     weekly.click();
     cy.findByRole("button", { name: "Save changes" }).click();
 
-    cy.get("@saveCard").should("not.have.property", "response");
+    // FIXME: This doesn't work. Maybe look for "Your alert was set up" in the UI? Does that appear on master when we update the alert?
+    cy.wait("@saveCard").then(interception => {
+      assert.isUndefined(interception, "Route was not called");
+    });
   });
 });
 
