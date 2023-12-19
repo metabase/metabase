@@ -19,6 +19,7 @@ on:
         description: 'set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source, default)'
         type: string
         required: false
+        default: "ee"
 
 jobs:
   workflow-summary:
