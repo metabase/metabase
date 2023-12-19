@@ -4,7 +4,10 @@ import {
   computeTrend,
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
-import { createMockSingleSeries } from "metabase-types/api/mocks";
+import {
+  createMockSingleSeries,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import { colors } from "metabase/lib/colors";
@@ -199,10 +202,10 @@ describe("SmartScalar > compute", () => {
       const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
       const getComparisonProperties =
         createGetComparisonProperties(comparisonType);
-      const settings = {
+      const settings = createMockVisualizationSettings({
         "scalar.field": "Count",
         "scalar.comparisons": { type: comparisonType },
-      };
+      });
 
       const cols = [
         DateTimeColumn({ name: "Month" }),
@@ -351,10 +354,10 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const settings = {
+        const settings = createMockVisualizationSettings({
           "scalar.field": "Count",
           "scalar.comparisons": { type: comparisonType },
-        };
+        });
 
         const cols = [
           DateTimeColumn({ name: "Month" }),
@@ -434,10 +437,10 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PREVIOUS_PERIOD;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const settings = {
+        const settings = createMockVisualizationSettings({
           "scalar.field": "Count",
           "scalar.comparisons": { type: comparisonType },
-        };
+        });
 
         const cols = [
           DateTimeColumn({ name: "Month" }),
@@ -631,10 +634,10 @@ describe("SmartScalar > compute", () => {
 
         describe(`invalid options`, () => {
           const comparisonType = COMPARISON_TYPES.PREVIOUS_PERIOD;
-          const settings = {
+          const settings = createMockVisualizationSettings({
             "scalar.field": "Count",
             "scalar.comparisons": { type: comparisonType },
-          };
+          });
 
           const cols = [
             DateTimeColumn({ name: "Month" }),
@@ -667,10 +670,11 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const createSettings = value => ({
-          "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType, value },
-        });
+        const createSettings = value =>
+          createMockVisualizationSettings({
+            "scalar.field": "Count",
+            "scalar.comparisons": { type: comparisonType, value },
+          });
 
         const cols = [
           DateTimeColumn({ name: "Month" }),
@@ -968,10 +972,11 @@ describe("SmartScalar > compute", () => {
 
         describe(`invalid options`, () => {
           const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
-          const createSettings = value => ({
-            "scalar.field": "Count",
-            "scalar.comparisons": { type: comparisonType, value },
-          });
+          const createSettings = value =>
+            createMockVisualizationSettings({
+              "scalar.field": "Count",
+              "scalar.comparisons": { type: comparisonType, value },
+            });
 
           const cols = [
             DateTimeColumn({ name: "Month" }),
@@ -1043,10 +1048,11 @@ describe("SmartScalar > compute", () => {
       });
 
       describe(`invalid comparison type`, () => {
-        const createSettings = type => ({
-          "scalar.field": "Count",
-          "scalar.comparisons": { type },
-        });
+        const createSettings = type =>
+          createMockVisualizationSettings({
+            "scalar.field": "Count",
+            "scalar.comparisons": { type },
+          });
 
         const cols = [
           DateTimeColumn({ name: "Month" }),
@@ -1095,10 +1101,10 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const settings = {
+        const settings = createMockVisualizationSettings({
           "scalar.field": "Count",
           "scalar.comparisons": { type: comparisonType },
-        };
+        });
 
         const cols = [
           DateTimeColumn({ name: "Month" }),
@@ -1468,10 +1474,11 @@ describe("SmartScalar > compute", () => {
         const comparisonType = COMPARISON_TYPES.PERIODS_AGO;
         const getComparisonProperties =
           createGetComparisonProperties(comparisonType);
-        const createSettings = value => ({
-          "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType, value },
-        });
+        const createSettings = value =>
+          createMockVisualizationSettings({
+            "scalar.field": "Count",
+            "scalar.comparisons": { type: comparisonType, value },
+          });
 
         const cols = [
           DateTimeColumn({ name: "Month" }),
@@ -1756,10 +1763,11 @@ describe("SmartScalar > compute", () => {
       const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
       const getComparisonProperties =
         createGetComparisonProperties(comparisonType);
-      const createSettings = field => ({
-        "scalar.field": field,
-        "scalar.comparisons": { type: comparisonType },
-      });
+      const createSettings = field =>
+        createMockVisualizationSettings({
+          "scalar.field": field,
+          "scalar.comparisons": { type: comparisonType },
+        });
 
       const COUNT_FIELD = "Count";
       const SUM_FIELD = "Sum";
