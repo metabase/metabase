@@ -5,6 +5,7 @@ import {
   CTAContainer,
   CTAHeader,
   ProBadge,
+  CTALinkText,
 } from "metabase/public/components/widgets/SharingPane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.styled";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Text, Group, Stack } from "metabase/ui";
@@ -35,7 +36,6 @@ export const InteractiveEmbeddingCTA = () => {
     getText(isPaidPlan);
 
   const badge = (
-    // TODO: make sure this is ok for non-english languages
     // TODO: Check padding because design keeps using non-mantine-standard units
     <ProBadge bg="brand.1" py="2px" px="6px">
       <Text
@@ -65,9 +65,9 @@ export const InteractiveEmbeddingCTA = () => {
             </Group>
             <Text lh="unset" fz="sm">
               {description}{" "}
-              <Text color="brand.1" fw={700} fz="sm">
+              <CTALinkText color="brand.1" fw={700} fz="sm">
                 {linkText}
-              </Text>
+              </CTALinkText>
             </Text>
           </Stack>
         </Group>
