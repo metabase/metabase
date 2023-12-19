@@ -91,9 +91,9 @@ export const getMilestoneIssues = async ({
   repo,
   state = "closed",
 }: ReleaseProps & { state?: "closed" | "open" }): Promise<Issue[]> => {
-  const milestoneId = await findMilestone({ version, github, owner, repo });
+  const milestone = await findMilestone({ version, github, owner, repo });
 
-  if (!milestoneId) {
+  if (!milestone) {
     return [];
   }
 
@@ -101,7 +101,7 @@ export const getMilestoneIssues = async ({
   const issues = await github.paginate(github.rest.issues.listForRepo, {
     owner,
     repo,
-    milestone: milestoneId.toString(),
+    milestone: String(milestone.number),
     state,
   });
 
