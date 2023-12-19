@@ -13,7 +13,7 @@ import {
 const useCTAText = () => {
   const isPaidPlan = useSelector(getIsPaidPlan);
 
-  if (!isPaidPlan) {
+  if (isPaidPlan) {
     return {
       showProBadge: false,
       description: t`Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.`,
