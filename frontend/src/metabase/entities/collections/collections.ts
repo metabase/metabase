@@ -33,8 +33,8 @@ const Collections = createEntity({
   displayNameMany: t`collections`,
 
   api: {
-    list: async (params: { tree?: boolean }, ...args: any) =>
-      params?.tree
+    list: async ({ tree, ...params }: { tree?: boolean }, ...args: any) =>
+      tree
         ? listCollectionsTree(params, ...args)
         : listCollections(params, ...args),
   },
