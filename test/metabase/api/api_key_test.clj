@@ -8,8 +8,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest api-key-creation-test
-  (t2.with-temp/with-temp
-      [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
+  (t2.with-temp/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
     (testing "POST /api/api-key works"
       (let [name (str (random-uuid))
             resp (mt/user-http-request :crowberto :post 200 "api-key"
@@ -41,11 +40,10 @@
                                                     (swap! generated-keys next)
                                                     next-val))]
           ;; put an API Key in the database with that key.
-          (t2.with-temp/with-temp
-              [:model/ApiKey _ {:unhashed_key generated-key
-                                :name         "my cool name"
-                                :user_id      (mt/user->id :crowberto)
-                                :created_by   (mt/user->id :crowberto)}]
+          (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key generated-key
+                                                    :name         "my cool name"
+                                                    :user_id      (mt/user->id :crowberto)
+                                                    :created_by   (mt/user->id :crowberto)}]
             ;; this will try to generate a new API key
             (mt/user-http-request :crowberto :post 200 "api-key"
                                   {:group_id group-id
@@ -55,11 +53,10 @@
     (testing "We don't retry forever if prefix collision keeps happening"
       (let [generated-key (api-key/generate-key)]
         (with-redefs [api-key/generate-key (constantly generated-key)]
-          (t2.with-temp/with-temp
-              [:model/ApiKey _ {:unhashed_key generated-key
-                                :name         "my cool name"
-                                :user_id      (mt/user->id :crowberto)
-                                :created_by   (mt/user->id :crowberto)}]
+          (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key generated-key
+                                                    :name         "my cool name"
+                                                    :user_id      (mt/user->id :crowberto)
+                                                    :created_by   (mt/user->id :crowberto)}]
             (is (= "could not generate key with unique prefix"
                    (:message (mt/user-http-request :crowberto :post 500 "api-key"
                                                    {:group_id group-id
@@ -90,15 +87,13 @@
 (deftest api-count-works
   (mt/with-empty-h2-app-db
     (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
-    (t2.with-temp/with-temp
-        [:model/ApiKey _ {:unhashed_key "prefix_key"
-                          :name         "my cool name"
-                          :user_id      (mt/user->id :crowberto)
-                          :created_by   (mt/user->id :crowberto)}]
+    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key "prefix_key"
+                                              :name         "my cool name"
+                                              :user_id      (mt/user->id :crowberto)
+                                              :created_by   (mt/user->id :crowberto)}]
       (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
-      (t2.with-temp/with-temp
-          [:model/ApiKey _ {:unhashed_key "some_other_key"
-                            :name         "my cool OTHER name"
-                            :user_id      (mt/user->id :crowberto)
-                            :created_by   (mt/user->id :crowberto)}]
+      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key "some_other_key"
+                                                :name         "my cool OTHER name"
+                                                :user_id      (mt/user->id :crowberto)
+                                                :created_by   (mt/user->id :crowberto)}]
         (is (= 2 (mt/user-http-request :crowberto :get 200 "api-key/count")))))))
