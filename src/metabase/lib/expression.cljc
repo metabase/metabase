@@ -215,7 +215,7 @@
       query stage-number
       add-expression-to-stage
       (-> (lib.common/->op-arg expressionable)
-          (lib.util/named-expression-clause expression-name))))))
+          (lib.util/top-level-expression-clause expression-name))))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
@@ -358,9 +358,14 @@
   [an-expression-clause :- ::lib.schema.expression/expression
    new-name :- :string]
   (lib.options/update-options
-   an-expression-clause
+   (if (lib.util/clause? an-expression-clause)
+     an-expression-clause
+     [:value {:effective-type (lib.schema.expression/type-of an-expression-clause)}
+      an-expression-clause])
    (fn [opts]
      (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
        (if (:lib/expression-name opts)
-         (assoc opts :lib/expression-name new-name)
-         (assoc opts :display-name new-name))))))
+         (-> opts
+             (dissoc :display-name :name)
+             (assoc :lib/expression-name new-name))
+         (assoc opts :name new-name :display-name new-name))))))

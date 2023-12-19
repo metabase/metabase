@@ -1,6 +1,13 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { FieldReference } from "metabase-types/api";
-import type { Clause, ColumnMetadata, Query } from "./types";
+import type {
+  Clause,
+  ColumnMetadata,
+  MetadataProvider,
+  MetricMetadata,
+  Query,
+  SegmentMetadata,
+} from "./types";
 
 export function fields(query: Query, stageIndex: number): Clause[] {
   return ML.fields(query, stageIndex);
@@ -61,6 +68,27 @@ export function findVisibleColumnForLegacyRef(
   return ML.find_visible_column_for_legacy_ref(query, stageIndex, fieldRef);
 }
 
-export function legacyFieldRef(column: ColumnMetadata): FieldReference {
-  return ML.legacy_field_ref(column);
+export function legacyRef(
+  column: ColumnMetadata | MetricMetadata | SegmentMetadata,
+): FieldReference {
+  return ML.legacy_ref(column);
 }
+
+/**
+ * Info about FieldValues/remapping for the purposes of powering search widgets in filter modals.
+ */
+export function fieldValuesSearchInfo(
+  metadataProviderable: MetadataProvider | Query,
+  column: ColumnMetadata,
+): FieldValuesSearchInfo {
+  return ML.field_values_search_info(metadataProviderable, column);
+}
+
+type FieldValuesSearchInfo = {
+  // null means that the underlying field was not found
+  fieldId: number | null;
+  // a note for it below
+  searchFieldId: number | null;
+  // corresponds to has_field_values property, or "none" if the field is not found
+  hasFieldValues: "list" | "search" | "none";
+};

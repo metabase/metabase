@@ -15,8 +15,10 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -1527,3 +1529,49 @@
                               :lib/expression-name "Custom Venue Name"))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
+
+(deftest ^:parallel resolve-field-metadata-test
+  (testing "Make sure fallback name for a Field ref makes sense"
+    (mu/disable-enforcement
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "12345"
+               :display-name    "12345"}
+              (lib.metadata.calculation/metadata lib.tu/venues-query -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
+
+(deftest ^:parallel field-values-search-info-test
+  (testing "external remaps (Field mapped to another Field)"
+    (let [metadata-provider (-> meta/metadata-provider
+                                (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
+                                                                                 :has-field-values nil}]})
+                                (lib.tu/remap-metadata-provider (meta/id :venues :name) (meta/id :categories :name)))
+          venues-name       (lib.metadata/field metadata-provider (meta/id :venues :name))]
+      (testing `lib.types.isa/searchable?
+        (is (lib.types.isa/searchable? venues-name)))
+      (testing `lib.field/remapped-field
+        (let [remapped-field (#'lib.field/remapped-field metadata-provider venues-name)]
+          (is (=? {:id   (meta/id :categories :name)
+                   :name "NAME"}
+                  (#'lib.field/remapped-field metadata-provider venues-name)))
+          (is (lib.types.isa/searchable? remapped-field))))
+      (testing `lib.field/search-field
+        (is (=? {:id   (meta/id :categories :name)
+                 :name "NAME"}
+                (#'lib.field/search-field metadata-provider venues-name))))
+      (is (= {:field-id         (meta/id :venues :name)
+              :search-field-id  (meta/id :categories :name)
+              :has-field-values :search}
+             (lib.field/field-values-search-info metadata-provider venues-name))))))
+
+(deftest ^:parallel field-values-search-info-pks-test
+  (testing "Don't return anything for PKs"
+    (let [metadata-provider (-> meta/metadata-provider
+                                (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :id)
+                                                                                 :has-field-values :auto-list}]})
+                                (lib.tu/remap-metadata-provider (meta/id :venues :id) (meta/id :categories :name)))]
+      (is (= {:field-id         (meta/id :venues :id)
+              :search-field-id  nil
+              :has-field-values :list}
+             (lib.field/field-values-search-info
+              metadata-provider
+              (lib.metadata/field metadata-provider (meta/id :venues :id))))))))

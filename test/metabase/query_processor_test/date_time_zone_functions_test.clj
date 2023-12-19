@@ -107,7 +107,7 @@
     :query-fn    (fn [op field-id] {:expressions {"expr" [op [:field field-id nil]]}
                                     :aggregation [[:count]]
                                     :breakout    [[:expression "expr"]]})}])
-(deftest extraction-function-tests
+(deftest ^:parallel extraction-function-tests
   (mt/dataset times-mixed
     (mt/test-drivers (mt/normal-drivers-with-feature :temporal-extract)
       (testing "with datetime columns"
@@ -191,10 +191,10 @@
                       ;; the timezone that they were inserted in
                       ;; maybe they need explicit convert-timezone to the report-tz before extraction?
                       :get-hour        (case driver/*driver*
-                                         (:sqlserver :presto-jdbc :snowflake :oracle) 5
+                                         (:sqlserver :snowflake :oracle) 5
                                          2)
                       :get-minute      (case driver/*driver*
-                                         (:sqlserver :presto-jdbc :snowflake :oracle) 19
+                                         (:sqlserver :snowflake :oracle) 19
                                          49)
                       :get-second      9}
                      {:get-year        2003
@@ -728,7 +728,7 @@
 
 (deftest ^:parallel datetime-diff-base-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (letfn [(query [x y unit]
                 (mt/mbql-query orders
                   {:limit 1
@@ -1066,7 +1066,7 @@
 
 (deftest datetime-diff-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :datetime-diff)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Args can be expressions that return datetime values"
         (let [diffs (fn [x y]
                       (let [units [:second :minute :hour :day :week :month :quarter :year]]

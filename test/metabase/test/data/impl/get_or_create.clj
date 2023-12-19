@@ -114,7 +114,7 @@
     (u/with-timeout sync-timeout-ms
       (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
                                    "NONE")
-            full-sync?         (#{"test-data" "sample-dataset"} database-name)]
+            full-sync?         (= database-name "test-data")]
         (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                            (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
           ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.

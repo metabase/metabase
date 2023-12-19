@@ -25,7 +25,7 @@ import {
   dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
-import type { Dimension as DimensionType } from "metabase-lib/types";
+import type { ClickObjectDimension as DimensionType } from "metabase-lib/types";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";

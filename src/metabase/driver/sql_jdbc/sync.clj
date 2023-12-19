@@ -29,6 +29,7 @@
   describe-table
   describe-table-fields
   describe-table-fks
+  describe-table-indexes
   get-catalogs
   pattern-based-database-type->base-type]
 

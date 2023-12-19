@@ -31,13 +31,33 @@ dataset_query:
         - public
         - v_group_members
         - group_id
-      - null
+      - base-type: type/Integer
     - - field
       - - Internal Metabase Database
         - public
         - v_group_members
         - group_name
-      - null
+      - base-type: type/Text
+    joins:
+    - alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
     source-table: lTp-ATFsCUFEr9I0fMEaO
   type: query
 result_metadata: null
@@ -45,15 +65,6 @@ visualization_settings:
   column_settings: null
   table.cell_column: group_name
   table.columns:
-  - enabled: false
-    fieldRef:
-    - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - user_id
-    - null
-    name: user_id
   - enabled: true
     fieldRef:
     - field

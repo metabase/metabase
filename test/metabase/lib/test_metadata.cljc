@@ -2245,7 +2245,7 @@
    :coercion-strategy          nil
    :name                       "id"
    :fingerprint-version        5
-   :has-field-values           "auto-list"
+   :has-field-values           :auto-list
    :settings                   nil
    :caveats                    nil
    :fk-target-field-id         nil
@@ -2279,7 +2279,7 @@
    :coercion-strategy          nil
    :name                       "created_by"
    :fingerprint-version        5
-   :has-field-values           "auto-list"
+   :has-field-values           :auto-list
    :settings                   nil
    :caveats                    nil
    :fk-target-field-id         (id :ic/accounts :id)
@@ -2311,7 +2311,7 @@
    :coercion-strategy          nil
    :name                       "updated_by"
    :fingerprint-version        5
-   :has-field-values           "auto-list"
+   :has-field-values           :auto-list
    :settings                   nil
    :caveats                    nil
    :fk-target-field-id         (id :ic/accounts :id)
@@ -2391,7 +2391,8 @@
    :metadata-sync-schedule      "0 50 * * * ? *"
    :name                        "test-data"
    :settings                    {:breakout-bin-width 10.0
-                                 :breakout-bins-num  8}
+                                 :breakout-bins-num  8
+                                 :enable-xrays       true}
    :caveats                     nil
    :tables                      [(table-metadata-method :categories)
                                  (table-metadata-method :checkins)
