@@ -49,11 +49,11 @@ if (hasPremiumFeature("content_verification")) {
               ? t`Verify this model`
               : t`Verify this question`,
             icon: isVerified ? "close" : verifiedIconName,
-            action: () => {
+            action: async () => {
               if (isVerified) {
-                removeReview({ itemId: id, itemType: "card" });
+                await removeReview({ itemId: id, itemType: "card" });
               } else {
-                verifyItem({ itemId: id, itemType: "card" });
+                await verifyItem({ itemId: id, itemType: "card" });
               }
               reload();
             },
