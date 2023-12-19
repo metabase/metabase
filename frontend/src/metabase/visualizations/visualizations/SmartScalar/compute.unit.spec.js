@@ -4,6 +4,8 @@ import {
   computeTrend,
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { createMockSingleSeries } from "metabase-types/api/mocks";
+
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
 import { colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
@@ -189,7 +191,9 @@ describe("SmartScalar > compute", () => {
   });
 
   describe("computeTrend", () => {
-    const series = ({ rows, cols }) => [{ data: { rows, cols } }];
+    const series = ({ rows, cols }) => [
+      createMockSingleSeries({}, { data: { rows, cols } }),
+    ];
 
     describe("change types", () => {
       const comparisonType = COMPARISON_TYPES.PREVIOUS_VALUE;
