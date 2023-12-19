@@ -66,7 +66,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     saveAlert();
 
-    cy.findByText("Your alert is all set up.").should("be.visible");
+    cy.findByTestId("toast-undo").within(() => {
+      cy.findByText("Your alert is all set up.").should("be.visible");
+    });
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
       expect(body.channels[0].channel_type).to.eq("email");
@@ -74,13 +76,19 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
   });
 
-  it.only("should enable alert to be updated (without updating question) (metabase#36866)", () => {
+  it("should enable alert to be updated (without updating question) (metabase#36866)", () => {
     openTable({
       table: PEOPLE_ID,
     });
 
     saveAlert();
-    cy.findByText("Your alert is all set up.").should("be.visible");
+
+    cy.log("Check that /api/card has been called once");
+    cy.get("@saveCard.all").should("have.length", 1);
+
+    cy.findByTestId("toast-undo").within(() => {
+      cy.findByText("Your alert is all set up.").should("be.visible");
+    });
 
     clickAlertBell();
 
@@ -89,23 +97,26 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       cy.findByText("Edit").click();
     });
 
-    cy.findByText("How often should we check for results?")
-      .parent()
-      .parent()
-      .within(() => {
-        const buttons = cy.findAllByTestId("select-button");
-        buttons.should("have.length", 2);
-        buttons.eq(0).click();
-      });
+    cy.log("Change the frequency of the alert to weekly");
+
+    cy.get(".Modal--full").within(() => {
+      cy.findByText("How often should we check for results?")
+        .parent()
+        .parent()
+        .within(() => {
+          const buttons = cy.findAllByTestId("select-button");
+          buttons.should("have.length", 2);
+          buttons.eq(0).click();
+        });
+    });
+
     const weekly = cy.findByRole("option", { name: "Weekly" });
     weekly.should("have.attr", "aria-selected", "false");
     weekly.click();
     cy.findByRole("button", { name: "Save changes" }).click();
 
-    // FIXME: This doesn't work. Maybe look for "Your alert was set up" in the UI? Does that appear on master when we update the alert?
-    cy.wait("@saveCard").then(interception => {
-      assert.isUndefined(interception, "Route was not called");
-    });
+    cy.log("Check that /api/card has still only been called once");
+    cy.get("@saveCard.all").should("have.length", 1);
   });
 });
 
