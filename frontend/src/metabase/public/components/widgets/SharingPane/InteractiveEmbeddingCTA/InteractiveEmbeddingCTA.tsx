@@ -1,23 +1,25 @@
 import { t } from "ttag";
 import Link from "metabase/core/components/Link";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { Text, Group, Stack, Box } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
 import {
   ClickIcon,
   CTAContainer,
   CTAHeader,
   ProBadge,
   CTALinkText,
-} from "metabase/public/components/widgets/SharingPane/InteractiveEmbeddingCTA/InteractiveEmbeddingCTA.styled";
-import { getIsPaidPlan } from "metabase/selectors/settings";
-import { Text, Group, Stack } from "metabase/ui";
-import { useSelector } from "metabase/lib/redux";
+} from "./InteractiveEmbeddingCTA.styled";
 
-const getText = (isPaidPlan: boolean) => {
-  if (isPaidPlan) {
+const useCTAText = () => {
+  const isPaidPlan = useSelector(getIsPaidPlan);
+
+  if (!isPaidPlan) {
     return {
       showProBadge: false,
       description: t`Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.`,
       linkText: t`Set it up`,
-      linkTarget: "/admin/settings/embedding-in-other-applications/full-app",
+      url: "/admin/settings/embedding-in-other-applications/full-app",
     };
   }
 
@@ -25,47 +27,49 @@ const getText = (isPaidPlan: boolean) => {
     showProBadge: true,
     description: t`Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.`,
     linkText: t`Learn more`,
-    linkTarget: "https://www.metabase.com/product/embedded-analytics",
+    url: "https://www.metabase.com/product/embedded-analytics",
+    target: "_blank",
   };
 };
 
 export const InteractiveEmbeddingCTA = () => {
-  const isPaidPlan = useSelector(getIsPaidPlan);
-
-  const { showProBadge, description, linkText, linkTarget } =
-    getText(isPaidPlan);
+  const { showProBadge, description, linkText, url, target } = useCTAText();
 
   const badge = (
     // TODO: Check padding because design keeps using non-mantine-standard units
-    <ProBadge bg="brand.1" py="2px" px="6px">
-      <Text
-        align="center"
-        c="white"
-        span
-        tt="uppercase"
-        lts="0.7"
-        size="sm"
-        fw={700}
-      >{t`Pro`}</Text>
-    </ProBadge>
+    <Box pos="relative">
+      <ProBadge bg="brand.1" py="2px" px="6px" pos="absolute" top="-0.6rem">
+        <Text
+          align="center"
+          c="white"
+          span
+          tt="uppercase"
+          lts="0.7"
+          size="sm"
+          fw={700}
+        >{t`Pro`}</Text>
+      </ProBadge>
+    </Box>
   );
 
   return (
-    <Link to={linkTarget}>
+    <Link to={url} target={target}>
       <CTAContainer withBorder p="md">
         <Group spacing="md" align="flex-start">
           <ClickIcon name="click" size={32} />
-          <Stack spacing={0}>
+          <Stack spacing="sm">
             <Group spacing="sm">
               <CTAHeader
+                inline
                 fz="md"
                 order={5}
               >{t`Interactive Embedding`}</CTAHeader>
               {showProBadge && badge}
             </Group>
-            <Text lh="unset" fz="sm">
-              {description}{" "}
-              <CTALinkText color="brand.1" fw={700} fz="sm">
+            <Text inline lh="unset" fz="sm">
+              {description}
+              {"  "}
+              <CTALinkText inline inherit span color="brand.1" fw={700}>
                 {linkText}
               </CTALinkText>
             </Text>
