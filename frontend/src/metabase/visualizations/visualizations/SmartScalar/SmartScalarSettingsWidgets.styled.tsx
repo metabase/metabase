@@ -1,11 +1,19 @@
 import styled from "@emotion/styled";
 import type { MouseEvent } from "react";
-import { Menu, NumberInput } from "metabase/ui";
+import { Button, Menu, NumberInput } from "metabase/ui";
 
-export const MenuTargetStyled = styled(Menu.Target)`
+//getStylesRef
+
+type ButtonProps = {
+  disabled: boolean;
+};
+
+export const ButtonStyled = styled(Button)<ButtonProps>`
+  padding-right: 0;
+  padding-left: 1rem;
   width: 100%;
 
-  .emotion-Button-label {
+  span {
     width: 100%;
     height: 100%;
   }

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { Icon } from "metabase/core/components/Icon";
-import { Button, Group, Menu, Stack, Text, Box } from "metabase/ui";
+import { Group, Menu, Stack, Text, Box } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
 import type {
   SelectedComparison,
@@ -9,8 +9,8 @@ import type {
 } from "metabase-types/api";
 import { COMPARISON_TYPES } from "./utils";
 import {
+  ButtonStyled,
   MenuItemStyled,
-  MenuTargetStyled,
   NumberInputStyled,
 } from "./SmartScalarSettingsWidgets.styled";
 
@@ -42,19 +42,17 @@ export function SmartScalarComparisonWidget({
 
   return (
     <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
-      <MenuTargetStyled>
-        <Button
-          pr="0"
-          pl="1rem"
+      <Menu.Target>
+        <ButtonStyled
           data-testid={"comparisons-widget-button"}
           disabled={isDisabled}
         >
           <Group spacing="sm">
-            <span>{selectedDisplayName}</span>
+            {selectedDisplayName}
             <Icon name="chevrondown" size="14" />
           </Group>
-        </Button>
-      </MenuTargetStyled>
+        </ButtonStyled>
+      </Menu.Target>
 
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
