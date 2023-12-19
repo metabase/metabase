@@ -55,7 +55,7 @@ import RedirectWidget from "./components/widgets/RedirectWidget";
 import {
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
-} from "./components/widgets/EmbeddingOption/EmbeddingOption";
+} from "./components/widgets/EmbeddingOption";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
