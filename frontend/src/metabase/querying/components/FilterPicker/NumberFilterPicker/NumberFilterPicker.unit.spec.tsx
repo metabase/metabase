@@ -168,12 +168,9 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-
-          const [leftInput, rightInput] =
-            screen.getAllByPlaceholderText("Enter a number");
+          const leftInput = screen.getByPlaceholderText("Min");
+          const rightInput = screen.getByPlaceholderText("Max");
           userEvent.type(leftInput, String(leftValue));
-          expect(addFilterButton).toBeDisabled();
-
           userEvent.type(rightInput, String(rightValue));
           userEvent.click(addFilterButton);
 
@@ -194,12 +191,9 @@ describe("NumberFilterPicker", () => {
         });
 
         await setOperator("Between");
-
-        const [leftInput, rightInput] =
-          screen.getAllByPlaceholderText("Enter a number");
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
         userEvent.type(leftInput, "5");
-        expect(addFilterButton).toBeDisabled();
-
         userEvent.type(rightInput, "-10.5");
         userEvent.click(addFilterButton);
 
@@ -217,12 +211,11 @@ describe("NumberFilterPicker", () => {
           setup();
 
         await setOperator("Between");
-        const [leftInput, rightInput] =
-          screen.getAllByPlaceholderText("Enter a number");
-        userEvent.type(leftInput, "5{enter}");
-        expect(onChange).not.toHaveBeenCalled();
-
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
+        userEvent.type(leftInput, "5");
         userEvent.type(rightInput, "-10.5{enter}");
+
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
           operator: "between",
@@ -237,17 +230,17 @@ describe("NumberFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup();
 
-        userEvent.type(
-          screen.getByPlaceholderText("Enter a number"),
-          "-5, -1, 0, 1, 5",
-        );
+        const input = screen.getByPlaceholderText("Enter a number");
+        userEvent.type(input, "-5");
+        userEvent.tab();
+        userEvent.type(input, "10");
         userEvent.click(screen.getByText("Add filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
           operator: "=",
           column: expect.anything(),
-          values: [-5, -1, 0, 1, 5],
+          values: [-5, 10],
         });
         expect(getNextFilterColumnName()).toBe("Total");
       });
@@ -373,9 +366,8 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-
-          const [leftInput, rightInput] =
-            screen.getAllByPlaceholderText("Enter a number");
+          const leftInput = screen.getByPlaceholderText("Min");
+          const rightInput = screen.getByPlaceholderText("Max");
           userEvent.type(leftInput, `{selectall}{backspace}${leftValue}`);
           expect(updateButton).toBeEnabled();
 
@@ -396,20 +388,17 @@ describe("NumberFilterPicker", () => {
     describe("with many values", () => {
       it("should update a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnName } = setup(
-          createQueryWithNumberFilter({ operator: "=", values: [-1, 0, 1, 2] }),
+          createQueryWithNumberFilter({ operator: "=", values: [1, 2] }),
         );
 
-        userEvent.type(
-          screen.getByRole("textbox"),
-          "{backspace}{backspace}5,11,7",
-        );
+        userEvent.type(screen.getByLabelText("Filter value"), "3");
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
           operator: "=",
           column: expect.anything(),
-          values: [-1, 0, 5, 11, 7],
+          values: [1, 2, 3],
         });
         expect(getNextFilterColumnName()).toBe("Total");
       });

@@ -21,8 +21,8 @@ export function SingleDatePickerBody({
     newDate && onChange(setDatePart(value, newDate));
   };
 
-  const handleTimeChange = (newTime: Date) => {
-    onChange(setTimePart(value, newTime));
+  const handleTimeChange = (newTime: Date | null) => {
+    newTime && onChange(setTimePart(value, newTime));
   };
 
   return (
