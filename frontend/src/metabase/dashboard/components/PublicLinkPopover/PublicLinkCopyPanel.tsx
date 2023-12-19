@@ -56,7 +56,7 @@ export const PublicLinkCopyPanel = ({
       )}
       {onRemoveLink && (
         // The box is needed to center the tooltip on the anchor
-        <Box pos="absolute" mt="sm">
+        <Box mt="sm">
           <Tooltip
             label={
               <Text fw={700} c="inherit">

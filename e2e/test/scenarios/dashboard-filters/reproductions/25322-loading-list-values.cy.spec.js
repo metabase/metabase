@@ -75,5 +75,5 @@ const throttleFieldValuesRequest = dashboard_id => {
     middleware: true,
   };
 
-  cy.intercept(matcher, req => req.on("response", res => res.setThrottle(1)));
+  cy.intercept(matcher, req => req.on("response", res => res.setThrottle(10)));
 };
