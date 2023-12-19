@@ -2,9 +2,12 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createPublicDashboardLink,
   createPublicQuestionLink,
+  describeEE,
   getEmbedModalSharingPane,
+  openEmbedModalFromMenu,
   openPublicLinkPopoverFromMenu,
   restore,
+  setTokenFeatures,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -178,6 +181,74 @@ const { PRODUCTS_ID } = SAMPLE_DATABASE;
             expectDisabledButtonWithTooltipLabel("Public links are disabled");
           });
         });
+      });
+    });
+  });
+});
+
+describe("embed modal display", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createResource("dashboard").then(({ body: { id } }) => {
+      cy.wrap(id).as("dashboardId");
+    });
+  });
+
+  describeEE("when the user has a paid instance", () => {
+    it("should display a link to the interactive embedding settings", () => {
+      setTokenFeatures("all");
+      cy.get("@dashboardId").then(id => {
+        visitResource("dashboard", id);
+      });
+
+      openEmbedModalFromMenu();
+
+      getEmbedModalSharingPane().within(() => {
+        cy.findByText("Static embed").should("be.visible");
+        cy.findByText("Public embed").should("be.visible");
+        cy.findByTestId("interactive-embedding-cta").within(() => {
+          cy.findByText("Interactive Embedding").should("be.visible");
+          cy.findByText(
+            "Your plan allows you to use Interactive Embedding create interactive embedding experiences with drill-through and more.",
+          ).should("be.visible");
+          cy.findByText("Set it up").should("be.visible");
+        });
+        cy.findByTestId("interactive-embedding-cta").click();
+
+        cy.url().should(
+          "equal",
+          Cypress.config().baseUrl +
+            "/admin/settings/embedding-in-other-applications/full-app",
+        );
+      });
+    });
+  });
+
+  describe("when the user has an OSS instance", () => {
+    it("should display a link to the product page for embedded analytics", () => {
+      cy.signInAsAdmin();
+      cy.get("@dashboardId").then(id => {
+        visitResource("dashboard", id);
+      });
+      openEmbedModalFromMenu();
+
+      getEmbedModalSharingPane().within(() => {
+        cy.findByText("Static embed").should("be.visible");
+        cy.findByText("Public embed").should("be.visible");
+        cy.findByTestId("interactive-embedding-cta").within(() => {
+          cy.findByText("Interactive Embedding").should("be.visible");
+          cy.findByText(
+            "Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.",
+          ).should("be.visible");
+          cy.findByText("Learn more").should("be.visible");
+        });
+        cy.findByTestId("interactive-embedding-cta").should(
+          "have.attr",
+          "href",
+          "https://www.metabase.com/product/embedded-analytics",
+        );
       });
     });
   });

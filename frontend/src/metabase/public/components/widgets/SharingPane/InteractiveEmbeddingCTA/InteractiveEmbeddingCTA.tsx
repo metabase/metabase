@@ -52,7 +52,7 @@ export const InteractiveEmbeddingCTA = () => {
   );
 
   return (
-    <Link to={url} target={target}>
+    <Link to={url} target={target} data-testid="interactive-embedding-cta">
       <CTAContainer withBorder p="md">
         <Group spacing="md" align="flex-start">
           <ClickIcon name="click" size={32} />

@@ -70,8 +70,8 @@ function SharingPane({
   );
 
   return (
-    <Stack p="lg">
-      <Group data-testid="sharing-pane-container">
+    <Stack p="lg" data-testid="sharing-pane-container">
+      <Group>
         <SharingPaneButton
           header={t`Static embed`}
           description={t`Securely embed this dashboard in your own application’s server code.`}
