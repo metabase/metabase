@@ -479,7 +479,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         embedName: t`Interactive embedding`,
         embedDescription: jt`Use interactive embedding when you want to ${(
           <ExternalLink
-            herf="https://www.metabase.com/blog/why-full-app-embedding"
+            href="https://www.metabase.com/blog/why-full-app-embedding"
             key="why-full-app-embedding"
           >
             {t`offer multi-tenant, self-service analytics`}

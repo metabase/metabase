@@ -48,6 +48,19 @@ describe("[OSS] embedding settings", () => {
           "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
         );
       });
+
+      it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
+        await setupEmbedding({
+          settingValues: { "enable-embedding": embeddingSettingEnabled },
+        });
+
+        expect(
+          screen.getByText("offer multi-tenant, self-service analytics"),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/blog/why-full-app-embedding",
+        );
+      });
     });
   });
   describe("when the embedding is enabled", () => {
