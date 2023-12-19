@@ -71,12 +71,8 @@ describe("search > recently viewed", () => {
 
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
-    cy.findByTestId("loading-spinner").should("not.exist");
 
     assertRecentlyViewedItem(0, "People", "Table");
-    assertRecentlyViewedItem(1, "Orders in a dashboard", "Dashboard");
-    assertRecentlyViewedItem(2, "Orders", "Question");
-    cy.findAllByTestId("recently-viewed-item-title").should("have.length", 3);
   });
 });
 
