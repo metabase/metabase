@@ -1,22 +1,24 @@
 import { useEffect, useState, useCallback } from "react";
 
+import { useSelector } from "metabase/lib/redux";
 import type { Collection, SearchResult } from "metabase-types/api";
 import { CollectionsApi, UserApi } from "metabase/services";
-
 import Search from "metabase/entities/search";
 
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
 
 export type CollectionPickerOptions = {
-  showPersonalCollection?: boolean;
+  showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: 'snippets';
 };
 
 const defaultOptions: CollectionPickerOptions = {
-  showPersonalCollection: true,
+  showPersonalCollections: true,
   showRootCollection: true,
 };
 
@@ -48,6 +50,7 @@ export function CollectionPicker({
   options = defaultOptions,
 }: CollectionPickerProps) {
   const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
+  const isAdmin = useSelector(getUserIsAdmin);
 
   const onFolderSelect = useCallback(
     async (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
@@ -63,7 +66,7 @@ export function CollectionPicker({
           });
         }
 
-        if (options.showPersonalCollection && options.namespace !== "snippets") {
+        if (options.showPersonalCollections && options.namespace !== "snippets") {
           const currentUser = await UserApi.current();
           const personalCollection = await CollectionsApi.get({
             id: currentUser.personal_collection_id,
@@ -72,9 +75,26 @@ export function CollectionPicker({
             ...personalCollection,
             model: "collection",
           });
+
+          if (isAdmin) {
+            collectionsData.push({
+              ...PERSONAL_COLLECTIONS,
+              model: 'collection',
+            })
+          }
         }
 
         return collectionsData;
+      }
+
+      if (isAdmin && folder.id === PERSONAL_COLLECTIONS.id as unknown as number) { // 🙄
+        const allCollections = await CollectionsApi.list();
+
+        const allRootPersonalCollections = allCollections.filter(
+          (collection: Collection) => (collection?.is_personal && collection?.location === "/")
+        ).map((collection: Collection) => ({ ...collection, model: "collection" }));
+
+        return allRootPersonalCollections;
       }
 
       // because folders are also selectable items in the collection picker, we always select the folder
@@ -88,7 +108,7 @@ export function CollectionPicker({
 
       return items.data;
     },
-    [onItemSelect, options],
+    [onItemSelect, isAdmin, options],
   );
 
   useEffect(() => {

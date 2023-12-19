@@ -17,17 +17,13 @@ import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
 import { canonicalCollectionId , isValidCollectionId } from "metabase/collections/utils";
-import SnippetCollections from "metabase/entities/snippet-collections";
 
 import type { CollectionId } from "metabase-types/api";
 
 import { useSelector } from "metabase/lib/redux";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
-import {
-  PopoverItemPicker,
-  MIN_POPOVER_WIDTH,
-} from "./FormCollectionPicker.styled";
+
 
 export interface FormCollectionPickerProps
   extends HTMLAttributes<HTMLDivElement> {
@@ -61,8 +57,6 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
-  initialOpenCollectionId,
-  onOpenCollectionChange,
   filterPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
@@ -71,6 +65,8 @@ function FormCollectionPicker({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const [openCollectionId, setOpenCollectionId] = useState<CollectionId>("root");
+
+  console.log({ openCollectionId})
 
   const openCollection = useSelector(state =>
     Collections.selectors.getObject(state, {
@@ -116,11 +112,12 @@ function FormCollectionPicker({
           }}
           onClose={() => setIsPickerOpen(false)}
           options={{
-            showPersonalCollection: filterPersonalCollections !== "exclude",
+            showPersonalCollections: filterPersonalCollections !== "exclude",
             showRootCollection: filterPersonalCollections !== "only",
             showSearch: hasSearch,
             hasConfirmButtons: true,
             namespace: isSnippetCollection ? "snippets" : undefined,
+            allowCreateNew: showCreateNewCollectionOption,
           }}
         />
       )}

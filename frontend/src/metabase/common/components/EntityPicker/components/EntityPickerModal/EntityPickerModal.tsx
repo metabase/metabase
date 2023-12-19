@@ -4,19 +4,20 @@ import { t } from "ttag";
 import { Modal } from "metabase/ui";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import type { SearchResult } from "metabase-types/api";
+import { useModalOpen } from "metabase/hooks/use-modal-open";
 import type { EntityPickerOptions } from "../../types";
 
 import { tabOptions, type ValidTab } from "../../utils";
 import { TabsView, ButtonBar, SinglePickerView } from "../";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 import { GrowFlex, ModalContent, ModalBody } from "./EntityPickerModal.styled";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
 
 export type EntityPickerModalOptions = {
   showPersonalCollection?: boolean;
   showRootCollection?: boolean;
   showSearch?: boolean;
   hasConfirmButtons?: boolean;
+  allowCreateNew?: boolean;
 };
 
 const defaultOptions: EntityPickerModalOptions = {
@@ -24,6 +25,7 @@ const defaultOptions: EntityPickerModalOptions = {
   showRootCollection: true,
   showSearch: true,
   hasConfirmButtons: true,
+  allowCreateNew: true,
 };
 
 interface EntityPickerModalProps {
@@ -118,6 +120,8 @@ export function EntityPickerModal({
                 onConfirm={handleConfirm}
                 onCancel={onClose}
                 canConfirm={!!selectedItem && selectedItem?.can_write !== false}
+                allowCreateNew={options.allowCreateNew}
+                onCreateNew={() => console.log("create new")}
               />
             )}
           </ErrorBoundary>
