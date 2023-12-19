@@ -10,6 +10,7 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -70,25 +71,28 @@
     "10000+"     100000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [email/email-configured? (constantly false)
-                slack/slack-configured? (constantly false)]
+  (with-redefs [email/email-configured?           (constantly false)
+                slack/slack-configured?           (constantly false)
+                public-settings/enable-embedding  (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Test"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false]
-      (let [stats (anonymous-usage-stats)]
-        (is (partial= {:running_on          :unknown
-                       :check_for_updates   true
-                       :startup_time_millis 1234.0
-                       :site_name           true
-                       :friendly_names      false
-                       :email_configured    false
-                       :slack_configured    false
-                       :sso_configured      false
-                       :has_sample_data     false
-                       :help_link           :metabase}
-                      stats))
-        (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
-                    (-> stats :stats :database :dbms_versions)))))))
+      (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+        (let [stats (anonymous-usage-stats)]
+          (is (partial= {:running_on          :unknown
+                         :check_for_updates   true
+                         :startup_time_millis 1234.0
+                         :site_name           true
+                         :friendly_names      false
+                         :email_configured    false
+                         :slack_configured    false
+                         :sso_configured      false
+                         :has_sample_data     true
+                         :help_link           :metabase
+                         :enable_embedding    false}
+                        stats))
+          (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+                      (-> stats :stats :database :dbms_versions))))))))
 
 (deftest ^:parallel conversion-test
   (is (= #{true}

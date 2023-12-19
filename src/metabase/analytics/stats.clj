@@ -140,7 +140,8 @@
    :sso_configured       (google/google-auth-enabled)
    :instance_started     (snowplow/instance-creation)
    :has_sample_data      (t2/exists? Database, :is_sample true)
-   :help_link            (public-settings/help-link)})
+   :help_link            (public-settings/help-link)
+   :enable_embedding     (public-settings/enable-embedding)})
 
 (defn- user-metrics
   "Get metrics based on user records.
