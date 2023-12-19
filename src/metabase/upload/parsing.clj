@@ -20,16 +20,16 @@
   []
   {:number-separators (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,")})
 
-(defn parse-bool
+(defn- parse-bool
   "Parses a boolean value (true/t/yes/y/1 and false/f/no/n/0). Case-insensitive."
   [s]
   (cond
     (re-matches #"(?i)true|t|yes|y|1" s) true
     (re-matches #"(?i)false|f|no|n|0" s) false
     :else                                (throw (IllegalArgumentException.
-                                                 (tru "{0} is not a recognizable boolean" s)))))
+                                                 (tru "'{0}' is not a recognizable boolean" s)))))
 
-(defn parse-date
+(defn- parse-date
   "Parses a date.
 
   Supported formats:
@@ -39,7 +39,7 @@
     (t/local-date s)
     (catch Exception _
       (throw (IllegalArgumentException.
-              (tru "{0} is not a recognizable date" s))))))
+              (tru "'{0}' is not a recognizable date" s))))))
 
 (defn parse-datetime
   "Parses a string representing a local datetime into a LocalDateTime.
@@ -54,7 +54,7 @@
   [s]
   (-> s (str/replace \space \T) t/local-date-time))
 
-(defn parse-as-datetime
+(defn- parse-as-datetime
   "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-date]] and [[parse-datetime]]."
   [s]
   (try
@@ -64,7 +64,7 @@
         (parse-datetime s)
         (catch Exception _
           (throw (IllegalArgumentException.
-                  (tru "{0} is not a recognizable datetime" s))))))))
+                  (tru "'{0}' is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
   "Parses a string representing an offset datetime into an OffsetDateTime.
@@ -86,9 +86,9 @@
   (try
     (-> s (str/replace \space \T) t/offset-date-time)
     (catch Exception _
-      (throw (IllegalArgumentException. (tru "{0} is not a recognizable zoned datetime" s))))))
+      (throw (IllegalArgumentException. (tru "'{0}' is not a recognizable zoned datetime" s))))))
 
-(defn remove-currency-signs
+(defn- remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
   [s]
   (str/replace s currency-regex ""))
@@ -109,7 +109,7 @@
         (- parsed-number)
         parsed-number))))
 
-(defn parse-number
+(defn- parse-number
   "Parse an integer or float"
   [number-separators s]
   (try
@@ -118,9 +118,9 @@
          (remove-currency-signs)
          (parse-plain-number number-separators))
     (catch Exception _
-      (throw (IllegalArgumentException. (tru "{0} is not a recognizable number" s))))))
+      (throw (IllegalArgumentException. (tru "'{0}' is not a recognizable number" s))))))
 
-(defn parse-as-int
+(defn- parse-as-int
   "Parses a string representing a number as an integer, rounding down if necessary."
   [number-separators s]
   ;; convert this to a string so we can insert bigints with a prepared statement

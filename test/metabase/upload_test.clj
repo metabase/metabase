@@ -1290,40 +1290,43 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "If the table doesn't have _mb_row_id but the CSV does, ignore the CSV _mb_row_id but create the column anyway"
-        (let [csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]]
-          (mt/with-empty-db
-            (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                  :name ::upload/varchar-255)
-                                               :rows [["Obi-Wan Kenobi"]]})
-                  file  (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:row-count 1}
-                     (append-csv! {:file     file
-                                   :table-id (:id table)})))
-              (testing "Check a _mb_row_id column was created"
-                (is (= ["name" "_mb_row_id"]
-                       (column-names-for-table table))))
-              (testing "Check a _mb_row_id column was sync'd"
-                (is (=? {:semantic_type :type/PK
-                         :base_type     :type/BigInteger
-                         :name          "_mb_row_id"
-                         :display_name  "_mb_row_id"}
-                        (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
-              (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
-                (is (= [["Obi-Wan Kenobi" 1]
-                        ["Luke Skywalker" 2]]
-                       (rows-for-table table))))
-              (io/delete-file file))))))))
+        (mt/with-empty-db
+          (let [table    (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                   :name ::upload/varchar-255)
+                                                :rows [["Obi-Wan Kenobi"]]})
+                csv-rows ["_MB-row ID,name" "1000,Luke Skywalker"]
+                file     (csv-file-with csv-rows (mt/random-name))]
+            (is (= {:row-count 1}
+                   (append-csv! {:file     file
+                                 :table-id (:id table)})))
+            (testing "Check a _mb_row_id column was created"
+              (is (= ["name" "_mb_row_id"]
+                     (column-names-for-table table))))
+            (testing "Check a _mb_row_id column was sync'd"
+              (is (=? {:semantic_type :type/PK
+                       :base_type     :type/BigInteger
+                       :name          "_mb_row_id"
+                       :display_name  "_mb_row_id"}
+                      (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+            (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
+              (is (= [["Obi-Wan Kenobi" 1]
+                      ["Luke Skywalker" 2]]
+                     (rows-for-table table))))
+            (io/delete-file file)))))))
 
 (deftest append-no-mb-row-id-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "If the table doesn't have _mb_row_id and a failure occurs, we should create a _mb_row_id column anyway"
         (mt/with-empty-db
-          (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                :bool_column ::upload/boolean)
-                                             :rows [[true]]})
-                csv-rows ["bool_column" "not a bool"]
-                file  (csv-file-with csv-rows (mt/random-name))]
+          (let [table       (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                      :bool_column ::upload/boolean)
+                                                   :rows [[true]]})
+                csv-rows    ["bool_column" "not a bool"]
+                file        (csv-file-with csv-rows (mt/random-name))
+                get-auto-pk (fn []
+                              (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))]
+            (is (nil? (get-auto-pk)))
             (is (thrown? Exception
                          (append-csv! {:file     file
                                        :table-id (:id table)})))
@@ -1335,7 +1338,7 @@
                        :base_type     :type/BigInteger
                        :name          "_mb_row_id"
                        :display_name  "_mb_row_id"}
-                      (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+                      (get-auto-pk))))
             (testing "Check the data was not uploaded into the table"
               (is (= [[true 1]]
                      (rows-for-table table))))
@@ -1345,26 +1348,26 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append succeeds if the table has _mb_row_id but the CSV doesn't"
-        (let [csv-rows ["name" "Luke Skywalker"]]
-          (mt/with-empty-db
-            (let [table (create-upload-table!)
-                  file  (csv-file-with csv-rows (mt/random-name))]
-              (is (= {:row-count 1}
-                     (append-csv! {:file     file
-                                   :table-id (:id table)})))
-              (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
-                (is (= [[1 "Obi-Wan Kenobi"]
-                        [2 "Luke Skywalker"]]
-                       (rows-for-table table))))
-              (io/delete-file file))))))))
+        (mt/with-empty-db
+          (let [table    (create-upload-table!)
+                csv-rows ["name" "Luke Skywalker"]
+                file     (csv-file-with csv-rows (mt/random-name))]
+            (is (= {:row-count 1}
+                   (append-csv! {:file     file
+                                 :table-id (:id table)})))
+            (testing "Check the data was uploaded into the table, but the _mb_row_id was ignored"
+              (is (= [[1 "Obi-Wan Kenobi"]
+                      [2 "Luke Skywalker"]]
+                     (rows-for-table table))))
+            (io/delete-file file)))))))
 
 (deftest append-mb-row-id-csv-and-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append succeeds if the table has _mb_row_id and the CSV does too"
         (mt/with-empty-db
-          (let [csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]
-                table    (create-upload-table!)
+          (let [table    (create-upload-table!)
+                csv-rows ["_mb_row_id,name" "1000,Luke Skywalker"]
                 file     (csv-file-with csv-rows (mt/random-name))]
             (is (= {:row-count 1}
                    (append-csv! {:file     file
@@ -1375,8 +1378,8 @@
                      (rows-for-table table))))
             (io/delete-file file))
           (testing "with duplicate normalized _mb_row_id columns in the CSV file"
-            (let [csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]
-                  table (create-upload-table!)
+            (let [table (create-upload-table!)
+                  csv-rows ["_mb_row_id,name,-MB-ROW-ID" "1000,Luke Skywalker,1001"]
                   file  (csv-file-with csv-rows (mt/random-name))]
               (is (= {:row-count 1}
                      (append-csv! {:file     file
@@ -1413,15 +1416,15 @@
             ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 10]
-              (let [table (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                    :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                    :id         ::upload/int
-                                                                    :name       ::upload/varchar-255)
-                                                 :rows             [[10 "Obi-Wan Kenobi"]]})
+              (let [table    (create-upload-table! {:col->upload-type (ordered-map/ordered-map
+                                                                       :_mb_row_id ::upload/auto-incrementing-int-pk
+                                                                       :id         ::upload/int
+                                                                       :name       ::upload/varchar-255)
+                                                    :rows             [[10 "Obi-Wan Kenobi"]]})
                     csv-rows `["id,name" ~@(repeat 50 "20,Darth Vadar") "not an int,Luke Skywalker"]
-                    file  (csv-file-with csv-rows (mt/random-name))]
+                    file     (csv-file-with csv-rows (mt/random-name))]
                 (testing "Check integers"
-                  (is (= {:message "not an int is not a recognizable number"
+                  (is (= {:message "'not an int' is not a recognizable number"
                           :data    {:status-code 422}}
                          (catch-ex-info (append-csv! {:file     file
                                                       :table-id (:id table)})))))
@@ -1445,27 +1448,27 @@
                           [{:upload-type ::upload/int
                             :valid       1
                             :invalid     "not an int"
-                            :msg         "not an int is not a recognizable number"}
+                            :msg         "'not an int' is not a recognizable number"}
                            {:upload-type ::upload/float
                             :valid       1.1
                             :invalid     "not a float"
-                            :msg         "not a float is not a recognizable number"}
+                            :msg         "'not a float' is not a recognizable number"}
                            {:upload-type ::upload/boolean
                             :valid       true
                             :invalid     "correct"
-                            :msg         "correct is not a recognizable boolean"}
+                            :msg         "'correct' is not a recognizable boolean"}
                            {:upload-type ::upload/date
                             :valid       #t "2000-01-01"
                             :invalid     "2023-01-01T00:00:00"
-                            :msg         "2023-01-01T00:00:00 is not a recognizable date"}
+                            :msg         "'2023-01-01T00:00:00' is not a recognizable date"}
                            {:upload-type ::upload/datetime
                             :valid       #t "2000-01-01T00:00:00"
                             :invalid     "2023-01-01T00:00:00+01"
-                            :msg         "2023-01-01T00:00:00+01 is not a recognizable datetime"}
+                            :msg         "'2023-01-01T00:00:00+01' is not a recognizable datetime"}
                            {:upload-type ::upload/offset-datetime
                             :valid       #t "2000-01-01T00:00:00+01"
                             :invalid     "2023-01-01T00:00:00[Europe/Helsinki]"
-                            :msg         "2023-01-01T00:00:00[Europe/Helsinki] is not a recognizable zoned datetime"}]]
+                            :msg         "'2023-01-01T00:00:00[Europe/Helsinki]' is not a recognizable zoned datetime"}]]
                     (testing (str "\nTry to upload an invalid value for " upload-type)
                       (let [table (create-upload-table!
                                    {:col->upload-type (cond-> (ordered-map/ordered-map
@@ -1561,11 +1564,11 @@
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [{:keys [upload-type uncoerced coerced]}
-                      [{:upload-type ::upload/int,         :uncoerced "2.1", :coerced 2}
-                       {:upload-type ::upload/int,         :uncoerced "2.5", :coerced 2}
-                       {:upload-type ::upload/int,         :uncoerced "2.9", :coerced 2}
-                       {:upload-type ::upload/float,       :uncoerced "2",   :coerced 2.0}
-                       {:upload-type ::upload/boolean,     :uncoerced "0", :coerced false}]]
+                      [{:upload-type ::upload/int,     :uncoerced "2.1", :coerced 2}
+                       {:upload-type ::upload/int,     :uncoerced "2.5", :coerced 2}
+                       {:upload-type ::upload/int,     :uncoerced "2.9", :coerced 2}
+                       {:upload-type ::upload/float,   :uncoerced "2",   :coerced 2.0}
+                       {:upload-type ::upload/boolean, :uncoerced "0",   :coerced false}]]
                 (testing (format "\nUploading %s into a column of type %s should be coerced to %s"
                                  uncoerced (name upload-type) coerced)
                   (let [table (create-upload-table!

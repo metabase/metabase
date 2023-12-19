@@ -579,6 +579,9 @@
         (try
           ;; 2.
           (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
+          (scan-and-sync-table! database table)
+          (let [auto-pk-field (table-id->auto-pk-column (:id table))]
+            (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)}))
           (catch Throwable e
             ;; 3.
             (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -586,12 +589,12 @@
                                         :where       [:> (keyword auto-pk-column-name) max-pk]}
                                        {:quoted  true
                                         :dialect (sql.qp/quote-style driver)}))
-            (throw (ex-info (ex-message e) {:status-code 422})))
-          (finally
-            (scan-and-sync-table! database table)
             (when create-auto-pk?
+              ;; sync the table again just to pick up the new auto-pk column
+              (scan-and-sync-table! database table)
               (let [auto-pk-field (table-id->auto-pk-column (:id table))]
-                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)}))))))
+                (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+            (throw (ex-info (ex-message e) {:status-code 422})))))
       {:row-count (count parsed-rows)})))
 
 (defn- can-append-error
