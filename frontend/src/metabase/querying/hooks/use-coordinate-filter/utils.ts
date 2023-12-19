@@ -56,7 +56,7 @@ export function canPickColumns(
 
 export function getDefaultValues(
   operator: Lib.CoordinateFilterOperatorName,
-  values: NumberValue[] = [],
+  values: NumberValue[],
 ): NumberValue[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {
@@ -168,10 +168,17 @@ function getInsideFilterParts(
   }
 
   const isLatitude = Lib.isLatitude(column);
+  const [upperLatitude, leftLongitude, lowerLatitude, rightLongitude] = values;
+
   return {
     operator,
     column: isLatitude ? column : secondColumn,
     longitudeColumn: isLatitude ? secondColumn : column,
-    values,
+    values: [
+      Math.max(upperLatitude, lowerLatitude),
+      Math.min(leftLongitude, rightLongitude),
+      Math.min(lowerLatitude, upperLatitude),
+      Math.max(leftLongitude, rightLongitude),
+    ],
   };
 }
