@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Divider, Flex, Tabs } from "metabase/ui";
-import { BackButton } from "../BackButton";
+import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 import type { DatePickerOperator, SpecificDatePickerValue } from "../types";
 import { SingleDatePicker } from "./SingleDatePicker";
 import { DateRangePicker } from "./DateRangePicker";
@@ -59,7 +58,7 @@ export function SpecificDatePicker({
   return (
     <Tabs value={value.operator} onTabChange={handleTabChange}>
       <Flex>
-        <BackButton onClick={onBack} />
+        <PopoverBackButton p="sm" onClick={onBack} />
         <TabList>
           {tabs.map(tab => (
             <Tabs.Tab key={tab.operator} value={tab.operator}>
