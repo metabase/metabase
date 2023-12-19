@@ -123,7 +123,8 @@
            (log/infof "Database partitioned of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-db-partitioned
-                      new-db-partitioned))
+                      new-db-partitioned)
+           {:database_partitioned new-db-partitioned})
          (when new-db-required?
            (log/infof "Database required of %s has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)
