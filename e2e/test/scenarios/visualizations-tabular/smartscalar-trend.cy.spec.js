@@ -92,6 +92,31 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("vs. Jan:");
       cy.findByText("52,249.59");
     });
+
+    // static number
+    cy.findByTestId("chartsettings-sidebar").findByText("3 months ago").click();
+    menu().within(() => {
+      cy.findByText("Custom value…").click();
+
+      // Test the back button
+      cy.findByLabelText("Back").click();
+      cy.findByText("Custom value…").click();
+
+      cy.findByLabelText("Label").type("My Goal");
+      cy.findByLabelText("Value").type("{selectall}42000");
+      cy.button("Done").click();
+    });
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("vs. my goal:").should("exist");
+      cy.findByText("42,000").should("exist"); // goal
+      cy.findByText("26.76%").should("exist"); // down percentage
+    });
+    cy.findByTestId("chartsettings-sidebar").findByText("My Goal").click();
+    menu().within(() => {
+      cy.findByLabelText("Back").should("exist");
+      cy.findByLabelText("Label").should("have.value", "My Goal");
+      cy.findByLabelText("Value").should("have.value", "42000");
+    });
   });
 
   it("should allow display settings to be changed and display should reflect changes", () => {
