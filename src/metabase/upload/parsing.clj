@@ -120,11 +120,10 @@
     (catch Exception _
       (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s))))))
 
-(defn- parse-as-int
-  "Parses a string representing a number as an integer, rounding down if necessary."
+(defn- parse-as-biginteger
+  "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."
   [number-separators s]
-  ;; convert this to a string so we can insert bigints with a prepared statement
-  (bigint (parse-number number-separators s)))
+  (biginteger (parse-number number-separators s)))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
@@ -143,7 +142,7 @@
 
 (defmethod upload-type->parser :metabase.upload/int
   [_ {:keys [number-separators]}]
-  (partial parse-as-int number-separators))
+  (partial parse-as-biginteger number-separators))
 
 (defmethod upload-type->parser :metabase.upload/float
   [_ {:keys [number-separators]}]
@@ -151,7 +150,7 @@
 
 (defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
   [_ {:keys [number-separators]}]
-  (partial parse-number number-separators))
+  (partial parse-as-biginteger number-separators))
 
 (defmethod upload-type->parser :metabase.upload/boolean
   [_ _]
