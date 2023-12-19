@@ -19,13 +19,13 @@ const QUESTION = {
       "source-table": ORDERS_ID,
       aggregation: [
         "distinct",
-        ["field", ORDERS.TOTAL, { "base-type": "type/Integer" }],
+        ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
       ],
       breakout: ["expression", CC_NAME],
       expressions: {
         [CC_NAME]: [
           "case",
-          [[[">", ["field", ORDERS.PRODUCT_ID, null], 0], 1]],
+          [[[">", ["field", ORDERS.DISCOUNT, null], 0], 1]],
           { default: 0 },
         ],
       },
