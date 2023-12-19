@@ -48,7 +48,7 @@
         (mt/with-premium-features #{:audit-app}
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 "ee/logs/query_execution/2023-02")))
-          (is (= ""
+          (is (= []
                  (mt/user-http-request :crowberto :get 200 "ee/logs/query_execution/2023-02")))))
       (testing "only works when `:audit-app` feature is available."
         (mt/with-premium-features #{}

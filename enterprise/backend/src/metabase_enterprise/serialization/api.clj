@@ -191,7 +191,7 @@
 
 (api/defendpoint POST "/export"
   "Serialize and retrieve Metabase data."
-  [:as {{:strs [all-collections collection settings data-model field-values database-secrets logs]
+  [:as {{:strs [all-collections collection settings data-model field-values database-secrets]
          :or   {settings        true
                 data-model      true
                 all-collections true}}
@@ -202,8 +202,7 @@
    settings         [:maybe ms/BooleanValue]
    data-model       [:maybe ms/BooleanValue]
    field-values     [:maybe ms/BooleanValue]
-   database-secrets [:maybe ms/BooleanValue]
-   logs             [:maybe ms/NonBlankString]}
+   database-secrets [:maybe ms/BooleanValue]}
   (api/check-superuser)
   (let [collection (cond (vector? collection) collection collection [collection])
         opts       {:targets                  (mapv #(vector "Collection" %)

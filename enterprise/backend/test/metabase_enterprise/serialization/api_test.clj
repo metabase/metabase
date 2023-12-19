@@ -22,7 +22,9 @@
 
 (def entries #(#'api.serialization/entries %))
 
-(defn file-type [fname]
+(defn file-type
+  "Find out entity type by file path"
+  [fname]
   (condp re-find fname
     #"/$"                                   :dir
     #"/settings.yaml$"                      :settings
@@ -34,6 +36,14 @@
     #"/databases/.*/schemas/"               :schema
     #"/databases/.*\.yaml"                  :database
     fname))
+
+(defn log-types
+  "Find out entity type by log message"
+  [lines]
+  (->> lines
+       (keep #(second (re-find #"(?:Loading|Storing) (\w+)" %)))
+       (map (comp keyword u/lower-case-en))
+       set))
 
 (deftest export-test
   (testing "Serialization API export"
@@ -74,12 +84,14 @@
                                 (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
                                 set))))))
 
-              (testing "Check for export failure"
+              (testing "On exception API returns log"
                 (with-redefs [api.serialization/compress-tgz (fn [& _] (throw (ex-info "Just an error" {})))]
                   (let [res   (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                         :collection (:id coll) :data-model false :settings false)
                         lines (str/split-lines (slurp (io/input-stream res)))]
                     (testing "First three lines for coll+dash+card, and then error during compression"
+                      (is (= #{:collection :dashboard :card}
+                             (log-types (take 3 lines))))
                       (is (re-find #"ERROR" (nth lines 3)))))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
@@ -91,10 +103,11 @@
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
       (premium-features-test/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
-          (mt/with-temp [Collection coll  {}
-                         Dashboard  _dash {:collection_id (:id coll)}
-                         Card       card  {:collection_id (:id coll)}]
-            (let [res    (mt/user-http-request :crowberto :post 200  "ee/serialization/export" {}
+          (mt/with-temp! [Collection coll  {}
+                          Dashboard  _dash {:collection_id (:id coll)}
+                          Card       card  {:collection_id (:id coll)}]
+            (let [res    (mt/user-real-request :crowberto :post 200  "ee/serialization/export"
+                                               {:request-options {:as :byte-array}}
                                                :collection (:id coll) :data-model false :settings false)
                   files* (atom [])
                   ;; to avoid closing input stream
@@ -115,14 +128,13 @@
                 (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
 
                 (let [res (mt/user-real-request :crowberto :post 200 "ee/serialization/import"
-                                                {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                {:request-options {:as :byte-array
+                                                                   :headers {"content-type" "multipart/form-data"}}}
                                                 {:file ba})]
                   (testing "We get our data items back"
                     (is (= #{:collection :dashboard :card :database}
                            (->> (line-seq (io/reader (io/input-stream res)))
-                                (keep #(second (re-find #"Loading (\w+)" %)))
-                                (map (comp keyword u/lower-case-en))
-                                set))))
+                                log-types))))
                   (testing "And they hit the db"
                     (is (= (:name card)
                            (t2/select-one-fn :name :model/Card :id (:id card)))))))))))

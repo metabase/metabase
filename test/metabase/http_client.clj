@@ -171,7 +171,9 @@
   and encode body as JSON."
   [credentials http-body request-options]
   (let [content-type (or (get-in request-options [:headers "content-type"]) "application/json")]
-    (merge-with merge
+    (merge-with #(if (map? %1)
+                   (merge %1 %2)
+                   %2)
                 {:accept        :json
                  :headers       {"content-type" content-type
                                  @#'mw.session/metabase-session-header
@@ -181,7 +183,9 @@
                                      credentials))}
                  :cookie-policy :standard}
                 request-options
-                (build-body-params http-body content-type))))
+                (-> (build-body-params http-body content-type)
+                    ;; IDK why but apache http throws on seeing content-length header
+                    (update :headers dissoc "content-length")))))
 
 (defn- check-status-code
   "If an `expected-status-code` was passed to the client, check that the actual status code matches, or throw an
@@ -265,7 +269,7 @@
   (update resp :body
           (fn [body]
             (cond
-             ;; read the text respone
+             ;; read the text response
              (instance? InputStream body)
              (with-open [r (io/reader body)]
                (slurp r))
@@ -298,7 +302,9 @@
                            (not= (first url) \/)
                            (str "/"))
         content-type     (or (get-in request-options [:headers "content-type"]) "application/json")]
-    (merge-with merge
+    (merge-with #(if (map? %1)
+                   (merge %1 %2)
+                   %2)
                 {:accept         "json"
                  :headers        {"content-type"                        content-type
                                   @#'mw.session/metabase-session-header (when credentials

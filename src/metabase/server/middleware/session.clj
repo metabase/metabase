@@ -359,6 +359,8 @@
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
+  (log/info metabase-session-id (t2/select-one :model/Session :id metabase-session-id))
+  ;;(log/info (t2/select :model/Session :user_id 2))
   (merge
    request
    (or (current-user-info-for-session metabase-session-id anti-csrf-token)

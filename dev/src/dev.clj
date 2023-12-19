@@ -64,6 +64,7 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
+   [puget.printer :as puget]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
@@ -74,6 +75,7 @@
   debug-qp/keep-me
   model-tracking/keep-me)
 
+#_:clj-kondo/ignore
 (defn tap>-spy [x]
   (doto x tap>))
 
@@ -90,10 +92,10 @@
   reset-changes!
   changes])
 
-(def initialized?
+(def initialized? "initialized?"
   (atom nil))
 
-(defn init!
+(defn init! "Trigger general initialization"
   []
   (mbc/init!)
   (reset! initialized? true))
@@ -109,6 +111,7 @@
   (let [h2-dbs (t2/select :model/Database :engine :h2)
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
+                       #_:clj-kondo/ignore
                        (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))
@@ -127,7 +130,7 @@
   (when-let [outdated-ids (seq (map :id (deleted-inmem-databases)))]
     (t2/delete! :model/Database :id [:in outdated-ids])))
 
-(defn start!
+(defn start! "Start Metabase"
   []
   (server/start-web-server! #'handler/app)
   (when-not @initialized?
@@ -136,12 +139,12 @@
     (prune-deleted-inmem-databases!)
     (with-out-str (malli-dev/start!))))
 
-(defn stop!
+(defn stop! "Stop Metabase"
   []
   (malli-dev/stop!)
   (server/stop-web-server!))
 
-(defn restart!
+(defn restart! "Restart Metabase"
   []
   (stop!)
   (start!))
@@ -289,6 +292,7 @@
   []
   (binding [t2.connection/*current-connectable* nil]
     (or (t2/select-one Database :name "Application Database")
+        #_:clj-kondo/ignore
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb.connection/db-type)
                        @#'metabase.db.env/env)
@@ -307,3 +311,32 @@
      (mt/with-driver (:engine db#)
        (mt/with-db db#
          ~@body))))
+
+(defn set-log-level!
+  "Set logging level for a namespace you're in right now."
+  ([level]
+   (set-log-level! (ns-name *ns*) level))
+  ([ns level]
+   (mt/set-ns-log-level! ns level)))
+
+(defmacro spy
+  "Prints out: ns, form, pp result:
+   (->> data :grouped-skus vals spy)
+     =>
+   ;; mk.api.resources.checkout.quote
+   ;; (vals (:grouped-skus data))
+   ({:is_offer               false
+     :owner_id               509, ..."
+  [x]
+  (let [x#    (gensym)
+        path# (-> *ns* ns-name str)
+        form# (pr-str x)
+        pref# (str ";; " path# "\n"
+                   ";; " form# "\n")]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    `(let [~x# ~x]
+       (println (str ~pref# (puget/cprint-str ~x#) "\n"))
+       ~x#)))
+
+;; make spy available everywhere
+(intern 'clojure.core (with-meta 'spy {:macro true}) @#'spy)
