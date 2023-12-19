@@ -8,7 +8,6 @@ import {
   CTAContainer,
   CTAHeader,
   ProBadge,
-  CTALinkText,
 } from "./InteractiveEmbeddingCTA.styled";
 
 const useCTAText = () => {
@@ -69,9 +68,9 @@ export const InteractiveEmbeddingCTA = () => {
             <Text inline lh="unset" fz="sm">
               {description}
               {"  "}
-              <CTALinkText inline inherit span color="brand.1" fw={700}>
+              <Text inline inherit span color="brand.1" fw={700}>
                 {linkText}
-              </CTALinkText>
+              </Text>
             </Text>
           </Stack>
         </Group>
