@@ -1,8 +1,8 @@
 import { useMemo } from "react";
+import { PopoverBackButton } from "metabase/ui";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import type { DatePickerValue } from "metabase/querying/components/DatePicker";
 import * as Lib from "metabase-lib";
-import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
 import {
   getFilterClause,
@@ -48,9 +48,9 @@ export function DateFilterPicker({
         availableUnits={availableUnits}
         backButton={
           onBack && (
-            <BackButton pl="sm" onClick={onBack}>
+            <PopoverBackButton p="sm" onClick={onBack}>
               {columnInfo.longDisplayName}
-            </BackButton>
+            </PopoverBackButton>
           )
         }
         canUseRelativeOffsets
