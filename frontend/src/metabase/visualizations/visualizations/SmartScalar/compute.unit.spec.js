@@ -1048,6 +1048,119 @@ describe("SmartScalar > compute", () => {
         });
       });
 
+      describe(`comparison type: ${COMPARISON_TYPES.STATIC_NUMBER}`, () => {
+        const comparisonType = COMPARISON_TYPES.STATIC_NUMBER;
+
+        const getComparisonProperties =
+          createGetComparisonProperties(comparisonType);
+
+        const createSettings = ({ label, value }) => ({
+          "scalar.field": "Count",
+          "scalar.comparisons": { type: comparisonType, label, value },
+        });
+
+        const createExpectedTrendObject = ({ changeType, label, value }) => ({
+          value,
+          comparison: {
+            ...getComparisonProperties({
+              changeType,
+              comparisonValue: value,
+              metricValue: 300,
+            }),
+            comparisonDescStr: `vs. ${label.toLowerCase()}`,
+          },
+          ...getMetricProperties({
+            dateStr: "2019",
+            metricValue: 300,
+          }),
+        });
+
+        const insights = [{ unit: "year", col: "Count" }];
+
+        const rows = [
+          ["2016-01-01", 100],
+          ["2018-01-01", 200],
+          ["2019-01-01", 300],
+        ];
+
+        const cols = [
+          DateTimeColumn({ name: "Month" }),
+          NumberColumn({ name: "Count" }),
+        ];
+
+        const testCases = [
+          {
+            description: "should correctly display increase",
+            value: 200,
+            label: "Goal",
+            expected: createExpectedTrendObject({
+              changeType: "increase",
+              value: 200,
+              label: "Goal",
+            }),
+          },
+          {
+            description: "should correctly display decrease",
+            value: 400,
+            label: "Bigger Goal",
+            expected: createExpectedTrendObject({
+              changeType: "decrease",
+              value: 400,
+              label: "Bigger Goal",
+            }),
+          },
+          {
+            description: "should correctly display no change",
+            value: 300,
+            label: "Goal",
+            expected: createExpectedTrendObject({
+              changeType: "no change",
+              value: 300,
+              label: "Goal",
+            }),
+          },
+          {
+            description: "should handle negative values",
+            value: -300,
+            label: "Pessimistic Goal",
+            expected: createExpectedTrendObject({
+              changeType: "increase",
+              value: -300,
+              label: "Pessimistic Goal",
+            }),
+          },
+          {
+            description: "should handle zero values",
+            value: 0,
+            label: "Magical Goal",
+            expected: createExpectedTrendObject({
+              changeType: "increase",
+              value: 0,
+              label: "Magical Goal",
+            }),
+          },
+          {
+            description: "should handle float values",
+            value: 16.2,
+            label: "Goal",
+            expected: createExpectedTrendObject({
+              changeType: "increase",
+              value: 16.2,
+              label: "Goal",
+            }),
+          },
+        ];
+
+        it.each(testCases)("$description", ({ label, value, expected }) => {
+          const trend = computeTrend(
+            series({ rows, cols }),
+            insights,
+            createSettings({ label, value }),
+          );
+          expect(getTrend(trend)).toEqual(expected);
+        });
+      });
+
       describe(`invalid comparison type`, () => {
         const createSettings = type =>
           createMockVisualizationSettings({
