@@ -71,6 +71,7 @@ function FilterValuePicker({
         fieldValues={fieldData.values}
         selectedValues={selectedValues}
         placeholder={t`Search the list`}
+        shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
