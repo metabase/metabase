@@ -126,22 +126,23 @@
 (defn- instance-settings
   "Figure out global info about this instance"
   []
-  {:version              (config/mb-version-info :tag)
-   :running_on           (environment-type)
-   :startup_time_millis  (public-settings/startup-time-millis)
-   :application_database (config/config-str :mb-db-type)
-   :check_for_updates    (public-settings/check-for-updates)
-   :site_name            (not= (public-settings/site-name) "Metabase")
-   :report_timezone      (driver/report-timezone)
+  {:version                  (config/mb-version-info :tag)
+   :running_on               (environment-type)
+   :startup_time_millis      (public-settings/startup-time-millis)
+   :application_database     (config/config-str :mb-db-type)
+   :check_for_updates        (public-settings/check-for-updates)
+   :site_name                (not= (public-settings/site-name) "Metabase")
+   :report_timezone          (driver/report-timezone)
    ; We deprecated advanced humanization but have this here anyways
-   :friendly_names       (= (humanization/humanization-strategy) "advanced")
-   :email_configured     (email/email-configured?)
-   :slack_configured     (slack/slack-configured?)
-   :sso_configured       (google/google-auth-enabled)
-   :instance_started     (snowplow/instance-creation)
-   :has_sample_data      (t2/exists? Database, :is_sample true)
-   :help_link            (public-settings/help-link)
-   :enable_embedding     (public-settings/enable-embedding)})
+   :friendly_names           (= (humanization/humanization-strategy) "advanced")
+   :email_configured         (email/email-configured?)
+   :slack_configured         (slack/slack-configured?)
+   :sso_configured           (google/google-auth-enabled)
+   :instance_started         (snowplow/instance-creation)
+   :has_sample_data          (t2/exists? Database, :is_sample true)
+   :help_link                (public-settings/help-link)
+   :enable_embedding         (public-settings/enable-embedding)
+   :embedding_app_origin_set (boolean (public-settings/embedding-app-origin))})
 
 (defn- user-metrics
   "Get metrics based on user records.
