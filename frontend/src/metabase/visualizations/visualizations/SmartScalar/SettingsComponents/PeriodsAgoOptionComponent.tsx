@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, MouseEvent } from "react";
+import type {
+  Dispatch,
+  KeyboardEvent,
+  MouseEvent,
+  SetStateAction,
+} from "react";
 import { Group, Text, Box } from "metabase/ui";
 import type { SelectedComparisonPeriodsAgo } from "metabase-types/api";
 import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
@@ -11,7 +16,7 @@ type PeriodsAgoOptionComponentProps = {
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
   selectedValue?: SelectedComparisonPeriodsAgo;
-  setOpen: (value: boolean) => void;
+  setOpen: Dispatch<SetStateAction<boolean>>;
   type: string;
 };
 
