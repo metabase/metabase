@@ -132,10 +132,10 @@
                        (when (or (.getRangePartitioning tabledef)
                                  (.getTimePartitioning tabledef))
                          ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
-                         ;; on the `table` object from `list-tables` will return `nil` even though the table require a
-                         ;; partition filter.
-                         ;; This is probably an upstream bug where the v2 API is incomplete when setting object values
-                         ;; see https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
+                         ;; on the `table` object from `list-tables` will return `nil` even though the table requires
+                         ;; a partition filter.
+                         ;; This is an upstream bug where the v2 API is incomplete when setting object values see
+                         ;; https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
                          ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
                          (.getRequirePartitionFilter (get-table database dataset-id (.getTable table-id))))))}))}))
 
@@ -237,10 +237,10 @@
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
     (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+           ;; We couldn't easily test if the following two can show up as
+           ;; tables and if `.list` is supported for them, so they are here
+           ;; to make sure we don't break existing instances.
            TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-         ;; We couldn't easily test if the following two can show up as
-         ;; tables and if `.list` is supported for them, so they are here
-         ;; to make sure we don't break existing instances.
          (.. bq-table getDefinition getType))
       (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
