@@ -154,6 +154,12 @@ export type VisualizationSettings = {
   // Scatter plot settings
   "scatter.bubble"?: string; // col name
 
+  // Waterfall settings
+  "waterfall.increase_color"?: string;
+  "waterfall.decrease_color"?: string;
+  "waterfall.total_color"?: string;
+  "waterfall.show_total"?: boolean;
+
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
 
