@@ -95,6 +95,7 @@ describe("SmartScalar > utils", () => {
       const settings = {
         "scalar.field": FIELD_NAME,
       };
+
       it("should return only previousValue option if no dateUnit", () => {
         const rows = [
           ["2019-10-01", 100],
@@ -110,7 +111,7 @@ describe("SmartScalar > utils", () => {
         ]);
       });
 
-      it("should return only previousValue and previousPeriod if dateUnit is supplied but dataset only ranges 1 period in the past", () => {
+      it("should not return 'periods ago' if dateUnit is supplied but dataset only ranges 1 period in the past", () => {
         const rows = [
           ["2019-10-01", 100],
           ["2019-11-01", 300],
@@ -128,6 +129,7 @@ describe("SmartScalar > utils", () => {
             name: "Previous month",
           },
           COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
         ]);
       });
 
@@ -156,6 +158,7 @@ describe("SmartScalar > utils", () => {
             maxValue: 3,
           },
           COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
         ]);
       });
     });
