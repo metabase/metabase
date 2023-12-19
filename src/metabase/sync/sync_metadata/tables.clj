@@ -166,7 +166,7 @@
                                     to-update-keys)
         [_ changes _]  (data/diff old-table new-table)
         changes        (cond-> changes
-                         ;; we only update the description if and only if the initial state is nil
+                         ;; we only update the description if the initial state is nil
                          ;; because don't want to override the user edited description if it exists
                          (some? (:description old-table))
                          (dissoc changes :description))]
