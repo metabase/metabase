@@ -31,6 +31,7 @@ export function CoordinateFilterEditor({
     values,
     valueCount,
     hasMultipleValues,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -45,8 +46,10 @@ export function CoordinateFilterEditor({
   const handleOperatorChange = (
     newOperator: Lib.CoordinateFilterOperatorName,
   ) => {
+    const newValues = getDefaultValues(newOperator);
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, secondColumn, values));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, secondColumn, newValues));
   };
 
   const handleInputChange = (newValues: NumberValue[]) => {
@@ -132,7 +135,7 @@ function NumberValueInput({
         stageIndex={stageIndex}
         column={column}
         values={values.filter(isNumber)}
-        isCompact
+        compact
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -145,6 +148,7 @@ function NumberValueInput({
       <NumberInput
         value={values[0]}
         placeholder={t`Enter a number`}
+        aria-label={t`Filter value`}
         onChange={newValue => onChange([newValue])}
         onFocus={onFocus}
         onBlur={onBlur}

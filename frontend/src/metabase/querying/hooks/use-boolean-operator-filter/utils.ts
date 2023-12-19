@@ -19,6 +19,10 @@ export function getOptionByOperator(operator: Lib.BooleanFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
 }
 
+export function getDefaultValues() {
+  return [];
+}
+
 export function isValidFilter(
   operator: Lib.BooleanFilterOperatorName,
   column: Lib.ColumnMetadata,

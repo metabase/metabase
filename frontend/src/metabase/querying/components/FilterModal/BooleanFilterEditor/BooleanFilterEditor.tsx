@@ -27,6 +27,7 @@ export function BooleanFilterEditor({
     values,
     valueCount,
     isExpanded,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -38,8 +39,10 @@ export function BooleanFilterEditor({
   });
 
   const handleOperatorChange = (newOperator: Lib.BooleanFilterOperatorName) => {
+    const newValues = getDefaultValues();
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, values));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, newValues));
   };
 
   const handleValuesChange = (newValues: boolean[]) => {

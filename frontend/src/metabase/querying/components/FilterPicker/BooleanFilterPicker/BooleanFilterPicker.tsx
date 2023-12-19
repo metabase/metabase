@@ -38,6 +38,13 @@ export function BooleanFilterPicker({
     filter,
   });
 
+  const handleOptionChange = (optionValue: string) => {
+    const option = visibleOptions.find(({ type }) => type === optionValue);
+    if (option) {
+      setOptionType(option.type);
+    }
+  };
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     onChange(getFilterClause());
@@ -55,7 +62,7 @@ export function BooleanFilterPicker({
         onBack={onBack}
       />
       <div>
-        <Radio.Group value={optionType}>
+        <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">
             {visibleOptions.map(option => (
               <Radio
@@ -64,7 +71,6 @@ export function BooleanFilterPicker({
                 label={option.name}
                 pb={6}
                 size="xs"
-                onChange={() => setOptionType(option.type)}
               />
             ))}
           </Stack>

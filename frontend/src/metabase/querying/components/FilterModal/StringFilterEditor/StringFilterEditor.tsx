@@ -29,6 +29,7 @@ export function StringFilterEditor({
     valueCount,
     hasMultipleValues,
     options,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -40,8 +41,10 @@ export function StringFilterEditor({
   });
 
   const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+    const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, values, options));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, newValues, options));
   };
 
   const handleInputChange = (newValues: string[]) => {
@@ -127,7 +130,7 @@ function StringValueInput({
         stageIndex={stageIndex}
         column={column}
         values={values}
-        isCompact
+        compact
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -140,6 +143,7 @@ function StringValueInput({
       <TextInput
         value={values[0]}
         placeholder={t`Enter some text`}
+        aria-label={t`Filter value`}
         onChange={event => onChange([event.target.value])}
         onFocus={onFocus}
         onBlur={onBlur}

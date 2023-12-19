@@ -552,7 +552,7 @@ describe("scenarios > question > filter", () => {
     popover().findByLabelText("Options").click();
     popover()
       .last()
-      .findByRole("menuitem", { name: /Include/ })
+      .findByTestId("include-current-interval-option")
       .should("have.attr", "aria-selected", "true");
   });
 

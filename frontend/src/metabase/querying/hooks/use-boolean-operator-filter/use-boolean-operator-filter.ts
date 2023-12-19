@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 import {
   getAvailableOptions,
+  getDefaultValues,
   getFilterClause,
   getOptionByOperator,
 } from "./utils";
@@ -34,22 +35,18 @@ export function useBooleanOperatorFilter({
   const { valueCount, isAdvanced } = getOptionByOperator(operator);
   const [isExpanded] = useState(isAdvanced);
 
-  const setOperatorAndValues = (newOperator: Lib.BooleanFilterOperatorName) => {
-    setOperator(newOperator);
-    setValues([]);
-  };
-
   return {
     operator,
     availableOptions,
     values,
     valueCount,
     isExpanded,
+    getDefaultValues,
     getFilterClause: (
       operator: Lib.BooleanFilterOperatorName,
       values: boolean[],
     ) => getFilterClause(operator, column, values),
-    setOperator: setOperatorAndValues,
+    setOperator,
     setValues,
   };
 }

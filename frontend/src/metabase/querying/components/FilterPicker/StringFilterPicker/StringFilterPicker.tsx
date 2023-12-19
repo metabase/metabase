@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import type { FormEvent } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import { Box, Checkbox, Flex, TextInput } from "metabase/ui";
 import { useStringFilter } from "metabase/querying/hooks/use-string-filter";
@@ -34,6 +34,7 @@ export function StringFilterPicker({
     hasCaseSensitiveOption,
     options,
     isValid,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -44,6 +45,11 @@ export function StringFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (newOperator: Lib.StringFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -69,7 +75,7 @@ export function StringFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>
@@ -114,8 +120,6 @@ function StringValueInput({
   hasMultipleValues,
   onChange,
 }: StringValueInputProps) {
-  const placeholder = t`Enter some text`;
-
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
@@ -124,6 +128,7 @@ function StringValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values}
+          autoFocus
           onChange={onChange}
         />
       </Box>
@@ -135,10 +140,11 @@ function StringValueInput({
       <Flex p="md">
         <TextInput
           value={values[0]}
-          onChange={event => onChange([event.target.value])}
-          placeholder={placeholder}
+          placeholder={t`Enter some text`}
           autoFocus
           w="100%"
+          aria-label={t`Filter value`}
+          onChange={event => onChange([event.target.value])}
         />
       </Flex>
     );

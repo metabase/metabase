@@ -25,7 +25,7 @@ export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
 
 export function getDefaultValues(
   operator: Lib.StringFilterOperatorName,
-  values: string[] = [],
+  values: string[],
 ): string[] {
   const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
   if (hasMultipleValues) {

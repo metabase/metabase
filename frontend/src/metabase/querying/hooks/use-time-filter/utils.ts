@@ -28,7 +28,7 @@ function getDefaultValue() {
 
 export function getDefaultValues(
   operator: Lib.TimeFilterOperatorName,
-  values: TimeValue[] = [],
+  values: TimeValue[],
 ): TimeValue[] {
   const { valueCount } = OPERATOR_OPTIONS[operator];
 

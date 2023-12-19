@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { isNumber } from "metabase/lib/types";
 import { Box, Flex, NumberInput, Text } from "metabase/ui";
-import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import type { NumberValue } from "metabase/querying/hooks/use-number-filter";
+import { useNumberFilter } from "metabase/querying/hooks/use-number-filter";
 import * as Lib from "metabase-lib";
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { MAX_WIDTH, MIN_WIDTH } from "../constants";
@@ -34,6 +34,7 @@ export function NumberFilterPicker({
     valueCount,
     hasMultipleValues,
     isValid,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -43,6 +44,11 @@ export function NumberFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -68,7 +74,7 @@ export function NumberFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <div>
@@ -106,8 +112,6 @@ function NumberValueInput({
   hasMultipleValues,
   onChange,
 }: NumberValueInputProps) {
-  const placeholder = t`Enter a number`;
-
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="16rem" style={{ overflow: "auto" }}>
@@ -116,6 +120,7 @@ function NumberValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values.filter(isNumber)}
+          autoFocus
           onChange={onChange}
         />
       </Box>
@@ -127,9 +132,10 @@ function NumberValueInput({
       <Flex p="md">
         <NumberInput
           value={values[0]}
-          placeholder={placeholder}
+          placeholder={t`Enter a number`}
           autoFocus
           w="100%"
+          aria-label={t`Filter value`}
           onChange={newValue => onChange([newValue])}
         />
       </Flex>
@@ -141,14 +147,14 @@ function NumberValueInput({
       <Flex align="center" justify="center" p="md">
         <NumberInput
           value={values[0]}
-          placeholder={placeholder}
+          placeholder={t`Min`}
           autoFocus
           onChange={(newValue: number) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberInput
           value={values[1]}
-          placeholder={placeholder}
+          placeholder={t`Max`}
           onChange={(newValue: number) => onChange([values[0], newValue])}
         />
       </Flex>

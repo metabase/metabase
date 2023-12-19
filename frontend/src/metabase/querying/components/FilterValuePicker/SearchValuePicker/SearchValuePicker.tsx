@@ -1,6 +1,7 @@
 import type { FocusEvent } from "react";
 import { useMemo, useState } from "react";
 import { useAsync, useDebounce } from "react-use";
+import { t } from "ttag";
 import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiAutocomplete } from "metabase/ui";
 import { getFieldOptions } from "../utils";
@@ -14,6 +15,7 @@ interface SearchValuePickerProps {
   selectedValues: string[];
   placeholder?: string;
   shouldCreate: (query: string) => boolean;
+  autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -26,6 +28,7 @@ export function SearchValuePicker({
   selectedValues,
   placeholder,
   shouldCreate,
+  autoFocus,
   onChange,
   onFocus,
   onBlur,
@@ -54,6 +57,8 @@ export function SearchValuePicker({
       placeholder={placeholder}
       searchValue={searchValue}
       shouldCreate={shouldCreate}
+      autoFocus={autoFocus}
+      aria-label={t`Filter value`}
       onChange={onChange}
       onSearchChange={setSearchValue}
       onFocus={onFocus}

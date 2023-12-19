@@ -30,6 +30,7 @@ export function TimeFilterPicker({
     values,
     valueCount,
     availableOptions,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -39,6 +40,11 @@ export function TimeFilterPicker({
     column,
     filter,
   });
+
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperatorName) => {
+    setOperator(newOperator);
+    setValues(getDefaultValues(newOperator, values));
+  };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -64,7 +70,7 @@ export function TimeFilterPicker({
         <FilterOperatorPicker
           value={operator}
           options={availableOptions}
-          onChange={setOperator}
+          onChange={handleOperatorChange}
         />
       </FilterPickerHeader>
       <Box>
@@ -95,8 +101,9 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
     return (
       <TimeInput
         value={value}
-        onChange={newValue => onChange([newValue])}
         w="100%"
+        autoFocus
+        onChange={newValue => onChange([newValue])}
       />
     );
   }
@@ -107,14 +114,15 @@ function TimeValueInput({ values, valueCount, onChange }: TimeValueInputProps) {
       <Flex direction="row" align="center" gap="sm" w="100%">
         <TimeInput
           value={value1}
-          onChange={newValue1 => onChange([newValue1, value2])}
           w="100%"
+          autoFocus
+          onChange={newValue1 => onChange([newValue1, value2])}
         />
         <Text>{t`and`}</Text>
         <TimeInput
           value={value2}
-          onChange={newValue2 => onChange([value1, newValue2])}
           w="100%"
+          onChange={newValue2 => onChange([value1, newValue2])}
         />
       </Flex>
     );

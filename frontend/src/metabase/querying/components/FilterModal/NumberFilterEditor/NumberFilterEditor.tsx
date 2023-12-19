@@ -36,6 +36,7 @@ export function NumberFilterEditor({
     values,
     valueCount,
     hasMultipleValues,
+    getDefaultValues,
     getFilterClause,
     setOperator,
     setValues,
@@ -48,8 +49,10 @@ export function NumberFilterEditor({
   });
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperatorName) => {
+    const newValues = getDefaultValues(newOperator, values);
     setOperator(newOperator);
-    onChange(getFilterClause(newOperator, values));
+    setValues(newValues);
+    onChange(getFilterClause(newOperator, newValues));
   };
 
   const handleInputChange = (newValues: NumberValue[]) => {
@@ -135,7 +138,7 @@ function NumberValueInput({
         stageIndex={stageIndex}
         column={column}
         values={values.filter(isNumber)}
-        isCompact
+        compact
         onChange={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
@@ -148,6 +151,7 @@ function NumberValueInput({
       <NumberInput
         value={values[0]}
         placeholder={t`Enter a number`}
+        aria-label={t`Filter value`}
         onChange={newValue => onChange([newValue])}
         onFocus={onFocus}
         onBlur={onBlur}

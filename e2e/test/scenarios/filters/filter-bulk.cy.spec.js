@@ -123,7 +123,7 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     filterField("Count", {
-      placeholder: "min",
+      placeholder: "Min",
       value: "500",
     });
 
@@ -521,12 +521,12 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("applies a between filter", () => {
       filterField("Price", {
-        placeholder: "min",
+        placeholder: "Min",
         value: "50",
       });
 
       filterField("Price", {
-        placeholder: "max",
+        placeholder: "Max",
         value: "80",
       });
 
@@ -555,7 +555,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     it("infers a <= filter from an invalid between filter", () => {
       filterField("Price", {
-        placeholder: "max",
+        placeholder: "Max",
         value: "50",
       });
 
