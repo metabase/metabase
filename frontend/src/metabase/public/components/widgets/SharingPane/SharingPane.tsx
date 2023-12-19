@@ -1,3 +1,5 @@
+import type { MouseEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import type { Card, Dashboard } from "metabase-types/api";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
@@ -43,30 +45,43 @@ function SharingPane({
     getSetting(state, "enable-public-sharing"),
   );
 
-  const createPublicLink = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Sharing Modal",
-      "Public Link Enabled",
-      resourceType,
-    );
-    onCreatePublicLink();
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
+
+  const createPublicLink = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoadingLink && !hasPublicLink) {
+      setIsLoadingLink(true);
+      MetabaseAnalytics.trackStructEvent(
+        "Sharing Modal",
+        "Public Link Enabled",
+        resourceType,
+      );
+      await onCreatePublicLink();
+      setIsLoadingLink(false);
+    }
   };
 
-  const deletePublicLink = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Sharing Modal",
-      "Public Link Disabled",
-      resourceType,
-    );
-    onDeletePublicLink();
+  const deletePublicLink = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoadingLink && hasPublicLink) {
+      setIsLoadingLink(true);
+      MetabaseAnalytics.trackStructEvent(
+        "Sharing Modal",
+        "Public Link Disabled",
+        resourceType,
+      );
+      await onDeletePublicLink();
+      setIsLoadingLink(false);
+    }
   };
 
-  const publicLinkInfoText = hasPublicLink ? (
-    //   TextInput has a hardcoded marginTop that we need to account for here.
-    <Box mb="-0.25rem">{t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`}</Box>
-  ) : (
-    t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
-  );
+  const publicLinkInfoText =
+    !isLoadingLink && hasPublicLink ? (
+      //   TextInput has a hardcoded marginTop that we need to account for here.
+      <Box mb="-0.25rem">{t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`}</Box>
+    ) : (
+      t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
+    );
 
   return (
     <Group p="lg" data-testid="sharing-pane-container">
@@ -103,7 +118,12 @@ function SharingPane({
         onClick={createPublicLink}
         illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
       >
-        {resource.public_uuid ? (
+        {isLoadingLink ? (
+          <SharingPaneActionButton
+            fullWidth
+            disabled
+          >{t`Loading…`}</SharingPaneActionButton>
+        ) : resource.public_uuid ? (
           <PublicLinkCopyPanel
             url={iframeSource}
             onRemoveLink={deletePublicLink}
@@ -114,7 +134,6 @@ function SharingPane({
           <SharingPaneActionButton
             fullWidth
             disabled={!isPublicSharingEnabled}
-            onClick={createPublicLink}
           >{t`Get an embed link`}</SharingPaneActionButton>
         )}
       </SharingPaneButton>
