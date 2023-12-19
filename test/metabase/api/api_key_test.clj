@@ -2,6 +2,7 @@
   "Tests for /api/api-key endpoints"
   (:require
    [clojure.test :refer [deftest testing is]]
+   [metabase.http-client :as client]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -97,3 +98,14 @@
                                                 :user_id      (mt/user->id :crowberto)
                                                 :created_by   (mt/user->id :crowberto)}]
         (is (= 2 (mt/user-http-request :crowberto :get 200 "api-key/count")))))))
+
+(deftest api-keys-work-e2e
+  (testing "We can create a new API key and then use it for authentication"
+    (let [api-key (:unmasked_key
+                   (mt/user-http-request :crowberto :post 200 "api-key"
+                                         {:group_id (:id (perms-group/all-users))
+                                          :name     (str (random-uuid))}))]
+      ;; the exact endpoint here doesn't really matter - we just want to make an API call that requires auth
+      (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))
+      (is (= "Unauthenticated"
+             (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" "mb_not_an_api_key"}}}))))))
