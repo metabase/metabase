@@ -4,21 +4,16 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/lib/types";
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
 const setup = ({ isPaidPlan }: { isPaidPlan: boolean }) => {
-  const { history } = renderWithProviders(<InteractiveEmbeddingCTA />, {
+  renderWithProviders(<InteractiveEmbeddingCTA />, {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
         "token-status": createMockTokenStatus({ valid: isPaidPlan }),
       }),
     }),
   });
-
-  return {
-    history: checkNotNull(history),
-  };
 };
 describe("InteractiveEmbeddingCTA", () => {
   it("renders correctly for paid plan", () => {
