@@ -606,7 +606,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-write? table))
+        (not (mi/can-read? table))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 

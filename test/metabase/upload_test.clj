@@ -1104,7 +1104,7 @@
   Returns the table.
 
   Defaults to a table with an auto-incrementing integer ID column, and a name column."
-  [& {:keys [table-name col->upload-type rows]
+  [& {:keys [schema-name table-name col->upload-type rows]
       :or {table-name       (mt/random-name)
            col->upload-type (ordered-map/ordered-map
                              (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
@@ -1112,34 +1112,37 @@
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
         db-id (mt/id)
+        schema+table-name (if schema-name
+                            (str schema-name "." table-name)
+                            table-name)
         insert-col-names (remove #{(keyword upload/auto-pk-column-name)} (keys col->upload-type))
         col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
-        _ (driver/create-table! driver db-id table-name col->database-type)
-        _ (driver/insert-into! driver db-id table-name insert-col-names rows)
-        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema nil})]
+        _ (driver/create-table! driver db-id schema+table-name col->database-type)
+        _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
+        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema schema-name})]
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*sync-synchronously?* true]
       (#'upload/scan-and-sync-table! (mt/db) table))
     table))
 
 (defn append-csv-with-defaults!
-  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden"
   [& {:keys [uploads-enabled user-id file table-id is-upload]
-      :or {uploads-enabled   true
-           user-id           (mt/user->id :crowberto)
-           file              (csv-file-with
-                              ["name"
-                               "Luke Skywalker"
-                               "Darth Vader"]
-                              (str (mt/random-name) ".csv"))
-           is-upload          true}}]
+      :or {uploads-enabled true
+           user-id         (mt/user->id :crowberto)
+           file            (csv-file-with
+                            ["name"
+                             "Luke Skywalker"
+                             "Darth Vader"]
+                            (str (mt/random-name) ".csv"))
+           is-upload       true}}]
   (try
     (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
       (mt/with-current-user user-id
-        (let [table (create-upload-table!)]
-          (when-not is-upload
-            (t2/update! :model/Table (:id table) {:is_upload false}))
-          (append-csv! {:table-id (or table-id (:id table))
+        (let [table-id (or table-id
+                         (:id (create-upload-table!)))]
+          (t2/update! :model/Table table-id {:is_upload is-upload})
+          (append-csv! {:table-id table-id
                         :file     file}))))
     (finally
       (io/delete-file file))))
