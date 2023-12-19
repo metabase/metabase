@@ -5,6 +5,7 @@ import {
 } from "metabase/visualizations/lib/graph/columns";
 import { checkNumber } from "metabase/lib/types";
 
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
   WaterfallDataset,
   WaterfallDatum,
@@ -38,13 +39,16 @@ export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
   negativeTranslation: number,
+  settings: ComputedVisualizationSettings,
 ): WaterfallDataset {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
 
+  let total = 0;
   rows.forEach((row, index) => {
     const dimension = String(row[columns.dimension.index]);
     const value = checkNumber(row[columns.metrics[0].index]);
+    total += value;
 
     let increase: number | "-" = "-";
     let decrease: number | "-" = "-";
@@ -96,7 +100,18 @@ export function getWaterfallDataset(
     dataset.push(createDatum({ dimension, barOffset, increase, decrease }));
   });
 
-  // TODO total
+  if (settings["waterfall.total_color"]) {
+    const barOffset =
+      total >= 0 ? negativeTranslation : negativeTranslation + total;
+
+    dataset.push(
+      createDatum({
+        dimension: "Total",
+        barOffset,
+        total: Math.abs(total),
+      }),
+    );
+  }
 
   return dataset;
 }

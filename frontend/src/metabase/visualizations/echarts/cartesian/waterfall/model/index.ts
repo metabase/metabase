@@ -25,14 +25,17 @@ function getWaterfallExtent(dataset: WaterfallDataset) {
     const barOffset = datum[DATASET_DIMENSIONS.barOffset];
     const increase = datum[DATASET_DIMENSIONS.increase];
     const decrease = datum[DATASET_DIMENSIONS.decrease];
+    const total = datum[DATASET_DIMENSIONS.total];
 
     let value: number;
     if (increase !== "-") {
       value = barOffset + increase;
     } else if (decrease !== "-") {
       value = barOffset - decrease;
+    } else if (total !== "-") {
+      return;
     } else {
-      throw TypeError("Both increase and decrease cannot be null");
+      throw TypeError("Increase, decrease, and total cannot all be empty");
     }
 
     extent[0] = Math.min(extent[0], value);
@@ -142,6 +145,7 @@ export function getWaterfallChartModel(
     rows,
     cardColumns,
     negativeTranslation,
+    settings,
   );
 
   // y-axis
