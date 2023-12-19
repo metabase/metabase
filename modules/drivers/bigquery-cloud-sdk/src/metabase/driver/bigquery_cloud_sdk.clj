@@ -124,7 +124,7 @@
                                ^TableDefinition tabledef   (.getDefinition table)
                                table-name                  (str (.getTable table-id))]]
                     {:schema                  dataset-id
-                     :name                    #pp table-name
+                     :name                    table-name
                      :database_require_filter
                      (boolean
                       (and
