@@ -325,7 +325,7 @@
               (drop-table-if-exists! table-name)))))))))
 
 (deftest sync-pseudocolumn-for-ingestion-time-partitioned-table-test
-  (testing "for ingestion time partitioned tables, we should syncs the pseudocolumn _PARTITIONTIME"
+  (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME"
     (mt/test-driver :bigquery-cloud-sdk
       (mt/with-model-cleanup [:model/Table]
         (let [table-name "partition_by_ingestion_time"]
