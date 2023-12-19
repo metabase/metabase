@@ -16,7 +16,7 @@ on:
         type: string
         required: false
       mb_edition:
-        description: 'set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source, default)'
+        description: 'Set MB_EDITION env var to "ee" (enteprise) or "oss" (open-source)'
         type: string
         required: false
         default: "ee"
