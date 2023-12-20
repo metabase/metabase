@@ -13,6 +13,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Menu, Title, Text, Stack, Center } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
+import { AdminEmbedMenuContainer } from "./AdminEmbedMenu.styled";
 
 export const AdminEmbedMenu = ({
   resource,
@@ -53,7 +54,7 @@ export const AdminEmbedMenu = ({
     <Menu withinPortal position="bottom-start">
       <Menu.Target>{target}</Menu.Target>
 
-      <Menu.Dropdown w="13.75rem" data-testid="embed-header-menu">
+      <AdminEmbedMenuContainer w="13.75rem" data-testid="embed-header-menu">
         <Menu.Item
           data-testid="embed-menu-public-link-item"
           py={isPublicSharingEnabled ? "md" : "sm"}
@@ -103,7 +104,7 @@ export const AdminEmbedMenu = ({
             </Stack>
           )}
         </Menu.Item>
-      </Menu.Dropdown>
+      </AdminEmbedMenuContainer>
     </Menu>
   );
 };

@@ -13,6 +13,7 @@ export const DashboardEmbedAction = ({
   return (
     <>
       <EmbedMenu
+        key="embed-menu"
         resource={dashboard}
         resourceType="dashboard"
         hasPublicLink={!!dashboard.public_uuid}

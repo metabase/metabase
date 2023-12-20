@@ -181,7 +181,7 @@ export function formatDimensionName(
  * TODO -- this doesn't really return the dimension *name*, does it? It returns the 'rendered' dimension description
  * with the FK symbol (→) replaced with a different character.
  */
-export function getDimensionName(
+function getDimensionName(
   dimension: Dimension,
   separator = EDITOR_FK_SYMBOLS.default,
 ) {

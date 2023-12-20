@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 import {
   SharingPaneButtonContent,
   SharingPaneButtonTitle,
@@ -11,7 +11,7 @@ type SharingOptionProps = {
   header: string;
   description: ReactNode | string;
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: MouseEventHandler;
 };
 
 export const SharingPaneButton = ({

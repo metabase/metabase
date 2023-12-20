@@ -1,3 +1,5 @@
+import type { MouseEvent } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import type { Card, Dashboard } from "metabase-types/api";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
@@ -5,7 +7,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor, Box, Stack } from "metabase/ui";
+import { Group, Text, Anchor, Stack } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
@@ -44,30 +46,70 @@ function SharingPane({
     getSetting(state, "enable-public-sharing"),
   );
 
-  const createPublicLink = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Sharing Modal",
-      "Public Link Enabled",
-      resourceType,
-    );
-    onCreatePublicLink();
+  const [isLoadingLink, setIsLoadingLink] = useState(false);
+
+  const createPublicLink = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoadingLink && !hasPublicLink) {
+      setIsLoadingLink(true);
+      MetabaseAnalytics.trackStructEvent(
+        "Sharing Modal",
+        "Public Link Enabled",
+        resourceType,
+      );
+      await onCreatePublicLink();
+      setIsLoadingLink(false);
+    }
   };
 
-  const deletePublicLink = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Sharing Modal",
-      "Public Link Disabled",
-      resourceType,
-    );
-    onDeletePublicLink();
+  const deletePublicLink = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (!isLoadingLink && hasPublicLink) {
+      setIsLoadingLink(true);
+      MetabaseAnalytics.trackStructEvent(
+        "Sharing Modal",
+        "Public Link Disabled",
+        resourceType,
+      );
+      await onDeletePublicLink();
+      setIsLoadingLink(false);
+    }
   };
 
-  const publicLinkInfoText = hasPublicLink ? (
-    //   TextInput has a hardcoded marginTop that we need to account for here.
-    <Box mb="-0.25rem">{t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`}</Box>
-  ) : (
-    t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
-  );
+  const publicLinkInfoText =
+    !isLoadingLink && hasPublicLink
+      ? //   TextInput has a hardcoded marginTop that we need to account for here.
+        t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`
+      : t`Use this to add a publicly-visible iframe embed to your web page or blog post.`;
+
+  const getPublicLinkElement = () => {
+    if (isLoadingLink) {
+      return (
+        <SharingPaneActionButton
+          fullWidth
+          disabled
+        >{t`Loading…`}</SharingPaneActionButton>
+      );
+    }
+
+    if (hasPublicLink) {
+      return (
+        <PublicLinkCopyPanel
+          url={iframeSource}
+          onRemoveLink={deletePublicLink}
+          removeButtonLabel={t`Remove public URL`}
+          removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
+        />
+      );
+    }
+
+    return (
+      <SharingPaneActionButton
+        fullWidth
+        disabled={!isPublicSharingEnabled}
+      >{t`Get an embed link`}</SharingPaneActionButton>
+    );
+  };
 
   return (
     <Stack p="lg" data-testid="sharing-pane-container">
@@ -105,20 +147,7 @@ function SharingPane({
           onClick={createPublicLink}
           illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
         >
-          {resource.public_uuid ? (
-            <PublicLinkCopyPanel
-              url={iframeSource}
-              onRemoveLink={deletePublicLink}
-              removeButtonLabel={t`Remove public URL`}
-              removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
-            />
-          ) : (
-            <SharingPaneActionButton
-              fullWidth
-              disabled={!isPublicSharingEnabled}
-              onClick={createPublicLink}
-            >{t`Get an embed link`}</SharingPaneActionButton>
-          )}
+            {getPublicLinkElement()}
         </SharingPaneButton>
       </Group>
       <InteractiveEmbeddingCTA />

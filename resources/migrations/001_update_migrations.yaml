@@ -4350,6 +4350,37 @@ databaseChangeLog:
               );
       rollback: # no change
 
+  - changeSet:
+      id: v49.00-010
+      author: johnswanson
+      comment: Add a name to API Keys
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+                  remarks: 'The user-defined name of the API key.'
+
+  - changeSet:
+      id: v49.00-011
+      author: qnkhuat
+      comment: Add metabase_table.database_require_filter
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: database_require_filter
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'If true, the table requires a filter to be able to query it'
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
