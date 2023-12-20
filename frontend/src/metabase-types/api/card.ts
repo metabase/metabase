@@ -5,6 +5,7 @@ import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
 import type { Collection } from "./collection";
+import type { SelectedComparison } from "./visualization-settings";
 
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
@@ -131,6 +132,11 @@ export type VisualizationSettings = {
 
   "table.column_formatting"?: ColumnFormattingSetting[];
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
+
+  // Scalar Settings
+  "scalar.comparisons"?: SelectedComparison;
+  "scalar.field"?: string;
+  "scalar.switch_positive_negative"?: boolean;
 
   [key: string]: any;
 };

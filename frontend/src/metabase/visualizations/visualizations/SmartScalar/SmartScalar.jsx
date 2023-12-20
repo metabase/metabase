@@ -18,12 +18,13 @@ import {
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
+import { isEmpty } from "metabase/lib/validate";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { isNumeric } from "metabase-lib/types/utils/isa";
-
 import { ScalarContainer } from "../Scalar/Scalar.styled";
+import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 
 import {
   DASHCARD_HEADER_HEIGHT,
@@ -45,132 +46,16 @@ import {
   ScalarPeriodContent,
 } from "./SmartScalar.styled";
 import {
+  getDefaultComparison,
+  getComparisonOptions,
   formatChangeAutoPrecision,
   getChangeWidth,
   getValueHeight,
   getValueWidth,
+  isComparisonValid,
   isPeriodVisible,
 } from "./utils";
-import { computeTrend, PREVIOUS_VALUE_OPTIONS } from "./compute";
-
-const ScalarPeriod = ({ lines = 2, period, onClick }) => (
-  <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
-    <ScalarPeriodContent
-      className="fullscreen-normal-text fullscreen-night-text"
-      onClick={onClick}
-    >
-      <Ellipsified tooltip={period} lines={lines} placement="bottom">
-        {period}
-      </Ellipsified>
-    </ScalarPeriodContent>
-  </ScalarTitleContainer>
-);
-
-function PreviousValueComparison({
-  comparison,
-  width,
-  fontFamily,
-  formatOptions,
-}) {
-  const fontSize = "0.875rem";
-
-  const {
-    comparisonType,
-    percentChange,
-    comparisonPeriodStr,
-    prevValue,
-    changeArrowIconName,
-    changeColor,
-    display,
-  } = comparison;
-
-  const fittedChangeDisplay =
-    comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
-      ? formatChangeAutoPrecision(percentChange, {
-          fontFamily,
-          fontWeight: 900,
-          width: getChangeWidth(width),
-        })
-      : display.percentChange;
-  const separator = <Separator> • </Separator>;
-  const availableComparisonWidth =
-    width -
-    4 * SPACING -
-    ICON_SIZE -
-    ICON_MARGIN_RIGHT -
-    measureTextWidth(innerText(separator), {
-      size: fontSize,
-      family: fontFamily,
-      weight: 700,
-    }) -
-    measureTextWidth(fittedChangeDisplay, {
-      size: fontSize,
-      family: fontFamily,
-      weight: 900,
-    });
-
-  const valueCandidates = [
-    display.prevValue,
-    ...(comparisonType === PREVIOUS_VALUE_OPTIONS.CHANGED
-      ? [formatValue(prevValue, { ...formatOptions, compact: true })]
-      : []),
-    "",
-  ];
-  const detailCandidates = valueCandidates.map(valueStr => {
-    return valueStr === ""
-      ? jt`vs. ${comparisonPeriodStr}`
-      : jt`vs. ${comparisonPeriodStr}: ${(
-          <PreviousValueNumber>{valueStr}</PreviousValueNumber>
-        )}`;
-  });
-  const fullDetailDisplay = detailCandidates[0];
-  const fittedDetailDisplay = detailCandidates.find(
-    e =>
-      measureTextWidth(innerText(e), {
-        size: fontSize,
-        family: fontFamily,
-        weight: 700,
-      }) <= availableComparisonWidth,
-  );
-
-  const VariationPercent = ({ iconSize, children }) => (
-    <Variation color={changeColor}>
-      {changeArrowIconName && (
-        <VariationIcon name={changeArrowIconName} size={iconSize} />
-      )}
-      <VariationValue showTooltip={false}>{children}</VariationValue>
-    </Variation>
-  );
-  const VariationDetails = ({ children }) =>
-    children ? (
-      <PreviousValueDetails>
-        {separator}
-        {children}
-      </PreviousValueDetails>
-    ) : null;
-
-  return (
-    <Tooltip
-      isEnabled={fullDetailDisplay !== fittedDetailDisplay}
-      placement="bottom"
-      tooltip={
-        <VariationContainerTooltip className="variation-container-tooltip">
-          <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
-            {display.percentChange}
-          </VariationPercent>
-          <VariationDetails>{fullDetailDisplay}</VariationDetails>
-        </VariationContainerTooltip>
-      }
-    >
-      <VariationContainer className="fullscreen-normal-text fullscreen-night-text">
-        <VariationPercent iconSize={ICON_SIZE}>
-          {fittedChangeDisplay}
-        </VariationPercent>
-        <VariationDetails>{fittedDetailDisplay}</VariationDetails>
-      </VariationContainer>
-    </Tooltip>
-  );
-}
+import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
 
 export function SmartScalar({
   onVisualizationClick,
@@ -250,6 +135,135 @@ export function SmartScalar({
   );
 }
 
+function ScalarPeriod({ lines = 2, period, onClick }) {
+  return (
+    <ScalarTitleContainer data-testid="scalar-period" lines={lines}>
+      <ScalarPeriodContent
+        className="fullscreen-normal-text fullscreen-night-text"
+        onClick={onClick}
+      >
+        <Ellipsified tooltip={period} lines={lines} placement="bottom">
+          {period}
+        </Ellipsified>
+      </ScalarPeriodContent>
+    </ScalarTitleContainer>
+  );
+}
+
+function PreviousValueComparison({
+  comparison,
+  width,
+  fontFamily,
+  formatOptions,
+}) {
+  const fontSize = "0.875rem";
+
+  const {
+    changeType,
+    percentChange,
+    comparisonDescStr,
+    comparisonValue,
+    changeArrowIconName,
+    changeColor,
+    display,
+  } = comparison;
+
+  const fittedChangeDisplay =
+    changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
+      ? formatChangeAutoPrecision(percentChange, {
+          fontFamily,
+          fontWeight: 900,
+          width: getChangeWidth(width),
+        })
+      : display.percentChange;
+  const separator = <Separator> • </Separator>;
+  const availableComparisonWidth =
+    width -
+    4 * SPACING -
+    ICON_SIZE -
+    ICON_MARGIN_RIGHT -
+    measureTextWidth(innerText(separator), {
+      size: fontSize,
+      family: fontFamily,
+      weight: 700,
+    }) -
+    measureTextWidth(fittedChangeDisplay, {
+      size: fontSize,
+      family: fontFamily,
+      weight: 900,
+    });
+
+  const valueCandidates = [
+    display.comparisonValue,
+    ...(changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
+      ? [formatValue(comparisonValue, { ...formatOptions, compact: true })]
+      : []),
+    "",
+  ];
+  const detailCandidates = valueCandidates.map(valueStr => {
+    if (isEmpty(valueStr)) {
+      return comparisonDescStr;
+    }
+
+    if (isEmpty(comparisonDescStr)) {
+      return (
+        <PreviousValueNumber key={valueStr}>{valueStr}</PreviousValueNumber>
+      );
+    }
+
+    return jt`${comparisonDescStr}: ${(
+      <PreviousValueNumber>{valueStr}</PreviousValueNumber>
+    )}`;
+  });
+  const fullDetailDisplay = detailCandidates[0];
+  const fittedDetailDisplay = detailCandidates.find(
+    e =>
+      measureTextWidth(innerText(e), {
+        size: fontSize,
+        family: fontFamily,
+        weight: 700,
+      }) <= availableComparisonWidth,
+  );
+
+  const VariationPercent = ({ iconSize, children }) => (
+    <Variation color={changeColor}>
+      {changeArrowIconName && (
+        <VariationIcon name={changeArrowIconName} size={iconSize} />
+      )}
+      <VariationValue showTooltip={false}>{children}</VariationValue>
+    </Variation>
+  );
+  const VariationDetails = ({ children }) =>
+    children ? (
+      <PreviousValueDetails>
+        {separator}
+        {children}
+      </PreviousValueDetails>
+    ) : null;
+
+  return (
+    <Tooltip
+      isEnabled={fullDetailDisplay !== fittedDetailDisplay}
+      placement="bottom"
+      tooltip={
+        <VariationContainerTooltip className="variation-container-tooltip">
+          <VariationPercent iconSize={TOOLTIP_ICON_SIZE}>
+            {display.percentChange}
+          </VariationPercent>
+          <VariationDetails>{fullDetailDisplay}</VariationDetails>
+        </VariationContainerTooltip>
+      }
+    >
+      <VariationContainer className="fullscreen-normal-text fullscreen-night-text">
+        <VariationPercent iconSize={ICON_SIZE}>
+          {fittedChangeDisplay}
+        </VariationPercent>
+        <VariationDetails>{fittedDetailDisplay}</VariationDetails>
+      </VariationContainer>
+    </Tooltip>
+  );
+}
+
 Object.assign(SmartScalar, {
   uiName: t`Trend`,
   identifier: "smartscalar",
@@ -261,15 +275,29 @@ Object.assign(SmartScalar, {
 
   settings: {
     ...fieldSetting("scalar.field", {
-      title: t`Field to show`,
+      section: t`Data`,
+      title: t`Primary number`,
       fieldFilter: isNumeric,
-      getHidden: ([
-        {
-          data: { cols },
-        },
-      ]) => cols.filter(isNumeric).length < 2,
     }),
+    "scalar.comparisons": {
+      section: t`Data`,
+      title: t`Comparisons`,
+      widget: SmartScalarComparisonWidget,
+      isValid: (series, vizSettings) => isComparisonValid(series, vizSettings),
+      getDefault: (series, vizSettings) =>
+        getDefaultComparison(series, vizSettings),
+      getProps: (series, vizSettings) => ({
+        options: getComparisonOptions(series, vizSettings),
+      }),
+    },
+    "scalar.switch_positive_negative": {
+      section: t`Display`,
+      title: t`Switch positive / negative colors?`,
+      widget: "toggle",
+      inline: true,
+    },
     ...columnSettings({
+      section: t`Display`,
       getColumns: (
         [
           {
@@ -287,11 +315,6 @@ Object.assign(SmartScalar, {
       ],
       readDependencies: ["scalar.field"],
     }),
-    "scalar.switch_positive_negative": {
-      title: t`Switch positive / negative colors?`,
-      widget: "toggle",
-      inline: true,
-    },
     click_behavior: {},
   },
 
