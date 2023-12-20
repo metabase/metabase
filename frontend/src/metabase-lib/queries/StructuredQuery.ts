@@ -154,15 +154,15 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns true if we have metadata for the root source table loaded
    */
-  hasMetadata() {
-    return this.metadata() && !!this.rootTable();
+  hasMetadata(): boolean {
+    return this.metadata() != null && this.rootTable() != null;
   }
 
   /**
    * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
    */
-  isEditable() {
-    return !this.readOnly() && this.hasMetadata();
+  isEditable(): boolean {
+    return this.database() != null && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
@@ -202,8 +202,8 @@ class StructuredQuery extends AtomicQuery {
   /**
    * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
-  readOnly() {
-    return !this.database();
+  readOnly(): boolean {
+    return !this.isEditable();
   }
 
   /* Methods unique to this query type */
