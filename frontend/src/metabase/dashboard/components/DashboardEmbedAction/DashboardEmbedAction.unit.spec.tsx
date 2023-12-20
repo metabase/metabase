@@ -6,6 +6,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
+import type { DashboardSharingEmbeddingModalProps } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 
 interface SetupProps {
   isAdmin: boolean;
@@ -20,14 +21,11 @@ interface SetupProps {
 // Mock embedding modal as we don't need its content for the tests and causes
 // some issues with routing for one or two tests.
 const TestEmbeddingModalComponent = ({
-  enabled,
+  isOpen,
   onClose,
-}: {
-  enabled: boolean;
-  onClose: () => void;
-}) => {
+}: Pick<DashboardSharingEmbeddingModalProps, "isOpen" | "onClose">) => {
   return (
-    enabled && (
+    isOpen && (
       <div>
         <button data-testid="close-embedding-modal" onClick={onClose} />
         <div data-testid="dashboard-sharing-embedding-modal" />
@@ -41,7 +39,7 @@ jest.mock(
   () => {
     return {
       __esModule: true,
-      DashboardSharingEmbeddingModalConnected: TestEmbeddingModalComponent,
+      DashboardSharingEmbeddingModal: TestEmbeddingModalComponent,
     };
   },
 );

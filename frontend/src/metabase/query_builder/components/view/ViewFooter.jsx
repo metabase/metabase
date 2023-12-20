@@ -141,6 +141,7 @@ const ViewFooter = ({
           ),
           !question.isDataset() && (
             <EmbedMenu
+              key="embed"
               resource={question}
               resourceType="question"
               hasPublicLink={!!question.publicUUID()}
