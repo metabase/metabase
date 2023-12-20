@@ -63,17 +63,28 @@ export function PeriodsAgoOptionComponent({
     mouseDownInChildRef.current = false;
   }, []);
 
-  const submitValue = useCallback(() => {
+  const isValidInput = useCallback(() => {
     if (inputValue < minValue) {
-      return setInputValue(minValue);
+      setInputValue(minValue);
+      return false;
     }
 
     if (inputValue > maxValue) {
-      return setInputValue(maxValue);
+      setInputValue(maxValue);
+      return false;
     }
 
     if (!Number.isInteger(inputValue)) {
-      return setInputValue(value ?? minValue);
+      setInputValue(value ?? minValue);
+      return false;
+    }
+
+    return true;
+  }, [inputValue, maxValue, value]);
+
+  const submitValue = useCallback(() => {
+    if (!isValidInput()) {
+      return;
     }
 
     onChange({
@@ -82,7 +93,7 @@ export function PeriodsAgoOptionComponent({
     });
 
     setOpen(false);
-  }, [inputValue, maxValue, type, onChange, setOpen, value]);
+  }, [inputValue, isValidInput, type, onChange, setOpen]);
 
   const handleButtonClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
@@ -113,6 +124,15 @@ export function PeriodsAgoOptionComponent({
     }
   };
 
+  const handleBlur = useCallback(() => {
+    if (!isValidInput()) {
+      // prevent closing if user needs to re-enter a valid value
+      return setOpen(true);
+    }
+
+    submitValue();
+  }, [isValidInput, setOpen, submitValue]);
+
   return (
     <MenuItemStyled py="0.25rem" isSelected={isSelected}>
       <Box onClick={handleButtonClick} onMouseDown={handleParentMouseDown}>
@@ -125,6 +145,7 @@ export function PeriodsAgoOptionComponent({
             onMouseDown={handleChildMouseDownAndUp}
             onMouseUp={handleChildMouseDownAndUp}
             onKeyPress={handleEnter}
+            onBlur={handleBlur}
             size="xs"
             w="3.5rem"
             type="number"
