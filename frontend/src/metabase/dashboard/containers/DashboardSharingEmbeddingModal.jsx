@@ -2,20 +2,17 @@
 import { Component } from "react";
 import { connect } from "react-redux";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 import * as Urls from "metabase/lib/urls";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 
+import Modal from "metabase/components/Modal";
 import {
   createPublicLink,
   deletePublicLink,
   updateEnableEmbedding,
   updateEmbeddingParams,
 } from "../actions";
-import { ModalTrigger } from "./DashboardSharingEmbeddingModal.styled";
 
 const defaultProps = {
   isLinkEnabled: true,
@@ -33,11 +30,8 @@ const mapDispatchToProps = {
 };
 
 class DashboardSharingEmbeddingModal extends Component {
-  _modal;
-
   render() {
     const {
-      additionalClickActions,
       className,
       createPublicLink,
       dashboard,
@@ -49,36 +43,19 @@ class DashboardSharingEmbeddingModal extends Component {
       isLinkEnabled,
       updateEnableEmbedding,
       updateEmbeddingParams,
+      onClose,
       ...props
     } = this.props;
     if (!enabled) {
       return null;
     }
     return (
-      <ModalWithTrigger
-        ref={m => (this._modal = m)}
+      <Modal
         full
         disabled={!isLinkEnabled}
-        as={ModalTrigger}
-        triggerElement={
-          <span
-            className={linkClassNames}
-            aria-disabled={!isLinkEnabled}
-            onClick={() => {
-              if (isLinkEnabled) {
-                MetabaseAnalytics.trackStructEvent(
-                  "Sharing / Embedding",
-                  "dashboard",
-                  "Sharing Link Clicked",
-                );
-              }
-            }}
-          >
-            {linkText}
-          </span>
-        }
         triggerClasses={className}
         className="scroll-y"
+        onClose={onClose}
       >
         <EmbedModalContent
           {...props}
@@ -94,13 +71,10 @@ class DashboardSharingEmbeddingModal extends Component {
           onUpdateEmbeddingParams={embeddingParams =>
             updateEmbeddingParams(dashboard, embeddingParams)
           }
-          onClose={() => {
-            this._modal && this._modal.close();
-            additionalClickActions();
-          }}
+          onClose={onClose}
           getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
         />
-      </ModalWithTrigger>
+      </Modal>
     );
   }
 }

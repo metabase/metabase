@@ -34,6 +34,7 @@ export interface Dashboard {
   };
   auto_apply_filters: boolean;
   archived: boolean;
+  public_uuid: string | null;
 }
 
 export type DashCardId = number;
