@@ -767,3 +767,10 @@
   :visibility :authenticated
   :type       :string
   :audit      :getter)
+
+(defsetting attachment-table-row-limit
+  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  :visibility :internal
+  :type       :integer
+  :default    10
+  :audit      :getter)

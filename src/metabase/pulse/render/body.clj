@@ -171,7 +171,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take rows-limit rows)
+       (take (public-settings/attachment-table-row-limit) rows)
        viz-settings
        data-attributes)))))
 
@@ -229,7 +229,7 @@
                                       (color/make-color-selector data viz-settings)
                                       (mapv :name ordered-cols)
                                       (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning rows-limit (count rows))]]
+                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
      nil
 
