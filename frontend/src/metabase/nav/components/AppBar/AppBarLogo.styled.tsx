@@ -7,6 +7,7 @@ export const LogoRoot = styled.div`
   align-items: center;
   column-gap: 0.5rem;
   padding: 0 0.5rem;
+  margin-right: 0.25rem;
 `;
 
 interface LogoLinkProps {
