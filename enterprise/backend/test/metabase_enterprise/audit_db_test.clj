@@ -33,7 +33,7 @@
     (testing "Audit DB content is not installed when it is not found"
       (t2/delete! :model/Database :is_audit true)
       (with-redefs [audit-db/analytics-dir-resource nil]
-        (is (= nil @#'audit-db/analytics-dir-resource))
+        (is (nil? @#'audit-db/analytics-dir-resource))
         (is (= ::audit-db/installed (audit-db/ensure-audit-db-installed!)))
         (is (= perms/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")

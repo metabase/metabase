@@ -57,12 +57,12 @@ describe("time-series filter widget", () => {
 
   it("should stay in-sync with the actual filter", () => {
     cy.findAllByText("Filter").first().click();
-    cy.findByTestId("filter-field-Created At").within(() => {
-      cy.findByLabelText("more options").click();
+    cy.findByTestId("filter-column-Created At").within(() => {
+      cy.findByLabelText("More options").click();
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Last 3 Months").click();
-    cy.button("Apply Filters").click();
+    cy.findByText("Last 3 months").click();
+    cy.button("Apply filters").click();
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
