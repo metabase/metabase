@@ -178,8 +178,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
-    cy.wait(1000);
+    cy.get(".ace_text-input")
+      .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
 
     getNotebookStep("filter")
       .contains("Price is greater than 1")
