@@ -147,7 +147,7 @@ function SharingPane({
           onClick={createPublicLink}
           illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
         >
-            {getPublicLinkElement()}
+          {getPublicLinkElement()}
         </SharingPaneButton>
       </Group>
       <InteractiveEmbeddingCTA />
