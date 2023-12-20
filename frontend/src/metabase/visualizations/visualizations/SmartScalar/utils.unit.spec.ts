@@ -1,7 +1,11 @@
 import * as measureText from "metabase/lib/measure-text";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
-import type { DatetimeUnit, Insight, RowValues } from "metabase-types/api";
+import type {
+  Insight,
+  RelativeDatetimeUnit,
+  RowValues,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
@@ -34,7 +38,7 @@ const getAutoPrecisionOptions = (width: number) => {
 describe("SmartScalar > utils", () => {
   describe("scalar.comparisons", () => {
     const FIELD_NAME = "Count";
-    const createInsights = (dateUnit: DatetimeUnit) => [
+    const createInsights = (dateUnit: RelativeDatetimeUnit) => [
       { unit: dateUnit, col: FIELD_NAME },
     ];
     const cols = [
