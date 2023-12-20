@@ -34,7 +34,13 @@ export function SmartScalarComparisonWidget({
   const isDisabled = options.length === 1 && !isEmpty(selectedOption);
 
   return (
-    <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
+    <Menu
+      opened={open}
+      onChange={setOpen}
+      position="bottom-start"
+      shadow="sm"
+      closeOnItemClick={false}
+    >
       <Menu.Target>
         <Button
           data-testid={"comparisons-widget-button"}
@@ -51,7 +57,12 @@ export function SmartScalarComparisonWidget({
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
           {options.map(optionArgs =>
-            renderMenuOption({ onChange, setOpen, optionArgs, selectedValue }),
+            renderMenuOption({
+              onChange,
+              setOpen,
+              optionArgs,
+              selectedValue,
+            }),
           )}
         </Stack>
       </Menu.Dropdown>
@@ -72,6 +83,11 @@ function renderMenuOption({
   setOpen,
   selectedValue,
 }: RenderMenuOptionProps) {
+  const submitChangeAndCloseMenu = () => {
+    onChange({ type });
+    setOpen(false);
+  };
+
   const { type, name } = optionArgs;
 
   if (type === COMPARISON_TYPES.PERIODS_AGO) {
@@ -95,7 +111,7 @@ function renderMenuOption({
     <MenuItemStyled
       key={type}
       aria-selected={selectedValue.type === type}
-      onClick={() => onChange({ type })}
+      onClick={submitChangeAndCloseMenu}
     >
       <Text fw="bold" ml="0.5rem">
         {name}

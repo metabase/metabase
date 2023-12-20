@@ -29,6 +29,7 @@ export function PeriodsAgoMenuOption({
   setOpen,
   type,
 }: PeriodsAgoMenuOptionProps) {
+  const minValue = 2;
   const value = useMemo(() => {
     if (!selectedValue) {
       return null;
@@ -40,28 +41,9 @@ export function PeriodsAgoMenuOption({
 
     return null;
   }, [selectedValue]);
-  const minValue = 2;
-
   const [inputValue, setInputValue] = useState(value ?? minValue);
+
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // used to prevent accidental button click when mouseDown inside input field
-  // but dragged to highlight all text and accidentally mouseUp on the button
-  // outside the input field
-  const mouseDownInChildRef = useRef(false);
-  const handleChildMouseDownAndUp = useCallback(
-    (e: MouseEvent<HTMLInputElement>) => {
-      e.stopPropagation();
-      e.preventDefault();
-      inputRef.current?.select();
-
-      mouseDownInChildRef.current = true;
-    },
-    [],
-  );
-  const handleParentMouseDown = useCallback(() => {
-    mouseDownInChildRef.current = false;
-  }, []);
 
   const isValidInput = useCallback(() => {
     if (inputValue < minValue) {
@@ -95,57 +77,37 @@ export function PeriodsAgoMenuOption({
     setOpen(false);
   }, [inputValue, isValidInput, type, onChange, setOpen]);
 
-  const handleButtonClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
-      e.stopPropagation();
-      e.preventDefault();
+  const handleInputEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      inputRef.current?.blur();
 
-      if (mouseDownInChildRef.current) {
-        mouseDownInChildRef.current = false;
-        return;
+      if (!isValidInput()) {
+        // re-select input if the number was not a valid input
+        return setTimeout(() => {
+          inputRef.current?.select();
+        }, 0);
       }
 
       submitValue();
-    },
-    [submitValue],
-  );
-
-  const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      mouseDownInChildRef.current = false;
-      inputRef.current?.blur();
-
-      submitValue();
-
-      // re-select input just in case the input number was not a valid input
-      setTimeout(() => {
-        inputRef.current?.select();
-      }, 0);
     }
   };
 
-  const handleBlur = useCallback(() => {
-    if (!isValidInput()) {
-      // prevent closing if user needs to re-enter a valid value
-      return setOpen(true);
-    }
-
-    submitValue();
-  }, [isValidInput, setOpen, submitValue]);
+  const handleInputClick = (e: MouseEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    inputRef.current?.select();
+  };
 
   return (
     <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
-      <Box onClick={handleButtonClick} onMouseDown={handleParentMouseDown}>
+      <Box onClick={() => submitValue()}>
         <Group position="apart" px="0.5rem">
           <Text fw="bold">{`${inputValue} ${name}`}</Text>
           <NumberInputStyled
             ref={inputRef}
             value={inputValue}
             onChange={(value: number) => setInputValue(value)}
-            onMouseDown={handleChildMouseDownAndUp}
-            onMouseUp={handleChildMouseDownAndUp}
-            onKeyPress={handleEnter}
-            onBlur={handleBlur}
+            onKeyPress={handleInputEnter}
+            onClick={handleInputClick}
             size="xs"
             w="3.5rem"
             type="number"
