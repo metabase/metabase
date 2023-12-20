@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import Card from "metabase/components/Card";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const StyledCard = styled(Card)`
   padding: 2.5rem;
@@ -22,4 +23,9 @@ export const Label = styled.span`
   text-transform: uppercase;
   color: ${color("white")};
   background: ${color("brand")};
+`;
+
+export const BoldExternalLink = styled(ExternalLink)`
+  color: ${color("brand")};
+  font-weight: bold;
 `;

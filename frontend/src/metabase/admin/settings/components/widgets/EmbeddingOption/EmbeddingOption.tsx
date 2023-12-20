@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { Button, Flex, Text, Title } from "metabase/ui";
-import { Label, StyledCard } from "./EmbeddingOption.styled";
+import { Label, StyledCard, BoldExternalLink } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
 import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
 import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";
@@ -41,7 +41,7 @@ function EmbeddingOption({
       <Text lh={"1.25rem"} mb={"lg"}>
         {description}
       </Text>
-      <Flex gap="md" direction="column" align="flex-start">
+      <Flex gap="lg" direction="column" align="flex-start">
         {children}
       </Flex>
     </StyledCard>
@@ -103,7 +103,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         </ExternalLink>
       )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
     >
-      <ExternalLink
+      <BoldExternalLink
         href={
           isEE
             ? interactiveEmbedQuickStartEELink
@@ -111,7 +111,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         }
       >
         {t`Check out our Quick Start`}
-      </ExternalLink>
+      </BoldExternalLink>
       {isEE ? (
         <Button
           component={Link}
