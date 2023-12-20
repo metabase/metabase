@@ -1,13 +1,12 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { Icon } from "metabase/core/components/Icon";
-import { Group, Menu, Stack, Text } from "metabase/ui";
+import { Button, Menu, Stack, Text } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
 import type { SmartScalarComparison } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
 import { PeriodsAgoMenuOption } from "./PeriodsAgoOptionComponent";
-import { ButtonStyled } from "./SmartScalarSettingsWidgets.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
 
 type SmartScalarComparisonWidgetProps = {
@@ -37,17 +36,16 @@ export function SmartScalarComparisonWidget({
   return (
     <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
       <Menu.Target>
-        <ButtonStyled
+        <Button
           data-testid={"comparisons-widget-button"}
-          disabled={isDisabled}
+          styles={{ inner: { "justify-content": "space-between" } }}
+          rightIcon={<Icon name="chevrondown" size="12" />}
           px="1rem"
           fullWidth
+          disabled={isDisabled}
         >
-          <Group spacing="sm" position="apart" w="100%">
-            {selectedDisplayName}
-            <Icon name="chevrondown" size="12" />
-          </Group>
-        </ButtonStyled>
+          {selectedDisplayName}
+        </Button>
       </Menu.Target>
 
       <Menu.Dropdown miw="18.25rem">
