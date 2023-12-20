@@ -122,7 +122,7 @@
      (test-query-results actual)
 
      "/json"
-     (is (= [{:Count 100}]
+     (is (= [{:Count "100"}]
             actual))
 
      "/csv"
@@ -175,6 +175,13 @@
     (with-temp-card [card {:enable_embedding true}]
       (is (re= #"Token is expired.*"
                (client/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))))
+
+(deftest bad-card-id-fails
+  (with-embedding-enabled-and-new-secret-key
+    (let [card-url (str "embed/card/" (sign {:resource {:question "8"}
+                                             :params   {}}))]
+      (is (= "Card id should be a positive integer."
+             (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]

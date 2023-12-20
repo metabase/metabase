@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import Button from "metabase/core/components/Button";
 import LogoIcon from "metabase/components/LogoIcon";
-import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
+import { SettingInput } from "metabase/admin/settings/components/widgets/SettingInput";
 import { color } from "metabase/lib/colors";
 
 import { LogoFileInput } from "./LogoUpload.styled";

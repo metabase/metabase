@@ -203,10 +203,7 @@
                                               (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
                         rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
-                        table         (-> rendered-card
-                                          (get-in [:content 1 2 4 2])
-                                          first
-                                          second)
+                        table         (get-in rendered-card [:content 1 2 4 2 1])
                         tax-col       (->>
                                         (rest (get-in table [2 1]))
                                         (map-indexed (fn [i v] [i (last v)]))
