@@ -222,7 +222,8 @@
                   {:name                "studio"
                    :display_name        "Studio"
                    :initial_sync_status "complete"
-                   :fields              [(field:studio-name) (field:studio-studio)]})
+                   :fields              [(field:studio-name) (field:studio-studio)]
+                   :description         ""})
                  studio)))
         (testing "Returns results from sync-database step"
           (is (= ["metadata" "analyze" "field-values"]

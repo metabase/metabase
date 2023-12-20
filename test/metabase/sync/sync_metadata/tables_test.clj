@@ -1,11 +1,15 @@
 (ns ^:mb/once metabase.sync.sync-metadata.tables-test
   "Test for the logic that syncs Table models with the metadata fetched from a DB."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Database Table]]
+   [metabase.sync :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -39,3 +43,20 @@
       (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
       (is (= {"Table 1" false "Table 2" true}
              (t2/select-fn->fn :name :active Table :db_id (u/the-id db)))))))
+
+(deftest sync-table-update-info-of-new-table-added-during-sync-test
+  (testing "during sync, if a table is reactivated, we should update the table info if needed"
+    (let [dbdef (mt/dataset-definition "sync-retired-table"
+                  ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
+      (mt/dataset dbdef
+        (t2/update! :model/Table (mt/id :user) {:active false})
+        ;; table description is changed
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       [(sql.tx/standalone-table-comment-sql
+                         (:engine (mt/db))
+                         dbdef
+                         (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
+        (sync/sync-database! (mt/db) {:sync :schema})
+        (is (=? {:active true
+                 :description "added comment"}
+                (t2/select-one :model/Table (mt/id :user))))))))

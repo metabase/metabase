@@ -185,8 +185,8 @@
   (mt/with-test-user :rasta
     (automagic-dashboards.test/with-dashboard-cleanup
       (doseq [[table cardinality] (map vector
-                                       (t2/select Table :db_id (mt/id) {:order-by [[:id :asc]]})
-                                       [15 11 7 5])]
+                                       (t2/select Table :db_id (mt/id) {:order-by [[:name :asc]]})
+                                       [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))
 
     (automagic-dashboards.test/with-dashboard-cleanup

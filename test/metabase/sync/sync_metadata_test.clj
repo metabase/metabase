@@ -24,7 +24,7 @@
   (testing "Make sure we survive table sync failing"
     (sync-survives-crash? sync-tables/create-or-reactivate-tables!)
     (sync-survives-crash? sync-tables/retire-tables!)
-    (sync-survives-crash? sync-tables/update-table-description!)))
+    (sync-survives-crash? sync-tables/update-tables-metadata-if-needed!)))
 
 (deftest survive-fk-errors
   (testing "Make sure we survive FK sync failing"
