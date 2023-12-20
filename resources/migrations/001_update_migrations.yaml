@@ -4391,7 +4391,7 @@ databaseChangeLog:
                   remarks: 'If true, the table requires a filter to be able to query it'
 
   - changeSet:
-      id: v49.00-013
+      id: v49.00-016
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of action.archived from boolean to
@@ -4412,7 +4412,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-014
+      id: v49.00-017
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of metabase_field.json_unfolding from
@@ -4433,7 +4433,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-015
+      id: v49.00-018
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of database_is_auto_increment.metabase_field
@@ -4454,7 +4454,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-016
+      id: v49.00-019
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of report_dashboard.auto_apply_filters
@@ -4475,7 +4475,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-017
+      id: v49.00-020
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of metabase_database.is_audit
@@ -4496,7 +4496,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-018
+      id: v49.00-021
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of metabase_table.is_upload
@@ -4517,7 +4517,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-019
+      id: v49.00-022
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of revision.most_recent
@@ -4538,7 +4538,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-020
+      id: v49.00-023
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of revision.most_recent
@@ -4559,7 +4559,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-021
+      id: v49.00-024
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of table_privileges.select
@@ -4580,7 +4580,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-022
+      id: v49.00-025
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of table_privileges.update
@@ -4601,7 +4601,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-023
+      id: v49.00-026
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of table_privileges.insert
@@ -4622,7 +4622,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-024
+      id: v49.00-027
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of table_privileges.delete
@@ -4643,7 +4643,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-025
+      id: v49.00-028
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of query_execution.is_sandboxed
@@ -4664,7 +4664,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-026
+      id: v49.00-029
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of view_log.has_access
@@ -4685,7 +4685,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-027
+      id: v49.00-030
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of metabase_field.database_indexed
@@ -4706,7 +4706,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-028
+      id: v49.00-031
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of metabase_table.database_require_filter
@@ -4727,7 +4727,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-029
+      id: v49.00-032
       author: noahmoss
       comment: >-
         Added 0.49.0 - modify type of DATABASECHANGELOGLOCK.LOCKED
