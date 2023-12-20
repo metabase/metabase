@@ -48,7 +48,7 @@ export const PublicLinkPopover = ({
       return "10rem";
     }
 
-    return "auto"
+    return "auto";
   };
 
   return (
