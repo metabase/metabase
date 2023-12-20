@@ -40,10 +40,12 @@ export function SmartScalarComparisonWidget({
         <ButtonStyled
           data-testid={"comparisons-widget-button"}
           disabled={isDisabled}
+          px="1rem"
+          fullWidth
         >
-          <Group spacing="sm">
+          <Group spacing="sm" position="apart" w="100%">
             {selectedDisplayName}
-            <Icon name="chevrondown" size="14" />
+            <Icon name="chevrondown" size="12" />
           </Group>
         </ButtonStyled>
       </Menu.Target>
