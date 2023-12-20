@@ -598,7 +598,9 @@ class ExpressionEditorTextfield extends React.Component<
           />
         </EditorContainer>
         {errorMessage && hasChanges && (
-          <ErrorMessageContainer>{errorMessage.message}</ErrorMessageContainer>
+          <ErrorMessageContainer data-testid="expression-editor-error-message">
+            {errorMessage.message}
+          </ErrorMessageContainer>
         )}
         <ExpressionEditorHelpText
           target={helpTextTarget}
