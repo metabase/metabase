@@ -78,7 +78,7 @@ function SharingPane({
   const publicLinkInfoText =
     !isLoadingLink && hasPublicLink ? (
       //   TextInput has a hardcoded marginTop that we need to account for here.
-      <Box mb="-0.25rem">{t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`}</Box>
+      t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`
     ) : (
       t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
     );

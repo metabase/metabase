@@ -15,20 +15,20 @@ export const PublicLinkCopyButton = styled(CopyButton)`
   }
 `;
 
-interface ExtensionOptionProps {
-  isSelected: boolean;
-}
+// interface ExtensionOptionProps {
+//   isSelected: boolean;
+// }
 
-export const ExtensionOption = styled.span<ExtensionOptionProps>`
-  cursor: pointer;
-  font-weight: bold;
-  text-transform: uppercase;
-  color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
-
-  &:hover {
-    color: ${color("brand")};
-  }
-`;
+// export const ExtensionOption = styled.span<ExtensionOptionProps>`
+//   cursor: pointer;
+//   font-weight: bold;
+//   text-transform: uppercase;
+//   color: ${props => (props.isSelected ? color("brand") : color("text-light"))};
+//
+//   &:hover {
+//     color: ${color("brand")};
+//   }
+// `;
 
 export const RemoveLinkAnchor = styled(Anchor)<
   AnchorProps & HTMLAttributes<HTMLAnchorElement>

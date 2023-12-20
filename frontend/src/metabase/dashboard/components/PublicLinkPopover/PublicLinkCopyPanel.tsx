@@ -2,10 +2,19 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 import {
   PublicLinkCopyButton,
-  ExtensionOption,
+  // ExtensionOption,
   RemoveLinkAnchor,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
-import { Box, Group, Stack, Text, TextInput, Tooltip } from "metabase/ui";
+import {
+  Anchor,
+  Box,
+  Flex,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
@@ -27,7 +36,7 @@ export const PublicLinkCopyPanel = ({
   removeButtonLabel?: string;
   removeTooltipLabel?: string;
 }) => (
-  <Stack>
+  <Stack spacing={0}>
     <TextInput
       readOnly
       data-testid="public-link-input"
@@ -35,49 +44,53 @@ export const PublicLinkCopyPanel = ({
       value={url ?? undefined}
       inputWrapperOrder={["label", "input", "error", "description"]}
       rightSection={<PublicLinkCopyButton value={url} />}
-      description={
-        // The box is needed to center the tooltip on the anchor
-        <Stack ml="xs" spacing={0} mt="sm" pos="absolute">
-          {extensions && extensions.length > 0 && (
-            <Group mb="sm">
-              {extensions.map(extension => (
-                <ExtensionOption
-                  data-testid="extension-option"
-                  key={extension}
-                  isSelected={extension === selectedExtension}
-                  onClick={() =>
-                    onChangeExtension?.(
-                      extension === selectedExtension ? null : extension,
-                    )
-                  }
-                >
-                  {extension}
-                </ExtensionOption>
-              ))}
-            </Group>
-          )}
+    />
+    <Box pos="relative">
+      <Group mt="sm" pos="absolute" w="100%" position="apart" align="center">
+        <Box>
           {onRemoveLink && (
-            <Box>
-              <Tooltip
-                label={
-                  <Text fw={700} c="inherit">
-                    {removeTooltipLabel}
-                  </Text>
+            // The container is needed to center the tooltip on the anchor
+            <Tooltip
+              label={
+                <Text fw={700} c="inherit">
+                  {removeTooltipLabel}
+                </Text>
+              }
+            >
+              <RemoveLinkAnchor
+                inline
+                lh="1"
+                fz="sm"
+                c="error.0"
+                fw={700}
+                onClick={onRemoveLink}
+              >
+                {removeButtonLabel}
+              </RemoveLinkAnchor>
+            </Tooltip>
+          )}
+        </Box>
+        <Group spacing="sm" position="right">
+          {extensions &&
+            extensions.length > 0 &&
+            extensions.map(extension => (
+              <Anchor
+                data-testid="extension-option"
+                key={extension}
+                tt="uppercase"
+                c={extension === selectedExtension ? "brand.1" : "text.0"}
+                fw={700}
+                onClick={() =>
+                  onChangeExtension?.(
+                    extension === selectedExtension ? null : extension,
+                  )
                 }
               >
-                <RemoveLinkAnchor
-                  fz="sm"
-                  c="error.0"
-                  fw={700}
-                  onClick={onRemoveLink}
-                >
-                  {removeButtonLabel}
-                </RemoveLinkAnchor>
-              </Tooltip>
-            </Box>
-          )}
-        </Stack>
-      }
-    />
+                {extension}
+              </Anchor>
+            ))}
+        </Group>
+      </Group>
+    </Box>
   </Stack>
 );

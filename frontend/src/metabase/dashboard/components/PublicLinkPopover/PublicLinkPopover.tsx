@@ -44,15 +44,11 @@ export const PublicLinkPopover = ({
   };
 
   const getMinDropdownHeight = () => {
-    if (isAdmin && extensions.length > 0) {
-      return "12rem";
+    if (isAdmin || extensions.length > 0) {
+      return "10rem";
     }
 
-    if (!isAdmin && extensions.length === 0) {
-      return "8rem";
-    }
-
-    return "10rem";
+    return "auto"
   };
 
   return (
