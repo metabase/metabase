@@ -45,7 +45,7 @@ describe("InteractiveEmbeddingCTA", () => {
 
     expect(screen.getByText("Learn more")).toHaveAttribute(
       "href",
-      "https://www.metabase.com/product/embedded-analytics",
+      "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-modal",
     );
   });
 });

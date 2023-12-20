@@ -247,7 +247,7 @@ describe("embed modal display", () => {
         cy.findByTestId("interactive-embedding-cta").should(
           "have.attr",
           "href",
-          "https://www.metabase.com/product/embedded-analytics",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-modal",
         );
       });
     });
@@ -284,7 +284,6 @@ function createPublicResourceLink(resource, id) {
 }
 
 function visitResource(resource, id) {
-  console.log(id);
   if (resource === "card") {
     visitQuestion(id);
   }
