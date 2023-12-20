@@ -1,0 +1,92 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { MultiSelect, Stack } from "metabase/ui";
+
+export const args = {
+  data: ["Doohickey", "Gadget", "Gizmo", "Widget"],
+  size: "md",
+  label: "Enter a value",
+  description: undefined,
+  error: undefined,
+  placeholder: "Pick a value",
+  disabled: false,
+  readOnly: false,
+  withAsterisk: false,
+};
+
+export const sampleArgs = {
+  value: ["Widget"],
+  description: "The value of providing a value cannot be overstated",
+  error: "required",
+};
+
+export const argTypes = {
+  data: {
+    control: { type: "json" },
+  },
+  size: {
+    options: ["xs", "md"],
+    control: { type: "inline-radio" },
+  },
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  error: {
+    control: { type: "text" },
+  },
+  placeholder: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  readOnly: {
+    control: { type: "boolean" },
+  },
+  withAsterisk: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta
+  title="Inputs/MultiSelect"
+  component={MultiSelect}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# MultiSelect
+
+Our themed wrapper around [Mantine MultiSelect](https://v6.mantine.dev/core/multi-select/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/YkJ23b1AGUd2PTdp05fd6t/ComboBox-%2F-MultiSelect?type=design&node-id=1-96&mode=design&t=3eooI1om5pw7rm0p-0)
+- [Mantine Select Docs](https://v6.mantine.dev/core/multi-select/)
+
+## Examples
+
+export const DefaultTemplate = args => <MultiSelect {...args} />;
+
+export const VariantTemplate = args => (
+  <Stack>
+    <MultiSelect {...args} />
+    <MultiSelect {...args} variant="unstyled" />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Size - md
+
+export const EmptyMd = VariantTemplate.bind({});
+
+<Canvas>
+  <Story name="Empty, md">{EmptyMd}</Story>
+</Canvas>
