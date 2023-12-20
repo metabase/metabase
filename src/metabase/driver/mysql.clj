@@ -28,7 +28,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -746,22 +745,23 @@
   ;; `local_infile` must be turned on per
   ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
   (if (not= (get-global-variable db-id "local_infile") "ON")
-    ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
+      ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tsv")
-          file-path (.getAbsolutePath temp-file)]
-      (try
-        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
-              sql  (sql/format {::load   [file-path (keyword table-name)]
-                                :columns (map keyword column-names)}
-                               :quoted  true
-                               :dialect (sql.qp/quote-style driver))]
-          (with-open [^java.io.Writer writer (jio/writer file-path)]
-            (doseq [value (interpose \newline tsvs)]
-              (.write writer (str value))))
-          (qp.writeback/execute-write-sql! db-id sql))
-        (finally
-          (.delete temp-file))))))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (let [temp-file (File/createTempFile table-name ".tsv")
+            file-path (.getAbsolutePath temp-file)]
+        (try
+          (let [tsvs (map (partial row->tsv driver (count column-names)) values)
+                sql  (sql/format {::load   [file-path (keyword table-name)]
+                                  :columns (map keyword column-names)}
+                                 :quoted  true
+                                 :dialect (sql.qp/quote-style driver))]
+            (with-open [^java.io.Writer writer (jio/writer file-path)]
+              (doseq [value (interpose \newline tsvs)]
+                (.write writer (str value))))
+            (jdbc/execute! conn sql {:transaction? false}))
+          (finally
+            (.delete temp-file)))))))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed

@@ -1317,7 +1317,7 @@
 (deftest append-no-mb-row-id-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
-      (testing "If the table doesn't have _mb_row_id and a failure occurs, we should create a _mb_row_id column anyway"
+      (testing "If the table doesn't have _mb_row_id and a failure occurs, we shouldn't create a _mb_row_id column"
         (mt/with-empty-db
           (let [table       (create-upload-table! {:col->upload-type (ordered-map/ordered-map
                                                                       :bool_column ::upload/boolean)
@@ -1330,17 +1330,13 @@
             (is (thrown? Exception
                          (append-csv! {:file     file
                                        :table-id (:id table)})))
-            (testing "Check a _mb_row_id column was created"
-              (is (= ["bool_column" "_mb_row_id"]
+            (testing "Check a _mb_row_id column was not created"
+              (is (= ["bool_column"]
                      (column-names-for-table table))))
-            (testing "Check a _mb_row_id column was sync'd"
-              (is (=? {:semantic_type :type/PK
-                       :base_type     :type/BigInteger
-                       :name          "_mb_row_id"
-                       :display_name  "_mb_row_id"}
-                      (get-auto-pk))))
+            (testing "Check a _mb_row_id column was not sync'd"
+              (is (nil? (get-auto-pk))))
             (testing "Check the data was not uploaded into the table"
-              (is (= [[true 1]]
+              (is (= [[true]]
                      (rows-for-table table))))
             (io/delete-file file)))))))
 
@@ -1407,32 +1403,6 @@
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
-(deftest append-int-type-mismatch-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (with-mysql-local-infile-on-and-off
-      (with-uploads-allowed
-        (mt/with-empty-db
-          (testing "Append fails if the CSV file contains values that don't match the column types"
-            ;; for drivers that insert rows in chunks, we change the chunk size to 1 so that we can test that the
-            ;; inserted rows are rolled back
-            (binding [driver/*insert-chunk-rows* 10]
-              (let [table    (create-upload-table! {:col->upload-type (ordered-map/ordered-map
-                                                                       :_mb_row_id ::upload/auto-incrementing-int-pk
-                                                                       :id         ::upload/int
-                                                                       :name       ::upload/varchar-255)
-                                                    :rows             [[10 "Obi-Wan Kenobi"]]})
-                    csv-rows `["id,name" ~@(repeat 50 "20,Darth Vadar") "not an int,Luke Skywalker"]
-                    file     (csv-file-with csv-rows (mt/random-name))]
-                (testing "Check integers"
-                  (is (= {:message "'not an int' is not a recognizable number"
-                          :data    {:status-code 422}}
-                         (catch-ex-info (append-csv! {:file     file
-                                                      :table-id (:id table)})))))
-                (testing "Check the data was not uploaded into the table"
-                  (is (= [[1 10 "Obi-Wan Kenobi"]]
-                         (rows-for-table table))))
-                (io/delete-file file)))))))))
-
 (deftest append-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-mysql-local-infile-on-and-off
@@ -1443,7 +1413,7 @@
             ;; inserted rows are rolled back
             (binding [driver/*insert-chunk-rows* 1]
               (doseq [auto-pk-column? [true false]]
-                (testing (str "\nFor a table that has" (if auto-pk-column? "a" " no") " automatically generated PK already")
+                (testing (str "\nFor a table that has " (if auto-pk-column? "an" " no") " automatically generated PK already")
                   (doseq [{:keys [upload-type valid invalid msg]}
                           [{:upload-type ::upload/int
                             :valid       1
