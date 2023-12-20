@@ -24,7 +24,7 @@
 
 .LineAreaBarChart .dc-chart .axis .domain,
 .LineAreaBarChart .dc-chart .axis .tick line {
-  stroke: var(--color-text-light);
+  stroke: var(--color-border);
 }
 
 .LineAreaBarChart .dc-chart .axis .tick text {
