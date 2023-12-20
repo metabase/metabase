@@ -40,6 +40,7 @@
    [dev.debug-qp :as debug-qp]
    [dev.explain :as dev.explain]
    [dev.model-tracking :as model-tracking]
+   [hashp.core :as hashp]
    [honey.sql :as sql]
    [java-time :as t]
    [malli.dev :as malli-dev]
@@ -64,7 +65,6 @@
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [puget.printer :as puget]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
@@ -92,13 +92,17 @@
   reset-changes!
   changes])
 
-(def initialized? "initialized?"
+(def initialized?
+  "Was Metabase already initialized? Used in `init!` to prevent calling `core/init!`
+   more than once (during `start!`, for example)."
   (atom nil))
 
-(defn init! "Trigger general initialization"
+(defn init!
+  "Trigger general initialization, but only once."
   []
-  (mbc/init!)
-  (reset! initialized? true))
+  (when-not @initialized?
+    (mbc/init!)
+    (reset! initialized? true)))
 
 (defn migration-timestamp
   "Returns a UTC timestamp in format `yyyy-MM-dd'T'HH:mm:ss` that you can used to postfix for migration ID."
@@ -130,21 +134,23 @@
   (when-let [outdated-ids (seq (map :id (deleted-inmem-databases)))]
     (t2/delete! :model/Database :id [:in outdated-ids])))
 
-(defn start! "Start Metabase"
+(defn start!
+  "Start Metabase"
   []
   (server/start-web-server! #'handler/app)
-  (when-not @initialized?
-    (init!))
+  (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
     (with-out-str (malli-dev/start!))))
 
-(defn stop! "Stop Metabase"
+(defn stop!
+  "Stop Metabase"
   []
   (malli-dev/stop!)
   (server/stop-web-server!))
 
-(defn restart! "Restart Metabase"
+(defn restart!
+  "Restart Metabase"
   []
   (stop!)
   (start!))
@@ -319,24 +325,7 @@
   ([ns level]
    (mt/set-ns-log-level! ns level)))
 
-(defmacro spy
-  "Prints out: ns, form, pp result:
-   (->> data :grouped-skus vals spy)
-     =>
-   ;; mk.api.resources.checkout.quote
-   ;; (vals (:grouped-skus data))
-   ({:is_offer               false
-     :owner_id               509, ..."
-  [x]
-  (let [x#    (gensym)
-        path# (-> *ns* ns-name str)
-        form# (pr-str x)
-        pref# (str ";; " path# "\n"
-                   ";; " form# "\n")]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    `(let [~x# ~x]
-       (println (str ~pref# (puget/cprint-str ~x#) "\n"))
-       ~x#)))
-
-;; make spy available everywhere
-(intern 'clojure.core (with-meta 'spy {:macro true}) @#'spy)
+(defmacro p
+  "#p, but to use in pipelines like `(-> 1 inc dev/p inc)`"
+  [form]
+  (hashp/p* form))
