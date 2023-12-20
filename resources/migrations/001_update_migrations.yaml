@@ -4366,6 +4366,21 @@ databaseChangeLog:
                     unique: true
                   remarks: 'The user-defined name of the API key.'
 
+  - changeSet:
+      id: v49.00-011
+      author: qnkhuat
+      comment: Add metabase_table.database_require_filter
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: database_require_filter
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'If true, the table requires a filter to be able to query it'
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

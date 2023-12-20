@@ -4,6 +4,7 @@ import {
   visitDashboard,
   modal,
   visitIframe,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import {
@@ -195,15 +196,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should not let you embed the question", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      cy.icon("share").click();
-
       ensureEmbeddingIsDisabled();
     });
 
     it("should not let you embed the dashboard", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.icon("share").click();
-
       ensureEmbeddingIsDisabled();
     });
   });
@@ -377,10 +374,6 @@ function getTokenValue() {
   return cy.get("#setting-embedding-secret-key").invoke("val");
 }
 
-function enableSharing() {
-  cy.contains("Enable sharing").siblings().click();
-}
-
 function assertLinkMatchesUrl(text, url) {
   cy.findByRole("link", { name: text })
     .should("have.attr", "href")
@@ -388,28 +381,26 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.icon("share").click();
 
-  // Let's make sure embedding stays disabled after we enable public sharing
-  enableSharing();
+  cy.findByTestId("embed-menu-embed-modal-item").should("be.disabled");
 
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByTestId("embed-menu-embed-modal-item").within(() => {
+    cy.findByText("Embedding is off").should("be.visible");
+    cy.findByText("Enable it in settings").should("be.visible");
+  });
 }
 
 function visitAndEnableSharing(object) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
-    cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
   }
 
   if (object === "dashboard") {
     visitDashboard(ORDERS_DASHBOARD_ID);
-
-    cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
   }
+
+  openStaticEmbeddingModal();
 }
 
 function sidebar() {

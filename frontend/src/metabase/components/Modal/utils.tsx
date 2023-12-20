@@ -15,7 +15,7 @@ export type BaseModalProps = {
   noBackdrop?: boolean;
   noCloseOnBackdrop?: boolean;
   form?: unknown;
-  title?: string;
+  title?: string | JSX.Element;
   footer?: string;
 };
 
