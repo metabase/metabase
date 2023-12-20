@@ -234,6 +234,45 @@
                                    %)
                                 response)))))))))
 
+(deftest collection-tree-shallow-test
+  (testing "GET /api/collection/tree?shallow=true"
+    (with-collection-hierarchy [a b c d e f g]
+    (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))
+          ids      (set (map :id (cons personal-collection [a b c d e f g])))]
+      (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true&location=/")]
+        (testing "Make sure overall tree shape of the response is as is expected"
+          (is (= [{:name     "A"
+                   :children true}
+                  {:name "Rasta Toucan's Personal Collection"
+                   :children false}]
+                 (->> response
+                      (filter (fn [coll] (contains? ids (:id coll))))
+                      (map #(select-keys % [:name :children])))))
+          (testing "Make sure each Collection comes back with the expected keys"
+            (is (partial= {:description       nil
+                           :archived          false
+                           :entity_id         (:entity_id personal-collection)
+                           :slug              "rasta_toucan_s_personal_collection"
+                           :name              "Rasta Toucan's Personal Collection"
+                           :personal_owner_id (mt/user->id :rasta)
+                           :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                           :location          "/"
+                           :namespace         nil
+                           :children          false
+                           :authority_level   nil}
+                          (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
+                                   %)
+                                response))))))
+      (let [response (mt/user-http-request :rasta :get 200 (str "collection/tree?shallow=true&location=/" (:id a) "/"))]
+        (testing "Make sure each location param works as expected"
+          (is (= [{:name     "B"
+                   :children false}
+                  {:name     "C"
+                   :children true}]
+                 (->> response
+                      (filter (fn [coll] (contains? ids (:id coll))))
+                      (map #(select-keys % [:name :children])))))))))))
+
 (deftest collection-tree-exclude-archived-collections-test
   (testing "GET /api/collection/tree"
     (testing "Excludes archived collections (#19603)"
