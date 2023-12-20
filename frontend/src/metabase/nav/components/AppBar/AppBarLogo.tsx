@@ -21,16 +21,6 @@ const AppBarLogo = ({
 }: AppBarLogoProps): JSX.Element => {
   return (
     <LogoRoot>
-      {isLogoVisible && (
-        <LogoLink
-          isNavBarEnabled={isNavBarEnabled}
-          to="/"
-          onClick={onLogoClick}
-          data-metabase-event="Navbar;Logo"
-        >
-          <LogoIcon height={32} />
-        </LogoLink>
-      )}
       {isNavBarEnabled && (
         <ToggleContainer isLogoVisible={isLogoVisible}>
           <AppBarToggle
@@ -41,6 +31,16 @@ const AppBarLogo = ({
             onToggleClick={onToggleClick}
           />
         </ToggleContainer>
+      )}
+      {isLogoVisible && (
+        <LogoLink
+          isNavBarEnabled={isNavBarEnabled}
+          to="/"
+          onClick={onLogoClick}
+          data-metabase-event="Navbar;Logo"
+        >
+          <LogoIcon height={32} />
+        </LogoLink>
       )}
     </LogoRoot>
   );

@@ -28,11 +28,7 @@ const AppBarToggle = ({
         data-testid="sidebar-toggle"
         aria-label={t`Toggle sidebar`}
       >
-        <SidebarIcon
-          isLogoVisible={isLogoVisible}
-          size={24}
-          name={isNavBarOpen ? "sidebar_open" : "sidebar_closed"}
-        />
+        <SidebarIcon isLogoVisible={isLogoVisible} size={20} name="burger" />
       </SidebarButton>
     </Tooltip>
   );
