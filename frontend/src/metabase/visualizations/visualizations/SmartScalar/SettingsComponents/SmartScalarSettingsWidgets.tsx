@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Group, Menu, Stack, Text } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
-import type { SelectedComparison } from "metabase-types/api";
+import type { SmartScalarComparison } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
 import { PeriodsAgoOptionComponent } from "./PeriodsAgoOptionComponent";
@@ -13,7 +13,7 @@ import { MenuItemStyled } from "./MenuItem.styled";
 type SmartScalarComparisonWidgetProps = {
   onChange: (setting: { type: string; value?: number }) => void;
   options: ComparisonMenuOption[];
-  value: SelectedComparison;
+  value: SmartScalarComparison;
 };
 
 export function SmartScalarComparisonWidget({
@@ -62,7 +62,7 @@ export function SmartScalarComparisonWidget({
 type CreateMenuOptionProps = {
   onChange: (setting: { type: string; value?: number }) => void;
   optionArgs: ComparisonMenuOption;
-  selectedValue: SelectedComparison;
+  selectedValue: SmartScalarComparison;
   setOpen: Dispatch<SetStateAction<boolean>>;
 };
 

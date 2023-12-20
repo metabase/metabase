@@ -1,16 +1,16 @@
 // SmartScalar (Trend Chart)
-export type SelectedComparisonPeriodsAgo = {
+export type SmartScalarComparisonPeriodsAgo = {
   type: "periodsAgo";
   value: number;
 };
-type SelectedComparisonPreviousPeriod = {
+type SmartScalarComparisonPreviousPeriod = {
   type: "previousPeriod";
 };
-type SelectedComparisonCompareToPrevious = {
+type SmartScalarComparisonCompareToPrevious = {
   type: "previousValue";
 };
 
-export type SelectedComparison =
-  | SelectedComparisonCompareToPrevious
-  | SelectedComparisonPreviousPeriod
-  | SelectedComparisonPeriodsAgo;
+export type SmartScalarComparison =
+  | SmartScalarComparisonCompareToPrevious
+  | SmartScalarComparisonPreviousPeriod
+  | SmartScalarComparisonPeriodsAgo;

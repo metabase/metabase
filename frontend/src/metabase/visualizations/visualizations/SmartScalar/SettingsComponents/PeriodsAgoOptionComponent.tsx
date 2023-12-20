@@ -6,7 +6,7 @@ import type {
   SetStateAction,
 } from "react";
 import { Group, Text, Box } from "metabase/ui";
-import type { SelectedComparisonPeriodsAgo } from "metabase-types/api";
+import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
 
@@ -15,7 +15,7 @@ type PeriodsAgoOptionComponentProps = {
   maxValue: number;
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
-  selectedValue?: SelectedComparisonPeriodsAgo;
+  selectedValue?: SmartScalarComparisonPeriodsAgo;
   setOpen: Dispatch<SetStateAction<boolean>>;
   type: string;
 };
