@@ -17,12 +17,21 @@
   "For each field, fetch its settings from the QP store, convert the settings into the normalized form
   for visualization settings, and then merge in the card-level column settings."
   [column-viz-settings field-ids]
-  (merge column-viz-settings
-         (into {} (for [field-id field-ids]
-                    (let [field-settings      (:settings (lib.metadata/field (qp.store/metadata-provider) field-id))
-                          norm-field-settings (normalize-field-settings field-id field-settings)
-                          col-settings        (get column-viz-settings {::mb.viz/field-id field-id})]
-                      [{::mb.viz/field-id field-id} (merge norm-field-settings col-settings)])))))
+  ;; Retrieve field-level settings
+  (let [field-id->settings (reduce
+                             (fn [m field-id]
+                               (let [field-settings      (:settings (lib.metadata/field (qp.store/metadata-provider) field-id))
+                                     norm-field-settings (normalize-field-settings field-id field-settings)]
+                                 (assoc m field-id norm-field-settings)))
+                             {}
+                             field-ids)]
+    ;; For each column viz setting, if there is a match on the field settings, merge it in,
+    ;; with the column viz settings being the default in the event of conflicts.
+    (reduce-kv
+      (fn [coll {field-id ::mb.viz/field-id :as k} column-viz-setting]
+        (assoc coll k (merge (get field-id->settings field-id {}) column-viz-setting)))
+      {}
+      column-viz-settings)))
 
 (defn- viz-settings
   "Pull viz settings from either the query map or the DB"
