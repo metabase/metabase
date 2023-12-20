@@ -1,5 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import { colors } from "metabase/lib/colors";
 
 interface DashboardCardProps {
   isAnimationDisabled?: boolean;
@@ -31,7 +32,7 @@ export const DashboardCard = styled.div<DashboardCardProps>`
     bottom: 0;
     right: 0;
     border-radius: 8px;
-    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.13);
+    border: 1px solid ${colors["border"]};
   }
 
   ${props =>
