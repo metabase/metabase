@@ -3,6 +3,9 @@ import {
   goToStaticEmbeddingSettings,
   setupEmbedding,
   getQuickStartLink,
+  embeddingSettingsUrl,
+  interactiveEmbeddingSettingsUrl,
+  staticEmbeddingSettingsUrl,
 } from "./setup";
 import type { SetupOpts } from "./setup";
 
@@ -21,25 +24,37 @@ describe("[EE] embedding settings", () => {
     });
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
-        await setupEnterprise({
+        const { history } = await setupEnterprise({
           settingValues: { "enable-embedding": embeddingSettingEnabled },
         });
 
         expect(() => {
           goToStaticEmbeddingSettings();
         }).toThrow();
+
+        history.push(staticEmbeddingSettingsUrl);
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          embeddingSettingsUrl,
+        );
       });
     });
 
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
-        await setupEnterprise({
+        const { history } = await setupEnterprise({
           settingValues: { "enable-embedding": embeddingSettingEnabled },
         });
 
         expect(() => {
           goToInteractiveEmbeddingSettings();
         }).toThrow();
+
+        history.push(interactiveEmbeddingSettingsUrl);
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          embeddingSettingsUrl,
+        );
       });
 
       it("should link to quickstart for interactive embedding", async () => {
@@ -66,9 +81,7 @@ describe("[EE] embedding settings", () => {
       goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(
-        "/admin/settings/embedding-in-other-applications/standalone",
-      );
+      expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
     });
 
     it("should allow going to interactive embedding settings page", async () => {
@@ -79,9 +92,7 @@ describe("[EE] embedding settings", () => {
       goToInteractiveEmbeddingSettings();
 
       const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(
-        "/admin/settings/embedding-in-other-applications/full-app",
-      );
+      expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);
     });
   });
 });
