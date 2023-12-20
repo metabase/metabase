@@ -8,6 +8,7 @@ import {
   useRecentItemListQuery,
 } from "metabase/common/hooks";
 import type { PopularItem, RecentItem, User } from "metabase-types/api";
+
 import type Database from "metabase-lib/metadata/Database";
 import { HomePopularSection } from "../HomePopularSection";
 import { HomeRecentSection } from "../HomeRecentSection";
@@ -19,8 +20,8 @@ export const HomeContent = (): JSX.Element | null => {
   const user = useSelector(getUser);
   const isXrayEnabled = useSelector(getIsXrayEnabled);
   const { data: databases } = useDatabaseListQuery();
-  const { data: recentItems } = useRecentItemListQuery({ reload: true });
-  const { data: popularItems } = usePopularItemListQuery({ reload: true });
+  const { data: recentItems } = useRecentItemListQuery();
+  const { data: popularItems } = usePopularItemListQuery();
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
     return <LoadingAndErrorWrapper loading />;

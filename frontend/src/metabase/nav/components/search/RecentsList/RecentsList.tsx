@@ -28,9 +28,8 @@ export interface WrappedRecentItem extends RecentItem {
 }
 
 export const RecentsList = ({ onClick, className }: RecentsListProps) => {
-  const { data = [], isLoading: isRecentsListLoading } = useRecentItemListQuery(
-    { reload: true },
-  );
+  const { data = [], isLoading: isRecentsListLoading } =
+    useRecentItemListQuery();
 
   const wrappedResults: WrappedRecentItem[] = useMemo(
     () => data.map(item => RecentItems.wrapEntity(item)),
