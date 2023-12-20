@@ -52,7 +52,7 @@ export function FilterPicker({
     filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     onSelect(filter);
-    onClose?.();
+    // onClose?.();
   };
 
   const handleColumnSelect = (column: Lib.ColumnMetadata) => {
