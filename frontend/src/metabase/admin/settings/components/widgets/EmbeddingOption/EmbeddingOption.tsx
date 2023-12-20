@@ -52,7 +52,7 @@ export const StaticEmbeddingOptionCard = () => {
     <EmbeddingOption
       icon={enabled ? <StaticEmbeddingOn /> : <StaticEmbeddingOff />}
       title={t`Static embedding`}
-      description={t`Use interactive embedding when you want to offer multi-tenant, self-service analytics and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
+      description={t`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.`}
     >
       <Button
         variant="default"
