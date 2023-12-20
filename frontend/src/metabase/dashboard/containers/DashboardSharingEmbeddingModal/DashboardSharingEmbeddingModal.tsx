@@ -43,12 +43,13 @@ export const DashboardSharingEmbeddingModal = (
 
   return (
     <EmbedModal isOpen={isOpen} onClose={onClose}>
-      {({ embedType, setEmbedType }) => (
+      {({ embedType, goToNextStep, goToPreviousStep }) => (
         <EmbedModalContent
           {...props}
           isLinkEnabled={isLinkEnabled ?? true}
           embedType={embedType}
-          setEmbedType={setEmbedType}
+          goToNextStep={goToNextStep}
+          goToPreviousStep={goToPreviousStep}
           className={className}
           resource={dashboard}
           resourceParameters={parameters}

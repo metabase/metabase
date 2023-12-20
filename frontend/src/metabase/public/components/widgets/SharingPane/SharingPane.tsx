@@ -26,7 +26,7 @@ interface SharingPaneProps {
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
   getPublicUrl: (resource: Resource, extension?: ExportFormatType) => void;
-  onChangeEmbedType: (embedType: string) => void;
+  goToNextStep: () => void;
   isPublicSharingEnabled: boolean;
 }
 
@@ -36,7 +36,7 @@ function SharingPane({
   onCreatePublicLink,
   onDeletePublicLink,
   getPublicUrl,
-  onChangeEmbedType,
+  goToNextStep,
 }: SharingPaneProps) {
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
 
@@ -118,12 +118,11 @@ function SharingPane({
           header={t`Static embed`}
           description={t`Securely embed this dashboard in your own application’s server code.`}
           illustration={<StaticEmbedIcon />}
-          onClick={() => onChangeEmbedType("application")}
+          onClick={goToNextStep}
         >
           <SharingPaneActionButton
             data-testid="sharing-pane-static-embed-button"
             fullWidth
-            onClick={() => onChangeEmbedType("application")}
           >
             {resource.enable_embedding ? t`Edit settings` : t`Set this up`}
           </SharingPaneActionButton>

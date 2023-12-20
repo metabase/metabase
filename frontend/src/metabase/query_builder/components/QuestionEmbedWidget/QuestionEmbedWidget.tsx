@@ -44,11 +44,12 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
 
   return (
     <EmbedModal onClose={onClose}>
-      {({ embedType, setEmbedType }) => (
+      {({ embedType, goToNextStep, goToPreviousStep }) => (
         <EmbedModalContent
           {...props}
           embedType={embedType}
-          setEmbedType={setEmbedType}
+          goToNextStep={goToNextStep}
+          goToPreviousStep={goToPreviousStep}
           className={className}
           resource={card}
           resourceType="question"

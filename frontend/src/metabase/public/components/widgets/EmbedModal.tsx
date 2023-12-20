@@ -1,29 +1,35 @@
-import { titleize } from "inflection";
 import { useState } from "react";
-import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Icon } from "metabase/core/components/Icon";
 import Modal from "metabase/components/Modal";
 import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
-import { Box, Center } from "metabase/ui";
-import { EmbedTitleLabel } from "./EmbedModal.styled";
+import { Box, Text } from "metabase/ui";
+import { EmbedTitleContainer } from "./EmbedModal.styled";
 
-type EmbedModalStep = "application" | null;
+type EmbedModalStep = "application" | "legalese" | null;
 
 const EmbedTitle = ({
-  type,
-  onClick = undefined,
+  embedStep,
+  onClick,
 }: {
-  type: string;
+  embedStep: EmbedModalStep;
   onClick?: () => void;
-}) => (
-  <a className="flex align-center" onClick={onClick}>
-    <EmbedTitleLabel>{t`Sharing`}</EmbedTitleLabel>
-    {type && <Icon name="chevronright" className="mx1 text-medium" />}
-    {type}
-  </a>
-);
+}) => {
+  const applicationName = useSelector(getApplicationName);
+
+  const label =
+    embedStep === null ? `Embed ${applicationName}` : `Static embedding`;
+
+  return (
+    <EmbedTitleContainer isActive={embedStep !== null} onClick={onClick}>
+      {embedStep !== null && <Icon name="chevronleft" />}
+      <Text fz="xl" c="text.1">
+        {label}
+      </Text>
+    </EmbedTitleContainer>
+  );
+};
 
 export const EmbedModal = ({
   children,
@@ -35,14 +41,29 @@ export const EmbedModal = ({
   onClose: () => void;
   children: ({
     embedType,
-    setEmbedType,
+    goToNextStep,
+    goToPreviousStep,
   }: {
     embedType: EmbedModalStep;
-    setEmbedType: (type: EmbedModalStep) => void;
+    goToNextStep: () => void;
+    goToPreviousStep: () => void;
   }) => JSX.Element;
 } & WindowModalProps) => {
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
-  const applicationName = useSelector(getApplicationName);
+
+  const goToNextStep = () => {
+    if (embedType === null) {
+      setEmbedType("legalese");
+    }
+
+    if (embedType === "legalese") {
+      setEmbedType("application");
+    }
+  };
+
+  const goToPreviousStep = () => {
+    setEmbedType(null);
+  };
 
   const onEmbedClose = () => {
     onClose();
@@ -55,25 +76,14 @@ export const EmbedModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onEmbedClose}
-      title={
-        embedType ? (
-          <Center>
-            <EmbedTitle
-              type={titleize(embedType)}
-              onClick={() => setEmbedType(null)}
-            />
-          </Center>
-        ) : (
-          t`Embed ${applicationName}`
-        )
-      }
+      title={<EmbedTitle embedStep={embedType} onClick={goToPreviousStep} />}
       fit={!isFullScreen}
       full={isFullScreen}
       formModal={false}
       {...modalProps}
     >
       <Box bg="bg.0" h="100%">
-        {children({ embedType, setEmbedType })}
+        {children({ embedType, goToNextStep, goToPreviousStep })}
       </Box>
     </Modal>
   );

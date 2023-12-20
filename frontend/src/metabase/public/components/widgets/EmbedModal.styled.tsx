@@ -1,8 +1,19 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { Group } from "metabase/ui";
 
-export const EmbedTitleLabel = styled.span`
-  &:hover {
-    color: ${color("brand")};
-  }
+export const EmbedTitleContainer = styled(Group)<{
+  isActive?: boolean;
+}>`
+  ${({ isActive, theme }) => {
+    return (
+      isActive &&
+      css`
+        &:hover * {
+          color: ${theme.colors.brand[1]};
+          cursor: pointer;
+        }
+      `
+    );
+  }}
 `;
