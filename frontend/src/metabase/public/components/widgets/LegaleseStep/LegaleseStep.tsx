@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
 import { Text, Button, Center, Stack, Title } from "metabase/ui";
@@ -14,23 +14,20 @@ export const LegaleseStep = ({
 
       <LegaleseStepDetailsContainer p="lg" w="40rem">
         <Text fw={700}>
-          {t`By clicking “Agree and continue” you're agreeing to`}{" "}
-          <ExternalLink
-            href="https://metabase.com/license/embedding"
-            target="_blank"
-          >
-            {t`our embedding license.`}
-          </ExternalLink>
+          {jt`By clicking "Agree and continue" you're agreeing to ${(
+            <ExternalLink
+              href="https://metabase.com/license/embedding"
+              target="_blank"
+            >
+              {t`our embedding license.`}
+            </ExternalLink>
+          )}`}
         </Text>
         <Text>
-          {t`When you embed charts or dashboards from Metabase in your own
-          application, that application isn't subject to the Affero General
-          Public License that covers the rest of Metabase, provided you keep the
-          Metabase logo and the "Powered by Metabase" visible on those embeds.`}
+          {t`When you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds.`}
         </Text>
         <Text>
-          {t`You should, however, read the license text linked above as that is the
-          actual license that you will be agreeing to by enabling this feature.`}
+          {t`You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
         </Text>
       </LegaleseStepDetailsContainer>
 

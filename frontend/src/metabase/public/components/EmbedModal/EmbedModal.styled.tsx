@@ -3,11 +3,11 @@ import styled from "@emotion/styled";
 import { Group } from "metabase/ui";
 
 export const EmbedTitleContainer = styled(Group)<{
-  isActive?: boolean;
+  onClick?: () => void;
 }>`
-  ${({ isActive, theme }) => {
+  ${({ onClick, theme }) => {
     return (
-      isActive &&
+      onClick &&
       css`
         &:hover * {
           color: ${theme.colors.brand[1]};

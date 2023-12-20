@@ -189,7 +189,7 @@ EmbedModalContent.propTypes = {
 
   embedType: PropTypes.string,
   goToNextStep: PropTypes.func.isRequired,
-  goToPreviousStep: PropTypes.func.isRequired,
+  goBackToEmbedModal: PropTypes.func.isRequired,
 };
 
 function getDefaultEmbeddingParams(props) {

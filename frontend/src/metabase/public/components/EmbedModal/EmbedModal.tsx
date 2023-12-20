@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Icon } from "metabase/core/components/Icon";
@@ -7,23 +8,18 @@ import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
 import { Box, Text } from "metabase/ui";
 import { EmbedTitleContainer } from "./EmbedModal.styled";
 
-type EmbedModalStep = "application" | "legalese" | null;
+export type EmbedModalStep = "application" | "legalese" | null;
 
 const EmbedTitle = ({
-  embedStep,
   onClick,
+  label,
 }: {
-  embedStep: EmbedModalStep;
+  label: string;
   onClick?: () => void;
 }) => {
-  const applicationName = useSelector(getApplicationName);
-
-  const label =
-    embedStep === null ? `Embed ${applicationName}` : `Static embedding`;
-
   return (
-    <EmbedTitleContainer isActive={embedStep !== null} onClick={onClick}>
-      {embedStep !== null && <Icon name="chevronleft" />}
+    <EmbedTitleContainer onClick={onClick}>
+      {onClick && <Icon name="chevronleft" />}
       <Text fz="xl" c="text.1">
         {label}
       </Text>
@@ -42,14 +38,15 @@ export const EmbedModal = ({
   children: ({
     embedType,
     goToNextStep,
-    goToPreviousStep,
+    goBackToEmbedModal,
   }: {
     embedType: EmbedModalStep;
     goToNextStep: () => void;
-    goToPreviousStep: () => void;
+    goBackToEmbedModal: () => void;
   }) => JSX.Element;
 } & WindowModalProps) => {
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
+  const applicationName = useSelector(getApplicationName);
 
   const goToNextStep = () => {
     if (embedType === null) {
@@ -61,7 +58,7 @@ export const EmbedModal = ({
     }
   };
 
-  const goToPreviousStep = () => {
+  const goBackToEmbedModal = () => {
     setEmbedType(null);
   };
 
@@ -70,20 +67,29 @@ export const EmbedModal = ({
     setEmbedType(null);
   };
 
-  const isFullScreen = embedType === "application";
+  const modalHeaderProps =
+    embedType === null
+      ? {
+          label: t`Embed ${applicationName}`,
+          onClick: undefined,
+        }
+      : {
+          label: t`Static embedding`,
+          onClick: goBackToEmbedModal,
+        };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onEmbedClose}
-      title={<EmbedTitle embedStep={embedType} onClick={goToPreviousStep} />}
-      fit={!isFullScreen}
-      full={isFullScreen}
+      title={<EmbedTitle {...modalHeaderProps} />}
+      fit={embedType !== "application"}
+      wide={true}
       formModal={false}
       {...modalProps}
     >
       <Box bg="bg.0" h="100%">
-        {children({ embedType, goToNextStep, goToPreviousStep })}
+        {children({ embedType, goToNextStep, goBackToEmbedModal })}
       </Box>
     </Modal>
   );
