@@ -19,6 +19,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
+   [metabase.upload :as upload]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -395,3 +396,16 @@
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
+
+(defmethod driver/upload-type->database-type :redshift
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar-255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/auto-incrementing-int-pk [:bigint [:identity 0 1]]
+    ::upload/float                    [:float]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:timestamp]
+    ::upload/offset-datetime          [:timestamp-with-time-zone]))
