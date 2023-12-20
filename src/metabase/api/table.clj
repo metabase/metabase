@@ -357,7 +357,7 @@
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
-  [card-id database-id metadata]
+  [database-id metadata]
   (let [db (t2/select-one Database :id database-id)
         underlying (m/index-by :id (when-let [ids (seq (keep :id metadata))]
                                      (t2/select Field :id [:in ids])))
@@ -367,7 +367,6 @@
                      (merge (select-keys (underlying col-id)
                                          [:semantic_type :fk_target_field_id :has_field_values]))
                      (assoc
-                      :table_id     (str "card__" card-id)
                       :id           (or col-id
                                         ;; TODO -- what????
                                         [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
@@ -398,8 +397,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)}
-      include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                                           database_id
+      include-fields? (assoc :fields (card-result-metadata->virtual-fields database_id
                                                                            (:result_metadata card))))))
 
 (defn- remove-nested-pk-fk-semantic-types
