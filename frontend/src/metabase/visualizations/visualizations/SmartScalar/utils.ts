@@ -108,7 +108,7 @@ export function getDefaultComparison(
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
-  )?.unit as RelativeDatetimeUnit | undefined;
+  )?.unit;
 
   if (!dateUnit) {
     return createComparisonMenuOption({
@@ -134,7 +134,7 @@ export function getComparisonOptions(
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
-  )?.unit as RelativeDatetimeUnit | undefined;
+  )?.unit;
 
   if (!dateUnit) {
     return [
