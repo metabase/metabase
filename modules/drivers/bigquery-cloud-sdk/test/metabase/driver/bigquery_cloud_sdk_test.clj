@@ -291,11 +291,8 @@
                      ["partition_by_range_not_required" "customer_id"]      true
                      ["partition_by_range_not_required" "transaction_date"] false
                      ["partition_by_range"              "customer_id"]      true
-                     ["partition_by_range"              "date1"]            false
                      ["partition_by_ingestion_time"     "transaction_id"]   false
                      ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
-                     ["partitioned_marterialized_view"  "transaction_id"]   false
-                     ["partitioned_marterialized_view"  "_PARTITIONTIME"]   true
                      ["partition_by_time"               "transaction_time"] true
                      ["partition_by_time"               "transaction_id"]   false}
                     (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]

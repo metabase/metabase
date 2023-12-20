@@ -4394,7 +4394,7 @@ databaseChangeLog:
                   type: boolean
                   constraints:
                     nullable: true
-                  remarks: 'Whether the field is a partitioned field'
+                  remarks: 'Whether the table is partitioned by this field'
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

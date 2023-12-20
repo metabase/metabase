@@ -194,13 +194,13 @@
      :fields (cond-> fields
                ;; if table has time partition but no field is specified as partitioned
                ;; meaning this table is partitioned by ingestion time
-               ;; so we manually sync this virtual column
+               ;; so we manually sync this pseudo-column
                (and (some? (.getTimePartitioning tabledef))
                     (nil? partitioned-field-name))
                (conj
                 {:name                 "_PARTITIONTIME"
                  :database-type        "TIMESTAMP"
-                 :base-type            :type/DateTimeWithLocalTZ
+                 :base-type            (bigquery-type->base-type nil "TIMESTAMP")
                  :database-position    (count fields)
                  :database-partitioned true}))}))
 
