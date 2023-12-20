@@ -33,7 +33,6 @@ Monitoring access sets permissions for the following:
 
 - [Tools](../usage-and-performance-tools/tools.md)
 - [Troubleshooting](../troubleshooting-guide/index.md)
-- [Metabase analytics](../usage-and-performance-tools/usage-analytics.md)
 - [Auditing](../usage-and-performance-tools/audit.md)
 
 ## Subscriptions and alerts
