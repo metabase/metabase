@@ -26,8 +26,6 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
-  ANALYTIC_EVENTS,
-  ANALYTIC_EVENTS_ID,
 } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
@@ -1107,23 +1105,11 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       const query = {
         type: "query",
         query: {
-          "source-table": ANALYTIC_EVENTS_ID,
+          "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
           breakout: [
-            [
-              "field",
-              ANALYTIC_EVENTS.BUTTON_LABEL,
-              { "base-type": "type/Text" },
-            ],
-            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
-            [
-              "field",
-              ANALYTIC_EVENTS.TIMESTAMP,
-              { "base-type": "type/DateTime", "temporal-unit": "day" },
-            ],
-            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
-            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
-            ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+            ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+            ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
           ],
         },
         database: SAMPLE_DB_ID,
@@ -1135,27 +1121,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         visualization_settings: {
           "pivot_table.column_split": {
             rows: [
-              ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
-              [
-                "field",
-                ANALYTIC_EVENTS.BUTTON_LABEL,
-                { "base-type": "type/Text" },
-              ],
-              [
-                "field",
-                ANALYTIC_EVENTS.ACCOUNT_ID,
-                { "base-type": "type/Text" },
-              ],
-              [
-                "field",
-                ANALYTIC_EVENTS.TIMESTAMP,
-                { "base-type": "type/DateTime", "temporal-unit": "day" },
-              ],
-              ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
             ],
-            columns: [
-              ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
-            ],
+            columns: [["field", "count", { "base-type": "type/Integer" }]],
             values: [["aggregation", 0]],
           },
         },
@@ -1163,7 +1132,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       cy.findByTestId("question-row-count").should(
         "have.text",
-        "Showing first 52,711 rows",
+        "Showing 205 rows",
       );
 
       cy.findByTestId("qb-header-action-panel").findByText("Save").click();
@@ -1175,7 +1144,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       cy.findByTestId("question-row-count").should(
         "have.text",
-        "Showing first 52,711 rows",
+        "Showing 205 rows",
       );
     },
   );
