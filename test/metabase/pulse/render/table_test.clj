@@ -242,15 +242,15 @@
                   :rows [[1 2] [3 4]]}})))))
 
 (deftest attachment-rows-limit-test
-  (doseq [[test-explanation env-var-value] [["defaults to 10 rows." nil]
-                                            ["is respected in table renders when below the previous default of 10." 5]
-                                            ["is respected in table renders when above the previous default of 10." 20]
-                                            ["is set to 10 when the value doesn't make sense." -20]]]
+  (doseq [[test-explanation env-var-value] [["defaults to 20 rows." nil]
+                                            ["is respected in table renders when below the previous default of 20." 5]
+                                            ["is respected in table renders when above the previous default of 20." 20]
+                                            ["is set to 20 when the value doesn't make sense." -20]]]
     (testing (format "The `metabase.public-settings/attachment-rows-limit` %s" test-explanation)
       (mt/with-temp-env-var-value ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= (if (pos-int? env-var-value)
                  env-var-value
-                 10)
+                 20)
                (count (-> (render-table
                            {:visualization_settings {:table.columns
                                                      [{:name "a" :enabled true}]}}
