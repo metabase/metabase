@@ -5,6 +5,7 @@ on:
     branches:
       - "master"
       - 'release-**'
+      - 'database-timezone-id-e2e'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
