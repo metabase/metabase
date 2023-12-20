@@ -200,8 +200,8 @@ const config = (module.exports = {
     },
     minimizer: [
       new TerserPlugin({
-        minify: TerserPlugin.swcMinify,
-        parallel: true,
+        minify: TerserPlugin.esbuildMinify,
+        parallel: 4,
         test: /\.(tsx?|jsx?)($|\?)/i,
       }),
     ],
