@@ -3,9 +3,9 @@ import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { Button, Flex, Text, Title } from "metabase/ui";
-import { Label, StyledCard } from "./EmbeddingOption.styled";
+import { Label, StyledCard, BoldExternalLink } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
 import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
 import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";
@@ -34,12 +34,14 @@ function EmbeddingOption({
   return (
     <StyledCard compact>
       {icon}
-      <Flex gap="md" my="md" direction={"row"}>
+      <Flex gap="md" mt="md" mb="sm" direction={"row"}>
         <Title order={2}>{title}</Title>
         {label && <Label>{label}</Label>}
       </Flex>
-      <Text mb={"lg"}>{description}</Text>
-      <Flex gap="md" direction="column" align="flex-start">
+      <Text lh={"1.25rem"} mb={"lg"}>
+        {description}
+      </Text>
+      <Flex gap="lg" direction="column" align="flex-start">
         {children}
       </Flex>
     </StyledCard>
@@ -48,11 +50,28 @@ function EmbeddingOption({
 
 export const StaticEmbeddingOptionCard = () => {
   const enabled = useSelector(state => getSetting(state, "enable-embedding"));
+  const upgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "embed_standalone" }),
+  );
+  const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
+
+  const upgradeText = jt`A "powered by Metabase" banner appears on static embeds. You can ${(
+    <ExternalLink key="upgrade-link" href={upgradeUrl}>
+      {t`upgrade to a paid plan`}
+    </ExternalLink>
+  )} to remove it.`;
+
   return (
     <EmbeddingOption
       icon={enabled ? <StaticEmbeddingOn /> : <StaticEmbeddingOff />}
       title={t`Static embedding`}
-      description={t`Use interactive embedding when you want to offer multi-tenant, self-service analytics and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
+      description={jt`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.${
+        shouldPromptToUpgrade && (
+          <Text size="sm" mt="xs" key="upgrade-text">
+            {upgradeText}
+          </Text>
+        )
+      }`}
     >
       <Button
         variant="default"
@@ -74,7 +93,7 @@ export const InteractiveEmbeddingOptionCard = () => {
     <EmbeddingOption
       icon={enabled ? <InteractiveEmbeddingOn /> : <InteractiveEmbeddingOff />}
       title={t`Interactive embedding`}
-      label={t`PRO/ENTERPRISE`}
+      label={t`PRO & ENTERPRISE`}
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
           href="https://www.metabase.com/blog/why-full-app-embedding"
@@ -84,7 +103,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         </ExternalLink>
       )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
     >
-      <ExternalLink
+      <BoldExternalLink
         href={
           isEE
             ? interactiveEmbedQuickStartEELink
@@ -92,7 +111,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         }
       >
         {t`Check out our Quick Start`}
-      </ExternalLink>
+      </BoldExternalLink>
       {isEE ? (
         <Button
           component={Link}

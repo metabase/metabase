@@ -26,7 +26,6 @@ import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -521,12 +520,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`Embedded Questions`,
         widget: EmbeddedQuestionListing,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        key: "-customization",
-        widget: EmbeddingCustomizationWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
         key: "-redirect-widget",
