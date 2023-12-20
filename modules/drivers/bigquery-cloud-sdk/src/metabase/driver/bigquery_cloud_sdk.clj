@@ -265,7 +265,6 @@
           ;; as long as we don't set certain additional QueryJobConfiguration options, our queries *should* always be
           ;; following the fast query path (i.e. RPC)
           ;; check out com.google.cloud.bigquery.QueryRequestInfo.isFastQuerySupported for full details
-          ;; Additional configuration here if needed
           res-fut (future (.query client (.build request) (u/varargs BigQuery$JobOption)))]
       (when cancel-chan
         (future                       ; this needs to run in a separate thread, because the <!! operation blocks forever
