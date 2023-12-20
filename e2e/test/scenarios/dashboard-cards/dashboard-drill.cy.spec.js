@@ -958,7 +958,10 @@ describe("scenarios > dashboard > dashboard drill", () => {
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
       popover().within(() => {
-        cy.get(".input").should("contain", "1").and("contain", "2");
+        cy.findAllByRole("combobox")
+          .last()
+          .should("contain", "1")
+          .and("contain", "2");
         cy.button("Update filter").should("be.visible");
       });
     }

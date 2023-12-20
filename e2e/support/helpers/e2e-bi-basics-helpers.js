@@ -30,7 +30,10 @@ export function filterField(
   }
 
   if (value) {
-    changeValue(getFilterField(fieldName, order), value, placeholder);
+    const values = Array.isArray(value) ? value : [value];
+    values.forEach(value => {
+      changeValue(getFilterField(fieldName, order), value, placeholder);
+    });
   }
 
   return getFilterField(fieldName, order);
@@ -41,7 +44,7 @@ export function filterFieldPopover(
   { value, placeholder, order } = {},
 ) {
   getFilterField(fieldName, order).within(() => {
-    cy.get("input").click();
+    cy.get("input").last().click();
   });
 
   if (value) {
@@ -51,25 +54,20 @@ export function filterFieldPopover(
 }
 
 function getFilterField(fieldName, order = 0) {
-  return cy.findAllByTestId(`filter-field-${fieldName}`).eq(order);
+  return cy.findAllByTestId(`filter-column-${fieldName}`).eq(order);
 }
 
 function changeOperator(subject, operator) {
-  subject.findByTestId("operator-select").click();
-
-  cy.findByTestId("operator-options")
-    .findAllByText(new RegExp(operator, "i"))
-    .first()
-    .click();
+  subject.findByLabelText("Filter operator").click();
+  popover().findAllByText(new RegExp(operator, "i")).first().click();
 }
 
 function changeValue(subject, newValue, placeholder) {
   subject.within(() => {
     const input = placeholder
-      ? cy.findByPlaceholderText(new RegExp(placeholder, "i"))
-      : cy.get("input").first();
-
-    input.clear().type(newValue);
+      ? cy.findByPlaceholderText(placeholder)
+      : cy.findByLabelText("Filter value");
+    input.focus().clear().type(newValue).blur();
   });
 }
 

@@ -1,7 +1,6 @@
 import _ from "underscore";
-import { FieldDimension } from "metabase-lib/Dimension";
 
-export function isLocalField(field) {
+function isLocalField(field) {
   return Array.isArray(field) && field[0] === "field";
 }
 
@@ -50,17 +49,6 @@ export function getFieldTargetId(field) {
     return field[1];
   }
   console.warn("Unknown field type:", field);
-}
-
-export function getDatetimeUnit(fieldClause) {
-  if (isLocalField(fieldClause)) {
-    const dimension = FieldDimension.parseMBQLOrWarn(fieldClause);
-    return dimension && dimension.temporalUnit();
-  }
-}
-
-export function isDateTimeField(fieldClause) {
-  return Boolean(getDatetimeUnit(fieldClause));
 }
 
 export function hasSourceField(fieldClause) {

@@ -166,7 +166,7 @@
                                     to-update-keys)
         [_ changes _]  (data/diff old-table new-table)
         changes        (cond-> changes
-                         ;; we only update the description if and only if the initial state is nil
+                         ;; we only update the description if the initial state is nil
                          ;; because don't want to override the user edited description if it exists
                          (some? (:description old-table))
                          (dissoc changes :description))]
@@ -212,13 +212,14 @@
   ([database :- i/DatabaseInstance db-metadata]
    ;; determine what's changed between what info we have and what's in the DB
    (let [db-tables               (table-set db-metadata)
-         name+schema->db-table   (m/index-by (juxt :name :schema) db-tables)
+         name+schema             #(select-keys % [:name :schema])
+         name+schema->db-table   (m/index-by name+schema db-tables)
          our-metadata            (db->our-metadata database)
-         keep-table-id-info      (fn [metadata]
-                                   (set (map #(select-keys % [:schema :name]) metadata)))
+         keep-name+schema-set    (fn [metadata]
+                                   (set (map name+schema metadata)))
          [new-tables old-tables] (data/diff
-                                  (keep-table-id-info db-tables)
-                                  (keep-table-id-info our-metadata))]
+                                  (keep-name+schema-set (set (map name+schema db-tables)))
+                                  (keep-name+schema-set (set (map name+schema our-metadata))))]
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -226,7 +227,7 @@
          (update-database-metadata! database db-metadata)))
      ;; create new tables as needed or mark them as active again
      (when (seq new-tables)
-       (let [new-tables-info (set (map #(get name+schema->db-table [(:name %) (:schema %)]) new-tables))]
+       (let [new-tables-info (set (map #(get name+schema->db-table (name+schema %)) new-tables))]
          (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
                                                 (sync-util/name-for-logging database))
            (create-or-reactivate-tables! database new-tables-info))))

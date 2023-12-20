@@ -148,40 +148,44 @@
               (isa? x :Relation/*) {:semantic-type x}
               :else                {:effective-type x}))]
     (doseq [{:keys [pred positive negative]}
-            [{:pred #'lib.types.isa/temporal?,          :positive :type/DateTime,    :negative :type/City}
-             {:pred #'lib.types.isa/numeric?,           :positive :type/Integer,     :negative :type/FK}
-             {:pred #'lib.types.isa/boolean?,           :positive :type/Boolean,     :negative :type/PK}
-             {:pred #'lib.types.isa/string?,            :positive :type/URL,         :negative :tpye/Address}
-             {:pred #'lib.types.isa/summable?,          :positive :type/Number,      :negative :type/Address}
-             {:pred #'lib.types.isa/scope?,             :positive :type/Time,        :negative :type/Address}
-             {:pred #'lib.types.isa/category?,          :positive :type/Company,     :negative :type/URL}
-             {:pred #'lib.types.isa/location?,          :positive :type/Address,     :negative :type/Number}
-             {:pred #'lib.types.isa/description?,       :positive :type/Description, :negative :type/City}
-             {:pred #'lib.types.isa/dimension?,         :positive :type/City,        :negative :type/Description}
-             {:pred #'lib.types.isa/metric?,            :positive :type/Number,      :negative :type/City}
-             {:pred #'lib.types.isa/foreign-key?,       :positive :type/FK,          :negative :type/ZipCode}
-             {:pred #'lib.types.isa/primary-key?,       :positive :type/PK,          :negative :type/ZipCode}
-             {:pred #'lib.types.isa/entity-name?,       :positive :type/Name,        :negative :type/Number}
-             {:pred #'lib.types.isa/any?,               :positive :type/*}
-             {:pred #'lib.types.isa/numeric-base-type?, :positive :type/Integer,     :negative :type/String}
-             {:pred #'lib.types.isa/date-without-time?, :positive :type/Date,        :negative :type/Time}
-             {:pred #'lib.types.isa/number?,            :positive :type/Number,      :negative :type/Text}
-             {:pred #'lib.types.isa/time?,              :positive :type/Time,        :negative :type/Number}
-             {:pred #'lib.types.isa/address?,           :positive :type/Address,     :negative :type/String}
-             {:pred #'lib.types.isa/city?,              :positive :type/City,        :negative :type/ZipCode}
-             {:pred #'lib.types.isa/state?,             :positive :type/State,       :negative :type/Text}
-             {:pred #'lib.types.isa/zip-code?,          :positive :type/ZipCode,     :negative :type/City}
-             {:pred #'lib.types.isa/country?,           :positive :type/Country,     :negative :type/City}
-             {:pred #'lib.types.isa/coordinate?,        :positive :type/Coordinate   :negative :type/Double}
-             {:pred #'lib.types.isa/latitude?,          :positive :type/Latitude,    :negative :type/Double}
-             {:pred #'lib.types.isa/longitude?,         :positive :type/Longitude,   :negative :type/Double}
-             {:pred #'lib.types.isa/currency?,          :positive :type/Currency,    :negative :type/Double}
-             {:pred #'lib.types.isa/comment?,           :positive :type/Comment,     :negative :type/Text}
-             {:pred #'lib.types.isa/id?,                :positive :type/FK,          :negative :type/Integer}
-             {:pred #'lib.types.isa/URL?,               :positive :type/URL,         :negative :type/Text}
-             {:pred #'lib.types.isa/email?,             :positive :type/Email,       :negative :type/String}
-             {:pred #'lib.types.isa/avatar-URL?,        :positive :type/AvatarURL,   :negative :type/URL}
-             {:pred #'lib.types.isa/image-URL?,         :positive :type/ImageURL,    :negative :type/URL}]]
+            [{:pred #'lib.types.isa/temporal?,           :positive :type/DateTime,          :negative :type/City}
+             {:pred #'lib.types.isa/numeric?,            :positive :type/Integer,           :negative :type/FK}
+             {:pred #'lib.types.isa/boolean?,            :positive :type/Boolean,           :negative :type/PK}
+             {:pred #'lib.types.isa/string?,             :positive :type/URL,               :negative :tpye/Address}
+             {:pred #'lib.types.isa/summable?,           :positive :type/Number,            :negative :type/Address}
+             {:pred #'lib.types.isa/scope?,              :positive :type/Time,              :negative :type/Address}
+             {:pred #'lib.types.isa/category?,           :positive :type/Company,           :negative :type/URL}
+             {:pred #'lib.types.isa/location?,           :positive :type/Address,           :negative :type/Number}
+             {:pred #'lib.types.isa/description?,        :positive :type/Description,       :negative :type/City}
+             {:pred #'lib.types.isa/dimension?,          :positive :type/City,              :negative :type/Description}
+             {:pred #'lib.types.isa/metric?,             :positive :type/Number,            :negative :type/City}
+             {:pred #'lib.types.isa/foreign-key?,        :positive :type/FK,                :negative :type/ZipCode}
+             {:pred #'lib.types.isa/primary-key?,        :positive :type/PK,                :negative :type/ZipCode}
+             {:pred #'lib.types.isa/entity-name?,        :positive :type/Name,              :negative :type/Number}
+             {:pred #'lib.types.isa/title?,              :positive :type/Title,             :negative :type/Name}
+             {:pred #'lib.types.isa/any?,                :positive :type/*}
+             {:pred #'lib.types.isa/numeric-base-type?,  :positive :type/Integer,           :negative :type/String}
+             {:pred #'lib.types.isa/date-without-time?,  :positive :type/Date,              :negative :type/Time}
+             {:pred #'lib.types.isa/creation-timestamp?, :positive :type/CreationTimestamp, :negative :type/CreationDate}
+             {:pred #'lib.types.isa/creation-date?,      :positive :type/CreationDate,      :negative :type/CreationTimestamp}
+             {:pred #'lib.types.isa/creation-time?,      :positive :type/CreationTime,      :negative :type/CreationTimestamp}
+             {:pred #'lib.types.isa/number?,             :positive :type/Number,            :negative :type/Text}
+             {:pred #'lib.types.isa/time?,               :positive :type/Time,              :negative :type/Number}
+             {:pred #'lib.types.isa/address?,            :positive :type/Address,           :negative :type/String}
+             {:pred #'lib.types.isa/city?,               :positive :type/City,              :negative :type/ZipCode}
+             {:pred #'lib.types.isa/state?,              :positive :type/State,             :negative :type/Text}
+             {:pred #'lib.types.isa/zip-code?,           :positive :type/ZipCode,           :negative :type/City}
+             {:pred #'lib.types.isa/country?,            :positive :type/Country,           :negative :type/City}
+             {:pred #'lib.types.isa/coordinate?,         :positive :type/Coordinate         :negative :type/Double}
+             {:pred #'lib.types.isa/latitude?,           :positive :type/Latitude,          :negative :type/Double}
+             {:pred #'lib.types.isa/longitude?,          :positive :type/Longitude,         :negative :type/Double}
+             {:pred #'lib.types.isa/currency?,           :positive :type/Currency,          :negative :type/Double}
+             {:pred #'lib.types.isa/comment?,            :positive :type/Comment,           :negative :type/Text}
+             {:pred #'lib.types.isa/id?,                 :positive :type/FK,                :negative :type/Integer}
+             {:pred #'lib.types.isa/URL?,                :positive :type/URL,               :negative :type/Text}
+             {:pred #'lib.types.isa/email?,              :positive :type/Email,             :negative :type/String}
+             {:pred #'lib.types.isa/avatar-URL?,         :positive :type/AvatarURL,         :negative :type/URL}
+             {:pred #'lib.types.isa/image-URL?,          :positive :type/ImageURL,          :negative :type/URL}]]
       (testing pred
         (when positive
           (testing positive

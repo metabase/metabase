@@ -257,36 +257,23 @@
         (let [table-name->is-filter-required? {"partition_by_range"              true
                                                "partition_by_time"               true
                                                "partition_by_ingestion_time"     true
-                                               "partitioned_marterialized_view"  true
                                                "partition_by_range_not_required" false
                                                "not_partitioned"                 false}]
           (try
-           (doseq [sql [(format "CREATE TABLE %s (customer_id INT64, date1 DATE)
-                                PARTITION BY
-                                RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
+           (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
+                                PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
                                 OPTIONS (require_partition_filter = TRUE);"
                                 (fmt-table-name "partition_by_range"))
-                        (format "CREATE TABLE %s (transaction_id INT64, transaction_date DATE)
-                                PARTITION BY
-                                transaction_date
-                                OPTIONS (
-                                require_partition_filter = TRUE);"
+                        (format "CREATE TABLE %s (transaction_id INT64, transaction_time TIMESTAMP)
+                                PARTITION BY DATE(transaction_time)
+                                OPTIONS (require_partition_filter = TRUE);"
                                 (fmt-table-name "partition_by_time"))
                         (format "CREATE TABLE %s (transaction_id INT64)
-                                PARTITION BY
-                                _PARTITIONDATE
-                                OPTIONS (
-                                require_partition_filter = TRUE);"
+                                PARTITION BY _PARTITIONDATE
+                                OPTIONS (require_partition_filter = TRUE);"
                                 (fmt-table-name "partition_by_ingestion_time"))
-                        (format "CREATE TABLE %s (transaction_id INT64)
-                                PARTITION BY
-                                _PARTITIONDATE
-                                OPTIONS (
-                                require_partition_filter = TRUE);"
-                                (fmt-table-name "partitioned_marterialized_view"))
-                        (format "CREATE TABLE %s (customer_id INT64, date1 DATE)
-                                PARTITION BY
-                                RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
+                        (format "CREATE TABLE %s (customer_id INT64, transaction_date DATE)
+                                PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
                                 OPTIONS (require_partition_filter = FALSE);"
                                 (fmt-table-name "partition_by_range_not_required"))
                         (format "CREATE TABLE %s (transaction_id INT64);"
@@ -302,14 +289,14 @@
            (testing "partitioned fields are correctly identified"
              (is (= {["not_partitioned"                 "transaction_id"]   false
                      ["partition_by_range_not_required" "customer_id"]      true
-                     ["partition_by_range_not_required" "date1"]            false
+                     ["partition_by_range_not_required" "transaction_date"] false
                      ["partition_by_range"              "customer_id"]      true
                      ["partition_by_range"              "date1"]            false
                      ["partition_by_ingestion_time"     "transaction_id"]   false
                      ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
                      ["partitioned_marterialized_view"  "transaction_id"]   false
                      ["partitioned_marterialized_view"  "_PARTITIONTIME"]   true
-                     ["partition_by_time"               "transaction_date"] true
+                     ["partition_by_time"               "transaction_time"] true
                      ["partition_by_time"               "transaction_id"]   false}
                     (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
                                     :from   [[:metabase_field :field]]
@@ -321,8 +308,8 @@
                          (into {})))))
 
            (finally
-            (doseq [table-name (keys table-name->is-filter-required?)]
-              (drop-table-if-exists! table-name)))))))))
+            (doall (map drop-table-if-exists! (keys table-name->is-filter-required?)))
+            nil)))))))
 
 (deftest sync-pseudocolumn-for-ingestion-time-partitioned-table-test
   (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME"

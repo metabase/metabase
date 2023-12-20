@@ -204,20 +204,20 @@ describe("scenarios > visualizations > bar chart", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
-      cy.findByTestId("filter-field-Category").within(() => {
-        cy.findByTestId("operator-select").click();
+      cy.findByTestId("filter-column-Category").within(() => {
+        cy.findByLabelText("Filter operator").click();
       });
 
       popover().within(() => {
         cy.findByText("Is not").click();
       });
 
-      cy.findByTestId("filter-field-Category").within(() => {
+      cy.findByTestId("filter-column-Category").within(() => {
         cy.findByText("Gadget").click();
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Apply Filters").click();
+      cy.findByText("Apply filters").click();
 
       getDraggableElements().should("have.length", 3);
 
