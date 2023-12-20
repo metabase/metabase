@@ -105,7 +105,7 @@
     (doseq [{{id :id} :changeSet :as change-set} change-log
             :when                                (and id
                                                       (string? id)
-                                                      (> (compare-ids id "v49.00-032") 0))]
+                                                      (pos? (compare-ids id "v49.00-032")))]
       (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
 
