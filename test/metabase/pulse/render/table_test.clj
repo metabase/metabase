@@ -6,7 +6,10 @@
    [metabase.pulse.render.color :as color]
    [metabase.pulse.render.table :as table]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- query-results->header+rows
   "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
@@ -239,29 +242,22 @@
                   :rows [[1 2] [3 4]]}})))))
 
 (deftest attachment-rows-limit-test
-  (testing "The `metabase.public-settings/attachment-rows-limit` defaults to 10 rows."
-    (mt/with-temp-env-var-value ["MB_ATTACHMENT_TABLE_ROW_LIMIT" nil]
-      (is (= 10
-             (count (-> (render-table
-                         {:visualization_settings {:table.columns
-                                                   [{:name "a" :enabled true}]}}
-                         {:data {:cols [{:name         "a",
-                                         :display_name "a",
-                                         :base_type    :type/BigInteger
-                                         :semantic_type nil}]
-                                 :rows (repeat 30 ["I will keep default limits."])}})
-                        :content
-                        (render.tu/nodes-with-text "I will keep default limits.")))))))
-  (testing "The `metabase.public-settings/attachment-rows-limit` is respected in table renders."
-    (mt/with-temp-env-var-value ["MB_ATTACHMENT_TABLE_ROW_LIMIT" 20]
-      (is (= 20
-             (count (-> (render-table
-                         {:visualization_settings {:table.columns
-                                                   [{:name "a" :enabled true}]}}
-                         {:data {:cols [{:name         "a",
-                                         :display_name "a",
-                                         :base_type    :type/BigInteger
-                                         :semantic_type nil}]
-                                 :rows (repeat 30 ["I will not hard-code row limits."])}})
-                        :content
-                        (render.tu/nodes-with-text "I will not hard-code row limits."))))))))
+  (doseq [[test-explanation env-var-value] [["defaults to 10 rows." nil]
+                                            ["is respected in table renders when below the previous default of 10." 5]
+                                            ["is respected in table renders when above the previous default of 10." 20]
+                                            ["is set to 10 when the value doesn't make sense." -20]]]
+    (testing (format "The `metabase.public-settings/attachment-rows-limit` %s" test-explanation)
+      (mt/with-temp-env-var-value ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
+        (is (= (if (pos-int? env-var-value)
+                 env-var-value
+                 10)
+               (count (-> (render-table
+                           {:visualization_settings {:table.columns
+                                                     [{:name "a" :enabled true}]}}
+                           {:data {:cols [{:name         "a",
+                                           :display_name "a",
+                                           :base_type    :type/BigInteger
+                                           :semantic_type nil}]
+                                   :rows (repeat 30 ["I will keep default limits."])}})
+                          :content
+                          (render.tu/nodes-with-text "I will keep default limits.")))))))))
