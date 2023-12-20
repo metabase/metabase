@@ -209,7 +209,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.visit(standalonePath);
           cy.wait("@currentlyEmbeddedObject");
 
-          const sectionTestId = new RegExp(`-embedded-${object}s-setting`);
+          const sectionTestId = {
+            dashboard: "-embedded-dashboards-setting",
+            question: "-embedded-questions-setting",
+          }[object];
 
           cy.findByTestId(sectionTestId)
             .find("tbody tr")
