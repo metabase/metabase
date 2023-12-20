@@ -86,8 +86,8 @@
                              (filter #(str/starts-with? % "style-src "))
                              first)]
           (testing "The nonce is 10 characters long and alphanumeric"
-            (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce))
+            (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce)))
           (testing "The same nonce is in the CSP header"
            (is (str/includes? style-src (str "nonce-" nonce))))
           (testing "The same nonce is in the body of the rendered page"
-            (is (str/includes? (:body response) nonce)))))))))
+            (is (str/includes? (:body response) nonce))))))))

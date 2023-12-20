@@ -12,6 +12,7 @@
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.email :as email]
+   [metabase.embed.settings :as embed.settings]
    [metabase.integrations.google :as google]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -141,8 +142,8 @@
    :instance_started         (snowplow/instance-creation)
    :has_sample_data          (t2/exists? Database, :is_sample true)
    :help_link                (public-settings/help-link)
-   :enable_embedding         (public-settings/enable-embedding)
-   :embedding_app_origin_set (boolean (public-settings/embedding-app-origin))})
+   :enable_embedding         (embed.settings/enable-embedding)
+   :embedding_app_origin_set (boolean (embed.settings/embedding-app-origin))})
 
 (defn- user-metrics
   "Get metrics based on user records.

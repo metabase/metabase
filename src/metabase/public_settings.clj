@@ -271,20 +271,6 @@
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-embedding
-  (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
-  :type       :boolean
-  :default    false
-  :visibility :authenticated
-  :audit      :getter)
-
-(defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full {0} application"
-                (application-name-for-setting-descriptions))
-  :feature    :embedding
-  :visibility :public
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean

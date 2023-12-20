@@ -10,7 +10,6 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :refer [PulseChannel]]
    [metabase.models.query-execution :refer [QueryExecution]]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -71,12 +70,12 @@
     "10000+"     100000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [email/email-configured?           (constantly false)
-                slack/slack-configured?           (constantly false)
-                public-settings/enable-embedding  (constantly false)]
+  (with-redefs [email/email-configured? (constantly false)
+                slack/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Test"
                                        startup-time-millis 1234.0
-                                       google-auth-enabled false]
+                                       google-auth-enabled false
+                                       enable-embedding    false]
       (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
         (let [stats (anonymous-usage-stats)]
           (is (partial= {:running_on               :unknown
