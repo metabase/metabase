@@ -28,7 +28,7 @@ const setup = ({
   const onCreatePublicLink = jest.fn();
   const onDeletePublicLink = jest.fn();
   const getPublicUrl = jest.fn(resource => resource.public_uuid);
-  const onChangeEmbedType = jest.fn();
+  const goToNextStep = jest.fn();
 
   const { history } = renderWithProviders(
     <Route
@@ -40,7 +40,7 @@ const setup = ({
           onCreatePublicLink={onCreatePublicLink}
           onDeletePublicLink={onDeletePublicLink}
           getPublicUrl={getPublicUrl}
-          onChangeEmbedType={onChangeEmbedType}
+          goToNextStep={goToNextStep}
           isPublicSharingEnabled={isPublicSharingEnabled}
         />
       )}
@@ -58,7 +58,7 @@ const setup = ({
   );
 
   return {
-    onChangeEmbedType,
+    goToNextStep,
     onCreatePublicLink,
     onDeletePublicLink,
     getPublicUrl,
@@ -77,12 +77,12 @@ describe("SharingPane", () => {
         ).toBeInTheDocument();
       });
 
-      it("should call `onChangeEmbedType` with `application` when `Edit settings` is clicked", () => {
-        const { onChangeEmbedType } = setup({ isResourcePublished: true });
+      it("should call `goToNextStep` with `application` when `Edit settings` is clicked", () => {
+        const { goToNextStep } = setup({ isResourcePublished: true });
 
         userEvent.click(screen.getByRole("button", { name: "Edit settings" }));
 
-        expect(onChangeEmbedType).toHaveBeenCalledWith("application");
+        expect(goToNextStep).toHaveBeenCalledWith("application");
       });
     });
 
@@ -95,12 +95,12 @@ describe("SharingPane", () => {
         ).toBeInTheDocument();
       });
 
-      it("should call `onChangeEmbedType` with `application` when `Set this up` is clicked", () => {
-        const { onChangeEmbedType } = setup({ isResourcePublished: false });
+      it("should call `goToNextStep` with `application` when `Set this up` is clicked", () => {
+        const { goToNextStep } = setup({ isResourcePublished: false });
 
         userEvent.click(screen.getByRole("button", { name: "Set this up" }));
 
-        expect(onChangeEmbedType).toHaveBeenCalledWith("application");
+        expect(goToNextStep).toHaveBeenCalledWith("application");
       });
     });
   });

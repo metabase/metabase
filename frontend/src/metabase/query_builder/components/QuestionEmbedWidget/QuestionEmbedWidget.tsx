@@ -3,7 +3,7 @@ import type { EmbedOptions } from "metabase-types/store";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
-import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
+import { EmbedModal } from "metabase/public/components/EmbedModal/EmbedModal";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";

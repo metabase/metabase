@@ -2,7 +2,7 @@ import type { Dashboard } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
+import { EmbedModal } from "metabase/public/components/EmbedModal/EmbedModal";
 import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 import { getParameters } from "metabase/dashboard/selectors";
 

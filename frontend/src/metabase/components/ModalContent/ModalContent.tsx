@@ -35,7 +35,7 @@ export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
     "data-testid": PropTypes.string,
     id: PropTypes.string,
-    title: PropTypes.string,
+    title: PropTypes.oneOfType([PropTypes.string, PropTypes.element]),
     centeredTitle: PropTypes.bool,
     onClose: PropTypes.func,
     // takes over the entire screen

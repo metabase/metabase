@@ -2,7 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { Group } from "metabase/ui";
 
-export const EmbedTitleContainer = styled(Group)<{
+export const EmbedTitleContainer = styled(Group, {
+  shouldForwardProp: prop => prop !== "isActive",
+})<{
   isActive?: boolean;
 }>`
   ${({ isActive, theme }) => {

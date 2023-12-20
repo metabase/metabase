@@ -7,7 +7,7 @@ import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
 import { Box, Text } from "metabase/ui";
 import { EmbedTitleContainer } from "./EmbedModal.styled";
 
-type EmbedModalStep = "application" | "legalese" | null;
+export type EmbedModalStep = "application" | "legalese" | null;
 
 const EmbedTitle = ({
   embedStep,
