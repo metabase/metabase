@@ -1,8 +1,7 @@
-import { useMemo } from "react";
 import type * as Lib from "metabase-lib";
 import { SimpleDatePicker } from "metabase/querying/components/DatePicker";
 import type { DatePickerValue } from "metabase/querying/components/DatePicker";
-import { getFilterClause, getPickerOperators, getPickerValue } from "../utils";
+import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
 
 interface SimpleDateFilterPickerProps {
   query: Lib.Query;
@@ -19,17 +18,16 @@ export function SimpleDateFilterPicker({
   filter,
   onChange,
 }: SimpleDateFilterPickerProps) {
-  const value = useMemo(() => {
-    return filter && getPickerValue(query, stageIndex, filter);
-  }, [query, stageIndex, filter]);
-
-  const availableOperators = useMemo(() => {
-    return getPickerOperators(query, stageIndex, column);
-  }, [query, stageIndex, column]);
+  const { value, availableOperators, getFilterClause } = useDateFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
   const handleChange = (value: DatePickerValue | undefined) => {
     if (value) {
-      onChange(getFilterClause(query, stageIndex, column, value));
+      onChange(getFilterClause(value));
     } else {
       onChange(undefined);
     }
