@@ -28,6 +28,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *in-tests* "Set when executed in tests to prevent async removal of files" false)
+
 ;;; Request callbacks
 
 (defn- ba-copy [f]
@@ -41,7 +43,9 @@
     ring.protocols/StreamableResponseBody
     (write-body-to-stream [_ response out]
       (ring.protocols/write-body-to-stream data response out)
-      (callback))
+      (if *in-tests*
+        (callback)
+        (future (callback))))
 
     ;; mt/user-http-request goes here
     clojure.java.io.IOFactory
@@ -147,6 +151,7 @@
       (try                              ; try/catch inside logging to log errors
         (-> (extract/extract opts)
             (storage/store! path))
+        ;; not removing storage immediately to save some time before response
         (compress-tgz path dst)
         (catch Exception e
           (log/error e "Error during serialization"))))
