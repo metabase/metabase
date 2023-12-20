@@ -84,17 +84,15 @@ export const getChangeWidth = (width: number): number => {
 export const COMPARISON_SELECTOR_OPTIONS = {
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-    prefix: t`Previous`,
   },
   PERIODS_AGO: {
     type: COMPARISON_TYPES.PERIODS_AGO,
-    suffix: t`ago`,
   },
   PREVIOUS_VALUE: {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
     name: t`Previous value`,
   },
-};
+} as const;
 
 export function getDefaultComparison(
   series: RawSeries,
@@ -253,25 +251,61 @@ function createComparisonMenuOption(
   if (type === COMPARISON_TYPES.PREVIOUS_PERIOD) {
     const { dateUnit } = comparisonParameters;
 
-    const { prefix } = COMPARISON_SELECTOR_OPTIONS.PREVIOUS_PERIOD;
-
     return {
       type,
-      name: `${prefix} ${dateUnit}`,
+      name: formatPreviousPeriodOptionName(dateUnit),
     };
   }
 
   if (type === COMPARISON_TYPES.PERIODS_AGO) {
     const { maxValue, dateUnit } = comparisonParameters;
 
-    const { suffix } = COMPARISON_SELECTOR_OPTIONS.PERIODS_AGO;
-
     return {
       type,
-      name: `${dateUnit}s ${suffix}`,
+      name: formatPeriodsAgoOptionName(dateUnit),
       maxValue,
     };
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
+}
+
+function formatPreviousPeriodOptionName(dateUnit: RelativeDatetimeUnit) {
+  switch (dateUnit) {
+    case "minute":
+      return t`Previous minute`;
+    case "hour":
+      return t`Previous hour`;
+    case "day":
+      return t`Previous day`;
+    case "week":
+      return t`Previous week`;
+    case "month":
+      return t`Previous month`;
+    case "quarter":
+      return t`Previous quarter`;
+    case "year":
+      return t`Previous year`;
+  }
+  return "";
+}
+
+function formatPeriodsAgoOptionName(dateUnit: RelativeDatetimeUnit) {
+  switch (dateUnit) {
+    case "minute":
+      return t`minutes ago`;
+    case "hour":
+      return t`hours ago`;
+    case "day":
+      return t`days ago`;
+    case "week":
+      return t`weeks ago`;
+    case "month":
+      return t`months ago`;
+    case "quarter":
+      return t`quarters ago`;
+    case "year":
+      return t`years ago`;
+  }
+  return "";
 }
