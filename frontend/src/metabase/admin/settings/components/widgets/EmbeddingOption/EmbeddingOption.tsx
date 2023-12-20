@@ -34,11 +34,13 @@ function EmbeddingOption({
   return (
     <StyledCard compact>
       {icon}
-      <Flex gap="md" my="md" direction={"row"}>
+      <Flex gap="md" mt="md" mb="sm" direction={"row"}>
         <Title order={2}>{title}</Title>
         {label && <Label>{label}</Label>}
       </Flex>
-      <Text mb={"lg"}>{description}</Text>
+      <Text lh={"1.25rem"} mb={"lg"}>
+        {description}
+      </Text>
       <Flex gap="md" direction="column" align="flex-start">
         {children}
       </Flex>

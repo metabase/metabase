@@ -6,7 +6,7 @@ import { space } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 
 export const StyledCard = styled(Card)`
-  padding: 2rem;
+  padding: 2.5rem;
   width: 100%;
   max-width: 40rem;
 `;
