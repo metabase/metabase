@@ -335,6 +335,27 @@
            (finally
             (drop-table-if-exists! table-name))))))))
 
+(deftest sync-update-require-partition-option-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "changing the partition option should be updated during sync"
+      (mt/with-model-cleanup [:model/Table]
+        (let [table-name "partitioned_table"]
+          (try
+           (bigquery.tx/execute! (format "CREATE TABLE %s (customer_id INT64)
+                                         PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10));"
+                                         (fmt-table-name table-name)))
+           (testing "sanity check that it's not required at first"
+             (sync/sync-database! (mt/db) {:scan :schema})
+             (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))
+           (testing "sync should update require filter and set it to true"
+             (bigquery.tx/execute! (format "ALTER TABLE IF EXISTS %s
+                                           SET OPTIONS(require_partition_filter = true);"
+                                           (fmt-table-name table-name)))
+             (sync/sync-database! (mt/db) {:scan :schema})
+             (is (true? (t2/select-one-fn :database_require_filter :model/Table :name table-name :db_id (mt/id)))))
+           (finally
+            (drop-table-if-exists! table-name))))))))
+
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should be able to query a Table that has a :type/Integer column marked as a PK or FK"
