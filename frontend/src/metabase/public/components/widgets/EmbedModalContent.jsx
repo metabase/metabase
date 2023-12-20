@@ -9,6 +9,7 @@ import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
+import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
 import { SharingPane } from "./SharingPane";
 
@@ -100,7 +101,7 @@ class EmbedModalContent extends Component {
       resourceType,
       resourceParameters,
       embedType,
-      setEmbedType,
+      goToNextStep,
     } = this.props;
     const { pane, embeddingParams, parameterValues, displayOptions } =
       this.state;
@@ -111,9 +112,15 @@ class EmbedModalContent extends Component {
       embeddingParams,
     );
 
-    return embedType == null ? (
-      <SharingPane {...this.props} onChangeEmbedType={setEmbedType} />
-    ) : embedType === "application" ? (
+    if (embedType == null) {
+      return <SharingPane {...this.props} goToNextStep={goToNextStep} />;
+    }
+
+    if (embedType === "legalese") {
+      return <LegaleseStep goToNextStep={goToNextStep} />;
+    }
+
+    return embedType === "application" ? (
       <div className="flex flex-full" style={{ height: "100%" }}>
         <AdvancedEmbedPane
           pane={pane}
@@ -181,7 +188,8 @@ EmbedModalContent.propTypes = {
   onUpdateEmbeddingParams: PropTypes.func,
 
   embedType: PropTypes.string,
-  setEmbedType: PropTypes.func.isRequired,
+  goToNextStep: PropTypes.func.isRequired,
+  goToPreviousStep: PropTypes.func.isRequired,
 };
 
 function getDefaultEmbeddingParams(props) {
