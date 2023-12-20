@@ -45,7 +45,7 @@ function AuthorizedOriginsNote() {
       <SameSiteAlert variant="warning" hasBorder>
         <Center>
           <Text>{jt`You should probably change this setting to ${(
-            <Text span fw="bold">
+            <Text key="inner" span fw="bold">
               {t`None`}
             </Text>
           )}.`}</Text>
