@@ -187,7 +187,7 @@
                   :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))
 
 (deftest prevent-bare-boolean-type-test
-  (testing "should allow \"${boolean.type}\" columns from being added"
+  (testing "should allow adding \"${boolean.type}\" columns"
     (is (= :ok
           (validate
            (mock-change-set
