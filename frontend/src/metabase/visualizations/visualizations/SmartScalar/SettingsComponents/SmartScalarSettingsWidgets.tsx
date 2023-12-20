@@ -6,7 +6,7 @@ import { isEmpty } from "metabase/lib/validate";
 import type { SmartScalarComparison } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
-import { PeriodsAgoOptionComponent } from "./PeriodsAgoOptionComponent";
+import { PeriodsAgoMenuOption } from "./PeriodsAgoOptionComponent";
 import { ButtonStyled } from "./SmartScalarSettingsWidgets.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
 
@@ -80,7 +80,7 @@ function renderMenuOption({
     const { maxValue } = optionArgs;
 
     return (
-      <PeriodsAgoOptionComponent
+      <PeriodsAgoMenuOption
         key={type}
         aria-selected={selectedValue.type === type}
         type={type}

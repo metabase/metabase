@@ -10,7 +10,7 @@ import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
 
-type PeriodsAgoOptionComponentProps = {
+type PeriodsAgoMenuOptionProps = {
   "aria-selected": boolean;
   maxValue: number;
   name: string;
@@ -20,7 +20,7 @@ type PeriodsAgoOptionComponentProps = {
   type: string;
 };
 
-export function PeriodsAgoOptionComponent({
+export function PeriodsAgoMenuOption({
   "aria-selected": isSelected,
   maxValue,
   name,
@@ -28,7 +28,7 @@ export function PeriodsAgoOptionComponent({
   selectedValue,
   setOpen,
   type,
-}: PeriodsAgoOptionComponentProps) {
+}: PeriodsAgoMenuOptionProps) {
   const value = useMemo(() => {
     if (!selectedValue) {
       return null;
