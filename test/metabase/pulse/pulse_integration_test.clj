@@ -424,7 +424,7 @@
                    (metamodel-results "Example Time")))))))))
 
 (deftest renamed-column-names-are-applied-test
-  (testing "CSV and JSON attachments should have the same columns as displayed in Metabase (#18572)"
+  (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
     (mt/with-temporary-setting-values [custom-formatting nil]
       (let [query        {:source-table (mt/id :orders)
                           :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
