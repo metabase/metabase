@@ -30,27 +30,18 @@
 
 ;;; Request callbacks
 
-(def callbacks* "Callbacks to run on request completion" (atom {}))
-
-(defn- register-cb! [req cb]
-  (swap! callbacks* update req conj cb))
-
-(defn- run-callbacks! [req]
-  (run! #(%) (get @callbacks* req))
-  (swap! callbacks* dissoc req))
-
 (defn- ba-copy [f]
   (let [baos (ByteArrayOutputStream.)]
     (io/copy f baos)
     (.toByteArray baos)))
 
-(defn- on-response! [req data]
+(defn- on-response! [data callback]
   (reify
     ;; Real HTTP requests and mt/user-real-request go here
     ring.protocols/StreamableResponseBody
     (write-body-to-stream [_ response out]
       (ring.protocols/write-body-to-stream data response out)
-      (run-callbacks! req))
+      (callback))
 
     ;; mt/user-http-request goes here
     clojure.java.io.IOFactory
@@ -58,7 +49,7 @@
       (let [res (io/input-stream (if (instance? File data)
                                    (ba-copy data)
                                    data))]
-        (run-callbacks! req)
+        (callback)
         res))))
 
 ;;; Storage
@@ -144,7 +135,7 @@
 
 ;;; Logic
 
-(defn- serialize&pack ^File [req opts]
+(defn- serialize&pack ^File [opts]
   ;; TODO: how to get time in local timezone?
   (let [id       (format "%s-%s"
                          (u/slugify (public-settings/site-name))
@@ -153,39 +144,42 @@
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")]
     (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
-      (try
+      (try                              ; try/catch inside logging to log errors
         (-> (extract/extract opts)
             (storage/store! path))
         (compress-tgz path dst)
-        dst
         (catch Exception e
-          (log/error e "Error during serialization")
-          (throw (ex-info "Error during serialization" {:log-file log-file} e)))
-        (finally
-          (when (.exists path)
-            (register-cb! req #(run! io/delete-file (reverse (file-seq path)))))
-          (when (.exists dst)
-            (register-cb! req #(io/delete-file dst))))))))
+          (log/error e "Error during serialization"))))
+    {:archive  (when (.exists dst)
+                 dst)
+     :log-file (when (.exists log-file)
+                 log-file)
+     :callback (fn []
+                 (when (.exists path)
+                   (run! io/delete-file (reverse (file-seq path))))
+                 (when (.exists dst)
+                   (io/delete-file dst)))}))
 
-(defn- unpack&import [req ^File file & [size]]
+(defn- unpack&import [^File file & [size]]
   (let [dst      (io/file parent-dir (apply str (repeatedly 20 #(char (+ 65 (rand-int 26))))))
         log-file (io/file dst "import.log")]
-    (try
-      (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
+    (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
+      (try                              ; try/catch inside logging to log errors
         (log/infof "Serdes import, size %s" size)
         (let [path (uncompress-tgz file dst)]
           (serdes/with-cache
             (-> (v2.ingest/ingest-yaml (.getPath (io/file dst path)))
-                (v2.load/load-metabase! {:abort-on-error true})))))
-      (finally
-        (when (.exists dst)
-          (register-cb! req #(run! io/delete-file (reverse (file-seq dst)))))))
-    log-file))
+                (v2.load/load-metabase! {:abort-on-error true}))))
+        (catch Exception e
+          (log/error e "Error during serialization"))))
+    {:log-file log-file
+     :callback #(when (.exists dst)
+                  (run! io/delete-file (reverse (file-seq dst))))}))
 
 (comment
   ;; dump on disk and see that it works
-  (serialize&pack nil {:no-data-model true :no-settings true :targets [["Collection" 31409]]})
-  (unpack&import nil (io/file "metabase_test.tar.gz")))
+  (serialize&pack {:no-data-model true :no-settings true :targets [["Collection" 31409]]})
+  (unpack&import (io/file "metabase_test.tar.gz")))
 
 ;;; HTTP API
 
@@ -195,8 +189,7 @@
          :or   {settings        true
                 data-model      true
                 all-collections true}}
-        :query-params
-        :as req}]
+        :query-params}]
   {collection       [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
    all-collections  [:maybe ms/BooleanValue]
    settings         [:maybe ms/BooleanValue]
@@ -212,30 +205,27 @@
                     :no-data-model            (not data-model)
                     :no-settings              (not settings)
                     :include-field-values     field-values
-                    :include-database-secrets database-secrets}]
-    (try
-      (let [archive (serialize&pack req opts)]
-        {:status  200
-         :headers {"Content-Type"        "application/gzip"
-                   "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName archive))}
-         :body    (on-response! req archive)})
-      (catch Exception e
-        (if-let [log-file (:log-file (ex-data e))]
-          {:status  500
-           :headers {"Content-Type" "text/plain"}
-           :body    (on-response! req log-file)}
-          (throw e))))))
+                    :include-database-secrets database-secrets}
+        {:keys [archive log-file callback]}
+        (serialize&pack opts)]
+    (if archive
+      {:status  200
+       :headers {"Content-Type"        "application/gzip"
+                 "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
+       :body    (on-response! archive callback)}
+      {:status  500
+       :headers {"Content-Type" "text/plain"}
+       :body    (on-response! log-file callback)})))
 
 (api/defendpoint ^:multipart POST "/import"
-  [:as {raw-params :params :as req}]
+  [:as {raw-params :params}]
   (api/check-superuser)
   (try
-    (let [log-file (unpack&import req
-                                  (get-in raw-params ["file" :tempfile])
-                                  (get-in raw-params ["file" :size]))]
+    (let [{:keys [log-file callback]} (unpack&import (get-in raw-params ["file" :tempfile])
+                                                     (get-in raw-params ["file" :size]))]
       {:status  200
        :headers {"Content-Type" "text/plain"}
-       :body    (on-response! req log-file)})
+       :body    (on-response! log-file callback)})
     (finally
       (io/delete-file (get-in raw-params ["file" :tempfile])))))
 
