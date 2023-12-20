@@ -31,8 +31,8 @@
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
-                              TableDefinition TableDefinition$Type TableId TableResult)))
+                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema StandardTableDefinition
+                              Table TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -119,10 +119,10 @@
   [_ database]
   (let [tables (list-tables (:details database))]
     {:tables (set (for [^Table table tables
-                        :let  [^TableId         table-id   (.getTableId table)
-                               ^String          dataset-id (.getDataset table-id)
-                               ^TableDefinition tabledef   (.getDefinition table)
-                               table-name                  (str (.getTable table-id))]]
+                        :let  [^TableId                 table-id   (.getTableId table)
+                               ^String                  dataset-id (.getDataset table-id)
+                               ^StandardTableDefinition tabledef   (.getDefinition table)
+                                                        table-name (str (.getTable table-id))]]
                     {:schema                  dataset-id
                      :name                    table-name
                      :database_require_filter
