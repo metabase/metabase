@@ -4,7 +4,7 @@ import type { RowChartTheme } from "metabase/visualizations/shared/components/Ro
 export const getChartTheme = (fontFamily: string = "Lato"): RowChartTheme => {
   return {
     axis: {
-      color: color("text-light"),
+      color: color("border"),
       ticks: {
         size: 12,
         weight: 700,
