@@ -33,6 +33,15 @@ databaseChangeLog:
       name: databasechangelog.name
       value: databasechangelog
       dbms: postgresql
+  # in MySQL, use bit(1) for booleans instead of tinyint
+  - property:
+      name: boolean.type
+      value: boolean
+      dbms: postgresql,h2
+  - property:
+      name: boolean.type
+      value: bit(1)
+      dbms: mysql,mariadb
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
@@ -4380,6 +4389,363 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   remarks: 'If true, the table requires a filter to be able to query it'
+
+  - changeSet:
+      id: v49.00-013
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of action.archived from boolean to
+        ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: action
+            columnName: archived
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: action
+            columnName: archived
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-014
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.json_unfolding from
+        boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: json_unfolding
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: json_unfolding
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-015
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of database_is_auto_increment.metabase_field
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_is_auto_increment
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_is_auto_increment
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-016
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of report_dashboard.auto_apply_filters
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: auto_apply_filters
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: auto_apply_filters
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-017
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_database.is_audit
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: is_audit
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: is_audit
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-018
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_table.is_upload
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: is_upload
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: is_upload
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-019
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of revision.most_recent
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-020
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of revision.most_recent
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: revision
+            columnName: most_recent
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-021
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.select
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: select
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: select
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-022
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.update
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: update
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: update
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-023
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.insert
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: insert
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: insert
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-024
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of table_privileges.delete
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: delete
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: table_privileges
+            columnName: delete
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-025
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of query_execution.is_sandboxed
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: is_sandboxed
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: query_execution
+            columnName: is_sandboxed
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-026
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of view_log.has_access
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: has_access
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: view_log
+            columnName: has_access
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-027
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.database_indexed
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_indexed
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_indexed
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-028
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of metabase_table.database_require_filter
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: database_require_filter
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: database_require_filter
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-029
+      author: noahmoss
+      comment: >-
+        Added 0.49.0 - modify type of DATABASECHANGELOGLOCK.LOCKED
+        from boolean to ${boolean.type} on mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: DATABASECHANGELOGLOCK
+            columnName: LOCKED
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: DATABASECHANGELOGLOCK
+            columnName: LOCKED
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
