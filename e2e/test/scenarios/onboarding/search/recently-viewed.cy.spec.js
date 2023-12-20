@@ -53,6 +53,27 @@ describe("search > recently viewed", () => {
 
     cy.url().should("match", /\/question\/\d+-orders$/);
   });
+
+  it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
+    cy.findByPlaceholderText("Search…").click();
+    cy.wait("@recent");
+    cy.findByTestId("loading-spinner").should("not.exist");
+
+    assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
+    assertRecentlyViewedItem(1, "Orders", "Question");
+    assertRecentlyViewedItem(2, "People", "Table");
+    cy.findAllByTestId("recently-viewed-item-title").should("have.length", 3);
+
+    const recentlyViewedItems = cy.findAllByTestId(
+      "recently-viewed-item-title",
+    );
+    recentlyViewedItems.eq(2).click();
+
+    cy.findByPlaceholderText("Search…").click();
+    cy.wait("@recent");
+
+    assertRecentlyViewedItem(0, "People", "Table");
+  });
 });
 
 describeEE("search > recently viewed > enterprise features", () => {
