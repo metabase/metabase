@@ -23,7 +23,10 @@ export const UploadInfoModal = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Modal small>
-      <ModalContent title=" " onClose={onClose}>
+      <ModalContent
+        title={t`Uploads CSVs to ${applicationName}`}
+        onClose={onClose}
+      >
         <InfoModalContainer>
           <NewBadge>{t`New`}</NewBadge>
           <InfoModalTitle>{t`Uploads CSVs to ${applicationName}`}</InfoModalTitle>
