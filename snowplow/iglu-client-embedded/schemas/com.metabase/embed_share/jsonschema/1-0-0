@@ -3,7 +3,7 @@
   "description": "Schema for tracking embedding enabled and disabled events",
   "self": {
     "vendor": "com.metabase",
-    "name": "embed-share",
+    "name": "embed_share",
     "format": "jsonschema",
     "version": "1-0-0"
   },
@@ -35,6 +35,6 @@
       "maximum": 2147483647
     }
   },
-  "required": ["event_name"],
+  "required": ["event"],
   "additionalProperties": true
 }
