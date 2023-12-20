@@ -34,23 +34,20 @@
             (u/sh {:dir u/project-root-directory} "yarn" "--frozen-lockfile"))
           (u/sh {:dir u/project-root-directory} "yarn")))
       (u/step "Build frontend"
-         (let [frontend-build (future
-                                (u/sh {:dir u/project-root-directory
-                                       :env {"PATH"       (env/env :path)
-                                             "HOME"       (env/env :user-home)
-                                             "WEBPACK_BUNDLE"   "production"
-                                             "MB_EDITION" mb-edition}}
-                                      "yarn" "build-release"))
-               static-viz-build (future
-                                  (u/sh {:dir u/project-root-directory
-                                         :env {"PATH"       (env/env :path)
-                                               "HOME"       (env/env :user-home)
-                                               "WEBPACK_BUNDLE"   "production"
-                                               "MB_EDITION" mb-edition}}
-                                        "yarn" "build-static-viz"))]
-           (deref frontend-build)
-           (deref static-viz-build))))
-      (u/announce "Frontend built successfully.")))
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "WEBPACK_BUNDLE"   "production"
+                     "MB_EDITION" mb-edition}}
+              "yarn" "build-release"))
+      (u/step "Build static viz"
+        (u/sh {:dir u/project-root-directory
+               :env {"PATH"       (env/env :path)
+                     "HOME"       (env/env :user-home)
+                     "WEBPACK_BUNDLE"   "production"
+                     "MB_EDITION" mb-edition}}
+              "yarn" "build-static-viz"))
+      (u/announce "Frontend built successfully."))))
 
 (defn- build-licenses!
   [edition]
