@@ -4742,28 +4742,6 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-  - changeSet:
-      id: v49.00-032
-      author: noahmoss
-      comment: >-
-        Added 0.49.0 - modify type of DATABASECHANGELOGLOCK.LOCKED
-        from boolean to ${boolean.type} on mysql,mariadb
-      dbms: mysql,mariadb
-      changes:
-        - modifyDataType:
-            tableName: DATABASECHANGELOGLOCK
-            columnName: LOCKED
-            newDataType: ${boolean.type}
-      rollback:
-        - modifyDataType:
-            tableName: DATABASECHANGELOGLOCK
-            columnName: LOCKED
-            newDataType: boolean
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
