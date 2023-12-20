@@ -33,7 +33,7 @@ describe("[EE] embedding settings", () => {
         });
 
         expect(
-          screen.queryByText("upgrade to a plain plan"),
+          screen.queryByText("upgrade to a paid plan"),
         ).not.toBeInTheDocument();
       });
     });

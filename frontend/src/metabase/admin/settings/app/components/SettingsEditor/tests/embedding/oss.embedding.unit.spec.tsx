@@ -24,10 +24,10 @@ describe("[OSS] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(screen.getByText("upgrade to a plain plan")).toBeInTheDocument();
+        expect(screen.getByText("upgrade to a paid plan")).toBeInTheDocument();
 
         expect(
-          screen.getByRole("link", { name: "upgrade to a plain plan" }),
+          screen.getByRole("link", { name: "upgrade to a paid plan" }),
         ).toHaveProperty("href", expect.stringContaining("embed_standalone"));
       });
     });
