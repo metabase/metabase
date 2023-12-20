@@ -66,9 +66,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     saveAlert();
 
-    cy.findByTestId("toast-undo").within(() => {
-      cy.findByText("Your alert is all set up.").should("be.visible");
-    });
+    cy.findByTestId("toast-undo")
+      .findByText("Your alert is all set up.")
+      .should("be.visible");
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
       expect(body.channels[0].channel_type).to.eq("email");
@@ -86,9 +86,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.log("Check that /api/card has been called once");
     cy.get("@saveCard.all").should("have.length", 1);
 
-    cy.findByTestId("toast-undo").within(() => {
-      cy.findByText("Your alert is all set up.").should("be.visible");
-    });
+    cy.findByTestId("toast-undo")
+      .findByText("Your alert is all set up.")
+      .should("be.visible");
 
     clickAlertBell();
 
@@ -99,21 +99,19 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     cy.log("Change the frequency of the alert to weekly");
 
-    cy.get(".Modal--full").within(() => {
-      cy.findByText("How often should we check for results?")
-        .parent()
-        .parent()
-        .within(() => {
-          const buttons = cy.findAllByTestId("select-button");
-          buttons.should("have.length", 2);
-          buttons.eq(0).click();
-        });
-    });
+    cy.findByRole("dialog", { name: "Edit your alert" })
+      .findByText("How often should we check for results?")
+      .parent()
+      .parent()
+      .findAllByTestId("select-button")
+      .should("have.length", 2)
+      .eq(0)
+      .click();
 
-    const weekly = cy.findByRole("option", { name: "Weekly" });
-    weekly.should("have.attr", "aria-selected", "false");
-    weekly.click();
-    cy.findByRole("button", { name: "Save changes" }).click();
+    cy.findByRole("option", { name: "Weekly" })
+      .should("have.attr", "aria-selected", "false")
+      .click();
+    cy.button("Save changes").click();
 
     cy.log("Check that /api/card has still only been called once");
     cy.get("@saveCard.all").should("have.length", 1);
@@ -123,7 +121,6 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 function openAlertForQuestion(id) {
   visitQuestion(id);
   cy.icon("bell").click();
-
   cy.findByText("Set up an alert").click();
 }
 
@@ -132,9 +129,7 @@ function toggleChannel(channel) {
 }
 
 function clickAlertBell() {
-  cy.findByTestId("view-footer").within(() => {
-    cy.icon("bell").click();
-  });
+  cy.findByTestId("view-footer").icon("bell").click();
 }
 
 function saveAlert() {
@@ -142,13 +137,13 @@ function saveAlert() {
 
   cy.findByRole("dialog").within(() => {
     cy.findByLabelText("Name").type(" alert");
-    cy.findByRole("button", { name: "Save" }).click();
+    cy.button("Save").click();
   });
 
   cy.wait("@saveCard");
 
   cy.findByTestId("alert-education-screen").within(() => {
-    cy.findByRole("button", { name: "Set up an alert" }).click();
+    cy.button("Set up an alert").click();
   });
-  cy.findByRole("button", { name: "Done" }).click();
+  cy.button("Done").click();
 }
