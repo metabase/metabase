@@ -19,7 +19,7 @@
                  (mt/random-name)
                  ["venues"
                   [{:field-name "name" :base-type :type/Text}]
-                  [[]]])
+                  [["something"]]])
       (met/with-gtaps-for-user :rasta {:gtaps {:venues {}}}
-        (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
-              (upload-test/append-csv-with-defaults! :user-id (mt/user->id :rasta))))))))
+          (is (thrown-with-msg? Exception #"Uploads are not permitted for sandboxed users\."
+                (upload-test/append-csv-with-defaults! :user-id (mt/user->id :rasta))))))))
