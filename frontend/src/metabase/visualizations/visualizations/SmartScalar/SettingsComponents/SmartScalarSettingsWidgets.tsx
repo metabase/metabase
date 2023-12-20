@@ -38,7 +38,7 @@ export function SmartScalarComparisonWidget({
       <Menu.Target>
         <Button
           data-testid={"comparisons-widget-button"}
-          styles={{ inner: { "justify-content": "space-between" } }}
+          styles={{ inner: { justifyContent: "space-between" } }}
           rightIcon={<Icon name="chevrondown" size="12" />}
           px="1rem"
           fullWidth
