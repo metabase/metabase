@@ -93,7 +93,7 @@ export const InteractiveEmbeddingOptionCard = () => {
     <EmbeddingOption
       icon={enabled ? <InteractiveEmbeddingOn /> : <InteractiveEmbeddingOff />}
       title={t`Interactive embedding`}
-      label={t`PRO/ENTERPRISE`}
+      label={t`PRO & ENTERPRISE`}
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
           href="https://www.metabase.com/blog/why-full-app-embedding"
