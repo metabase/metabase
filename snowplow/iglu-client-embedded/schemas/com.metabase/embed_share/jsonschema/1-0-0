@@ -20,17 +20,26 @@
     },
     "authorized_origins_set": {
       "description": "Boolean indicating whether authorized origins are set for embedding",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ],
     },
     "number_embedded_questions": {
       "description": "The number of embedded questions",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     },
     "number_embedded_dashboards": {
       "description": "The number of embedded dashboards",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0,
       "maximum": 2147483647
     }
