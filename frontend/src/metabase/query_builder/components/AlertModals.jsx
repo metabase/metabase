@@ -324,7 +324,7 @@ class UpdateAlertModalContentInner extends Component {
 
     // TODO: Remove PulseEdit css hack
     return (
-      <ModalContent onClose={onCancel}>
+      <ModalContent onClose={onCancel} title={title}>
         <div
           className="PulseEdit ml-auto mr-auto mb4"
           style={{ maxWidth: "550px" }}
@@ -393,6 +393,7 @@ export class DeleteAlertSection extends Component {
   render() {
     const { onDeleteAlert } = this.props;
 
+    const title = `Delete this alert?`;
     return (
       <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
         <h3
@@ -408,10 +409,11 @@ export class DeleteAlertSection extends Component {
               as={Button}
               triggerClasses="Button--danger flex-align-right flex-no-shrink align-self-end"
               triggerElement={t`Delete this alert`}
+              title={title}
             >
               <DeleteModalWithConfirm
                 objectType="alert"
-                title={t`Delete this alert?`}
+                title={title}
                 confirmItems={this.getConfirmItems()}
                 onClose={() => this.deleteModal.close()}
                 onDelete={onDeleteAlert}
