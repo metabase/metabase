@@ -17,14 +17,16 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group_name :unmasked_key :masked_key :id :created_at :updated_at}
+        (is (= #{:name :group_name :unmasked_key :masked_key :id :created_at :updated_at :updated_by}
                (-> resp keys set)))
+        (is (= (select-keys (mt/fetch-user :crowberto) [:id :common_name])
+               (:updated_by resp)))
         (is (= "Cool Friends" (:group_name resp)))
         (is (= name (:name resp)))))
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group_name :name :id :created_at :updated_at}
+        (is (= #{:unmasked_key :masked_key :group_name :name :id :created_at :updated_at :updated_by}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
@@ -44,10 +46,11 @@
                                                     (swap! generated-keys next)
                                                     next-val))]
           ;; put an API Key in the database with that key.
-          (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key generated-key
-                                                    :name         "my cool name"
-                                                    :user_id      (mt/user->id :crowberto)
-                                                    :created_by   (mt/user->id :crowberto)}]
+          (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  generated-key
+                                                    :name          "my cool name"
+                                                    :user_id       (mt/user->id :crowberto)
+                                                    :creator_id (mt/user->id :crowberto)
+                                                    :updated_by_id (mt/user->id :crowberto)}]
             ;; this will try to generate a new API key
             (mt/user-http-request :crowberto :post 200 "api-key"
                                   {:group_id group-id
@@ -57,10 +60,11 @@
     (testing "We don't retry forever if prefix collision keeps happening"
       (let [generated-key (api-key/generate-key)]
         (with-redefs [api-key/generate-key (constantly generated-key)]
-          (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key generated-key
-                                                    :name         "my cool name"
-                                                    :user_id      (mt/user->id :crowberto)
-                                                    :created_by   (mt/user->id :crowberto)}]
+          (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  generated-key
+                                                    :name          "my cool name"
+                                                    :user_id       (mt/user->id :crowberto)
+                                                    :creator_id (mt/user->id :crowberto)
+                                                    :updated_by_id (mt/user->id :crowberto)}]
             (is (= "could not generate key with unique prefix"
                    (:message (mt/user-http-request :crowberto :post 500 "api-key"
                                                    {:group_id group-id
@@ -95,15 +99,17 @@
 (deftest api-count-works
   (mt/with-empty-h2-app-db
     (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
-    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key "prefix_key"
-                                              :name         "my cool name"
-                                              :user_id      (mt/user->id :crowberto)
-                                              :created_by   (mt/user->id :crowberto)}]
+    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  "prefix_key"
+                                              :name          "my cool name"
+                                              :user_id       (mt/user->id :crowberto)
+                                              :creator_id    (mt/user->id :crowberto)
+                                              :updated_by_id (mt/user->id :crowberto)}]
       (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
-      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key "some_other_key"
-                                                :name         "my cool OTHER name"
-                                                :user_id      (mt/user->id :crowberto)
-                                                :created_by   (mt/user->id :crowberto)}]
+      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  "some_other_key"
+                                                :name          "my cool OTHER name"
+                                                :user_id       (mt/user->id :crowberto)
+                                                :creator_id    (mt/user->id :crowberto)
+                                                :updated_by_id (mt/user->id :crowberto)}]
         (is (= 2 (mt/user-http-request :crowberto :get 200 "api-key/count")))))))
 
 (deftest api-keys-work-e2e
@@ -126,8 +132,8 @@
                                 :post 200 "api-key"
                                 {:group_id group-id-1
                                  :name     (str (random-uuid))})
-          _ (is (= "Cool Friends" (:group_name create-resp)))
-          api-user-id (:id (:user (t2/hydrate (t2/select-one :model/ApiKey :id id) :user)))
+          _                (is (= "Cool Friends" (:group_name create-resp)))
+          api-user-id      (:id (:user (t2/hydrate (t2/select-one :model/ApiKey :id id) :user)))
           member-of-group? (fn [group-id]
                              (t2/exists? :model/PermissionsGroupMembership
                                          :user_id api-user-id
@@ -140,19 +146,24 @@
         (is (not (member-of-group? group-id-1)))
         (is (member-of-group? group-id-2))))
     (testing "You can change the name of an API key"
-      (let [name-1 (str "My First Name" (random-uuid))
-            name-2 (str "My Second Name" (random-uuid))
-            {id :id} (mt/user-http-request :crowberto
+      (let [name-1      (str "My First Name" (random-uuid))
+            name-2      (str "My Second Name" (random-uuid))
+            {id :id}    (mt/user-http-request :crowberto
                                            :post 200 "api-key"
                                            {:group_id group-id-1
-                                            :name name-1})
+                                            :name     name-1})
             api-user-id (-> (t2/select-one :model/ApiKey :id id) (t2/hydrate :user) :user :id)]
+
         (testing "before the change..."
           (is (= name-1 (:common_name (t2/select-one :model/User api-user-id)))))
         (testing "after the change..."
           (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                 {:name name-2})
-          (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))))))
+          (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))
+        (testing "the shape of the response is correct"
+          (is (= #{:created_at :updated_at :updated_by :id :group_name :name :masked_key}
+                 (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
+                                                  {:name name-1}))))))))))
 
 (deftest api-keys-can-be-regenerated
   (testing "You can regenerate an API key"
@@ -166,7 +177,7 @@
             {:as resp new-key :unmasked_key}
             (mt/user-http-request :crowberto
                                   :put 200 (format "api-key/%s/regenerate" id))]
-        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name}
+        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name :updated_by}
                (set (keys resp))))
         (is (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" old-key}}}))
         (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" new-key}}}))))))
@@ -181,8 +192,9 @@
                             {:group_id group-id
                              :name     "My First API Key"})
       (is (= [{:name       "My First API Key"
-               :group_name "Cool Friends"}]
-             (map #(select-keys % [:name :group_name])
+               :group_name "Cool Friends"
+               :updated_by (select-keys (mt/fetch-user :crowberto) [:common_name :id])}]
+             (map #(select-keys % [:name :group_name :updated_by])
                   (mt/user-http-request :crowberto :get 200 "api-key"))))
 
       (mt/user-http-request :crowberto
