@@ -26,7 +26,6 @@ import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -518,12 +517,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        key: "-customization",
-        widget: EmbeddingCustomizationWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
-      },
-      {
         key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
@@ -556,7 +549,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
-        getHidden: () => PLUGIN_EMBEDDING.isEnabled(),
+        getHidden: (_, derivedSettings) =>
+          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
       },
     ],
   },

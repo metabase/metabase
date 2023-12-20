@@ -71,7 +71,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       );
       cy.log("The first section: 'Static embedding'");
       cy.findByTestId("-static-embedding-setting").within(() => {
-        cy.findByRole("link")
+        // FE unit tests are making sure this section doesn't exist when a valid token is provided,
+        // so we don't have to do it here usign a conditional logic
+        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
+
+        cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")
           .and("eq", standalonePath);
         cy.findByText("Static embedding");
@@ -82,7 +86,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.log("Standalone embeds page");
       mainPage().within(() => {
         cy.findByTestId("embedding-secret-key-setting").within(() => {
-          cy.findByText(/Embedding secret key/i);
+          cy.findByText("Embedding secret key");
           cy.findByText(
             "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
           );
@@ -90,24 +94,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.button("Regenerate key");
         });
 
-        cy.findByTestId("-embedded-resources-setting")
-          .within(() => {
-            cy.findByText(/Embedded dashboards/i);
-            cy.findByText("No dashboards have been embedded yet.");
+        cy.findByTestId("-embedded-resources-setting").within(() => {
+          cy.findByText("Embedded Dashboards");
+          cy.findByText("No dashboards have been embedded yet.");
 
-            cy.findByText(/Embedded questions/i);
-            cy.findByText("No questions have been embedded yet.");
-          })
-          .next()
-          .within(() => {
-            // FE unit tests are making sure this section doesn't exist when a valid token is provided,
-            // so we don't have to do it here usign a conditional logic
-            cy.contains(
-              "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
-            );
-
-            assertLinkMatchesUrl("one of our paid plans.", upgradeUrl);
-          });
+          cy.findByText("Embedded Questions");
+          cy.findByText("No questions have been embedded yet.");
+        });
       });
 
       cy.go("back");
@@ -209,7 +202,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.visit(standalonePath);
           cy.wait("@currentlyEmbeddedObject");
 
-          const sectionTestId = new RegExp(`-embedded-${object}s-setting`);
+          const sectionTestId = {
+            dashboard: "-embedded-dashboards-setting",
+            question: "-embedded-questions-setting",
+          }[object];
 
           cy.findByTestId(sectionTestId)
             .find("tbody tr")
@@ -322,26 +318,26 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByText("Embed in your application").closest(".disabled");
 
   // Let's make sure embedding stays disabled after we enable public sharing
   enableSharing();
 
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByText("Embed in your application").closest(".disabled");
 }
 
 function visitAndEnableSharing(object) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
+    cy.findByText("Embed in your application").click();
   }
 
   if (object === "dashboard") {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
+    cy.findByText("Embed in your application").click();
   }
 }
 
