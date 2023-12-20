@@ -46,7 +46,6 @@
 
 (set! *warn-on-reflection* true)
 
-
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
 (defn- check-params-are-allowed
