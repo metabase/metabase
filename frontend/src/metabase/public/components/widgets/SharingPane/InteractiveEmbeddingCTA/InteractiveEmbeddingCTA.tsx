@@ -37,7 +37,13 @@ export const InteractiveEmbeddingCTA = () => {
   const badge = (
     // TODO: Check padding because design keeps using non-mantine-standard units
     <Box pos="relative">
-      <ProBadge bg="brand.1" py="2px" px="6px" pos="absolute" top="-0.6rem">
+      <ProBadge
+        bg="brand.1"
+        py="0.125rem"
+        px="0.375rem"
+        pos="absolute"
+        top="-0.6rem"
+      >
         <Text
           align="center"
           c="white"
