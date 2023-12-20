@@ -19,57 +19,57 @@ import {
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
-export const PRODUCTS_ID = 8;
-export const ORDERS_ID = 5;
-export const PEOPLE_ID = 3;
-export const REVIEWS_ID = 4;
+export const ORDERS_ID = 2;
+export const PEOPLE_ID = 5;
+export const PRODUCTS_ID = 1;
+export const REVIEWS_ID = 8;
 
 export const ORDERS = {
-  ID: 34,
-  USER_ID: 40,
-  PRODUCT_ID: 37,
-  SUBTOTAL: 41,
-  TAX: 35,
-  TOTAL: 39,
-  DISCOUNT: 33,
-  CREATED_AT: 38,
-  QUANTITY: 36,
+  ID: 11,
+  USER_ID: 15,
+  PRODUCT_ID: 9,
+  SUBTOTAL: 16,
+  TAX: 10,
+  TOTAL: 13,
+  DISCOUNT: 17,
+  CREATED_AT: 14,
+  QUANTITY: 12,
 };
 
 export const PEOPLE = {
-  ID: 15,
-  ADDRESS: 21,
-  EMAIL: 20,
-  PASSWORD: 22,
-  NAME: 16,
-  CITY: 24,
-  LONGITUDE: 19,
-  STATE: 17,
-  SOURCE: 14,
-  BIRTH_DATE: 18,
-  ZIP: 23,
-  LATITUDE: 26,
-  CREATED_AT: 25,
+  ID: 32,
+  ADDRESS: 42,
+  EMAIL: 37,
+  PASSWORD: 34,
+  NAME: 39,
+  CITY: 31,
+  LONGITUDE: 40,
+  STATE: 33,
+  SOURCE: 36,
+  BIRTH_DATE: 35,
+  ZIP: 43,
+  LATITUDE: 41,
+  CREATED_AT: 38,
 };
 
 export const PRODUCTS = {
-  ID: 68,
-  EAN: 69,
-  TITLE: 71,
-  CATEGORY: 64,
-  VENDOR: 66,
-  PRICE: 65,
-  RATING: 67,
-  CREATED_AT: 70,
+  ID: 3,
+  EAN: 5,
+  TITLE: 8,
+  CATEGORY: 1,
+  VENDOR: 4,
+  PRICE: 7,
+  RATING: 2,
+  CREATED_AT: 6,
 };
 
 export const REVIEWS = {
-  ID: 29,
-  PRODUCT_ID: 32,
-  REVIEWER: 31,
-  RATING: 27,
-  BODY: 28,
-  CREATED_AT: 30,
+  ID: 67,
+  PRODUCT_ID: 68,
+  REVIEWER: 69,
+  RATING: 66,
+  BODY: 70,
+  CREATED_AT: 71,
 };
 
 // Note: don't assign field values to the field object itself
