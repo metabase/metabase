@@ -4396,6 +4396,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of action.archived from boolean to
         ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: action
@@ -4417,6 +4418,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of metabase_field.json_unfolding from
         boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: metabase_field
@@ -4438,6 +4440,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of database_is_auto_increment.metabase_field
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: metabase_field
@@ -4459,6 +4462,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of report_dashboard.auto_apply_filters
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: report_dashboard
@@ -4480,6 +4484,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of metabase_database.is_audit
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: metabase_database
@@ -4501,6 +4506,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of metabase_table.is_upload
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -4522,6 +4528,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of revision.most_recent
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: revision
@@ -4543,6 +4550,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of revision.most_recent
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: revision
@@ -4564,6 +4572,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of table_privileges.select
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: table_privileges
@@ -4585,6 +4594,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of table_privileges.update
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: table_privileges
@@ -4606,6 +4616,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of table_privileges.insert
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: table_privileges
@@ -4627,6 +4638,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of table_privileges.delete
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: table_privileges
@@ -4648,6 +4660,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of query_execution.is_sandboxed
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: query_execution
@@ -4669,6 +4682,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of view_log.has_access
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: view_log
@@ -4690,6 +4704,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of metabase_field.database_indexed
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: metabase_field
@@ -4711,6 +4726,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of metabase_table.database_require_filter
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: metabase_table
@@ -4732,6 +4748,7 @@ databaseChangeLog:
       comment: >-
         Added 0.49.0 - modify type of DATABASECHANGELOGLOCK.LOCKED
         from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: DATABASECHANGELOGLOCK
