@@ -51,7 +51,7 @@ export function SmartScalarComparisonWidget({
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
           {options.map(optionArgs =>
-            createMenuOption({ onChange, setOpen, optionArgs, selectedValue }),
+            renderMenuOption({ onChange, setOpen, optionArgs, selectedValue }),
           )}
         </Stack>
       </Menu.Dropdown>
@@ -59,19 +59,19 @@ export function SmartScalarComparisonWidget({
   );
 }
 
-type CreateMenuOptionProps = {
+type RenderMenuOptionProps = {
   onChange: (setting: { type: string; value?: number }) => void;
   optionArgs: ComparisonMenuOption;
   selectedValue: SmartScalarComparison;
   setOpen: Dispatch<SetStateAction<boolean>>;
 };
 
-function createMenuOption({
+function renderMenuOption({
   onChange,
   optionArgs,
   setOpen,
   selectedValue,
-}: CreateMenuOptionProps) {
+}: RenderMenuOptionProps) {
   const { type, name } = optionArgs;
 
   if (type === COMPARISON_TYPES.PERIODS_AGO) {
