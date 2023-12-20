@@ -52,10 +52,6 @@
                           :padding     :16px})}
            (trs "An error occurred while displaying this card.")]}))
 
-(def rows-limit
-  "Maximum number of rows to render in a Pulse image."
-  10)
-
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
