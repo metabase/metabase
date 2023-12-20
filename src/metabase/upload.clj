@@ -535,19 +535,26 @@
   [fields-by-normed-name header]
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
-        ;; TODO: use this to create nice error messages when there are extra or missing columns
-        normalized-header+header (->> header
-                                      (map (fn [col]
-                                             [(normalize-column-name col) col])))
-        normalized-header (map first normalized-header+header)
+        normalized-header (map normalize-column-name header)
         [extra missing _both] (data/diff (set normalized-header) (set normalized-field-names))]
     ;; check for duplicates
     (when (some #(< 1 %) (vals (frequencies normalized-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when (or extra missing)
-      (throw (ex-info (tru "The schema of the CSV file does not match the schema of the table.")
-                      {:status-code 422})))))
+      (let [format-columns (fn [cols]
+                             (str/join ", " (map #(str "\"" % "\"") cols)))
+            error-message (cond
+                            (and extra missing)
+                            (tru "The CSV file contains extra columns that are not in the table: {0}. The CSV file is missing columns that are in the table: {1}."
+                                 (format-columns extra) (format-columns missing))
+                            extra
+                            (tru "The CSV file contains extra columns that are not in the table: {0}."
+                                 (format-columns extra))
+                            missing
+                            (tru "The CSV file contains extra columns that are not in the table: {0}."
+                                 (format-columns missing)))]
+        (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- append-csv!*
   [database table file]

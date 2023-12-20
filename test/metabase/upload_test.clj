@@ -1086,7 +1086,7 @@
                (catch Exception e
                  (is (= {:status-code 422}
                         (ex-data e)))
-                 (is (re-matches #"^The schema public is not syncable\.$"
+                 (is (re-matches #"^ public is not syncable\.$"
                                  (.getMessage e))))))
         (testing "\nThe table should be deleted"
           (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
@@ -1177,8 +1177,8 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
     (testing "The CSV file must not be empty"
-      (is (= {:data {:status-code 422},
-              :message "The schema of the CSV file does not match the schema of the table."}
+      (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+              :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
       (with-redefs [driver/database-supports? (constantly false)]
@@ -1223,19 +1223,28 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
-        (doseq [csv-rows [["_mb_row_id,name,extra_column" "2,Luke Skywalker,so extra"] ;; extra column
-                          ["_mb_row_id" "2,Luke Skywalker"]                            ;; missing column
-                          ["_mb_row_id,extra_column" "2,so extra"]]]                   ;; extra and missing column
+        (doseq [[csv-rows error-message]
+                {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
+                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+
+                 [""]
+                 "The CSV file contains extra columns that are not in the table: \"id\", \"name\"."
+
+                 ["_mb_row_id,extra 1, extra 2"]
+                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
           (mt/with-empty-db
-            (let [table (create-upload-table!)
+            (let [table (create-upload-table!
+                         {:col->upload-type (ordered-map/ordered-map
+                                             :id         ::upload/int
+                                             :name       ::upload/varchar-255)
+                          :rows [[1,"some_text"]]})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              ;; TODO: specialise this error message
-              (is (= {:message "The schema of the CSV file does not match the schema of the table."
+              (is (= {:message error-message
                       :data {:status-code 422}}
                      (catch-ex-info (append-csv! {:file     file
                                                   :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
-                (is (= [[1 "Obi-Wan Kenobi"]]
+                (is (= [[1 "some_text"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
 
