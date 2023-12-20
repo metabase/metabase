@@ -2,13 +2,11 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 import {
   PublicLinkCopyButton,
-  // ExtensionOption,
   RemoveLinkAnchor,
 } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
 import {
   Anchor,
   Box,
-  Flex,
   Group,
   Stack,
   Text,

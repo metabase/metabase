@@ -7,7 +7,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { SharingPaneButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton";
 import { SharingPaneActionButton } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Group, Text, Anchor, Box } from "metabase/ui";
+import { Group, Text, Anchor } from "metabase/ui";
 
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 
@@ -76,12 +76,10 @@ function SharingPane({
   };
 
   const publicLinkInfoText =
-    !isLoadingLink && hasPublicLink ? (
-      //   TextInput has a hardcoded marginTop that we need to account for here.
-      t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`
-    ) : (
-      t`Use this to add a publicly-visible iframe embed to your web page or blog post.`
-    );
+    !isLoadingLink && hasPublicLink
+      ? //   TextInput has a hardcoded marginTop that we need to account for here.
+        t`Just copy this snippet to add a publicly-visible iframe embed to your web page or blog post.`
+      : t`Use this to add a publicly-visible iframe embed to your web page or blog post.`;
 
   const getPublicLinkElement = () => {
     if (isLoadingLink) {
