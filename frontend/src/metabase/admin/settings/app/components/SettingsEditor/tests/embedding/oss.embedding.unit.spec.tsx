@@ -6,16 +6,12 @@ import {
   goToInteractiveEmbeddingSettings,
 } from "./setup";
 
-let embeddingSettingEnabled = false;
 describe("[OSS] embedding settings", () => {
   describe("when the embedding is disabled", () => {
-    beforeEach(() => {
-      embeddingSettingEnabled = false;
-    });
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(() => {
@@ -25,7 +21,7 @@ describe("[OSS] embedding settings", () => {
 
       it("should prompt to upgrade to remove the Powered by text", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(screen.getByText("upgrade to a plain plan")).toBeInTheDocument();
@@ -39,7 +35,7 @@ describe("[OSS] embedding settings", () => {
     describe("interactive embedding", () => {
       it("should have a learn more button for interactive embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
         expect(
           screen.getByRole("link", { name: "Learn More" }),
@@ -52,7 +48,7 @@ describe("[OSS] embedding settings", () => {
 
       it("should link to quickstart for interactive embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
@@ -63,7 +59,7 @@ describe("[OSS] embedding settings", () => {
 
       it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(
@@ -76,12 +72,9 @@ describe("[OSS] embedding settings", () => {
     });
   });
   describe("when the embedding is enabled", () => {
-    beforeEach(() => {
-      embeddingSettingEnabled = true;
-    });
     it("should allow going to static embedding settings page", async () => {
       const { history } = await setupEmbedding({
-        settingValues: { "enable-embedding": embeddingSettingEnabled },
+        settingValues: { "enable-embedding": true },
       });
 
       goToStaticEmbeddingSettings();
@@ -94,7 +87,7 @@ describe("[OSS] embedding settings", () => {
 
     it("should not allow going to interactive embedding settings page", async () => {
       await setupEmbedding({
-        settingValues: { "enable-embedding": embeddingSettingEnabled },
+        settingValues: { "enable-embedding": true },
       });
 
       expect(() => goToInteractiveEmbeddingSettings()).toThrow();

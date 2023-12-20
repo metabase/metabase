@@ -14,16 +14,12 @@ const setupEnterprise = (opts?: SetupOpts) => {
   });
 };
 
-let embeddingSettingEnabled = false;
 describe("[EE] embedding settings", () => {
   describe("when the embedding is disabled", () => {
-    beforeEach(() => {
-      embeddingSettingEnabled = false;
-    });
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
         await setupEnterprise({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(() => {
@@ -33,7 +29,7 @@ describe("[EE] embedding settings", () => {
 
       it("should not prompt to upgrade to remove the Powered by text", async () => {
         await setupEnterprise({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(
@@ -45,7 +41,7 @@ describe("[EE] embedding settings", () => {
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
         await setupEnterprise({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(() => {
@@ -55,7 +51,7 @@ describe("[EE] embedding settings", () => {
 
       it("should link to quickstart for interactive embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
@@ -66,12 +62,9 @@ describe("[EE] embedding settings", () => {
     });
   });
   describe("when the embedding is enabled", () => {
-    beforeEach(() => {
-      embeddingSettingEnabled = true;
-    });
     it("should allow going to static embedding settings page", async () => {
       const { history } = await setupEnterprise({
-        settingValues: { "enable-embedding": embeddingSettingEnabled },
+        settingValues: { "enable-embedding": true },
       });
 
       goToStaticEmbeddingSettings();
@@ -84,7 +77,7 @@ describe("[EE] embedding settings", () => {
 
     it("should allow going to interactive embedding settings page", async () => {
       const { history } = await setupEnterprise({
-        settingValues: { "enable-embedding": embeddingSettingEnabled },
+        settingValues: { "enable-embedding": true },
       });
 
       goToInteractiveEmbeddingSettings();
