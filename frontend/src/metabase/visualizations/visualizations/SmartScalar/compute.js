@@ -422,11 +422,8 @@ function formatDateStr({ date, dateUnitSettings, options }) {
   });
 }
 
-// compute the percent change between two values (comparisonVal → currVal)
-// percentChange = (currVal - comparisonVal) / Math.abs(comparisonVal)
 export function computeChange(comparisonVal, currVal) {
   if (comparisonVal === 0) {
-    // percentChange = currVal / 0
     return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
   }
 
