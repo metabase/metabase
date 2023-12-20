@@ -22,6 +22,18 @@ describe("[OSS] embedding settings", () => {
           goToStaticEmbeddingSettings();
         }).toThrow();
       });
+
+      it("should prompt to upgrade to remove the Powered by text", async () => {
+        await setupEmbedding({
+          settingValues: { "enable-embedding": embeddingSettingEnabled },
+        });
+
+        expect(screen.getByText("upgrade to a plain plan")).toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "upgrade to a plain plan" }),
+        ).toHaveProperty("href", expect.stringContaining("embed_standalone"));
+      });
     });
 
     describe("interactive embedding", () => {

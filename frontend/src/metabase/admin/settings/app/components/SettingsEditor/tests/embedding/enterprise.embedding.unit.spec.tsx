@@ -1,3 +1,4 @@
+import { screen } from "__support__/ui";
 import {
   goToInteractiveEmbeddingSettings,
   goToStaticEmbeddingSettings,
@@ -28,6 +29,16 @@ describe("[EE] embedding settings", () => {
         expect(() => {
           goToStaticEmbeddingSettings();
         }).toThrow();
+      });
+
+      it("should not prompt to upgrade to remove the Powered by text", async () => {
+        await setupEnterprise({
+          settingValues: { "enable-embedding": embeddingSettingEnabled },
+        });
+
+        expect(
+          screen.queryByText("upgrade to a plain plan"),
+        ).not.toBeInTheDocument();
       });
     });
 

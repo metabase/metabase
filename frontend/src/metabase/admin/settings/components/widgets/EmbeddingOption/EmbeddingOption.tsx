@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { Button, Flex, Text, Title } from "metabase/ui";
 import { Label, StyledCard } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
@@ -50,11 +50,28 @@ function EmbeddingOption({
 
 export const StaticEmbeddingOptionCard = () => {
   const enabled = useSelector(state => getSetting(state, "enable-embedding"));
+  const upgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "embed_standalone" }),
+  );
+  const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
+
+  const upgradeText = jt`A "powered by Metabase" banner appears on static embeds. You can ${(
+    <ExternalLink key="upgrade-link" href={upgradeUrl}>
+      {t`upgrade to a plain plan`}
+    </ExternalLink>
+  )} to remove it.`;
+
   return (
     <EmbeddingOption
       icon={enabled ? <StaticEmbeddingOn /> : <StaticEmbeddingOff />}
       title={t`Static embedding`}
-      description={t`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.`}
+      description={jt`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.${
+        shouldPromptToUpgrade && (
+          <Text size="sm" mt="xs" key="upgrade-text">
+            {upgradeText}
+          </Text>
+        )
+      }`}
     >
       <Button
         variant="default"
