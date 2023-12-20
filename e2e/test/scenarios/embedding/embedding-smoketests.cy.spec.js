@@ -71,7 +71,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       );
       cy.log("The first section: 'Static embedding'");
       cy.findByTestId("-static-embedding-setting").within(() => {
-        cy.findByRole("link")
+        // FE unit tests are making sure this section doesn't exist when a valid token is provided,
+        // so we don't have to do it here usign a conditional logic
+        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
+
+        cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")
           .and("eq", standalonePath);
         cy.findByText("Static embedding");
@@ -90,24 +94,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.button("Regenerate key");
         });
 
-        cy.findByTestId("-embedded-resources-setting")
-          .within(() => {
-            cy.findByText("Embedded Dashboards");
-            cy.findByText("No dashboards have been embedded yet.");
+        cy.findByTestId("-embedded-resources-setting").within(() => {
+          cy.findByText("Embedded Dashboards");
+          cy.findByText("No dashboards have been embedded yet.");
 
-            cy.findByText("Embedded Questions");
-            cy.findByText("No questions have been embedded yet.");
-          })
-          .next()
-          .within(() => {
-            // FE unit tests are making sure this section doesn't exist when a valid token is provided,
-            // so we don't have to do it here usign a conditional logic
-            cy.contains(
-              "In order to remove the Metabase logo from embeds, you can always upgrade to one of our paid plans.",
-            );
-
-            assertLinkMatchesUrl("one of our paid plans.", upgradeUrl);
-          });
+          cy.findByText("Embedded Questions");
+          cy.findByText("No questions have been embedded yet.");
+        });
       });
 
       cy.go("back");

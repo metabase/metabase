@@ -4,30 +4,59 @@ import {
   setupEmbedding,
   getQuickStartLink,
   goToInteractiveEmbeddingSettings,
+  staticEmbeddingSettingsUrl,
+  embeddingSettingsUrl,
+  interactiveEmbeddingSettingsUrl,
 } from "./setup";
 
-let embeddingSettingEnabled = false;
 describe("[OSS] embedding settings", () => {
   describe("when the embedding is disabled", () => {
-    beforeEach(() => {
-      embeddingSettingEnabled = false;
-    });
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
-        await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+        const { history } = await setupEmbedding({
+          settingValues: { "enable-embedding": false },
         });
 
         expect(() => {
           goToStaticEmbeddingSettings();
         }).toThrow();
+
+        history.push(staticEmbeddingSettingsUrl);
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          embeddingSettingsUrl,
+        );
+      });
+
+      it("should prompt to upgrade to remove the Powered by text", async () => {
+        await setupEmbedding({
+          settingValues: { "enable-embedding": false },
+        });
+
+        expect(screen.getByText("upgrade to a paid plan")).toBeInTheDocument();
+
+        expect(
+          screen.getByRole("link", { name: "upgrade to a paid plan" }),
+        ).toHaveProperty("href", expect.stringContaining("embed_standalone"));
       });
     });
 
     describe("interactive embedding", () => {
+      it("should not allow going to interactive settings page", async () => {
+        const { history } = await setupEmbedding({
+          settingValues: { "enable-embedding": false },
+        });
+
+        history.push(interactiveEmbeddingSettingsUrl);
+
+        expect(history.getCurrentLocation().pathname).toEqual(
+          embeddingSettingsUrl,
+        );
+      });
+
       it("should have a learn more button for interactive embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
         expect(
           screen.getByRole("link", { name: "Learn More" }),
@@ -40,7 +69,7 @@ describe("[OSS] embedding settings", () => {
 
       it("should link to quickstart for interactive embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
@@ -51,7 +80,7 @@ describe("[OSS] embedding settings", () => {
 
       it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": embeddingSettingEnabled },
+          settingValues: { "enable-embedding": false },
         });
 
         expect(
@@ -64,28 +93,29 @@ describe("[OSS] embedding settings", () => {
     });
   });
   describe("when the embedding is enabled", () => {
-    beforeEach(() => {
-      embeddingSettingEnabled = true;
-    });
     it("should allow going to static embedding settings page", async () => {
       const { history } = await setupEmbedding({
-        settingValues: { "enable-embedding": embeddingSettingEnabled },
+        settingValues: { "enable-embedding": true },
       });
 
       goToStaticEmbeddingSettings();
 
       const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(
-        "/admin/settings/embedding-in-other-applications/standalone",
-      );
+      expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
     });
 
     it("should not allow going to interactive embedding settings page", async () => {
-      await setupEmbedding({
-        settingValues: { "enable-embedding": embeddingSettingEnabled },
+      const { history } = await setupEmbedding({
+        settingValues: { "enable-embedding": true },
       });
 
       expect(() => goToInteractiveEmbeddingSettings()).toThrow();
+
+      history.push(interactiveEmbeddingSettingsUrl);
+
+      expect(history.getCurrentLocation().pathname).toEqual(
+        embeddingSettingsUrl,
+      );
     });
   });
 });

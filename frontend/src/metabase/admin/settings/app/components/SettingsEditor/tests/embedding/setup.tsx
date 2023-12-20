@@ -45,3 +45,10 @@ export const goToInteractiveEmbeddingSettings = () => {
 export const getQuickStartLink = () => {
   return screen.getByRole("link", { name: "Check out our Quick Start" });
 };
+
+export const embeddingSettingsUrl =
+  "/admin/settings/embedding-in-other-applications";
+export const staticEmbeddingSettingsUrl =
+  "/admin/settings/embedding-in-other-applications/standalone";
+export const interactiveEmbeddingSettingsUrl =
+  "/admin/settings/embedding-in-other-applications/full-app";
