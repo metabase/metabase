@@ -169,8 +169,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     enterCustomColumnDetails({ formula: "[Price] > 1" });
     cy.get("@formula").blur();
-
-    cy.button("Done").click({ force: true });
+    cy.button("Done").click();
 
     getNotebookStep("filter").contains("Price is greater than 1").click();
 
@@ -179,8 +178,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5").blur();
-    cy.button("Done").click({ force: true });
+    popover().within(() => {
+      cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
+    });
 
     getNotebookStep("filter")
       .contains("Price is greater than 1")
