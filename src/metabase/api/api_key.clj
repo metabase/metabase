@@ -3,6 +3,7 @@
   (:require
    [compojure.core :refer [POST GET PUT]]
    [metabase.api.common :as api]
+   [metabase.events :as events]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
@@ -29,23 +30,26 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/ApiKey :name name))
     "name" "An API key with this name already exists.")
-  (let [api-key (key-with-unique-prefix)
-        email   (format "api-key-user-%s@api-key.invalid" (u/slugify name))]
+  (let [unhashed-key (key-with-unique-prefix)
+        email        (format "api-key-user-%s@api-key.invalid" (u/slugify name))]
     (t2/with-transaction [_conn]
       (let [user (user/insert-new-user! {:email      email
                                          :first_name name
                                          :type       :api-key})]
         (user/set-permissions-groups! user [(perms-group/all-users) group_id])
-        (-> (t2/insert-returning-instance! :model/ApiKey
-                                           {:user_id      (u/the-id user)
-                                            :name         name
-                                            :unhashed_key api-key
-                                            :created_by   api/*current-user-id*})
-            (t2/hydrate :group_name)
-            (select-keys [:created_at :updated_at :id :group_name])
-            (assoc :name name
-                   :unmasked_key api-key
-                   :masked_key (api-key/mask api-key)))))))
+        (let [api-key (-> (t2/insert-returning-instance! :model/ApiKey
+                                                         {:user_id      (u/the-id user)
+                                                          :name         name
+                                                          :unhashed_key unhashed-key
+                                                          :created_by   api/*current-user-id*})
+                          (t2/hydrate :group_name))]
+          (events/publish-event! :event/api-key-create
+                                 {:object  api-key
+                                  :user-id api/*current-user-id*})
+          (-> api-key
+              (select-keys [:created_at :updated_at :id :group_name :name])
+              (assoc :unmasked_key unhashed-key
+                     :masked_key (api-key/mask unhashed-key))))))))
 
 (api/defendpoint GET "/count"
   "Get the count of API keys in the DB"
@@ -60,7 +64,9 @@
    group_id [:maybe ms/PositiveInt]
    name     [:maybe ms/NonBlankString]}
   (api/check-superuser)
-  (let [api-key-before (t2/select-one :model/ApiKey :id id)]
+  (let [api-key-before (-> (t2/select-one :model/ApiKey :id id)
+                           ;; hydrate the group_name for audit logging
+                           (t2/hydrate :group_name))]
     (when name
       (t2/with-transaction [_conn]
         ;; A bit of a pain to keep these in sync, but oh well.
@@ -69,17 +75,27 @@
     (when group_id
       (let [user (-> api-key-before (t2/hydrate :user) :user)]
         (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])))
-    (-> (t2/select-one :model/ApiKey :id id)
-        (t2/hydrate :group_name)
-        (select-keys [:created_at :updated_at :id :name :masked_key :group_name]))))
+    (let [updated-api-key (-> (t2/select-one :model/ApiKey :id id)
+                              (t2/hydrate :group_name))]
+      (events/publish-event! :event/api-key-update {:object updated-api-key
+                                                    :previous-object api-key-before
+                                                    :user-id api/*current-user-id*})
+      (select-keys updated-api-key [:created_at :updated_at :id :name :masked_key :group_name]))))
 
 (api/defendpoint PUT "/:id/regenerate"
   "Regenerate an API Key"
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (let [unhashed-key (key-with-unique-prefix)
-        [id] (t2/update-returning-pks! :model/ApiKey :id id {:unhashed_key unhashed-key})]
+  (let [api-key-before (t2/select-one :model/ApiKey id)
+        unhashed-key (key-with-unique-prefix)
+        _ (t2/update! :model/ApiKey :id id {:unhashed_key unhashed-key})
+        api-key (-> (t2/select-one :model/ApiKey id)
+                    (t2/hydrate :group_name))]
+    (events/publish-event! :event/api-key-regenerate
+                           {:object api-key
+                            :previous-object api-key-before
+                            :user-id api/*current-user-id*})
     (-> (t2/select-one :model/ApiKey id)
         (t2/hydrate :group_name)
         (select-keys [:created_at :updated_at :id :name :group_name])

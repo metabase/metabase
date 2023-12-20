@@ -1,5 +1,6 @@
 (ns metabase.models.api-key
   (:require [crypto.random :as crypto-random]
+            [metabase.models.audit-log :as audit-log]
             [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
             [metabase.util :as u]
@@ -95,3 +96,7 @@
   [api-key]
   (-> api-key
       add-masked-key))
+
+(defmethod audit-log/model-details :model/ApiKey
+  [entity _event-type]
+  (select-keys entity [:name :group_name :key_prefix]))

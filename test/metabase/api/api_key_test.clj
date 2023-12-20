@@ -5,6 +5,7 @@
    [metabase.http-client :as client]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -165,7 +166,6 @@
             {:as resp new-key :unmasked_key}
             (mt/user-http-request :crowberto
                                   :put 200 (format "api-key/%s/regenerate" id))]
-        ;; NOTE: This is missing `group_id`.
         (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name}
                (set (keys resp))))
         (is (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" old-key}}}))
@@ -196,3 +196,50 @@
                :group_name "All Users"}]
              (map #(select-keys % [:name :group_name])
                   (mt/user-http-request :crowberto :get 200 "api-key")))))))
+
+(deftest api-key-operations-are-audit-logged
+  (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-empty-h2-app-db
+      (t2.with-temp/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
+                               :model/PermissionsGroup {group-id-2 :id} {:name "Less Cool Friends"}]
+        ;; create the API key
+        (let [{id           :id
+               unmasked-key :unmasked_key} (mt/user-http-request :crowberto
+                                                                 :post 200 "api-key"
+                                                                 {:group_id group-id-1
+                                                                  :name     "My API Key"})
+              old-prefix                   (api-key/prefix unmasked-key)
+              url                          (fn [url] (format url id))]
+          (testing "Creation was audit logged"
+            (is (=? {:details  {:name       "My API Key"
+                                :group_name "Cool Friends"}
+                     :model    "ApiKey"
+                     :model_id id
+                     :user_id  (mt/user->id :crowberto)}
+                    (mt/latest-audit-log-entry :api-key-create id)))
+            (is (= #{:name :group_name :key_prefix}
+                   (-> (mt/latest-audit-log-entry :api-key-create id) :details keys set))))
+          (testing "Update is audit logged"
+            (mt/user-http-request :crowberto
+                                  :put 200 (url "api-key/%s")
+                                  {:group_id group-id-2
+                                   :name     "A New Name"})
+            (is (=? {:details  {:previous {:name       "My API Key"
+                                           :group_name "Cool Friends"}
+                                :new      {:name       "A New Name"
+                                           :group_name "Less Cool Friends"}}
+                     :model    "ApiKey"
+                     :model_id id
+                     :user_id  (mt/user->id :crowberto)}
+                    (mt/latest-audit-log-entry :api-key-update id))))
+          (testing "Regeneration is audit logged"
+            (let [{:keys [unmasked_key]}
+                  (mt/user-http-request :crowberto
+                                        :put 200 (url "api-key/%s/regenerate"))
+                  new-prefix (api-key/prefix unmasked_key)]
+              (is (=? {:details  {:previous {:key_prefix old-prefix}
+                                  :new      {:key_prefix new-prefix}}
+                       :model    "ApiKey"
+                       :model_id id
+                       :user_id  (mt/user->id :crowberto)}
+                      (mt/latest-audit-log-entry :api-key-regenerate id))))))))))
