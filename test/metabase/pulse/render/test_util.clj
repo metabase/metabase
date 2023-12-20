@@ -607,6 +607,16 @@
        (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
        (filter #(and (string? (last %)) (str/includes? (last %) text)))))
 
+(defn nodes-with-exact-text
+  "Returns a list of nodes from the `tree` that exactly matches text `text` as the last entry of the node.
+  The tree is assumed to be a valid hiccup-style tree.
+
+  `(nodes-with-text \"the text\" [:svg [:tspan [:text \"the text\"]]]) -> ([:text \"the text\"])`"
+  [tree text]
+  (->> tree
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (filter #(and (string? (last %)) (= (last %) text)))))
+
 (defn nodes-with-tag
   "Returns a list of nodes from the `tree` that contain an exact match of `tag` as the first entry of the node.
   The tag can be any valid hiccup key, but will often be a keyword or a string. The tree is assumed to be a valid hiccup-style tree.
