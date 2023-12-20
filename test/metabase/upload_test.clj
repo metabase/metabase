@@ -1086,7 +1086,7 @@
                (catch Exception e
                  (is (= {:status-code 422}
                         (ex-data e)))
-                 (is (re-matches #"^ public is not syncable\.$"
+                 (is (re-matches #"^The schema public is not syncable\.$"
                                  (.getMessage e))))))
         (testing "\nThe table should be deleted"
           (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
