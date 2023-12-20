@@ -80,7 +80,7 @@ function createMenuOption({
     return (
       <PeriodsAgoOptionComponent
         key={type}
-        isSelected={selectedValue.type === type}
+        aria-selected={selectedValue.type === type}
         type={type}
         name={name}
         onChange={onChange}
@@ -94,7 +94,7 @@ function createMenuOption({
   return (
     <MenuItemStyled
       key={type}
-      isSelected={selectedValue.type === type}
+      aria-selected={selectedValue.type === type}
       onClick={() => onChange({ type })}
     >
       <Text fw="bold" ml="0.5rem">

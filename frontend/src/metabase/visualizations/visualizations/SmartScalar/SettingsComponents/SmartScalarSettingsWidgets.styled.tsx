@@ -1,9 +1,6 @@
 import styled from "@emotion/styled";
 import { Button } from "metabase/ui";
-
-type ButtonProps = {
-  disabled: boolean;
-};
+import type { ButtonProps } from "metabase/ui";
 
 export const ButtonStyled = styled(Button)<ButtonProps>`
   padding-right: 0;

@@ -11,7 +11,7 @@ import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
 
 type PeriodsAgoOptionComponentProps = {
-  isSelected: boolean;
+  "aria-selected": boolean;
   maxValue: number;
   name: string;
   onChange: (setting: { type: string; value?: number }) => void;
@@ -21,7 +21,7 @@ type PeriodsAgoOptionComponentProps = {
 };
 
 export function PeriodsAgoOptionComponent({
-  isSelected,
+  "aria-selected": isSelected,
   maxValue,
   name,
   onChange,
@@ -134,7 +134,7 @@ export function PeriodsAgoOptionComponent({
   }, [isValidInput, setOpen, submitValue]);
 
   return (
-    <MenuItemStyled py="0.25rem" isSelected={isSelected}>
+    <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
       <Box onClick={handleButtonClick} onMouseDown={handleParentMouseDown}>
         <Group position="apart" px="0.5rem">
           <Text fw="bold">{`${inputValue} ${name}`}</Text>
