@@ -1,0 +1,1383 @@
+INIT START
+
+[2023-12-20 11:56:31] Clearing outdated .cpcache directories if needed...
+[2023-12-20 11:56:31] .cpcache directories are up to date.
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Apache Log4j Core 2.22 initializing configuration org.apache.logging.log4j.core.config.properties.PropertiesConfiguration@64d27a3a
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener PluginManager 'Core' found 135 plugins
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener PluginManager 'Level' found 0 plugins
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener PluginManager 'Lookup' found 16 plugins
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Building Plugin[name=root, class=org.apache.logging.log4j.core.config.LoggerConfig$RootLogger].
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener PluginManager 'TypeConverter' found 27 plugins
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener LoggerConfig$RootLogger$Builder(additivity="null", level="DEBUG", levelAndRefs="null", includeLocation="null", ={}, ={}, Configuration, Filter=null)
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Building Plugin[name=loggers, class=org.apache.logging.log4j.core.config.LoggersPlugin].
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener createLoggers(={root})
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Building Plugin[name=appenders, class=org.apache.logging.log4j.core.config.AppendersPlugin].
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener createAppenders(={})
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Configuration org.apache.logging.log4j.core.config.properties.PropertiesConfiguration@64d27a3a initialized
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Starting configuration org.apache.logging.log4j.core.config.properties.PropertiesConfiguration@64d27a3a
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Started configuration org.apache.logging.log4j.core.config.properties.PropertiesConfiguration@64d27a3a OK.
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Shutting down OutputStreamManager SYSTEM_OUT.false.false-1
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener OutputStream closed
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Shut down OutputStreamManager SYSTEM_OUT.false.false-1, all resources released: true
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Appender DefaultConsole-1 stopped with status true
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Stopped org.apache.logging.log4j.core.config.DefaultConfiguration@5d75e88e OK
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Registering MBean org.apache.logging.log4j2:type=67424e82
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Registering MBean org.apache.logging.log4j2:type=67424e82,component=StatusLogger
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Registering MBean org.apache.logging.log4j2:type=67424e82,component=ContextSelector
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Registering MBean org.apache.logging.log4j2:type=67424e82,component=Loggers,name=
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener org.apache.logging.log4j.core.util.SystemClock supports precise timestamps.
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Reconfiguration complete for context[name=67424e82] at URI jar:file:/Users/roman/.m2/repository/com/metabase/athena-jdbc/2.0.35/athena-jdbc-2.0.35.jar!/log4j2.properties (org.apache.logging.log4j.core.LoggerContext@267de94c) with optional ClassLoader: null
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener Shutdown hook enabled. Registering a new one.
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener LoggerContext[name=67424e82, org.apache.logging.log4j.core.LoggerContext@267de94c] started OK.
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener AsyncLogger.ThreadNameStrategy=UNCACHED (user specified null, default is UNCACHED)
+[2023-12-20 11:56:35] DEBUG StatusConsoleListener org.apache.logging.log4j.core.util.SystemClock supports precise timestamps.
+[2023-12-20 11:56:37] $ "git" "symbolic-ref" "--short" "HEAD"
+[2023-12-20 11:56:37]   master
+[2023-12-20 11:56:37] $ "git" "describe" "--abbrev=0" "--tags"
+[2023-12-20 11:56:37]   v1.48.0-RC1
+
+INIT END
+
+TRANSLATIONS START
+[2023-12-20 11:56:37] Running build steps for Community (OSS) Edition version v0.49.0-SNAPSHOT: version, translations, frontend, licenses, drivers, uberjar
+[2023-12-20 11:56:37]   Delete /Users/roman/work/metabase/resources/version.properties if exists
+[2023-12-20 11:56:37]     Deleted /Users/roman/work/metabase/resources/version.properties.
+[2023-12-20 11:56:37]   Generate version.properties file for version v0.49.0-SNAPSHOT
+[2023-12-20 11:56:37]     $ "git" "show-ref" "--head" "--hash=7" "head"
+[2023-12-20 11:56:37]       02fa2c9
+[2023-12-20 11:56:37]     $ "git" "log" "-1" "--pretty=%ad" "--date=short"
+[2023-12-20 11:56:37]       2023-12-20
+[2023-12-20 11:56:37]     version.properties generated successfully.
+[2023-12-20 11:56:37]   Create i18n artifacts
+[2023-12-20 11:56:37]     Create resources/locales.clj
+[2023-12-20 11:56:37]       Delete /Users/roman/work/metabase/resources/locales.clj if exists
+[2023-12-20 11:56:37]         Deleted /Users/roman/work/metabase/resources/locales.clj.
+[2023-12-20 11:56:37]     Delete /Users/roman/work/metabase/resources/i18n if exists
+[2023-12-20 11:56:37]       Deleted /Users/roman/work/metabase/resources/i18n.
+[2023-12-20 11:56:37]     Delete /Users/roman/work/metabase/resources/frontend_client/app/locales if exists
+[2023-12-20 11:56:37]       Deleted /Users/roman/work/metabase/resources/frontend_client/app/locales.
+[2023-12-20 11:56:37]     Create artifacts for locale "ar"
+[2023-12-20 11:56:37]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/ar.json from /Users/roman/work/metabase/locales/ar.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:37]           Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ar.json if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ar.json, file does not exist.
+[2023-12-20 11:56:37]         Write JSON
+[2023-12-20 11:56:37]           Wrote 4374 messages.
+[2023-12-20 11:56:37]       Create backend artifact /Users/roman/work/metabase/resources/i18n/ar.edn from /Users/roman/work/metabase/locales/ar.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:37]           Create directory /Users/roman/work/metabase/resources/i18n
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/i18n/ar.edn if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/i18n/ar.edn, file does not exist.
+[2023-12-20 11:56:37]         Write EDN file
+[2023-12-20 11:56:37]           Wrote 2396 messages.
+[2023-12-20 11:56:37]       Artifacts for locale "ar" created successfully.
+[2023-12-20 11:56:37]     Create artifacts for locale "ar-SA"
+[2023-12-20 11:56:37]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/ar_SA.json from /Users/roman/work/metabase/locales/ar-SA.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ar_SA.json if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ar_SA.json, file does not exist.
+[2023-12-20 11:56:37]         Write JSON
+[2023-12-20 11:56:37]           Wrote 4374 messages.
+[2023-12-20 11:56:37]       Create backend artifact /Users/roman/work/metabase/resources/i18n/ar-SA.edn from /Users/roman/work/metabase/locales/ar-SA.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/i18n/ar-SA.edn if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/i18n/ar-SA.edn, file does not exist.
+[2023-12-20 11:56:37]         Write EDN file
+[2023-12-20 11:56:37]           Wrote 2396 messages.
+[2023-12-20 11:56:37]       Artifacts for locale "ar-SA" created successfully.
+[2023-12-20 11:56:37]     Create artifacts for locale "bg"
+[2023-12-20 11:56:37]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/bg.json from /Users/roman/work/metabase/locales/bg.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/bg.json if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/bg.json, file does not exist.
+[2023-12-20 11:56:37]         Write JSON
+[2023-12-20 11:56:37]           Wrote 4374 messages.
+[2023-12-20 11:56:37]       Create backend artifact /Users/roman/work/metabase/resources/i18n/bg.edn from /Users/roman/work/metabase/locales/bg.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/i18n/bg.edn if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/i18n/bg.edn, file does not exist.
+[2023-12-20 11:56:37]         Write EDN file
+[2023-12-20 11:56:37]           Wrote 2396 messages.
+[2023-12-20 11:56:37]       Artifacts for locale "bg" created successfully.
+[2023-12-20 11:56:37]     Create artifacts for locale "ca"
+[2023-12-20 11:56:37]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/ca.json from /Users/roman/work/metabase/locales/ca.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ca.json if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ca.json, file does not exist.
+[2023-12-20 11:56:37]         Write JSON
+[2023-12-20 11:56:37]           Wrote 4374 messages.
+[2023-12-20 11:56:37]       Create backend artifact /Users/roman/work/metabase/resources/i18n/ca.edn from /Users/roman/work/metabase/locales/ca.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/i18n/ca.edn if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/i18n/ca.edn, file does not exist.
+[2023-12-20 11:56:37]         Write EDN file
+[2023-12-20 11:56:37]           Wrote 2396 messages.
+[2023-12-20 11:56:37]       Artifacts for locale "ca" created successfully.
+[2023-12-20 11:56:37]     Create artifacts for locale "cs"
+[2023-12-20 11:56:37]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/cs.json from /Users/roman/work/metabase/locales/cs.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/cs.json if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/cs.json, file does not exist.
+[2023-12-20 11:56:37]         Write JSON
+[2023-12-20 11:56:37]           Wrote 4374 messages.
+[2023-12-20 11:56:37]       Create backend artifact /Users/roman/work/metabase/resources/i18n/cs.edn from /Users/roman/work/metabase/locales/cs.po
+[2023-12-20 11:56:37]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:37]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:37]         Delete /Users/roman/work/metabase/resources/i18n/cs.edn if exists
+[2023-12-20 11:56:37]           Don't need to delete /Users/roman/work/metabase/resources/i18n/cs.edn, file does not exist.
+[2023-12-20 11:56:37]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "cs" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "de"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/de.json from /Users/roman/work/metabase/locales/de.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/de.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/de.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/de.edn from /Users/roman/work/metabase/locales/de.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/de.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/de.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "de" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "es"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/es.json from /Users/roman/work/metabase/locales/es.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/es.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/es.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/es.edn from /Users/roman/work/metabase/locales/es.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/es.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/es.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "es" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "fa"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/fa.json from /Users/roman/work/metabase/locales/fa.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/fa.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/fa.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/fa.edn from /Users/roman/work/metabase/locales/fa.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/fa.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/fa.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "fa" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "fi"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/fi.json from /Users/roman/work/metabase/locales/fi.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/fi.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/fi.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/fi.edn from /Users/roman/work/metabase/locales/fi.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/fi.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/fi.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "fi" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "fr"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/fr.json from /Users/roman/work/metabase/locales/fr.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/fr.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/fr.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/fr.edn from /Users/roman/work/metabase/locales/fr.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/fr.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/fr.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "fr" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "id"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/id.json from /Users/roman/work/metabase/locales/id.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/id.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/id.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/id.edn from /Users/roman/work/metabase/locales/id.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/id.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/id.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "id" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "it"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/it.json from /Users/roman/work/metabase/locales/it.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/it.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/it.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/it.edn from /Users/roman/work/metabase/locales/it.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/it.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/it.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "it" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "ja"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/ja.json from /Users/roman/work/metabase/locales/ja.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ja.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ja.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/ja.edn from /Users/roman/work/metabase/locales/ja.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/ja.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/ja.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "ja" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "ko"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/ko.json from /Users/roman/work/metabase/locales/ko.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ko.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ko.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/ko.edn from /Users/roman/work/metabase/locales/ko.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/ko.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/ko.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "ko" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "lv"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/lv.json from /Users/roman/work/metabase/locales/lv.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/lv.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/lv.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/lv.edn from /Users/roman/work/metabase/locales/lv.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/lv.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/lv.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "lv" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "nb"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/nb.json from /Users/roman/work/metabase/locales/nb.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/nb.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/nb.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/nb.edn from /Users/roman/work/metabase/locales/nb.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/nb.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/nb.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:38]           Wrote 2396 messages.
+[2023-12-20 11:56:38]       Artifacts for locale "nb" created successfully.
+[2023-12-20 11:56:38]     Create artifacts for locale "nl"
+[2023-12-20 11:56:38]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/nl.json from /Users/roman/work/metabase/locales/nl.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/nl.json if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/nl.json, file does not exist.
+[2023-12-20 11:56:38]         Write JSON
+[2023-12-20 11:56:38]           Wrote 4374 messages.
+[2023-12-20 11:56:38]       Create backend artifact /Users/roman/work/metabase/resources/i18n/nl.edn from /Users/roman/work/metabase/locales/nl.po
+[2023-12-20 11:56:38]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:38]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:38]         Delete /Users/roman/work/metabase/resources/i18n/nl.edn if exists
+[2023-12-20 11:56:38]           Don't need to delete /Users/roman/work/metabase/resources/i18n/nl.edn, file does not exist.
+[2023-12-20 11:56:38]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "nl" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "pl"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/pl.json from /Users/roman/work/metabase/locales/pl.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/pl.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/pl.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/pl.edn from /Users/roman/work/metabase/locales/pl.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/pl.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/pl.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "pl" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "pt-BR"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/pt_BR.json from /Users/roman/work/metabase/locales/pt-BR.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/pt_BR.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/pt_BR.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/pt-BR.edn from /Users/roman/work/metabase/locales/pt-BR.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/pt-BR.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/pt-BR.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "pt-BR" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "ru"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/ru.json from /Users/roman/work/metabase/locales/ru.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ru.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/ru.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/ru.edn from /Users/roman/work/metabase/locales/ru.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/ru.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/ru.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "ru" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "sk"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/sk.json from /Users/roman/work/metabase/locales/sk.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sk.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sk.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/sk.edn from /Users/roman/work/metabase/locales/sk.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/sk.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/sk.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "sk" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "sq"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/sq.json from /Users/roman/work/metabase/locales/sq.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sq.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sq.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/sq.edn from /Users/roman/work/metabase/locales/sq.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/sq.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/sq.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "sq" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "sr"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/sr.json from /Users/roman/work/metabase/locales/sr.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sr.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sr.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/sr.edn from /Users/roman/work/metabase/locales/sr.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/sr.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/sr.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "sr" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "sv"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/sv.json from /Users/roman/work/metabase/locales/sv.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sv.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/sv.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/sv.edn from /Users/roman/work/metabase/locales/sv.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/sv.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/sv.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "sv" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "tr"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/tr.json from /Users/roman/work/metabase/locales/tr.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/tr.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/tr.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/tr.edn from /Users/roman/work/metabase/locales/tr.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/tr.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/tr.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "tr" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "uk"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/uk.json from /Users/roman/work/metabase/locales/uk.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/uk.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/uk.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/uk.edn from /Users/roman/work/metabase/locales/uk.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/uk.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/uk.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "uk" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "vi"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/vi.json from /Users/roman/work/metabase/locales/vi.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/vi.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/vi.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/vi.edn from /Users/roman/work/metabase/locales/vi.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/vi.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/vi.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "vi" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "zh"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/zh.json from /Users/roman/work/metabase/locales/zh.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/zh.edn from /Users/roman/work/metabase/locales/zh.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/i18n/zh.edn if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/i18n/zh.edn, file does not exist.
+[2023-12-20 11:56:39]         Write EDN file
+[2023-12-20 11:56:39]           Wrote 2396 messages.
+[2023-12-20 11:56:39]       Artifacts for locale "zh" created successfully.
+[2023-12-20 11:56:39]     Create artifacts for locale "zh-CN"
+[2023-12-20 11:56:39]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_CN.json from /Users/roman/work/metabase/locales/zh-CN.po
+[2023-12-20 11:56:39]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:39]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:39]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_CN.json if exists
+[2023-12-20 11:56:39]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_CN.json, file does not exist.
+[2023-12-20 11:56:39]         Write JSON
+[2023-12-20 11:56:39]           Wrote 4374 messages.
+[2023-12-20 11:56:39]       Create backend artifact /Users/roman/work/metabase/resources/i18n/zh-CN.edn from /Users/roman/work/metabase/locales/zh-CN.po
+[2023-12-20 11:56:40]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:40]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:40]         Delete /Users/roman/work/metabase/resources/i18n/zh-CN.edn if exists
+[2023-12-20 11:56:40]           Don't need to delete /Users/roman/work/metabase/resources/i18n/zh-CN.edn, file does not exist.
+[2023-12-20 11:56:40]         Write EDN file
+[2023-12-20 11:56:40]           Wrote 2396 messages.
+[2023-12-20 11:56:40]       Artifacts for locale "zh-CN" created successfully.
+[2023-12-20 11:56:40]     Create artifacts for locale "zh-HK"
+[2023-12-20 11:56:40]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_HK.json from /Users/roman/work/metabase/locales/zh-HK.po
+[2023-12-20 11:56:40]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:40]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:40]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_HK.json if exists
+[2023-12-20 11:56:40]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_HK.json, file does not exist.
+[2023-12-20 11:56:40]         Write JSON
+[2023-12-20 11:56:40]           Wrote 4374 messages.
+[2023-12-20 11:56:40]       Create backend artifact /Users/roman/work/metabase/resources/i18n/zh-HK.edn from /Users/roman/work/metabase/locales/zh-HK.po
+[2023-12-20 11:56:40]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:40]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:40]         Delete /Users/roman/work/metabase/resources/i18n/zh-HK.edn if exists
+[2023-12-20 11:56:40]           Don't need to delete /Users/roman/work/metabase/resources/i18n/zh-HK.edn, file does not exist.
+[2023-12-20 11:56:40]         Write EDN file
+[2023-12-20 11:56:40]           Wrote 2396 messages.
+[2023-12-20 11:56:40]       Artifacts for locale "zh-HK" created successfully.
+[2023-12-20 11:56:40]     Create artifacts for locale "zh-TW"
+[2023-12-20 11:56:40]       Create frontend artifact /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_TW.json from /Users/roman/work/metabase/locales/zh-TW.po
+[2023-12-20 11:56:40]         Create directory /Users/roman/work/metabase/resources/frontend_client/app/locales if it does not exist
+[2023-12-20 11:56:40]           /Users/roman/work/metabase/resources/frontend_client/app/locales already exists.
+[2023-12-20 11:56:40]         Delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_TW.json if exists
+[2023-12-20 11:56:40]           Don't need to delete /Users/roman/work/metabase/resources/frontend_client/app/locales/zh_TW.json, file does not exist.
+[2023-12-20 11:56:40]         Write JSON
+[2023-12-20 11:56:40]           Wrote 4374 messages.
+[2023-12-20 11:56:40]       Create backend artifact /Users/roman/work/metabase/resources/i18n/zh-TW.edn from /Users/roman/work/metabase/locales/zh-TW.po
+[2023-12-20 11:56:40]         Create directory /Users/roman/work/metabase/resources/i18n if it does not exist
+[2023-12-20 11:56:40]           /Users/roman/work/metabase/resources/i18n already exists.
+[2023-12-20 11:56:40]         Delete /Users/roman/work/metabase/resources/i18n/zh-TW.edn if exists
+[2023-12-20 11:56:40]           Don't need to delete /Users/roman/work/metabase/resources/i18n/zh-TW.edn, file does not exist.
+[2023-12-20 11:56:40]         Write EDN file
+[2023-12-20 11:56:40]           Wrote 2396 messages.
+[2023-12-20 11:56:40]       Artifacts for locale "zh-TW" created successfully.
+[2023-12-20 11:56:40]     Translation resources built successfully.
+
+TRANSLATIONS END 11:56:40 - 11:56:37 = 3 sec
+
+FE START
+[2023-12-20 11:56:40]   Build frontend with MB_EDITION=oss
+[2023-12-20 11:56:40]     Run 'yarn' to download javascript dependencies
+[2023-12-20 11:56:40]       $ "yarn"
+[2023-12-20 11:56:40]         yarn install v1.22.19
+[2023-12-20 11:56:40]         $ echo $npm_execpath | grep -q yarn || echo '\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\033[0m'
+[2023-12-20 11:56:40]         [1/5] Validating package.json...
+[2023-12-20 11:56:40]         [2/5] Resolving packages...
+[2023-12-20 11:56:40]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:56:40]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^2.2.3"
+[2023-12-20 11:56:40]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:56:40]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.0"
+[2023-12-20 11:56:40]         warning Resolution field "unset-value@2.0.1" is incompatible with requested version "unset-value@^1.0.0"
+[2023-12-20 11:56:40]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.1"
+[2023-12-20 11:56:40]         warning Resolution field "nth-check@2.0.1" is incompatible with requested version "nth-check@^1.0.2"
+[2023-12-20 11:56:40]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:56:40]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:56:40]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:56:40]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^6.0.1"
+[2023-12-20 11:56:40]         success Already up-to-date.
+[2023-12-20 11:56:40]         $ husky install
+[2023-12-20 11:56:40]         husky - Git hooks installed
+[2023-12-20 11:56:40]         Done in 0.62s.
+[2023-12-20 11:56:40]     Build frontend
+[2023-12-20 11:56:40]       $ "yarn" "build-release"
+[2023-12-20 11:56:41]         yarn run v1.22.19
+[2023-12-20 11:56:41]         $ yarn build-release:cljs && yarn build-release:js
+[2023-12-20 11:56:41]         $ yarn && yarn clean-release:cljs && shadow-cljs release app
+[2023-12-20 11:56:41]         $ echo $npm_execpath | grep -q yarn || echo '\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\033[0m'
+[2023-12-20 11:56:41]         [1/5] Validating package.json...
+[2023-12-20 11:56:41]         [2/5] Resolving packages...
+[2023-12-20 11:56:41]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:56:41]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^2.2.3"
+[2023-12-20 11:56:41]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:56:41]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.0"
+[2023-12-20 11:56:41]         warning Resolution field "unset-value@2.0.1" is incompatible with requested version "unset-value@^1.0.0"
+[2023-12-20 11:56:41]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.1"
+[2023-12-20 11:56:41]         warning Resolution field "nth-check@2.0.1" is incompatible with requested version "nth-check@^1.0.2"
+[2023-12-20 11:56:41]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:56:41]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:56:41]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:56:41]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^6.0.1"
+[2023-12-20 11:56:41]         success Already up-to-date.
+[2023-12-20 11:56:41]         $ husky install
+[2023-12-20 11:56:41]         husky - Git hooks installed
+[2023-12-20 11:56:42]         $ rm -rf target/cljs_release/*
+[2023-12-20 11:56:42]         shadow-cljs - config: /Users/roman/work/metabase/shadow-cljs.edn
+[2023-12-20 11:56:42]         shadow-cljs - starting via "clojure"
+
+CLJS START
+
+[2023-12-20 11:56:47]         [:app] Compiling ...
+[2023-12-20 11:56:51]         2023-12-20 11:56:51,607 INFO metabase.util :: Maximum memory available to JVM: 8.0 GB
+[2023-12-20 11:56:52]         operator.clj:172 recur arg for primitive local: sum is not matching primitive, had: Object, needed: long
+[2023-12-20 11:56:52]         Auto-boxing loop arg: sum
+[2023-12-20 11:57:04]         [:app] Build completed. (243 files, 0 compiled, 0 warnings, 16.87s)
+
+CLJS END 16.87s
+
+[2023-12-20 11:57:04]         $ yarn && WEBPACK_BUNDLE=production NODE_OPTIONS=--max-old-space-size=8196 webpack --bail
+[2023-12-20 11:57:05]         $ echo $npm_execpath | grep -q yarn || echo '\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\033[0m'
+[2023-12-20 11:57:05]         [1/5] Validating package.json...
+[2023-12-20 11:57:05]         [2/5] Resolving packages...
+[2023-12-20 11:57:05]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:05]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^2.2.3"
+[2023-12-20 11:57:05]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:57:05]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.0"
+[2023-12-20 11:57:05]         warning Resolution field "unset-value@2.0.1" is incompatible with requested version "unset-value@^1.0.0"
+[2023-12-20 11:57:05]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.1"
+[2023-12-20 11:57:05]         warning Resolution field "nth-check@2.0.1" is incompatible with requested version "nth-check@^1.0.2"
+[2023-12-20 11:57:05]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:05]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:05]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:57:05]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^6.0.1"
+[2023-12-20 11:57:05]         success Already up-to-date.
+[2023-12-20 11:57:05]         $ husky install
+[2023-12-20 11:57:05]         husky - Git hooks installed
+[2023-12-20 11:57:06]         Browserslist: caniuse-lite is outdated. Please run:
+[2023-12-20 11:57:06]         npx browserslist@latest --update-db
+[2023-12-20 11:57:06]         
+[2023-12-20 11:57:06]         Why you should do it regularly:
+[2023-12-20 11:57:06]         https://github.com/browserslist/browserslist#browsers-data-updating
+[2023-12-20 11:57:07]         Browserslist: caniuse-lite is outdated. Please run:
+[2023-12-20 11:57:07]           npx browserslist@latest --update-db
+[2023-12-20 11:57:07]           Why you should do it regularly: https://github.com/browserslist/browserslist#browsers-data-updating
+[2023-12-20 11:57:10]         Browserslist: caniuse-lite is outdated. Please run:
+[2023-12-20 11:57:10]           npx browserslist@latest --update-db
+[2023-12-20 11:57:10]           Why you should do it regularly: https://github.com/browserslist/browserslist#browsers-data-updating
+[2023-12-20 11:57:32]         assets by status 19.6 MiB [cached] 102 assets
+[2023-12-20 11:57:32]         assets by path . 5.94 KiB
+[2023-12-20 11:57:32]           asset ../../public.html 1.98 KiB [compared for emit]
+[2023-12-20 11:57:32]           asset ../../embed.html 1.98 KiB [compared for emit]
+[2023-12-20 11:57:32]           asset ../../index.html 1.98 KiB [compared for emit]
+[2023-12-20 11:57:32]         Entrypoint app-main [big] 9.53 MiB (38.3 MiB) = runtime.6dc38af4e064c052d5ed.js 3.97 KiB vendor.84814979bbd4eb44b346.js 5.46 MiB app-main.4503fc81bc1a36e5d621.css 105 KiB app-main.5cd9e43f6f2dce2d6fd8.js 3.97 MiB 66 auxiliary assets
+[2023-12-20 11:57:32]         Entrypoint app-public [big] 8.48 MiB (33.9 MiB) = runtime.6dc38af4e064c052d5ed.js 3.97 KiB vendor.84814979bbd4eb44b346.js 5.46 MiB app-public.b21719785d8971f4e962.css 98.6 KiB app-public.c7a8932740545d3627c2.js 2.92 MiB 66 auxiliary assets
+[2023-12-20 11:57:32]         Entrypoint app-embed [big] 8.48 MiB (33.9 MiB) = runtime.6dc38af4e064c052d5ed.js 3.97 KiB vendor.84814979bbd4eb44b346.js 5.46 MiB app-embed.b21719785d8971f4e962.css 98.6 KiB app-embed.11fcb4b4ab978d453d13.js 2.92 MiB 66 auxiliary assets
+[2023-12-20 11:57:32]         Entrypoint styles 70.9 KiB (37 KiB) = runtime.6dc38af4e064c052d5ed.js 3.97 KiB styles.8a9ff558af160872a8af.css 66.7 KiB styles.5d140ad664bae3d0b99e.js 274 bytes 27 auxiliary assets
+[2023-12-20 11:57:32]         orphan modules 14.8 MiB (javascript) 3.9 MiB (asset) 1.89 KiB (runtime) [orphan] 5947 modules
+[2023-12-20 11:57:32]         runtime modules 9.25 KiB 18 modules
+[2023-12-20 11:57:32]         built modules 25.8 MiB (javascript) 180 KiB (css/mini-extract) 1.53 KiB (asset) [built]
+[2023-12-20 11:57:32]           modules by path ../../../ 13.3 MiB (javascript) 17.8 KiB (css/mini-extract) 1.53 KiB (asset)
+[2023-12-20 11:57:32]             modules by path ../../../node_modules/ 11.9 MiB (javascript) 17.8 KiB (css/mini-extract) 1358 modules
+[2023-12-20 11:57:32]             modules by path ../../../target/cljs_release/*.js 1.4 MiB 163 modules
+[2023-12-20 11:57:32]             ../../../resources/frontend_client/app/assets/img/no_results.svg 42 bytes (javascript) 1.53 KiB (asset) [built] [code generated] [build time executed]
+[2023-12-20 11:57:32]           modules by path ./ 11.9 MiB (javascript) 162 KiB (css/mini-extract)
+[2023-12-20 11:57:32]             javascript modules 11.9 MiB 420 modules
+[2023-12-20 11:57:32]             css modules 162 KiB 30 modules
+[2023-12-20 11:57:32]           modules by path ../metabase-lib/ 506 KiB 67 modules
+[2023-12-20 11:57:32]           modules by path ../metabase-types/ 2.66 KiB
+[2023-12-20 11:57:32]             ../metabase-types/guards/dashboard.ts 67 bytes [built] [code generated]
+[2023-12-20 11:57:32]             ../metabase-types/guards/index.ts + 6 modules 2.59 KiB [built] [code generated]
+[2023-12-20 11:57:32]           + 12 modules
+[2023-12-20 11:57:32]         
+[2023-12-20 11:57:32]         WARNING in asset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+[2023-12-20 11:57:32]         This can impact web performance.
+[2023-12-20 11:57:32]         Assets: 
+[2023-12-20 11:57:32]           app-main.5cd9e43f6f2dce2d6fd8.js (3.97 MiB)
+[2023-12-20 11:57:32]           app-public.c7a8932740545d3627c2.js (2.92 MiB)
+[2023-12-20 11:57:32]           app-embed.11fcb4b4ab978d453d13.js (2.92 MiB)
+[2023-12-20 11:57:32]           vendor.84814979bbd4eb44b346.js (5.46 MiB)
+[2023-12-20 11:57:32]         
+[2023-12-20 11:57:32]         WARNING in entrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+[2023-12-20 11:57:32]         Entrypoints:
+[2023-12-20 11:57:32]           app-main (9.53 MiB)
+[2023-12-20 11:57:32]               runtime.6dc38af4e064c052d5ed.js
+[2023-12-20 11:57:32]               vendor.84814979bbd4eb44b346.js
+[2023-12-20 11:57:32]               app-main.4503fc81bc1a36e5d621.css
+[2023-12-20 11:57:32]               app-main.5cd9e43f6f2dce2d6fd8.js
+[2023-12-20 11:57:32]           app-public (8.48 MiB)
+[2023-12-20 11:57:32]               runtime.6dc38af4e064c052d5ed.js
+[2023-12-20 11:57:32]               vendor.84814979bbd4eb44b346.js
+[2023-12-20 11:57:32]               app-public.b21719785d8971f4e962.css
+[2023-12-20 11:57:32]               app-public.c7a8932740545d3627c2.js
+[2023-12-20 11:57:32]           app-embed (8.48 MiB)
+[2023-12-20 11:57:32]               runtime.6dc38af4e064c052d5ed.js
+[2023-12-20 11:57:32]               vendor.84814979bbd4eb44b346.js
+[2023-12-20 11:57:32]               app-embed.b21719785d8971f4e962.css
+[2023-12-20 11:57:32]               app-embed.11fcb4b4ab978d453d13.js
+[2023-12-20 11:57:32]         
+[2023-12-20 11:57:32]         webpack 5.85.0 compiled with 2 warnings in 25879 ms
+[2023-12-20 11:57:32]         Done in 51.74s.
+
+FE END 51.74s (16.87s CLJS)
+
+STATIC VIZ START 
+
+[2023-12-20 11:57:32]     Build static viz
+[2023-12-20 11:57:32]       $ "yarn" "build-static-viz"
+[2023-12-20 11:57:32]         yarn run v1.22.19
+[2023-12-20 11:57:32]         $ yarn && yarn build-release:cljs && WEBPACK_BUNDLE=production webpack --config webpack.static-viz.config.js
+[2023-12-20 11:57:33]         $ echo $npm_execpath | grep -q yarn || echo '\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\033[0m'
+[2023-12-20 11:57:33]         [1/5] Validating package.json...
+[2023-12-20 11:57:33]         [2/5] Resolving packages...
+[2023-12-20 11:57:33]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:33]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^2.2.3"
+[2023-12-20 11:57:33]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:57:33]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.0"
+[2023-12-20 11:57:33]         warning Resolution field "unset-value@2.0.1" is incompatible with requested version "unset-value@^1.0.0"
+[2023-12-20 11:57:33]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.1"
+[2023-12-20 11:57:33]         warning Resolution field "nth-check@2.0.1" is incompatible with requested version "nth-check@^1.0.2"
+[2023-12-20 11:57:33]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:33]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:33]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:57:33]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^6.0.1"
+[2023-12-20 11:57:33]         success Already up-to-date.
+[2023-12-20 11:57:33]         $ husky install
+[2023-12-20 11:57:33]         husky - Git hooks installed
+[2023-12-20 11:57:33]         $ yarn && yarn clean-release:cljs && shadow-cljs release app
+[2023-12-20 11:57:33]         $ echo $npm_execpath | grep -q yarn || echo '\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\033[0m'
+[2023-12-20 11:57:33]         [1/5] Validating package.json...
+[2023-12-20 11:57:33]         [2/5] Resolving packages...
+[2023-12-20 11:57:33]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:33]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^2.2.3"
+[2023-12-20 11:57:33]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:57:33]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.0"
+[2023-12-20 11:57:34]         warning Resolution field "unset-value@2.0.1" is incompatible with requested version "unset-value@^1.0.0"
+[2023-12-20 11:57:34]         warning Resolution field "set-value@4.0.1" is incompatible with requested version "set-value@^2.0.1"
+[2023-12-20 11:57:34]         warning Resolution field "nth-check@2.0.1" is incompatible with requested version "nth-check@^1.0.2"
+[2023-12-20 11:57:34]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:34]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^2.0.0"
+[2023-12-20 11:57:34]         warning Resolution field "json5@2.2.2" is incompatible with requested version "json5@^1.0.1"
+[2023-12-20 11:57:34]         warning Resolution field "ansi-regex@5.0.1" is incompatible with requested version "ansi-regex@^6.0.1"
+[2023-12-20 11:57:34]         success Already up-to-date.
+[2023-12-20 11:57:34]         $ husky install
+[2023-12-20 11:57:34]         husky - Git hooks installed
+[2023-12-20 11:57:34]         $ rm -rf target/cljs_release/*
+[2023-12-20 11:57:34]         shadow-cljs - config: /Users/roman/work/metabase/shadow-cljs.edn
+[2023-12-20 11:57:34]         shadow-cljs - starting via "clojure"
+[2023-12-20 11:57:39]         [:app] Compiling ...
+[2023-12-20 11:57:43]         2023-12-20 11:57:43,942 INFO metabase.util :: Maximum memory available to JVM: 8.0 GB
+[2023-12-20 11:57:44]         operator.clj:172 recur arg for primitive local: sum is not matching primitive, had: Object, needed: long
+[2023-12-20 11:57:44]         Auto-boxing loop arg: sum
+[2023-12-20 11:57:56]         [:app] Build completed. (243 files, 0 compiled, 0 warnings, 16.78s)
+[2023-12-20 11:57:57]         Browserslist: caniuse-lite is outdated. Please run:
+[2023-12-20 11:57:57]         npx browserslist@latest --update-db
+[2023-12-20 11:57:57]         
+[2023-12-20 11:57:57]         Why you should do it regularly:
+[2023-12-20 11:57:57]         https://github.com/browserslist/browserslist#browsers-data-updating
+[2023-12-20 11:57:59]         asset lib-static-viz.bundle.js 3.2 MiB [emitted] [minimized] [big] (name: lib-static-viz)
+[2023-12-20 11:57:59]         asset ../../../../.github/static-viz-sources.yaml 13 KiB [compared for emit]
+[2023-12-20 11:57:59]         orphan modules 2.14 MiB [orphan] 1076 modules
+[2023-12-20 11:57:59]         runtime modules 1.31 KiB 6 modules
+[2023-12-20 11:57:59]         built modules 4.31 MiB [built]
+[2023-12-20 11:57:59]           modules by path ../../../node_modules/ 1.96 MiB 218 modules
+[2023-12-20 11:57:59]           modules by path ../../../target/cljs_release/*.js 893 KiB
+[2023-12-20 11:57:59]             ../../../target/cljs_release/metabase.types.js 19.2 KiB [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/cljs_env.js 2.96 KiB [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/cljs.core.js 217 KiB [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/clojure.set.js 1.66 KiB [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/metabase.types.coercion_hierarchies.js 1.56 KiB [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/metabase.util.malli.js 318 bytes [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/metabase.util.js 18.5 KiB [built] [code generated]
+[2023-12-20 11:57:59]             ../../../target/cljs_release/metabase.shared.util.currency.js 25.4 KiB [built] [code generated]
+[2023-12-20 11:57:59]             + 64 modules
+[2023-12-20 11:57:59]           ./static-viz/index.js + 455 modules 1.48 MiB [built] [code generated]
+[2023-12-20 11:57:59]         webpack 5.85.0 compiled successfully in 2520 ms
+[2023-12-20 11:57:59]         Done in 26.79s.
+[2023-12-20 11:57:59]     Frontend built successfully.
+
+STATIC VIZ END 26.79s (CLJS 16.78s)
+
+BE START 
+
+[2023-12-20 11:57:59]   Generate backend license information from jar files
+[2023-12-20 11:58:01]     License information generated at /Users/roman/work/metabase/resources/license-backend-third-party.txt
+[2023-12-20 11:58:01]   Run `yarn licenses generate-disclaimer`
+[2023-12-20 11:58:01]     $ "yarn" "licenses" "generate-disclaimer"
+[2023-12-20 11:58:02]   Building all drivers (:oss edition)
+[2023-12-20 11:58:02]     Build driver :bigquery-cloud-sdk (edition = :oss, options = nil)
+[2023-12-20 11:58:02]       Clean
+[2023-12-20 11:58:02]         Delete /Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/target/jar if exists
+[2023-12-20 11:58:02]           Deleted /Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/target/jar.
+[2023-12-20 11:58:02]         Delete /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar if exists
+[2023-12-20 11:58:02]           Deleted /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar.
+[2023-12-20 11:58:02]       Copy :bigquery-cloud-sdk source files
+[2023-12-20 11:58:02]         Copying files in ["/Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/src" "/Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/resources"]
+[2023-12-20 11:58:02]         Copied files in 2 directories in 20 ms.
+[2023-12-20 11:58:02]       Compile clojure source files
+[2023-12-20 11:58:02]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/src" "/Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/resources"] to /Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/target/jar
+[2023-12-20 11:58:02]         Create directory /Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/target/jar if it does not exist
+[2023-12-20 11:58:02]           /Users/roman/work/metabase/modules/drivers/bigquery-cloud-sdk/target/jar already exists.
+[2023-12-20 11:58:02]         Compiling namespaces [metabase.driver.bigquery-cloud-sdk.common metabase.driver.bigquery-cloud-sdk.params metabase.driver.bigquery-cloud-sdk.query-processor metabase.driver.bigquery-cloud-sdk]
+operator.clj:172 recur arg for primitive local: sum is not matching primitive, had: Object, needed: long
+Auto-boxing loop arg: sum
+Reflection warning, clojurewerkz/quartzite/triggers.clj:85:6 - call to method forJob on org.quartz.TriggerBuilder can't be resolved (argument types: unknown).
+Reflection warning, clojurewerkz/quartzite/scheduler.clj:254:3 - call to method checkExists on org.quartz.Scheduler can't be resolved (argument types: unknown).
+[2023-12-20 11:58:12] DEBUG StatusConsoleListener Log4jBridgeHandler init. with: suffix='null', lvlProp=true, instance=org.apache.logging.log4j.jul.Log4jBridgeHandler@187b83b6
+[2023-12-20 11:58:19]         Compiled 4 namespace(s) in 17472 ms.
+[2023-12-20 11:58:19]       Write :bigquery-cloud-sdk :oss uberjar -> /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar
+[2023-12-20 11:58:19]         Determine which dependencies to include
+[2023-12-20 11:58:19]           SKIP    com.fasterxml.jackson.core/jackson-annotations (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    com.fasterxml.jackson.core/jackson-core (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    com.fasterxml.jackson.core/jackson-databind (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE com.fasterxml.jackson.datatype/jackson-datatype-jsr310
+[2023-12-20 11:58:19]           INCLUDE com.google.android/annotations
+[2023-12-20 11:58:19]           INCLUDE com.google.api/api-common
+[2023-12-20 11:58:19]           INCLUDE com.google.api/gax
+[2023-12-20 11:58:19]           INCLUDE com.google.api/gax-grpc
+[2023-12-20 11:58:19]           INCLUDE com.google.api/gax-httpjson
+[2023-12-20 11:58:19]           INCLUDE com.google.api-client/google-api-client
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/grpc-google-cloud-bigquerystorage-v1
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/grpc-google-cloud-bigquerystorage-v1beta1
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/grpc-google-cloud-bigquerystorage-v1beta2
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/proto-google-cloud-bigquerystorage-v1
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/proto-google-cloud-bigquerystorage-v1beta1
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/proto-google-cloud-bigquerystorage-v1beta2
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/proto-google-common-protos
+[2023-12-20 11:58:19]           INCLUDE com.google.api.grpc/proto-google-iam-v1
+[2023-12-20 11:58:19]           INCLUDE com.google.apis/google-api-services-bigquery
+[2023-12-20 11:58:19]           INCLUDE com.google.auth/google-auth-library-credentials
+[2023-12-20 11:58:19]           INCLUDE com.google.auth/google-auth-library-oauth2-http
+[2023-12-20 11:58:19]           INCLUDE com.google.auto.value/auto-value
+[2023-12-20 11:58:19]           INCLUDE com.google.cloud/google-cloud-bigquery
+[2023-12-20 11:58:19]           INCLUDE com.google.cloud/google-cloud-bigquerystorage
+[2023-12-20 11:58:19]           INCLUDE com.google.cloud/google-cloud-core
+[2023-12-20 11:58:19]           INCLUDE com.google.cloud/google-cloud-core-http
+[2023-12-20 11:58:19]           SKIP    com.google.code.findbugs/jsr305 (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE com.google.code.gson/gson
+[2023-12-20 11:58:19]           SKIP    com.google.errorprone/error_prone_annotations (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE com.google.flatbuffers/flatbuffers-java
+[2023-12-20 11:58:19]           SKIP    com.google.guava/failureaccess (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    com.google.guava/guava (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    com.google.guava/listenablefuture (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE com.google.http-client/google-http-client
+[2023-12-20 11:58:19]           INCLUDE com.google.http-client/google-http-client-apache-v2
+[2023-12-20 11:58:19]           INCLUDE com.google.http-client/google-http-client-appengine
+[2023-12-20 11:58:19]           INCLUDE com.google.http-client/google-http-client-gson
+[2023-12-20 11:58:19]           SKIP    com.google.j2objc/j2objc-annotations (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE com.google.oauth-client/google-oauth-client
+[2023-12-20 11:58:19]           INCLUDE com.google.protobuf/protobuf-java
+[2023-12-20 11:58:19]           INCLUDE com.google.protobuf/protobuf-java-util
+[2023-12-20 11:58:19]           SKIP    commons-codec/commons-codec (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    commons-logging/commons-logging (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-alts
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-api
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-auth
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-context
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-core
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-googleapis
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-grpclb
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-inprocess
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-netty-shaded
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-protobuf
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-protobuf-lite
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-stub
+[2023-12-20 11:58:19]           INCLUDE io.grpc/grpc-util
+[2023-12-20 11:58:19]           INCLUDE io.netty/netty-buffer
+[2023-12-20 11:58:19]           INCLUDE io.netty/netty-common
+[2023-12-20 11:58:19]           INCLUDE io.opencensus/opencensus-api
+[2023-12-20 11:58:19]           INCLUDE io.opencensus/opencensus-contrib-http-util
+[2023-12-20 11:58:19]           INCLUDE io.perfmark/perfmark-api
+[2023-12-20 11:58:19]           INCLUDE javax.annotation/javax.annotation-api
+[2023-12-20 11:58:19]           INCLUDE org.apache.arrow/arrow-format
+[2023-12-20 11:58:19]           INCLUDE org.apache.arrow/arrow-memory-core
+[2023-12-20 11:58:19]           INCLUDE org.apache.arrow/arrow-memory-netty
+[2023-12-20 11:58:19]           INCLUDE org.apache.arrow/arrow-vector
+[2023-12-20 11:58:19]           SKIP    org.apache.httpcomponents/httpclient (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    org.apache.httpcomponents/httpcore (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE org.checkerframework/checker-compat-qual
+[2023-12-20 11:58:19]           SKIP    org.checkerframework/checker-qual (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE org.codehaus.mojo/animal-sniffer-annotations
+[2023-12-20 11:58:19]           INCLUDE org.conscrypt/conscrypt-openjdk-uber
+[2023-12-20 11:58:19]           INCLUDE org.json/json
+[2023-12-20 11:58:19]           SKIP    org.slf4j/slf4j-api (provided by metabase-core)
+[2023-12-20 11:58:19]           SKIP    org.threeten/threeten-extra (provided by metabase-core)
+[2023-12-20 11:58:19]           INCLUDE org.threeten/threetenbp
+[2023-12-20 11:58:19] Building uber jar: /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar
+[2023-12-20 11:58:22]         Created uberjar in 2626 ms.
+[2023-12-20 11:58:22]       Built :bigquery-cloud-sdk driver in 20158 ms.
+[2023-12-20 11:58:22]       Verify :bigquery-cloud-sdk driver
+[2023-12-20 11:58:22]         Check /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar contains init class file metabase/driver/bigquery_cloud_sdk__init.class
+[2023-12-20 11:58:22]           Driver init class file found.
+[2023-12-20 11:58:22]         Check /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:22]           Plugin manifest found; validating it
+[2023-12-20 11:58:22]           Plugin manifest passed spec validation
+[2023-12-20 11:58:22]         Check /Users/roman/work/metabase/resources/modules/bigquery-cloud-sdk.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:22]         :bigquery-cloud-sdk driver verification successful.
+[2023-12-20 11:58:22]     Build driver :sparksql (edition = :oss, options = nil)
+[2023-12-20 11:58:22]       Clean
+[2023-12-20 11:58:22]         Delete /Users/roman/work/metabase/modules/drivers/sparksql/target/jar if exists
+[2023-12-20 11:58:22]           Deleted /Users/roman/work/metabase/modules/drivers/sparksql/target/jar.
+[2023-12-20 11:58:22]         Delete /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar if exists
+[2023-12-20 11:58:22]           Deleted /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar.
+[2023-12-20 11:58:22]       Copy :sparksql source files
+[2023-12-20 11:58:22]         Copying files in ["/Users/roman/work/metabase/modules/drivers/sparksql/src" "/Users/roman/work/metabase/modules/drivers/sparksql/resources"]
+[2023-12-20 11:58:22]         Copied files in 2 directories in 4 ms.
+[2023-12-20 11:58:22]       Compile clojure source files
+[2023-12-20 11:58:22]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/sparksql/src" "/Users/roman/work/metabase/modules/drivers/sparksql/resources"] to /Users/roman/work/metabase/modules/drivers/sparksql/target/jar
+[2023-12-20 11:58:22]         Create directory /Users/roman/work/metabase/modules/drivers/sparksql/target/jar if it does not exist
+[2023-12-20 11:58:22]           /Users/roman/work/metabase/modules/drivers/sparksql/target/jar already exists.
+[2023-12-20 11:58:22]         Compiling namespaces [metabase.driver.hive-like.fixed-hive-connection metabase.driver.hive-like metabase.driver.sparksql]
+[2023-12-20 11:58:22]         Compiled 3 namespace(s) in 538 ms.
+[2023-12-20 11:58:22]       Write :sparksql :oss uberjar -> /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar
+[2023-12-20 11:58:22]         Determine which dependencies to include
+[2023-12-20 11:58:22]           INCLUDE commons-lang/commons-lang
+[2023-12-20 11:58:22]           INCLUDE jakarta.annotation/jakarta.annotation-api
+[2023-12-20 11:58:22]           INCLUDE jakarta.servlet/jakarta.servlet-api
+[2023-12-20 11:58:22]           INCLUDE org.apache.arrow/arrow-vector
+[2023-12-20 11:58:22]           SKIP    org.apache.commons/commons-lang3 (provided by metabase-core)
+[2023-12-20 11:58:22]           INCLUDE org.apache.curator/curator-client
+[2023-12-20 11:58:22]           INCLUDE org.apache.curator/curator-framework
+[2023-12-20 11:58:22]           INCLUDE org.apache.hive/hive-common
+[2023-12-20 11:58:22]           INCLUDE org.apache.hive/hive-jdbc
+[2023-12-20 11:58:22]           INCLUDE org.apache.hive/hive-serde
+[2023-12-20 11:58:22]           INCLUDE org.apache.hive/hive-service
+[2023-12-20 11:58:22]           INCLUDE org.apache.hive/hive-service-rpc
+[2023-12-20 11:58:22]           INCLUDE org.apache.httpcomponents.client5/httpclient5
+[2023-12-20 11:58:22]           INCLUDE org.apache.httpcomponents.core5/httpcore5
+[2023-12-20 11:58:22]           INCLUDE org.apache.httpcomponents.core5/httpcore5-h2
+[2023-12-20 11:58:22]           INCLUDE org.apache.thrift/libthrift
+[2023-12-20 11:58:22]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:22]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:22]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:22]           SKIP    org.slf4j/slf4j-api (provided by metabase-core)
+[2023-12-20 11:58:22] Building uber jar: /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar
+[2023-12-20 11:58:23]         Created uberjar in 755 ms.
+[2023-12-20 11:58:23]       Built :sparksql driver in 1311 ms.
+[2023-12-20 11:58:23]       Verify :sparksql driver
+[2023-12-20 11:58:23]         Check /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar contains init class file metabase/driver/sparksql__init.class
+[2023-12-20 11:58:23]           Driver init class file found.
+[2023-12-20 11:58:23]         Check /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:23]           Plugin manifest found; validating it
+[2023-12-20 11:58:23]           Plugin manifest passed spec validation
+[2023-12-20 11:58:23]         Check /Users/roman/work/metabase/resources/modules/sparksql.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:23]         :sparksql driver verification successful.
+[2023-12-20 11:58:23]     Build driver :oracle (edition = :oss, options = nil)
+[2023-12-20 11:58:23]       Clean
+[2023-12-20 11:58:23]         Delete /Users/roman/work/metabase/modules/drivers/oracle/target/jar if exists
+[2023-12-20 11:58:23]           Deleted /Users/roman/work/metabase/modules/drivers/oracle/target/jar.
+[2023-12-20 11:58:23]         Delete /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar if exists
+[2023-12-20 11:58:23]           Deleted /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar.
+[2023-12-20 11:58:23]       Copy :oracle source files
+[2023-12-20 11:58:23]         Copying files in ["/Users/roman/work/metabase/modules/drivers/oracle/src" "/Users/roman/work/metabase/modules/drivers/oracle/resources"]
+[2023-12-20 11:58:23]         Copied files in 2 directories in 11 ms.
+[2023-12-20 11:58:23]       Compile clojure source files
+[2023-12-20 11:58:23]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/oracle/src" "/Users/roman/work/metabase/modules/drivers/oracle/resources"] to /Users/roman/work/metabase/modules/drivers/oracle/target/jar
+[2023-12-20 11:58:23]         Create directory /Users/roman/work/metabase/modules/drivers/oracle/target/jar if it does not exist
+[2023-12-20 11:58:23]           /Users/roman/work/metabase/modules/drivers/oracle/target/jar already exists.
+[2023-12-20 11:58:23]         Compiling namespaces [metabase.driver.oracle]
+[2023-12-20 11:58:23]         Compiled 1 namespace(s) in 139 ms.
+[2023-12-20 11:58:23]       Write :oracle :oss uberjar -> /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar
+[2023-12-20 11:58:23]         Determine which dependencies to include
+[2023-12-20 11:58:23] Building uber jar: /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar
+[2023-12-20 11:58:23]         Created uberjar in 11 ms.
+[2023-12-20 11:58:23]       Built :oracle driver in 175 ms.
+[2023-12-20 11:58:23]       Verify :oracle driver
+[2023-12-20 11:58:23]         Check /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar contains init class file metabase/driver/oracle__init.class
+[2023-12-20 11:58:23]           Driver init class file found.
+[2023-12-20 11:58:23]         Check /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:23]           Plugin manifest found; validating it
+[2023-12-20 11:58:23]           Plugin manifest passed spec validation
+[2023-12-20 11:58:23]         Check /Users/roman/work/metabase/resources/modules/oracle.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:23]         :oracle driver verification successful.
+[2023-12-20 11:58:23]     Build driver :snowflake (edition = :oss, options = nil)
+[2023-12-20 11:58:23]       Clean
+[2023-12-20 11:58:23]         Delete /Users/roman/work/metabase/modules/drivers/snowflake/target/jar if exists
+[2023-12-20 11:58:23]           Deleted /Users/roman/work/metabase/modules/drivers/snowflake/target/jar.
+[2023-12-20 11:58:23]         Delete /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar if exists
+[2023-12-20 11:58:23]           Deleted /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar.
+[2023-12-20 11:58:23]       Copy :snowflake source files
+[2023-12-20 11:58:23]         Copying files in ["/Users/roman/work/metabase/modules/drivers/snowflake/src" "/Users/roman/work/metabase/modules/drivers/snowflake/resources"]
+[2023-12-20 11:58:23]         Copied files in 2 directories in 2 ms.
+[2023-12-20 11:58:23]       Compile clojure source files
+[2023-12-20 11:58:23]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/snowflake/src" "/Users/roman/work/metabase/modules/drivers/snowflake/resources"] to /Users/roman/work/metabase/modules/drivers/snowflake/target/jar
+[2023-12-20 11:58:23]         Create directory /Users/roman/work/metabase/modules/drivers/snowflake/target/jar if it does not exist
+[2023-12-20 11:58:23]           /Users/roman/work/metabase/modules/drivers/snowflake/target/jar already exists.
+[2023-12-20 11:58:23]         Compiling namespaces [metabase.driver.snowflake]
+[2023-12-20 11:58:23]         Compiled 1 namespace(s) in 145 ms.
+[2023-12-20 11:58:23]       Write :snowflake :oss uberjar -> /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar
+[2023-12-20 11:58:23]         Determine which dependencies to include
+[2023-12-20 11:58:23]           INCLUDE net.snowflake/snowflake-jdbc
+[2023-12-20 11:58:23]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:23]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:23]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:23] Building uber jar: /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar
+[2023-12-20 11:58:28]         Created uberjar in 4707 ms.
+[2023-12-20 11:58:28]       Built :snowflake driver in 4866 ms.
+[2023-12-20 11:58:28]       Verify :snowflake driver
+[2023-12-20 11:58:28]         Check /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar contains init class file metabase/driver/snowflake__init.class
+[2023-12-20 11:58:28]           Driver init class file found.
+[2023-12-20 11:58:28]         Check /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:28]           Plugin manifest found; validating it
+[2023-12-20 11:58:28]           Plugin manifest passed spec validation
+[2023-12-20 11:58:28]         Check /Users/roman/work/metabase/resources/modules/snowflake.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:28]         :snowflake driver verification successful.
+[2023-12-20 11:58:28]     Build driver :sqlite (edition = :oss, options = nil)
+[2023-12-20 11:58:28]       Clean
+[2023-12-20 11:58:28]         Delete /Users/roman/work/metabase/modules/drivers/sqlite/target/jar if exists
+[2023-12-20 11:58:28]           Deleted /Users/roman/work/metabase/modules/drivers/sqlite/target/jar.
+[2023-12-20 11:58:28]         Delete /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar if exists
+[2023-12-20 11:58:28]           Deleted /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar.
+[2023-12-20 11:58:28]       Copy :sqlite source files
+[2023-12-20 11:58:28]         Copying files in ["/Users/roman/work/metabase/modules/drivers/sqlite/src" "/Users/roman/work/metabase/modules/drivers/sqlite/resources"]
+[2023-12-20 11:58:28]         Copied files in 2 directories in 3 ms.
+[2023-12-20 11:58:28]       Compile clojure source files
+[2023-12-20 11:58:28]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/sqlite/src" "/Users/roman/work/metabase/modules/drivers/sqlite/resources"] to /Users/roman/work/metabase/modules/drivers/sqlite/target/jar
+[2023-12-20 11:58:28]         Create directory /Users/roman/work/metabase/modules/drivers/sqlite/target/jar if it does not exist
+[2023-12-20 11:58:28]           /Users/roman/work/metabase/modules/drivers/sqlite/target/jar already exists.
+[2023-12-20 11:58:28]         Compiling namespaces [metabase.driver.sqlite]
+[2023-12-20 11:58:28]         Compiled 1 namespace(s) in 100 ms.
+[2023-12-20 11:58:28]       Write :sqlite :oss uberjar -> /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar
+[2023-12-20 11:58:28]         Determine which dependencies to include
+[2023-12-20 11:58:28]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:28]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:28]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:28]           SKIP    org.slf4j/slf4j-api (provided by metabase-core)
+[2023-12-20 11:58:28]           INCLUDE org.xerial/sqlite-jdbc
+[2023-12-20 11:58:28] Building uber jar: /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar
+[2023-12-20 11:58:29]         Created uberjar in 1137 ms.
+[2023-12-20 11:58:29]       Built :sqlite driver in 1247 ms.
+[2023-12-20 11:58:29]       Verify :sqlite driver
+[2023-12-20 11:58:29]         Check /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar contains init class file metabase/driver/sqlite__init.class
+[2023-12-20 11:58:29]           Driver init class file found.
+[2023-12-20 11:58:29]         Check /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:29]           Plugin manifest found; validating it
+[2023-12-20 11:58:29]           Plugin manifest passed spec validation
+[2023-12-20 11:58:29]         Check /Users/roman/work/metabase/resources/modules/sqlite.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:29]         :sqlite driver verification successful.
+[2023-12-20 11:58:29]     Build driver :redshift (edition = :oss, options = nil)
+[2023-12-20 11:58:29]       Clean
+[2023-12-20 11:58:29]         Delete /Users/roman/work/metabase/modules/drivers/redshift/target/jar if exists
+[2023-12-20 11:58:29]           Deleted /Users/roman/work/metabase/modules/drivers/redshift/target/jar.
+[2023-12-20 11:58:30]         Delete /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar if exists
+[2023-12-20 11:58:30]           Deleted /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar.
+[2023-12-20 11:58:30]       Copy :redshift source files
+[2023-12-20 11:58:30]         Copying files in ["/Users/roman/work/metabase/modules/drivers/redshift/src" "/Users/roman/work/metabase/modules/drivers/redshift/resources"]
+[2023-12-20 11:58:30]         Copied files in 2 directories in 2 ms.
+[2023-12-20 11:58:30]       Compile clojure source files
+[2023-12-20 11:58:30]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/redshift/src" "/Users/roman/work/metabase/modules/drivers/redshift/resources"] to /Users/roman/work/metabase/modules/drivers/redshift/target/jar
+[2023-12-20 11:58:30]         Create directory /Users/roman/work/metabase/modules/drivers/redshift/target/jar if it does not exist
+[2023-12-20 11:58:30]           /Users/roman/work/metabase/modules/drivers/redshift/target/jar already exists.
+[2023-12-20 11:58:30]         Compiling namespaces [metabase.driver.redshift]
+[2023-12-20 11:58:30]         Compiled 1 namespace(s) in 630 ms.
+[2023-12-20 11:58:30]       Write :redshift :oss uberjar -> /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar
+[2023-12-20 11:58:30]         Determine which dependencies to include
+[2023-12-20 11:58:30]           INCLUDE com.amazon.redshift/redshift-jdbc42
+[2023-12-20 11:58:30]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:30]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:30]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:30] Building uber jar: /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar
+[2023-12-20 11:58:30]         Created uberjar in 75 ms.
+[2023-12-20 11:58:30]       Built :redshift driver in 713 ms.
+[2023-12-20 11:58:30]       Verify :redshift driver
+[2023-12-20 11:58:30]         Check /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar contains init class file metabase/driver/redshift__init.class
+[2023-12-20 11:58:30]           Driver init class file found.
+[2023-12-20 11:58:30]         Check /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:30]           Plugin manifest found; validating it
+[2023-12-20 11:58:30]           Plugin manifest passed spec validation
+[2023-12-20 11:58:30]         Check /Users/roman/work/metabase/resources/modules/redshift.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:30]         :redshift driver verification successful.
+[2023-12-20 11:58:30]     Build driver :googleanalytics (edition = :oss, options = nil)
+[2023-12-20 11:58:30]       Clean
+[2023-12-20 11:58:30]         Delete /Users/roman/work/metabase/modules/drivers/googleanalytics/target/jar if exists
+[2023-12-20 11:58:30]           Deleted /Users/roman/work/metabase/modules/drivers/googleanalytics/target/jar.
+[2023-12-20 11:58:30]         Delete /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar if exists
+[2023-12-20 11:58:30]           Deleted /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar.
+[2023-12-20 11:58:30]       Copy :googleanalytics source files
+[2023-12-20 11:58:30]         Copying files in ["/Users/roman/work/metabase/modules/drivers/googleanalytics/src" "/Users/roman/work/metabase/modules/drivers/googleanalytics/resources"]
+[2023-12-20 11:58:30]         Copied files in 2 directories in 3 ms.
+[2023-12-20 11:58:30]       Compile clojure source files
+[2023-12-20 11:58:30]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/googleanalytics/src" "/Users/roman/work/metabase/modules/drivers/googleanalytics/resources"] to /Users/roman/work/metabase/modules/drivers/googleanalytics/target/jar
+[2023-12-20 11:58:30]         Create directory /Users/roman/work/metabase/modules/drivers/googleanalytics/target/jar if it does not exist
+[2023-12-20 11:58:30]           /Users/roman/work/metabase/modules/drivers/googleanalytics/target/jar already exists.
+[2023-12-20 11:58:30]         Compiling namespaces [metabase.driver.google metabase.driver.googleanalytics.client metabase.driver.googleanalytics.metadata metabase.driver.googleanalytics.query-processor metabase.driver.googleanalytics.execute metabase.driver.googleanalytics]
+[2023-12-20 11:58:31]         Compiled 6 namespace(s) in 501 ms.
+[2023-12-20 11:58:31]       Write :googleanalytics :oss uberjar -> /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar
+[2023-12-20 11:58:31]         Determine which dependencies to include
+[2023-12-20 11:58:31]           SKIP    com.fasterxml.jackson.core/jackson-core (provided by metabase-core)
+[2023-12-20 11:58:31]           INCLUDE com.google.api-client/google-api-client
+[2023-12-20 11:58:31]           INCLUDE com.google.apis/google-api-services-analytics
+[2023-12-20 11:58:31]           SKIP    com.google.code.findbugs/jsr305 (provided by metabase-core)
+[2023-12-20 11:58:31]           INCLUDE com.google.code.gson/gson
+[2023-12-20 11:58:31]           SKIP    com.google.errorprone/error_prone_annotations (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    com.google.guava/failureaccess (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    com.google.guava/guava (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    com.google.guava/listenablefuture (provided by metabase-core)
+[2023-12-20 11:58:31]           INCLUDE com.google.http-client/google-http-client
+[2023-12-20 11:58:31]           INCLUDE com.google.http-client/google-http-client-apache-v2
+[2023-12-20 11:58:31]           INCLUDE com.google.http-client/google-http-client-gson
+[2023-12-20 11:58:31]           INCLUDE com.google.http-client/google-http-client-jackson2
+[2023-12-20 11:58:31]           SKIP    com.google.j2objc/j2objc-annotations (provided by metabase-core)
+[2023-12-20 11:58:31]           INCLUDE com.google.oauth-client/google-oauth-client
+[2023-12-20 11:58:31]           SKIP    commons-codec/commons-codec (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    commons-logging/commons-logging (provided by metabase-core)
+[2023-12-20 11:58:31]           INCLUDE io.grpc/grpc-context
+[2023-12-20 11:58:31]           INCLUDE io.opencensus/opencensus-api
+[2023-12-20 11:58:31]           INCLUDE io.opencensus/opencensus-contrib-http-util
+[2023-12-20 11:58:31]           SKIP    org.apache.httpcomponents/httpclient (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.apache.httpcomponents/httpcore (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.checkerframework/checker-qual (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:31] Building uber jar: /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar
+[2023-12-20 11:58:31]         Created uberjar in 151 ms.
+[2023-12-20 11:58:31]       Built :googleanalytics driver in 673 ms.
+[2023-12-20 11:58:31]       Verify :googleanalytics driver
+[2023-12-20 11:58:31]         Check /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar contains init class file metabase/driver/googleanalytics__init.class
+[2023-12-20 11:58:31]           Driver init class file found.
+[2023-12-20 11:58:31]         Check /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:31]           Plugin manifest found; validating it
+[2023-12-20 11:58:31]           Plugin manifest passed spec validation
+[2023-12-20 11:58:31]         Check /Users/roman/work/metabase/resources/modules/googleanalytics.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:31]         :googleanalytics driver verification successful.
+[2023-12-20 11:58:31]     Build driver :druid (edition = :oss, options = nil)
+[2023-12-20 11:58:31]       Clean
+[2023-12-20 11:58:31]         Delete /Users/roman/work/metabase/modules/drivers/druid/target/jar if exists
+[2023-12-20 11:58:31]           Deleted /Users/roman/work/metabase/modules/drivers/druid/target/jar.
+[2023-12-20 11:58:31]         Delete /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar if exists
+[2023-12-20 11:58:31]           Deleted /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar.
+[2023-12-20 11:58:31]       Copy :druid source files
+[2023-12-20 11:58:31]         Copying files in ["/Users/roman/work/metabase/modules/drivers/druid/src" "/Users/roman/work/metabase/modules/drivers/druid/resources"]
+[2023-12-20 11:58:31]         Copied files in 2 directories in 3 ms.
+[2023-12-20 11:58:31]       Compile clojure source files
+[2023-12-20 11:58:31]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/druid/src" "/Users/roman/work/metabase/modules/drivers/druid/resources"] to /Users/roman/work/metabase/modules/drivers/druid/target/jar
+[2023-12-20 11:58:31]         Create directory /Users/roman/work/metabase/modules/drivers/druid/target/jar if it does not exist
+[2023-12-20 11:58:31]           /Users/roman/work/metabase/modules/drivers/druid/target/jar already exists.
+[2023-12-20 11:58:31]         Compiling namespaces [metabase.driver.druid.js metabase.driver.druid.query-processor metabase.driver.druid.execute metabase.driver.druid.client metabase.driver.druid.sync metabase.driver.druid]
+[2023-12-20 11:58:31]         Compiled 6 namespace(s) in 468 ms.
+[2023-12-20 11:58:31]       Write :druid :oss uberjar -> /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar
+[2023-12-20 11:58:31]         Determine which dependencies to include
+[2023-12-20 11:58:31]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:31]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:31] Building uber jar: /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar
+[2023-12-20 11:58:31]         Created uberjar in 49 ms.
+[2023-12-20 11:58:31]       Built :druid driver in 549 ms.
+[2023-12-20 11:58:31]       Verify :druid driver
+[2023-12-20 11:58:31]         Check /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar contains init class file metabase/driver/druid__init.class
+[2023-12-20 11:58:31]           Driver init class file found.
+[2023-12-20 11:58:31]         Check /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:31]           Plugin manifest found; validating it
+[2023-12-20 11:58:31]           Plugin manifest passed spec validation
+[2023-12-20 11:58:31]         Check /Users/roman/work/metabase/resources/modules/druid.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:31]         :druid driver verification successful.
+[2023-12-20 11:58:31]     Build driver :sqlserver (edition = :oss, options = nil)
+[2023-12-20 11:58:31]       Clean
+[2023-12-20 11:58:31]         Delete /Users/roman/work/metabase/modules/drivers/sqlserver/target/jar if exists
+[2023-12-20 11:58:31]           Deleted /Users/roman/work/metabase/modules/drivers/sqlserver/target/jar.
+[2023-12-20 11:58:31]         Delete /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar if exists
+[2023-12-20 11:58:31]           Deleted /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar.
+[2023-12-20 11:58:31]       Copy :sqlserver source files
+[2023-12-20 11:58:31]         Copying files in ["/Users/roman/work/metabase/modules/drivers/sqlserver/src" "/Users/roman/work/metabase/modules/drivers/sqlserver/resources"]
+[2023-12-20 11:58:31]         Copied files in 2 directories in 3 ms.
+[2023-12-20 11:58:31]       Compile clojure source files
+[2023-12-20 11:58:31]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/sqlserver/src" "/Users/roman/work/metabase/modules/drivers/sqlserver/resources"] to /Users/roman/work/metabase/modules/drivers/sqlserver/target/jar
+[2023-12-20 11:58:31]         Create directory /Users/roman/work/metabase/modules/drivers/sqlserver/target/jar if it does not exist
+[2023-12-20 11:58:31]           /Users/roman/work/metabase/modules/drivers/sqlserver/target/jar already exists.
+[2023-12-20 11:58:31]         Compiling namespaces [metabase.driver.sqlserver]
+[2023-12-20 11:58:32]         Compiled 1 namespace(s) in 190 ms.
+[2023-12-20 11:58:32]       Write :sqlserver :oss uberjar -> /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar
+[2023-12-20 11:58:32]         Determine which dependencies to include
+[2023-12-20 11:58:32]           INCLUDE com.microsoft.sqlserver/mssql-jdbc
+[2023-12-20 11:58:32]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:32]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:32]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:32] Building uber jar: /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar
+[2023-12-20 11:58:32]         Created uberjar in 108 ms.
+[2023-12-20 11:58:32]       Built :sqlserver driver in 311 ms.
+[2023-12-20 11:58:32]       Verify :sqlserver driver
+[2023-12-20 11:58:32]         Check /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar contains init class file metabase/driver/sqlserver__init.class
+[2023-12-20 11:58:32]           Driver init class file found.
+[2023-12-20 11:58:32]         Check /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:32]           Plugin manifest found; validating it
+[2023-12-20 11:58:32]           Plugin manifest passed spec validation
+[2023-12-20 11:58:32]         Check /Users/roman/work/metabase/resources/modules/sqlserver.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:32]         :sqlserver driver verification successful.
+[2023-12-20 11:58:32]     Build driver :presto-jdbc (edition = :oss, options = nil)
+[2023-12-20 11:58:32]       Clean
+[2023-12-20 11:58:32]         Delete /Users/roman/work/metabase/modules/drivers/presto-jdbc/target/jar if exists
+[2023-12-20 11:58:32]           Deleted /Users/roman/work/metabase/modules/drivers/presto-jdbc/target/jar.
+[2023-12-20 11:58:32]         Delete /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar if exists
+[2023-12-20 11:58:32]           Deleted /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar.
+[2023-12-20 11:58:32]       Copy :presto-jdbc source files
+[2023-12-20 11:58:32]         Copying files in ["/Users/roman/work/metabase/modules/drivers/presto-jdbc/src" "/Users/roman/work/metabase/modules/drivers/presto-jdbc/resources"]
+[2023-12-20 11:58:32]         Copied files in 2 directories in 3 ms.
+[2023-12-20 11:58:32]       Compile clojure source files
+[2023-12-20 11:58:32]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/presto-jdbc/src" "/Users/roman/work/metabase/modules/drivers/presto-jdbc/resources"] to /Users/roman/work/metabase/modules/drivers/presto-jdbc/target/jar
+[2023-12-20 11:58:32]         Create directory /Users/roman/work/metabase/modules/drivers/presto-jdbc/target/jar if it does not exist
+[2023-12-20 11:58:32]           /Users/roman/work/metabase/modules/drivers/presto-jdbc/target/jar already exists.
+[2023-12-20 11:58:32]         Compiling namespaces [metabase.driver.presto-jdbc]
+[2023-12-20 11:58:32]         Compiled 1 namespace(s) in 163 ms.
+[2023-12-20 11:58:32]       Write :presto-jdbc :oss uberjar -> /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar
+[2023-12-20 11:58:32]         Determine which dependencies to include
+[2023-12-20 11:58:32]           Driver has parent drivers #{:sql-jdbc}
+[2023-12-20 11:58:32]           INCLUDE com.facebook.presto/presto-jdbc
+[2023-12-20 11:58:32]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:32]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:32]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:32] Building uber jar: /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar
+[2023-12-20 11:58:33]         Created uberjar in 652 ms.
+[2023-12-20 11:58:33]       Built :presto-jdbc driver in 828 ms.
+[2023-12-20 11:58:33]       Verify :presto-jdbc driver
+[2023-12-20 11:58:33]         Check /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar contains init class file metabase/driver/presto_jdbc__init.class
+[2023-12-20 11:58:33]           Driver init class file found.
+[2023-12-20 11:58:33]         Check /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:33]           Plugin manifest found; validating it
+[2023-12-20 11:58:33]           Plugin manifest passed spec validation
+[2023-12-20 11:58:33]         Check /Users/roman/work/metabase/resources/modules/presto-jdbc.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:33]         :presto-jdbc driver verification successful.
+[2023-12-20 11:58:33]     Build driver :mongo (edition = :oss, options = nil)
+[2023-12-20 11:58:33]       Clean
+[2023-12-20 11:58:33]         Delete /Users/roman/work/metabase/modules/drivers/mongo/target/jar if exists
+[2023-12-20 11:58:33]           Deleted /Users/roman/work/metabase/modules/drivers/mongo/target/jar.
+[2023-12-20 11:58:33]         Delete /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar if exists
+[2023-12-20 11:58:33]           Deleted /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar.
+[2023-12-20 11:58:33]       Copy :mongo source files
+[2023-12-20 11:58:33]         Copying files in ["/Users/roman/work/metabase/modules/drivers/mongo/src" "/Users/roman/work/metabase/modules/drivers/mongo/resources"]
+[2023-12-20 11:58:33]         Copied files in 2 directories in 4 ms.
+[2023-12-20 11:58:33]       Compile clojure source files
+[2023-12-20 11:58:33]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/mongo/src" "/Users/roman/work/metabase/modules/drivers/mongo/resources"] to /Users/roman/work/metabase/modules/drivers/mongo/target/jar
+[2023-12-20 11:58:33]         Create directory /Users/roman/work/metabase/modules/drivers/mongo/target/jar if it does not exist
+[2023-12-20 11:58:33]           /Users/roman/work/metabase/modules/drivers/mongo/target/jar already exists.
+[2023-12-20 11:58:33]         Compiling namespaces [metabase.driver.mongo.query-processor metabase.driver.mongo.util metabase.driver.mongo.execute metabase.driver.mongo.parameters metabase.driver.mongo]
+WARNING: random-uuid already refers to: #'clojure.core/random-uuid in namespace: monger.util, being replaced by: #'monger.util/random-uuid
+[2023-12-20 11:58:33] Warning: resetting Nippy thaw for custom type with id: :mongodb/ObjectId
+[2023-12-20 11:58:33]         Compiled 5 namespace(s) in 830 ms.
+[2023-12-20 11:58:33]       Write :mongo :oss uberjar -> /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar
+[2023-12-20 11:58:33]         Determine which dependencies to include
+[2023-12-20 11:58:33]           INCLUDE clojurewerkz/support
+[2023-12-20 11:58:33]           SKIP    com.google.code.findbugs/jsr305 (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    com.google.errorprone/error_prone_annotations (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    com.google.guava/failureaccess (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    com.google.guava/guava (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    com.google.guava/listenablefuture (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    com.google.j2objc/j2objc-annotations (provided by metabase-core)
+[2023-12-20 11:58:33]           INCLUDE com.novemberain/monger
+[2023-12-20 11:58:33]           SKIP    org.checkerframework/checker-qual (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:33]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:33]           INCLUDE org.mongodb/bson
+[2023-12-20 11:58:33]           INCLUDE org.mongodb/mongodb-driver
+[2023-12-20 11:58:33]           INCLUDE org.mongodb/mongodb-driver-core
+[2023-12-20 11:58:33] Building uber jar: /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar
+[2023-12-20 11:58:34]         Created uberjar in 208 ms.
+[2023-12-20 11:58:34]       Built :mongo driver in 1082 ms.
+[2023-12-20 11:58:34]       Verify :mongo driver
+[2023-12-20 11:58:34]         Check /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar contains init class file metabase/driver/mongo__init.class
+[2023-12-20 11:58:34]           Driver init class file found.
+[2023-12-20 11:58:34]         Check /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:34]           Plugin manifest found; validating it
+[2023-12-20 11:58:34]           Plugin manifest passed spec validation
+[2023-12-20 11:58:34]         Check /Users/roman/work/metabase/resources/modules/mongo.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:34]         :mongo driver verification successful.
+[2023-12-20 11:58:34]     Build driver :vertica (edition = :oss, options = nil)
+[2023-12-20 11:58:34]       Clean
+[2023-12-20 11:58:34]         Delete /Users/roman/work/metabase/modules/drivers/vertica/target/jar if exists
+[2023-12-20 11:58:34]           Deleted /Users/roman/work/metabase/modules/drivers/vertica/target/jar.
+[2023-12-20 11:58:34]         Delete /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar if exists
+[2023-12-20 11:58:34]           Deleted /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar.
+[2023-12-20 11:58:34]       Copy :vertica source files
+[2023-12-20 11:58:34]         Copying files in ["/Users/roman/work/metabase/modules/drivers/vertica/src" "/Users/roman/work/metabase/modules/drivers/vertica/resources"]
+[2023-12-20 11:58:34]         Copied files in 2 directories in 2 ms.
+[2023-12-20 11:58:34]       Compile clojure source files
+[2023-12-20 11:58:34]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/vertica/src" "/Users/roman/work/metabase/modules/drivers/vertica/resources"] to /Users/roman/work/metabase/modules/drivers/vertica/target/jar
+[2023-12-20 11:58:34]         Create directory /Users/roman/work/metabase/modules/drivers/vertica/target/jar if it does not exist
+[2023-12-20 11:58:34]           /Users/roman/work/metabase/modules/drivers/vertica/target/jar already exists.
+[2023-12-20 11:58:34]         Compiling namespaces [metabase.driver.vertica]
+[2023-12-20 11:58:34]         Compiled 1 namespace(s) in 90 ms.
+[2023-12-20 11:58:34]       Write :vertica :oss uberjar -> /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar
+[2023-12-20 11:58:34]         Determine which dependencies to include
+[2023-12-20 11:58:34] Building uber jar: /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar
+[2023-12-20 11:58:34]         Created uberjar in 8 ms.
+[2023-12-20 11:58:34]       Built :vertica driver in 105 ms.
+[2023-12-20 11:58:34]       Verify :vertica driver
+[2023-12-20 11:58:34]         Check /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar contains init class file metabase/driver/vertica__init.class
+[2023-12-20 11:58:34]           Driver init class file found.
+[2023-12-20 11:58:34]         Check /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:34]           Plugin manifest found; validating it
+[2023-12-20 11:58:34]           Plugin manifest passed spec validation
+[2023-12-20 11:58:34]         Check /Users/roman/work/metabase/resources/modules/vertica.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:34]         :vertica driver verification successful.
+[2023-12-20 11:58:34]     Build driver :athena (edition = :oss, options = nil)
+[2023-12-20 11:58:34]       Clean
+[2023-12-20 11:58:34]         Delete /Users/roman/work/metabase/modules/drivers/athena/target/jar if exists
+[2023-12-20 11:58:34]           Deleted /Users/roman/work/metabase/modules/drivers/athena/target/jar.
+[2023-12-20 11:58:34]         Delete /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar if exists
+[2023-12-20 11:58:34]           Deleted /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar.
+[2023-12-20 11:58:34]       Copy :athena source files
+[2023-12-20 11:58:34]         Copying files in ["/Users/roman/work/metabase/modules/drivers/athena/src" "/Users/roman/work/metabase/modules/drivers/athena/resources"]
+[2023-12-20 11:58:34]         Copied files in 2 directories in 3 ms.
+[2023-12-20 11:58:34]       Compile clojure source files
+[2023-12-20 11:58:34]         Compiling Clojure source files in ["/Users/roman/work/metabase/modules/drivers/athena/src" "/Users/roman/work/metabase/modules/drivers/athena/resources"] to /Users/roman/work/metabase/modules/drivers/athena/target/jar
+[2023-12-20 11:58:34]         Create directory /Users/roman/work/metabase/modules/drivers/athena/target/jar if it does not exist
+[2023-12-20 11:58:34]           /Users/roman/work/metabase/modules/drivers/athena/target/jar already exists.
+[2023-12-20 11:58:34]         Compiling namespaces [metabase.driver.athena.hive-parser metabase.driver.athena.schema-parser metabase.driver.athena]
+[2023-12-20 11:58:34]         Compiled 3 namespace(s) in 140 ms.
+[2023-12-20 11:58:34]       Write :athena :oss uberjar -> /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar
+[2023-12-20 11:58:34]         Determine which dependencies to include
+[2023-12-20 11:58:35]           INCLUDE com.amazonaws/aws-java-sdk-core
+[2023-12-20 11:58:35]           SKIP    com.fasterxml.jackson.core/jackson-annotations (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    com.fasterxml.jackson.core/jackson-core (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    com.fasterxml.jackson.core/jackson-databind (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    com.fasterxml.jackson.dataformat/jackson-dataformat-cbor (provided by metabase-core)
+[2023-12-20 11:58:35]           INCLUDE com.metabase/athena-jdbc
+[2023-12-20 11:58:35]           SKIP    commons-codec/commons-codec (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    commons-logging/commons-logging (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    joda-time/joda-time (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    org.apache.httpcomponents/httpclient (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    org.apache.httpcomponents/httpcore (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    org.clojure/clojure (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    org.clojure/core.specs.alpha (provided by metabase-core)
+[2023-12-20 11:58:35]           SKIP    org.clojure/spec.alpha (provided by metabase-core)
+[2023-12-20 11:58:35]           INCLUDE software.amazon.ion/ion-java
+[2023-12-20 11:58:35] Building uber jar: /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar
+[2023-12-20 11:58:36]         Created uberjar in 2202 ms.
+[2023-12-20 11:58:36]       Built :athena driver in 2352 ms.
+[2023-12-20 11:58:36]       Verify :athena driver
+[2023-12-20 11:58:36]         Check /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar contains init class file metabase/driver/athena__init.class
+[2023-12-20 11:58:36]           Driver init class file found.
+[2023-12-20 11:58:36]         Check /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar contains metabase-plugin.yaml
+[2023-12-20 11:58:36]           Plugin manifest found; validating it
+[2023-12-20 11:58:36]           Plugin manifest passed spec validation
+[2023-12-20 11:58:36]         Check /Users/roman/work/metabase/resources/modules/athena.metabase-driver.jar does not contain Clojure core classes
+[2023-12-20 11:58:36]         :athena driver verification successful.
+[2023-12-20 11:58:36]     Successfully built all drivers.
+[2023-12-20 11:58:36]   Delete /Users/roman/work/metabase/target/uberjar/metabase.jar if exists
+[2023-12-20 11:58:36]     Deleted /Users/roman/work/metabase/target/uberjar/metabase.jar.
+[2023-12-20 11:58:36]   Build uberjar with profile :oss
+[2023-12-20 11:58:36]     Build :oss uberjar
+[2023-12-20 11:58:36]       Clean
+[2023-12-20 11:58:36]         Delete /Users/roman/work/metabase/target/classes
+[2023-12-20 11:58:38]         Delete /Users/roman/work/metabase/target/uberjar/metabase.jar
+[2023-12-20 11:58:39]       Compile Clojure source files
+[2023-12-20 11:58:39]         Compiling Clojure files in ("src" "resources")
+[2023-12-20 11:58:39]         Determine compilation order for Metabase files
+operator.clj:172 recur arg for primitive local: sum is not matching primitive, had: Object, needed: long
+Auto-boxing loop arg: sum
+[2023-12-20 11:58:48] 2023-12-20 11:58:48,595 WARN db.env :: WARNING: Using Metabase with an H2 application database is not recommended for production deployments. For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead. If you decide to continue to use H2, please be sure to back up the database file regularly. For more information, see https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html
+Reflection warning, clojurewerkz/quartzite/triggers.clj:85:6 - call to method forJob on org.quartz.TriggerBuilder can't be resolved (argument types: unknown).
+Reflection warning, clojurewerkz/quartzite/scheduler.clj:254:3 - call to method checkExists on org.quartz.Scheduler can't be resolved (argument types: unknown).
+[2023-12-20 11:59:03] 2023-12-20 11:59:03,747 INFO metabase.core :: 
+[2023-12-20 11:59:03] Metabase v0.49.0-SNAPSHOT (02fa2c9) 
+[2023-12-20 11:59:03] 
+[2023-12-20 11:59:03] Copyright © 2023 Metabase, Inc. 
+[2023-12-20 11:59:03] 
+[2023-12-20 11:59:03] Metabase Enterprise Edition extensions are PRESENT.
+[2023-12-20 11:59:03] 
+[2023-12-20 11:59:03] Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License. See https://www.metabase.com/license/commercial/ for details.
+[2023-12-20 11:59:14]         Finished compilation in 33.9 seconds.
+[2023-12-20 11:59:14]       Copy resources
+[2023-12-20 11:59:14]         Copy resources
+[2023-12-20 11:59:15]       Create uberjar
+[2023-12-20 11:59:15] Building uber jar: /Users/roman/work/metabase/target/uberjar/metabase.jar
+[2023-12-20 11:59:40]         Created uberjar in 25.0 seconds.
+[2023-12-20 11:59:40]       Update META-INF/MANIFEST.MF
+[2023-12-20 11:59:41]       Built target/uberjar/metabase.jar in 65.1 seconds.
+[2023-12-20 11:59:41]     Uberjar built successfully.
+[2023-12-20 11:59:41]   All build steps finished.
+BE END 11:59:41 - 11:57:59 = 102s
+
+
+TOTAL = 190s
+    BE = 102s = 102s + 16.87s + 5s + 5s + 16.78s = 145.65s 
+    FE = 79s = 29.87s + 5.01s = 34.88s
+        FE = 51.74s (16.87s + 5s CLJS) = 29.87s
+        StaticViz = 26.79s (CLJS 16.78s + 5s) = 5.01s
+    INIT = 6s
+    TRANSLATIONS = 3s
+
+
