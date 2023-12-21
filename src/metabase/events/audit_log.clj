@@ -204,6 +204,7 @@
 (derive :event/api-key-create ::api-key-event)
 (derive :event/api-key-update ::api-key-event)
 (derive :event/api-key-regenerate ::api-key-event)
+(derive :event/api-key-delete ::api-key-event)
 
 (methodical/defmethod events/publish-event! ::api-key-event
   [topic event]
