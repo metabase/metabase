@@ -125,7 +125,7 @@ describe("scenarios > public > question", () => {
       visitQuestion(id);
     });
 
-    cy.findByTestId("view-footer").icon("share").realHover();
+    cy.findByTestId("dashboard-embed-button").realHover();
     cy.findByRole("tooltip").within(() => {
       cy.findByText("Ask your admin to create a public link").should(
         "be.visible",
