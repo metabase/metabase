@@ -93,6 +93,10 @@ export const COMPARISON_SELECTOR_OPTIONS = {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
     name: t`Previous value`,
   },
+  STATIC_NUMBER: {
+    type: COMPARISON_TYPES.STATIC_NUMBER,
+    name: t`Custom value…`,
+  },
 } as const;
 
 export function getDefaultComparison(
@@ -164,6 +168,7 @@ export function getComparisonOptions(
 
   options.push(
     createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
+    createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
   );
 
   return options;
@@ -247,6 +252,9 @@ type GetComparisonMenuOptionParameters =
       type: typeof COMPARISON_TYPES.PERIODS_AGO;
       maxValue: number;
       dateUnit: RelativeDatetimeUnit;
+    }
+  | {
+      type: typeof COMPARISON_TYPES.STATIC_NUMBER;
     };
 
 function createComparisonMenuOption(
@@ -271,6 +279,11 @@ function createComparisonMenuOption(
       name: formatPeriodsAgoOptionName(dateUnit),
       maxValue,
     };
+  }
+
+  if (type === COMPARISON_TYPES.STATIC_NUMBER) {
+    const { name } = COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER;
+    return { type, name };
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
