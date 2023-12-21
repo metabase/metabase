@@ -182,7 +182,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .clear()
       .type("[Price] > 1 AND [Price] < 5{enter}");
 
-    cy.findByTestId("expression-editor-error-message").should("not.exist");
+    cy.findByTestId("expression-editor-textfield").should("not.exist");
 
     getNotebookStep("filter")
       .contains("Price is greater than 1")
