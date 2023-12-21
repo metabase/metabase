@@ -39,7 +39,7 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
    (org.postgresql.copy CopyManager)
@@ -832,7 +832,7 @@
 (defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    (let [copy-manager (CopyManager. (.unwrap (:connection conn) PgConnection))
+    (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           [sql & _]    (sql/format {::copy       (keyword table-name)
                                     :columns     (map keyword column-names)
                                     ::from-stdin "''"}
