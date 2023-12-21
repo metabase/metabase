@@ -14,7 +14,7 @@ import {
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
   "/admin/settings/embedding-in-other-applications/standalone";
-const upgradeUrl = "https://www.metabase.com/upgrade";
+const pricingUrl = "https://www.metabase.com/pricing";
 const embeddingDescription =
   "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
 
@@ -73,7 +73,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByTestId("-static-embedding-setting").within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
         // so we don't have to do it here usign a conditional logic
-        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
+        assertLinkMatchesUrl("upgrade to a paid plan", pricingUrl);
 
         cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")
