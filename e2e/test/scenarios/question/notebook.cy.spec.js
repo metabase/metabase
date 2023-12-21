@@ -218,7 +218,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2").click();
 
-    popover().findByRole("textbox").type("3{enter}{enter}");
+    popover().within(() => {
+      cy.findByLabelText("Filter value").focus().type("3").blur();
+      cy.button("Update filter").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
 

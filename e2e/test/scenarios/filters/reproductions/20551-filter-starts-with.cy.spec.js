@@ -17,9 +17,7 @@ describe("issue 20551", () => {
 
     popover().within(() => {
       cy.findByText("Category").click();
-      cy.focused()
-        .should("have.attr", "placeholder", "Search the list")
-        .type("i");
+      cy.findByPlaceholderText("Search the list").type("i");
 
       cy.findByText("Doohickey").should("be.visible");
       cy.findByText("Gizmo").should("be.visible");

@@ -1425,7 +1425,7 @@ const triggerVisualizationQueryChange = async () => {
   userEvent.click(screen.getByText("Filter"));
 
   const modal = screen.getByRole("dialog");
-  const total = within(modal).getByTestId("filter-field-Total");
+  const total = within(modal).getByTestId("filter-column-Total");
   const maxInput = within(total).getByPlaceholderText("Max");
   userEvent.type(maxInput, "1000");
   userEvent.tab();
