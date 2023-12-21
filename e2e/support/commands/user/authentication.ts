@@ -1,5 +1,18 @@
 import { USERS } from "e2e/support/cypress_data";
 
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      signIn: (user?: keyof typeof USERS) => void;
+      signInAsAdmin: () => void;
+      signInAsNormalUser: () => void;
+      signInAsSandboxedUser: () => void;
+      signInAsImpersonatedUser: () => void;
+      signOut: () => void;
+    }
+  }
+}
+
 Cypress.Commands.add("signIn", (user = "admin") => {
   const { email: username, password } = USERS[user];
   cy.log(`Logging in as ${user}`);
