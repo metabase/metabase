@@ -8,8 +8,10 @@ type SharingPaneElementProps = {
   disabled?: boolean;
 };
 
-export const SharingPaneButtonContent = styled(Paper)<PaperProps>`
-  cursor: pointer;
+export const SharingPaneButtonContent = styled(Paper)<
+  PaperProps & { disabled?: boolean }
+>`
+  cursor: ${({ disabled }) => (disabled ? "default" : "pointer")};
 `;
 
 export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`

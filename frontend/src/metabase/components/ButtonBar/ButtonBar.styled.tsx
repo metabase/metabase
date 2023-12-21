@@ -30,6 +30,7 @@ export interface ButtonBarRightProps {
 export const ButtonBarRight = styled.div<ButtonBarRightProps>`
   display: flex;
   flex: ${props => (props.center ? "1 0 0" : "")};
+  gap: 0.5rem;
   justify-content: flex-end;
   align-items: center;
   margin-left: ${props => (props.center ? "" : "auto")};
