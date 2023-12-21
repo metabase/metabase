@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Menu, Stack, Text } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
@@ -34,6 +35,14 @@ export function SmartScalarComparisonWidget({
     [onChange, setEditedValue, setOpen],
   );
 
+  const handleClose = useCallback(() => {
+    if (_.isEqual(selectedValue, editedValue)) {
+      return;
+    }
+
+    onChange(editedValue);
+  }, [editedValue, onChange, selectedValue]);
+
   const selectedOption = options.find(
     ({ type }) => type === selectedValue.type,
   );
@@ -49,9 +58,7 @@ export function SmartScalarComparisonWidget({
     <Menu
       opened={open}
       onChange={setOpen}
-      onClose={() => {
-        onChange(editedValue);
-      }}
+      onClose={handleClose}
       position="bottom-start"
       shadow="sm"
       closeOnItemClick={false}
