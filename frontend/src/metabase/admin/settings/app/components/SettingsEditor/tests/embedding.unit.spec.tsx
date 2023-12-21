@@ -5,6 +5,7 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { screen } from "__support__/ui";
+import { goToInteractiveEmbeddingSettings } from "./embedding/setup";
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
@@ -110,7 +111,3 @@ describe("SettingsEditor", () => {
     });
   });
 });
-
-const goToInteractiveEmbeddingSettings = () => {
-  userEvent.click(screen.getByText("Configure"));
-};
