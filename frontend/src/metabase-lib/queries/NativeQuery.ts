@@ -159,7 +159,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   // Whether the user can modify and run this query
-  // Determined based on availability of database metadata
+  // Determined based on availability of database metadata and native database permissions
   isEditable(): boolean {
     const database = this.database();
     return database != null && database.native_permissions === "write";
