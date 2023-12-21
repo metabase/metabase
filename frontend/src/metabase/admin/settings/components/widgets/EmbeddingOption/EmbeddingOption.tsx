@@ -4,6 +4,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
+import type { ButtonProps } from "metabase/ui";
 import { Button, Flex, Text, Title } from "metabase/ui";
 import { Label, StyledCard, BoldExternalLink } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
@@ -69,14 +70,13 @@ export const StaticEmbeddingOptionCard = () => {
         )
       }`}
     >
-      <Button
+      <LinkButton
         variant="default"
         disabled={!enabled}
-        component={Link}
         to={"/admin/settings/embedding-in-other-applications/standalone"}
       >
         {t`Manage`}
-      </Button>
+      </LinkButton>
     </EmbeddingOption>
   );
 };
@@ -109,13 +109,12 @@ export const InteractiveEmbeddingOptionCard = () => {
         {t`Check out our Quick Start`}
       </BoldExternalLink>
       {isEE ? (
-        <Button
-          component={Link}
+        <LinkButton
           to={"/admin/settings/embedding-in-other-applications/full-app"}
           disabled={!enabled}
         >
           {t`Configure`}
-        </Button>
+        </LinkButton>
       ) : (
         <Button
           component={ExternalLink}
@@ -125,5 +124,21 @@ export const InteractiveEmbeddingOptionCard = () => {
         </Button>
       )}
     </EmbeddingOption>
+  );
+};
+
+// component={Link} breaks the styling when the button is disabled
+// disabling a link button doesn't look like a common enough scenario to make an exported component
+const LinkButton = ({
+  to,
+  disabled,
+  ...buttonProps
+}: { to: string; disabled?: boolean } & ButtonProps) => {
+  return disabled ? (
+    <Button disabled={disabled} {...buttonProps} />
+  ) : (
+    <Link to={to}>
+      <Button {...buttonProps} />
+    </Link>
   );
 };
