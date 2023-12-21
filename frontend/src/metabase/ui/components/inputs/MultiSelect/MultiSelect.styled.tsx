@@ -47,6 +47,9 @@ export const getMultiSelectOverrides =
           "&::placeholder": {
             color: invalid ? theme.colors.error[0] : theme.colors.text[0],
           },
+          "&::-webkit-search-cancel-button": {
+            display: "none",
+          },
         },
         defaultValue: {
           height: getSize({ size, sizes: SIZES }),
