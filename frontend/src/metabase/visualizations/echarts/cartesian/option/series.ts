@@ -19,7 +19,7 @@ import { buildEChartsScatterSeries } from "../scatter/series";
 import { buildEChartsWaterfallSeries } from "../waterfall/series";
 import { getSeriesYAxisIndex } from "./utils";
 
-const buildEChartsLabelOptions = (
+export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   { getColor, fontFamily, formatValue }: RenderingContext,
@@ -226,7 +226,11 @@ export const buildEChartsSeries = (
             renderingContext,
           );
         case "waterfall":
-          return buildEChartsWaterfallSeries(settings);
+          return buildEChartsWaterfallSeries(
+            seriesModel,
+            settings,
+            renderingContext,
+          );
       }
     })
     .flat()
