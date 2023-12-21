@@ -26,7 +26,6 @@ import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
@@ -51,8 +50,11 @@ import {
   trackCustomHomepageDashboardEnabled,
 } from "./analytics";
 
-import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import RedirectWidget from "./components/widgets/RedirectWidget";
+import {
+  InteractiveEmbeddingOptionCard,
+  StaticEmbeddingOptionCard,
+} from "./components/widgets/EmbeddingOption";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -440,6 +442,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     ],
   },
   "embedding-in-other-applications": {
+    key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
     settings: [
@@ -467,23 +470,18 @@ export const ADMIN_SETTINGS_SECTIONS = {
       },
       {
         key: "-static-embedding",
-        widget: EmbeddingOption,
-        embedName: t`Static embedding`,
-        embedDescription: t`Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.`,
-        embedType: "standalone",
+        widget: StaticEmbeddingOptionCard,
       },
       {
         key: "-interactive-embedding",
-        widget: EmbeddingOption,
-        embedName: t`Interactive embedding`,
-        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.`,
-        embedType: "full-app",
+        widget: InteractiveEmbeddingOptionCard,
       },
     ],
   },
   "embedding-in-other-applications/standalone": {
     settings: [
       {
+        key: "-breadcrumb",
         widget: () => {
           return (
             <Breadcrumbs
@@ -525,11 +523,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        widget: EmbeddingCustomizationWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
-      },
-      {
+        key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
@@ -540,6 +534,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "embedding-in-other-applications/full-app": {
     settings: [
       {
+        key: "-breadcrumbs",
         widget: () => {
           return (
             <Breadcrumbs
@@ -556,11 +551,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
+        key: "-link-widget",
         widget: FullAppEmbeddingLinkWidget,
         getHidden: (_, derivedSettings) =>
           !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
       },
       {
+        key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
