@@ -51,7 +51,7 @@
 
 (deftest ^:parallel query->expected-cols-test
   (testing "field_refs in expected columns have the original join aliases (#30648)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
         (let [query
               (mt/mbql-query

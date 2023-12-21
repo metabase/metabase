@@ -189,9 +189,13 @@ Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#m
 
 Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
 Type: integer<br>
-Default: 0 (Metabase keeps all rows)<br>
+Default: 720 (Metabase keeps all rows)<br>
 
-Sets the maximum number of days Metabase preserves rows in the `query_execution` table in the application database.
+Sets the maximum number of days Metabase preserves rows for the following application database tables:
+
+- `query_execution`
+- `audit_log`
+- `view_log`
 
 Twice a day, Metabase will delete rows older than this threshold.
 

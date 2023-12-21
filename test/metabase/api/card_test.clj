@@ -16,7 +16,8 @@
    [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [CardBookmark
+    :refer [Card
+            CardBookmark
             Collection
             Dashboard
             Database
@@ -502,7 +503,7 @@
                              :semantic_type :type/Number}]})
 
 (deftest sereies-are-compatible-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "area-line-bar charts"
       (t2.with-temp/with-temp
         [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
@@ -1817,14 +1818,99 @@
   (testing "no parameters"
     (with-temp-native-card! [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{(keyword "COUNT(*)") 75}]
+        (is (= [{(keyword "COUNT(*)") "75"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
       (with-cards-in-readable-collection card
-        (is (= [{(keyword "COUNT(*)") 8}]
+        (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
                                      :parameters encoded-params)))))))
+
+(deftest renamed-column-names-are-applied-to-json-test
+  (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
+    (mt/with-temporary-setting-values [custom-formatting nil]
+      (let [query        {:source-table (mt/id :orders)
+                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
+                                         [:expression "Tax Rate"]],
+                          :expressions  {"Tax Rate" [:/
+                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                          :limit        10}
+            viz-settings {:table.cell_column "TAX",
+                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
+                                              {:column_title "THE_ID"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :tax))
+                                              {:column_title "ORDER TAX"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :total))
+                                              {:column_title "Total Amount"},
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :discount))
+                                              {:column_title "Discount Applied"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                      (mt/id :orders :quantity))
+                                              {:column_title "Amount Ordered"}
+                                              "[\"ref\",[\"expression\",\"Tax Rate\"]]"
+                                              {:column_title "Effective Tax Rate"}}}]
+        (t2.with-temp/with-temp [Card {base-card-id :id} {:dataset_query          {:database (mt/id)
+                                                                                   :type     :query
+                                                                                   :query    query}
+                                                          :visualization_settings viz-settings}
+                                 Card {model-card-id  :id
+                                       model-metadata :result_metadata} {:dataset       true
+                                                                         :dataset_query {:database (mt/id)
+                                                                                         :type     :query
+                                                                                         :query    {:source-table
+                                                                                                    (format "card__%s" base-card-id)}}}
+                                 Card {meta-model-card-id :id} {:dataset         true
+                                                                :dataset_query   {:database (mt/id)
+                                                                                  :type     :query
+                                                                                  :query    {:source-table
+                                                                                             (format "card__%s" model-card-id)}}
+                                                                :result_metadata (mapv
+                                                                                   (fn [{column-name :name :as col}]
+                                                                                     (cond-> col
+                                                                                       (= "DISCOUNT" column-name)
+                                                                                       (assoc :display_name "Amount of Discount")
+                                                                                       (= "TOTAL" column-name)
+                                                                                       (assoc :display_name "Grand Total")
+                                                                                       (= "QUANTITY" column-name)
+                                                                                       (assoc :display_name "N")))
+                                                                                   model-metadata)}
+                                 Card {question-card-id :id} {:dataset_query          {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    {:source-table
+                                                                                                  (format "card__%s" meta-model-card-id)}}
+                                                              :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                       :table.cell_column  "TAX",
+                                                                                       :column_settings    {(format
+                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                              (mt/id :orders :quantity))
+                                                                                                            {:column_title "Count"}
+                                                                                                            (format
+                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                              (mt/id :orders :id))
+                                                                                                            {:column_title "IDENTIFIER"}}}}]
+          (letfn [(col-names [card-id]
+                    (->> (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" card-id)) first keys (map name) set))]
+            (testing "Renaming columns via viz settings is correctly applied to the CSV export"
+              (is (= #{"THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"}
+                     (col-names base-card-id))))
+            (testing "A question derived from another question does not bring forward any renames"
+              (is (= #{"ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"}
+                     (col-names model-card-id))))
+            (testing "A model with custom metadata shows the renamed metadata columns"
+              (is (= #{"ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"}
+                     (col-names meta-model-card-id))))
+            (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
+              (is (= #{"IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"}
+                     (col-names question-card-id))))))))))
 
 (defn- parse-xlsx-results [results]
   (->> results
@@ -2305,7 +2391,7 @@
 
 (deftest pivot-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "POST /api/card/pivot/:card-id/query"
         (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
@@ -2890,7 +2976,7 @@
 
 (deftest pivot-from-model-test
   (testing "Pivot options should match fields through models (#35319)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "visualization_settings references field by id"
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
                                                     :dataset true}

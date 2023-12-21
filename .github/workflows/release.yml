@@ -11,6 +11,26 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
+      skip-docker:
+        description: 'Skip Docker image publishing'
+        type: boolean
+        default: false
+      skip-s3:
+        description: 'Skip S3 artifact publishing'
+        type: boolean
+        default: false
+      skip-version-info:
+        description: 'Skip publishing version-info.json'
+        type: boolean
+        default: false
+      skip-tag:
+        description: 'Skip tagging the release'
+        type: boolean
+        default: false
+      skip-release-notes:
+        description: 'Skip publishing release notes'
+        type: boolean
+        default: false
 
 jobs:
   check-version:
@@ -36,7 +56,7 @@ jobs:
       uses: actions/github-script@v6
       id: canonical_version
       with:
-        script: |
+        script: | # js
           const { isValidVersionString, getCanonicalVersion, hasBeenReleased } = require('${{ github.workspace }}/release/dist/index.cjs');
 
           const version = '${{ inputs.version }}';
@@ -83,13 +103,13 @@ jobs:
       uses: actions/github-script@v6
       with:
         result-encoding: string
-        script: |
+        script: | # js
           const fs = require('fs');
 
           const artifacts = await github.rest.actions.listArtifactsForRepo({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            name: `metabase-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
+            name: `metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar`,
             per_page: 1,
           });
 
@@ -140,6 +160,7 @@ jobs:
           ./version.properties
 
   upload-to-s3:
+    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 15
@@ -199,7 +220,7 @@ jobs:
 
           console.log("Latest version?", isLatest);
 
-          if (isLatest === "true") {
+          if (isLatest) {
             return edition === 'ee' ? 'enterprise/latest' : 'latest';
           }
           return "false";
@@ -217,6 +238,7 @@ jobs:
 
 
   verify-s3-download:
+    if: ${{ inputs.skip-s3 != true }}
     runs-on: ubuntu-22.04
     needs: upload-to-s3
     timeout-minutes: 15
@@ -250,6 +272,7 @@ jobs:
       run: grep -q $(sha256sum ./metabase-downloaded.jar) SHA256.sum && echo "checksums match" || exit 1
 
   containerize:
+    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: [check-version, download-uberjar]
     timeout-minutes: 15
@@ -359,6 +382,7 @@ jobs:
         echo "Finished!"
 
   verify-docker-pull:
+    if: ${{ inputs.skip-docker != true }}
     runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
@@ -407,6 +431,7 @@ jobs:
       timeout-minutes: 3
 
   push-tags:
+    if: ${{ inputs.skip-tag != true }}
     permissions: write-all
     needs: [verify-s3-download, verify-docker-pull, check-version]
     runs-on: ubuntu-22.04
@@ -457,6 +482,7 @@ jobs:
         $GITHUB_WORKSPACE/release/reorder-tags.sh ${{ needs.check-version.outputs.ee }} ${{ inputs.commit }}
 
   trigger-docs-update:
+    if: ${{ inputs.skip-release-notes != true }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -475,6 +501,7 @@ jobs:
             });
 
   draft-release-notes:
+    if: ${{ inputs.skip-release-notes != true }}
     needs: push-tags
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -526,6 +553,7 @@ jobs:
             });
 
   publish-version-info:
+    if: ${{ inputs.skip-version-info != true }}
     runs-on: ubuntu-22.04
     needs: [push-tags, check-version]
     timeout-minutes: 15
@@ -583,10 +611,10 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
-  manage-issues:
+  manage-milestones:
     permissions: write-all
     runs-on: ubuntu-22.04
-    needs: [publish-version-info, draft-release-notes]
+    needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3

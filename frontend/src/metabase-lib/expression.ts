@@ -37,7 +37,7 @@ export function expressions(
 export function expressionableColumns(
   query: Query,
   stageIndex: number,
-  expressionPosition: number,
+  expressionPosition?: number,
 ): ColumnMetadata[] {
   return ML.expressionable_columns(query, stageIndex, expressionPosition);
 }

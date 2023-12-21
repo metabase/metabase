@@ -14,7 +14,7 @@
 
 (deftest ^:parallel quick-filter-on-bucketed-date-test
   (testing "a quick-filter drill on a bucketed DATE should produce valid results (#18769)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
         (let [products           (lib.metadata/table (qp.store/metadata-provider) (mt/id :products))
               created-at         (-> (lib.metadata/field (qp.store/metadata-provider) (mt/id :products :created_at))
@@ -40,7 +40,7 @@
 
 (deftest ^:parallel distribution-drill-on-longitude-from-sql-source-card-test
   (testing "#16672"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             card-query         (lib/native-query metadata-provider "SELECT * FROM PEOPLE ORDER BY ID DESC LIMIT 100;")
             results            (qp/process-query card-query)

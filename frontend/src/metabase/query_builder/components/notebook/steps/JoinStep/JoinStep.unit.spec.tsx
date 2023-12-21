@@ -136,6 +136,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
       <JoinStep
         step={step}
         query={step.query}
+        stageIndex={step.stageIndex}
         topLevelQuery={query}
         color="brand"
         isLastOpened={false}
@@ -150,7 +151,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
     storeInitialState: STATE,
   });
 
-  function getNextQuery() {
+  function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
     return lastCall[0];
   }

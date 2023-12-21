@@ -44,6 +44,7 @@ const TEST_CARD_NATIVE = createMockCard({
 const TEST_CARD_NO_DATA_ACCESS = createMockCard({
   dataset_query: createMockStructuredDatasetQuery({
     database: SAMPLE_DB_ID,
+    query: {},
   }),
 });
 

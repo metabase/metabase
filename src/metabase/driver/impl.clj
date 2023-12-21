@@ -19,7 +19,6 @@
   hierarchy
   (make-hierarchy))
 
-
 (defonce ^{:doc "To find out whether a driver has been registered, we need to wait until any current driver-loading
   operations have finished. Otherwise we can get a \"false positive\" -- see #13114.
 

@@ -80,7 +80,7 @@
   (when (clause? clause)
     (:lib/expression-name (lib.options/options clause))))
 
-(defn named-expression-clause
+(defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
   (-> (if (clause? clause)
@@ -118,7 +118,7 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (named-expression-clause new-clause (or (custom-name new-clause)
+                     (top-level-expression-clause new-clause (or (custom-name new-clause)
                                                              (expression-name target-clause)))
                      new-clause)]
     (m/update-existing-in

@@ -1,6 +1,7 @@
 (ns metabase.driver.sqlite
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.config :as config]
@@ -9,6 +10,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -16,7 +18,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -25,10 +27,6 @@
 (set! *warn-on-reflection* true)
 
 (driver/register! :sqlite, :parent :sql-jdbc)
-
-(defmethod sql.qp/honey-sql-version :sqlite
-  [_driver]
-  2)
 
 ;; SQLite does not support a lot of features, so do not show the options in the interface
 (doseq [[feature supported?] {:right-join                             false
@@ -42,7 +40,8 @@
                               :now                                    true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
-                              :case-sensitivity-string-filter-options false}]
+                              :case-sensitivity-string-filter-options false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
@@ -79,6 +78,19 @@
          (dissoc details :db)
          ;; disallow "FDW" (connecting to other SQLite databases on the local filesystem) -- see https://github.com/metabase/metaboat/issues/152
          {:limit_attached 0}))
+
+(defmethod driver/describe-table-indexes :sqlite
+  [driver database table]
+  (let [pk (first (sql-jdbc.execute/do-with-connection-with-options
+                   driver database nil
+                   (fn [conn]
+                     (sql-jdbc.describe-table/get-table-pks :sqlite conn (:name database) table))))]
+    ;; In sqlite a PK will implicitly have a UNIQUE INDEX, but if the PK is integer the getIndexInfo method from
+    ;; jdbc doesn't return it as indexed. so we need to manually get mark the pk as indexed here
+    (cond-> ((get-method driver/describe-table-indexes :sql-jdbc) driver database table)
+      (some? pk)
+      (set/union #{{:type :normal-column-index
+                    :value pk}}))))
 
 ;; We'll do regex pattern matching here for determining Field types because SQLite types can have optional lengths,
 ;; e.g. NVARCHAR(100) or NUMERIC(10,5) See also http://www.sqlite.org/datatype3.html
@@ -273,7 +285,7 @@
 ;;
 ;; TIMESTAMP FIXME — this doesn't seem like the correct thing to do for non-Dates. I think params only support dates
 ;; rn however
-(s/defmethod driver.sql/->prepared-substitution [:sqlite Temporal] :- driver.sql/PreparedStatementSubstitution
+(mu/defmethod driver.sql/->prepared-substitution [:sqlite Temporal] :- driver.sql/PreparedStatementSubstitution
   [_driver date]
   ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`

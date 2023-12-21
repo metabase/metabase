@@ -160,7 +160,7 @@
 
 (deftest ^:parallel humanize-filter-value-works-for-expressions-16680-test
   (testing "Expressions can be used in humanized names in addition to fields"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= "TestColumn is 2 and Created At is in February 2024"
              (#'names/humanize-filter-value
                nil

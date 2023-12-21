@@ -102,7 +102,7 @@ export class CompileError extends ExpressionError {
 }
 
 export class ResolverError extends ExpressionError {
-  constructor(message: string, private node: Node) {
+  constructor(message: string, private node?: Node) {
     super(message);
   }
 
