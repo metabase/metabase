@@ -40,7 +40,7 @@ export const DashboardEmbedHeaderButton = forwardRef(
         py="0.6rem"
         px="0.75rem"
         bg="bg.3"
-        offset={hasBackground ? 4 : -4}
+        offset={4}
         label={
           <Text c="inherit" size="sm" fw={700}>
             {tooltipLabel}
