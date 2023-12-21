@@ -3,7 +3,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { Group, Text, Box } from "metabase/ui";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
+import { NumberInputStyled } from "./PeriodsAgoMenuOption.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
 import type { HandleEditedValueChangeType } from "./SmartScalarSettingsWidgets";
 

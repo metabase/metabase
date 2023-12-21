@@ -6,7 +6,7 @@ import { isEmpty } from "metabase/lib/validate";
 import type { SmartScalarComparison } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
-import { PeriodsAgoMenuOption } from "./PeriodsAgoOptionComponent";
+import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import { MenuItemStyled } from "./MenuItem.styled";
 
 type SmartScalarComparisonWidgetProps = {
