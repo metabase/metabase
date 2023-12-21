@@ -31,10 +31,7 @@ Click on the **Interactive embedding** card. Under **Authorized origins**, add t
 
 #### SameSite configuration
 
-To make sure you can authenticate from your app running on localhost to your Metabase, you may need to set the `MB_SESSION_COOKIE_SAMESITE` environment variable to `"none"`.
-
-If you're running Metabase locally, stop your Metabase, set the environment variable by running `export MB_SESSION_COOKIE_SAMESITE=none`, then restart your Metabase.
-If you're using Metabase Cloud, please [open a support ticket](mailto:help@metabase.com) requesting the environment variable update.
+If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](./interactive-embedding.md#embedding-metabase-in-a-different-domain)
 
 #### Enable authentication with JWT
 
