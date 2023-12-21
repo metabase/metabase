@@ -317,12 +317,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Example");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Big");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Small");
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.contains("Example");
+        cy.contains("Big");
+        cy.contains("Small");
+      });
     });
 
     it("should work on custom filter", () => {
