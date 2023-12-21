@@ -304,7 +304,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.icon("add_data").click();
 
       enterCustomColumnDetails({
-        formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
+        formula: "case([Subtotal] + [Tax] > 100, 'Big', 'Small')",
       });
 
       cy.findByPlaceholderText("Something nice and descriptive")
