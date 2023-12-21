@@ -138,7 +138,13 @@
                                   log-types))))
                     (testing "And they hit the db"
                       (is (= (:name card)
-                             (t2/select-one-fn :name :model/Card :id (:id card))))))))))))
+                             (t2/select-one-fn :name :model/Card :id (:id card))))))))
+
+              (testing "Only admins can export/import"
+                (is (= "You don't have permissions to do that."
+                       (mt/user-real-request :rasta :post 403 "ee/serialization/export")))
+                (is (= "You don't have permissions to do that."
+                       (mt/user-real-request :rasta :post 403 "ee/serialization/import"))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
