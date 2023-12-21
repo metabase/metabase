@@ -45,9 +45,8 @@ describe("search > recently viewed", () => {
     assertRecentlyViewedItem(2, "People", "Table");
   });
 
-  it("allows to select an item from keyboard", { tags: "@flaky" }, () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Recently viewed");
+  it("allows to select an item from keyboard", () => {
+    cy.findByTestId("recents-list-container").findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "Enter" });

@@ -175,7 +175,7 @@
                           (mapv (fn [[k v]]
                                   (-> v
                                       ->pMBQL
-                                      (lib.util/named-expression-clause k))))
+                                      (lib.util/top-level-expression-clause k))))
                           not-empty)]
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage

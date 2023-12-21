@@ -126,7 +126,7 @@
   (biginteger (parse-number number-separators s)))
 
 (defmulti upload-type->parser
-  "Returns a function for the given `metabase.upload` type that will parse a string value (from a CSV) into a value
+  "Returns a function for the given `metabase.upload` column type that will parse a string value (from a CSV) into a value
   suitable for insertion."
   {:arglists '([upload-type settings])}
   (fn [upload-type _]

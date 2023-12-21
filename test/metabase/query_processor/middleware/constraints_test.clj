@@ -15,8 +15,8 @@
 (deftest ^:parallel add-constraints-test
   (testing "if it is *truthy* add the constraints"
     (is (= {:middleware  {:add-default-userland-constraints? true},
-            :constraints {:max-results           @#'qp.constraints/default-max-aggregated-query-row-limit
-                          :max-results-bare-rows @#'qp.constraints/default-max-unaggregated-query-row-limit}}
+            :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
+                          :max-results-bare-rows @#'qp.constraints/default-unaggregated-query-row-limit}}
            (add-default-userland-constraints
             {:middleware {:add-default-userland-constraints? true}})))))
 
@@ -29,7 +29,7 @@
 (deftest ^:parallel dont-overwrite-existing-constraints-test
   (testing "if it already has constraints, don't overwrite those!"
     (is (= {:middleware  {:add-default-userland-constraints? true}
-            :constraints {:max-results           @#'qp.constraints/default-max-aggregated-query-row-limit
+            :constraints {:max-results           @#'qp.constraints/default-aggregated-query-row-limit
                           :max-results-bare-rows 1}}
            (add-default-userland-constraints
             {:constraints {:max-results-bare-rows 1}

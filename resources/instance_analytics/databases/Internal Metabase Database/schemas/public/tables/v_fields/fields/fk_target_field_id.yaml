@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: fk_target_field_id
   model: Field
+database_indexed: null

@@ -37,7 +37,7 @@
 
 (deftest quick-run-through
   (with-scheduler-setup
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query     (mt/mbql-query products)
             pk_ref    (mt/$ids $products.id)
             value_ref (mt/$ids $products.title)]
@@ -140,7 +140,7 @@
 
 (deftest fetch-values-test
   (mt/test-drivers (disj (mt/normal-drivers) :mongo)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (doseq [[scenario query [field-refs]]
               (remove nil?
                       [[:mbql (mt/mbql-query products {:fields [$id $title]})]
@@ -213,7 +213,7 @@
         (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))))))
 
 (deftest model-index-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "Simple queries"
       (test-index {:query      (mt/mbql-query products)
                    :pk-name    "id"

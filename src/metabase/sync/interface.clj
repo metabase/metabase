@@ -49,6 +49,19 @@
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
   [:ref ::TableMetadataField])
 
+(mr/def ::TableIndexMetadata
+  [:set
+   [:and
+    [:map
+     [:type [:enum :normal-column-index :nested-column-index]]]
+    [:multi {:dispatch :type}
+     [:normal-column-index [:map [:value ::lib.schema.common/non-blank-string]]]
+     [:nested-column-index [:map [:value [:sequential ::lib.schema.common/non-blank-string]]]]]]])
+
+(def TableIndexMetadata
+  "Schema for a given Table as provided in [[metabase.driver/describe-table-indexes]]."
+  [:ref ::TableIndexMetadata])
+
 (mr/def ::TableMetadata
   [:map
    [:name                         ::lib.schema.common/non-blank-string]

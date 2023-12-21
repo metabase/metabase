@@ -13,8 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.query-processor.writeback :as qp.writeback]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx])
+   [metabase.util.honey-sql-2 :as h2x])
   (:import
    (java.sql Connection)))
 
@@ -36,11 +35,8 @@
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
-   (let [table-identifier (sql.qp/with-driver-honey-sql-version driver
-                            (->> (hx/identifier :table (:schema table) (:name table))
-                                 (sql.qp/->honeysql driver)
-                                 sql.qp/maybe-wrap-unaliased-expr))]
-     (query driver database (merge {:from [table-identifier]}
+   (let [table-identifier (sql.qp/->honeysql driver (h2x/identifier :table (:schema table) (:name table)))]
+     (query driver database (merge {:from [[table-identifier]]}
                                    honeysql-form)))))
 
 
@@ -101,21 +97,25 @@
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
 
+(defmethod driver/describe-table-indexes :sql-jdbc
+  [driver database table]
+  (sql-jdbc.sync/describe-table-indexes driver database table))
+
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (h2x/->timestamp expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Date]
   [_driver _semantic_type expr]
-  (hx/->date expr))
+  (h2x/->date expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
-  (hx/->time expr))
+  (h2x/->time expr))
 
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _semantic_type expr]
-  (hx/->timestamp expr))
+  (h2x/->timestamp expr))
 
 (defn- create-table-sql
   [driver table-name col->type]

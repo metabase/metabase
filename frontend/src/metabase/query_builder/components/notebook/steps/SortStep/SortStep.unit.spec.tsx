@@ -22,6 +22,7 @@ function setup(step = createMockNotebookStep()) {
     <SortStep
       step={step}
       query={step.query}
+      stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       color="brand"
       isLastOpened={false}

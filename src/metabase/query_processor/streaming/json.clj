@@ -2,11 +2,12 @@
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
   (:require
-   [cheshire.core :as json]
-   [java-time.api :as t]
-   [metabase.query-processor.streaming.common :as common]
-   [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.date-2 :as u.date])
+    [cheshire.core :as json]
+    [java-time.api :as t]
+    [metabase.formatter :as formatter]
+    [metabase.query-processor.streaming.common :as common]
+    [metabase.query-processor.streaming.interface :as qp.si]
+    [metabase.util.date-2 :as u.date])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -25,13 +26,17 @@
 
 (defmethod qp.si/streaming-results-writer :json
   [_ ^OutputStream os]
-  (let [writer    (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        col-names (volatile! nil)]
+  (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
+        col-names          (volatile! nil)
+        ordered-formatters (volatile! {})]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols]} :data} _]
+      (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
-        ;; probably going to be parsed programatically
+        ;; probably going to be parsed programmatically
         (vreset! col-names (mapv (some-fn :display_name :name) ordered-cols))
+        (vreset! ordered-formatters (mapv (fn [col]
+                                            (formatter/create-formatter results_timezone col viz-settings))
+                                          ordered-cols))
         (.write writer "[\n"))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
@@ -41,8 +46,20 @@
                             row)]
           (when-not (zero? row-num)
             (.write writer ",\n"))
-          (json/generate-stream (zipmap @col-names (map common/format-value ordered-row))
-                                writer)
+          (json/generate-stream
+            (zipmap
+              @col-names
+              (map (fn [formatter r]
+                     ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
+                     ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
+                     ;; does mean that all JSON values are strings. Any other strategy requires some level of
+                     ;; inference to know if we should or should not parse a string (or not stringify an object).
+                     (let [res (formatter (common/format-value r))]
+                       (if-some [num-str (:num-str res)]
+                         num-str
+                         res)))
+                   @ordered-formatters ordered-row))
+            writer)
           (.flush writer)))
 
       (finish! [_ _]

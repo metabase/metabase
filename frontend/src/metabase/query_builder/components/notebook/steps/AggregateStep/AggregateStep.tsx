@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -19,7 +18,6 @@ const aggTetherOptions = {
 };
 
 export function AggregateStep({
-  query: legacyQuery,
   topLevelQuery,
   step,
   color,
@@ -71,7 +69,6 @@ export function AggregateStep({
       renderPopover={({ item: aggregation, index }) => (
         <AggregationPopover
           query={topLevelQuery}
-          legacyQuery={legacyQuery}
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
@@ -96,7 +93,6 @@ interface AggregationPopoverProps {
   ) => void;
   onAddAggregation: (aggregation: Lib.Aggregable) => void;
 
-  legacyQuery: StructuredQuery;
   clauseIndex?: number;
 
   // Implicitly passed by metabase/components/Triggerable
@@ -108,7 +104,6 @@ function AggregationPopover({
   stageIndex,
   clause,
   clauseIndex,
-  legacyQuery,
   onAddAggregation,
   onUpdateAggregation,
   onClose,
@@ -125,7 +120,6 @@ function AggregationPopover({
   return (
     <AggregationPicker
       query={query}
-      legacyQuery={legacyQuery}
       clause={clause}
       stageIndex={stageIndex}
       operators={operators}

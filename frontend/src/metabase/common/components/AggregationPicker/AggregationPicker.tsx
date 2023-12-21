@@ -12,7 +12,6 @@ import { ExpressionWidget } from "metabase/query_builder/components/expressions/
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
 import {
@@ -33,7 +32,6 @@ interface AggregationPickerProps {
   stageIndex: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  legacyQuery: StructuredQuery;
   maxHeight?: number;
   onSelect: (operator: Lib.Aggregable) => void;
   onClose?: () => void;
@@ -63,7 +61,6 @@ function isOperatorListItem(item: ListItem): item is OperatorListItem {
 export function AggregationPicker({
   className,
   query,
-  legacyQuery,
   clause,
   stageIndex,
   operators,
@@ -212,7 +209,6 @@ export function AggregationPicker({
   if (isEditingExpression) {
     return (
       <ExpressionWidget
-        legacyQuery={legacyQuery}
         query={query}
         stageIndex={stageIndex}
         name={displayInfo?.displayName}

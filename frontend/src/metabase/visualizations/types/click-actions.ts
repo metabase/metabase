@@ -1,16 +1,10 @@
 import type React from "react";
+import type { IconName } from "metabase/core/components/Icon";
 import type { Dispatch, GetState } from "metabase-types/store";
-import type {
-  Series,
-  VisualizationSettings,
-  Card,
-  DatasetQuery,
-} from "metabase-types/api";
-import type { UpdateQuestionOpts } from "metabase/query_builder/actions";
+import type { Series, VisualizationSettings, Card } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type { ClickActionProps } from "metabase-lib/queries/drills/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 export type {
   ClickActionProps,
@@ -42,11 +36,16 @@ export type ClickActionSection =
   | "summarize"
   | "zoom";
 
+export type ClickActionSectionDirection = "row" | "column";
+
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
   section: ClickActionSection;
-  icon?: React.ReactNode;
+  sectionTitle?: string;
+  sectionDirection?: ClickActionSectionDirection;
+  icon?: IconName;
+  iconText?: string;
   buttonType: ClickActionButtonType;
   default?: boolean;
   tooltip?: string;
@@ -141,31 +140,19 @@ export const isRegularClickAction = (
 
 export type Drill<
   T extends Lib.DrillThruDisplayInfo = Lib.DrillThruDisplayInfo,
-> = (
-  options: ClickActionProps & {
-    drill: Lib.DrillThru;
-    drillDisplayInfo: T;
-    applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
-  },
-) => ClickAction[];
-
-export interface ModeFooterComponentProps {
-  lastRunCard: Card;
+> = (options: {
   question: Question;
-  query: StructuredQuery;
-  className?: string;
-
-  updateQuestion: (newQuestion: Question, options?: UpdateQuestionOpts) => void;
-  setDatasetQuery: (
-    datasetQuery: DatasetQuery,
-    options?: UpdateQuestionOpts,
-  ) => void;
-}
+  query: Lib.Query;
+  stageIndex: number;
+  drill: Lib.DrillThru;
+  drillInfo: T;
+  isDashboard: boolean;
+  applyDrill: (drill: Lib.DrillThru, ...args: any[]) => Question;
+}) => ClickAction[];
 
 export interface QueryClickActionsMode {
   name: string;
-
+  hasDrills: boolean;
   clickActions: LegacyDrill[];
   fallback?: LegacyDrill;
-  ModeFooter?: (props: ModeFooterComponentProps) => JSX.Element | null;
 }

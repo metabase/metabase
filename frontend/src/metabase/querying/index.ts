@@ -1,2 +1,3 @@
-export * from "./components/FilterPicker";
-export * from "./components/TimeseriesChrome";
+export { FilterPicker } from "./components/FilterPicker";
+export { TimeseriesChrome } from "./components/TimeseriesChrome";
+export { queryDrill } from "./utils/drills/query-drill";

@@ -142,7 +142,7 @@
             :segments    (sort [segment-id-a segment-id-b])
             :linking-to  [(mt/id :categories)]
             :linked-from [(mt/id :checkins)]
-            :tables      [(mt/id :users)]}
+            :tables      [(mt/id :products) (mt/id :orders) (mt/id :users) (mt/id :people) (mt/id :reviews)]}
            (->> (mt/user-http-request :crowberto :get 200 (format "table/%s/related" (mt/id :venues)))
                 result-mask)))))
 

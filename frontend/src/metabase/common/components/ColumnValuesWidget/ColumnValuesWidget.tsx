@@ -31,7 +31,7 @@ export function ColumnValuesWidget<T extends string | number>({
       const field = metadata.field(fieldId, tableId);
       return field ? [field] : [];
     }
-    const fieldRef = Lib.legacyFieldRef(column);
+    const fieldRef = Lib.legacyRef(column);
     const dimension = LegacyDimension.parseMBQL(fieldRef, metadata);
     const field = dimension?.field?.();
     return field ? [field] : [];

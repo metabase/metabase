@@ -13,8 +13,7 @@
    [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
@@ -49,21 +48,16 @@
     (simple-select-probe-query :postgres \"public\" \"my_table\")
     ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
   [driver :- :keyword
-   schema :- [:maybe :string] ; I think technically some DBs like SQL Server support empty schema and table names
+   schema :- [:maybe :string]        ; I think technically some DBs like SQL Server support empty schema and table names
    table  :- :string]
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (sql.qp/with-driver-honey-sql-version driver
-    (let [tru      (sql.qp/->honeysql driver true)
-          table    (sql.qp/->honeysql driver (hx/identifier :table schema table))
-          honeysql (case (long hx/*honey-sql-version*)
-                     1 {:select [[tru :_]]
-                        :from   [table]
-                        :where  [:not= 1 1]}
-                     2 {:select [[tru :_]]
-                        :from   [[table]]
-                        :where  [:inline [:not= 1 1]]})
-          honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
-      (sql.qp/format-honeysql driver honeysql))))
+  (let [tru      (sql.qp/->honeysql driver true)
+        table    (sql.qp/->honeysql driver (h2x/identifier :table schema table))
+        honeysql {:select [[tru :_]]
+                  :from   [[table]]
+                  :where  [:inline [:not= 1 1]]}
+        honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
+    (sql.qp/format-honeysql driver honeysql)))
 
 (defn- execute-select-probe-query
   "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT

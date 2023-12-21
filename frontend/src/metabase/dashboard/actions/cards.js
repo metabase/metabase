@@ -12,13 +12,14 @@ import { createCard } from "metabase/lib/card";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { autoWireParametersToNewCard } from "metabase/dashboard/actions/auto-wire-parameters/actions";
-import { trackCardCreated } from "../analytics";
-import { getDashCardById } from "../selectors";
+import { trackCardCreated, trackQuestionReplaced } from "../analytics";
+import { getDashCardById, getDashboardId } from "../selectors";
 import { isVirtualDashCard } from "../utils";
 import {
   ADD_CARD_TO_DASH,
   REMOVE_CARD_FROM_DASH,
   UNDO_REMOVE_CARD_FROM_DASH,
+  setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
 import { loadMetadataForDashboard } from "./metadata";
@@ -77,6 +78,43 @@ export const addCardToDashboard =
         dashcard_id: dashcardId,
       }),
     );
+  };
+
+export const replaceCard =
+  ({ dashcardId, nextCardId }) =>
+  async (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    let dashcard = getDashCardById(getState(), dashcardId);
+    if (isVirtualDashCard(dashcard)) {
+      return;
+    }
+
+    await dispatch(Questions.actions.fetch({ id: nextCardId }));
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: nextCardId })
+      .card();
+
+    await dispatch(
+      setDashCardAttributes({
+        id: dashcardId,
+        attributes: {
+          card,
+          card_id: card.id,
+          series: [],
+          parameter_mappings: [],
+          visualization_settings: {},
+        },
+      }),
+    );
+
+    dashcard = getDashCardById(getState(), dashcardId);
+
+    dispatch(fetchCardData(card, dashcard, { reload: true, clearCache: true }));
+    await dispatch(loadMetadataForDashboard([dashcard]));
+    dispatch(autoWireParametersToNewCard({ dashcard_id: dashcardId }));
+
+    trackQuestionReplaced(dashboardId);
   };
 
 export const removeCardFromDashboard = createThunkAction(

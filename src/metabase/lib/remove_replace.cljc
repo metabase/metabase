@@ -1,6 +1,7 @@
 (ns metabase.lib.remove-replace
   (:require
    [clojure.set :as set]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.join :as lib.join]
@@ -9,6 +10,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
+   [metabase.types :as types]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -191,6 +193,49 @@
      (remove-join query stage-number target-clause)
      (remove-replace* query stage-number target-clause :remove nil))))
 
+(defn- expression-role
+  [an-expression]
+  (if (-> an-expression lib.options/options :lib/expression-name)
+    :custom-column
+    :custom-aggregation))
+
+(def ^:private expression-validator (mc/validator :metabase.lib.schema.expression/expression))
+
+(defn- tweak?
+  "Returns if replacing `an-expression` with `new-expression` in `query` at stage `stage-number` is a tweak.
+  A tweak changes a top level expression or an aggregation while preserving its name and type."
+  [query stage-number an-expression new-expression]
+  (and (expression-validator an-expression)
+       (expression-validator new-expression)
+       (= (lib.metadata.calculation/display-name query stage-number new-expression)
+          (lib.metadata.calculation/display-name query stage-number an-expression))
+       (types/assignable? (lib.metadata.calculation/type-of query stage-number new-expression)
+                          (lib.metadata.calculation/type-of query stage-number an-expression))))
+
+(mu/defn tweak-expression :- :metabase.lib.schema/query
+  "Return `query` with `an-exprssion` replaced by `new-expression` at stage `stage-number`.
+  If `an-expression` and `new-expressions` are of different type of have different names or roles,
+  an exception is thrown.
+
+  This function exists to make trival edits in the FE possible without losing parts of the query
+  depending on `an-expression`."
+  [query          :- :metabase.lib.schema/query
+   stage-number   :- :int
+   an-expression  :- :metabase.lib.schema.expression/expression
+   new-expression :- :metabase.lib.schema.expression/expression]
+  (let [role (expression-role an-expression)
+        path (if (= role :custom-column)
+               [:expressions]
+               [:aggregation])
+        expr-name (lib.metadata.calculation/display-name query stage-number an-expression)
+        new-expression (if (= role :custom-column)
+                         (lib.options/update-options new-expression dissoc :display-name)
+                         (lib.options/update-options new-expression #(-> %
+                                                                         (dissoc :lib/expression-name)
+                                                                         (assoc :name expr-name
+                                                                                :display-name expr-name))))]
+    (lib.util/update-query-stage query stage-number lib.util/replace-clause path an-expression new-expression)))
+
 (declare replace-join)
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
@@ -204,8 +249,14 @@
     stage-number :- :int
     target-clause
     new-clause]
-   (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
+   (cond
+     (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
      (replace-join query stage-number target-clause new-clause)
+
+     (tweak? query stage-number target-clause new-clause)
+     (tweak-expression query stage-number target-clause new-clause)
+
+     :else
      (remove-replace* query stage-number target-clause :replace new-clause))))
 
 (defn- field-clause-with-join-alias?

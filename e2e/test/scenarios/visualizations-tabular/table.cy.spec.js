@@ -298,25 +298,6 @@ describe("scenarios > visualizations > table", () => {
       expect(isScrollableHorizontally($popover[0])).to.be.false;
     });
   });
-
-  it("default picker container should not be scrollable horizontally", () => {
-    openPeopleTable();
-    headerCells().filter(":contains('Password')").click();
-
-    popover().within(() => {
-      cy.findByText("Filter by this column").click();
-
-      const input = cy.findByPlaceholderText("Search by Password");
-      input.type("e").blur();
-      cy.wait("@findSuggestions");
-      input.type("f");
-      cy.wait("@findSuggestions");
-
-      cy.findByTestId("default-picker-container").then($container => {
-        expect(isScrollableHorizontally($container[0])).to.be.false;
-      });
-    });
-  });
 });
 
 describe("scenarios > visualizations > table > conditional formatting", () => {

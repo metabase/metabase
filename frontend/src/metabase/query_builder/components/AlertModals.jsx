@@ -148,7 +148,7 @@ class CreateAlertModalContentInner extends Component {
     }
     if (!hasSeenEducationalScreen) {
       return (
-        <ModalContent onClose={onCancel}>
+        <ModalContent onClose={onCancel} data-testid="alert-education-screen">
           <AlertEducationalScreen
             onProceed={this.proceedFromEducationalScreen}
           />

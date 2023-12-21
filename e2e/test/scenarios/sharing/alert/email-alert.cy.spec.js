@@ -2,7 +2,6 @@ import {
   restore,
   setupSMTP,
   visitQuestion,
-  modal,
   openTable,
 } from "e2e/support/helpers";
 
@@ -74,7 +73,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     cy.wait("@saveCard");
 
-    modal().within(() => {
+    cy.findByTestId("alert-education-screen").within(() => {
       cy.findByRole("button", { name: "Set up an alert" }).click();
     });
     cy.findByRole("button", { name: "Done" }).click();

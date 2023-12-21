@@ -32,7 +32,7 @@ export function CollectionInstanceAnalyticsIcon({
     <Icon
       {...iconProps}
       name={collectionType.icon}
-      tooltip={t`This is a read-only Instance Analytics ${collectionIconTooltipNameMap[entity]}.`}
+      tooltip={t`This is a read-only Metabase Analytics ${collectionIconTooltipNameMap[entity]}.`}
       data-testid="instance-analytics-collection-marker"
     />
   );

@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: made_public_by_user
   model: Field
+database_indexed: null
