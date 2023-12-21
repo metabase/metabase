@@ -64,7 +64,7 @@ export const setup = async ({
   setupSettingsEndpoints(settings);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const returnedValue = renderWithProviders(
+  const { history } = renderWithProviders(
     <Route path="/admin/settings">
       <IndexRedirect to="general" />
       <Route path="*" component={SettingsEditor} />
@@ -78,5 +78,5 @@ export const setup = async ({
 
   await waitFor(() => screen.getByText(/general/i));
 
-  return returnedValue;
+  return { history };
 };
