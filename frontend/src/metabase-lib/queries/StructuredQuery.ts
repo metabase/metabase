@@ -160,7 +160,7 @@ class StructuredQuery extends AtomicQuery {
 
   // Whether the user can modify and run this query
   // Determined based on availability of database and source table metadata
-  // For queries based on another card expects virtual table metadata for the source card
+  // For queries based on questions expects virtual table metadata for the source card
   isEditable(): boolean {
     return this.database() != null && this.hasMetadata();
   }
