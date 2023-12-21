@@ -1,7 +1,7 @@
 (ns metabase.api.api-key
   "/api/api-key endpoints for CRUD management of API Keys"
   (:require
-   [compojure.core :refer [POST GET PUT]]
+   [compojure.core :refer [POST GET PUT DELETE]]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.api-key :as api-key]
@@ -20,6 +20,7 @@
       (select-keys [:created_at
                     :updated_at
                     :updated_by
+                    :archived
                     :id
                     :group_name
                     :unmasked_key
@@ -74,7 +75,7 @@
   "Get the count of API keys in the DB"
   [:as _body]
   (api/check-superuser)
-  (t2/count :model/ApiKey))
+  (t2/count :model/ApiKey :archived false))
 
 (api/defendpoint PUT "/:id"
   "Update an API key by changing its group and/or its name"
@@ -126,7 +127,23 @@
   "Get a list of API keys. Non-paginated."
   []
   (api/check-superuser)
-  (let [api-keys (t2/hydrate (t2/select :model/ApiKey) :group_name :updated_by)]
+  (let [api-keys (t2/hydrate (t2/select :model/ApiKey :archived false) :group_name :updated_by)]
     (map present-api-key api-keys)))
+
+(api/defendpoint DELETE "/:id"
+  "Delete an ApiKey"
+  [id]
+  {id ms/PositiveInt}
+  (api/check-superuser)
+  (t2/with-transaction [_tx]
+    (let [api-key (-> (t2/select-one :model/ApiKey id)
+                      (t2/hydrate :group_name))]
+      (t2/update! :model/ApiKey id {:archived true
+                                    :unhashed_key nil})
+      (t2/update! :model/User (:user_id api-key) {:is_active false})
+      (events/publish-event! :event/api-key-archive
+                             {:object api-key
+                              :user-id api/*current-user-id*})
+      (present-api-key api-key))))
 
 (api/define-routes)

@@ -17,7 +17,7 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group_name :unmasked_key :masked_key :id :created_at :updated_at :updated_by}
+        (is (= #{:name :group_name :unmasked_key :masked_key :id :created_at :updated_at :updated_by :archived}
                (-> resp keys set)))
         (is (= (select-keys (mt/fetch-user :crowberto) [:id :common_name])
                (:updated_by resp)))
@@ -26,7 +26,7 @@
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group_name :name :id :created_at :updated_at :updated_by}
+        (is (= #{:unmasked_key :masked_key :group_name :name :id :created_at :updated_at :updated_by :archived}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
@@ -114,14 +114,18 @@
 
 (deftest api-keys-work-e2e
   (testing "We can create a new API key and then use it for authentication"
-    (let [api-key (:unmasked_key
-                   (mt/user-http-request :crowberto :post 200 "api-key"
-                                         {:group_id (:id (perms-group/all-users))
-                                          :name     (str (random-uuid))}))]
+    (let [{api-key :unmasked_key
+           id      :id} (mt/user-http-request :crowberto :post 200 "api-key"
+                                              {:group_id (:id (perms-group/all-users))
+                                               :name     (str (random-uuid))})]
       ;; the exact endpoint here doesn't really matter - we just want to make an API call that requires auth
       (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" api-key}}}))
       (is (= "Unauthenticated"
-             (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" "mb_not_an_api_key"}}}))))))
+             (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" "mb_not_an_api_key"}}})))
+      (testing "A deleted API Key can no longer be used"
+        (mt/user-http-request :crowberto :delete 200 (format "api-key/%s" id))
+        (is (= "Unauthenticated"
+               (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" api-key}}})))))))
 
 (deftest api-keys-can-be-updated
   (t2.with-temp/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
@@ -161,7 +165,7 @@
                                 {:name name-2})
           (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))
         (testing "the shape of the response is correct"
-          (is (= #{:created_at :updated_at :updated_by :id :group_name :name :masked_key}
+          (is (= #{:created_at :updated_at :updated_by :id :group_name :name :masked_key :archived}
                  (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                                   {:name name-1}))))))))))
 
@@ -177,7 +181,7 @@
             {:as resp new-key :unmasked_key}
             (mt/user-http-request :crowberto
                                   :put 200 (format "api-key/%s/regenerate" id))]
-        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name :updated_by}
+        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name :updated_by :archived}
                (set (keys resp))))
         (is (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" old-key}}}))
         (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" new-key}}}))))))
@@ -208,6 +212,20 @@
                :group_name "All Users"}]
              (map #(select-keys % [:name :group_name])
                   (mt/user-http-request :crowberto :get 200 "api-key")))))))
+
+(deftest api-keys-can-be-deleted
+  (mt/with-empty-h2-app-db
+    (is (= [] (mt/user-http-request :crowberto :get 200 "api-key")))
+
+    (let [{id :id} (mt/user-http-request :crowberto
+                                         :post 200 "api-key"
+                                         {:group_id (:id (perms-group/all-users))
+                                          :name     "My First API Key"})]
+      (is (= 1 (count (mt/user-http-request :crowberto :get 200 "api-key"))))
+      (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
+      (mt/user-http-request :crowberto :delete 200 (format "api-key/%s" id))
+      (is (zero? (count (mt/user-http-request :crowberto :get 200 "api-key"))))
+      (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count"))))))
 
 (deftest api-key-operations-are-audit-logged
   (premium-features-test/with-premium-features #{:audit-app}
@@ -254,4 +272,13 @@
                        :model    "ApiKey"
                        :model_id id
                        :user_id  (mt/user->id :crowberto)}
-                      (mt/latest-audit-log-entry :api-key-regenerate id))))))))))
+                      (mt/latest-audit-log-entry :api-key-regenerate id)))))
+          (testing "Deletion is audit logged"
+            (mt/user-http-request :crowberto
+                                  :delete 200 (url "api-key/%s"))
+            (is (=? {:details  {:name "A New Name"
+                                :group_name "Less Cool Friends"}
+                     :model    "ApiKey"
+                     :model_id id
+                     :user_id  (mt/user->id :crowberto)}
+                    (mt/latest-audit-log-entry :api-key-archive id)))))))))

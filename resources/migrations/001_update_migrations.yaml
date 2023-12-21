@@ -5107,6 +5107,42 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.00-056
+      author: johnswanson
+      comment: Add `api_key.archived`
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: 'Whether the API Key is archived'
+
+  - changeSet:
+      id: v49.00-057
+      author: johnswanson
+      comment: Make `api_key.key_prefix` nullable
+      changes:
+        - dropNotNullConstraint:
+            tableName: api_key
+            columnDataType: varchar(7)
+            columnName: key_prefix
+
+  - changeSet:
+      id: v49.00-058
+      author: johnswanson
+      comment: Make `api_key.key` nullable
+      changes:
+        - dropNotNullConstraint:
+            tableName: api_key
+            columnName: key
+            columnDataType: varchar(254)
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 

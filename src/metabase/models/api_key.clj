@@ -53,7 +53,8 @@
 
 (defn- add-prefix [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
-    unhashed_key (assoc :key_prefix (prefix unhashed_key))))
+    (contains? api-key :unhashed_key)
+    (assoc :key_prefix (some-> unhashed_key prefix))))
 
 (defn generate-key
   "Generates a new API key - a random base64 string prefixed with `mb_`"
@@ -73,7 +74,9 @@
   "Adds the `key` based on the `unhashed_key` passed in."
   [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
-    unhashed_key (assoc :key (u.password/hash-bcrypt unhashed_key))
+    (contains? api-key :unhashed_key)
+    (assoc :key (some-> unhashed_key u.password/hash-bcrypt))
+
     true (dissoc :unhashed_key)))
 
 (defn- add-updated-by-id [api-key]
