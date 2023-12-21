@@ -61,12 +61,12 @@
 (mu/defn ^:private fingerprint-table!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
-  (let [rff (fn [_metadata]
-              (redux/post-complete
-               (fingerprinters/fingerprint-fields fields)
-               (fn [fingerprints]
-                 (reduce (fn [count-info [field fingerprint]]
-                           (cond
+  (let [rff! (fn [_metadata]
+               (redux/post-complete
+                (fingerprinters/fingerprint-fields fields)
+                (fn [fingerprints]
+                  (reduce (fn [count-info [field fingerprint]]
+                            (cond
                              (instance? Throwable fingerprint)
                              (update count-info :failed-fingerprints inc)
 
@@ -75,13 +75,13 @@
 
                              :else
                              (do
-                               (save-fingerprint! field fingerprint)
-                               (update count-info :updated-fingerprints inc))))
-                         (empty-stats-map (count fingerprints))
-                         (map vector fields fingerprints)))))
+                              (save-fingerprint! field fingerprint)
+                              (update count-info :updated-fingerprints inc))))
+                          (empty-stats-map (count fingerprints))
+                          (map vector fields fingerprints)))))
         driver (driver.u/database->driver (table/database table))
         opts {:truncation-size *truncation-size*}]
-    (driver/table-rows-sample driver table fields rff opts)))
+    (driver/table-rows-sample driver table fields rff! opts)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
@@ -186,8 +186,8 @@
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
-  (seq (t2/select Field
-         (honeysql-for-fields-that-need-fingerprint-updating table))))
+  (seq (t2/select :model/Field
+                  (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
 (mu/defn fingerprint-fields!

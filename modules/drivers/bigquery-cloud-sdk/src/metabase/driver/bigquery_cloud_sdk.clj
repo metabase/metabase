@@ -177,6 +177,8 @@
        :base-type         (bigquery-type->base-type f-mode type-name)
        :database-position idx})))
 
+(def ^:private partitioned-time-field-name "_PARTITIONTIME")
+
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
   (let [table                  (get-table database dataset-id table-name)
@@ -198,7 +200,7 @@
                (and (some? (.getTimePartitioning tabledef))
                     (nil? partitioned-field-name))
                (conj
-                {:name                 "_PARTITIONTIME"
+                {:name                 partitioned-time-field-name
                  :database-type        "TIMESTAMP"
                  :base-type            (bigquery-type->base-type nil "TIMESTAMP")
                  :database-position    (count fields)
@@ -210,7 +212,7 @@
           (map (fn [^Field field]
                  (let [column-type (.. field getType name)
                        column-mode (.getMode field)
-                       method (get-method bigquery.qp/parse-result-of-type column-type)]
+                       method      (get-method bigquery.qp/parse-result-of-type column-type)]
                    (when (= method default-parser)
                      (let [column-name (.getName field)]
                        (log/warn (trs "Warning: missing type mapping for parsing BigQuery results column {0} of type {1}."
@@ -255,17 +257,22 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
+(defn- time-ingestion-partitioned-table?
+  [table-id]
+  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name))
+
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
   (let [database (table/database table)
         bq-table (get-table database dataset-id table-name)]
-    (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
-           ;; We couldn't easily test if the following two can show up as
-           ;; tables and if `.list` is supported for them, so they are here
-           ;; to make sure we don't break existing instances.
-           TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
-         (.. bq-table getDefinition getType))
-      (do (log/debugf "%s.%s is a view, so we cannot use the list API; falling back to regular query"
+    (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
+               ;; We couldn't easily test if the following two can show up as
+               ;; tables and if `.list` is supported for them, so they are here
+               ;; to make sure we don't break existing instances.
+               TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
+             (.. bq-table getDefinition getType))
+            (time-ingestion-partitioned-table? (:id table)))
+      (do (log/debugf "%s.%s is a view or time partitioned, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (sample-table bq-table fields rff))))

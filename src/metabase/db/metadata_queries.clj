@@ -16,14 +16,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- partition-field->filter
-  [field]
-  (let [field-form [:field (:id field) nil]]
-    (condp #(isa? %2 %1) (:base_type field)
-      :type/Number   [:> field-form -9223372036854775808]
-      :type/Date     [:> field-form "0001-01-01"]
-      :type/DateTime [:> field-form "0001-01-01 00:00:00"])))
-
 (defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
   (-> (binding [qp.i/*disable-qp-logging* true]
@@ -35,19 +27,44 @@
       :data
       :rows))
 
+(defn- partition-field->filter-form
+  "Given a partition field, returns the default value can be used to query."
+  [field]
+  (let [field-form [:field (:id field) nil]]
+    (condp #(isa? %2 %1) (:base_type field)
+      :type/Number   [:> field-form -9223372036854775808]
+      :type/Date     [:> field-form "0001-01-01"]
+      :type/DateTime [:> field-form "0001-01-01 00:00:00"])))
+
+(defn- query-with-default-partitioned-field-filter
+  [query table]
+  ;; TODO: maybe this function should be somewhere more generic?
+  (let [;; In bigquery, a partition table can have only one partitioned field
+        partition-field (or (t2/select-one :model/Field
+                                           :table_id (:id table)
+                                           :database_partitioned true
+                                           :active true)
+                            (throw (ex-info (format "No partitioned field found for table: %d" (:id table))
+                                            {:table_id (:id table)})))
+        filter-form     (partition-field->filter-form partition-field)]
+    (update query :filter (fn [existing-filter]
+                            (if (some? existing-filter)
+                              [:and existing-filter filter-form]
+                              filter-form)))))
+
 (defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
   (let [table (t2/select-one :model/Table :id table-id)]
     (qp-query (:db_id table)
-              ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
-              ;; macro for building queries. Do not remove
               (cond-> mbql-query
                 true
                 (assoc :source-table table-id)
 
+                ;; Some table requires a filter to be able to query the data
+                ;; Currently this only applied to Parittioned table in bigquery where the partition field
+                ;; is required as a filter.
                 (:database_require_filter table)
-                (assoc :filter (partition-field->filter (or (t2/select-one :model/Field :table_id (:id table) :database_partitioned true :active true)
-                                                            (throw (ex-info "Parittioned field not found for table that requires it" {})))))))))
+                (query-with-default-partitioned-field-filter table)))))
 
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
@@ -141,7 +158,9 @@
                                                  [:expression expression-name]
                                                  [:field (u/the-id field) nil])))
                           :limit        limit}
-                   order-by (assoc :order-by order-by))
+                   order-by (assoc :order-by order-by)
+                   (:database_require_filter table)
+                   (query-with-default-partitioned-field-filter table))
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
