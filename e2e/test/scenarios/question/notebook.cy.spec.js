@@ -184,6 +184,20 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findByTestId("expression-editor-textfield").should("not.exist");
 
+    cy.task("log", cy.findByTestId("expression-editor-textfield"));
+    cy.task("log", cy.findByTestId("expression-editor-textfield").next());
+
+    cy.findByTestId("expression-editor-textfield")
+      .next()
+      .then(elem => {
+        cy.task("log", elem.text());
+      });
+
+    cy.task(
+      "log",
+      cy.findByTestId("expression-editor-textfield").next().invoke("text"),
+    );
+
     getNotebookStep("filter")
       .contains("Price is greater than 1")
       .should("exist");
