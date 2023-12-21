@@ -32,12 +32,14 @@ describe("metabase#31587", () => {
             "action-button-full-container",
           );
           const dashCard = cy.contains(".DashCard", "Click Me");
+          // Added new borders in https://github.com/metabase/metabase/pull/36991
+          const stackedBordersHeight = 2;
 
           actionButtonContainer.then(actionButtonElem => {
             dashCard.then(dashCardElem => {
-              expect(actionButtonElem[0].scrollHeight).to.eq(
-                dashCardElem[0].scrollHeight,
-              );
+              expect(
+                actionButtonElem[0].scrollHeight + stackedBordersHeight,
+              ).to.eq(dashCardElem[0].scrollHeight);
             });
           });
         });
