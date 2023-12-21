@@ -304,7 +304,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.icon("add_data").click();
 
       enterCustomColumnDetails({
-        formula: "case([Subtotal] + [Tax] > 100, 'Big', 'Small')",
+        formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
       });
 
       cy.findByPlaceholderText("Something nice and descriptive")
@@ -316,11 +316,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       getNotebookStep("expression").contains("Example").should("exist");
 
       visualize(() => {
-        // eslint-disable-next-line no-unscoped-text-selectors
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Example");
-        // eslint-disable-next-line no-unscoped-text-selectors
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Big");
-        // eslint-disable-next-line no-unscoped-text-selectors
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Small");
       });
     });
