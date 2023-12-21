@@ -3,7 +3,7 @@ import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
+import { getSetting } from "metabase/selectors/settings";
 import { Button, Flex, Text, Title } from "metabase/ui";
 import { Label, StyledCard, BoldExternalLink } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
@@ -50,13 +50,15 @@ function EmbeddingOption({
 
 export const StaticEmbeddingOptionCard = () => {
   const enabled = useSelector(state => getSetting(state, "enable-embedding"));
-  const upgradeUrl = useSelector(state =>
-    getUpgradeUrl(state, { utm_media: "embed_standalone" }),
-  );
   const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
 
   const upgradeText = jt`A "powered by Metabase" banner appears on static embeds. You can ${(
-    <ExternalLink key="upgrade-link" href={upgradeUrl}>
+    <ExternalLink
+      key="upgrade-link"
+      href={
+        "https://www.metabase.com/pricing/?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
+      }
+    >
       {t`upgrade to a paid plan`}
     </ExternalLink>
   )} to remove it.`;
