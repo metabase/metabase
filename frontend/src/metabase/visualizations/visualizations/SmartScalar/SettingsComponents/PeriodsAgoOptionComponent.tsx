@@ -1,111 +1,93 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import type {
-  Dispatch,
-  KeyboardEvent,
-  MouseEvent,
-  SetStateAction,
-} from "react";
+import { useCallback, useRef } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import { Group, Text, Box } from "metabase/ui";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
+import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { NumberInputStyled } from "./PeriodsAgoOptionComponent.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
+import type { HandleEditedValueChangeType } from "./SmartScalarSettingsWidgets";
 
 type PeriodsAgoMenuOptionProps = {
   "aria-selected": boolean;
+  editedValue?: SmartScalarComparisonPeriodsAgo;
   maxValue: number;
   name: string;
-  onChange: (setting: { type: string; value?: number }) => void;
-  selectedValue?: SmartScalarComparisonPeriodsAgo;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-  type: string;
+  handleChange: HandleEditedValueChangeType;
+  type: typeof COMPARISON_TYPES.PERIODS_AGO;
 };
+
+const MIN_VALUE = 2;
 
 export function PeriodsAgoMenuOption({
   "aria-selected": isSelected,
+  editedValue,
   maxValue,
   name,
-  onChange,
-  selectedValue,
-  setOpen,
+  handleChange,
   type,
 }: PeriodsAgoMenuOptionProps) {
-  const minValue = 2;
-  const value = useMemo(() => {
-    if (!selectedValue) {
-      return null;
-    }
-
-    if (Number.isInteger(selectedValue.value)) {
-      return selectedValue.value;
-    }
-
-    return null;
-  }, [selectedValue]);
-  const [inputValue, setInputValue] = useState(value ?? minValue);
-
+  // utilities for blurring and selecting the input whenever
+  // validation fails so that the user can easily re-enter a valid value
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectInput = useCallback(() => {
+    inputRef.current?.select();
+  }, [inputRef]);
+  const reSelectInput = useCallback(() => {
+    inputRef.current?.blur();
+    setTimeout(() => selectInput(), 0);
+  }, [selectInput]);
 
-  const isValidInput = useCallback(() => {
-    if (inputValue < minValue) {
-      setInputValue(minValue);
-      return false;
-    }
-
-    if (inputValue > maxValue) {
-      setInputValue(maxValue);
-      return false;
-    }
-
-    if (!Number.isInteger(inputValue)) {
-      setInputValue(value ?? minValue);
-      return false;
-    }
-
-    return true;
-  }, [inputValue, maxValue, value]);
-
-  const submitValue = useCallback(() => {
-    if (!isValidInput()) {
-      return;
-    }
-
-    onChange({
-      type,
-      value: inputValue,
-    });
-
-    setOpen(false);
-  }, [inputValue, isValidInput, type, onChange, setOpen]);
-
-  const handleInputEnter = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      inputRef.current?.blur();
-
-      if (!isValidInput()) {
-        // re-select input if the number was not a valid input
-        return setTimeout(() => {
-          inputRef.current?.select();
-        }, 0);
+  const value = editedValue?.value ?? MIN_VALUE;
+  const validateInput = useCallback(
+    (value: number) => {
+      if (value < 1) {
+        handleChange({ type, value: MIN_VALUE });
+        reSelectInput();
+        return;
       }
 
-      submitValue();
-    }
-  };
+      if (value > maxValue) {
+        handleChange({ type, value: maxValue });
+        reSelectInput();
+        return;
+      }
 
-  const handleInputClick = (e: MouseEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    inputRef.current?.select();
-  };
+      if (!Number.isInteger(value)) {
+        handleChange({ type, value: Math.floor(value) ?? MIN_VALUE });
+        reSelectInput();
+        return;
+      }
+
+      handleChange({ type, value });
+    },
+    [handleChange, maxValue, reSelectInput, type],
+  );
+
+  const handleInputEnter = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        handleChange({ type, value }, true);
+      }
+    },
+    [handleChange, type, value],
+  );
+  const handleInputClick = useCallback(
+    (e: MouseEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      selectInput();
+    },
+    [selectInput],
+  );
 
   return (
     <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
-      <Box onClick={() => submitValue()}>
+      <Box onClick={() => handleChange({ type, value }, true)}>
         <Group position="apart" px="0.5rem">
-          <Text fw="bold">{`${inputValue} ${name}`}</Text>
+          <Text fw="bold">{`${value} ${name}`}</Text>
           <NumberInputStyled
             ref={inputRef}
-            value={inputValue}
-            onChange={(value: number) => setInputValue(value)}
+            value={value}
+            onChange={(value: number) => validateInput(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
             size="xs"

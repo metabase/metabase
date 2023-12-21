@@ -1,5 +1,4 @@
-import { useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useState } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Menu, Stack, Text } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
@@ -10,17 +9,30 @@ import { PeriodsAgoMenuOption } from "./PeriodsAgoOptionComponent";
 import { MenuItemStyled } from "./MenuItem.styled";
 
 type SmartScalarComparisonWidgetProps = {
-  onChange: (setting: { type: string; value?: number }) => void;
+  onChange: (setting: SmartScalarComparison) => void;
   options: ComparisonMenuOption[];
   value: SmartScalarComparison;
 };
 
 export function SmartScalarComparisonWidget({
-  onChange,
+  onChange: onChange,
   options,
   value: selectedValue,
 }: SmartScalarComparisonWidgetProps) {
   const [open, setOpen] = useState(false);
+  const [editedValue, setEditedValue] = useState(selectedValue);
+
+  const handleEditedValueChange: HandleEditedValueChangeType = useCallback(
+    (value: SmartScalarComparison, shouldSubmit: boolean = false) => {
+      setEditedValue(value);
+
+      if (shouldSubmit) {
+        onChange(value);
+        setOpen(false);
+      }
+    },
+    [onChange, setEditedValue, setOpen],
+  );
 
   const selectedOption = options.find(
     ({ type }) => type === selectedValue.type,
@@ -37,6 +49,9 @@ export function SmartScalarComparisonWidget({
     <Menu
       opened={open}
       onChange={setOpen}
+      onClose={() => {
+        onChange(editedValue);
+      }}
       position="bottom-start"
       shadow="sm"
       closeOnItemClick={false}
@@ -58,9 +73,9 @@ export function SmartScalarComparisonWidget({
         <Stack spacing="sm">
           {options.map(optionArgs =>
             renderMenuOption({
-              onChange,
-              setOpen,
+              editedValue,
               optionArgs,
+              handleChange: handleEditedValueChange,
               selectedValue,
             }),
           )}
@@ -70,24 +85,24 @@ export function SmartScalarComparisonWidget({
   );
 }
 
+export type HandleEditedValueChangeType = (
+  value: SmartScalarComparison,
+  shouldSubmit?: boolean,
+) => void;
+
 type RenderMenuOptionProps = {
-  onChange: (setting: { type: string; value?: number }) => void;
+  editedValue: SmartScalarComparison;
+  handleChange: HandleEditedValueChangeType;
   optionArgs: ComparisonMenuOption;
   selectedValue: SmartScalarComparison;
-  setOpen: Dispatch<SetStateAction<boolean>>;
 };
 
 function renderMenuOption({
-  onChange,
+  editedValue,
+  handleChange,
   optionArgs,
-  setOpen,
   selectedValue,
 }: RenderMenuOptionProps) {
-  const submitChangeAndCloseMenu = () => {
-    onChange({ type });
-    setOpen(false);
-  };
-
   const { type, name } = optionArgs;
 
   if (type === COMPARISON_TYPES.PERIODS_AGO) {
@@ -99,19 +114,22 @@ function renderMenuOption({
         aria-selected={selectedValue.type === type}
         type={type}
         name={name}
-        onChange={onChange}
-        setOpen={setOpen}
+        handleChange={handleChange}
         maxValue={maxValue}
-        selectedValue={selectedValue.type === type ? selectedValue : undefined}
+        editedValue={editedValue.type === type ? editedValue : undefined}
       />
     );
   }
+
+  const handleSimpleMenuItemClick = () => {
+    handleChange({ type }, true);
+  };
 
   return (
     <MenuItemStyled
       key={type}
       aria-selected={selectedValue.type === type}
-      onClick={submitChangeAndCloseMenu}
+      onClick={handleSimpleMenuItemClick}
     >
       <Text fw="bold" ml="0.5rem">
         {name}
