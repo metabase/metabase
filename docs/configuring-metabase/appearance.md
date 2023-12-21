@@ -47,9 +47,7 @@ You can customize the colors that Metabase uses throughout the app:
 
 ![Chart colors](./images/chart-colors.png)
 
-You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. One misconception you might get is that the chart will show up with the same order in which you select your colors.
- 
-Metabase will use the color palette you have selected but not in the order it was selected. For example in a chart with series Metabase checks the colors and sees if colors are similar to each other on the color that picked before or after, and then generates a new color.
+You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. And don't bother ordering the colors here, as their order doesn't apply to the order of colors for series on charts. When building a chart, Metabase will select colors to make each series easy to distinguish.
 
 Custom colors are unavailable for:
 
