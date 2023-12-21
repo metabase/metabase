@@ -178,25 +178,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get(".ace_text-input")
-      .clear()
-      .type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.get(".ace_text-input").clear();
+    cy.get(".ace_text-input").type("[Price] > 1 AND [Price] < 5{enter}");
 
     cy.findByTestId("expression-editor-textfield").should("not.exist");
-
-    cy.task("log", cy.findByTestId("expression-editor-textfield"));
-    cy.task("log", cy.findByTestId("expression-editor-textfield").next());
-
-    cy.findByTestId("expression-editor-textfield")
-      .next()
-      .then(elem => {
-        cy.task("log", elem.text());
-      });
-
-    cy.task(
-      "log",
-      cy.findByTestId("expression-editor-textfield").next().invoke("text"),
-    );
 
     getNotebookStep("filter")
       .contains("Price is greater than 1")
