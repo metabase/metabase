@@ -393,7 +393,6 @@ export class DeleteAlertSection extends Component {
   render() {
     const { onDeleteAlert } = this.props;
 
-    const title = `Delete this alert?`;
     return (
       <DangerZone className="DangerZone mt4 pt4 mb2 p3 rounded bordered relative">
         <h3
@@ -409,11 +408,10 @@ export class DeleteAlertSection extends Component {
               as={Button}
               triggerClasses="Button--danger flex-align-right flex-no-shrink align-self-end"
               triggerElement={t`Delete this alert`}
-              title={title}
             >
               <DeleteModalWithConfirm
                 objectType="alert"
-                title={title}
+                title={`Delete this alert?`}
                 confirmItems={this.getConfirmItems()}
                 onClose={() => this.deleteModal.close()}
                 onDelete={onDeleteAlert}
