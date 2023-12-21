@@ -58,6 +58,7 @@ export const getMultiSelectOverrides =
         },
         rightSection: {
           svg: {
+            color: invalid ? theme.colors.error[0] : theme.colors.text[2],
             width: "1rem !important",
             height: "1rem !important",
 
