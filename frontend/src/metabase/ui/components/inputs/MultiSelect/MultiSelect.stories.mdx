@@ -48,6 +48,8 @@ export const args = {
   description: undefined,
   error: undefined,
   placeholder: "No semantic type",
+  searchable: false,
+  creatable: false,
   disabled: false,
   readOnly: false,
   withAsterisk: false,
@@ -79,6 +81,12 @@ export const argTypes = {
   },
   placeholder: {
     control: { type: "text" },
+  },
+  searchable: {
+    control: { type: "boolean" },
+  },
+  creatable: {
+    control: { type: "boolean" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -265,6 +273,22 @@ SearchableMd.args = {
   <Story name="Searchable, md">{SearchableMd}</Story>
 </Canvas>
 
+#### Creatable
+
+export const CreatableMd = VariantTemplate.bind({});
+CreatableMd.args = {
+  data: dataWithGroupsLarge,
+  description: sampleArgs.description,
+  getCreateLabel: query => `New ${query}`,
+  creatable: true,
+  searchable: true,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Creatable, md">{CreatableMd}</Story>
+</Canvas>
+
 ### Size - xs
 
 export const EmptyXs = VariantTemplate.bind({});
@@ -395,4 +419,16 @@ SearchableXs.args = {
 
 <Canvas>
   <Story name="Searchable, xs">{SearchableXs}</Story>
+</Canvas>
+
+#### Creatable
+
+export const CreatableXs = VariantTemplate.bind({});
+CreatableXs.args = {
+  ...CreatableMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Creatable, xs">{CreatableXs}</Story>
 </Canvas>

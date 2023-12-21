@@ -48,6 +48,7 @@ export const args = {
   description: undefined,
   error: undefined,
   placeholder: "No semantic type",
+  searchable: false,
   disabled: false,
   readOnly: false,
   withAsterisk: false,
@@ -79,6 +80,9 @@ export const argTypes = {
   },
   placeholder: {
     control: { type: "text" },
+  },
+  searchable: {
+    control: { type: "boolean" },
   },
   disabled: {
     control: { type: "boolean" },
