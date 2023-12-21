@@ -2928,3 +2928,16 @@
             (is (=?
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
+
+(deftest based-on-upload-test
+  (mt/with-temp [:model/Database {db-id :id}    {:engine "h2"}
+                 :model/Table    {table-id :id} {:db_id     db-id
+                                                 :is_upload true}
+                 :model/Card     {card-id :id}  {:dataset_query {:type     :query
+                                                                 :database db-id
+                                                                 :query    {:source-table table-id}}}]
+    (mt/with-test-user :crowberto
+      (testing "Cards based on uploads have "
+        (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
+      (t2/update! :model/Table table-id {:is_upload false})
+      (is (nil? (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))))

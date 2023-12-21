@@ -146,7 +146,8 @@
     {:name       "hydrate-card-details"
      :attributes {:card/id card-id}}
     (-> card
-        (t2/hydrate :creator
+        (t2/hydrate :based_on_upload
+                    :creator
                     :dashboard_count
                     :can_write
                     :average_query_time
@@ -154,7 +155,7 @@
                     :parameter_usage_count
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
-        (cond->                                             ; card
+        (cond->
           (:dataset card) (t2/hydrate :persisted)))))
 
 (api/defendpoint GET "/:id"
