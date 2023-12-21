@@ -1,10 +1,11 @@
-import { rem, getSize } from "@mantine/core";
+import { rem, getSize, getStylesRef } from "@mantine/core";
 import type {
   MantineThemeOverride,
   MultiSelectStylesParams,
 } from "@mantine/core";
 
-const SIZES = {
+const HEIGHT = {
+  xs: rem(16),
   md: rem(24),
 };
 
@@ -28,12 +29,20 @@ export const getMultiSelectOverrides =
             marginTop: theme.spacing.xs,
           },
           "&:has(input:disabled)": {
+            opacity: 1,
             pointerEvents: "auto",
+            [`& .${getStylesRef("input")}`]: {
+              color: theme.colors.text[2],
+              backgroundColor: theme.colors.bg[0],
+            },
           },
+        },
+        input: {
+          ref: getStylesRef("input"),
         },
         values: {
           gap: theme.spacing.sm,
-          minHeight: getSize({ size, sizes: SIZES }),
+          minHeight: getSize({ size, sizes: HEIGHT }),
           marginLeft: 0,
         },
         value: {
@@ -46,9 +55,6 @@ export const getMultiSelectOverrides =
         },
         rightSection: {
           svg: {
-            color: `${
-              invalid ? theme.colors.error[0] : theme.colors.text[2]
-            } !important`,
             width: "1rem !important",
             height: "1rem !important",
 
@@ -61,7 +67,7 @@ export const getMultiSelectOverrides =
           },
         },
         defaultValue: {
-          height: getSize({ size, sizes: SIZES }),
+          height: getSize({ size, sizes: HEIGHT }),
           paddingLeft: theme.spacing.sm,
           paddingRight: theme.spacing.sm,
           fontWeight: "normal",

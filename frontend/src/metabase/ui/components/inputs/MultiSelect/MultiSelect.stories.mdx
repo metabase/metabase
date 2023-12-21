@@ -145,6 +145,7 @@ DescriptionMd.args = {
 
 export const DisabledMd = VariantTemplate.bind({});
 DisabledMd.args = {
+  defaultValue: sampleArgs.value,
   description: sampleArgs.description,
   disabled: true,
   withAsterisk: true,
@@ -206,4 +207,28 @@ CreatableMd.args = {
 
 <Canvas>
   <Story name="CreatableMd, md">{CreatableMd}</Story>
+</Canvas>
+
+### Size - xs
+
+export const EmptyXs = VariantTemplate.bind({});
+EmptyXs.args = {
+  ...EmptyMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Empty, xs">{EmptyXs}</Story>
+</Canvas>
+
+#### Filled
+
+export const FilledXs = VariantTemplate.bind({});
+FilledXs.args = {
+  ...FilledMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Filled, xs">{FilledXs}</Story>
 </Canvas>
