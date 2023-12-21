@@ -1084,8 +1084,8 @@ describe("SmartScalar > compute", () => {
         ];
 
         const cols = [
-          DateTimeColumn({ name: "Month" }),
-          NumberColumn({ name: "Count" }),
+          createMockDateTimeColumn({ name: "Month" }),
+          createMockNumberColumn({ name: "Count" }),
         ];
 
         const testCases = [
