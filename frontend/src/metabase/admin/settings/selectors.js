@@ -554,7 +554,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
-        getHidden: () => PLUGIN_EMBEDDING.isEnabled(),
+        getHidden: (_, derivedSettings) =>
+          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
       },
     ],
   },
