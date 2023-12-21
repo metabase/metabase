@@ -91,6 +91,11 @@ export const getSelectInputOverrides = (
   };
 };
 
+const LINE_HEIGHTS = {
+  xs: rem(16),
+  md: rem(24),
+};
+
 const ITEM_FONT_SIZES = {
   xs: rem(12),
   md: rem(14),
@@ -99,11 +104,6 @@ const ITEM_FONT_SIZES = {
 const SEPARATOR_FONT_SIZES = {
   xs: rem(12),
   md: rem(12),
-};
-
-const LINE_HEIGHTS = {
-  xs: rem(16),
-  md: rem(24),
 };
 
 export const getSelectItemsOverrides = (
