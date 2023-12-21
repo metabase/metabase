@@ -15,6 +15,7 @@ import startsBelowZeroCrossesEndsBelow from "./starts-below-zero-crosses-ends-be
 import customColors from "./custom-colors.json";
 import noTotalTimeseries from "./no-total-timeseries.json";
 import noTotalOrdinal from "./no-total-ordinal.json";
+import dataLabels from "./data-labels.json";
 
 export const data = {
   timeseriesXScale,
@@ -34,4 +35,5 @@ export const data = {
   customColors,
   noTotalTimeseries,
   noTotalOrdinal,
+  dataLabels,
 };

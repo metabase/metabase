@@ -146,3 +146,10 @@ NoTotalOrdinal.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const DataLabels = Template.bind({});
+DataLabels.args = {
+  rawSeries: data.dataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
