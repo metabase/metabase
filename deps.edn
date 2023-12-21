@@ -236,7 +236,7 @@
     methodical/methodical        {:mvn/version "0.15.1"}                    ; drop-in replacements for Clojure multimethods and adds several advanced features
     org.clojure/algo.generic     {:mvn/version "0.1.3"}
     peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
-                                  :sha "999d0a02425c906c35bace749654dc095ecf3e6a"} ; mocking Ring requests; update to upstream when/if it merges changes
+                                  :sha "999d0a02425c906c35bace749654dc095ecf3e6a"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
                                   :exclusions  [org.clojure/clojure

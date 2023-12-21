@@ -13,22 +13,30 @@
    [metabase.models.serialization :as serdes]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
+   [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [ring.core.protocols :as ring.protocols])
   (:import
    (java.io File ByteArrayOutputStream)
    (java.lang AutoCloseable)
-   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream TarArchiveOutputStream)
-   (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream GzipCompressorOutputStream GzipParameters)
    (org.apache.logging.log4j Level)
    (org.apache.logging.log4j.core.appender AbstractAppender FileAppender)
    (org.apache.logging.log4j.core.config AbstractConfiguration LoggerConfig)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *in-tests* "Set when executed in tests to prevent async removal of files" false)
+(def ^:dynamic *in-tests* "Set when executed in tests to force sync removal of files" false)
+
+;;; Storage
+
+(def parent-dir "Dir for storing serialization API export-in-progress and archives."
+  (let [f (io/file (System/getProperty "java.io.tmpdir") (str "serdesv2-" (u.random/random-name)))]
+    (.mkdirs f)
+    (.deleteOnExit f)
+    (.getPath f)))
 
 ;;; Request callbacks
 
@@ -55,54 +63,6 @@
                                    data))]
         (callback)
         res))))
-
-;;; Storage
-
-(def parent-dir "Dir for storing serialization API export-in-progress and archives."
-  (let [f (io/file (System/getProperty "java.io.tmpdir") "serdesv2-api")]
-    (.mkdirs f)
-    (.deleteOnExit f)
-    (.getPath f)))
-
-(defn- compress-tgz [^File src ^File dst]
-  (when-not (.exists src)
-    (throw (ex-info (format "Path is not readable or does not exist: %s" src)
-                    {:path src})))
-  (let [prefix (.getPath (.getParentFile src))]
-    (with-open [tar (-> (io/output-stream dst)
-                        (GzipCompressorOutputStream. (doto (GzipParameters.)
-                                                       (.setModificationTime (System/currentTimeMillis))))
-                        (TarArchiveOutputStream. 512 "UTF-8"))]
-      (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
-
-      (doseq [^File f (file-seq src)
-              :let    [path-in-tar (subs (.getPath f) (count prefix))
-                       entry (TarArchiveEntry. f path-in-tar)]]
-        (.putArchiveEntry tar entry)
-        (when (.isFile f)
-          (with-open [s (io/input-stream f)]
-            (io/copy s tar)))
-        (.closeArchiveEntry tar)))
-    dst))
-
-(defn- entries [^TarArchiveInputStream tar]
-  (lazy-seq
-   (when-let [entry (.getNextEntry tar)]
-     (cons entry (entries tar)))))
-
-(defn- uncompress-tgz [^File archive ^File dst]
-  (let [dir-name (atom nil)]
-    (with-open [tar (-> (io/input-stream archive)
-                        (GzipCompressorInputStream.)
-                        (TarArchiveInputStream.))]
-      (doseq [^TarArchiveEntry e (entries tar)]
-        (when-not @dir-name
-          (reset! dir-name (.getName e)))
-        (let [f (io/file dst (.getName e))]
-          (if (.isFile e)
-            (io/copy tar f)
-            (.mkdirs f)))))
-    @dir-name))
 
 ;;; Logging
 
@@ -140,19 +100,19 @@
 ;;; Logic
 
 (defn- serialize&pack ^File [opts]
-  ;; TODO: how to get time in local timezone?
   (let [id       (format "%s-%s"
                          (u/slugify (public-settings/site-name))
-                         (u.date/format "YYYY-MM-dd_HH-mm" (t/zoned-date-time)))
+                         (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time)))
         path     (io/file parent-dir id)
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")]
     (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
       (try                              ; try/catch inside logging to log errors
-        (-> (extract/extract opts)
-            (storage/store! path))
+        (serdes/with-cache
+          (-> (extract/extract opts)
+              (storage/store! path)))
         ;; not removing storage immediately to save some time before response
-        (compress-tgz path dst)
+        (u.compress/tgz path dst)
         (catch Exception e
           (log/error e "Error during serialization"))))
     {:archive  (when (.exists dst)
@@ -166,12 +126,12 @@
                    (io/delete-file dst)))}))
 
 (defn- unpack&import [^File file & [size]]
-  (let [dst      (io/file parent-dir (apply str (repeatedly 20 #(char (+ 65 (rand-int 26))))))
+  (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")]
     (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
       (try                              ; try/catch inside logging to log errors
         (log/infof "Serdes import, size %s" size)
-        (let [path (uncompress-tgz file dst)]
+        (let [path (u.compress/untgz file dst)]
           (serdes/with-cache
             (-> (v2.ingest/ingest-yaml (.getPath (io/file dst path)))
                 (v2.load/load-metabase! {:abort-on-error true}))))

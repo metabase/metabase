@@ -8,6 +8,7 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.compress :as u.compress]
    [toucan2.core :as t2])
   (:import
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream)
@@ -15,14 +16,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn open-tar ^TarArchiveInputStream [f]
+(defn- open-tar ^TarArchiveInputStream [f]
   (-> (io/input-stream f)
       (GzipCompressorInputStream.)
       (TarArchiveInputStream.)))
 
-(def entries #(#'api.serialization/entries %))
-
-(defn file-type
+(defn- file-type
   "Find out entity type by file path"
   [fname]
   (condp re-find fname
@@ -37,13 +36,19 @@
     #"/databases/.*\.yaml"                  :database
     fname))
 
-(defn log-types
+(defn- log-types
   "Find out entity type by log message"
   [lines]
   (->> lines
        (keep #(second (re-find #"(?:Loading|Storing) (\w+)" %)))
        (map (comp keyword u/lower-case-en))
        set))
+
+(defn- tar-types [f]
+  (with-open [tar (open-tar f)]
+    (->> (u.compress/entries tar)
+         (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
+         set)))
 
 (deftest export-test
   (testing "Serialization API export"
@@ -64,7 +69,7 @@
                                                 :all-collections false :data-model false :settings true)]
                     (is (= #{:log :dir :settings}
                            (with-open [tar (open-tar f)]
-                             (->> (entries tar)
+                             (->> (u.compress/entries tar)
                                   (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
                                   set))))))
 
@@ -72,21 +77,15 @@
                   (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                 :collection (:id coll) :data-model false :settings false)]
                     (is (= #{:log :dir :dashboard :card :collection}
-                           (with-open [tar (open-tar f)]
-                             (->> (entries tar)
-                                  (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
-                                  set))))))
+                           (tar-types f)))))
 
                 (testing "Default export: all-collections, data-model, settings"
                   (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
                     (is (= #{:log :dir :dashboard :card :collection :settings :schema :database}
-                           (with-open [tar (open-tar f)]
-                             (->> (entries tar)
-                                  (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
-                                  set))))))
+                           (tar-types f)))))
 
                 (testing "On exception API returns log"
-                  (with-redefs [api.serialization/compress-tgz (fn [& _] (throw (ex-info "Just an error" {})))]
+                  (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "Just an error" {})))]
                     (let [res   (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                       :collection (:id coll) :data-model false :settings false)
                           lines (str/split-lines (slurp (io/input-stream res)))]
@@ -108,14 +107,14 @@
             (mt/with-temp! [Collection coll  {}
                             Dashboard  _dash {:collection_id (:id coll)}
                             Card       card  {:collection_id (:id coll)}]
-              (let [res    (mt/user-real-request :crowberto :post 200  "ee/serialization/export"
+              (let [res    (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
                                                  {:request-options {:as :byte-array}}
                                                  :collection (:id coll) :data-model false :settings false)
                     files* (atom [])
                     ;; to avoid closing input stream
                     ba     (#'api.serialization/ba-copy (io/input-stream res))]
                 (with-open [tar (open-tar ba)]
-                  (doseq [^TarArchiveEntry e (entries tar)]
+                  (doseq [^TarArchiveEntry e (u.compress/entries tar)]
                     (when (.isFile e)
                       (swap! files* conj (.getName e)))
                     (condp re-find (.getName e)

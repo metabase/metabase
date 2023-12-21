@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [malli.core :as mc]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.server.handler :as handler]
    [metabase.server.middleware.session :as mw.session]
@@ -24,8 +25,8 @@
    [peridot.multipart]
    [ring.util.codec :as codec])
   (:import
-   (metabase.async.streaming_response StreamingResponse)
-   (java.io InputStream ByteArrayInputStream)))
+   (java.io ByteArrayInputStream InputStream)
+   (metabase.async.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -171,21 +172,19 @@
   and encode body as JSON."
   [credentials http-body request-options]
   (let [content-type (or (get-in request-options [:headers "content-type"]) "application/json")]
-    (merge-with #(if (map? %1)
-                   (merge %1 %2)
-                   %2)
-                {:accept        :json
-                 :headers       {"content-type" content-type
-                                 @#'mw.session/metabase-session-header
-                                 (when credentials
-                                   (if (map? credentials)
-                                     (authenticate credentials)
-                                     credentials))}
-                 :cookie-policy :standard}
-                request-options
-                (-> (build-body-params http-body content-type)
-                    ;; IDK why but apache http throws on seeing content-length header
-                    (update :headers dissoc "content-length")))))
+    (m/deep-merge
+     {:accept        :json
+      :headers       {"content-type" content-type
+                      @#'mw.session/metabase-session-header
+                      (when credentials
+                        (if (map? credentials)
+                          (authenticate credentials)
+                          credentials))}
+      :cookie-policy :standard}
+     request-options
+     (-> (build-body-params http-body content-type)
+         ;; IDK why but apache http throws on seeing content-length header
+         (m/update-existing :headers dissoc "content-length")))))
 
 (defn- check-status-code
   "If an `expected-status-code` was passed to the client, check that the actual status code matches, or throw an
@@ -231,7 +230,7 @@
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
-        request-map (build-request-map credentials http-body request-options)
+        request-map #p (build-request-map credentials http-body request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))
@@ -301,21 +300,19 @@
         url              (cond->> (first (str/split url #"\?")) ;; strip out the query param parts if any
                            (not= (first url) \/)
                            (str "/"))
-        content-type     (or (get-in request-options [:headers "content-type"]) "application/json")]
-    (merge-with #(if (map? %1)
-                   (merge %1 %2)
-                   %2)
-                {:accept         "json"
-                 :headers        {"content-type"                        content-type
-                                  @#'mw.session/metabase-session-header (when credentials
-                                                                          (if (map? credentials)
-                                                                            (authenticate credentials)
-                                                                            credentials))}
-                 :query-string   (build-query-string query-parameters)
-                 :request-method method
-                 :uri            (str *url-prefix* url)}
-                request-options
-                (build-body-params http-body content-type))))
+        content-type     (get-in request-options [:headers "content-type"] "application/json")]
+    (m/deep-merge
+     {:accept         "json"
+      :headers        {"content-type"                        content-type
+                       @#'mw.session/metabase-session-header (when credentials
+                                                               (if (map? credentials)
+                                                                 (authenticate credentials)
+                                                                 credentials))}
+      :query-string   (build-query-string query-parameters)
+      :request-method method
+      :uri            (str *url-prefix* url)}
+     request-options
+     (build-body-params http-body content-type))))
 
 (mu/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
