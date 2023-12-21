@@ -8,13 +8,21 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.schema.helpers :as helpers]
-   [metabase.models.table :as table :refer [Table]]
+   [metabase.models.table :as table]
    [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(defn- partition-field->filter
+  [field]
+  (let [field-form [:field (:id field) nil]]
+    (condp #(isa? %2 %1) (:base_type field)
+      :type/Number   [:> field-form -9223372036854775808]
+      :type/Date     [:> field-form "0001-01-01"]
+      :type/DateTime [:> field-form "0001-01-01 00:00:00"])))
 
 (defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
@@ -29,10 +37,17 @@
 
 (defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
-  (qp-query (t2/select-one-fn :db_id Table, :id table-id)
-            ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
-            ;; macro for building queries. Do not remove
-            (assoc mbql-query :source-table table-id)))
+  (let [table (t2/select-one :model/Table :id table-id)]
+    (qp-query (:db_id table)
+              ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
+              ;; macro for building queries. Do not remove
+              (cond-> mbql-query
+                true
+                (assoc :source-table table-id)
+
+                (:database_require_filter table)
+                (assoc :filter (partition-field->filter (or (t2/select-one :model/Field :table_id (:id table) :database_partitioned true :active true)
+                                                            (throw (ex-info "Parittioned field not found for table that requires it" {})))))))))
 
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or

@@ -243,7 +243,7 @@
   that `.list` returns the fields in that order. The first assumption could be
   lifted by matching the names in `fields` to the names in the table schema."
   [^Table bq-table fields rff]
-  (let [field-idxs  (mapv :database_position fields)
+  (let [field-idxs  (mapv :database_position (remove #(= (:name %) "_PARTITIONTIME") fields))
         all-parsers (get-field-parsers (.. bq-table getDefinition getSchema))
         parsers     (mapv all-parsers field-idxs)
         rows        (.list bq-table (u/varargs BigQuery$TableDataListOption))]
