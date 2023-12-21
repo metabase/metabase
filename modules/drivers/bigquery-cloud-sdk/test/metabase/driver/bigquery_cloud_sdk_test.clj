@@ -351,7 +351,8 @@
                        "is_awesome"  #{true false}}
                       (-> (t2/select-fn->fn :field_id :values :model/FieldValues
                                             :field_id [:in (vals (select-keys name->field-ids ["customer_id" "name" "is_awesome"]))])
-                          (set/rename-keys field-id->names))))
+                          (set/rename-keys field-id->names)
+                          (update-vals set))))
                (is (every? some? (t2/select-fn-vec :values :model/FieldValues :field_id [:in (vals name->field-ids)])))))
            (finally
             (doall (map drop-table-if-exists! table-names))
