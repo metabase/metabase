@@ -10,7 +10,7 @@ import {
 } from "metabase/query_builder/actions";
 import type Question from "metabase-lib/Question";
 import { PublicLinkPopover } from "./PublicLinkPopover";
-import type { ExportFormatType } from "./PublicLinkPopover";
+import type { ExportFormatType } from "./types";
 
 export const QuestionPublicLinkPopover = ({
   question,

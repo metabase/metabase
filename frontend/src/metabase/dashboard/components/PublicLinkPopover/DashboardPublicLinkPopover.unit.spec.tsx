@@ -65,11 +65,11 @@ const setup = ({
   );
 };
 describe("DashboardPublicLinkPopover", () => {
-  it("should display a question-specific public url", async () => {
+  it("should display a dashboard-specific public url", async () => {
     setup();
 
     expect(
-      await screen.findByText(`${SITE_URL}/public/dashboard/mock-uuid`),
+      await screen.findByDisplayValue(`${SITE_URL}/public/dashboard/mock-uuid`),
     ).toBeInTheDocument();
   });
 
@@ -91,7 +91,7 @@ describe("DashboardPublicLinkPopover", () => {
 
   it("should call the Dashboard public link API when deleting link", async () => {
     setup({ hasPublicLink: true });
-    userEvent.click(screen.getByText("Remove this public link"));
+    userEvent.click(screen.getByText("Remove public link"));
     expect(
       fetchMock.calls(`path:/api/dashboard/${TEST_DASHBOARD_ID}/public_link`, {
         method: "DELETE",

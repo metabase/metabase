@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Dashboard } from "metabase-types/api";
-import { DashboardSharingEmbeddingModalConnected } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
+import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { EmbedMenu } from "../EmbedMenu";
 
 export const DashboardEmbedAction = ({
@@ -13,15 +13,16 @@ export const DashboardEmbedAction = ({
   return (
     <>
       <EmbedMenu
+        key="embed-menu"
         resource={dashboard}
         resourceType="dashboard"
         hasPublicLink={!!dashboard.public_uuid}
         onModalOpen={() => setIsModalOpen(true)}
       />
-      <DashboardSharingEmbeddingModalConnected
+      <DashboardSharingEmbeddingModal
         key="dashboard-embed"
         dashboard={dashboard}
-        enabled={isModalOpen}
+        isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         isLinkEnabled={true}
       />

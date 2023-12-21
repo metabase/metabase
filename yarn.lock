@@ -2799,13 +2799,13 @@
     redux-thunk "^2.4.2"
     reselect "^4.1.7"
 
-"@replayio/cypress@^1.7.5":
-  version "1.7.5"
-  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.5.tgz#996b83b2ace5e681483a32bcc447355b8f04cd00"
-  integrity sha512-V3il+1cCTEUekkZS0R2HT8DrDg8HbwigfLrELEAsDLrg6am8rOovZe3Lo6ANAELTSJEnFv07Aw5uM5B2zd1COg==
+"@replayio/cypress@^1.7.10":
+  version "1.7.10"
+  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.10.tgz#5788799684a68c01653009e8c278937d1516d3b1"
+  integrity sha512-B3ChgiAgSuN33vuxjCr949/WixHgBPkz4LuZjepCgNy4f68hXZH+5IDmP3N+DehHXvQ2msZWpm/mODXcLtGQQw==
   dependencies:
-    "@replayio/replay" "^0.19.4"
-    "@replayio/test-utils" "^1.3.5"
+    "@replayio/replay" "^0.20.1"
+    "@replayio/test-utils" "^1.3.8"
     chalk "^4.1.2"
     debug "^4.3.4"
     semver "^7.5.2"
@@ -2814,18 +2814,21 @@
     uuid "^8.3.2"
     ws "^8.14.2"
 
-"@replayio/replay@^0.19.4":
-  version "0.19.4"
-  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.19.4.tgz#df52d24aa6672b445ea9fdd42dbe55fa7e10d864"
-  integrity sha512-T8XlT4jKVoQgPGNieYz3C++IowUVXWjqTMWNMcPrv0368h7MTTKrvnKCTTNmeDFXW819AeCRcCi+Xvgra2OzmQ==
+"@replayio/replay@^0.20.1":
+  version "0.20.1"
+  resolved "https://registry.yarnpkg.com/@replayio/replay/-/replay-0.20.1.tgz#d88945482bfbff53e44ed04d02e519f782e2bfa6"
+  integrity sha512-sgbH7iDApXRQkdv6bcDVDACNQ0GQ9IUcZcMo/72g6hGe8YZG1JQbsUDd71EWMEfbjpoJI7bpkKe0VuS8vPybNw==
   dependencies:
     "@replayio/sourcemap-upload" "^1.1.1"
+    "@types/semver" "^7.5.6"
     commander "^7.2.0"
     debug "^4.3.4"
     is-uuid "^1.0.2"
     jsonata "^1.8.6"
     node-fetch "^2.6.8"
     p-map "^4.0.0"
+    query-registry "^2.6.0"
+    semver "^7.5.4"
     superstruct "^0.15.4"
     text-table "^0.2.0"
     ws "^7.5.0"
@@ -2841,12 +2844,12 @@
     node-fetch "^2.6.1"
     string.prototype.matchall "^4.0.5"
 
-"@replayio/test-utils@^1.3.5":
-  version "1.3.5"
-  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.3.5.tgz#8f01c92a1a6cddfd0d863015cff63cff4e94cd69"
-  integrity sha512-mK5MU+MupffP0s1VpAJ3Rd0Gx7IJwN47I0NHMAKphT12Ch3euS72LL5OeifgUvV9IFbDGbaTJEUCBnnx9sHWhQ==
+"@replayio/test-utils@^1.3.8":
+  version "1.3.8"
+  resolved "https://registry.yarnpkg.com/@replayio/test-utils/-/test-utils-1.3.8.tgz#ba3307b0fe103670b46c4e04f3de5d846db117dd"
+  integrity sha512-gzLWLxgzzqJU5l0Z+2K2eRusl7vhd+mAkiSdvI5kCxkw3l/3+n4R6vc2Kq5VIc1x8KlPf3oeTziW1Eojwuh8bQ==
   dependencies:
-    "@replayio/replay" "^0.19.4"
+    "@replayio/replay" "^0.20.1"
     debug "^4.3.4"
     node-fetch "^2.6.7"
     uuid "^8.3.2"
@@ -5361,6 +5364,11 @@
   resolved "https://registry.yarnpkg.com/@types/semver/-/semver-7.3.13.tgz#da4bfd73f49bd541d28920ab0e2bf0ee80f71c91"
   integrity sha512-21cFJr9z3g5dW8B0CVI9g2O9beqaThGQ6ZFBqHfwhzLDKUxaqTIy3vnfah/UPkfOiF2pLq+tGz+W8RyCskuslw==
 
+"@types/semver@^7.5.6":
+  version "7.5.6"
+  resolved "https://registry.yarnpkg.com/@types/semver/-/semver-7.5.6.tgz#c65b2bfce1bec346582c07724e3f8c1017a20339"
+  integrity sha512-dn1l8LaMea/IjDoHNd9J52uBbInB796CDffS6VdIxvqYCPSG0V0DzHp76GpaWnlhg88uYyPbXCDIowa86ybd5A==
+
 "@types/send@*":
   version "0.17.1"
   resolved "https://registry.yarnpkg.com/@types/send/-/send-0.17.1.tgz#ed4932b8a2a805f1fe362a70f4e62d0ac994e301"
@@ -7716,6 +7724,13 @@ builtin-status-codes@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/builtin-status-codes/-/builtin-status-codes-3.0.0.tgz#85982878e21b98e1c66425e03d0174788f569ee8"
   integrity sha1-hZgoeOIbmOHGZCXgPQF0eI9Wnug=
+
+builtins@^5.0.0:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/builtins/-/builtins-5.0.1.tgz#87f6db9ab0458be728564fa81d876d8d74552fa9"
+  integrity sha512-qwVpFEHNfhYJIzNRBvd2C1kyo6jz3ZSMPyyuR47OPdiKWlbYnZNyDWuyR175qDnAJLiCo5fBBqPb3RiXgWlkOQ==
+  dependencies:
+    semver "^7.0.0"
 
 bytes@3.0.0:
   version "3.0.0"
@@ -15098,6 +15113,11 @@ make-dir@^3.0.0, make-dir@^3.0.2, make-dir@^3.1.0, make-dir@~3.1.0:
   dependencies:
     semver "^6.0.0"
 
+make-error@^1.3.6:
+  version "1.3.6"
+  resolved "https://registry.yarnpkg.com/make-error/-/make-error-1.3.6.tgz#2eb2e37ea9b67c4891f684a1394799af484cf7a2"
+  integrity sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==
+
 makeerror@1.0.12:
   version "1.0.12"
   resolved "https://registry.yarnpkg.com/makeerror/-/makeerror-1.0.12.tgz#3e5dd2079a82e812e983cc6610c4a2cb0eaa801a"
@@ -18218,6 +18238,17 @@ qs@^6.10.0:
   dependencies:
     side-channel "^1.0.4"
 
+query-registry@^2.6.0:
+  version "2.6.0"
+  resolved "https://registry.yarnpkg.com/query-registry/-/query-registry-2.6.0.tgz#fb678ac2d8d46468ff55a02fb88f136e5d63da21"
+  integrity sha512-Z5oNq7qH0g96qBTx2jAvS0X71hKP4tETtSJKEl6BdihzYqh9QKiJQBMT7qIQuzxR9lxfiso+aXCFhZ+EcAoppQ==
+  dependencies:
+    isomorphic-unfetch "^3.1.0"
+    make-error "^1.3.6"
+    tiny-lru "^8.0.2"
+    url-join "4.0.1"
+    validate-npm-package-name "^4.0.0"
+
 query-string@^4.2.2:
   version "4.3.4"
   resolved "https://registry.yarnpkg.com/query-string/-/query-string-4.3.4.tgz#bbb693b9ca915c232515b228b1a02b609043dbeb"
@@ -19767,17 +19798,17 @@ semver@^6.3.1:
   resolved "https://registry.yarnpkg.com/semver/-/semver-6.3.1.tgz#556d2ef8689146e46dcea4bfdd095f3434dffcb4"
   integrity sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==
 
-semver@^7.2.1:
-  version "7.3.2"
-  resolved "https://registry.yarnpkg.com/semver/-/semver-7.3.2.tgz#604962b052b81ed0786aae84389ffba70ffd3938"
-  integrity sha512-OrOb32TeeambH6UrhtShmF7CRDqhL6/5XpPNp2DuRH6+9QLw/orhp72j87v8Qa1ScDkvrrBNpZcDejAirJmfXQ==
-
-semver@^7.3.2, semver@^7.5.3:
+semver@^7.0.0, semver@^7.3.2, semver@^7.5.3, semver@^7.5.4:
   version "7.5.4"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.5.4.tgz#483986ec4ed38e1c6c48c34894a9182dbff68a6e"
   integrity sha512-1bCSESV6Pv+i21Hvpxp3Dx+pSD8lIPt8uVjRrxAUt/nbswYc+tK6Y2btiULjd4+fnq15PX+nqQDC7Oft7WkwcA==
   dependencies:
     lru-cache "^6.0.0"
+
+semver@^7.2.1:
+  version "7.3.2"
+  resolved "https://registry.yarnpkg.com/semver/-/semver-7.3.2.tgz#604962b052b81ed0786aae84389ffba70ffd3938"
+  integrity sha512-OrOb32TeeambH6UrhtShmF7CRDqhL6/5XpPNp2DuRH6+9QLw/orhp72j87v8Qa1ScDkvrrBNpZcDejAirJmfXQ==
 
 semver@^7.3.4, semver@^7.3.5:
   version "7.3.5"
@@ -21208,6 +21239,11 @@ tiny-invariant@^1.0.6:
   resolved "https://registry.yarnpkg.com/tiny-invariant/-/tiny-invariant-1.2.0.tgz#a1141f86b672a9148c72e978a19a73b9b94a15a9"
   integrity sha512-1Uhn/aqw5C6RI4KejVeTg6mIS7IqxnLJ8Mv2tV5rTc0qWobay7pDUz6Wi392Cnc8ak1H0F2cjoRzb2/AW4+Fvg==
 
+tiny-lru@^8.0.2:
+  version "8.0.2"
+  resolved "https://registry.yarnpkg.com/tiny-lru/-/tiny-lru-8.0.2.tgz#812fccbe6e622ded552e3ff8a4c3b5ff34a85e4c"
+  integrity sha512-ApGvZ6vVvTNdsmt676grvCkUCGwzG9IqXma5Z07xJgiC5L7akUMof5U8G2JTI9Rz/ovtVhJBlY6mNhEvtjzOIg==
+
 tiny-warning@^1.0.2:
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/tiny-warning/-/tiny-warning-1.0.3.tgz#94a30db453df4c643d0fd566060d60a875d84754"
@@ -21922,6 +21958,11 @@ urix@^0.1.0:
   resolved "https://registry.yarnpkg.com/urix/-/urix-0.1.0.tgz#da937f7a62e21fec1fd18d49b35c2935067a6c72"
   integrity sha1-2pN/emLiH+wf0Y1Js1wpNQZ6bHI=
 
+url-join@4.0.1:
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/url-join/-/url-join-4.0.1.tgz#b642e21a2646808ffa178c4c5fda39844e12cde7"
+  integrity sha512-jk1+QP6ZJqyOiuEI9AEWQfju/nB2Pw466kbA0LEZljHwKeMgd9WrAEgEGxjPDD2+TNbbb37rTyhEfrCXfuKXnA==
+
 url-loader@^4.1.1:
   version "4.1.1"
   resolved "https://registry.yarnpkg.com/url-loader/-/url-loader-4.1.1.tgz#28505e905cae158cf07c92ca622d7f237e70a4e2"
@@ -22137,6 +22178,13 @@ validate-npm-package-license@^3.0.1:
   dependencies:
     spdx-correct "^3.0.0"
     spdx-expression-parse "^3.0.0"
+
+validate-npm-package-name@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/validate-npm-package-name/-/validate-npm-package-name-4.0.0.tgz#fe8f1c50ac20afdb86f177da85b3600f0ac0d747"
+  integrity sha512-mzR0L8ZDktZjpX4OB46KT+56MAhl4EIazWP/+G/HPGuvfdaqg4YsCdtOm6U9+LOFyYDoh4dpnpxZRB9MQQns5Q==
+  dependencies:
+    builtins "^5.0.0"
 
 validator@^13.6.0:
   version "13.7.0"

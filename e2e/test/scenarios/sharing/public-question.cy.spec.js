@@ -112,7 +112,9 @@ describe("scenarios > public > question", () => {
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");
-        cy.findByTestId("public-link-text").contains(PUBLIC_QUESTION_REGEX);
+        cy.findByTestId("public-link-input").then($input =>
+          expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
+        );
         cy.findByText("Remove public URL").should("not.exist");
       });
     });
@@ -156,8 +158,8 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  cy.findByTestId("public-link-text")
-    .invoke("text")
+  cy.findByTestId("public-link-input")
+    .invoke("val")
     .then(publicURL => {
       // Copied URL has no get params
       expect(publicURL).to.match(PUBLIC_QUESTION_REGEX);

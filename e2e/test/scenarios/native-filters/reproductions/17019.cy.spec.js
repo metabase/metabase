@@ -37,10 +37,10 @@ describe("issue 17019", () => {
     openPublicLinkPopoverFromMenu();
 
     cy.findByTestId("public-link-popover-content")
-      .findByTestId("public-link-text")
-      .invoke("text")
-      .then(publicURL => {
-        cy.visit(publicURL);
+      .findByTestId("public-link-input")
+      .invoke("val")
+      .then(publicLink => {
+        cy.visit(publicLink);
       });
 
     cy.findByPlaceholderText("Filter").type("456{enter}");

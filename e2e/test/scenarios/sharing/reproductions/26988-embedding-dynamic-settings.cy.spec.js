@@ -1,7 +1,7 @@
 import {
   describeEE,
   getIframeBody,
-  openEmbedModalFromMenu,
+  openStaticEmbeddingModal,
   popover,
   restore,
   setTokenFeatures,
@@ -34,8 +34,7 @@ describeEE("issue 26988", () => {
       visitDashboard(card.dashboard_id);
     });
 
-    openEmbedModalFromMenu();
-    cy.findByRole("button", { name: "Set up" }).click();
+    openStaticEmbeddingModal();
     cy.wait("@dashboard");
 
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);

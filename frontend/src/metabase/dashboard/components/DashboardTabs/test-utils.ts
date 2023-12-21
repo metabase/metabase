@@ -65,6 +65,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
         getDefaultTab({ tabId: 3, dashId: 1, name: "Tab 3" }),
       ],
       public_uuid: null,
+      enable_embedding: false,
     },
   },
   dashcards: {
