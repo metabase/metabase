@@ -12,18 +12,20 @@ import { setup } from "../setup";
 export type SetupOpts = {
   settingValues?: Partial<Settings>;
   hasEmbeddingFeature?: boolean;
+  hasEnterprisePlugins?: boolean;
 };
 
 export const setupEmbedding = async ({
   settingValues,
   hasEmbeddingFeature = false,
+  hasEnterprisePlugins = false,
 }: SetupOpts) => {
   const returnedValue = await setup({
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       embedding: hasEmbeddingFeature,
     }),
-    hasEnterprisePlugins: true,
+    hasEnterprisePlugins,
   });
 
   fetchMock.get("path:/api/dashboard/embeddable", []);

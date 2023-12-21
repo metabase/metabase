@@ -10,18 +10,19 @@ import {
 } from "./setup";
 import type { SetupOpts } from "./setup";
 
-const setupEnterprise = (opts?: SetupOpts) => {
+const setupPremium = (opts?: SetupOpts) => {
   return setupEmbedding({
     ...opts,
+    hasEnterprisePlugins: true,
     hasEmbeddingFeature: true,
   });
 };
 
-describe("[EE] embedding settings", () => {
+describe("[EE, with token] embedding settings", () => {
   describe("when the embedding is disabled", () => {
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
-        const { history } = await setupEnterprise({
+        const { history } = await setupPremium({
           settingValues: { "enable-embedding": false },
         });
 
@@ -37,7 +38,7 @@ describe("[EE] embedding settings", () => {
       });
 
       it("should not prompt to upgrade to remove the Powered by text", async () => {
-        await setupEnterprise({
+        await setupPremium({
           settingValues: { "enable-embedding": false },
         });
 
@@ -49,7 +50,7 @@ describe("[EE] embedding settings", () => {
 
     describe("interactive embedding", () => {
       it("should not allow going to interactive settings page", async () => {
-        const { history } = await setupEnterprise({
+        const { history } = await setupPremium({
           settingValues: { "enable-embedding": false },
         });
 
@@ -78,7 +79,7 @@ describe("[EE] embedding settings", () => {
   });
   describe("when the embedding is enabled", () => {
     it("should allow going to static embedding settings page", async () => {
-      const { history } = await setupEnterprise({
+      const { history } = await setupPremium({
         settingValues: { "enable-embedding": true },
       });
 
@@ -89,7 +90,7 @@ describe("[EE] embedding settings", () => {
     });
 
     it("should allow going to interactive embedding settings page", async () => {
-      const { history } = await setupEnterprise({
+      const { history } = await setupPremium({
         settingValues: { "enable-embedding": true },
       });
 
