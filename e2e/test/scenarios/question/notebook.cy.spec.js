@@ -179,11 +179,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Custom Expression").click();
 
     cy.get(".ace_text-input")
-      .clear({
-        force: true,
-        timeout: 5000,
-        waitForAnimations: true,
-      })
+      .invoke("val", "")
+      // .clear({
+      //   force: true,
+      //   timeout: 5000,
+      //   waitForAnimations: true,
+      // })
       .type("[Price] > 1 AND [Price] < 5{enter}");
 
     cy.findByTestId("expression-editor-textfield").should("not.exist");
