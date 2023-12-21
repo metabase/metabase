@@ -315,12 +315,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       getNotebookStep("expression").contains("Example").should("exist");
 
-      visualize();
-
-      cy.findByTestId("TableInteractive-root").within(() => {
-        cy.contains("Example");
-        cy.contains("Big");
-        cy.contains("Small");
+      visualize(() => {
+        cy.findByTestId("TableInteractive-root").within(() => {
+          cy.contains("Example");
+          cy.contains("Big");
+          cy.contains("Small");
+        });
       });
     });
 
