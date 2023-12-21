@@ -8,7 +8,7 @@ import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
 
-import { isDefaultGroup } from "metabase/lib/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { PermissionsApi } from "metabase/services";
 import { Loader, Center } from "metabase/ui";
 
@@ -54,10 +54,18 @@ function DataPermissionsPage({
   const loadPermissions = () => dispatch(loadDataPermissions());
   const savePermissions = () => dispatch(saveDataPermissions());
 
-  const { loading: isLoading } = useAsync(async () => {
+  const { loading: isLoadingAllUsers } = useAsync(async () => {
     const allUsers = groups.find(isDefaultGroup);
     const result = await PermissionsApi.graphForGroup({
       groupId: allUsers?.id,
+    });
+    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
+  }, []);
+
+  const { loading: isLoadingAdminstrators } = useAsync(async () => {
+    const admins = groups.find(isAdminGroup);
+    const result = await PermissionsApi.graphForGroup({
+      groupId: admins?.id,
     });
     await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
   }, []);
@@ -81,7 +89,7 @@ function DataPermissionsPage({
     fetchTables(params.databaseId);
   }, [params.databaseId, fetchTables]);
 
-  if (isLoading) {
+  if (isLoadingAllUsers || isLoadingAdminstrators) {
     return (
       <Center h="100%">
         <Loader size="lg" />
