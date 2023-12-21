@@ -228,14 +228,15 @@
 (defn encrypted-json-out
   "Deserialize encrypted json."
   [v]
-  (try
-    (-> v encryption/maybe-decrypt (json/parse-string true))
-    (catch Throwable e
-      (if (or (encryption/possibly-encrypted-string? v)
-              (encryption/possibly-encrypted-bytes? v))
-        (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
-        (log/error e "Error parsing JSON"))  ; same message as in `json-out`
-      v)))
+  (let [decrypted (encryption/maybe-decrypt v)]
+    (try
+      (json/parse-string decrypted true)
+      (catch Throwable e
+        (if (or (encryption/possibly-encrypted-string? decrypted)
+                (encryption/possibly-encrypted-bytes? decrypted))
+          (log/error e "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?")
+          (log/error e "Error parsing JSON"))  ; same message as in `json-out`
+        v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
 ;; cache the decrypted JSON for one hour
