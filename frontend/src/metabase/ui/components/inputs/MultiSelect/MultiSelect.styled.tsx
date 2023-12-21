@@ -1,4 +1,4 @@
-import { getSize, getStylesRef, rem } from "@mantine/core";
+import { getSize, rem } from "@mantine/core";
 import type {
   MantineThemeOverride,
   MultiSelectStylesParams,
@@ -32,25 +32,6 @@ export const getMultiSelectOverrides =
       ) => ({
         ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
-        wrapper: {
-          "&:not(:only-child)": {
-            marginTop: theme.spacing.xs,
-          },
-          "&:has(input:disabled)": {
-            opacity: 1,
-            pointerEvents: "auto",
-            [`& .${getStylesRef("input")}`]: {
-              color: theme.colors.text[2],
-              backgroundColor: theme.colors.bg[0],
-              "&::placeholder": {
-                color: theme.colors.text[0],
-              },
-            },
-          },
-        },
-        input: {
-          ref: getStylesRef("input"),
-        },
         values: {
           minHeight: getSize({ size, sizes: SIZES }),
           marginLeft: 0,

@@ -1,9 +1,10 @@
+import { getSize, getStylesRef, px, rem } from "@mantine/core";
 import type {
   MantineSize,
   MantineTheme,
   MantineThemeOverride,
+  CSSObject,
 } from "@mantine/core";
-import { getSize, px, rem } from "@mantine/core";
 import { SelectDropdown } from "./SelectDropdown";
 import { SelectItem } from "./SelectItem";
 
@@ -19,22 +20,62 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
     styles: (theme, _, { size = "md" }) => ({
       ...getSelectInputOverrides(theme),
       ...getSelectItemsOverrides(theme, size),
-      wrapper: {
-        "&:not(:only-child)": {
-          marginTop: theme.spacing.xs,
-        },
-      },
     }),
   },
 });
 
-export const getSelectInputOverrides = (theme: MantineTheme) => {
+export const getSelectInputOverrides = (
+  theme: MantineTheme,
+): Record<string, CSSObject> => {
   return {
+    root: {
+      [["label", "description", "error"]
+        .map(name => `&:has(.${getStylesRef(name)})`)
+        .join(",")]: {
+        [`.${getStylesRef("wrapper")}`]: {
+          marginTop: theme.spacing.xs,
+        },
+      },
+    },
+    label: {
+      ref: getStylesRef("label"),
+    },
+    description: {
+      ref: getStylesRef("description"),
+    },
+    error: {
+      ref: getStylesRef("error"),
+    },
+    wrapper: {
+      ref: getStylesRef("wrapper"),
+      color: theme.colors.text[2],
+
+      [`&:has(.${getStylesRef("input")}[data-invalid])`]: {
+        color: theme.colors.error[0],
+      },
+      "&:has(input:disabled)": {
+        opacity: 1,
+        pointerEvents: "auto",
+        [`& .${getStylesRef("input")}`]: {
+          color: theme.colors.text[2],
+          backgroundColor: theme.colors.bg[0],
+          "&::placeholder": {
+            color: theme.colors.text[0],
+          },
+        },
+      },
+    },
+    input: {
+      ref: getStylesRef("input"),
+    },
     rightSection: {
+      ref: getStylesRef("rightSection"),
+      color: "inherit",
+
       svg: {
-        color: theme.colors.text[2],
-        width: "1rem",
-        height: "1rem",
+        color: "inherit !important",
+        width: "1rem !important",
+        height: "1rem !important",
 
         "&[data-chevron] path": {
           d: 'path("M 1.3781 4.1906 a 0.7031 0.7031 90 0 1 0.9938 0 L 7.5 9.3187 l 5.1281 -5.1281 a 0.7031 0.7031 90 1 1 0.9938 0.9938 l -5.625 5.625 a 0.7031 0.7031 90 0 1 -0.9938 0 l -5.625 -5.625 a 0.7031 0.7031 90 0 1 0 -0.9938 z")',
@@ -65,7 +106,7 @@ const LINE_HEIGHTS = {
 export const getSelectItemsOverrides = (
   theme: MantineTheme,
   size: MantineSize | number,
-) => {
+): Record<string, CSSObject> => {
   return {
     itemsWrapper: {
       padding: "0.75rem",
