@@ -140,6 +140,7 @@ export type VisualizationSettings = {
   "scalar.comparisons"?: SmartScalarComparison;
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
+  "scalar.compact_primary_number"?: boolean;
 
   [key: string]: any;
 };
