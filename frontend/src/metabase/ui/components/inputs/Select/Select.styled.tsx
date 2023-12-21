@@ -53,27 +53,36 @@ export const getSelectInputOverrides = (
       ref: getStylesRef("wrapper"),
       color: theme.colors.text[2],
 
-      [`&:has(.${getStylesRef("input")}[data-invalid])`]: {
-        color: theme.colors.error[0],
-      },
-      "&:has(input:disabled)": {
+      [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,
         pointerEvents: "auto",
-        [`& .${getStylesRef("input")}`]: {
+        [`.${getStylesRef("input")}`]: {
           color: theme.colors.text[2],
           backgroundColor: theme.colors.bg[0],
           "&::placeholder": {
             color: theme.colors.text[0],
           },
         },
+        [`.${getStylesRef("rightSection")}`]: {
+          color: theme.colors.text[0],
+        },
+      },
+      [`&:has(.${getStylesRef("input")}[data-invalid])`]: {
+        [`.${getStylesRef("rightSection")}`]: {
+          color: theme.colors.error[0],
+        },
       },
     },
     input: {
       ref: getStylesRef("input"),
+
+      "&[data-disabled]": {
+        opacity: 1,
+      },
     },
     rightSection: {
       ref: getStylesRef("rightSection"),
-      color: "inherit",
+      color: theme.colors.text[2],
 
       svg: {
         color: "inherit !important",
