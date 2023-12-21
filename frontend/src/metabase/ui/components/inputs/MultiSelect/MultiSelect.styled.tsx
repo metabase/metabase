@@ -34,6 +34,9 @@ export const getMultiSelectOverrides =
             [`& .${getStylesRef("input")}`]: {
               color: theme.colors.text[2],
               backgroundColor: theme.colors.bg[0],
+              "&::placeholder": {
+                color: theme.colors.text[0],
+              },
             },
           },
         },

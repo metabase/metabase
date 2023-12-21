@@ -155,6 +155,19 @@ DisabledMd.args = {
   <Story name="Disabled, md">{DisabledMd}</Story>
 </Canvas>
 
+#### Read only
+
+export const ReadOnlyMd = VariantTemplate.bind({});
+ReadOnlyMd.args = {
+  defaultValue: sampleArgs.value,
+  description: sampleArgs.description,
+  readOnly: true,
+};
+
+<Canvas>
+  <Story name="Read only, md">{ReadOnlyMd}</Story>
+</Canvas>
+
 #### Error
 
 export const ErrorMd = VariantTemplate.bind({});
@@ -174,7 +187,6 @@ export const SearchableMd = VariantTemplate.bind({});
 SearchableMd.args = {
   description: sampleArgs.description,
   searchable: true,
-  withAsterisk: true,
 };
 
 <Canvas>
@@ -188,7 +200,6 @@ ClearableMd.args = {
   defaultValue: sampleArgs.value,
   description: sampleArgs.description,
   clearable: true,
-  withAsterisk: true,
 };
 
 <Canvas>
@@ -202,7 +213,6 @@ CreatableMd.args = {
   description: sampleArgs.description,
   creatable: true,
   searchable: true,
-  withAsterisk: true,
 };
 
 <Canvas>
@@ -231,4 +241,100 @@ FilledXs.args = {
 
 <Canvas>
   <Story name="Filled, xs">{FilledXs}</Story>
+</Canvas>
+
+#### Asterisk
+
+export const AsteriskXs = VariantTemplate.bind({});
+AsteriskXs.args = {
+  ...AsteriskMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Asterisk, xs">{AsteriskXs}</Story>
+</Canvas>
+
+#### Description
+
+export const DescriptionXs = VariantTemplate.bind({});
+DescriptionXs.args = {
+  ...DescriptionMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Description, xs">{DescriptionXs}</Story>
+</Canvas>
+
+#### Disabled
+
+export const DisabledXs = VariantTemplate.bind({});
+DisabledXs.args = {
+  ...DisabledMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Disabled, xs">{DisabledXs}</Story>
+</Canvas>
+
+#### Read only
+
+export const ReadOnlyXs = VariantTemplate.bind({});
+ReadOnlyXs.args = {
+  ...ReadOnlyMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Read only, xs">{ReadOnlyXs}</Story>
+</Canvas>
+
+#### Error
+
+export const ErrorXs = VariantTemplate.bind({});
+ErrorXs.args = {
+  ...ErrorMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Error, xs">{ErrorXs}</Story>
+</Canvas>
+
+#### Searchable
+
+export const SearchableXs = VariantTemplate.bind({});
+SearchableXs.args = {
+  ...SearchableMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Searchable, xs">{SearchableXs}</Story>
+</Canvas>
+
+#### Clearable
+
+export const ClearableXs = VariantTemplate.bind({});
+ClearableXs.args = {
+  ...ClearableMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="Clearable, xs">{ClearableXs}</Story>
+</Canvas>
+
+#### Creatable
+
+export const CreatableXs = CreatableTemplate.bind({});
+CreatableXs.args = {
+  ...CreatableMd.args,
+  size: "xs",
+};
+
+<Canvas>
+  <Story name="CreatableXs, xs">{CreatableXs}</Story>
 </Canvas>
