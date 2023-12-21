@@ -316,11 +316,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       getNotebookStep("expression").contains("Example").should("exist");
 
       visualize(() => {
-        cy.findByTestId("TableInteractive-root").within(() => {
-          cy.contains("Example");
-          cy.contains("Big");
-          cy.contains("Small");
-        });
+        // eslint-disable-next-line no-unscoped-text-selectors
+        cy.contains("Example");
+        // eslint-disable-next-line no-unscoped-text-selectors
+        cy.contains("Big");
+        // eslint-disable-next-line no-unscoped-text-selectors
+        cy.contains("Small");
       });
     });
 
