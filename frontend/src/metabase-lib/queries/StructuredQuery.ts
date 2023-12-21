@@ -158,9 +158,9 @@ class StructuredQuery extends AtomicQuery {
     return this.metadata() != null && this.rootTable() != null;
   }
 
-  /**
-   * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
-   */
+  // Whether the user can modify and run this query
+  // Determined based on availability of database and source table metadata
+  // For queries based on another card expects virtual table metadata for the source card
   isEditable(): boolean {
     return this.database() != null && this.hasMetadata();
   }
@@ -200,7 +200,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   * Opposite of isEditable
    */
   readOnly(): boolean {
     return !this.isEditable();
