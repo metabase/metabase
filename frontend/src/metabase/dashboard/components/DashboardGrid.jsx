@@ -27,13 +27,13 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { addUndo } from "metabase/redux/undo";
-import { getLoadingDashCards } from "../selectors";
 
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 
+import { getLoadingDashCards } from "../selectors";
 import { DashboardCard } from "./DashboardGrid.styled";
 
 import { GridLayout } from "./grid/GridLayout";
