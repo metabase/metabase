@@ -18,12 +18,6 @@ interface EmbeddingOptionProps {
   icon: React.ReactNode;
 }
 
-const interactiveEmbedQuickStartOSSLink =
-  "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta";
-
-const interactiveEmbedQuickStartEELink =
-  "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-pro-cta";
-
 function EmbeddingOption({
   title,
   label,
@@ -108,8 +102,8 @@ export const InteractiveEmbeddingOptionCard = () => {
       <BoldExternalLink
         href={
           isEE
-            ? interactiveEmbedQuickStartEELink
-            : interactiveEmbedQuickStartOSSLink
+            ? "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-pro-cta"
+            : "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
         }
       >
         {t`Check out our Quick Start`}
