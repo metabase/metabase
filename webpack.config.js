@@ -356,5 +356,5 @@ if (WEBPACK_BUNDLE !== "production") {
     }),
   );
 } else {
-  // config.devtool = "source-map";
+  config.devtool = "source-map";
 }
