@@ -1,23 +1,24 @@
 import { screen } from "__support__/ui";
+import type { SetupOpts } from "./setup";
 import {
-  goToInteractiveEmbeddingSettings,
   goToStaticEmbeddingSettings,
   setupEmbedding,
   getQuickStartLink,
+  goToInteractiveEmbeddingSettings,
+  staticEmbeddingSettingsUrl,
   embeddingSettingsUrl,
   interactiveEmbeddingSettingsUrl,
-  staticEmbeddingSettingsUrl,
 } from "./setup";
-import type { SetupOpts } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {
   return setupEmbedding({
     ...opts,
-    hasEmbeddingFeature: true,
+    hasEnterprisePlugins: true,
+    hasEmbeddingFeature: false,
   });
 };
 
-describe("[EE] embedding settings", () => {
+describe("[EE, no token] embedding settings", () => {
   describe("when the embedding is disabled", () => {
     describe("static embedding", () => {
       it("should not allow going to static embedding settings page", async () => {
@@ -36,14 +37,19 @@ describe("[EE] embedding settings", () => {
         );
       });
 
-      it("should not prompt to upgrade to remove the Powered by text", async () => {
+      it("should prompt to upgrade to remove the Powered by text", async () => {
         await setupEnterprise({
           settingValues: { "enable-embedding": false },
         });
 
+        expect(screen.getByText("upgrade to a paid plan")).toBeInTheDocument();
+
         expect(
-          screen.queryByText("upgrade to a paid plan"),
-        ).not.toBeInTheDocument();
+          screen.getByRole("link", { name: "upgrade to a paid plan" }),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/pricing/?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+        );
       });
     });
 
@@ -53,10 +59,6 @@ describe("[EE] embedding settings", () => {
           settingValues: { "enable-embedding": false },
         });
 
-        expect(() => {
-          goToInteractiveEmbeddingSettings();
-        }).toThrow();
-
         history.push(interactiveEmbeddingSettingsUrl);
 
         expect(history.getCurrentLocation().pathname).toEqual(
@@ -64,14 +66,40 @@ describe("[EE] embedding settings", () => {
         );
       });
 
+      it("should have a learn more button for interactive embedding", async () => {
+        await setupEnterprise({
+          settingValues: { "enable-embedding": false },
+        });
+        expect(
+          screen.getByRole("link", { name: "Learn More" }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Learn More" })).toHaveProperty(
+          "href",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+        );
+      });
+
       it("should link to quickstart for interactive embedding", async () => {
-        await setupEmbedding({
+        await setupEnterprise({
           settingValues: { "enable-embedding": false },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-pro-cta",
+          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+        );
+      });
+
+      it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
+        await setupEnterprise({
+          settingValues: { "enable-embedding": false },
+        });
+
+        expect(
+          screen.getByText("offer multi-tenant, self-service analytics"),
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/blog/why-full-app-embedding",
         );
       });
     });
@@ -88,15 +116,18 @@ describe("[EE] embedding settings", () => {
       expect(location.pathname).toEqual(staticEmbeddingSettingsUrl);
     });
 
-    it("should allow going to interactive embedding settings page", async () => {
+    it("should not allow going to interactive embedding settings page", async () => {
       const { history } = await setupEnterprise({
         settingValues: { "enable-embedding": true },
       });
 
-      goToInteractiveEmbeddingSettings();
+      expect(() => goToInteractiveEmbeddingSettings()).toThrow();
 
-      const location = history.getCurrentLocation();
-      expect(location.pathname).toEqual(interactiveEmbeddingSettingsUrl);
+      history.push(interactiveEmbeddingSettingsUrl);
+
+      expect(history.getCurrentLocation().pathname).toEqual(
+        embeddingSettingsUrl,
+      );
     });
   });
 });
