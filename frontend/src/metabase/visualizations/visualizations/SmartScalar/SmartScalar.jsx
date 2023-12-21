@@ -96,11 +96,10 @@ export function SmartScalar({
     }
   };
 
-  const { displayValue, fullScalarValue } = compactifyValue(
-    value,
-    width,
-    formatOptions,
-  );
+  const { displayValue, fullScalarValue } = compactifyValue(value, width, {
+    ...formatOptions,
+    compact: settings["scalar.compact_primary_number"],
+  });
 
   return (
     <ScalarWrapper>
@@ -295,6 +294,13 @@ Object.assign(SmartScalar, {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
+    },
+    "scalar.compact_primary_number": {
+      section: t`Display`,
+      title: t`Compact number`,
+      widget: "toggle",
+      inline: true,
+      default: false,
     },
     ...columnSettings({
       section: t`Display`,
