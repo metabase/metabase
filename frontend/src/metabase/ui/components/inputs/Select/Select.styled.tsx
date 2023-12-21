@@ -128,7 +128,7 @@ export const getSelectItemsOverrides = (
       fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
       lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
       padding: theme.spacing.sm,
-      "&:hover:not([data-disabled]), &:focus": {
+      "&[data-hovered]": {
         color: theme.colors.brand[1],
         backgroundColor: theme.colors.brand[0],
       },
