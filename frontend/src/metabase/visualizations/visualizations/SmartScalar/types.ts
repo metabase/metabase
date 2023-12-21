@@ -16,7 +16,6 @@ type PeriodsAgoMenuOption = {
 type StaticNumberMenuOption = {
   type: typeof COMPARISON_TYPES.STATIC_NUMBER;
   name: string;
-  label: string;
 };
 export type ComparisonMenuOption =
   | PreviousValueMenuOption
