@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Stack, Switch, Text } from "metabase/ui";
 
 interface EmbeddingSwitchWidgetProps {
@@ -19,16 +18,7 @@ export const EmbeddingSwitchWidget = ({
       labelPosition="left"
       checked={Boolean(setting.value)}
       label={<strong>{t`Embedding Enabled`}</strong>}
-      onChange={e => {
-        const newValue = e.target.checked;
-        onChange(newValue);
-        if (newValue) {
-          MetabaseAnalytics.trackStructEvent(
-            "Admin Embed Settings",
-            "Embedding Enable Click",
-          );
-        }
-      }}
+      onChange={e => onChange(e.target.checked)}
     />
   </Stack>
 );
