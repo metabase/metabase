@@ -13,6 +13,7 @@ export const getMultiSelectOverrides =
     MultiSelect: {
       defaultProps: {
         size: "md",
+        variant: "default",
         withinPortal: true,
         dropdownComponent: "div",
       },
@@ -29,6 +30,14 @@ export const getMultiSelectOverrides =
           "&:has(input:disabled)": {
             pointerEvents: "auto",
           },
+        },
+        values: {
+          gap: theme.spacing.sm,
+          minHeight: getSize({ size, sizes: SIZES }),
+          marginLeft: 0,
+        },
+        value: {
+          margin: 0,
         },
         searchInput: {
           "&::placeholder": {
@@ -55,11 +64,24 @@ export const getMultiSelectOverrides =
           marginLeft: theme.spacing.xs,
 
           svg: {
-            path: {
-              d: 'path("M 2.855 1.435 C 2.4629 1.0429 1.8271 1.0429 1.435 1.435 C 1.0429 1.8271 1.0429 2.4629 1.435 2.855 L 6.08 7.5 L 1.435 12.145 C 1.0429 12.5371 1.0429 13.1729 1.435 13.565 C 1.8271 13.9571 2.4629 13.9571 2.855 13.565 L 7.5 8.92 L 12.145 13.565 C 12.5371 13.9571 13.1729 13.9571 13.565 13.565 C 13.9571 13.1729 13.9571 12.5371 13.565 12.145 L 8.92 7.5 L 13.565 2.855 C 13.9571 2.4629 13.9571 1.8271 13.565 1.435 C 13.1729 1.0429 12.5371 1.0429 12.145 1.435 L 7.5 6.08 L 2.855 1.435 Z")',
-            },
+            width: "100% !important",
+            height: "100% !important",
           },
         },
       }),
+      variants: {
+        default: () => ({
+          input: {
+            paddingTop: rem(7),
+            paddingBottom: rem(7),
+          },
+        }),
+        unstyled: () => ({
+          input: {
+            paddingTop: rem(8),
+            paddingBottom: rem(8),
+          },
+        }),
+      },
     },
   });
