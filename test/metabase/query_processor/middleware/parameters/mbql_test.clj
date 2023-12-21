@@ -98,7 +98,7 @@
       ;; results
       ;; TODO: Verify we still need the following expression in place. PR #36858 may have addressed that.
       (when (= :snowflake driver/*driver*)
-        (driver/notify-database-updated! driver/*driver* (mt/id)))
+        (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (= [[29]]
              (mt/formatted-rows [int]
                (qp/process-query
