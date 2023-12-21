@@ -24,6 +24,9 @@ export const getMultiSelectOverrides =
         withinPortal: true,
         dropdownComponent: SelectDropdown,
         itemComponent: SelectItem,
+        clearButtonProps: {
+          color: "text.2",
+        },
       },
       styles: (
         theme,
@@ -46,7 +49,7 @@ export const getMultiSelectOverrides =
           },
         },
         defaultValue: {
-          minHeight: getSize({ size, sizes: SIZES }),
+          height: getSize({ size, sizes: SIZES }),
           paddingLeft: theme.spacing.sm,
           paddingRight: theme.spacing.sm,
           fontWeight: "normal",
