@@ -9,7 +9,11 @@ module.exports = {
     "../frontend/**/*.stories.mdx",
     "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
   ],
-  addons: ["@storybook/addon-essentials", "@storybook/addon-links"],
+  addons: [
+    "@storybook/addon-essentials",
+    "@storybook/addon-links",
+    "@storybook/addon-a11y",
+  ],
   babel: () => {},
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
