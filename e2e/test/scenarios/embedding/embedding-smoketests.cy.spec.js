@@ -58,7 +58,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByTestId("enable-embedding-setting").within(() => {
         cy.findByText(embeddingDescription);
 
-        cy.findByLabelText("Embedding Enabled").click({ force: true });
+        cy.findByLabelText("Enable Embedding").click({ force: true });
       });
       // The URL should stay the same
       cy.location("pathname").should("eq", embeddingPage);
