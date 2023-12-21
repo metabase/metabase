@@ -212,6 +212,9 @@ function getMaxPeriodsAgo({
     return null;
   }
 
+  // .findLast type introduced in TypeScript 5.0.0 (we are on 4.7.2)
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   const latestNonEmptyRow = rows.findLast(row => !isEmpty(row[dimensionIndex]));
   const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
 
