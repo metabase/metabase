@@ -153,3 +153,10 @@ DataLabels.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const DataLabelColumnFormatting = Template.bind({});
+DataLabelColumnFormatting.args = {
+  rawSeries: data.dataLabelsColumnFormatting as any,
+  dashcardSettings: {},
+  renderingContext,
+};
