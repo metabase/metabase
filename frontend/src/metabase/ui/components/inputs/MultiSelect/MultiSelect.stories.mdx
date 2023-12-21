@@ -8,13 +8,16 @@ export const args = {
   description: undefined,
   error: undefined,
   placeholder: "Pick a value",
+  searchable: false,
+  clearable: false,
+  creatable: false,
   disabled: false,
   readOnly: false,
   withAsterisk: false,
 };
 
 export const sampleArgs = {
-  value: ["Widget"],
+  value: ["Gadget", "Widget"],
   description: "The value of providing a value cannot be overstated",
   error: "required",
 };
@@ -38,6 +41,15 @@ export const argTypes = {
   },
   placeholder: {
     control: { type: "text" },
+  },
+  searchable: {
+    control: { type: "boolean" },
+  },
+  clearable: {
+    control: { type: "boolean" },
+  },
+  creatable: {
+    control: { type: "boolean" },
   },
   disabled: {
     control: { type: "boolean" },
@@ -166,6 +178,20 @@ SearchableMd.args = {
 
 <Canvas>
   <Story name="Searchable, md">{SearchableMd}</Story>
+</Canvas>
+
+#### Clearable
+
+export const ClearableMd = VariantTemplate.bind({});
+ClearableMd.args = {
+  defaultValue: sampleArgs.value,
+  description: sampleArgs.description,
+  clearable: true,
+  withAsterisk: true,
+};
+
+<Canvas>
+  <Story name="Clearable, md">{ClearableMd}</Story>
 </Canvas>
 
 #### Creatable
