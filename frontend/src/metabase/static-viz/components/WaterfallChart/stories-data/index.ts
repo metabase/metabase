@@ -18,6 +18,7 @@ import noTotalOrdinal from "./no-total-ordinal.json";
 import dataLabels from "./data-labels.json";
 import dataLabelsColumnFormatting from "./data-labels-column-formatting.json";
 import dataLabelsTimeseries from "./data-labels-timeseries.json";
+import dataLabelsMixed from "./data-labels-mixed.json";
 
 export const data = {
   timeseriesXScale,
@@ -40,4 +41,5 @@ export const data = {
   dataLabels,
   dataLabelsColumnFormatting,
   dataLabelsTimeseries,
+  dataLabelsMixed,
 };

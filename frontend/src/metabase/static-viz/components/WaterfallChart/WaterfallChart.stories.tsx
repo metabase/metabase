@@ -167,3 +167,10 @@ DataLabelsTimeseries.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const DataLabelsMixed = Template.bind({});
+DataLabelsMixed.args = {
+  rawSeries: data.dataLabelsMixed as any,
+  dashcardSettings: {},
+  renderingContext,
+};
