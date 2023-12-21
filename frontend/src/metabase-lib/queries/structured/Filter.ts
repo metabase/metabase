@@ -351,7 +351,7 @@ export default class Filter extends MBQLClause {
     return this.set(setFilterOptions(this, options));
   }
 
-  formattedArguments(maxDisplayValues?: number = 1) {
+  formattedArguments(maxDisplayValues: number = 1) {
     const dimension = this.dimension();
     const operator = this.operator();
     const args = this.arguments();
