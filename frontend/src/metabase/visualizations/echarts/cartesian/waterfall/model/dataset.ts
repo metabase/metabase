@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import type { RowValues } from "metabase-types/api";
 import {
   assertMultiMetricColumns,
@@ -100,18 +101,38 @@ export function getWaterfallDataset(
     dataset.push(createDatum({ dimension, barOffset, increase, decrease }));
   });
 
-  if (settings["waterfall.total_color"]) {
-    const barOffset =
-      total >= 0 ? negativeTranslation : negativeTranslation + total;
-
-    dataset.push(
-      createDatum({
-        dimension: "Total",
-        barOffset,
-        total: Math.abs(total),
-      }),
-    );
+  if (!settings["waterfall.show_total"]) {
+    return dataset;
   }
+
+  const barOffset =
+    total >= 0 ? negativeTranslation : negativeTranslation + total;
+
+  let dimension = "Total";
+  // For timeseries x-axis ECharts will not allow mixed values,
+  // so we cannot set the dimension value to "Total." As a workaround,
+  // we instead set it to be a date after the final date in the dataset,
+  // then in the x-axis label formatter we will replace the label with the
+  // string "Total."
+  if (settings["graph.x_axis.scale"] === "timeseries") {
+    const lastDimensionValue = rows[rows.length - 1][columns.dimension.index];
+    if (typeof lastDimensionValue === "boolean") {
+      throw Error(
+        "dimension value cannot be boolean with timeseries x-axis scale",
+      );
+    }
+
+    const lastDate = dayjs(lastDimensionValue);
+    dimension = lastDate.add(1, "day").toISOString();
+  }
+
+  dataset.push(
+    createDatum({
+      dimension,
+      barOffset,
+      total: Math.abs(total),
+    }),
+  );
 
   return dataset;
 }

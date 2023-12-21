@@ -11,14 +11,14 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import type { AxisExtents, Extent } from "../../model/types";
+import type { Extent } from "../../model/types";
 import { getCardsColumns, getCartesianChartModel } from "../../model";
 import type { WaterfallChartModel, WaterfallDataset } from "../types";
 import { DATASET_DIMENSIONS } from "../constants";
 
 import { getWaterfallDataset } from "./dataset";
 
-function getWaterfallExtent(dataset: WaterfallDataset) {
+export function getWaterfallExtent(dataset: WaterfallDataset) {
   const extent: Extent = [0, 0];
 
   dataset.forEach(datum => {
