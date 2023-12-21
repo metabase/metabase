@@ -1,3 +1,4 @@
+export * from "./Autocomplete";
 export * from "./Calendar";
 export * from "./Checkbox";
 export * from "./DateInput";

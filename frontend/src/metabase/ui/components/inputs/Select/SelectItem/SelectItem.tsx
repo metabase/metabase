@@ -5,12 +5,13 @@ import { Icon } from "metabase/core/components/Icon";
 import type { IconName } from "metabase/core/components/Icon";
 
 interface SelectItemProps extends HTMLAttributes<HTMLDivElement> {
-  label: string;
+  value: string;
+  label?: string;
   icon?: IconName;
 }
 
 export const SelectItem = forwardRef(function SelectItem(
-  { label, icon, ...others }: SelectItemProps,
+  { value, label = value, icon, ...others }: SelectItemProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
