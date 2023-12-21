@@ -28,12 +28,13 @@ export function compactifyValue(
     return { displayValue: fullScalarValue, fullScalarValue };
   }
 
-  const displayValue = checkShouldCompact(fullScalarValue, width)
-    ? formatValue(value, {
-        ...formatOptions,
-        compact: true,
-      })
-    : fullScalarValue;
+  const displayValue =
+    formatOptions.compact || checkShouldCompact(fullScalarValue, width)
+      ? formatValue(value, {
+          ...formatOptions,
+          compact: true,
+        })
+      : fullScalarValue;
 
   return { displayValue, fullScalarValue };
 }
