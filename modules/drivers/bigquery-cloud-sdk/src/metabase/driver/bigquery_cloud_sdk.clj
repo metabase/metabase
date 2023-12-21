@@ -245,7 +245,7 @@
   that `.list` returns the fields in that order. The first assumption could be
   lifted by matching the names in `fields` to the names in the table schema."
   [^Table bq-table fields rff]
-  (let [field-idxs  (mapv :database_position (remove #(= (:name %) "_PARTITIONTIME") fields))
+  (let [field-idxs  (mapv :database_position fields)
         all-parsers (get-field-parsers (.. bq-table getDefinition getSchema))
         parsers     (mapv all-parsers field-idxs)
         rows        (.list bq-table (u/varargs BigQuery$TableDataListOption))]
@@ -272,7 +272,7 @@
                TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
              (.. bq-table getDefinition getType))
             (time-ingestion-partitioned-table? (:id table)))
-      (do (log/debugf "%s.%s is a view or time partitioned, so we cannot use the list API; falling back to regular query"
+      (do (log/debugf "%s.%s is a view or time ingestion partitioned, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (sample-table bq-table fields rff))))
