@@ -411,7 +411,7 @@ export class DeleteAlertSection extends Component {
             >
               <DeleteModalWithConfirm
                 objectType="alert"
-                title={`Delete this alert?`}
+                title={t`Delete this alert?`}
                 confirmItems={this.getConfirmItems()}
                 onClose={() => this.deleteModal.close()}
                 onDelete={onDeleteAlert}
