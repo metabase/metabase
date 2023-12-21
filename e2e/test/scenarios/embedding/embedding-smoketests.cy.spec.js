@@ -86,7 +86,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.log("Standalone embeds page");
       mainPage().within(() => {
         cy.findByTestId("embedding-secret-key-setting").within(() => {
-          cy.findByText(/Embedding secret key/i);
+          cy.findByText("Embedding secret key");
           cy.findByText(
             "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
           );
@@ -94,13 +94,11 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.button("Regenerate key");
         });
 
-        cy.findByTestId("-embedded-dashboards-setting").within(() => {
-          cy.findByText(/Embedded dashboards/i);
+        cy.findByTestId("-embedded-resources-setting").within(() => {
+          cy.findByText("Embedded Dashboards");
           cy.findByText("No dashboards have been embedded yet.");
-        });
 
-        cy.findByTestId("-embedded-questions-setting").within(() => {
-          cy.findByText(/Embedded questions/i);
+          cy.findByText("Embedded Questions");
           cy.findByText("No questions have been embedded yet.");
         });
       });
@@ -204,7 +202,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.visit(standalonePath);
           cy.wait("@currentlyEmbeddedObject");
 
-          const sectionTestId = new RegExp(`-embedded-${object}s-setting`);
+          const sectionTestId = {
+            dashboard: "-embedded-dashboards-setting",
+            question: "-embedded-questions-setting",
+          }[object];
 
           cy.findByTestId(sectionTestId)
             .find("tbody tr")
@@ -317,26 +318,26 @@ function assertLinkMatchesUrl(text, url) {
 
 function ensureEmbeddingIsDisabled() {
   // This is implicit assertion - it would've failed if embedding was enabled
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByText("Embed in your application").closest(".disabled");
 
   // Let's make sure embedding stays disabled after we enable public sharing
   enableSharing();
 
-  cy.findByText(/Embed in your application/).closest(".disabled");
+  cy.findByText("Embed in your application").closest(".disabled");
 }
 
 function visitAndEnableSharing(object) {
   if (object === "question") {
     visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
+    cy.findByText("Embed in your application").click();
   }
 
   if (object === "dashboard") {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     cy.icon("share").click();
-    cy.findByText(/Embed in your application/).click();
+    cy.findByText("Embed in your application").click();
   }
 }
 
