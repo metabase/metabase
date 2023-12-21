@@ -179,7 +179,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.get("@formula")
+      .invoke("val", "") // this is a more reliable .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+
+    // In case it does exist, it usually is an error in expression (caused by not clearing
+    // the input properly before typing), and this check helps to highlight that.
+    cy.findByTestId("expression-editor-textfield").should("not.exist");
 
     getNotebookStep("filter")
       .contains("Price is greater than 1")
