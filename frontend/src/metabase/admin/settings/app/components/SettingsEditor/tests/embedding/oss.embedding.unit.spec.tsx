@@ -37,7 +37,10 @@ describe("[OSS] embedding settings", () => {
 
         expect(
           screen.getByRole("link", { name: "upgrade to a paid plan" }),
-        ).toHaveProperty("href", expect.stringContaining("embed_standalone"));
+        ).toHaveProperty(
+          "href",
+          "https://www.metabase.com/pricing/?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+        );
       });
     });
 
