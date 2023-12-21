@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect } from "react";
+import { Fragment, useCallback } from "react";
+import { useAsync } from "react-use";
 import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
@@ -6,7 +7,10 @@ import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import { Loader, Center } from "metabase/ui";
+
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PermissionsApi } from "metabase/services";
 import {
   getGroupsDataPermissionEditor,
   getDataFocusSidebar,
@@ -15,7 +19,7 @@ import {
 } from "../../selectors/data-permissions";
 import {
   updateDataPermission,
-  loadDataPermissionsForDB,
+  LOAD_DATA_PERMISSIONS_FOR_DB,
 } from "../../permissions";
 
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
@@ -45,7 +49,6 @@ const mapDispatchToProps = dispatch => ({
 const mapStateToProps = (state, props) => {
   return {
     sidebar: getDataFocusSidebar(state, props),
-    // permissionEditor: getGroupsDataPermissionEditor(state, props),
     isSidebarLoading: getIsLoadingDatabaseTables(state, props),
     sidebarError: getLoadingDatabaseTablesError(state, props),
   };
@@ -59,26 +62,22 @@ const propTypes = {
   }),
   children: PropTypes.node,
   sidebar: PropTypes.object,
-  // permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   navigateToItem: PropTypes.func.isRequired,
   switchView: PropTypes.func.isRequired,
   updateDataPermission: PropTypes.func.isRequired,
   navigateToDatabaseList: PropTypes.func.isRequired,
   isSidebarLoading: PropTypes.bool,
   sidebarError: PropTypes.string,
-  // dispatch: PropTypes.func.isRequired,
 };
 
 function DatabasesPermissionsPage({
   sidebar,
-  // permissionEditor,
   params,
   children,
   navigateToItem,
   navigateToDatabaseList,
   switchView,
   updateDataPermission,
-  // dispatch,
   isSidebarLoading,
   sidebarError,
 }) {
@@ -87,9 +86,17 @@ function DatabasesPermissionsPage({
     getGroupsDataPermissionEditor(state, { params }),
   );
 
-  useEffect(() => {
-    dispatch(loadDataPermissionsForDB(params));
-  }, [params, dispatch]);
+  const { loading: isLoading } = useAsync(async () => {
+    if (params.databaseId) {
+      const response = await PermissionsApi.graphForDB({
+        databaseId: params.databaseId,
+      });
+      await dispatch({
+        type: LOAD_DATA_PERMISSIONS_FOR_DB,
+        payload: response,
+      });
+    }
+  }, [params.databaseId]);
 
   const handleEntityChange = useCallback(
     entityType => {
@@ -127,15 +134,19 @@ function DatabasesPermissionsPage({
         onBack={params.databaseId == null ? null : navigateToDatabaseList}
         onEntityChange={handleEntityChange}
       />
-
-      {!permissionEditor && (
+      {isLoading && (
+        <Center style={{ flexGrow: 1 }}>
+          <Loader size="lg" />
+        </Center>
+      )}
+      {!permissionEditor && !isLoading && (
         <PermissionsEditorEmptyState
           icon="database"
           message={t`Select a database to see group permissions`}
         />
       )}
 
-      {permissionEditor && (
+      {permissionEditor && !isLoading && (
         <PermissionsEditor
           {...permissionEditor}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}

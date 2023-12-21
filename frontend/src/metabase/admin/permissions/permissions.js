@@ -50,21 +50,9 @@ export const loadDataPermissions = createThunkAction(
 
 export const LOAD_DATA_PERMISSIONS_FOR_GROUP =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
-export const loadDataPermissionsForGroup = createThunkAction(
-  LOAD_DATA_PERMISSIONS_FOR_GROUP,
-  ({ groupId }) =>
-    async () =>
-      PermissionsApi.graphForGroup({ groupId }),
-);
 
 export const LOAD_DATA_PERMISSIONS_FOR_DB =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
-export const loadDataPermissionsForDB = createThunkAction(
-  LOAD_DATA_PERMISSIONS_FOR_GROUP,
-  ({ databaseId }) =>
-    async () =>
-      PermissionsApi.graphForDB({ databaseId }),
-);
 
 const INITIALIZE_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_COLLECTION_PERMISSIONS";
@@ -438,6 +426,40 @@ export const isHelpReferenceOpen = handleActions(
   false,
 );
 
+const checkRevisionChanged = (state, { payload }) => {
+  if (!state.revision) {
+    return {
+      revision: payload.revision,
+      hasChanged: false,
+    };
+  } else if (state.revision === payload.revision && !state.hasChanged) {
+    return state;
+  } else {
+    return {
+      revision: payload.revision,
+      hasChanged: true,
+    };
+  }
+};
+
+const hasRevisionChanged = handleActions(
+  {
+    [LOAD_DATA_PERMISSIONS]: {
+      next: checkRevisionChanged,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_GROUP]: {
+      next: checkRevisionChanged,
+    },
+    [LOAD_DATA_PERMISSIONS_FOR_DB]: {
+      next: checkRevisionChanged,
+    },
+  },
+  {
+    revision: null,
+    hasChanged: false,
+  },
+);
+
 export default combineReducers({
   saveError,
   dataPermissions,
@@ -447,4 +469,5 @@ export default combineReducers({
   originalCollectionPermissions,
   collectionPermissionsRevision,
   isHelpReferenceOpen,
+  hasRevisionChanged,
 });

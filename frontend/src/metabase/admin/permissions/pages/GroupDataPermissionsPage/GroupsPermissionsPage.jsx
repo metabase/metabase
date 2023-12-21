@@ -1,4 +1,5 @@
-import { Fragment, useCallback, useEffect } from "react";
+import { Fragment, useCallback } from "react";
+import { useAsync } from "react-use";
 import PropTypes from "prop-types";
 import { bindActionCreators } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
@@ -7,6 +8,9 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 
+import { Loader, Center } from "metabase/ui";
+
+import { PermissionsApi } from "metabase/services";
 import {
   getDatabasesPermissionEditor,
   getIsLoadingDatabaseTables,
@@ -15,7 +19,7 @@ import {
 } from "../../selectors/data-permissions";
 import {
   updateDataPermission,
-  loadDataPermissionsForGroup,
+  LOAD_DATA_PERMISSIONS_FOR_GROUP,
 } from "../../permissions";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
@@ -45,7 +49,6 @@ const mapDispatchToProps = dispatch => ({
 const mapStateToProps = (state, props) => {
   return {
     sidebar: getGroupsSidebar(state, props),
-    // permissionEditor: getDatabasesPermissionEditor(state, props),
     isEditorLoading: getIsLoadingDatabaseTables(state, props),
     editorError: getLoadingDatabaseTablesError(state, props),
   };
@@ -59,7 +62,6 @@ const propTypes = {
   }),
   children: PropTypes.node,
   sidebar: PropTypes.object,
-  //permissionEditor: PropTypes.shape(permissionEditorPropTypes),
   navigateToItem: PropTypes.func.isRequired,
   switchView: PropTypes.func.isRequired,
   navigateToTableItem: PropTypes.func.isRequired,
@@ -73,19 +75,26 @@ function GroupsPermissionsPage({
   sidebar,
   params,
   children,
-  //permissionEditor,
   navigateToItem,
   switchView,
   navigateToTableItem,
   updateDataPermission,
   isEditorLoading,
   editorError,
-  //dispatch,
 }) {
   const dispatch = useDispatch();
-  useEffect(() => {
-    dispatch(loadDataPermissionsForGroup(params));
-  }, [params, dispatch]);
+
+  const { loading: isLoading } = useAsync(async () => {
+    if (params.groupId) {
+      const response = await PermissionsApi.graphForGroup({
+        groupId: params.groupId,
+      });
+      await dispatch({
+        type: LOAD_DATA_PERMISSIONS_FOR_GROUP,
+        payload: response,
+      });
+    }
+  }, [params.groupId]);
 
   const permissionEditor = useSelector(state =>
     getDatabasesPermissionEditor(state, { params }),
@@ -140,14 +149,20 @@ function GroupsPermissionsPage({
         onEntityChange={handleEntityChange}
       />
 
-      {showEmptyState && (
+      {isLoading && (
+        <Center style={{ flexGrow: 1 }}>
+          <Loader size="lg" />
+        </Center>
+      )}
+
+      {showEmptyState && !isLoading && (
         <PermissionsEditorEmptyState
           icon="group"
           message={t`Select a group to see its data permissions`}
         />
       )}
 
-      {!showEmptyState && (
+      {!showEmptyState && !isLoading && (
         <PermissionsEditor
           {...permissionEditor}
           isLoading={isEditorLoading}
