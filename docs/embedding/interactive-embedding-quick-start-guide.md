@@ -9,7 +9,7 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 ## Prerequisites
 
 - You have an app that you can embed Metabase in.
-- You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](/product/pro). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](/docs/latest/installation-and-operation/running-metabase-on-docker#pro-or-enterprise-quick-start).
+- You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://www.metabase.com/product/pro). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).
 
 The code featured in this guide can be found in our [sample repo](https://github.com/metabase/metabase-nodejs-express-interactive-embedding-sample).
 
@@ -32,7 +32,6 @@ Click on the **Interactive embedding** card. Under **Authorized origins**, add t
 #### SameSite configuration
 
 If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](./interactive-embedding.md#embedding-metabase-in-a-different-domain)
-
 #### Enable authentication with JWT
 
 While still in the Admin panel's **Settings** section, click on **Authentication**.
@@ -289,7 +288,7 @@ Log in to your app, navigate to `/analytics`. The dashboard will now present dif
 
 ## Hiding Metabase elements
 
-You can decide to [show or hide various Metabase elements](/docs/latest/embedding/interactive-embedding#showing-or-hiding-metabase-ui-components), like whether to show the nav bar, search or the **+New** button, and so on.
+You can decide to [show or hide various Metabase elements](./interactive-embedding.md#showing-or-hiding-metabase-ui-components), like whether to show the nav bar, search or the **+New** button, and so on.
 
 For example, to hide the logo and the top navigation bar of your embedded Metabase, you'd append the query string parameters `?logo=false&top_nav=false` to the `return_to` URL that you include in the SSO redirect.
 
@@ -308,4 +307,4 @@ Sign out and sign in to your app again and navigate to `/analytics`. Your embedd
 
 ## Next steps
 
-You can [customize how Metabase looks](/docs/latest/configuring-metabase/appearance) in your app: fonts, colors, and logos.
+You can [customize how Metabase looks](../configuring-metabase/appearance.md) in your app: fonts, colors, and logos.
