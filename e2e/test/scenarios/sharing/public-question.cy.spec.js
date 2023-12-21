@@ -87,7 +87,6 @@ describe("scenarios > public > question", () => {
       cy.get(".cellData").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.icon("download").click();
       cy.get("@uuid").then(publicUid => {
         downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUid },
