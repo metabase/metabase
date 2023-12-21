@@ -1,13 +1,10 @@
-import { rem, getSize, getStylesRef } from "@mantine/core";
+import { getStylesRef, px, rem } from "@mantine/core";
 import type {
   MantineThemeOverride,
   MultiSelectStylesParams,
 } from "@mantine/core";
-
-const HEIGHT = {
-  xs: rem(16),
-  md: rem(24),
-};
+import { SelectDropdown } from "../Select/SelectDropdown";
+import { SelectItem } from "../Select/SelectItem";
 
 export const getMultiSelectOverrides =
   (): MantineThemeOverride["components"] => ({
@@ -16,13 +13,11 @@ export const getMultiSelectOverrides =
         size: "md",
         variant: "default",
         withinPortal: true,
-        dropdownComponent: "div",
+        dropdownComponent: SelectDropdown,
+        itemComponent: SelectItem,
       },
-      styles: (
-        theme,
-        { invalid }: MultiSelectStylesParams,
-        { size = "md" },
-      ) => ({
+      styles: (theme, { invalid }: MultiSelectStylesParams) => ({
+        // input
         wrapper: {
           position: "relative",
           "&:not(:only-child)": {
@@ -43,19 +38,6 @@ export const getMultiSelectOverrides =
         input: {
           ref: getStylesRef("input"),
         },
-        values: {
-          gap: theme.spacing.sm,
-          minHeight: getSize({ size, sizes: HEIGHT }),
-          marginLeft: 0,
-        },
-        value: {
-          margin: 0,
-        },
-        searchInput: {
-          "&::placeholder": {
-            color: invalid ? theme.colors.error[0] : theme.colors.text[0],
-          },
-        },
         rightSection: {
           svg: {
             color: invalid ? theme.colors.error[0] : theme.colors.text[2],
@@ -70,8 +52,59 @@ export const getMultiSelectOverrides =
             },
           },
         },
+        // dropdown
+        itemsWrapper: {
+          padding: "0.75rem",
+        },
+        item: {
+          color: theme.colors.text[2],
+          fontSize: theme.fontSizes.md,
+          padding: theme.spacing.sm,
+          "&:hover:not([data-disabled]), &:focus": {
+            color: theme.colors.brand[1],
+            backgroundColor: theme.colors.brand[0],
+          },
+          "&[data-disabled]": {
+            color: theme.colors.text[0],
+          },
+        },
+        separator: {
+          padding: `0 ${theme.spacing.sm}`,
+
+          "&:not(:first-of-type)": {
+            "&::before": {
+              content: '""',
+              display: "block",
+              marginTop: rem(px(theme.spacing.sm) - 1),
+              marginBottom: theme.spacing.xs,
+              borderTop: `1px solid ${theme.colors.border[0]}`,
+            },
+          },
+        },
+        separatorLabel: {
+          color: theme.colors.text[0],
+          marginTop: "0 !important",
+          paddingTop: theme.spacing.xs,
+          paddingBottom: theme.spacing.xs,
+
+          "&::after": {
+            display: "none",
+          },
+        },
+        // values
+        values: {
+          gap: theme.spacing.sm,
+          marginLeft: 0,
+        },
+        value: {
+          margin: 0,
+        },
+        searchInput: {
+          "&::placeholder": {
+            color: invalid ? theme.colors.error[0] : theme.colors.text[0],
+          },
+        },
         defaultValue: {
-          height: getSize({ size, sizes: HEIGHT }),
           paddingLeft: theme.spacing.sm,
           paddingRight: theme.spacing.sm,
           fontWeight: "normal",
@@ -106,6 +139,38 @@ export const getMultiSelectOverrides =
           input: {
             paddingTop: rem(8),
             paddingBottom: rem(8),
+          },
+        }),
+      },
+      sizes: {
+        xs: theme => ({
+          values: {
+            minHeight: rem(16),
+          },
+          defaultValue: {
+            minHeight: rem(16),
+          },
+          item: {
+            fontSize: theme.fontSizes.sm,
+            lineHeight: theme.lineHeight,
+          },
+          separatorLabel: {
+            fontSize: theme.fontSizes.xs,
+          },
+        }),
+        md: theme => ({
+          values: {
+            minHeight: rem(24),
+          },
+          defaultValue: {
+            minHeight: rem(24),
+          },
+          item: {
+            fontSize: theme.fontSizes.md,
+            lineHeight: "1.5rem",
+          },
+          separatorLabel: {
+            fontSize: theme.fontSizes.sm,
           },
         }),
       },

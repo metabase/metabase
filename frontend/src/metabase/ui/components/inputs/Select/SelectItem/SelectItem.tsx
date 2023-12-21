@@ -1,23 +1,24 @@
 import { forwardRef } from "react";
+import type { Ref, HTMLAttributes } from "react";
 import { Group, Text } from "@mantine/core";
-import type { ComponentPropsWithoutRef } from "react";
 import { Icon } from "metabase/core/components/Icon";
 import type { IconName } from "metabase/core/components/Icon";
 
-interface SelectItemProps extends ComponentPropsWithoutRef<"div"> {
+interface SelectItemProps extends HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: IconName;
 }
 
-export const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
-  function SelectItem({ label, icon, ...others }: SelectItemProps, ref) {
-    return (
-      <Group ref={ref} spacing="sm" {...others}>
-        {icon && <Icon name={icon} />}
-        <Text color="inherit" lh="inherit">
-          {label}
-        </Text>
-      </Group>
-    );
-  },
-);
+export const SelectItem = forwardRef(function SelectItem(
+  { label, icon, ...others }: SelectItemProps,
+  ref: Ref<HTMLDivElement>,
+) {
+  return (
+    <Group ref={ref} spacing="sm" {...others}>
+      {icon && <Icon name={icon} />}
+      <Text color="inherit" lh="inherit">
+        {label}
+      </Text>
+    </Group>
+  );
+});
