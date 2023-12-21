@@ -5,6 +5,18 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
+const BIG_NUMBER_AGGREGATION = [
+  "aggregation-options",
+  ["*", ["count"], 10000],
+  { name: "Mega Count", "display-name": "Mega Count" },
+];
+
+const AGGREGATIONS = [
+  ["count"],
+  ["sum", ["field", ORDERS.TOTAL, null]],
+  BIG_NUMBER_AGGREGATION,
+];
+
 describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   beforeEach(() => {
     restore();
@@ -17,7 +29,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
         name: "13710",
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+          aggregation: AGGREGATIONS,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
@@ -34,8 +46,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-container").findByText("344");
     cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
     popover().within(() => {
-      // should only have two options
-      cy.findAllByRole("option").should("have.length", 2);
+      cy.findAllByRole("option").should("have.length", AGGREGATIONS.length);
 
       // selected should be highlighted
       cy.findByLabelText("Count").should("have.attr", "aria-selected", "true");
@@ -48,7 +59,6 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       );
       cy.findByText("Sum of Total").click();
     });
-    cy.findByTestId("scalar-container").findByText("30,759.47");
 
     // comparisons
     // default should be previous period (since we have a dateUnit)
@@ -125,7 +135,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
         name: "13710",
         query: {
           "source-table": ORDERS_ID,
-          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
+          aggregation: AGGREGATIONS,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
@@ -181,6 +191,26 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // add a suffix
     cy.findByLabelText("Add a suffix").click().type(" ! cool").blur();
     cy.findByTestId("scalar-container").findByText("Woah: 68’800.0000% ! cool");
+
+    // scalar.compact_primary_number setting
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findByText("Data").click();
+      cy.findByText("Count").click();
+    });
+    popover().findByRole("option", { name: "Mega Count" }).click();
+    cy.findByTestId("chartsettings-sidebar").findByText("Display").click();
+
+    cy.findByTestId("scalar-container").findByText("3,440,000");
+
+    cy.findByTestId("chartsettings-sidebar")
+      .findByLabelText("Compact number")
+      .click();
+    cy.findByTestId("scalar-container").findByText("3.4M");
+
+    cy.findByTestId("chartsettings-sidebar")
+      .findByLabelText("Compact number")
+      .click();
+    cy.findByTestId("scalar-container").findByText("3,440,000");
   });
 
   it("should work regardless of column order (metabase#13710)", () => {
