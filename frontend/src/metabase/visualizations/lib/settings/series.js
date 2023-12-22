@@ -62,8 +62,15 @@ export function seriesSetting({
       },
 
       getDefault: (single, settings, { series }) => {
-        const cardDisplay = single.card.display;
-        return getSeriesDefaultDisplay(cardDisplay, series.indexOf(single));
+        // FIXME: will move to Cartesian series model further, but now this code is used by other legacy charts
+        const transformedSeriesIndex = series.findIndex(
+          s => keyForSingleSeries(s) === keyForSingleSeries(single),
+        );
+
+        return getSeriesDefaultDisplay(
+          series[transformedSeriesIndex].card.display,
+          transformedSeriesIndex,
+        );
       },
     },
     color: {

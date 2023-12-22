@@ -191,4 +191,5 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
   ) => void | never;
   isLiveResizable: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+  placeholderSeries: RawSeries;
 };
