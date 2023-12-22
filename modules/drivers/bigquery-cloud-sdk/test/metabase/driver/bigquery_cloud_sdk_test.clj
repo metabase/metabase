@@ -326,10 +326,12 @@
            (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)]
              (is (=? [{:name           "_PARTITIONTIME"
                        :database_type "TIMESTAMP"
-                       :base_type     :type/DateTimeWithLocalTZ}
+                       :base_type     :type/DateTimeWithLocalTZ
+                       :database_position 1}
                       {:name           "_PARTITIONDATE"
                        :database_type "DATE"
-                       :base_type     :type/Date}]
+                       :base_type     :type/Date
+                       :database_position 2}]
                      (t2/select :model/Field :table_id partitioned-by-ingestion-time-table-id
                                 :database_partitioned true {:order-by [[:name :desc]]}))))
            (testing "and query this table should return the column pseudocolumn as well"

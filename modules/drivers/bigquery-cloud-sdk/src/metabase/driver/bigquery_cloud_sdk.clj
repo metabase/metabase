@@ -200,7 +200,7 @@
      :fields (cond-> fields
                ;; if table has time partition but no field is specified as partitioned
                ;; meaning this table is partitioned by ingestion time
-               ;; so we manually sync this pseudo-column
+               ;; so we manually sync the 2 pseudo-columns _PARTITIONTIME AND _PARTITIONDATE
                (and is-partitioned?
                     (some? (.getTimePartitioning tabledef))
                     (nil? partitioned-field-name))
