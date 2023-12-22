@@ -3,7 +3,12 @@ import type {
   CartesianChartModel,
   DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { CardId, RawSeries } from "metabase-types/api";
+import type {
+  CardId,
+  RawSeries,
+  TimelineEvent,
+  TimelineEventId,
+} from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getObjectEntries } from "metabase/lib/objects";
 import type { ClickObjectDimension } from "metabase-lib";
@@ -17,7 +22,18 @@ import {
   hasClickBehavior,
   isRemappedToString,
 } from "metabase/visualizations/lib/renderer_utils";
+import type {
+  EChartsSeriesMouseEvent,
+  EChartsSeriesBrushEndEvent,
+} from "metabase/visualizations/echarts/types";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { isStructured } from "metabase-lib/queries/utils/card";
+import Question from "metabase-lib/Question";
+import {
+  updateDateTimeFilter,
+  updateNumericFilter,
+} from "metabase-lib/queries/utils/actions";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -177,4 +193,150 @@ export const canBrush = (
     !isRemappedToString(series) &&
     !hasClickBehavior(series)
   );
+};
+
+export const getSeriesHoverData = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  event: EChartsSeriesMouseEvent,
+) => {
+  const { dataIndex, seriesId } = event;
+  const seriesIndex = chartModel.seriesModels.findIndex(
+    seriesModel => seriesModel.dataKey === seriesId,
+  );
+
+  if (seriesIndex < 0 || dataIndex == null) {
+    return;
+  }
+
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const target = (event.event.event.target ?? undefined) as Element | undefined;
+
+  // TODO: For some reason ECharts sometimes trigger series mouse move element with the root SVG as target
+  // Find a better fix
+  if (target?.nodeName === "svg") {
+    return;
+  }
+
+  const isStackedChart = settings["stackable.stack_type"] != null;
+  const stackedTooltipModel = isStackedChart
+    ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
+    : undefined;
+
+  return {
+    settings,
+    index: seriesIndex,
+    datumIndex: dataIndex,
+    event: event.event.event,
+    element: target,
+    data,
+    stackedTooltipModel,
+  };
+};
+
+export const getTimelineEventsForEvent = (
+  timelineEventsModel: TimelineEventsModel,
+  event: EChartsSeriesMouseEvent,
+) => {
+  return timelineEventsModel.find(
+    timelineEvents => timelineEvents.date === event.value,
+  )?.events;
+};
+
+export const hasSelectedTimelineEvents = (
+  timelineEvents: TimelineEvent[],
+  selectedTimelineEventIds?: TimelineEventId[],
+) => {
+  return (
+    selectedTimelineEventIds != null &&
+    selectedTimelineEventIds.length > 0 &&
+    timelineEvents.some(timelineEvent =>
+      selectedTimelineEventIds.includes(timelineEvent.id),
+    )
+  );
+};
+
+export const getTimelineEventsHoverData = (
+  timelineEventsModel: TimelineEventsModel,
+  event: EChartsSeriesMouseEvent,
+) => {
+  const hoveredTimelineEvents = getTimelineEventsForEvent(
+    timelineEventsModel,
+    event,
+  );
+  const element = event.event.event.target as Element;
+
+  if (element?.nodeName !== "image") {
+    return null;
+  }
+
+  return {
+    element,
+    timelineEvents: hoveredTimelineEvents,
+  };
+};
+
+export const getSeriesClickData = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  event: EChartsSeriesMouseEvent,
+) => {
+  const { seriesId, dataIndex } = event;
+  const seriesIndex = chartModel.seriesModels.findIndex(
+    seriesModel => seriesModel.dataKey === seriesId,
+  );
+  if (seriesIndex < 0 || dataIndex == null) {
+    return;
+  }
+
+  const datum = chartModel.dataset[dataIndex];
+
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
+  const dimensions = getEventDimensionsData(chartModel, seriesIndex, dataIndex);
+  const column = chartModel.seriesModels[seriesIndex].column;
+
+  return {
+    event: event.event.event,
+    value: datum[chartModel.dimensionModel.dataKey],
+    column,
+    data,
+    dimensions,
+    settings,
+  };
+};
+
+export const getBrushData = (
+  rawSeries: RawSeries,
+  chartModel: CartesianChartModel,
+  event: EChartsSeriesBrushEndEvent,
+) => {
+  const range = event.areas[0].coordRange;
+  const isTimeSeries = dimensionIsTimeseries(
+    rawSeries[0].data,
+    chartModel.dimensionModel.columnIndex,
+  );
+
+  if (range) {
+    const column = chartModel.dimensionModel.column;
+    const card = rawSeries[0].card;
+    const query = new Question(card).query();
+    const [start, end] = range;
+    if (isTimeSeries) {
+      return {
+        nextCard: updateDateTimeFilter(query, column, start, end)
+          .question()
+          .card(),
+        previousCard: card,
+      };
+    } else {
+      return {
+        nextCard: updateNumericFilter(query, column, start, end)
+          .question()
+          .card(),
+        previousCard: card,
+      };
+    }
+  }
+
+  return null;
 };
