@@ -9,7 +9,7 @@ type SmartScalarComparisonPreviousPeriod = {
 type SmartScalarComparisonCompareToPrevious = {
   type: "previousValue";
 };
-export type SelectedComparisonStaticNumber = {
+export type SmartScalarComparisonStaticNumber = {
   type: "staticNumber";
   value: number;
   label: string;
@@ -19,4 +19,4 @@ export type SmartScalarComparison =
   | SmartScalarComparisonCompareToPrevious
   | SmartScalarComparisonPreviousPeriod
   | SmartScalarComparisonPeriodsAgo
-  | SelectedComparisonStaticNumber;
+  | SmartScalarComparisonStaticNumber;

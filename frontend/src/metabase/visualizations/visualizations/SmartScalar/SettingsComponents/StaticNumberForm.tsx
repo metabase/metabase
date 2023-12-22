@@ -8,13 +8,13 @@ import {
   PopoverBackButton,
   TextInput,
 } from "metabase/ui";
-import type { SelectedComparisonStaticNumber } from "metabase-types/api";
+import type { SmartScalarComparisonStaticNumber } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface StaticNumberFormProps {
-  value: Partial<SelectedComparisonStaticNumber>;
-  onChange: (setting: SelectedComparisonStaticNumber) => void;
+  value: Partial<SmartScalarComparisonStaticNumber>;
+  onChange: (setting: SmartScalarComparisonStaticNumber) => void;
   onBack: () => void;
 }
 

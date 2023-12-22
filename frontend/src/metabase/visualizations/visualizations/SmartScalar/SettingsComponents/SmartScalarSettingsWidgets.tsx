@@ -4,7 +4,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { Button, Menu, Stack, Text } from "metabase/ui";
 import type {
   SmartScalarComparison,
-  SelectedComparisonStaticNumber,
+  SmartScalarComparisonStaticNumber,
 } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
@@ -80,7 +80,7 @@ export function SmartScalarComparisonWidget({
       <Menu.Dropdown miw="18.25rem">
         {tab === "staticNumber" ? (
           <StaticNumberForm
-            value={selectedValue as SelectedComparisonStaticNumber}
+            value={selectedValue as SmartScalarComparisonStaticNumber}
             onChange={nextValue => {
               onChange(nextValue);
               setOpen(false);
