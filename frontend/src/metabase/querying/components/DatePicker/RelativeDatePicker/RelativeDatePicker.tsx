@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Divider, Flex, Tabs } from "metabase/ui";
-import { BackButton } from "../BackButton";
+import { Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 import type { RelativeDatePickerValue } from "../types";
 import { DEFAULT_VALUE, TABS } from "./constants";
 import {
@@ -46,7 +45,7 @@ export function RelativeDatePicker({
   return (
     <Tabs value={direction} onTabChange={handleTabChange}>
       <Flex>
-        <BackButton onClick={onBack} />
+        <PopoverBackButton p="sm" onClick={onBack} />
         <TabList>
           {TABS.map(tab => (
             <Tabs.Tab key={tab.direction} value={tab.direction}>

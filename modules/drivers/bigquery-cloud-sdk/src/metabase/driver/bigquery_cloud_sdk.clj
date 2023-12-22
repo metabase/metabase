@@ -327,8 +327,7 @@
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
-      ;; trying to deref the value after the future has been cancelled
-      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -399,7 +398,8 @@
       (thunk)
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
-          (if (or (:retryable? e) (not (qp.error-type/client-error? (:type ex-data))))
+          (if (and (not (::cancelled? ex-data))
+                   (or (:retryable? ex-data) (not (qp.error-type/client-error? (:type ex-data)))))
             (thunk)
             (throw e)))))))
 

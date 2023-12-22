@@ -47,7 +47,7 @@
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id  :- ms/PositiveInt
+  [user-id  :- [:maybe ms/PositiveInt]
    model    :- [:or
                 [:enum :model/Card :model/Table :model/Dashboard]
                 :string]
