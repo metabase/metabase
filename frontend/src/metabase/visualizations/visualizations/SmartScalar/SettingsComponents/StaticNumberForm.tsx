@@ -67,11 +67,7 @@ export function StaticNumberForm({
             onChange={handleChangeValue}
           />
         </Group>
-        <DoneButton
-          type="submit"
-          variant="filled"
-          disabled={!canSubmit}
-        >{t`Done`}</DoneButton>
+        <DoneButton type="submit" disabled={!canSubmit}>{t`Done`}</DoneButton>
       </Stack>
     </Box>
   );

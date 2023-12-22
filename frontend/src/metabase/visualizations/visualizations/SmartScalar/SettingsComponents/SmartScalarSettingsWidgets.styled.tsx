@@ -8,3 +8,7 @@ type DoneButtonProps = ButtonProps & HTMLAttributes<HTMLButtonElement>;
 export const DoneButton = styled(Button)<DoneButtonProps>`
   align-self: flex-end;
 `;
+
+DoneButton.defaultProps = {
+  variant: "filled",
+};
