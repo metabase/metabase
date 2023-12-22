@@ -38,7 +38,6 @@
 
 (defn- query-with-default-partitioned-field-filter
   [query table]
-  ;; TODO: maybe this function should be somewhere more generic?
   (let [;; In bigquery, a partition table can have only one partitioned field
         partition-field (or (t2/select-one :model/Field
                                            :table_id (:id table)
@@ -52,19 +51,24 @@
                               [:and existing-filter filter-form]
                               filter-form)))))
 
+(defn- field-mbql-query
+  [table mbql-query]
+  (cond-> mbql-query
+    true
+    (assoc :source-table (:id table))
+
+    ;; Some table requires a filter to be able to query the data
+    ;; Currently this only applied to Parittioned table in bigquery where the partition field
+    ;; is required as a filter.
+    ;; In the future we probably want this to be dispatched by database engine type
+    (:database_require_filter table)
+    (query-with-default-partitioned-field-filter table)))
+
 (defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
   (let [table (t2/select-one :model/Table :id table-id)]
     (qp-query (:db_id table)
-              (cond-> mbql-query
-                true
-                (assoc :source-table table-id)
-
-                ;; Some table requires a filter to be able to query the data
-                ;; Currently this only applied to Parittioned table in bigquery where the partition field
-                ;; is required as a filter.
-                (:database_require_filter table)
-                (query-with-default-partitioned-field-filter table)))))
+              (field-mbql-query table mbql-query))))
 
 (def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or

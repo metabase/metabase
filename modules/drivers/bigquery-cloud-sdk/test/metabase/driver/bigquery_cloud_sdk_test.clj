@@ -1,7 +1,7 @@
 (ns metabase.driver.bigquery-cloud-sdk-test
   (:require
+   [cheshire.core :as json]
    [clojure.core.async :as a]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
@@ -311,9 +311,10 @@
 
 (deftest full-sync-partitioned-table-test
   (mt/test-driver :bigquery-cloud-sdk
-    (testing "tables that require a partition filters are synced correctly"
+    (testing "Partitioned tables that require a partition filter can be synced"
       (mt/with-model-cleanup [:model/Table]
-        (let [table-names  ["partition_by_range" "partition_by_time" "partition_by_ingestion_time"]]
+        (let [table-names  ["partition_by_range" "partition_by_time"
+                            "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]]
           (try
            (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
                                 PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
@@ -329,7 +330,7 @@
                         (format "INSERT INTO %s (name, birthday)
                                 VALUES ('Ngoc', TIMESTAMP('1998-04-17 00:00:00+00:00')),
                                 ('Quang', TIMESTAMP('1999-04-17 00:00:00+00:00')),
-                                ('Khuat', TIMESTAMP('1996-04-17 00:00:00+00:00'));"
+                                ('Khuat', TIMESTAMP('1997-04-17 00:00:00+00:00'));"
                                 (fmt-table-name "partition_by_time"))
                         (format "CREATE TABLE %s (is_awesome BOOL)
                                 PARTITION BY _PARTITIONDATE
@@ -337,54 +338,46 @@
                                 (fmt-table-name "partition_by_ingestion_time"))
                         (format "INSERT INTO %s (is_awesome)
                                 VALUES (true), (false);"
-                                (fmt-table-name "partition_by_ingestion_time"))]]
+                                (fmt-table-name "partition_by_ingestion_time"))
+                        (format "CREATE TABLE %s (is_opensource BOOL)
+                                PARTITION BY _PARTITIONDATE;"
+                                (fmt-table-name "partition_by_ingestion_time_not_required"))
+                        (format "INSERT INTO %s (is_opensource)
+                                VALUES (true), (false);"
+                                (fmt-table-name "partition_by_ingestion_time_not_required"))]]
              (bigquery.tx/execute! sql))
            (sync/sync-database! (mt/db))
-           (let [name->field-ids (t2/select-fn->fn :name :id :model/Field
-                                                   :table_id [:in (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in table-names])])
-                 field-id->names (into {} (zipmap (vals name->field-ids) (keys name->field-ids)))]
+
+           (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in table-names])
+                 all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
              (testing "all fields are fingerprinted"
-               (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in (vals name->field-ids)]))))
+               (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
              (testing "Field values are correctly synced"
-               (is (= {"customer_id" #{1 2 3}
-                       "name"        #{"Khuat" "Quang" "Ngoc"}
-                       "is_awesome"  #{true false}}
-                      (-> (t2/select-fn->fn :field_id :values :model/FieldValues
-                                            :field_id [:in (vals (select-keys name->field-ids ["customer_id" "name" "is_awesome"]))])
-                          (set/rename-keys field-id->names)
-                          (update-vals set))))
-               (is (every? some? (t2/select-fn-vec :values :model/FieldValues :field_id [:in (vals name->field-ids)])))))
+               (is (= {"customer_id"   #{1 2 3}
+                       "name"          #{"Khuat" "Quang" "Ngoc"}
+                       "is_awesome"    #{true false}
+                       "is_opensource" #{true false}}
+                      (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
+                                      :from   [[:metabase_field :field]]
+                                      :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
+                                      :where  [:and [:in :field.table_id table-ids] [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource"]]]})
+                           (map #(update % :values (comp set json/parse-string)))
+                           (map (juxt :field-name :values))
+                           (into {}))))))
+
+           (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME"
+             (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name "partition_by_ingestion_time")]
+               (is (=? {:name           @#'bigquery/partitioned-time-field-name
+                        :database_type "TIMESTAMP"
+                        :base_type     :type/DateTimeWithLocalTZ}
+                       (t2/select-one :model/Field :table_id partitioned-by-ingestion-time-table-id :name @#'bigquery/partitioned-time-field-name))))
+             (testing "and query this table should return the column pseudocolumn as well"
+               (is (malli=
+                    [:tuple :int ms/TemporalString]
+                    (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time)))))))
            (finally
             (doall (map drop-table-if-exists! table-names))
-
             nil)))))))
-
-(deftest sync-pseudocolumn-for-ingestion-time-partitioned-table-test
-  (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME"
-    (mt/test-driver :bigquery-cloud-sdk
-      (mt/with-model-cleanup [:model/Table]
-        (let [table-name "partition_by_ingestion_time"]
-          (try
-           (doseq [sql [(format "CREATE TABLE %s (transaction_id INT64)
-                                PARTITION BY _PARTITIONDATE;"
-                                (fmt-table-name table-name))
-                        (format "INSERT INTO %s(transaction_id) VALUES(1);"
-                                (fmt-table-name table-name))]]
-             (bigquery.tx/execute! sql))
-           (sync/sync-database! (mt/db) {:scan :schema})
-
-           (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)]
-             (is (=? {:name           "_PARTITIONTIME"
-                      :database_type "TIMESTAMP"
-                      :base_type     :type/DateTimeWithLocalTZ}
-                     (t2/select-one :model/Field :table_id partitioned-by-ingestion-time-table-id :name "_PARTITIONTIME"))))
-           (testing "and query this table should return the column pseudocolumn as well"
-             (is (malli=
-                  [:tuple :int ms/TemporalString]
-                  (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time))))))
-
-           (finally
-            (drop-table-if-exists! table-name))))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk
