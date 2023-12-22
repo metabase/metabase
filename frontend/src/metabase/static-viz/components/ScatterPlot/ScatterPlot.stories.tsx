@@ -42,6 +42,13 @@ MultiMetricSeries.args = {
   renderingContext,
 };
 
+export const MultiDimensionBreakout = Template.bind({});
+MultiDimensionBreakout.args = {
+  rawSeries: data.multiDimensionBreakout as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const PowerXScale = Template.bind({});
 PowerXScale.args = {
   rawSeries: data.powerXScale as any,
