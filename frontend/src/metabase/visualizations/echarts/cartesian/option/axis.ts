@@ -1,5 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
-import moment from "moment-timezone";
 import type { AxisBaseOptionCommon } from "echarts/types/src/coord/axisCommonTypes";
 import type { CartesianAxisOption } from "echarts/types/src/coord/cartesian/AxisModel";
 import type {
@@ -18,8 +16,10 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/option/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/option/style";
 
-import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import { isNumeric } from "metabase-lib/types/utils/isa";
+import {
+  getDimensionDisplayValueGetter,
+  getMetricDisplayValueGetter,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -217,15 +217,16 @@ const getTicksDefaultOption = ({ getColor, fontFamily }: RenderingContext) => {
   };
 };
 
-const getXAxisType = (settings: ComputedVisualizationSettings) => {
+export const getXAxisType = (settings: ComputedVisualizationSettings) => {
   switch (settings["graph.x_axis.scale"]) {
     case "timeseries":
       return "time";
     case "linear":
+    case "pow":
       return "value";
-    // log x-axis is only for scatter plot
     case "log":
       return "log";
+    // ^ pow and log are only for scatter plot
     default:
       return "category";
   }
@@ -261,6 +262,7 @@ export const buildDimensionAxis = (
     formatter,
     renderingContext,
   );
+  const valueGetter = getDimensionDisplayValueGetter(chartModel, settings);
 
   return {
     ...getAxisNameDefaultOption(
@@ -283,20 +285,7 @@ export const buildDimensionAxis = (
       rotate: getRotateAngle(settings),
       ...getTicksDefaultOption(renderingContext),
       // Value is always converted to a string by ECharts
-      formatter: (value: string) => {
-        let valueToFormat: string | number = value;
-
-        if (axisType === "time") {
-          valueToFormat = moment(value).format("YYYY-MM-DDTHH:mm:ss");
-        } else if (isNumeric(chartModel.dimensionModel.column)) {
-          valueToFormat = parseInt(value, 10);
-        }
-
-        const formatted = formatter(valueToFormat);
-
-        // Spaces force having padding between ticks
-        return ` ${formatted} `;
-      },
+      formatter: (value: string) => ` ${formatter(valueGetter(value))} `, // spaces force padding between ticks
     },
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
