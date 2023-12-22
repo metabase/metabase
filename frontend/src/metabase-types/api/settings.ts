@@ -193,6 +193,7 @@ export interface Settings {
   "active-users-count"?: number;
   "admin-email": string;
   "anon-tracking-enabled": boolean;
+  "application-colors": Record<string, string>;
   "application-font": string;
   "application-font-files": FontFile[] | null;
   "application-name": string;

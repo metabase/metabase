@@ -133,6 +133,7 @@ export const createMockSettingDefinition = (
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "admin-email": "admin@metabase.test",
   "anon-tracking-enabled": false,
+  "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
   "application-name": "Metabase",
