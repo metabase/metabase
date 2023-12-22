@@ -66,7 +66,7 @@
                              Card          _     {:collection_id (:id coll)}]
                 (testing "API respects parameters"
                   (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                                :all-collections false :data-model false :settings true)]
+                                                :all_collections false :data_model false :settings true)]
                     (is (= #{:log :dir :settings}
                            (with-open [tar (open-tar f)]
                              (->> (u.compress/entries tar)
@@ -75,7 +75,7 @@
 
                 (testing "We can export just a single collection"
                   (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                                :collection (:id coll) :data-model false :settings false)]
+                                                :collection (:id coll) :data_model false :settings false)]
                     (is (= #{:log :dir :dashboard :card :collection}
                            (tar-types f)))))
 
@@ -87,7 +87,7 @@
                 (testing "On exception API returns log"
                   (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "Just an error" {})))]
                     (let [res   (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
-                                                      :collection (:id coll) :data-model false :settings false)
+                                                      :collection (:id coll) :data_model false :settings false)
                           lines (str/split-lines (slurp (io/input-stream res)))]
                       (testing "First three lines for coll+dash+card, and then error during compression"
                         (is (= #{:collection :dashboard :card}
@@ -109,7 +109,7 @@
                             Card       card  {:collection_id (:id coll)}]
               (let [res    (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
                                                  {:request-options {:as :byte-array}}
-                                                 :collection (:id coll) :data-model false :settings false)
+                                                 :collection (:id coll) :data_model false :settings false)
                     files* (atom [])
                     ;; to avoid closing input stream
                     ba     (#'api.serialization/ba-copy (io/input-stream res))]

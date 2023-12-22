@@ -150,29 +150,30 @@
 
 (api/defendpoint POST "/export"
   "Serialize and retrieve Metabase data."
-  [:as {{:strs [all-collections collection settings data-model field-values database-secrets]
+  [:as {{:strs [all_collections collection settings data_model field_values database_secrets]
          :or   {settings        true
-                data-model      true
-                all-collections true}}
+                data_model      true
+                all_collections true}}
         :query-params}]
   {collection       [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
-   all-collections  [:maybe ms/BooleanValue]
+   all_collections  [:maybe ms/BooleanValue]
    settings         [:maybe ms/BooleanValue]
-   data-model       [:maybe ms/BooleanValue]
-   field-values     [:maybe ms/BooleanValue]
-   database-secrets [:maybe ms/BooleanValue]}
+   data_model       [:maybe ms/BooleanValue]
+   field_values     [:maybe ms/BooleanValue]
+   database_secrets [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (let [collection (cond (vector? collection) collection collection [collection])
-        opts       {:targets                  (mapv #(vector "Collection" %)
-                                                    collection)
-                    :no-collections           (and (empty? collection)
-                                                   (not all-collections))
-                    :no-data-model            (not data-model)
-                    :no-settings              (not settings)
-                    :include-field-values     field-values
-                    :include-database-secrets database-secrets}
-        {:keys [archive log-file callback]}
-        (serialize&pack opts)]
+  (let [collection         (cond (vector? collection) collection collection [collection])
+        opts               {:targets                  (mapv #(vector "Collection" %)
+                                                            collection)
+                            :no-collections           (and (empty? collection)
+                                                           (not all_collections))
+                            :no-data-model            (not data_model)
+                            :no-settings              (not settings)
+                            :include-field-values     field_values
+                            :include-database-secrets database_secrets}
+        {:keys [archive
+                log-file
+                callback]} (serialize&pack opts)]
     (if archive
       {:status  200
        :headers {"Content-Type"        "application/gzip"
