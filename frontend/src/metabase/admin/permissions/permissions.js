@@ -48,6 +48,19 @@ export const loadDataPermissions = createThunkAction(
   () => async () => PermissionsApi.graph(),
 );
 
+export const RESTORE_LOADED_PERMISSIONS =
+  "metabase/admin/permissions/RESTORE_LOADED_PERMISSIONS";
+
+export const restoreLoadedPermissions = createThunkAction(
+  RESTORE_LOADED_PERMISSIONS,
+  () => async (dispatch, getState) => {
+    const state = getState();
+    const groups = state.admin.permissions.originalDataPermissions;
+    const revision = state.admin.permissions.dataPermissionsRevision;
+    dispatch({ type: LOAD_DATA_PERMISSIONS, payload: { groups, revision } });
+  },
+);
+
 export const LOAD_DATA_PERMISSIONS_FOR_GROUP =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
 

@@ -18,7 +18,7 @@ import type Database from "metabase-lib/metadata/Database";
 import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
-  loadDataPermissions,
+  restoreLoadedPermissions,
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
@@ -51,7 +51,7 @@ function DataPermissionsPage({
 
   const dispatch = useDispatch();
 
-  const loadPermissions = () => dispatch(loadDataPermissions());
+  const resetPermissions = () => dispatch(restoreLoadedPermissions());
   const savePermissions = () => dispatch(saveDataPermissions());
 
   const { loading: isLoadingAllUsers } = useAsync(async () => {
@@ -100,7 +100,7 @@ function DataPermissionsPage({
   return (
     <PermissionsPageLayout
       tab="data"
-      onLoad={loadPermissions}
+      onLoad={resetPermissions}
       onSave={savePermissions}
       diff={diff}
       isDirty={isDirty}
