@@ -334,6 +334,12 @@ const buildMetricAxis = (
       },
     },
     position,
+    axisLine: {
+      show: false,
+    },
+    axisTick: {
+      show: false,
+    },
     axisLabel: {
       show: !!settings["graph.y_axis.axis_enabled"],
       ...getTicksDefaultOption(renderingContext),
