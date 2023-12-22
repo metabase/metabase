@@ -112,6 +112,7 @@
 
         (#{:smartscalar
            :scalar
+           :scatter
            :line
            :area
            :bar
