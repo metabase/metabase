@@ -69,6 +69,7 @@ const buildEChartsBarSeries = (
   const barWidth = isHistogram ? `${100 / barSeriesCount - 1}%` : undefined;
 
   return {
+    id: seriesModel.dataKey,
     type: "bar",
     yAxisIndex,
     barGap: 0,
@@ -102,6 +103,7 @@ const buildEChartsLineAreaSeries = (
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
 
   return {
+    id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
     showSymbol: seriesSettings["line.marker_enabled"] !== false,
