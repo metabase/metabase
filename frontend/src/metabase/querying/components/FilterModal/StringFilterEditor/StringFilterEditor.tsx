@@ -66,7 +66,7 @@ export function StringFilterEditor({
   };
 
   return (
-    <Grid grow>
+    <Grid mih="4.5rem" grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
