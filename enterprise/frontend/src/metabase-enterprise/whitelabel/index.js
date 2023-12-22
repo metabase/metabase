@@ -26,6 +26,10 @@ import LogoIcon from "./components/LogoIcon";
 import { updateColors } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import {
+  MetabaseLinksToggleDescription,
+  MetabaseLinksToggleWidget,
+} from "./components/MetabaseLinksToggleWidget";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -115,6 +119,12 @@ if (hasPremiumFeature("whitelabel")) {
           type: "boolean",
           widget: LighthouseToggleWidget,
           defaultValue: true,
+        },
+        {
+          key: "show-metabase-links",
+          display_name: t`Documentation and references`,
+          description: <MetabaseLinksToggleDescription />,
+          widget: MetabaseLinksToggleWidget,
         },
       ],
     },
