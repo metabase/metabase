@@ -1,27 +1,47 @@
-import { useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useState } from "react";
+import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
-import { Group, Menu, Stack, Text } from "metabase/ui";
+import { Button, Menu, Stack, Text } from "metabase/ui";
 import { isEmpty } from "metabase/lib/validate";
-import type { SelectedComparison } from "metabase-types/api";
+import type { SmartScalarComparison } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
-import { PeriodsAgoOptionComponent } from "./PeriodsAgoOptionComponent";
-import { ButtonStyled } from "./SmartScalarSettingsWidgets.styled";
+import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import { MenuItemStyled } from "./MenuItem.styled";
 
 type SmartScalarComparisonWidgetProps = {
-  onChange: (setting: { type: string; value?: number }) => void;
+  onChange: (setting: SmartScalarComparison) => void;
   options: ComparisonMenuOption[];
-  value: SelectedComparison;
+  value: SmartScalarComparison;
 };
 
 export function SmartScalarComparisonWidget({
-  onChange,
+  onChange: onChange,
   options,
   value: selectedValue,
 }: SmartScalarComparisonWidgetProps) {
   const [open, setOpen] = useState(false);
+  const [editedValue, setEditedValue] = useState(selectedValue);
+
+  const handleEditedValueChange: HandleEditedValueChangeType = useCallback(
+    (value: SmartScalarComparison, shouldSubmit: boolean = false) => {
+      setEditedValue(value);
+
+      if (shouldSubmit) {
+        onChange(value);
+        setOpen(false);
+      }
+    },
+    [onChange, setEditedValue, setOpen],
+  );
+
+  const handleClose = useCallback(() => {
+    if (_.isEqual(selectedValue, editedValue)) {
+      return;
+    }
+
+    onChange(editedValue);
+  }, [editedValue, onChange, selectedValue]);
 
   const selectedOption = options.find(
     ({ type }) => type === selectedValue.type,
@@ -35,23 +55,36 @@ export function SmartScalarComparisonWidget({
   const isDisabled = options.length === 1 && !isEmpty(selectedOption);
 
   return (
-    <Menu opened={open} onChange={setOpen} position="bottom-start" shadow="sm">
+    <Menu
+      opened={open}
+      onChange={setOpen}
+      onClose={handleClose}
+      position="bottom-start"
+      shadow="sm"
+      closeOnItemClick={false}
+    >
       <Menu.Target>
-        <ButtonStyled
-          data-testid={"comparisons-widget-button"}
+        <Button
+          data-testid="comparisons-widget-button"
+          styles={{ inner: { justifyContent: "space-between" } }}
+          rightIcon={<Icon name="chevrondown" size="12" />}
+          px="1rem"
+          fullWidth
           disabled={isDisabled}
         >
-          <Group spacing="sm">
-            {selectedDisplayName}
-            <Icon name="chevrondown" size="14" />
-          </Group>
-        </ButtonStyled>
+          {selectedDisplayName}
+        </Button>
       </Menu.Target>
 
       <Menu.Dropdown miw="18.25rem">
         <Stack spacing="sm">
           {options.map(optionArgs =>
-            createMenuOption({ onChange, setOpen, optionArgs, selectedValue }),
+            renderMenuOption({
+              editedValue,
+              optionArgs,
+              onChange: handleEditedValueChange,
+              selectedValue,
+            }),
           )}
         </Stack>
       </Menu.Dropdown>
@@ -59,43 +92,51 @@ export function SmartScalarComparisonWidget({
   );
 }
 
-type CreateMenuOptionProps = {
-  onChange: (setting: { type: string; value?: number }) => void;
+export type HandleEditedValueChangeType = (
+  value: SmartScalarComparison,
+  shouldSubmit?: boolean,
+) => void;
+
+type RenderMenuOptionProps = {
+  editedValue: SmartScalarComparison;
+  onChange: HandleEditedValueChangeType;
   optionArgs: ComparisonMenuOption;
-  selectedValue: SelectedComparison;
-  setOpen: Dispatch<SetStateAction<boolean>>;
+  selectedValue: SmartScalarComparison;
 };
 
-function createMenuOption({
+function renderMenuOption({
+  editedValue,
   onChange,
   optionArgs,
-  setOpen,
   selectedValue,
-}: CreateMenuOptionProps) {
+}: RenderMenuOptionProps) {
   const { type, name } = optionArgs;
 
   if (type === COMPARISON_TYPES.PERIODS_AGO) {
     const { maxValue } = optionArgs;
 
     return (
-      <PeriodsAgoOptionComponent
+      <PeriodsAgoMenuOption
         key={type}
-        isSelected={selectedValue.type === type}
+        aria-selected={selectedValue.type === type}
         type={type}
         name={name}
         onChange={onChange}
-        setOpen={setOpen}
         maxValue={maxValue}
-        selectedValue={selectedValue.type === type ? selectedValue : undefined}
+        editedValue={editedValue.type === type ? editedValue : undefined}
       />
     );
   }
 
+  const handleSimpleMenuItemClick = () => {
+    onChange({ type }, true);
+  };
+
   return (
     <MenuItemStyled
       key={type}
-      isSelected={selectedValue.type === type}
-      onClick={() => onChange({ type })}
+      aria-selected={selectedValue.type === type}
+      onClick={handleSimpleMenuItemClick}
     >
       <Text fw="bold" ml="0.5rem">
         {name}

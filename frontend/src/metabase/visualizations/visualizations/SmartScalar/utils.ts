@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
+import _ from "underscore";
 
 import type {
   DatasetColumn,
@@ -212,7 +213,12 @@ function getMaxPeriodsAgo({
     return null;
   }
 
-  const latestNonEmptyRow = rows.findLast(row => !isEmpty(row[dimensionIndex]));
+  const latestNonEmptyRowIndex = _.findLastIndex(
+    rows,
+    row => !isEmpty(row[dimensionIndex]),
+  );
+  const latestNonEmptyRow =
+    latestNonEmptyRowIndex !== -1 ? rows[latestNonEmptyRowIndex] : undefined;
   const earliestNonEmptyRow = rows.find(row => !isEmpty(row[dimensionIndex]));
 
   if (latestNonEmptyRow === undefined || earliestNonEmptyRow === undefined) {

@@ -1,15 +1,12 @@
 import styled from "@emotion/styled";
-import type { MouseEvent } from "react";
+import type { HTMLAttributes } from "react";
+import type { MenuItemProps } from "metabase/ui";
 import { Menu } from "metabase/ui";
 
-type MenuItemProps = {
-  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
-  isSelected?: boolean;
-  py?: string;
-};
+type MenuItemStyledProps = MenuItemProps & HTMLAttributes<HTMLButtonElement>;
 
-export const MenuItemStyled = styled(Menu.Item)<MenuItemProps>`
-  ${({ theme, isSelected }) =>
+export const MenuItemStyled = styled(Menu.Item)<MenuItemStyledProps>`
+  ${({ theme, "aria-selected": isSelected }) =>
     isSelected &&
     `
     color: ${theme.colors.brand[1]};

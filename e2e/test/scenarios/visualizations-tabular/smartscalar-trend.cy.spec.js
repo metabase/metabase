@@ -74,16 +74,16 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       .click();
     menu().within(() => {
       // should clamp over input to maxPeriodsAgo
-      cy.get("input").click().type("100{enter}");
+      cy.get("input").click().type("100");
       cy.get("input").should("have.value", 48);
 
       // should clamp under input to 2
-      cy.get("input").click().type("-45{enter}");
+      cy.get("input").click().type("0");
       cy.get("input").should("have.value", 2);
 
-      // should not allow invalid input
-      cy.get("input").click().type("3.90293{enter}");
-      cy.get("input").should("have.value", 2);
+      // should not allow invalid input and floor to round the number
+      cy.get("input").click().type("4.9");
+      cy.get("input").should("have.value", 4);
 
       // should allow valid input
       cy.get("input").click().type("3{enter}");
