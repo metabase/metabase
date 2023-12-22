@@ -34,6 +34,8 @@ import {
 
 export function CartesianChart({
   rawSeries,
+  series: transformedSeries,
+  isPlaceholder,
   settings,
   card,
   fontFamily,
@@ -49,8 +51,14 @@ export function CartesianChart({
   onVisualizationClick,
   onChangeCardAndRun,
 }: VisualizationProps) {
+  const seriesToRender = useMemo(
+    () => (isPlaceholder ? transformedSeries : rawSeries),
+    [isPlaceholder, rawSeries, transformedSeries],
+  );
+
   const isBrushing = useRef<boolean>();
   const chartRef = useRef<EChartsType>();
+
   const hasTitle = showTitle && settings["card.title"];
   const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
@@ -66,8 +74,8 @@ export function CartesianChart({
   );
 
   const chartModel = useMemo(
-    () => getCartesianChartModel(rawSeries, settings, renderingContext),
-    [rawSeries, renderingContext, settings],
+    () => getCartesianChartModel(seriesToRender, settings, renderingContext),
+    [seriesToRender, renderingContext, settings],
   );
 
   const legendItems = useMemo(() => getLegendItems(chartModel), [chartModel]);
@@ -135,7 +143,6 @@ export function CartesianChart({
             settings,
             index: seriesIndex,
             datumIndex: dataIndex,
-            seriesId,
             event: event.event.event,
             element: dataIndex != null ? event.event.event.target : null,
             data,
@@ -334,7 +341,7 @@ export function CartesianChart({
   const canSelectTitle = !!onChangeCardAndRun;
 
   return (
-    <CartesianChartRoot>
+    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
         <LegendCaption
           title={title}
