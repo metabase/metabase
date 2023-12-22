@@ -18,17 +18,16 @@ export const PublicEmbedIcon = ({ disabled }: PublicEmbedIconProps) => (
       width="37.5"
       height="29.5"
       rx="2.75"
-      className="outerFill"
+      stroke="currentColor"
       strokeWidth="2.5"
     />
     <path
-      opacity="0.5"
       d="M6 11C6 10.4477 6.44772 10 7 10H33C33.5523 10 34 10.4477 34 11V18C34 18.5523 33.5523 19 33 19H7C6.44772 19 6 18.5523 6 18V11Z"
       className="innerFill"
       strokeWidth="2"
     />
-    <rect x="5" y="5" width="30" height="2" className="outerFill" />
-    <rect x="5" y="22" width="30" height="2" className="outerFill" />
-    <rect x="5" y="26" width="30" height="2" className="outerFill" />
+    <rect x="5" y="5" width="30" height="2" fill="currentColor" />
+    <rect x="5" y="22" width="30" height="2" fill="currentColor" />
+    <rect x="5" y="26" width="30" height="2" fill="currentColor" />
   </PublicEmbedIconRoot>
 );
