@@ -1,3 +1,4 @@
+import _ from "underscore";
 import type {
   CartesianChartModel,
   DataKey,
@@ -6,6 +7,11 @@ import type { CardId } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getObjectEntries } from "metabase/lib/objects";
 import type { ClickObjectDimension } from "metabase-lib";
+import type {
+  ComputedVisualizationSettings,
+  TooltipRowModel,
+} from "metabase/visualizations/types";
+import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -92,4 +98,56 @@ export const getEventColumnsData = (
   }
 
   return eventData;
+};
+
+export const getStackedTooltipModel = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesIndex: number,
+  dataIndex: number,
+) => {
+  const column = chartModel.leftAxisColumn ?? chartModel.rightAxisColumn;
+
+  const formatter = (value: unknown) =>
+    String(
+      formatValueForTooltip({
+        value,
+        settings,
+        column,
+      }),
+    );
+
+  const rows: TooltipRowModel[] = chartModel.seriesModels.map(seriesModel => {
+    return {
+      name: seriesModel.name,
+      color: seriesModel.color,
+      value: chartModel.dataset[dataIndex][seriesModel.dataKey],
+      formatter,
+    };
+  });
+
+  const [headerRows, bodyRows] = _.partition(
+    rows,
+    (_row, index) => index === seriesIndex,
+  );
+
+  const dimensionValue =
+    chartModel.dataset[dataIndex][chartModel.dimensionModel.dataKey];
+
+  const headerTitle = String(
+    formatValueForTooltip({
+      value: dimensionValue,
+      column: chartModel.dimensionModel.column,
+      settings,
+    }),
+  );
+
+  return {
+    headerTitle,
+    headerRows,
+    bodyRows,
+    totalFormatter: formatter,
+    showTotal: true,
+    showPercentages: true,
+  };
 };
