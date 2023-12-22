@@ -15,17 +15,23 @@ export function getScatterPlotDataset(
       card,
       data: { rows, cols },
     } = cardSeries;
-    // will be used for breakouts later
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const columnDescs = cardsColumns[index];
 
     rows.forEach(row => {
       const datum: Record<DataKey, RowValue> = {};
 
       cols.forEach((column, columnIndex) => {
-        datum[getDatasetKey(column, card.id)] = row[columnIndex];
+        const rowValue = row[columnIndex];
 
-        // TODO handle breakouts
+        const dimensionIndex = columnDescs.dimension.index;
+        const breakoutIndex =
+          "breakout" in columnDescs ? columnDescs.breakout.index : undefined;
+
+        if (columnIndex === dimensionIndex || breakoutIndex === undefined) {
+          datum[getDatasetKey(column, card.id)] = rowValue;
+        } else {
+          datum[getDatasetKey(column, card.id, row[breakoutIndex])] = rowValue;
+        }
       });
 
       dataset.push(datum);
