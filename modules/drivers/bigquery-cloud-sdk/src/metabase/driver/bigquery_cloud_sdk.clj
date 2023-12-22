@@ -209,6 +209,11 @@
                  :database-type        "TIMESTAMP"
                  :base-type            (bigquery-type->base-type nil "TIMESTAMP")
                  :database-position    (count fields)
+                 :database-partitioned true}
+                {:name                 "_PARTITIONDATE"
+                 :database-type        "DATE"
+                 :base-type            (bigquery-type->base-type nil "DATE")
+                 :database-position    (inc (count fields))
                  :database-partitioned true}))}))
 
 (defn- get-field-parsers [^Schema schema]
