@@ -20,10 +20,17 @@ import LegendCaption from "metabase/visualizations/components/legend/LegendCapti
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
+  canBrush,
   getEventColumnsData,
   getEventDimensionsData,
   getStackedTooltipModel,
 } from "metabase/visualizations/visualizations/CartesianChart/utils";
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import Question from "metabase-lib/Question";
+import {
+  updateDateTimeFilter,
+  updateNumericFilter,
+} from "metabase-lib/queries/utils/actions";
 
 export function CartesianChart({
   rawSeries,
@@ -42,6 +49,7 @@ export function CartesianChart({
   onVisualizationClick,
   onChangeCardAndRun,
 }: VisualizationProps) {
+  const isBrushing = useRef<boolean>();
   const chartRef = useRef<EChartsType>();
   const hasTitle = showTitle && settings["card.title"];
   const title = settings["card.title"] || card.name;
@@ -92,6 +100,10 @@ export function CartesianChart({
         eventName: "mousemove",
         query: "series",
         handler: event => {
+          if (isBrushing.current) {
+            return;
+          }
+
           const { dataIndex, seriesId } = event;
           const seriesIndex = chartModel.seriesModels.findIndex(
             seriesModel => seriesModel.dataKey === seriesId,
@@ -168,54 +180,119 @@ export function CartesianChart({
           onVisualizationClick?.(clickData);
         },
       },
+      {
+        eventName: "brush",
+        handler: () => {
+          isBrushing.current = true;
+        },
+      },
+      {
+        eventName: "brushEnd",
+        handler: event => {
+          isBrushing.current = false;
+          const range = event.areas[0].coordRange;
+          const isTimeSeries = dimensionIsTimeseries(
+            rawSeries[0].data,
+            chartModel.dimensionModel.columnIndex,
+          );
+
+          if (range) {
+            const column = chartModel.dimensionModel.column;
+            const card = rawSeries[0].card;
+            const query = new Question(card).query();
+            const [start, end] = range;
+            if (isTimeSeries) {
+              onChangeCardAndRun({
+                nextCard: updateDateTimeFilter(query, column, start, end)
+                  .question()
+                  .card(),
+                previousCard: card,
+              });
+            } else {
+              onChangeCardAndRun({
+                nextCard: updateNumericFilter(query, column, start, end)
+                  .question()
+                  .card(),
+                previousCard: card,
+              });
+            }
+          }
+        },
+      },
     ],
     [
       chartModel,
+      onChangeCardAndRun,
       onHoverChange,
       onVisualizationClick,
       openQuestion,
+      rawSeries,
       settings,
       visualizationIsClickable,
     ],
   );
 
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) {
-      return;
-    }
+  useEffect(
+    function handleHoverStates() {
+      const chart = chartRef.current;
+      if (!chart) {
+        return;
+      }
 
-    if (hovered?.index == null) {
-      return;
-    }
+      if (hovered?.index == null) {
+        return;
+      }
 
-    const { datumIndex, index } = hovered;
-    const seriesId = chartModel.seriesModels[index].dataKey;
+      const { datumIndex, index } = hovered;
+      const seriesId = chartModel.seriesModels[index].dataKey;
 
-    // ECharts series contain goal line, trend lines, and timeline events so the series index
-    // is different from one in chartModel.seriesModels
-    const eChartsSeriesIndex = (option?.series as LineSeriesOption[]).findIndex(
-      series => series.id === seriesId,
-    );
+      // ECharts series contain goal line, trend lines, and timeline events so the series index
+      // is different from one in chartModel.seriesModels
+      const eChartsSeriesIndex = (
+        option?.series as LineSeriesOption[]
+      ).findIndex(series => series.id === seriesId);
 
-    chart.dispatchAction({
-      type: "highlight",
-      dataIndex: datumIndex,
-      seriesIndex: eChartsSeriesIndex,
-    });
-
-    return () => {
       chart.dispatchAction({
-        type: "downplay",
+        type: "highlight",
         dataIndex: datumIndex,
         seriesIndex: eChartsSeriesIndex,
       });
-    };
-  }, [chartModel.seriesModels, hovered, option?.series]);
+
+      return () => {
+        chart.dispatchAction({
+          type: "downplay",
+          dataIndex: datumIndex,
+          seriesIndex: eChartsSeriesIndex,
+        });
+      };
+    },
+    [chartModel.seriesModels, hovered, option?.series],
+  );
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
   }, []);
+
+  // In order to keep brushing always enabled we have to re-enable it on every model change
+  useEffect(
+    function enableBrushing() {
+      if (!canBrush(rawSeries, settings, onChangeCardAndRun)) {
+        return;
+      }
+
+      setTimeout(() => {
+        chartRef.current?.dispatchAction({
+          type: "takeGlobalCursor",
+          key: "brush",
+          brushOption: {
+            brushType: "lineX",
+            brushMode: "single",
+          },
+        });
+      }, 0);
+    },
+    [onChangeCardAndRun, option, rawSeries, settings],
+  );
 
   const handleSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {
