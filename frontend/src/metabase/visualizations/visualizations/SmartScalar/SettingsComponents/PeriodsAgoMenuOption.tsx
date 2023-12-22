@@ -38,7 +38,7 @@ export function PeriodsAgoMenuOption({
   }, [selectInput]);
 
   const value = editedValue?.value ?? MIN_VALUE;
-  const validateInput = useCallback(
+  const handleInputChange = useCallback(
     (value: number) => {
       if (value < 1) {
         onChange({ type, value: MIN_VALUE });
@@ -87,7 +87,7 @@ export function PeriodsAgoMenuOption({
           <NumberInputStyled
             ref={inputRef}
             value={value}
-            onChange={(value: number) => validateInput(value)}
+            onChange={(value: number) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
             size="xs"
