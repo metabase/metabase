@@ -458,7 +458,7 @@
 
 (deftest add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
-    (impl/test-migrations ["v48.00-007" "v48.00-009"] [migrate!]
+    (impl/test-migrations ["v48.00-007"] [migrate!]
       (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
             old              (t/minus (t/local-date-time) (t/hours 1))
             rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
