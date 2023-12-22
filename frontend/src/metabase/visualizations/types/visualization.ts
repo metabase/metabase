@@ -86,6 +86,7 @@ export interface VisualizationProps {
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
   onDeselectTimelineEvents?: () => void;
+  onOpenTimelines?: () => void;
 
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
