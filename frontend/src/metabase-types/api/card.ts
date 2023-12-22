@@ -129,7 +129,14 @@ export type VisualizationSettings = {
 
   // X-axis
   "graph.x_axis.title_text"?: string;
-  "graph.x_axis.scale"?: "ordinal" | "timeseries" | "linear" | "histogram";
+  "graph.x_axis.scale"?:
+    | "ordinal"
+    | "timeseries"
+    | "linear"
+    | "histogram"
+    // for scatter plot
+    | "log"
+    | "pow";
   "graph.x_axis.axis_enabled"?:
     | true
     | false
