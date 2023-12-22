@@ -230,7 +230,7 @@
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
-        request-map #p (build-request-map credentials http-body request-options)
+        request-map (build-request-map credentials http-body request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))

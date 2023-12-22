@@ -118,15 +118,14 @@
                 data_model      true
                 all_collections true}}
         :query-params}]
-  {collection       [:maybe [:or ms/PositiveInt [:sequential ms/PositiveInt]]]
+  {collection       [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
    all_collections  [:maybe ms/BooleanValue]
    settings         [:maybe ms/BooleanValue]
    data_model       [:maybe ms/BooleanValue]
    field_values     [:maybe ms/BooleanValue]
    database_secrets [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (let [collection         (cond (vector? collection) collection collection [collection])
-        opts               {:targets                  (mapv #(vector "Collection" %)
+  (let [opts               {:targets                  (mapv #(vector "Collection" %)
                                                             collection)
                             :no-collections           (and (empty? collection)
                                                            (not all_collections))
