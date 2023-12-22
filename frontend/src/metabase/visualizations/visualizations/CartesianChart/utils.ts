@@ -3,15 +3,21 @@ import type {
   CartesianChartModel,
   DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { CardId } from "metabase-types/api";
+import type { CardId, RawSeries } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getObjectEntries } from "metabase/lib/objects";
 import type { ClickObjectDimension } from "metabase-lib";
 import type {
   ComputedVisualizationSettings,
+  OnChangeCardAndRun,
   TooltipRowModel,
 } from "metabase/visualizations/types";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
+import {
+  hasClickBehavior,
+  isRemappedToString,
+} from "metabase/visualizations/lib/renderer_utils";
+import { isStructured } from "metabase-lib/queries/utils/card";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -150,4 +156,24 @@ export const getStackedTooltipModel = (
     showTotal: true,
     showPercentages: true,
   };
+};
+
+export const canBrush = (
+  series: RawSeries,
+  settings: ComputedVisualizationSettings,
+  onChangeCardAndRun?: OnChangeCardAndRun,
+) => {
+  const hasCombinedCards = series.length > 1;
+  const hasBrushableDimension =
+    settings["graph.x_axis.scale"] != null &&
+    !["ordinal", "histogram"].includes(settings["graph.x_axis.scale"]);
+
+  return (
+    !!onChangeCardAndRun &&
+    hasBrushableDimension &&
+    !hasCombinedCards &&
+    isStructured(series[0].card) &&
+    !isRemappedToString(series) &&
+    !hasClickBehavior(series)
+  );
 };
