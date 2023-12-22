@@ -758,7 +758,12 @@
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
-          (sql-jdbc.execute/do-with-connection-with-options driver db-id nil (fn [conn] (jdbc/execute! conn sql))))
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           db-id
+           nil
+           (fn [conn]
+             (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
 
