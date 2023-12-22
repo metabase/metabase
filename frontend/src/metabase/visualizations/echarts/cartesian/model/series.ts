@@ -37,7 +37,7 @@ export const getSeriesVizSettingsKey = (
   }
   // When multiple cards are combined on a dashboard, all cards
   // except the first include the card name in the viz settings key.
-  const prefix = isFirstCard && cardName == null ? `${cardName}: ` : "";
+  const prefix = isFirstCard || cardName == null ? "" : `${cardName}: `;
   return prefix + columnNameOrFormattedBreakoutValue;
 };
 
