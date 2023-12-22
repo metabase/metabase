@@ -115,6 +115,12 @@
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
 
+(defn- table-is-partitioned?
+  [^StandardTableDefinition tabledef]
+  (when (#{TableDefinition$Type/TABLE TableDefinition$Type/MATERIALIZED_VIEW} (.getType tabledef))
+    (or (.getRangePartitioning tabledef)
+        (.getTimePartitioning tabledef))))
+
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
   (let [tables (list-tables (:details database))]
@@ -133,8 +139,7 @@
                        ;; thus we can't know whether the view require a filter or not.
                        ;; Maybe this is something we can do once we can parse sql
                        (= TableDefinition$Type/TABLE (. tabledef getType))
-                       (when (or (.getRangePartitioning tabledef)
-                                 (.getTimePartitioning tabledef))
+                       (when (table-is-partitioned? tabledef)
                          ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
                          ;; on the `table` object from `list-tables` will return `nil` even though the table requires
                          ;; a partition filter.
@@ -182,11 +187,12 @@
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
   (let [table                  (get-table database dataset-id table-name)
-        tabledef               (.getDefinition table)
+        ^StandardTableDefinition tabledef (.getDefinition table)
+        is-partitioned?        (table-is-partitioned? tabledef)
         ;; a table can only have one partitioned field
-        partitioned-field-name (some-> (or (.getTimePartitioning tabledef)
-                                           (.getRangePartitioning tabledef))
-                                       .getField)
+        partitioned-field-name (when is-partitioned?
+                                 (or (some-> (.getRangePartitioning tabledef) .getField)
+                                     (some-> (.getTimePartitioning tabledef) .getField)))
         fields                 (set
                                 (map
                                  #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
@@ -197,7 +203,8 @@
                ;; if table has time partition but no field is specified as partitioned
                ;; meaning this table is partitioned by ingestion time
                ;; so we manually sync this pseudo-column
-               (and (some? (.getTimePartitioning tabledef))
+               (and is-partitioned?
+                    (some? (.getTimePartitioning tabledef))
                     (nil? partitioned-field-name))
                (conj
                 {:name                 partitioned-time-field-name

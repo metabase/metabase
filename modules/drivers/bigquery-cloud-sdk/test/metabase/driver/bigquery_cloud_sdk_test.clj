@@ -236,9 +236,9 @@
           "`describe-database` should see the view")
       (is (= {:schema test-db-name
               :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
-                        {:name "venue_name", :database-type "STRING", :base-type :type/Text, :database-position 1}
-                        {:name "category_name", :database-type "STRING", :base-type :type/Text, :database-position 2}}}
+              :fields #{{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
+                        {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false}
+                        {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false}}}
              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema test-db-name}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
@@ -454,17 +454,27 @@
           "`describe-database` should see the table")
       (is (= {:schema test-db-name
               :name   tbl-nm
-              :fields #{{:name "numeric_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 0}
-                        {:name "decimal_col", :database-type "NUMERIC", :base-type :type/Decimal, :database-position 1}
+              :fields #{{:name "numeric_col"
+                         :database-type "NUMERIC"
+                         :base-type :type/Decimal
+                         :database-position 0
+                         :database-partitioned false}
+                        {:name "decimal_col"
+                         :database-type "NUMERIC"
+                         :base-type :type/Decimal
+                         :database-position 1
+                         :database-partitioned false}
                         {:name "bignumeric_col"
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 2}
+                        :database-partitioned false
                         {:name "bigdecimal_col"
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
-                         :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
+                         :database-position 3
+                         :database-partitioned false}}}
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
