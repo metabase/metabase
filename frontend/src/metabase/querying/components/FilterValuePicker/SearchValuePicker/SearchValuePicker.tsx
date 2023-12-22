@@ -54,6 +54,7 @@ export function SearchValuePicker({
     }
   };
 
+  const isSearched = searchQuery.length > 0 && !loading;
   useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
@@ -62,7 +63,7 @@ export function SearchValuePicker({
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      nothingFound={searchQuery && !loading ? nothingFound : null}
+      nothingFound={isSearched ? nothingFound : null}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
