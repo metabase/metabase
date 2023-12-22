@@ -53,8 +53,10 @@ const createLegacySeriesObjectKey = (
   },
 });
 
-const getBreakoutDistinctValues = (data: DatasetData, breakoutIndex: number) =>
-  Array.from(new Set<RowValue>(data.rows.map(row => row[breakoutIndex])));
+export const getBreakoutDistinctValues = (
+  data: DatasetData,
+  breakoutIndex: number,
+) => Array.from(new Set<RowValue>(data.rows.map(row => row[breakoutIndex])));
 
 const getDefaultSeriesName = (
   columnDisplayNameOrFormattedBreakoutValue: string,
