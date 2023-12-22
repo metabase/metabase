@@ -1,0 +1,396 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 152,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1410, null],
+          "effective_type": "type/BigInteger",
+          "id": 1410,
+          "visibility_type": "normal",
+          "display_name": "ID",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1412, null],
+          "effective_type": "type/BigInteger",
+          "id": 1412,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": { "distinct-count": 11, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 3.75,
+                "q3": 20,
+                "max": 29,
+                "sd": 9.959919678390985,
+                "avg": 12
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "y",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1411, null],
+          "effective_type": "type/BigInteger",
+          "id": 1411,
+          "visibility_type": "normal",
+          "display_name": "Y",
+          "fingerprint": {
+            "global": { "distinct-count": 11, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 5,
+                "q1": 32.5,
+                "q3": 196.25,
+                "max": 301,
+                "sd": 103.0944844658177,
+                "avg": 116.54545454545455
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "size",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1409, null],
+          "effective_type": "type/BigInteger",
+          "id": 1409,
+          "visibility_type": "normal",
+          "display_name": "Size",
+          "fingerprint": {
+            "global": { "distinct-count": 10, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 8.25,
+                "q3": 30.679226985969382,
+                "max": 51,
+                "sd": 15.819435686981551,
+                "avg": 22.363636363636363
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 16,
+      "query_type": "query",
+      "name": "Line Linear X Scale - Scatter Example",
+      "creator_id": 1,
+      "updated_at": "2023-12-13T23:35:10.018291Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "database": 2,
+        "query": { "source-table": "card__94" }
+      },
+      "id": 151,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "line",
+      "entity_id": "_PLyllCkjrJjarnj-bWBC",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["y"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-13T23:35:10.018291Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1410, null],
+            "effective_type": "type/BigInteger",
+            "id": 1410,
+            "visibility_type": "normal",
+            "display_name": "ID",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "x",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1412, null],
+            "effective_type": "type/BigInteger",
+            "id": 1412,
+            "visibility_type": "normal",
+            "display_name": "X",
+            "fingerprint": {
+              "global": { "distinct-count": 11, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 3.75,
+                  "q3": 20,
+                  "max": 29,
+                  "sd": 9.959919678390985,
+                  "avg": 12
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "y",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1411, null],
+            "effective_type": "type/BigInteger",
+            "id": 1411,
+            "visibility_type": "normal",
+            "display_name": "Y",
+            "fingerprint": {
+              "global": { "distinct-count": 11, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 5,
+                  "q1": 32.5,
+                  "q3": 196.25,
+                  "max": 301,
+                  "sd": 103.0944844658177,
+                  "avg": 116.54545454545455
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "size",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1409, null],
+            "effective_type": "type/BigInteger",
+            "id": 1409,
+            "visibility_type": "normal",
+            "display_name": "Size",
+            "fingerprint": {
+              "global": { "distinct-count": 10, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 8.25,
+                  "q3": 30.679226985969382,
+                  "max": 51,
+                  "sd": 15.819435686981551,
+                  "avg": 22.363636363636363
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "rows": [
+        [1, 0, 5, 1],
+        [2, 1, 26, 7],
+        [3, 10, 99, 20],
+        [4, 3, 27, 3],
+        [5, 6, 49, 12],
+        [6, 13, 95, 29],
+        [7, 8, 72, 29],
+        [8, 14, 110, 25],
+        [9, 29, 301, 51],
+        [10, 22, 225, 27],
+        [11, 26, 273, 42]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 152,
+          "coercion_strategy": null,
+          "name": "id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1410, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1410,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "ID",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 152,
+          "coercion_strategy": null,
+          "name": "x",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1412, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1412,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "X",
+          "fingerprint": {
+            "global": { "distinct-count": 11, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 3.75,
+                "q3": 20,
+                "max": 29,
+                "sd": 9.959919678390985,
+                "avg": 12
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 152,
+          "coercion_strategy": null,
+          "name": "y",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1411, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1411,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Y",
+          "fingerprint": {
+            "global": { "distinct-count": 11, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 5,
+                "q1": 32.5,
+                "q3": 196.25,
+                "max": 301,
+                "sd": 103.0944844658177,
+                "avg": 116.54545454545455
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 152,
+          "coercion_strategy": null,
+          "name": "size",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1409, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1409,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Size",
+          "fingerprint": {
+            "global": { "distinct-count": 10, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 8.25,
+                "q3": 30.679226985969382,
+                "max": 51,
+                "sd": 15.819435686981551,
+                "avg": 22.363636363636363
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "graph.dimensions": ["x"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["y"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1410}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1412}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1411}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1409}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"id\" AS \"id\", \"source\".\"x\" AS \"x\", \"source\".\"y\" AS \"y\", \"source\".\"size\" AS \"size\" FROM (SELECT \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"x\" AS \"x\", \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"y\" AS \"y\", \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\".\"size\" AS \"size\" FROM \"csv_upload_data\".\"csv_upload_scatter_example_20231130125650\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]
