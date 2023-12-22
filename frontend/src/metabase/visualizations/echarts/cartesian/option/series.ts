@@ -12,6 +12,8 @@ import type {
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
+
+import { buildEChartsScatterSeries } from "../scatter/series";
 import { getSeriesYAxisIndex } from "./utils";
 
 const buildEChartsLabelOptions = (
@@ -127,7 +129,11 @@ export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): (RegisteredSeriesOption["line"] | RegisteredSeriesOption["bar"])[] => {
+): (
+  | RegisteredSeriesOption["line"]
+  | RegisteredSeriesOption["bar"]
+  | RegisteredSeriesOption["scatter"]
+)[] => {
   const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
     (acc, seriesModel) => {
       acc[seriesModel.dataKey] = settings.series(
@@ -166,6 +172,13 @@ export const buildEChartsSeries = (
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
             barSeriesCount,
+            renderingContext,
+          );
+        case "scatter":
+          return buildEChartsScatterSeries(
+            seriesModel,
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
             renderingContext,
           );
       }
