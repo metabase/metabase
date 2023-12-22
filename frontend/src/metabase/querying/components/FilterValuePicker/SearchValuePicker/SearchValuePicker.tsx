@@ -31,7 +31,7 @@ export function SearchValuePicker({
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
 
-  const { value: fieldValues = initialFieldValues } = useAsync(
+  const { value: fieldValues = initialFieldValues, loading } = useAsync(
     () => getSearchValues(fieldId, searchFieldId, searchQuery),
     [fieldId, searchFieldId, searchQuery],
   );
@@ -62,7 +62,7 @@ export function SearchValuePicker({
       value={selectedValues}
       searchValue={searchValue}
       placeholder={placeholder}
-      nothingFound={nothingFound}
+      nothingFound={searchQuery && !loading ? nothingFound : null}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
