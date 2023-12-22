@@ -316,6 +316,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       getNotebookStep("expression").contains("Example").should("exist");
 
       visualize(() => {
+        cy.wait(1000);
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Example");
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
