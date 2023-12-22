@@ -182,7 +182,10 @@
        :base-type         (bigquery-type->base-type f-mode type-name)
        :database-position idx})))
 
-(def ^:private partitioned-time-field-name "_PARTITIONTIME")
+(def ^:private partitioned-time-field-name
+  "The name of pseudo-column for tables that are partitioned by ingestion time.
+  See https://cloud.google.com/bigquery/docs/partitioned-tables#ingestion_time"
+  "_PARTITIONTIME")
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
@@ -264,9 +267,9 @@
                (rff {:cols fields})
                (-> rows .iterateAll .iterator iterator-seq))))
 
-(defn- time-ingestion-partitioned-table?
+(defn- ingestion-time-partitioned-table?
   [table-id]
-  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name))
+  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
@@ -278,8 +281,10 @@
                ;; to make sure we don't break existing instances.
                TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
              (.. bq-table getDefinition getType))
-            (time-ingestion-partitioned-table? (:id table)))
-      (do (log/debugf "%s.%s is a view or time ingestion partitioned, so we cannot use the list API; falling back to regular query"
+            ;; if the table is partitioned by ingestion time, using .list or .listTableData won't return values for this
+            ;; the _PARTITIONTIME field, so we need to fall back to using sql
+            (ingestion-time-partitioned-table? (:id table)))
+      (do (log/debugf "%s.%s is a view or a table partitioned by ingestion time, so we cannot use the list API; falling back to regular query"
                       dataset-id table-name)
           ((get-method driver/table-rows-sample :sql-jdbc) driver table fields rff opts))
       (sample-table bq-table fields rff))))
