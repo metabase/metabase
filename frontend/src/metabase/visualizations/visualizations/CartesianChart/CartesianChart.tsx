@@ -21,17 +21,18 @@ import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
   canBrush,
-  getEventColumnsData,
-  getEventDimensionsData,
-  getStackedTooltipModel,
-} from "metabase/visualizations/visualizations/CartesianChart/utils";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+  getBrushData,
+  getSeriesClickData,
+  getSeriesHoverData,
+  getTimelineEventsForEvent,
+  getTimelineEventsHoverData,
+  hasSelectedTimelineEvents,
+} from "metabase/visualizations/visualizations/CartesianChart/events";
 import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
-import Question from "metabase-lib/Question";
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase-lib/queries/utils/actions";
+import type {
+  EChartsSeriesBrushEndEvent,
+  EChartsSeriesMouseEvent,
+} from "metabase/visualizations/echarts/types";
 
 export function CartesianChart({
   rawSeries,
@@ -50,9 +51,12 @@ export function CartesianChart({
   selectedTimelineEventIds = [],
   hovered,
   visualizationIsClickable,
+  onChangeCardAndRun,
   onHoverChange,
   onVisualizationClick,
-  onChangeCardAndRun,
+  onSelectTimelineEvents,
+  onDeselectTimelineEvents,
+  onOpenTimelines,
 }: VisualizationProps) {
   const seriesToRender = useMemo(
     () => (isPlaceholder ? transformedSeries : rawSeries),
@@ -135,78 +139,54 @@ export function CartesianChart({
       {
         eventName: "mousemove",
         query: "series",
-        handler: event => {
+        handler: (event: EChartsSeriesMouseEvent) => {
           if (isBrushing.current) {
             return;
           }
 
-          const { dataIndex, seriesId } = event;
-          const seriesIndex = chartModel.seriesModels.findIndex(
-            seriesModel => seriesModel.dataKey === seriesId,
-          );
+          if (timelineEventsModel && event.name === "timeline-event") {
+            const eventData = getTimelineEventsHoverData(
+              timelineEventsModel,
+              event,
+            );
 
-          if (seriesIndex < 0) {
+            onHoverChange?.(eventData);
             return;
           }
 
-          const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-
-          // TODO: For some reason ECharts sometimes trigger series mouse move element with the root SVG as target
-          // Find a better fix
-          if (event.event.event.target.nodeName === "svg") {
-            return;
-          }
-
-          const isStackedChart = settings["stackable.stack_type"] != null;
-          const stackedTooltipModel = isStackedChart
-            ? getStackedTooltipModel(
-                chartModel,
-                settings,
-                seriesIndex,
-                dataIndex,
-              )
-            : undefined;
-
-          onHoverChange?.({
-            settings,
-            index: seriesIndex,
-            datumIndex: dataIndex,
-            event: event.event.event,
-            element: dataIndex != null ? event.event.event.target : null,
-            data,
-            stackedTooltipModel,
-          });
+          onHoverChange?.(getSeriesHoverData(chartModel, settings, event));
         },
       },
       {
         eventName: "click",
-        handler: event => {
-          const { seriesId, dataIndex } = event;
-          const seriesIndex = chartModel.seriesModels.findIndex(
-            seriesModel => seriesModel.dataKey === seriesId,
-          );
-          if (seriesIndex < 0) {
+        handler: (event: EChartsSeriesMouseEvent) => {
+          const clickData = getSeriesClickData(chartModel, settings, event);
+
+          if (timelineEventsModel && event.name === "timeline-event") {
+            onOpenTimelines?.();
+
+            const clickedTimelineEvents = getTimelineEventsForEvent(
+              timelineEventsModel,
+              event,
+            );
+
+            if (!clickedTimelineEvents) {
+              return;
+            }
+
+            if (
+              hasSelectedTimelineEvents(
+                clickedTimelineEvents,
+                selectedTimelineEventIds,
+              )
+            ) {
+              onDeselectTimelineEvents?.();
+              return;
+            }
+
+            onSelectTimelineEvents?.(clickedTimelineEvents);
             return;
           }
-
-          const datum = chartModel.dataset[dataIndex];
-
-          const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-          const dimensions = getEventDimensionsData(
-            chartModel,
-            seriesIndex,
-            dataIndex,
-          );
-          const column = chartModel.seriesModels[seriesIndex].column;
-
-          const clickData = {
-            event: event.event.event,
-            value: datum[chartModel.dimensionModel.dataKey],
-            column,
-            data,
-            dimensions,
-            settings,
-          };
 
           if (!visualizationIsClickable(clickData)) {
             openQuestion();
@@ -223,47 +203,29 @@ export function CartesianChart({
       },
       {
         eventName: "brushEnd",
-        handler: event => {
-          isBrushing.current = false;
-          const range = event.areas[0].coordRange;
-          const isTimeSeries = dimensionIsTimeseries(
-            rawSeries[0].data,
-            chartModel.dimensionModel.columnIndex,
-          );
+        handler: (event: EChartsSeriesBrushEndEvent) => {
+          const eventData = getBrushData(rawSeries, chartModel, event);
 
-          if (range) {
-            const column = chartModel.dimensionModel.column;
-            const card = rawSeries[0].card;
-            const query = new Question(card).query();
-            const [start, end] = range;
-            if (isTimeSeries) {
-              onChangeCardAndRun({
-                nextCard: updateDateTimeFilter(query, column, start, end)
-                  .question()
-                  .card(),
-                previousCard: card,
-              });
-            } else {
-              onChangeCardAndRun({
-                nextCard: updateNumericFilter(query, column, start, end)
-                  .question()
-                  .card(),
-                previousCard: card,
-              });
-            }
+          if (eventData) {
+            onChangeCardAndRun(eventData);
           }
         },
       },
     ],
     [
       chartModel,
-      onChangeCardAndRun,
-      onHoverChange,
-      onVisualizationClick,
       openQuestion,
       rawSeries,
+      selectedTimelineEventIds,
       settings,
+      timelineEventsModel,
       visualizationIsClickable,
+      onChangeCardAndRun,
+      onVisualizationClick,
+      onHoverChange,
+      onOpenTimelines,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
     ],
   );
 
