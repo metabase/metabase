@@ -49,7 +49,7 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(fieldValues, searchValue, searchQuery)) {
+    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
       setSearchQuery(searchValue);
     }
   };
