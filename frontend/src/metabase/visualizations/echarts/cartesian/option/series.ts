@@ -13,6 +13,7 @@ import type {
 import type { SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { getSeriesYAxisIndex } from "./utils";
@@ -87,6 +88,7 @@ const buildEChartsBarSeries = (
       },
     },
     type: "bar",
+    zlevel: CHART_STYLE.series.zIndex,
     yAxisIndex,
     barGap: 0,
     barWidth,
@@ -134,6 +136,7 @@ const buildEChartsLineAreaSeries = (
         opacity: 0.3,
       },
     },
+    zlevel: CHART_STYLE.series.zIndex,
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
