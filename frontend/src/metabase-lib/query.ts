@@ -56,6 +56,10 @@ export function dropStage(query: Query, stageIndex: number): Query {
   return ML.drop_stage(query, stageIndex);
 }
 
+export function dropStageIfEmpty(query: Query, stageIndex: number): Query {
+  return ML.drop_stage_if_empty(query, stageIndex);
+}
+
 export function removeClause(
   query: Query,
   stageIndex: number,
@@ -71,4 +75,8 @@ export function replaceClause(
   newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
+}
+
+export function sourceTableOrCardId(query: Query): TableId | null {
+  return ML.source_table_or_card_id(query);
 }

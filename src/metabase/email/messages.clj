@@ -22,7 +22,6 @@
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.render :as render]
-   [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.pulse.render.style :as style]
@@ -360,34 +359,6 @@
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
-(defn- include-csv-attachment?
-  "Should this `card` and `results` include a CSV attachment?"
-  [{include-csv? :include_csv, include-xls? :include_xls, card-name :name, :as card} {:keys [cols rows], :as result-data}]
-  (letfn [(yes [reason & args]
-            (log/tracef "Including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
-            true)
-          (no [reason & args]
-            (log/tracef "NOT including CSV attachment for Card %s because %s" (pr-str card-name) (apply format reason args))
-            false)]
-    (cond
-      include-csv?
-      (yes "it has `:include_csv`")
-
-      include-xls?
-      (no "it has `:include_xls`")
-
-      (some (complement body/show-in-table?) cols)
-      (yes "some columns are not included in rendered results")
-
-      (not= :table (render/detect-pulse-chart-type card nil result-data))
-      (no "we've determined it should not be rendered as a table")
-
-      (= (count (take body/rows-limit rows)) body/rows-limit)
-      (yes "the results have >= %d rows" body/rows-limit)
-
-      :else
-      (no "less than %d rows in results" body/rows-limit))))
-
 (defn- stream-api-results-to-export-format
   "For legacy compatibility. Takes QP results in the normal `:api` response format and streams them to a different
   format.
@@ -419,9 +390,9 @@
           (qp.si/finish! w results))))))
 
 (defn- result-attachment
-  [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
+  [{{card-name :name :as card} :card {{:keys [rows]} :data :as result} :result}]
   (when (seq rows)
-    [(when-let [temp-file (and (include-csv-attachment? card result-data)
+    [(when-let [temp-file (and (:include_csv card)
                                (create-temp-file-or-throw "csv"))]
        (with-open [os (io/output-stream temp-file)]
          (stream-api-results-to-export-format :csv os result))

@@ -1,12 +1,12 @@
 ---
-title: "Moving from pulses to dashboard subscriptions and alerts"
+title: Moving from pulses to dashboard subscriptions and alerts
 ---
 
 # Moving from pulses to dashboard subscriptions and alerts
 
 We deprecated pulses way back in Metabase 38, and will remove active pulses completely from your Metabase starting in Metabase 49.
 
-If you're upgrading to Metabase 49 from Metabase version 48 or older, Metabase will delete any remaining active pulses. 
+If you're upgrading to Metabase 49 from Metabase version 48 or older, Metabase will delete any remaining active pulses.
 
 If you want to keep getting those charts and tables sent to you via email or Slack, you'll need to create new dashboard subscriptions or alerts to replace those deleted pulses.
 

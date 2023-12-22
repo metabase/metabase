@@ -11,7 +11,8 @@ import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavi
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
-import { fetchDashboard } from "./data-fetching";
+import { setEditingDashboard } from "./core";
+import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
 export const UPDATE_DASHBOARD_AND_CARDS =
@@ -130,14 +131,26 @@ export const updateDashboardAndCards = createThunkAction(
         duration_milliseconds,
       });
 
+      dispatch(setEditingDashboard(false));
+
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(
+      await dispatch(
         fetchDashboard({
           dashId: dashboard.id,
           queryParams: null,
           options: { preserveParameters: false },
         }),
       ); // disable using query parameters when saving
+
+      // There might have been changes to dashboard card-filter wiring,
+      // which require re-fetching card data (issue #35503). We expect
+      // the fetchDashboardCardData to decide which cards to fetch.
+      dispatch(
+        fetchDashboardCardData({
+          reload: false,
+          clearCache: false,
+        }),
+      );
     };
   },
 );

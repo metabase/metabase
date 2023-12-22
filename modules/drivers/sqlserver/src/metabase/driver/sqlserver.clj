@@ -36,7 +36,8 @@
                               :now                                    true
                               :datetime-diff                          true
                               :convert-timezone                       true
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -706,5 +707,5 @@
     ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
     ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
     (-> (update database :details #(dissoc % :rowcount-override))
-        (update :settings #(assoc % :max-unaggregated-query-row-limit rowcount-override)))
+        (update :settings #(assoc % :unaggregated-query-row-limit rowcount-override)))
     database))

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import Confirm from "metabase/components/Confirm";
 import { UtilApi } from "metabase/services";
-import SettingInput from "../SettingInput";
+import { SettingInput } from "../SettingInput";
 import { GenerateButton, SecretKeyWidgetRoot } from "./SecretKeyWidget.styled";
 
 interface SecretKeyWidgetProps {

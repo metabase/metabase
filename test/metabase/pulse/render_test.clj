@@ -162,7 +162,7 @@
 
 (deftest table-rendering-of-percent-types-test
   (testing "If a column is marked as a :type/Percentage semantic type it should render as a percent"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :query
                                                               :query    {:source-table (mt/id :orders)
@@ -203,10 +203,7 @@
                                               (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
                         rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
-                        table         (-> rendered-card
-                                          (get-in [:content 1 2 4 2])
-                                          first
-                                          second)
+                        table         (get-in rendered-card [:content 1 2 4 2 1])
                         tax-col       (->>
                                         (rest (get-in table [2 1]))
                                         (map-indexed (fn [i v] [i (last v)]))

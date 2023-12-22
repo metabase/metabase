@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [metabase.actions.execution :as actions.execution]
    [metabase.models.action :as action]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -12,10 +12,24 @@
   (testing "fetch values for implicit action will save an execution info"
     (mt/with-ensure-with-temp-no-transaction!
       (mt/with-actions-enabled
-        (mt/with-actions [_                   {:dataset true :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
-                          {:keys [action-id]} {:type :implicit :kind "row/update"}]
-          (is (= {"id" 1 "name" "Red Medicine"}
-                 (actions.execution/fetch-values (action/select-action :id action-id) {"id" 1})))
-          ;; the query execution is saved async, so we need to sleep a bit
-          (Thread/sleep 200)
-          (is (true? (t2/exists? :model/QueryExecution :action_id action-id :context :action))))))))
+        (let [dataset-query (mt/mbql-query venues {:fields [$id $name]})
+              query (assoc
+                     dataset-query
+                     :parameters [{:target [:dimension
+                                            (-> dataset-query
+                                                :query
+                                                :fields
+                                                first)]
+                                   :type "id"
+                                   :value [1]}]
+                     :constraints nil
+                     :middleware nil
+                     :cache-ttl nil)]
+          (mt/with-actions [_                   {:dataset true :dataset_query dataset-query}
+                            {:keys [action-id]} {:type :implicit :kind "row/update"}]
+            (process-userland-query-test/with-query-execution [qe query]
+              (is (= {"id" 1 "name" "Red Medicine"}
+                     (actions.execution/fetch-values (action/select-action :id action-id) {"id" 1})))
+              (is (= action-id
+                     (:action_id
+                      (qe)))))))))))

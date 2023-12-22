@@ -127,7 +127,7 @@
                     "medicine")))))))))
 
 (deftest deduplicate-and-remove-non-empty-values-empty
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "the values list should not contains duplicated and empty values"
       (testing "with native query"
         (mt/with-temp [Card {card-id :id} (mt/card-with-source-metadata-for-query

@@ -793,7 +793,7 @@
 (deftest field-values-remapped-fields-test
   (testing "GET /api/field/:id/values"
     (testing "Should return tuples of [original remapped] for a remapped Field (#13235)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temp-copy-of-db
           ;; create a human-readable-values remapping. Do this via the API because the crazy things may or may not be
           ;; happening

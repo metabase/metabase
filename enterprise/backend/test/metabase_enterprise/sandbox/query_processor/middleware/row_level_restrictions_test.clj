@@ -757,7 +757,7 @@
 
 (deftest remapped-fks-test
   (testing "Sandboxing should work with remapped FK columns (#14629)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; set up GTAP against reviews
       (met/with-gtaps (mt/$ids reviews
                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
@@ -803,7 +803,7 @@
 (deftest sandboxing-linked-table-perms
   (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
            permissions for the linked table (#15105)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (met/with-gtaps (mt/$ids orders
                         {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
                          :attributes {"user_id" 1}})
@@ -816,7 +816,7 @@
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
     ;; Sandbox ORDERS and PRODUCTS
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (met/with-gtaps (mt/$ids nil
                         {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                       :products {:remappings {:user_cat [:dimension $products.category]}}}
@@ -885,7 +885,7 @@
 
 (deftest drill-thru-on-implicit-joins-test
   (testing "drill-through should work on implicit joined tables with sandboxes should have correct metadata (#13641)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; create Sandbox on ORDERS
       (met/with-gtaps (mt/$ids nil
                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
@@ -946,7 +946,7 @@
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [mbql-sandbox-results (met/with-gtaps {:gtaps      (mt/$ids
                                                                 {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
                                                                  :products {:remappings {"user_cat" [:dimension $products.category]}}})
@@ -1000,7 +1000,7 @@
                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
                     :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (met/with-gtaps {:gtaps      (mt/$ids
                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
@@ -1062,7 +1062,7 @@
 
 (deftest persistence-disabled-when-sandboxed
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
       ;; confusing when `(mt/id)` and friends change value halfway through the test
       (met/with-gtaps {:gtaps {:products

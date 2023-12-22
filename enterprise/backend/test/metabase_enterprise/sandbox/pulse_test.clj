@@ -226,7 +226,8 @@
                                                               :skip_if_empty false}
                          PulseCard             _             {:pulse_id pulse-id
                                                               :card_id  card-id
-                                                              :position 0}
+                                                              :position 0
+                                                              :include_csv true}
                          PulseChannel          {pc-id :id}   {:pulse_id pulse-id}
                          PulseChannelRecipient _             {:user_id          (mt/user->id :rasta)
                                                               :pulse_channel_id pc-id}]

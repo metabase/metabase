@@ -5,6 +5,10 @@ export function getDashboardId(state: State) {
   return state.dashboard.dashboardId;
 }
 
+export function getDashboardBeforeEditing(state: State) {
+  return state.dashboard.isEditing;
+}
+
 export function getTabs(state: State) {
   const dashboardId = getDashboardId(state);
   return dashboardId
@@ -24,3 +28,8 @@ export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
 };
+
+export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
+  const dashboard = getDashboardBeforeEditing(state);
+  return dashboard?.dashcards?.find?.(dashcard => dashcard.id === dashcardId);
+}

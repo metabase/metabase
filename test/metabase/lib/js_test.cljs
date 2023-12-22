@@ -1,6 +1,6 @@
 (ns metabase.lib.js-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is are testing]]
    [goog.object :as gobject]
    [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
@@ -245,3 +245,17 @@
     (testing "metric refs come without options"
       (is (= [["metric" metric-id]]
              (->> query lib/available-metrics (map to-legacy-refs)))))))
+
+(deftest ^:parallel source-table-or-card-id-test
+  (testing "returns the table-id as a number"
+    (are [query] (= (meta/id :venues) (lib.js/source-table-or-card-id query))
+      lib.tu/venues-query
+      (lib/append-stage lib.tu/venues-query)))
+  (testing "returns the card-id in the legacy string form"
+    (are [query] (= "card__1" (lib.js/source-table-or-card-id query))
+      lib.tu/query-with-source-card
+      (lib/append-stage lib.tu/query-with-source-card)))
+  (testing "returns nil for questions starting from a native query"
+    (are [query] (nil? (lib.js/source-table-or-card-id query))
+      lib.tu/native-query
+      (lib/append-stage lib.tu/native-query))))
