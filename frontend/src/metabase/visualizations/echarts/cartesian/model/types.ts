@@ -52,10 +52,22 @@ export type Datum = Record<DataKey, RowValue>;
 export type GroupedDataset = Datum[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
+export type AxisFormatter = (value: RowValue) => string;
 
-export type AxisSplit = [DataKey[], DataKey[]];
-export type AxisExtent = Extent | null;
-export type AxisExtents = [AxisExtent, AxisExtent];
+export type XAxisModel = {
+  label?: string;
+  formatter: AxisFormatter;
+};
+
+export type YAxisModel = {
+  seriesKeys: DataKey[];
+  extent: Extent;
+  // Although multiple series from different columns belong to an axis
+  // there is one column that is used for the axis ticks formatting
+  column: DatasetColumn;
+  label?: string;
+  formatter: AxisFormatter;
+};
 
 export type CartesianChartModel = {
   dimensionModel: DimensionModel;
@@ -63,11 +75,12 @@ export type CartesianChartModel = {
   columnByDataKey: Record<DataKey, DatasetColumn>;
   dataset: GroupedDataset;
   transformedDataset: GroupedDataset;
-  yAxisSplit: AxisSplit;
-  yAxisExtents: AxisExtents;
 
-  leftAxisColumn?: DatasetColumn;
-  rightAxisColumn?: DatasetColumn;
+  leftAxisModel: YAxisModel | null;
+  rightAxisModel: YAxisModel | null;
+
+  xAxisModel: XAxisModel;
+
   insights: Insight[];
 
   // For scatter plot

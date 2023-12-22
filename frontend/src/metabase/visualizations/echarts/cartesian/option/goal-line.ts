@@ -13,7 +13,6 @@ export function getGoalLineSeriesOption(
   if (!settings["graph.show_goal"]) {
     return null;
   }
-  const [_leftAxisKeys, rightAxisKeys] = chartModel.yAxisSplit;
 
   return {
     type: "line", // type is irreelevant since we don't render any series data
@@ -23,7 +22,7 @@ export function getGoalLineSeriesOption(
       data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
       label: {
         position:
-          rightAxisKeys.length === 0 ? "insideEndTop" : "insideStartTop",
+          chartModel.rightAxisModel == null ? "insideEndTop" : "insideStartTop",
         formatter: () => settings["graph.goal_label"] ?? "",
         fontFamily: renderingContext.fontFamily,
         fontSize: 14,
