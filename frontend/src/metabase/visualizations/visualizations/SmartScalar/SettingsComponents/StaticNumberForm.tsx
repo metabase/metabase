@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 import {
@@ -29,7 +29,7 @@ export function StaticNumberForm({
 
   const canSubmit = label.length > 0;
 
-  const handleChangeLabel = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeLabel = (e: ChangeEvent<HTMLInputElement>) => {
     setLabel(e.target.value);
   };
 
