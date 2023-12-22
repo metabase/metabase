@@ -253,8 +253,9 @@ export const buildDimensionAxis = (
   const axisType = getXAxisType(settings);
 
   const boundaryGap =
-    axisType === "value" ? undefined : ([0.02, 0.02] as [number, number]);
-  // const boundaryGap = false;
+    axisType === "value" || axisType === "log"
+      ? undefined
+      : ([0.02, 0.02] as [number, number]);
 
   const nameGap = getXAxisNameGap(
     chartModel,

@@ -4,6 +4,7 @@ import multiDimensionBreakout from "./multi-dimension-breakout.json";
 import bubbleSize from "./bubble-size.json";
 import powerXScale from "./power-x-scale.json";
 import logXScale from "./log-x-scale.json";
+import logXScaleAtOne from "./log-x-scale-at-one.json";
 import histogramXScale from "./histogram-x-scale.json";
 import ordinalXScale from "./ordinal-x-scale.json";
 import timeseriesXScale from "./timeseries-x-scale.json";
@@ -17,6 +18,7 @@ export const data = {
   bubbleSize,
   powerXScale,
   logXScale,
+  logXScaleAtOne,
   histogramXScale,
   ordinalXScale,
   timeseriesXScale,
