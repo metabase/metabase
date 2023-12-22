@@ -147,20 +147,16 @@
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return `s` as-is. Attempts to check
   whether `v` is an encrypted String, in which case the decrypted String is returned, or whether `v` is encrypted bytes,
   in which case the decrypted bytes are returned."
-  {:arglists '([secret-key? s & [{:keys [log-errors?], :or {log-errors? true}}]])}
+  {:arglists '([secret-key? s])}
   [& args]
   ;; secret-key as an argument so that tests can pass it directly without using `with-redefs` to run in parallel
-  (let [[secret-key v options]     (if (and (bytes? (first args)) (string? (second args)))
-                                     args
-                                     (cons default-secret-key args))
-        {:keys [log-errors?]
-         :or   {log-errors? true}} options
+  (let [[secret-key v]     (if (and (bytes? (first args)) (string? (second args)))
+                             args
+                             (cons default-secret-key args))
         log-error-fn (fn [kind ^Throwable e]
-                       (when log-errors?
-                         (log/warn (trs "Cannot decrypt encrypted {0}. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
-                                     kind)
-                                   (.getMessage e)
-                                   (u/pprint-to-str (u/filtered-stacktrace e)))))]
+                       (log/errorf e
+                                   "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
+                                   kind))]
 
     (cond (nil? secret-key)
           v
