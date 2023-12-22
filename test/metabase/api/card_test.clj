@@ -77,6 +77,7 @@
    :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
+   :based_on_upload     nil
    :parameters          []
    :parameter_mappings  []
    :moderation_reviews  ()
