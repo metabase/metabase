@@ -54,7 +54,6 @@ export const getCartesianChartOption = (
   ];
 
   return {
-    animation: false,
     grid: getChartGrid(chartModel, settings),
     dataset: echartsDataset,
     series: seriesOption,

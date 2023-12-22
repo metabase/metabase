@@ -10,3 +10,5 @@ declare module "*.svg" {
   // eslint-disable-next-line import/no-default-export -- deprecated usage
   export default content;
 }
+
+type Nullable<T> = T | null;

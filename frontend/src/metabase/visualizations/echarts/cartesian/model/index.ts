@@ -14,6 +14,7 @@ import {
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
+  getCardsColumnByDataKeyMap,
   getDatasetExtents,
   getJoinedCardsDataset,
   getSortedSeriesModels,
@@ -39,7 +40,7 @@ export const getCardsColumns = (
     // dimensions and metrics settings of the first card only which is not correct.
     // Using the raw visualization settings for that is safe because we can combine
     // only saved cards that have these settings.
-    const shouldUseIndividualCardSettings = rawSeries.length > 0;
+    const shouldUseIndividualCardSettings = rawSeries.length > 1;
     return getCartesianChartColumns(
       data.cols,
       shouldUseIndividualCardSettings ? card.visualization_settings : settings,
@@ -74,7 +75,12 @@ export const getCartesianChartModel = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CartesianChartModel => {
+  // rawSeries has more than one element when two or more cards are combined on a dashboard
+  const hasMultipleCards = rawSeries.length > 1;
+
   const cardsColumns = getCardsColumns(rawSeries, settings);
+
+  const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
 
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
   const unsortedSeriesModels = getCardsSeriesModels(
@@ -83,7 +89,11 @@ export const getCartesianChartModel = (
     settings,
     renderingContext,
   );
-  const seriesModels = getSortedSeriesModels(unsortedSeriesModels, settings);
+
+  // We currently ignore sorting and visibility settings on combined cards
+  const seriesModels = hasMultipleCards
+    ? unsortedSeriesModels
+    : getSortedSeriesModels(unsortedSeriesModels, settings);
 
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const dataset =
@@ -126,6 +136,7 @@ export const getCartesianChartModel = (
     dataset,
     transformedDataset,
     seriesModels,
+    columnByDataKey,
     dimensionModel,
     yAxisSplit,
     leftAxisColumn,
