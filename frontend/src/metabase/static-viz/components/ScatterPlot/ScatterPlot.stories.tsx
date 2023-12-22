@@ -63,6 +63,13 @@ PowerXScale.args = {
   renderingContext,
 };
 
+export const PowerXScaleMultiSeries = Template.bind({});
+PowerXScaleMultiSeries.args = {
+  rawSeries: data.powerXScaleMultiSeries as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const LogXScale = Template.bind({});
 LogXScale.args = {
   rawSeries: data.logXScale as any,
