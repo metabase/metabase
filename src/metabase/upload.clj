@@ -698,24 +698,27 @@
     (check-can-append database table)
     (append-csv!* database table file)))
 
-;;; +--------------------------------------------------------------
-;;; |  hydration for FE to know whether you can upload to the table
-;;; +--------------------------------------------------------------
+;;; +--------------------------------
+;;; |  hydrate based_on_upload for FE
+;;; +--------------------------------
 
-;; For cards
 (mi/define-simple-hydration-method based-on-upload
   :based_on_upload
-  "Return the table ID if:
-    - table is based on an upload
+  "Add based_on_upload=<table-id> to a card if:
+    - the card is a model
+    - the query is a GUI query, and does not have any joins
+    - the base table of the card is based on an upload
     - the user has permissions to upload to the table
     - uploads are enabled
-    - the query is a GUI query, and does not have any joins"
-  [{:keys [dataset_query table_id]}]
-  (let [query (lib.convert/->pMBQL dataset_query)
-        all-joins (mapcat (fn [stage]
-                            (lib/joins query stage))
-                          (range (lib/stage-count query)))]
-    (when (and (empty? all-joins)
-               (let [table (t2/select-one :model/Table :id table_id)]
-                 (can-upload-to-table? (table/database table) table)))
-      table_id)))
+  Otherwise based_on_upload is nil."
+  [card]
+  (when (and (:dataset card)
+             (= (:query_type card) :query)
+             (let [query (lib.convert/->pMBQL (:dataset_query card))
+                   all-joins (mapcat (fn [stage]
+                                       (lib/joins query stage))
+                                     (range (lib/stage-count query)))]
+               (empty? all-joins))
+             (let [table (t2/select-one :model/Table :id (:table_id card))]
+               (can-upload-to-table? (table/database table) table)))
+    (:table_id card)))
