@@ -1,5 +1,6 @@
 import type { RegisteredSeriesOption } from "echarts";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
+
 import type {
   SeriesModel,
   CartesianChartModel,
@@ -177,7 +178,9 @@ export const buildEChartsSeries = (
         case "scatter":
           return buildEChartsScatterSeries(
             seriesModel,
+            chartModel.dataset,
             chartModel.dimensionModel.dataKey,
+            chartModel.bubbleSizeDataKey,
             yAxisIndex,
             renderingContext,
           );
