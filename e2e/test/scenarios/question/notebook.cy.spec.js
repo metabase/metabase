@@ -297,6 +297,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
+      // This is required because TableInteractive won't render columns
+      // that don't fit into the viewport
+      cy.viewport(1400, 1000);
       openOrdersTable({ mode: "notebook" });
     });
 
@@ -315,15 +318,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       getNotebookStep("expression").contains("Example").should("exist");
 
-      visualize(() => {
-        cy.wait(1000);
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Example");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Big");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.contains("Small");
-      });
+      visualize();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Example");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Big");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Small");
     });
 
     it("should work on custom filter", () => {
