@@ -46,7 +46,8 @@ export type DimensionModel = {
   columnIndex: number;
 };
 
-export type GroupedDataset = Record<DataKey, RowValue>[];
+export type Datum = Record<DataKey, RowValue>;
+export type GroupedDataset = Datum[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 
@@ -65,4 +66,7 @@ export type CartesianChartModel = {
   leftAxisColumn?: DatasetColumn;
   rightAxisColumn?: DatasetColumn;
   insights: Insight[];
+
+  // For scatter plot
+  bubbleSizeDataKey?: DataKey;
 };

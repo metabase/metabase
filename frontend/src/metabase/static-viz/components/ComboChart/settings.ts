@@ -16,6 +16,7 @@ import {
 } from "metabase/visualizations/shared/settings/series";
 import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import {
+  getDefaultBubbleSizeCol,
   getDefaultIsHistogram,
   getDefaultIsNumeric,
   getDefaultIsTimeSeries,
@@ -223,6 +224,13 @@ export const computeStaticComboChartSettings = (
     settings,
     "graph.x_axis.scale",
     getDefaultXAxisScale(settings),
+  );
+
+  // For scatter plot
+  fillWithDefaultValue(
+    settings,
+    "scatter.bubble",
+    getDefaultBubbleSizeCol(mainDataset),
   );
 
   return settings;
