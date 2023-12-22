@@ -148,6 +148,7 @@ function getCurrentMetricData({ series, insights, settings }) {
   };
 
   const formatOptions = settings.column?.(metricColumn);
+  const compact = settings["scalar.compact_primary_number"];
 
   const clicked = {
     value,
@@ -169,7 +170,10 @@ function getCurrentMetricData({ series, insights, settings }) {
     clicked,
     date,
     dateUnitSettings,
-    formatOptions,
+    formatOptions: {
+      ...formatOptions,
+      compact,
+    },
     indexData: {
       dimensionColIndex,
       metricColIndex,

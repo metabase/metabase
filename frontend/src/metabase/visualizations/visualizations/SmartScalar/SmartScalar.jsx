@@ -96,10 +96,12 @@ export function SmartScalar({
     }
   };
 
-  const { displayValue, fullScalarValue } = compactifyValue(value, width, {
-    ...formatOptions,
-    compact: settings["scalar.compact_primary_number"],
-  });
+  const { displayValue, fullScalarValue } = compactifyValue(
+    value,
+    width,
+    formatOptions,
+    display.value,
+  );
 
   return (
     <ScalarWrapper>
