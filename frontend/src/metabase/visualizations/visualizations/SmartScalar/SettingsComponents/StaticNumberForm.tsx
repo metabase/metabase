@@ -6,6 +6,7 @@ import {
   Flex,
   NumberInput,
   PopoverBackButton,
+  Stack,
   TextInput,
 } from "metabase/ui";
 import type { SmartScalarComparisonStaticNumber } from "metabase-types/api";
@@ -48,7 +49,7 @@ export function StaticNumberForm({
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
-      <Flex direction="column" align="flex-start" gap="lg">
+      <Stack align="flex-start" spacing="lg">
         <PopoverBackButton
           onClick={onBack}
         >{t`Custom value`}</PopoverBackButton>
@@ -71,7 +72,7 @@ export function StaticNumberForm({
           variant="filled"
           disabled={!canSubmit}
         >{t`Done`}</DoneButton>
-      </Flex>
+      </Stack>
     </Box>
   );
 }
