@@ -39,13 +39,20 @@ export function SearchValuePicker({
     [fieldValues, selectedValues],
   );
 
-  const handleDebounce = () => {
+  const handleSearchChange = (newSearchValue: string) => {
+    setSearchValue(newSearchValue);
+    if (newSearchValue === "") {
+      setSearchQuery(newSearchValue);
+    }
+  };
+
+  const handleSearchTimeout = () => {
     if (shouldSearch(fieldValues, searchValue, searchQuery)) {
       setSearchQuery(searchValue);
     }
   };
 
-  useDebounce(handleDebounce, SEARCH_DEBOUNCE, [searchValue]);
+  useDebounce(handleSearchTimeout, SEARCH_DEBOUNCE, [searchValue]);
 
   return (
     <MultiSelect
@@ -57,7 +64,7 @@ export function SearchValuePicker({
       autoFocus={autoFocus}
       aria-label={t`Filter value`}
       onChange={onChange}
-      onSearchChange={setSearchValue}
+      onSearchChange={handleSearchChange}
     />
   );
 }
