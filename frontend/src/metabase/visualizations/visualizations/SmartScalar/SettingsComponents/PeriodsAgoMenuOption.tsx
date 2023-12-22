@@ -12,7 +12,7 @@ type PeriodsAgoMenuOptionProps = {
   editedValue?: SmartScalarComparisonPeriodsAgo;
   maxValue: number;
   name: string;
-  handleChange: HandleEditedValueChangeType;
+  onChange: HandleEditedValueChangeType;
   type: typeof COMPARISON_TYPES.PERIODS_AGO;
 };
 
@@ -23,7 +23,7 @@ export function PeriodsAgoMenuOption({
   editedValue,
   maxValue,
   name,
-  handleChange,
+  onChange,
   type,
 }: PeriodsAgoMenuOptionProps) {
   // utilities for blurring and selecting the input whenever
@@ -41,35 +41,35 @@ export function PeriodsAgoMenuOption({
   const validateInput = useCallback(
     (value: number) => {
       if (value < 1) {
-        handleChange({ type, value: MIN_VALUE });
+        onChange({ type, value: MIN_VALUE });
         reSelectInput();
         return;
       }
 
       if (value > maxValue) {
-        handleChange({ type, value: maxValue });
+        onChange({ type, value: maxValue });
         reSelectInput();
         return;
       }
 
       if (!Number.isInteger(value)) {
-        handleChange({ type, value: Math.floor(value) ?? MIN_VALUE });
+        onChange({ type, value: Math.floor(value) ?? MIN_VALUE });
         reSelectInput();
         return;
       }
 
-      handleChange({ type, value });
+      onChange({ type, value });
     },
-    [handleChange, maxValue, reSelectInput, type],
+    [maxValue, onChange, reSelectInput, type],
   );
 
   const handleInputEnter = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
-        handleChange({ type, value }, true);
+        onChange({ type, value }, true);
       }
     },
-    [handleChange, type, value],
+    [onChange, type, value],
   );
   const handleInputClick = useCallback(
     (e: MouseEvent<HTMLInputElement>) => {
@@ -81,7 +81,7 @@ export function PeriodsAgoMenuOption({
 
   return (
     <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
-      <Box onClick={() => handleChange({ type, value }, true)}>
+      <Box onClick={() => onChange({ type, value }, true)}>
         <Group position="apart" px="0.5rem">
           <Text fw="bold">{`${value} ${name}`}</Text>
           <NumberInputStyled

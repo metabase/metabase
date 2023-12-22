@@ -82,7 +82,7 @@ export function SmartScalarComparisonWidget({
             renderMenuOption({
               editedValue,
               optionArgs,
-              handleChange: handleEditedValueChange,
+              onChange: handleEditedValueChange,
               selectedValue,
             }),
           )}
@@ -99,14 +99,14 @@ export type HandleEditedValueChangeType = (
 
 type RenderMenuOptionProps = {
   editedValue: SmartScalarComparison;
-  handleChange: HandleEditedValueChangeType;
+  onChange: HandleEditedValueChangeType;
   optionArgs: ComparisonMenuOption;
   selectedValue: SmartScalarComparison;
 };
 
 function renderMenuOption({
   editedValue,
-  handleChange,
+  onChange,
   optionArgs,
   selectedValue,
 }: RenderMenuOptionProps) {
@@ -121,7 +121,7 @@ function renderMenuOption({
         aria-selected={selectedValue.type === type}
         type={type}
         name={name}
-        handleChange={handleChange}
+        onChange={onChange}
         maxValue={maxValue}
         editedValue={editedValue.type === type ? editedValue : undefined}
       />
@@ -129,7 +129,7 @@ function renderMenuOption({
   }
 
   const handleSimpleMenuItemClick = () => {
-    handleChange({ type }, true);
+    onChange({ type }, true);
   };
 
   return (
