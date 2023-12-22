@@ -737,7 +737,7 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+          (jdbc/execute! conn-spec "CREATE SCHEMA IF NOT EXISTS \"not_public\"; CREATE TABLE IF NOT EXISTS \"not_public\".\"table_name\" (id INTEGER);"))
         (sync/sync-database! (mt/db))
         (let [db-id     (u/the-id (mt/db))
               table-id (t2/select-one-pk :model/Table :db_id db-id)]
