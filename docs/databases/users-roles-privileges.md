@@ -136,7 +136,7 @@ GRANT metabase_model_caching TO metabase;
 
 ## Privileges to enable uploads
 
-You can [upload CSV](../datases/uploads.md) to supported databases. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for uploads, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+You can [upload CSV](../databases/uploads.md) to supported databases. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for uploads, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
