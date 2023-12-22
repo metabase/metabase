@@ -19,7 +19,7 @@
 ;;; |                                         FETCHING OUR CURRENT METADATA                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields->parent-id->fields :- [:map-of common/ParentID :any #_[:set common/TableMetadataFieldWithID]]
+(mu/defn ^:private fields->parent-id->fields :- [:map-of common/ParentID [:set common/TableMetadataFieldWithID]]
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (->> (for [field fields]
          {:parent-id                 (:parent_id field)
