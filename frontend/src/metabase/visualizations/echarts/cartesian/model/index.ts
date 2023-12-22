@@ -23,7 +23,10 @@ import {
   getYAxesExtents,
   getYAxisSplit,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
-import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
+import {
+  getScatterPlotDataset,
+  getBubbleSizeDataKey,
+} from "metabase/visualizations/echarts/cartesian/scatter/model";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -117,6 +120,8 @@ export const getCartesianChartModel = (
 
   const insights = rawSeries.flatMap(series => series.data.insights ?? []);
 
+  const bubbleSizeDataKey = getBubbleSizeDataKey(rawSeries, settings);
+
   return {
     dataset,
     transformedDataset,
@@ -127,5 +132,6 @@ export const getCartesianChartModel = (
     rightAxisColumn,
     yAxisExtents,
     insights,
+    bubbleSizeDataKey,
   };
 };
