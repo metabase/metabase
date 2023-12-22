@@ -49,6 +49,13 @@ MultiDimensionBreakout.args = {
   renderingContext,
 };
 
+export const BubbleSize = Template.bind({});
+BubbleSize.args = {
+  rawSeries: data.bubbleSize as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const PowerXScale = Template.bind({});
 PowerXScale.args = {
   rawSeries: data.powerXScale as any,

@@ -22,6 +22,7 @@ import {
 } from "metabase/visualizations/lib/utils";
 import {
   getDefaultIsHistogram,
+  getDefaultScatterColumns,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
@@ -45,31 +46,9 @@ export function getDefaultDimensionLabel(multipleSeries) {
 
 export function getDefaultColumns(series) {
   if (series[0].card.display === "scatter") {
-    return getDefaultScatterColumns(series);
+    return getDefaultScatterColumns(series[0].data);
   } else {
     return getDefaultLineAreaBarColumns(series);
-  }
-}
-
-function getDefaultScatterColumns([
-  {
-    data: { cols, rows },
-  },
-]) {
-  const dimensions = cols.filter(isDimension);
-  const metrics = cols.filter(isMetric);
-  if (dimensions.length === 2 && metrics.length < 2) {
-    return {
-      dimensions: [dimensions[0].name],
-      metrics: [dimensions[1].name],
-      bubble: metrics.length === 1 ? metrics[0].name : null,
-    };
-  } else {
-    return {
-      dimensions: [null],
-      metrics: [null],
-      bubble: null,
-    };
   }
 }
 
