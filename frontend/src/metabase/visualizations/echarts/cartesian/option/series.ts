@@ -32,6 +32,7 @@ const buildEChartsLabelOptions = (
   const valueGetter = getMetricDisplayValueGetter(settings);
 
   return {
+    silent: true,
     show: settings["graph.show_values"],
     position: "top",
     fontFamily,
@@ -60,6 +61,7 @@ const buildEChartsBarSeries = (
   dimensionDataKey: string,
   yAxisIndex: number,
   barSeriesCount: number,
+  hasMultipleSeries: boolean,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"] => {
   const stackName =
@@ -70,6 +72,20 @@ const buildEChartsBarSeries = (
 
   return {
     id: seriesModel.dataKey,
+    emphasis: {
+      focus: hasMultipleSeries ? "series" : "self",
+      itemStyle: {
+        color: seriesModel.color,
+      },
+    },
+    blur: {
+      label: {
+        show: settings["graph.show_values"] && !hasMultipleSeries,
+      },
+      itemStyle: {
+        opacity: 0.3,
+      },
+    },
     type: "bar",
     yAxisIndex,
     barGap: 0,
@@ -95,6 +111,7 @@ const buildEChartsLineAreaSeries = (
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
+  hasMultipleSeries: boolean,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["line"] => {
   const display = seriesSettings?.display ?? "line";
@@ -103,6 +120,20 @@ const buildEChartsLineAreaSeries = (
     settings["stackable.stack_type"] != null ? `area_${yAxisIndex}` : undefined;
 
   return {
+    emphasis: {
+      focus: hasMultipleSeries ? "series" : "self",
+      itemStyle: {
+        color: seriesModel.color,
+      },
+    },
+    blur: {
+      label: {
+        show: settings["graph.show_values"] && !hasMultipleSeries,
+      },
+      itemStyle: {
+        opacity: 0.3,
+      },
+    },
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
@@ -151,6 +182,8 @@ export const buildEChartsSeries = (
     seriesSettings => seriesSettings.display === "bar",
   ).length;
 
+  const hasMultipleSeries = chartModel.seriesModels.length > 1;
+
   return chartModel.seriesModels
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
@@ -165,6 +198,7 @@ export const buildEChartsSeries = (
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
+            hasMultipleSeries,
             renderingContext,
           );
         case "bar":
@@ -175,6 +209,7 @@ export const buildEChartsSeries = (
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
             barSeriesCount,
+            hasMultipleSeries,
             renderingContext,
           );
         case "scatter":
