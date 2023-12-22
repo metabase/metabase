@@ -2,8 +2,9 @@ import styled from "@emotion/styled";
 import LegendLayout from "metabase/visualizations/components/legend/LegendLayout";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 
-export const CartesianChartRoot = styled.div`
-  padding: 0.5rem;
+export const CartesianChartRoot = styled.div<{ isQueryBuilder: boolean }>`
+  padding: ${({ isQueryBuilder }) =>
+    isQueryBuilder ? "1rem 1rem 1rem 2rem" : "0.5rem 1rem"};
   height: 100%;
   display: flex;
   flex-direction: column;
