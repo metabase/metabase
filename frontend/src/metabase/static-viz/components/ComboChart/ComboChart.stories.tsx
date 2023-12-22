@@ -28,6 +28,34 @@ const renderingContext: RenderingContext = {
   fontFamily: "Lato",
 };
 
+export const LineLinearXScale = Template.bind({});
+LineLinearXScale.args = {
+  rawSeries: data.lineLinearXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarLinearXScale = Template.bind({});
+BarLinearXScale.args = {
+  rawSeries: data.barLinearXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarHistogramXScale = Template.bind({});
+BarHistogramXScale.args = {
+  rawSeries: data.barHistogramXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarOrdinalXScale = Template.bind({});
+BarOrdinalXScale.args = {
+  rawSeries: data.barOrdinalXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SplitYAxis = Template.bind({});
 SplitYAxis.args = {
   rawSeries: data.autoYSplit as any,
