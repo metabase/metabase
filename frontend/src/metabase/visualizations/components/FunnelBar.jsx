@@ -3,7 +3,7 @@ import { assocIn } from "icepick";
 import { Component } from "react";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import BarChart from "metabase/visualizations/visualizations/BarChart";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 
 export default class FunnelBar extends Component {
   render() {
