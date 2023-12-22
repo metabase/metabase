@@ -5075,7 +5075,6 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
->>>>>>> master
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
