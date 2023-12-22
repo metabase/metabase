@@ -122,7 +122,7 @@ export function publicQuestion({
   includeSiteUrl = true,
 }: {
   uuid: string;
-  type: string | null;
+  type?: string | null;
   query?: string;
   includeSiteUrl?: boolean;
 }) {

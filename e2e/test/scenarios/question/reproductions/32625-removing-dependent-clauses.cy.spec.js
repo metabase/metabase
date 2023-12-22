@@ -7,7 +7,7 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const CC_NAME = "Is Promotion";
 
@@ -17,12 +17,15 @@ const QUESTION = {
     database: SAMPLE_DB_ID,
     query: {
       "source-table": ORDERS_ID,
-      aggregation: ["distinct", ["field", 13, { "base-type": "type/Integer" }]],
+      aggregation: [
+        "distinct",
+        ["field", ORDERS.PRODUCT_ID, { "base-type": "type/Integer" }],
+      ],
       breakout: ["expression", CC_NAME],
       expressions: {
         [CC_NAME]: [
           "case",
-          [[[">", ["field", 9, null], 0], 1]],
+          [[[">", ["field", ORDERS.DISCOUNT, null], 0], 1]],
           { default: 0 },
         ],
       },
