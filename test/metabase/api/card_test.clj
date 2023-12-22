@@ -90,7 +90,7 @@
 
 ;; Used in dashboard tests
 (def card-defaults-no-hydrate
-  (dissoc card-defaults :average_query_time :last_query_start))
+  (dissoc card-defaults :average_query_time :last_query_start :based_on_upload))
 
 (defn mbql-count-query
   ([]
