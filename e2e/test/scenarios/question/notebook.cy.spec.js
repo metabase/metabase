@@ -296,6 +296,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
+      // This is required because TableInteractive won't render columns
+      // that don't fit into the viewport
+      cy.viewport(1400, 1000);
       openOrdersTable({ mode: "notebook" });
     });
 
