@@ -1,5 +1,10 @@
 import dayjs from "dayjs";
-import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  SingleSeries,
+} from "metabase-types/api";
 import type {
   CartesianChartModel,
   DataKey,
@@ -11,6 +16,9 @@ import type {
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isEmpty } from "metabase/lib/validate";
+
+import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
+import { getObjectKeys } from "metabase/lib/objects";
 import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
 
 import { getXAxisType } from "../option/axis";
@@ -48,13 +56,17 @@ export const getDatasetKey = (
   column: DatasetColumn,
   cardId: number | undefined,
   breakoutValue?: RowValue,
-): string => {
-  const cardIdPart = cardId != null ? `${cardId}:` : "";
-  const breakoutPart =
-    typeof breakoutValue !== "undefined" ? `${breakoutValue}:` : "";
+): DataKey => {
+  const cardIdPart = cardId ?? null;
   const columnNamePart = column.name;
 
-  return `${cardIdPart}${breakoutPart}${columnNamePart}`;
+  const datasetKey: DataKey = `${cardIdPart}:${columnNamePart}`;
+
+  if (typeof breakoutValue === "undefined") {
+    return datasetKey;
+  }
+
+  return `${datasetKey}:${breakoutValue}`;
 };
 
 /**
@@ -65,28 +77,35 @@ export const getDatasetKey = (
  * @param {DatasetColumn[]} columns - The columns of the raw dataset.
  * @param {RowValue[]} row - The raw row of values.
  * @param {number} cardId - The ID of the card.
- * @param {number} [breakoutIndex] - The breakout column index for charts with two dimension columns selected.
+ * @param {number} dimensionIndex - The dimension column index.
+ * @param {number} breakoutIndex - The breakout column index for charts with two dimension columns selected.
  */
-const aggregateMetricsForDatum = (
+const aggregateColumnValuesForDatum = (
   datum: Record<DataKey, RowValue>,
   columns: DatasetColumn[],
   row: RowValue[],
   cardId: number,
+  dimensionIndex: number,
   breakoutIndex?: number,
 ): void => {
   columns.forEach((column, columnIndex) => {
-    if (!isMetric(column)) {
+    if (columnIndex === dimensionIndex) {
       return;
     }
 
     const rowValue = row[columnIndex];
-    const seriesKey = getDatasetKey(column, cardId);
-    datum[seriesKey] = sumMetric(datum[seriesKey], rowValue);
 
-    if (breakoutIndex != null) {
+    if (breakoutIndex == null || columnIndex === breakoutIndex) {
+      const seriesKey = getDatasetKey(column, cardId);
+      datum[seriesKey] = isMetric(column)
+        ? sumMetric(datum[seriesKey], rowValue)
+        : rowValue;
+    } else {
       const breakoutValue = row[breakoutIndex];
       const breakoutSeriesKey = getDatasetKey(column, cardId, breakoutValue);
-      datum[breakoutSeriesKey] = sumMetric(datum[breakoutSeriesKey], rowValue);
+      datum[breakoutSeriesKey] = isMetric(column)
+        ? sumMetric(datum[breakoutSeriesKey], rowValue)
+        : rowValue;
     }
   });
 };
@@ -142,7 +161,14 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
-      aggregateMetricsForDatum(datum, cols, row, cardId, breakoutIndex);
+      aggregateColumnValuesForDatum(
+        datum,
+        cols,
+        row,
+        cardId,
+        dimensionIndex,
+        breakoutIndex,
+      );
     }
   });
 
@@ -191,7 +217,7 @@ export const getTransformedDataset = (
   if (settings["graph.y_axis.scale"] === "pow") {
     transformedDataset = replaceValues(
       transformedDataset,
-      (dataKey: string, value: RowValue) =>
+      (dataKey: DataKey, value: RowValue) =>
         seriesDataKeysSet.has(dataKey) ? applySquareRootScaling(value) : value,
     );
   }
@@ -310,7 +336,7 @@ export const getSortedSeriesModels = (
   return orderedSeriesModels;
 };
 
-type ReplacerFn = (dataKey: string, value: RowValue) => RowValue;
+type ReplacerFn = (dataKey: DataKey, value: RowValue) => RowValue;
 
 /**
  * Creates a new dataset with the values replaced according to the provided replacer function.
@@ -324,7 +350,7 @@ export const replaceValues = (
   replacer: ReplacerFn,
 ) => {
   return dataset.map(datum => {
-    return Object.keys(datum).reduce((updatedRow, dataKey) => {
+    return getObjectKeys(datum).reduce((updatedRow, dataKey) => {
       updatedRow[dataKey] = replacer(dataKey, datum[dataKey]);
       return updatedRow;
     }, {} as Record<DataKey, RowValue>);
@@ -447,4 +473,40 @@ export const getDatasetExtents = (
   });
 
   return extents;
+};
+
+export const getCardColumnByDataKeyMap = (
+  { card, data }: SingleSeries,
+  columns: CartesianChartColumns,
+): Record<DataKey, DatasetColumn> => {
+  const breakoutValues =
+    "breakout" in columns
+      ? getBreakoutDistinctValues(data, columns.breakout.index)
+      : null;
+
+  return data.cols.reduce((acc, column) => {
+    if (breakoutValues != null) {
+      breakoutValues.forEach(breakoutValue => {
+        acc[getDatasetKey(column, card.id, breakoutValue)] = column;
+      });
+    } else {
+      acc[getDatasetKey(column, card.id)] = column;
+    }
+    return acc;
+  }, {} as Record<DataKey, DatasetColumn>);
+};
+
+export const getCardsColumnByDataKeyMap = (
+  rawSeries: RawSeries,
+  cardsColumns: CartesianChartColumns[],
+): Record<DataKey, DatasetColumn> => {
+  return rawSeries.reduce((acc, cardSeries, index) => {
+    const columns = cardsColumns[index];
+    const cardColumnByDataKeyMap = getCardColumnByDataKeyMap(
+      cardSeries,
+      columns,
+    );
+
+    return { ...acc, ...cardColumnByDataKeyMap };
+  }, {} as Record<DataKey, DatasetColumn>);
 };

@@ -1,7 +1,14 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
 import type { Insight } from "metabase-types/api/insight";
 
-export type DataKey = string;
+import type { CardId, DatasetColumn, RowValue } from "metabase-types/api";
+
+export type BreakoutValue = RowValue;
+export type ColumnName = string;
+
+export type DataKey =
+  | `${Nullable<CardId>}:${ColumnName}:${BreakoutValue}`
+  | `${Nullable<CardId>}:${ColumnName}`;
+
 export type VizSettingsKey = string;
 
 export type LegacySeriesSettingsObjectKey = {
@@ -53,6 +60,7 @@ export type AxisExtents = [AxisExtent, AxisExtent];
 export type CartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
+  columnByDataKey: Record<DataKey, DatasetColumn>;
   dataset: GroupedDataset;
   transformedDataset: GroupedDataset;
   yAxisSplit: AxisSplit;
