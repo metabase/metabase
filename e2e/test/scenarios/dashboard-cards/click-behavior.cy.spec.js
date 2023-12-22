@@ -489,7 +489,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.button("Done").should("be.enabled").click();
       saveDashboard({ waitMs: 250 });
 
-      clickLineChartPoint({ waitMs: 250 });
+      clickLineChartPoint();
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
