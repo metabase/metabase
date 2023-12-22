@@ -1,5 +1,5 @@
 import _ from "underscore";
-import Dimension, { FieldDimension } from "metabase-lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = data =>
   data.rows == null || data.rows.length === 0;
@@ -16,11 +16,6 @@ export function fieldRefForColumn(column) {
     column.field_ref &&
     Dimension.parseMBQL(column.field_ref).baseDimension().mbql()
   );
-}
-
-export function fieldRefWithOption(fieldRef, key, value) {
-  const dimension = FieldDimension.parseMBQLOrWarn(fieldRef);
-  return dimension && dimension.withOption(key, value).mbql();
 }
 
 /**

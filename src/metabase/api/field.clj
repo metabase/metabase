@@ -4,6 +4,7 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
@@ -140,7 +141,7 @@
    semantic_type      [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]
    coercion_strategy  [:maybe ms/CoercionStrategyKeywordOrString]
    visibility_type    [:maybe FieldVisibilityType]
-   has_field_values   [:maybe (into [:enum] (map name field/has-field-values-options))]
+   has_field_values   [:maybe ::lib.schema.metadata/column.has-field-values]
    settings           [:maybe ms/Map]
    nfc_path           [:maybe [:sequential ms/NonBlankString]]
    json_unfolding     [:maybe :boolean]}
@@ -267,10 +268,10 @@
      :has_more_values (not (str/blank? query))
      :field_id        field-id}))
 
-;; TODO -- not sure `has_field_values` actually has to be `:list` -- see code above.
 (api/defendpoint GET "/:id/values"
-  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or remapped Field), and (if
-  defined by a User) a map of human-readable remapped values."
+  "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
+  remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
+  `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [id]
   {id ms/PositiveInt}
   (let [field (api/read-check (t2/select-one Field :id id))]

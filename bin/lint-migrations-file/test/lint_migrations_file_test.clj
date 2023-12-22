@@ -175,7 +175,7 @@
           (validate
            (mock-change-set
              :id "v42.00-001"
-             :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type")])]))))
+             :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type}")])]))))
     (doseq [problem-type ["blob" "text"]]
       (testing (format "should prevent \"%s\" columns from being added after ID 320" problem-type)
         (is (thrown-with-msg?
@@ -185,6 +185,22 @@
                 (mock-change-set
                   :id "v42.00-001"
                   :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))
+
+(deftest prevent-bare-boolean-type-test
+  (testing "should allow adding \"${boolean.type}\" columns"
+    (is (= :ok
+          (validate
+           (mock-change-set
+             :id "v49.00-033"
+             :changes [(mock-add-column-changes :columns [(mock-column :type "${boolean.type}")])]))))
+    (testing (format "should prevent \"boolean\" columns from being added after ID v49.00-033")
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"(?s)^.*no-bare-boolean-types\\?.*$"
+            (validate
+              (mock-change-set
+                :id "v49.00-033"
+                :changes [(mock-add-column-changes :columns [(mock-column :type "boolean")])])))))))
 
 (deftest require-rollback-test
   (testing "change types with no automatic rollback support"

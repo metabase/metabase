@@ -1,12 +1,13 @@
 import {
-  restore,
   describeEE,
-  visitQuestion,
-  visitEmbeddedPage,
-  popover,
-  setTokenFeatures,
-  visitIframe,
   filterWidget,
+  openStaticEmbeddingModal,
+  popover,
+  restore,
+  setTokenFeatures,
+  visitEmbeddedPage,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -42,7 +43,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     it("should not be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
-        openEmbeddingSettingsPage();
+        openStaticEmbeddingModal();
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -101,7 +102,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     it("should be possible to disable downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
-        openEmbeddingSettingsPage();
+        openStaticEmbeddingModal();
 
         cy.log("Disable downloads");
         cy.findByLabelText("Enable users to download data from this embed?")
@@ -132,11 +133,3 @@ describeEE("scenarios > embedding > questions > downloads", () => {
     });
   });
 });
-
-function openEmbeddingSettingsPage() {
-  cy.intercept("GET", "/api/session/properties").as("sessionProperties");
-
-  cy.icon("share").click();
-  cy.findByText("Embed in your application").click();
-  cy.wait("@sessionProperties");
-}

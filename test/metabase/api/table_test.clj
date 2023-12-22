@@ -664,8 +664,11 @@
                 :type/Category
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
+(deftest query-metadata-remappings-test-2
+  (testing "GET /api/table/:id/query_metadata"
+    (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (testing "Ensure internal remapped dimensions and human_readable_values are returned when type is enum"
         (is (= [{:table_id   (mt/id :venues)
                  :id         (mt/id :venues :category_id)
@@ -682,8 +685,10 @@
                 :type/Enum
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
-                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
+                                 (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
 
+(deftest query-metadata-remappings-test-3
+  (testing "GET /api/table/:id/query_metadata"
     (mt/with-column-remappings [venues.category_id categories.name]
       (testing "Ensure FK remappings are returned"
         (is (= [{:table_id   (mt/id :venues)

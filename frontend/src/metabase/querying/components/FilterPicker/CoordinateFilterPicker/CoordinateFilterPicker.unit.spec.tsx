@@ -174,12 +174,9 @@ describe("CoordinateFilterPicker", () => {
           });
 
           await setOperator("Between");
-
-          const [leftInput, rightInput] =
-            screen.getAllByPlaceholderText("Enter a number");
+          const leftInput = screen.getByPlaceholderText("Min");
+          const rightInput = screen.getByPlaceholderText("Max");
           userEvent.type(leftInput, String(leftValue));
-          expect(addFilterButton).toBeDisabled();
-
           userEvent.type(rightInput, String(rightValue));
           userEvent.click(addFilterButton);
 
@@ -200,12 +197,9 @@ describe("CoordinateFilterPicker", () => {
         });
 
         await setOperator("Between");
-
-        const [leftInput, rightInput] =
-          screen.getAllByPlaceholderText("Enter a number");
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
         userEvent.type(leftInput, "5");
-        expect(addFilterButton).toBeDisabled();
-
         userEvent.type(rightInput, "-10.5");
         userEvent.click(addFilterButton);
 
@@ -223,12 +217,11 @@ describe("CoordinateFilterPicker", () => {
           setup();
 
         await setOperator("Between");
-        const [leftInput, rightInput] =
-          screen.getAllByPlaceholderText("Enter a number");
-        userEvent.type(leftInput, "5{enter}");
-        expect(onChange).not.toHaveBeenCalled();
-
+        const leftInput = screen.getByPlaceholderText("Min");
+        const rightInput = screen.getByPlaceholderText("Max");
+        userEvent.type(leftInput, "5");
         userEvent.type(rightInput, "-10.5{enter}");
+
         expect(onChange).toHaveBeenCalled();
         expect(getNextFilterParts()).toMatchObject({
           operator: "between",
@@ -319,16 +312,16 @@ describe("CoordinateFilterPicker", () => {
       it("should add a filter with many values", async () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup();
 
-        userEvent.type(
-          screen.getByPlaceholderText("Enter a number"),
-          "-5, -1, 0, 1, 5",
-        );
+        const input = screen.getByPlaceholderText("Enter a number");
+        userEvent.type(input, "5");
+        userEvent.tab();
+        userEvent.type(input, "10");
         userEvent.click(screen.getByText("Add filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
           operator: "=",
-          values: [-5, -1, 0, 1, 5],
+          values: [5, 10],
           column: expect.anything(),
         });
         expect(getNextFilterColumnNames().column).toBe("User → Latitude");
@@ -434,9 +427,8 @@ describe("CoordinateFilterPicker", () => {
           });
 
           await setOperator("Between");
-
-          const [leftInput, rightInput] =
-            screen.getAllByPlaceholderText("Enter a number");
+          const leftInput = screen.getByPlaceholderText("Min");
+          const rightInput = screen.getByPlaceholderText("Max");
           userEvent.type(leftInput, `{selectall}{backspace}${leftValue}`);
           expect(updateButton).toBeEnabled();
 
@@ -520,20 +512,17 @@ describe("CoordinateFilterPicker", () => {
         const { getNextFilterParts, getNextFilterColumnNames } = setup(
           createQueryWithCoordinateFilter({
             operator: "=",
-            values: [-1, 0, 1, 2],
+            values: [-5, 0],
           }),
         );
 
-        userEvent.type(
-          screen.getByRole("textbox"),
-          "{backspace}{backspace}5,11,7",
-        );
+        userEvent.type(screen.getByLabelText("Filter value"), "5");
         userEvent.click(screen.getByText("Update filter"));
 
         const filterParts = getNextFilterParts();
         expect(filterParts).toMatchObject({
           operator: "=",
-          values: [-1, 0, 5, 11, 7],
+          values: [-5, 0, 5],
           column: expect.anything(),
         });
         expect(getNextFilterColumnNames().column).toBe("User → Latitude");
@@ -580,37 +569,31 @@ describe("CoordinateFilterPicker", () => {
         name: "Update filter",
       });
 
-      expect(screen.getByText("100.00000000° S")).toBeInTheDocument();
-      expect(screen.getByText("200.00000000° N")).toBeInTheDocument();
+      expect(screen.getByText("-100")).toBeInTheDocument();
+      expect(screen.getByText("200")).toBeInTheDocument();
 
       await setOperator("Is not");
 
-      expect(screen.getByText("100.00000000° S")).toBeInTheDocument();
-      expect(screen.getByText("200.00000000° N")).toBeInTheDocument();
+      expect(screen.getByText("-100")).toBeInTheDocument();
+      expect(screen.getByText("200")).toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
       await setOperator("Between");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.getByDisplayValue("200")).toBeInTheDocument();
-      expect(screen.queryByText("100.00000000° S")).not.toBeInTheDocument();
-      expect(screen.queryByText("200.00000000° N")).not.toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
       await setOperator("Greater than");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
-      expect(screen.queryByText("100.00000000° S")).not.toBeInTheDocument();
-      expect(screen.queryByText("200.00000000° N")).not.toBeInTheDocument();
       expect(updateButton).toBeEnabled();
 
       await setOperator("Inside");
 
       expect(screen.getByDisplayValue("-100")).toBeInTheDocument();
       expect(screen.queryByDisplayValue("200")).not.toBeInTheDocument();
-      expect(screen.queryByText("100.00000000° S")).not.toBeInTheDocument();
-      expect(screen.queryByText("200.00000000° N")).not.toBeInTheDocument();
       expect(updateButton).toBeDisabled();
     });
 

@@ -23,7 +23,6 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
-  Collection,
   CollectionId,
   DatabaseId,
   DatasetQuery,
@@ -201,14 +200,6 @@ class Question {
 
   isStructured(): boolean {
     return this.query() instanceof StructuredQuery;
-  }
-
-  setEnableEmbedding(enabled: boolean): Question {
-    return this.setCard(assoc(this._card, "enable_embedding", enabled));
-  }
-
-  setEmbeddingParams(params: Record<string, any> | null): Question {
-    return this.setCard(assoc(this._card, "embedding_params", params));
   }
 
   /**
@@ -771,10 +762,6 @@ class Question {
     return this._card && this._card.collection_id;
   }
 
-  collectionType(): Pick<Collection, "type"> {
-    return this._card?.collection?.type;
-  }
-
   setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
@@ -829,10 +816,6 @@ class Question {
 
   publicUUID(): string {
     return this._card && this._card.public_uuid;
-  }
-
-  setPublicUUID(public_uuid: string | null): Question {
-    return this.setCard({ ...this._card, public_uuid });
   }
 
   database(): Database | null | undefined {
@@ -996,10 +979,13 @@ class Question {
   _serializeForUrl({
     includeOriginalCardId = true,
     clean = true,
+    cleanFilters = false,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? this.query().clean() : this.query();
+    const query = clean
+      ? this.query().clean({ skipFilters: !cleanFilters })
+      : this.query();
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
