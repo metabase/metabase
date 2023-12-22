@@ -2944,6 +2944,22 @@
           (testing "Cards based on uploads have based_on_upload=<table-id> if they meet all the criteria"
             (is (= table-id (:based_on_upload (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
           (testing "If one of the criteria for appends is not met, based_on_upload should be nil."
+            (testing "\nIf the card is based on another card, which is based on the table, based_on_upload should be nil"
+              (mt/with-temp [:model/Card {card-id' :id} {:dataset       false
+                                                         :dataset_query {:type     :query
+                                                                         :database db-id
+                                                                         :query    {:source-table (str "card__" card-id)}}}]
+                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id'))))))
+            (testing "\nIf the card has a join in the query (even to itself), based_on_upload should be nil"
+              (mt/with-temp [:model/Card {card-id' :id} {:dataset       false
+                                                         :dataset_query {:type     :query
+                                                                         :database db-id
+                                                                         :query    {:source-table table-id
+                                                                                    :joins [{:fields       :all
+                                                                                             :source-table table-id
+                                                                                             :condition    [:= 1 2] ;; field-ids don't matter
+                                                                                             :alias        "SomeAlias"}]}}}]
+                (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id'))))))
             (testing "\nIf the table is not based on uploads, based_on_upload should be nil"
               (t2/update! :model/Table table-id {:is_upload false})
               (is (=? {:based_on_upload nil} (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))
