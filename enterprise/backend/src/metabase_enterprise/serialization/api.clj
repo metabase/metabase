@@ -20,11 +20,7 @@
    [metabase.util.random :as u.random]
    [ring.core.protocols :as ring.protocols])
   (:import
-   (java.io File ByteArrayOutputStream)
-   (java.lang AutoCloseable)
-   (org.apache.logging.log4j Level)
-   (org.apache.logging.log4j.core.appender AbstractAppender FileAppender)
-   (org.apache.logging.log4j.core.config AbstractConfiguration LoggerConfig)))
+   (java.io File ByteArrayOutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -64,39 +60,6 @@
         (callback)
         res))))
 
-;;; Logging
-
-(defn- find-logger-layout
-  "Find any logger with a specified layout"
-  [^LoggerConfig logger]
-  (when logger
-    (or (first (keep #(.getLayout ^AbstractAppender (val %)) (.getAppenders logger)))
-        (recur (.getParent logger)))))
-
-(defn- make-logger ^AutoCloseable [ns ^File f]
-  (let [config        (logger/configuration)
-        parent-logger (logger/effective-ns-logger ns)
-        appender      (.build
-                       (doto (FileAppender/newBuilder)
-                         (.withName (.getPath f))
-                         (.withFileName (.getPath f))
-                         (.withLayout (find-logger-layout parent-logger))))
-        logger        (LoggerConfig. (logger/logger-name ns) Level/INFO true)]
-    (.start appender)
-    (.addAppender config appender)
-    (.addAppender logger appender (.getLevel logger) nil)
-    (.addLogger config (.getName logger) logger)
-    (.updateLoggers (logger/context))
-
-    (reify AutoCloseable
-      (close [_]
-        (let [^AbstractConfiguration config (logger/configuration)]
-          (.removeLogger config (.getName logger))
-          (.stop appender)
-          ;; this method is only present in AbstractConfiguration
-          (.removeAppender config (.getName appender))
-          (.updateLoggers (logger/context)))))))
-
 ;;; Logic
 
 (defn- serialize&pack ^File [opts]
@@ -106,7 +69,7 @@
         path     (io/file parent-dir id)
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")]
-    (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
+    (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
       (try                              ; try/catch inside logging to log errors
         (serdes/with-cache
           (-> (extract/extract opts)
@@ -128,7 +91,7 @@
 (defn- unpack&import [^File file & [size]]
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")]
-    (with-open [_logger (make-logger 'metabase-enterprise.serialization log-file)]
+    (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
       (try                              ; try/catch inside logging to log errors
         (log/infof "Serdes import, size %s" size)
         (let [path (u.compress/untgz file dst)]

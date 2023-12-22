@@ -1,11 +1,12 @@
 (ns metabase.logger-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
-   [metabase.logger :as mb.logger]
+   [metabase.logger :as logger]
    [metabase.test :as mt])
   (:import
    (org.apache.logging.log4j.core Logger)))
@@ -28,7 +29,7 @@
       (is (some (fn [{message :msg, :as entry}]
                   (when (str/includes? (str message) "testing in-memory logger")
                     entry))
-                (mb.logger/messages))
+                (logger/messages))
           "In memory ring buffer did not receive log message")))
 
   (testing "set isAdditive = false if parent logger is root to prevent logging to console (#26468)"
@@ -56,4 +57,21 @@
     (is (not (some (fn [{message :msg, :as entry}]
                      (when (str/includes? (str message) "THIS SHOULD NOT SHOW UP")
                        entry))
-                   (mb.logger/messages))))))
+                   (logger/messages))))))
+
+(deftest fork-logs-off
+  (testing "logger/for-ns works properly"
+    (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
+      (try
+        (with-open [_ (logger/for-ns 'metabase.logger-test f {:additive false})]
+          (log/info "just a test"))
+        (is (=? #".*metabase.logger-test :: just a test\n"
+                (slurp f)))
+        (finally
+          (when (.exists f)
+            (io/delete-file f)))))
+    (let [baos (java.io.ByteArrayOutputStream.)]
+      (with-open [_ (logger/for-ns 'metabase.logger-test baos {:additive false})]
+        (log/info "just a test"))
+      (is (=? #".*metabase.logger-test :: just a test\n"
+              (.toString baos "UTF-8"))))))
