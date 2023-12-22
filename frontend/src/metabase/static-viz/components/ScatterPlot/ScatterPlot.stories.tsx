@@ -70,6 +70,13 @@ LogXScale.args = {
   renderingContext,
 };
 
+export const LogXScaleAtOne = Template.bind({});
+LogXScaleAtOne.args = {
+  rawSeries: data.logXScaleAtOne as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const HistogramXScale = Template.bind({});
 HistogramXScale.args = {
   rawSeries: data.histogramXScale as any,
