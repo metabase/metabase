@@ -9,6 +9,7 @@ import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartSc
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
+import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export function computeTrend(series, insights, settings) {
   // get current metric data
@@ -81,6 +82,14 @@ export function computeTrend(series, insights, settings) {
 
 function computeComparison({ currentMetricData, series, settings }) {
   const { type } = settings["scalar.comparisons"];
+
+  if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    return computeTrendAnotherColumn({
+      currentMetricData,
+      series,
+      settings,
+    });
+  }
 
   if (type === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return computeTrendPreviousValue({
@@ -179,6 +188,30 @@ function getCurrentMetricData({ series, insights, settings }) {
       latestRowIndex,
     },
     value,
+  };
+}
+
+function computeTrendAnotherColumn({ currentMetricData, series, settings }) {
+  const { latestRowIndex } = currentMetricData.indexData;
+  const { cols, rows } = series[0].data;
+
+  const comparison = settings["scalar.comparisons"];
+
+  const columnIndex = cols.findIndex(
+    column => getColumnKey(column) === comparison.column,
+  );
+  const column = cols[columnIndex];
+
+  // TODO if (!column) { ... }
+
+  const lastRow = rows[latestRowIndex];
+  const comparisonValue = lastRow[columnIndex];
+
+  const displayName = comparison.label || column.display_name;
+
+  return {
+    comparisonDescStr: t`vs. ${displayName}`,
+    comparisonValue,
   };
 }
 

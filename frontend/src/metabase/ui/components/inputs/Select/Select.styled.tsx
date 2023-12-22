@@ -52,7 +52,9 @@ export const getSelectInputOverrides = (
     wrapper: {
       ref: getStylesRef("wrapper"),
       color: theme.colors.text[2],
-
+      "&:not(:only-child)": {
+        marginTop: theme.spacing.xs,
+      },
       [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,
         pointerEvents: "auto",

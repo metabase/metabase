@@ -83,6 +83,10 @@ export const getChangeWidth = (width: number): number => {
 };
 
 export const COMPARISON_SELECTOR_OPTIONS = {
+  ANOTHER_COLUMN: {
+    type: COMPARISON_TYPES.ANOTHER_COLUMN,
+    name: t`Value from another column…`,
+  },
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
   },
@@ -137,8 +141,16 @@ export function getComparisonOptions(
 
   const options: ComparisonMenuOption[] = [
     createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
-    createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
   ];
+
+  // TODO Put a condition here
+  options.push(
+    createComparisonMenuOption({ type: COMPARISON_TYPES.ANOTHER_COLUMN }),
+  );
+
+  options.push(
+    createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
+  );
 
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
@@ -184,6 +196,11 @@ export function isComparisonValid(
       data: { insights },
     },
   ] = series;
+
+  // TODO test
+  if (comparisonType === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    return !isEmpty(comparison?.column) && !isEmpty(comparison?.label);
+  }
 
   if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return true;
@@ -245,6 +262,9 @@ function getMaxPeriodsAgo({
 
 type GetComparisonMenuOptionParameters =
   | {
+      type: typeof COMPARISON_TYPES.ANOTHER_COLUMN;
+    }
+  | {
       type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
     }
   | {
@@ -264,6 +284,10 @@ function createComparisonMenuOption(
   comparisonParameters: GetComparisonMenuOptionParameters,
 ): ComparisonMenuOption {
   const { type } = comparisonParameters;
+
+  if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    return COMPARISON_SELECTOR_OPTIONS.ANOTHER_COLUMN;
+  }
 
   if (type === COMPARISON_TYPES.PREVIOUS_PERIOD) {
     const { dateUnit } = comparisonParameters;
