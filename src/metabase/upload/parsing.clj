@@ -10,6 +10,7 @@
    (java.text NumberFormat)
    (java.util Locale)))
 
+
 (set! *warn-on-reflection* true)
 
 (def currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
