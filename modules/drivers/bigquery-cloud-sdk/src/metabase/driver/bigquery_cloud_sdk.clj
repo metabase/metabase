@@ -187,6 +187,11 @@
   See https://cloud.google.com/bigquery/docs/partitioned-tables#ingestion_time"
   "_PARTITIONTIME")
 
+(def ^:private partitioned-date-field-name
+  "The name of pseudo-column for tables that are partitioned by ingestion time.
+  See https://cloud.google.com/bigquery/docs/partitioned-tables#ingestion_time"
+  "_PARTITIONDATE")
+
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
   (let [table                  (get-table database dataset-id table-name)
@@ -205,7 +210,7 @@
      :fields (cond-> fields
                ;; if table has time partition but no field is specified as partitioned
                ;; meaning this table is partitioned by ingestion time
-               ;; so we manually sync this pseudo-column
+               ;; so we manually sync the 2 pseudo-columns _PARTITIONTIME AND _PARTITIONDATE
                (and is-partitioned?
                     (some? (.getTimePartitioning tabledef))
                     (nil? partitioned-field-name))
@@ -214,6 +219,11 @@
                  :database-type        "TIMESTAMP"
                  :base-type            (bigquery-type->base-type nil "TIMESTAMP")
                  :database-position    (count fields)
+                 :database-partitioned true}
+                {:name                 partitioned-date-field-name
+                 :database-type        "DATE"
+                 :base-type            (bigquery-type->base-type nil "DATE")
+                 :database-position    (inc (count fields))
                  :database-partitioned true}))}))
 
 (defn- get-field-parsers [^Schema schema]

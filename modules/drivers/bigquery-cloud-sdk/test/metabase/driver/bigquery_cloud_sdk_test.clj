@@ -294,6 +294,7 @@
                      ["partition_by_range"              "customer_id"]      true
                      ["partition_by_ingestion_time"     "transaction_id"]   false
                      ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
+                     ["partition_by_ingestion_time"     "_PARTITIONDATE"]   true
                      ["partition_by_time"               "transaction_time"] true
                      ["partition_by_time"               "transaction_id"]   false}
                     (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
@@ -366,15 +367,21 @@
                            (into {}))))))
 
            (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME"
-             (let [partitioned-by-ingestion-time-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name "partition_by_ingestion_time")]
-               (is (=? {:name           @#'bigquery/partitioned-time-field-name
-                        :database_type "TIMESTAMP"
-                        :base_type     :type/DateTimeWithLocalTZ}
-                       (t2/select-one :model/Field :table_id partitioned-by-ingestion-time-table-id :name @#'bigquery/partitioned-time-field-name))))
+             (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name "partition_by_ingestion_time_not_required")]
+               (is (=? [{:name           "_PARTITIONTIME"
+                         :database_type "TIMESTAMP"
+                         :base_type     :type/DateTimeWithLocalTZ
+                         :database_position 1}
+                        {:name           "_PARTITIONDATE"
+                         :database_type "DATE"
+                         :base_type     :type/Date
+                         :database_position 2}]
+                       (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
+                                  :database_partitioned true {:order-by [[:name :desc]]}))))
              (testing "and query this table should return the column pseudocolumn as well"
                (is (malli=
-                    [:tuple :int ms/TemporalString]
-                    (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time)))))))
+                    [:tuple :int ms/TemporalString ms/TemporalString]
+                    (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time {:limit 1})))))))
            (finally
             (doall (map drop-table-if-exists! table-names))
             nil)))))))
