@@ -5,6 +5,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [tru]])
   (:import
+   (java.time LocalDate)
+   (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
    (java.text NumberFormat)
    (java.util Locale)))
 
@@ -29,15 +31,51 @@
     :else                                (throw (IllegalArgumentException.
                                                  (tru "{0} is not a recognizable boolean" s)))))
 
-(defn parse-date
-  "Parses a date.
+(def local-date-patterns
+  "patterns used to generate the local date formatter. Excludes ISO_LOCAL_DATE (yyyy-MM-dd) because there's
+  already a built-in DateTimeFormatter for that: [[DateTimeFormatter/ISO_LOCAL_DATE]]"
+  ["MMM dd yyyy"        ; Jan 30 2000
+   "MMM dd, yyyy"       ; Jan 30, 2000
+   "dd MMM yyyy"        ; 30 Jan 2000
+   "dd MMM, yyyy"       ; 30 Jan, 2000
+   "MMMM d yyyy"        ; January 30 2000
+   "MMMM d, yyyy"       ; January 30, 2000
+   "d MMMM yyyy"        ; 30 January 2000
+   "d MMMM, yyyy"       ; 30 January, 2000
+   "EEEE, MMMM d yyyy"  ; Sunday, January 30 2000
+   "EEEE, MMMM d, yyyy" ; Sunday, January 30, 2000
+   ])
+
+(def local-date-formatter
+  "DateTimeFormatter that runs through a set of patterns to parse a variety of local date formats."
+  (let [builder (DateTimeFormatterBuilder.)]
+    (.parseCaseInsensitive builder)
+    (doseq [pattern local-date-patterns]
+      (.appendOptional builder (DateTimeFormatter/ofPattern pattern)))
+    (.appendOptional builder DateTimeFormatter/ISO_LOCAL_DATE) ; yyyy-MM-dd
+    (.toFormatter builder)))
+
+(defn parse-local-date
+  "Parses a local date string.
 
   Supported formats:
-    - yyyy-MM-dd"
+    - yyyy-MM-dd
+    - MMM dd yyyy
+    - MMM dd, yyyy
+    - dd MMM yyyy
+    - dd MMM, yyyy
+    - MMMM d yyyy
+    - MMMM d, yyyy
+    - d MMMM yyyy
+    - d MMMM, yyyy"
   [s]
-  (t/local-date s))
+  (try
+    (LocalDate/parse s local-date-formatter)
+    (catch Exception _
+      (throw (IllegalArgumentException.
+              (tru "''{0}'' is not a recognizable date" s))))))
 
-(defn parse-datetime
+(defn parse-local-datetime
   "Parses a string representing a local datetime into a LocalDateTime.
 
   Supported formats:
@@ -50,14 +88,14 @@
   [s]
   (-> s (str/replace \space \T) t/local-date-time))
 
-(defn parse-as-datetime
-  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-date]] and [[parse-datetime]]."
+(defn- parse-as-datetime
+  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-local-date]] and [[parse-datetime]]."
   [s]
   (try
-    (t/local-date-time (parse-date s) (t/local-time "00:00:00"))
+    (t/local-date-time (parse-local-date s) (t/local-time "00:00:00"))
     (catch Exception _
       (try
-        (parse-datetime s)
+        (parse-local-datetime s)
         (catch Exception _
           (throw (IllegalArgumentException.
                   (tru "{0} is not a recognizable datetime" s))))))))
@@ -155,7 +193,7 @@
 (defmethod upload-type->parser :metabase.upload/date
   [_ _]
   (comp
-   parse-date
+   parse-local-date
    str/trim))
 
 (defmethod upload-type->parser :metabase.upload/datetime
