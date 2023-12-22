@@ -40,16 +40,15 @@ export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
   negativeTranslation: number,
+  total: number,
   settings: ComputedVisualizationSettings,
 ): WaterfallDataset {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
 
-  let total = 0;
   rows.forEach((row, index) => {
     const dimension = String(row[columns.dimension.index]);
     const value = checkNumber(row[columns.metrics[0].index]);
-    total += value;
 
     let increase: number | "-" = "-";
     let decrease: number | "-" = "-";
