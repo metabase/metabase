@@ -28,10 +28,6 @@ export function getDefaultValuePopulatedParameters(
   });
 }
 
-export function hasDefaultParameterValue(parameter) {
-  return parameter.default != null;
-}
-
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,

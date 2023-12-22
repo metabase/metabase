@@ -5,7 +5,10 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time.api :as t]
-   [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
+   [metabase.api.common :as api :refer [*current-user*
+                                        *current-user-id*
+                                        *is-group-manager?*
+                                        *is-superuser?*]]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -242,6 +245,72 @@
               :metabase-session-id "092797dd-a82a-4748-b393-697d7bb9ab65"
               :uri                 "/anyurl"}
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
+
+(deftest current-user-info-for-api-key-test
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  "mb_foobar"}]
+    (testing "A valid API key works, and user info is added to the request"
+      (let [req {:headers {"x-api-key" "mb_foobar"}}]
+        (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
+                           :is-superuser?     false
+                           :is-group-manager? false
+                           :user-locale       nil})
+               (#'mw.session/merge-current-user-info req)))))
+    (testing "Various invalid API keys do not modify the request"
+      (are [req] (= req (#'mw.session/merge-current-user-info req))
+        ;; a matching prefix, invalid key
+        {:headers {"x-api-key" "mb_fooby"}}
+
+        ;; no matching prefix, invalid key
+        {:headers {"x-api-key" "abcde"}}
+
+        ;; no key at all
+        {:headers {}}))))
+
+(defn- simple-auth-handler
+  "A handler that just does authentication and returns a map from the dynamic variables that are bound as a result."
+  [request]
+  (let [handler (fn [_ respond _]
+                  (respond
+                   {:user-id           *current-user-id*
+                    :is-superuser?     *is-superuser?*
+                    :is-group-manager? *is-group-manager?*
+                    :user              (select-keys @*current-user* [:id :email])}))]
+    ((-> handler
+         mw.session/bind-current-user
+         mw.session/wrap-current-user-info)
+     request
+     identity
+     (fn [e] (throw e)))))
+
+(deftest user-data-is-correctly-bound-for-api-keys
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  "mb_foobar"}
+                           :model/ApiKey _ {:name          "A superuser API Key"
+                                            :user_id       (mt/user->id :crowberto)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  "mb_superuser"}]
+    (testing "A valid API key works, and user info is added to the request"
+      (is (= {:is-superuser?     false
+              :is-group-manager? false
+              :user-id           (mt/user->id :lucky)
+              :user              {:id    (mt/user->id :lucky)
+                                  :email (:email (mt/fetch-user :lucky))}}
+             (simple-auth-handler {:headers {"x-api-key" "mb_foobar"}}))))
+    (testing "A superuser API key has `*is-superuser?*` bound correctly"
+      (is (= {:is-superuser?     true
+              :is-group-manager? false
+              :user-id           (mt/user->id :crowberto)
+              :user              {:id    (mt/user->id :crowberto)
+                                  :email (:email (mt/fetch-user :crowberto))}}
+             (simple-auth-handler {:headers {"x-api-key" "mb_superuser"}}))))))
 
 (deftest current-user-info-for-session-test
   (testing "make sure the `current-user-info-for-session` logic is working correctly"

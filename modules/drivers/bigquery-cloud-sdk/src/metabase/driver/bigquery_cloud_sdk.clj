@@ -31,8 +31,8 @@
    (clojure.lang PersistentList)
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetListOption BigQuery$JobOption BigQuery$TableDataListOption
                               BigQuery$TableListOption BigQuery$TableOption BigQueryException BigQueryOptions Dataset
-                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema Table
-                              TableDefinition$Type TableId TableResult)))
+                              DatasetId Field Field$Mode FieldValue FieldValueList QueryJobConfiguration Schema StandardTableDefinition
+                              Table TableDefinition$Type TableId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -90,14 +90,6 @@
                          .iterator
                          iterator-seq))))))
 
-(defmethod driver/describe-database :bigquery-cloud-sdk
-  [_ database]
-  (let [tables (list-tables (:details database))]
-    {:tables (set (for [^Table table tables
-                        :let  [^TableId table-id  (.getTableId table)
-                               ^String dataset-id (.getDataset table-id)]]
-                    {:schema dataset-id, :name (.getTable table-id)}))}))
-
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
   ;; check whether we can connect by seeing whether listing tables succeeds
@@ -122,6 +114,34 @@
    (if project-id
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
+
+(defmethod driver/describe-database :bigquery-cloud-sdk
+  [_ database]
+  (let [tables (list-tables (:details database))]
+    {:tables (set (for [^Table table tables
+                        :let  [^TableId                 table-id   (.getTableId table)
+                               ^String                  dataset-id (.getDataset table-id)
+                               ^StandardTableDefinition tabledef   (.getDefinition table)
+                                                        table-name (str (.getTable table-id))]]
+                    {:schema                  dataset-id
+                     :name                    table-name
+                     :database_require_filter
+                     (boolean
+                      (and
+                       ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
+                       ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                       ;; thus we can't know whether the view require a filter or not.
+                       ;; Maybe this is something we can do once we can parse sql
+                       (= TableDefinition$Type/TABLE (. tabledef getType))
+                       (when (or (.getRangePartitioning tabledef)
+                                 (.getTimePartitioning tabledef))
+                         ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
+                         ;; on the `table` object from `list-tables` will return `nil` even though the table requires
+                         ;; a partition filter.
+                         ;; This is an upstream bug where the v2 API is incomplete when setting object values see
+                         ;; https://github.com/googleapis/java-bigquery/blob/main/google-cloud-bigquery/src/main/java/com/google/cloud/bigquery/spi/v2/HttpBigQueryRpc.java#L343C23-L343C23
+                         ;; Anyway, we only call it when the table is partitioned, so I don't think it's a big deal
+                         (.getRequirePartitionFilter (get-table database dataset-id table-name)))))}))}))
 
 (defn- bigquery-type->base-type
   "Returns the base type for the given BigQuery field's `field-mode` and `field-type`. In BQ, an ARRAY of INTEGER has
@@ -222,7 +242,7 @@
         bq-table (get-table database dataset-id table-name)]
     (if (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
            ;; We couldn't easily test if the following two can show up as
-           ;; tables and if `.list` is supported for hem, so they are here
+           ;; tables and if `.list` is supported for them, so they are here
            ;; to make sure we don't break existing instances.
            TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
          (.. bq-table getDefinition getType))
@@ -281,8 +301,7 @@
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
-      ;; trying to deref the value after the future has been cancelled
-      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -353,7 +372,8 @@
       (thunk)
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
-          (if (or (:retryable? e) (not (qp.error-type/client-error? (:type ex-data))))
+          (if (and (not (::cancelled? ex-data))
+                   (or (:retryable? ex-data) (not (qp.error-type/client-error? (:type ex-data)))))
             (thunk)
             (throw e)))))))
 

@@ -79,7 +79,7 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/notify-database-updated database))
+  (sql-jdbc.conn/invalidate-pool-for-db! database))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
@@ -157,8 +157,19 @@
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
                         chunks)]
-    (doseq [sql sqls]
-      (qp.writeback/execute-write-sql! db-id sql))))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (doseq [sql sqls]
+        (jdbc/execute! conn sql)))))
+
+(defmethod driver/add-columns! :sql-jdbc
+  [driver db-id table-name col->type]
+  (let [sql (first (sql/format {:alter-table (keyword table-name)
+                                :add-column (map (fn [[name type-spec]]
+                                                   (vec (cons name type-spec)))
+                                                 col->type)}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (qp.writeback/execute-write-sql! db-id sql)))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name col->type]
