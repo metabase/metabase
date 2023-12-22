@@ -1,5 +1,6 @@
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { ComboChart } from "metabase/static-viz/components/ComboChart";
+import { ScatterPlot } from "metabase/static-viz/components/ScatterPlot/ScatterPlot";
 
 const Placeholder = ({ text }: { text: string }) => {
   return (
@@ -20,6 +21,8 @@ export const IsomorphicStaticChart = (props: IsomorphicStaticChartProps) => {
     case "bar":
     case "combo":
       return <ComboChart {...props} />;
+    case "scatter":
+      return <ScatterPlot {...props} />;
     case "scalar":
       return <Placeholder text="combined scalar placeholder" />;
     case "pie":
