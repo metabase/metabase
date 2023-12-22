@@ -3,7 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import {
   Box,
-  Flex,
+  Group,
   NumberInput,
   PopoverBackButton,
   Stack,
@@ -53,7 +53,7 @@ export function StaticNumberForm({
         <PopoverBackButton
           onClick={onBack}
         >{t`Custom value`}</PopoverBackButton>
-        <Flex gap="sm">
+        <Group spacing="sm">
           <TextInput
             autoFocus
             value={label}
@@ -66,7 +66,7 @@ export function StaticNumberForm({
             label={t`Value`}
             onChange={handleChangeValue}
           />
-        </Flex>
+        </Group>
         <DoneButton
           type="submit"
           variant="filled"
