@@ -409,3 +409,7 @@
     ::upload/date                     [:date]
     ::upload/datetime                 [:timestamp]
     ::upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmethod driver/insert-into! :redshift
+  [driver db-id table-name column-names values]
+  ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
