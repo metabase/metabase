@@ -46,6 +46,7 @@ export function SmartScalarComparisonWidget({
 
   const handleMenuStateChange = (isOpen: boolean) => {
     if (isOpen) {
+      setEditedValue(selectedValue);
       setTab(getTabForValue(selectedValue));
     } else if (!_.isEqual(selectedValue, editedValue)) {
       onChange(editedValue);
