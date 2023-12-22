@@ -16,7 +16,9 @@ export function getGoalLineSeriesOption(
   const [_leftAxisKeys, rightAxisKeys] = chartModel.yAxisSplit;
 
   return {
-    type: "line",
+    type: "line", // type is irreelevant since we don't render any series data
+    data: [],
+    silent: true,
     markLine: {
       data: [{ name: "goal-line", yAxis: settings["graph.goal_value"] }],
       label: {
