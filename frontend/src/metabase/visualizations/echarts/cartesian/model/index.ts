@@ -3,10 +3,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type {
-  AxisSplit,
-  CartesianChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   getCardSeriesModels,
   getDimensionModel,
@@ -15,14 +12,13 @@ import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/co
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
   getCardsColumnByDataKeyMap,
-  getDatasetExtents,
   getJoinedCardsDataset,
   getSortedSeriesModels,
   getTransformedDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
-  getYAxesExtents,
-  getYAxisSplit,
+  getXAxisModel,
+  getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
   getScatterPlotDataset,
@@ -95,7 +91,6 @@ export const getCartesianChartModel = (
     ? unsortedSeriesModels
     : getSortedSeriesModels(unsortedSeriesModels, settings);
 
-  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const dataset =
     rawSeries[0].card.display === "scatter"
       ? getScatterPlotDataset(rawSeries, cardsColumns)
@@ -107,28 +102,26 @@ export const getCartesianChartModel = (
     dimensionModel,
   );
 
-  const extents = getDatasetExtents(seriesDataKeys, dataset);
   const isAutoSplitSupported = SUPPORTED_AUTO_SPLIT_TYPES.includes(
     rawSeries[0].card.display,
   );
 
-  const yAxisSplit: AxisSplit = getYAxisSplit(
-    seriesModels,
-    extents,
-    settings,
-    isAutoSplitSupported,
-  );
-  const yAxisExtents = getYAxesExtents(yAxisSplit, dataset, settings);
-
-  const [leftSeriesDataKeys, rightSeriesDataKeys] = yAxisSplit;
-  const leftAxisColumn = seriesModels.find(
-    seriesModel => seriesModel.dataKey === leftSeriesDataKeys[0],
-  )?.column;
-  const rightAxisColumn = seriesModels.find(
-    seriesModel => seriesModel.dataKey === rightSeriesDataKeys[0],
-  )?.column;
-
   const insights = rawSeries.flatMap(series => series.data.insights ?? []);
+
+  const xAxisModel = getXAxisModel(
+    dimensionModel.column,
+    settings,
+    renderingContext,
+  );
+
+  const yAxesModels = getYAxesModels(
+    seriesModels,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    isAutoSplitSupported,
+    renderingContext,
+  );
 
   const bubbleSizeDataKey = getBubbleSizeDataKey(rawSeries, settings);
 
@@ -138,11 +131,9 @@ export const getCartesianChartModel = (
     seriesModels,
     columnByDataKey,
     dimensionModel,
-    yAxisSplit,
-    leftAxisColumn,
-    rightAxisColumn,
-    yAxisExtents,
     insights,
+    xAxisModel,
+    ...yAxesModels,
     bubbleSizeDataKey,
   };
 };
