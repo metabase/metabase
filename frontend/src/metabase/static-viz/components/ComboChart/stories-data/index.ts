@@ -1,3 +1,7 @@
+import lineLinearXScale from "./line-linear-x-scale.json";
+import barLinearXScale from "./bar-linear-x-scale.json";
+import barHistogramXScale from "./bar-histogram-x-scale.json";
+import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
@@ -15,6 +19,10 @@ import trendComboPower from "./trend-combo-power.json";
 import trendComboLog from "./trend-combo-log.json";
 
 export const data = {
+  lineLinearXScale,
+  barLinearXScale,
+  barHistogramXScale,
+  barOrdinalXScale,
   autoYSplit,
   messedUpAxis,
   trendSingleSeriesLine,

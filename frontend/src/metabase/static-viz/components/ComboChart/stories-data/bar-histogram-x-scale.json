@@ -1,0 +1,327 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 156,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "generation",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1503,
+            {
+              "base-type": "type/BigInteger",
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 1,
+                "max-value": 8,
+                "num-bins": 8,
+                "bin-width": 1
+              }
+            }
+          ],
+          "effective_type": "type/Decimal",
+          "id": 1503,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": { "distinct-count": 8, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/Decimal"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": { "distinct-count": 8, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 85,
+                "q1": 93.5,
+                "q3": 168,
+                "max": 192,
+                "sd": 41.56234559584638,
+                "avg": 128.5
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 14,
+      "query_type": "query",
+      "name": "Bar Histogram X Scale - Poke Count by Gen, Auto Bin",
+      "creator_id": 1,
+      "updated_at": "2023-12-13T22:52:53.914849Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              1503,
+              {
+                "base-type": "type/BigInteger",
+                "binning": { "strategy": "default" }
+              }
+            ]
+          ],
+          "source-table": "card__104"
+        }
+      },
+      "id": 145,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "bar",
+      "entity_id": "5sUU0_okGKOkicLue4LkC",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["generation"],
+        "graph.x_axis.scale": "histogram",
+        "graph.metrics": ["count"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-13T22:52:53.914849Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "generation",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              1503,
+              {
+                "base-type": "type/BigInteger",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 1,
+                  "max-value": 8,
+                  "num-bins": 8,
+                  "bin-width": 1
+                }
+              }
+            ],
+            "effective_type": "type/Decimal",
+            "id": 1503,
+            "visibility_type": "normal",
+            "display_name": "Generation",
+            "fingerprint": {
+              "global": { "distinct-count": 8, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 2.1045160333142734,
+                  "q3": 5.716989271844637,
+                  "max": 8,
+                  "sd": 2.234937326790694,
+                  "avg": 4.034046692607004
+                }
+              }
+            },
+            "base_type": "type/Decimal"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": { "distinct-count": 8, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 85,
+                  "q1": 93.5,
+                  "q3": 168,
+                  "max": 192,
+                  "sd": 41.56234559584638,
+                  "avg": 128.5
+                }
+              }
+            }
+          }
+        ]
+      },
+      "rows": [
+        [1, 192],
+        [2, 107],
+        [3, 165],
+        [4, 121],
+        [5, 171],
+        [6, 85],
+        [7, 99],
+        [8, 88]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 156,
+          "coercion_strategy": null,
+          "binning_info": {
+            "min_value": 1,
+            "max_value": 8,
+            "num_bins": 8,
+            "bin_width": 1,
+            "binning_strategy": "num-bins"
+          },
+          "name": "generation",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            1503,
+            {
+              "base-type": "type/BigInteger",
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 1,
+                "max-value": 8,
+                "num-bins": 8,
+                "bin-width": 1
+              }
+            }
+          ],
+          "effective_type": "type/Decimal",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1503,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": { "distinct-count": 8, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/Decimal"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "graph.dimensions": ["generation"],
+        "graph.x_axis.scale": "histogram",
+        "graph.metrics": ["count"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1491}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1501}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1502}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1510}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1508}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1490}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1481}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1487}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1494}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1475}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1518}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1471}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1489}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1512}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1492}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1473}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1506}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1498}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1496}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1521}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1504}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1509}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1519}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1474}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1517}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1499}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1495}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1479}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1493}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1520}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1486}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1477}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1484}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1505}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1480}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1482}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1485}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1507}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1472}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1483}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1515}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1516}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1478}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1511}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1497}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1514}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1500}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1488}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1513}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1503}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1476}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT (FLOOR(((\"source\".\"generation\" - 1.0) / 1.0)) * 1.0) + 1.0 AS \"generation\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"pokedex_number\" AS \"pokedex_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"german_name\" AS \"german_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"japanese_name\" AS \"japanese_name\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"generation\" AS \"generation\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"status\" AS \"status\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"species\" AS \"species\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_number\" AS \"type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_1\" AS \"type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"type_2\" AS \"type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"height_m\" AS \"height_m\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"weight_kg\" AS \"weight_kg\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"abilities_number\" AS \"abilities_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_1\" AS \"ability_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_2\" AS \"ability_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"ability_hidden\" AS \"ability_hidden\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"total_points\" AS \"total_points\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"hp\" AS \"hp\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"attack\" AS \"attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"defense\" AS \"defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_attack\" AS \"sp_attack\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"sp_defense\" AS \"sp_defense\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"speed\" AS \"speed\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"catch_rate\" AS \"catch_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_friendship\" AS \"base_friendship\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"base_experience\" AS \"base_experience\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"growth_rate\" AS \"growth_rate\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_number\" AS \"egg_type_number\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_1\" AS \"egg_type_1\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_type_2\" AS \"egg_type_2\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"percentage_male\" AS \"percentage_male\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"egg_cycles\" AS \"egg_cycles\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_normal\" AS \"against_normal\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fire\" AS \"against_fire\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_water\" AS \"against_water\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_electric\" AS \"against_electric\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_grass\" AS \"against_grass\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ice\" AS \"against_ice\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fight\" AS \"against_fight\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_poison\" AS \"against_poison\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ground\" AS \"against_ground\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_flying\" AS \"against_flying\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_psychic\" AS \"against_psychic\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_bug\" AS \"against_bug\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_rock\" AS \"against_rock\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_ghost\" AS \"against_ghost\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dragon\" AS \"against_dragon\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_dark\" AS \"against_dark\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_steel\" AS \"against_steel\", \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\".\"against_fairy\" AS \"against_fairy\" FROM \"csv_upload_data\".\"csv_upload_pokedex_20231202112932\") AS \"source\" GROUP BY (FLOOR(((\"source\".\"generation\" - 1.0) / 1.0)) * 1.0) + 1.0 ORDER BY (FLOOR(((\"source\".\"generation\" - 1.0) / 1.0)) * 1.0) + 1.0 ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]
