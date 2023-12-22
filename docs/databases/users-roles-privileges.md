@@ -134,6 +134,33 @@ GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO 
 GRANT metabase_model_caching TO metabase;
 ```
 
+## Privileges to enable uploads
+
+You can [upload CSV](../datases/uploads.md) to supported databases. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for uploads, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+
+In addition to the [minimum database privileges](#minimum-database-privileges):
+
+- Create a new role called `metabase_uploads`.
+- Give the role `CREATE` access to the database.
+- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema where you want to store uploads.
+- Give the `metabase_uploads` role to the `metabase` user.
+
+```sql
+-- Create a role to bundle database privileges for uploads.
+CREATE ROLE metabase_uploads WITH LOGIN;
+
+GRANT CREATE ON "database" TO metabase_uploads;
+
+-- Grant write privileges to the SCHEMA used for uploads.
+GRANT USAGE ON "your_schema" TO metabase_uploads;
+GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase_uploads;
+
+-- Grant role to the metabase user.
+GRANT metabase_uploads TO metabase;
+```
+
+You'll then need to tell Metabase that you want to [use that schema to store uploads](./uploads.md#select-the-database-and-schema-that-you-want-to-store-the-data-in).
+
 ## Multi-tenant permissions
 
 If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
