@@ -2,10 +2,7 @@ import { useCallback, useState } from "react";
 import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Menu, Stack, Text } from "metabase/ui";
-import type {
-  SmartScalarComparison,
-  SmartScalarComparisonStaticNumber,
-} from "metabase-types/api";
+import type { SmartScalarComparison } from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
 import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
@@ -80,7 +77,11 @@ export function SmartScalarComparisonWidget({
       <Menu.Dropdown miw="18.25rem">
         {tab === "staticNumber" ? (
           <StaticNumberForm
-            value={selectedValue as SmartScalarComparisonStaticNumber}
+            value={
+              selectedValue.type === COMPARISON_TYPES.STATIC_NUMBER
+                ? selectedValue
+                : undefined
+            }
             onChange={nextValue => {
               onChange(nextValue);
               setOpen(false);

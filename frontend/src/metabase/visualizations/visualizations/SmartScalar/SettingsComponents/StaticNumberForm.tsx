@@ -14,18 +14,18 @@ import { COMPARISON_TYPES } from "../constants";
 import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface StaticNumberFormProps {
-  value: Partial<SmartScalarComparisonStaticNumber>;
+  value?: SmartScalarComparisonStaticNumber;
   onChange: (setting: SmartScalarComparisonStaticNumber) => void;
   onBack: () => void;
 }
 
 export function StaticNumberForm({
-  value: selectedValue,
+  value: comparison,
   onChange,
   onBack,
 }: StaticNumberFormProps) {
-  const [label, setLabel] = useState(selectedValue.label || "");
-  const [value, setValue] = useState(selectedValue.value || 0);
+  const [label, setLabel] = useState(comparison?.label || "");
+  const [value, setValue] = useState(comparison?.value || 0);
 
   const canSubmit = label.length > 0;
 
