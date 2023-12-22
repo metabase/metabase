@@ -192,36 +192,36 @@
                                                                             :password    "superstrong"
                                                                             :date_joined :%now}))
             db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                 :engine     "postgres"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
-                                                                                 :settings    "{\"database-enable-actions\":true}"
-                                                                                 :details    "{}"}))
+                                                                                :engine     "postgres"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :settings    "{\"database-enable-actions\":true}"
+                                                                                :details    "{}"}))
             table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                              :name       "Table"
-                                                                              :created_at :%now
-                                                                              :updated_at :%now
-                                                                              :active     true}))
+                                                                             :name       "Table"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :active     true}))
             model-id (first (t2/insert-returning-pks! (t2/table-name Card) {:name                   "My Saved Question"
-                                                                             :created_at             :%now
-                                                                             :updated_at             :%now
-                                                                             :creator_id             user-id
-                                                                             :table_id               table-id
-                                                                             :display                "table"
-                                                                             :dataset_query          "{}"
-                                                                             :visualization_settings "{}"
-                                                                             :database_id            db-id
-                                                                             :collection_id          nil}))
+                                                                            :created_at             :%now
+                                                                            :updated_at             :%now
+                                                                            :creator_id             user-id
+                                                                            :table_id               table-id
+                                                                            :display                "table"
+                                                                            :dataset_query          "{}"
+                                                                            :visualization_settings "{}"
+                                                                            :database_id            db-id
+                                                                            :collection_id          nil}))
             _        (t2/insert! (t2/table-name Action) {:name       "Update user name"
                                                          :type       "implicit"
                                                          :model_id   model-id
                                                          :archived   false
                                                          :created_at :%now
                                                          :updated_at :%now})]
-       (is (thrown? clojure.lang.ExceptionInfo
-                    (t2/delete! Database :id db-id)))
-       (migrate!)
-       (is (t2/delete! Database :id db-id))))))
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (t2/delete! Database :id db-id)))
+        (migrate!)
+        (is (t2/delete! Database :id db-id))))))
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"
@@ -458,7 +458,7 @@
 
 (deftest add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
-    (impl/test-migrations ["v48.00-007" "v48.00-009"] [migrate!]
+    (impl/test-migrations ["v48.00-007"] [migrate!]
       (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
             old              (t/minus (t/local-date-time) (t/hours 1))
             rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
@@ -676,8 +676,7 @@
 (deftest audit-v2-downgrade-test
   (testing "Migration v48.00-050, and v48.00-54"
     (impl/test-migrations "v48.00-054" [migrate!]
-      (let [{:keys [^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-            _db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
+      (let [_db-audit-id (first (t2/insert-returning-pks! (t2/table-name :model/Database)
                                                           {:name       "Audit DB"
                                                            :is_audit   true
                                                            :details    "{}"
@@ -700,14 +699,14 @@
                                                                 :first_name "Metabase Internal User"
                                                                 :email "internal@metabase.com"
                                                                 :password (str (random-uuid))}))
-            original-db (t2/query {:datasource data-source} "SELECT * FROM metabase_database")
-            original-collections (t2/query {:datasource data-source}    "SELECT * FROM collection")
+            original-db-names (t2/select-fn-set :name :metabase_database)
+            original-collections (t2/select-fn-set :name :collection)
             check-before (fn []
-                           (is (partial= (set (map :name original-db))
-                                         (set (map :name (t2/query {:datasource data-source} "SELECT name FROM metabase_database")))))
-                           (is (partial= (set (map :name original-collections))
-                                         (set (map :name (t2/query {:datasource data-source} "SELECT name FROM collection")))))
-                           (is (= 1 (count (t2/query "SELECT * FROM core_user WHERE id = 13371338")))))]
+                           (is (partial= original-db-names
+                                         (t2/select-fn-set :name :metabase_database)))
+                           (is (partial= original-collections
+                                         (t2/select-fn-set :name :collection)))
+                           (is (= 1 (t2/count :core_user :id 13371338))))]
 
         (check-before) ;; Verify that data is inserted correctly
         (migrate!) ;; no-op forward migration
@@ -716,8 +715,45 @@
         (migrate! :down 47)
 
         ;; Verify that rollback deleted the correct rows
-        (is (= 1 (count (t2/query "SELECT * FROM metabase_database"))))
-        (is (= 1 (count (t2/query "SELECT * FROM collection"))))
-        (is (= 0 (count (t2/query "SELECT * FROM metabase_database WHERE is_audit = TRUE"))))
-        (is (= 0 (count (t2/query "SELECT * FROM collection WHERE type = 'instance_analytics'"))))
-        (is (= 0 (count (t2/query "SELECT * FROM core_user WHERE id = 13371338"))))))))
+        (is (= 1 (t2/count :metabase_database)))
+        (is (= 1 (t2/count :collection)))
+        (is (= 0 (t2/count :metabase_database :is_audit true)))
+        (is (= 0 (t2/count :collection :type "instance_analytics")))
+        (is (= 0 (t2/count :core_user :id 13371338)))))))
+
+(deftest remove-legacy-pulse-tests
+  (testing "v49.00-000"
+    (impl/test-migrations "v49.00-000" [migrate!]
+      (let [user-id (:id (create-raw-user! (tu.random/random-email)))
+            alert-id (first (t2/insert-returning-pks! :pulse {:name            "An Alert"
+                                                              :creator_id      user-id
+                                                              :dashboard_id    nil
+                                                              :collection_id   nil
+                                                              :alert_condition "rows"
+                                                              :parameters      "[]"
+                                                              :created_at      :%now
+                                                              :updated_at      :%now}))
+            dashboard-id (first (t2/insert-returning-pks! :report_dashboard {:name       "A dashboard"
+                                                                             :creator_id user-id
+                                                                             :parameters "[]"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now}))
+            dash-subscription-id (first (t2/insert-returning-pks! :pulse {:name            "A dashboard subscription"
+                                                                          :creator_id      user-id
+                                                                          :dashboard_id    dashboard-id
+                                                                          :collection_id   nil
+                                                                          :alert_condition "rows"
+                                                                          :parameters      "[]"
+                                                                          :created_at      :%now
+                                                                          :updated_at      :%now}))
+            legacy-pulse-id (first (t2/insert-returning-pks! :pulse {:name            "A legacy pulse"
+                                                                     :creator_id      user-id
+                                                                     :collection_id   nil
+                                                                     :alert_condition nil
+                                                                     :parameters      "[]"
+                                                                     :created_at      :%now
+                                                                     :updated_at      :%now}))]
+        (migrate!)
+        (is (t2/exists? :pulse :id dash-subscription-id))
+        (is (t2/exists? :pulse :id alert-id))
+        (is (not (t2/exists? :pulse :id legacy-pulse-id)))))))

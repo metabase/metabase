@@ -13,6 +13,7 @@
    [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
@@ -417,13 +418,12 @@
            (nest-query {:database 1, :type :native, :native {:query "wow"}} 2)))))
 
 (defn- fk-mappings []
-  (if (str/includes? (:name (data/db)) "sample")
-    {[:orders :product_id]  [:products :id]
-     [:orders :user_id]     [:people :id]
-     [:reviews :product_id] [:products :id]}
-    {[:checkins :user_id]   [:users :id]
-     [:checkins :venue_id]  [:venues :id]
-     [:venues :category_id] [:categories :id]}))
+  {[:checkins :user_id]   [:users :id]
+   [:checkins :venue_id]  [:venues :id]
+   [:orders :product_id]  [:products :id]
+   [:orders :user_id]     [:people :id]
+   [:reviews :product_id] [:products :id]
+   [:venues :category_id] [:categories :id]})
 
 (def ^:dynamic *enable-fk-support-for-disabled-drivers-in-tests*
   "Whether to enable `:foreign-keys` in drivers like `:bigquery-cloud-sdk` that don't have formal FKs
@@ -459,7 +459,7 @@
 
 (defmacro with-mock-fks-for-drivers-without-fk-constraints
   "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
-  other relevant columns (for `sample-database`) marked as foreign keys and with `:foreign-keys` a supported feature
+  other relevant columns (for `test-data`) marked as foreign keys and with `:foreign-keys` a supported feature
   when testing against BigQuery or similar drivers that do not support Foreign Key constraints. (We still let people
   mark FKs manually.) The macro helps replicate the situation where somebody has manually marked FK relationships."
   {:style/indent 0}
@@ -581,14 +581,10 @@
   "Impl for `with-report-timezone-id`."
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  ;; This will fail if the app DB isn't initialized yet. That's fine — there's no DBs to notify if the app DB isn't
-  ;; set up.
-  (try
-    (#'driver/notify-all-databases-updated)
-    (catch Throwable _))
-  (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
-    (testing (format "\nreport timezone id = %s" timezone-id)
-      (thunk))))
+  (driver.tu/wrap-notify-all-databases-updated
+    (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
+      (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
+        (thunk)))))
 
 (defmacro with-report-timezone-id
   "Override the `report-timezone` Setting and execute `body`. Intended primarily for REPL and test usage."

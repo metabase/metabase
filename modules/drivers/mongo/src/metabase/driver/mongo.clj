@@ -204,6 +204,29 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defmethod driver/describe-table-indexes :mongo
+  [_ database table]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    ;; using raw DBObject instead of calling `monger/indexes-on`
+    ;; because in case a compound index has more than 8 keys, the `key` returned by
+    ;;`monger/indexes-on` will be a hash-map, and with a hash map we can't determine
+    ;; which key is the first key.
+    (->> (.getIndexInfo (.getCollection conn (:name table)))
+         (map (fn [index]
+                ;; for text indexes, column names are specified in the weights
+                (if (contains? index "textIndexVersion")
+                  (get index "weights")
+                  (get index "key"))))
+         (map (comp name first keys))
+         ;; mongo support multi key index, aka nested fields index, so we need to split the keys
+         ;; and represent it as a list of field names
+         (map #(if (str/includes? % ".")
+                 {:type  :nested-column-index
+                  :value (str/split % #"\.")}
+                 {:type  :normal-column-index
+                  :value %}))
+         set)))
+
 (defn- from-db-object
   "This is mostly a copy of the monger library's own function of the same name with the
   only difference that it uses an ordered map to represent the document. This ensures that
@@ -270,7 +293,8 @@
                               :native-parameters               true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
+                              :test/jvm-timezone-setting       false
+                              :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 ;; We say Mongo supports foreign keys so that the front end can use implicit

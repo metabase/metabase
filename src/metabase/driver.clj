@@ -316,6 +316,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti describe-table-indexes
+  "Returns a set of map containing information about the indexes of a table.
+  Currently we only sync single column indexes or the first column of a composite index.
+  Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
+  {:added "0.49.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti escape-entity-name-for-metadata
   "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
   driver has difference escaping rules for table or schema names when used from metadata.
@@ -532,7 +540,10 @@
     :connection-impersonation-requires-role
 
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
-    :native-requires-specified-collection})
+    :native-requires-specified-collection
+
+    ;; Does the driver support column(s) support storing index info
+    :index-info})
 
 
 (defmulti supports?

@@ -43,45 +43,83 @@
 ;;;; | Schema detection |
 ;;;; +------------------+
 
+;; Upload types form a DAG (directed acyclic graph) where each type can be coerced into any
+;; of its ancestors types. We parse each value in the CSV file to the most-specific possible
+;; type for each column. The most-specific possible type for a column is the lowest common
+;; ancestor of the types for each value in the column.
+;;
 ;;              text
 ;;               |
 ;;               |
 ;;          varchar-255┐
-;;              / \    │
-;;             /   \   └──────────┬
-;;            /     \             │
-;;         float   datetime  offset-datetime
-;;           │       │
-;;           │       │
-;;          int     date
-;;         /   \
-;;        /     \
-;;    boolean auto-incrementing-int-pk
+;;        /     / \    │
+;;       /     /   \   └──────────┬
+;;      /     /     \             │
+;;  boolean float   datetime  offset-datetime
+;;     |     │       │
+;;     │     │       │
+;;     |    int     date
+;;     |   /   \
+;;     |  /     \
+;;     | /       \
+;;     |/         \
+;; boolean-or-int  auto-incrementing-int-pk
+;;
+;; `boolean-or-int` is a special type with two parents, where we parse it as a boolean if the whole
+;; column's values are of that type. additionally a column cannot have a boolean-or-int type, but
+;; a value can. if there is a column with a boolean-or-int value and an integer value, the column will be int
+;; if there is a column with a boolean-or-int value and a boolean value, the column will be boolean
+;; if there is a column with only boolean-or-int values, the column will be parsed as if it were boolean
 ;;
 ;; </code></pre>
 
-(def ^:private type->parent
+(def ^:private type+parent-pairs
   ;; listed in depth-first order
-  {::text                     nil
-   ::varchar-255              ::text
-   ::float                    ::varchar-255
-   ::int                      ::float
-   ::auto-incrementing-int-pk ::int
-   ::boolean                  ::int
-   ::datetime                 ::varchar-255
-   ::date                     ::datetime
-   ::offset-datetime          ::varchar-255})
+  '([::boolean-or-int ::boolean]
+    [::boolean-or-int ::int]
+    [::auto-incrementing-int-pk ::int]
+    [::int ::float]
+    [::date ::datetime]
+    [::boolean ::varchar-255]
+    [::offset-datetime ::varchar-255]
+    [::datetime ::varchar-255]
+    [::float ::varchar-255]
+    [::varchar-255 ::text]))
 
-(def ^:private types
-  (keys type->parent))
+(defn ^:private column-type
+  "Returns the type of a column given the lowest common ancestor type of the values in the column."
+  [type]
+  (case type
+    ::boolean-or-int ::boolean
+    type))
 
-(def ^:private type->ancestors
-  (into {} (for [type types]
-             [type (loop [ret (ordered-set/ordered-set)
-                          type type]
-                     (if-some [parent (type->parent type)]
-                       (recur (conj ret parent) parent)
-                       ret))])))
+(def ^:private type->parents
+  (reduce
+   (fn [m [type parent]]
+     (update m type conj parent))
+   {}
+   type+parent-pairs))
+
+(def ^:private value-types
+  "All value types including the root type, ::text"
+  (conj (keys type->parents) ::text))
+
+(def ^:private column-types
+  "All column types"
+  (map column-type value-types))
+
+(defn- bfs-ancestors [type]
+  (loop [visit   (list type)
+         visited (ordered-set/ordered-set)]
+    (if (empty? visit)
+      visited
+      (let [parents (mapcat type->parents visit)]
+        (recur parents (into visited parents))))))
+
+(def ^:private type->bfs-ancestors
+  "A map from each type to an ordered set of its ancestors, in breadth-first order"
+  (into {} (for [type value-types]
+             [type (bfs-ancestors type)])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; [[value->type]] helpers
@@ -139,6 +177,9 @@
 (defn- boolean-string? [s]
   (boolean (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" s)))
 
+(defn- boolean-or-int-string? [s]
+  (boolean (#{"0" "1"} s)))
+
 ;; end [[value->type]] helpers
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -162,6 +203,7 @@
   (let [trimmed (str/trim value)]
     (cond
       (str/blank? value)                                        nil
+      (boolean-or-int-string? trimmed)                          ::boolean-or-int
       (boolean-string? trimmed)                                 ::boolean
       (offset-datetime-string? trimmed)                         ::offset-datetime
       (datetime-string? trimmed)                                ::datetime
@@ -171,7 +213,7 @@
       (<= (count trimmed) 255)                                  ::varchar-255
       :else                                                     ::text)))
 
-(defn- row->types
+(defn- row->value-types
   [row settings]
   (map #(value->type % settings) row))
 
@@ -186,9 +228,9 @@
     (nil? type-a) type-b
     (nil? type-b) type-a
     (= type-a type-b) type-a
-    (contains? (type->ancestors type-a) type-b) type-b
-    (contains? (type->ancestors type-b) type-a) type-a
-    :else (lowest-common-member (type->ancestors type-a) (type->ancestors type-b))))
+    (contains? (type->bfs-ancestors type-a) type-b) type-b
+    (contains? (type->bfs-ancestors type-b) type-a) type-a
+    :else (lowest-common-member (type->bfs-ancestors type-a) (type->bfs-ancestors type-b))))
 
 (defn- map-with-nils
   "like map with two args except it continues to apply f until ALL of the colls are
@@ -221,6 +263,18 @@
                    (= (normalize-column-name (:name field)) auto-pk-column-name))
                  (t2/select :model/Field :table_id table-id :active true))))
 
+(mu/defn column-types-from-rows :- [:sequential (into [:enum] column-types)]
+  "Returns a sequence of types, given the unparsed rows in the CSV file"
+  [settings column-count rows]
+  (->> rows
+       (map #(row->value-types % settings))
+       (reduce coalesce-types (repeat column-count nil))
+       (map (fn [type]
+              ;; if there's no values in the column, assume it's a string
+              (if (nil? type)
+                ::text
+                (column-type type))))))
+
 (defn- detect-schema
   "Consumes the header and rows from a CSV file.
 
@@ -240,9 +294,7 @@
         column-count      (count normalized-header)
         settings          (upload-parsing/get-settings)
         col-name+type-pairs (->> rows
-                                 (map #(row->types % settings))
-                                 (reduce coalesce-types (repeat column-count nil))
-                                 (map #(or % ::text))
+                                 (column-types-from-rows settings column-count)
                                  (map vector unique-header))]
     {:extant-columns    (ordered-map/ordered-map col-name+type-pairs)
      :generated-columns (ordered-map/ordered-map (keyword auto-pk-column-name) ::auto-incrementing-int-pk)}))
@@ -531,19 +583,26 @@
   [fields-by-normed-name header]
   ;; Assumes table-cols are unique when normalized
   (let [normalized-field-names (keys fields-by-normed-name)
-        ;; TODO: use this to create nice error messages when there are extra or missing columns
-        normalized-header+header (->> header
-                                      (map (fn [col]
-                                             [(normalize-column-name col) col])))
-        normalized-header (map first normalized-header+header)
+        normalized-header (map normalize-column-name header)
         [extra missing _both] (data/diff (set normalized-header) (set normalized-field-names))]
     ;; check for duplicates
     (when (some #(< 1 %) (vals (frequencies normalized-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when (or extra missing)
-      (throw (ex-info (tru "The schema of the CSV file does not match the schema of the table.")
-                      {:status-code 422})))))
+      (let [format-columns (fn [cols]
+                             (str/join ", " (map #(str "\"" % "\"") cols)))
+            error-message (cond
+                            (and extra missing)
+                            (tru "The CSV file contains extra columns that are not in the table: {0}. The CSV file is missing columns that are in the table: {1}."
+                                 (format-columns extra) (format-columns missing))
+                            extra
+                            (tru "The CSV file contains extra columns that are not in the table: {0}."
+                                 (format-columns extra))
+                            missing
+                            (tru "The CSV file contains extra columns that are not in the table: {0}."
+                                 (format-columns missing)))]
+        (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- append-csv!*
   [database table file]
@@ -557,11 +616,6 @@
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
           parsed-rows        (parse-rows col-upload-types rows)]
-      (when create-auto-pk?
-        (driver/add-columns! driver
-                             (:id database)
-                             (table-identifier table)
-                             {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
       (try
         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
         (catch Throwable e
@@ -587,7 +641,7 @@
         (ex-info (tru "The table must be an uploaded table.")
                  {:status-code 422})
 
-        (not (mi/can-write? table))
+        (not (mi/can-read? table))
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403}))))
 

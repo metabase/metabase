@@ -53,19 +53,20 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models          true
-                              :convert-timezone        true
-                              :datetime-diff           true
-                              :now                     true
-                              :regex                   false
-                              :percentile-aggregations false
-                              :full-join               false
-                              :uploads                 true
-                              :schemas                 false
+(doseq [[feature supported?] {:persist-models                         true
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :now                                    true
+                              :regex                                  false
+                              :percentile-aggregations                false
+                              :full-join                              false
+                              :uploads                                true
+                              :schemas                                false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
-                              :case-sensitivity-string-filter-options false}]
+                              :case-sensitivity-string-filter-options false
+                              :index-info                             true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -224,10 +225,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/honey-sql-version :mysql
-  [_driver]
-  2)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
@@ -747,21 +744,25 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (let [temp-file (File/createTempFile table-name ".tsv")
-            file-path (.getAbsolutePath temp-file)]
-        (try
-          (let [tsvs (map (partial row->tsv driver (count column-names)) values)
-                sql  (sql/format {::load   [file-path (keyword table-name)]
-                                  :columns (map keyword column-names)}
-                                 :quoted  true
-                                 :dialect (sql.qp/quote-style driver))]
-            (with-open [^java.io.Writer writer (jio/writer file-path)]
-              (doseq [value (interpose \newline tsvs)]
-                (.write writer (str value))))
-            (jdbc/execute! conn sql {:transaction? false}))
-          (finally
-            (.delete temp-file)))))))
+    (let [temp-file (File/createTempFile table-name ".tsv")
+          file-path (.getAbsolutePath temp-file)]
+      (try
+        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
+              sql  (sql/format {::load   [file-path (keyword table-name)]
+                                :columns (map keyword column-names)}
+                               :quoted  true
+                               :dialect (sql.qp/quote-style driver))]
+          (with-open [^java.io.Writer writer (jio/writer file-path)]
+            (doseq [value (interpose \newline tsvs)]
+              (.write writer (str value))))
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           db-id
+           nil
+           (fn [conn]
+             (jdbc/execute! {:connection conn} sql))))
+        (finally
+          (.delete temp-file))))))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed

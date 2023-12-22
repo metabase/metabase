@@ -16,8 +16,6 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -28,12 +26,8 @@
 (use-fixtures :once (fixtures/initialize :plugins))
 
 (deftest ^:parallel simple-select-probe-query-test
-  (testing "honey-sql-version produces the same query"
-    (are [version] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
-                      (binding [hx/*honey-sql-version* version]
-                        (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
-      1
-      2))
+  (is (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
+         (sql-jdbc.describe-database/simple-select-probe-query :sql "schema" "wow")))
   (testing "real drivers produce correct query"
     (are [driver] (= ["SELECT TRUE AS \"_\" FROM \"schema\".\"wow\" WHERE 1 <> 1 LIMIT 0"]
                      (sql-jdbc.describe-database/simple-select-probe-query driver "schema" "wow"))
@@ -43,9 +37,9 @@
     (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
-               (qp/process-query
-                 (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                   (mt/native-query {:query sql})))))))))
+              (qp/process-query
+               (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                 (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
@@ -57,7 +51,7 @@
     (descendants driver/hierarchy :sql-jdbc))))
 
 (deftest fast-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
          (sql-jdbc.execute/do-with-connection-with-options
           (or driver/*driver* :h2)
           (mt/db)
@@ -70,7 +64,7 @@
                    sort)))))))
 
 (deftest post-filtered-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
+  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
          (sql-jdbc.execute/do-with-connection-with-options
           :h2
           (mt/db)
@@ -84,7 +78,11 @@
   (is (= {:tables #{{:name "USERS", :schema "PUBLIC", :description nil}
                     {:name "VENUES", :schema "PUBLIC", :description nil}
                     {:name "CATEGORIES", :schema "PUBLIC", :description nil}
-                    {:name "CHECKINS", :schema "PUBLIC", :description nil}}}
+                    {:name "CHECKINS", :schema "PUBLIC", :description nil}
+                    {:name "ORDERS", :schema "PUBLIC", :description nil}
+                    {:name "PEOPLE", :schema "PUBLIC", :description nil}
+                    {:name "PRODUCTS", :schema "PUBLIC", :description nil}
+                    {:name "REVIEWS", :schema "PUBLIC", :description nil}}}
          (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count

@@ -339,24 +339,6 @@
                            {:query query, :stage-number stage-number, :x x}
                            e))))))))
 
-(defmulti custom-name-method
-  "Implementation for [[custom-name]]."
-  {:arglists '([x])}
-  lib.dispatch/dispatch-value
-  :hierarchy lib.hierarchy/hierarchy)
-
-(defn custom-name
-  "Return the user supplied name of `x`, if any."
-  [x]
-  (custom-name-method x))
-
-(defmethod custom-name-method :default
-  [x]
-  ;; We assume that clauses only get a :display-name option if the user explicitly specifies it.
-  ;; Expressions from the :expressions clause of pMBQL queries have custom names by default.
-  (when (lib.util/clause? x)
-    ((some-fn :display-name :lib/expression-name) (lib.options/options x))))
-
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
   implementation and add additional information to it."
@@ -366,7 +348,7 @@
      ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
      (select-keys x-metadata [:name :display-name :semantic-type])
-     (when-let [custom (custom-name x)]
+     (when-let [custom (lib.util/custom-name x)]
        {:display-name custom
         :named? true})
      (when-let [long-display-name (display-name query stage-number x :long)]

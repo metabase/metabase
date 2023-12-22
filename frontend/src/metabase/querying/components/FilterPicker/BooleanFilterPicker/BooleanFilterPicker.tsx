@@ -1,17 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { checkNotNull } from "metabase/lib/types";
 import { Icon } from "metabase/core/components/Icon";
 import { Box, Button, Radio, Stack } from "metabase/ui";
+import { useBooleanOptionFilter } from "metabase/querying/hooks/use-boolean-option-filter";
 import * as Lib from "metabase-lib";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { MIN_WIDTH } from "../constants";
-import { getAvailableOperatorOptions } from "../utils";
 import type { FilterPickerWidgetProps } from "../types";
-import { OPTIONS } from "./constants";
-import { getFilterClause, getOptionType } from "./utils";
 
 export function BooleanFilterPicker({
   query,
@@ -22,33 +19,35 @@ export function BooleanFilterPicker({
   onBack,
   onChange,
 }: FilterPickerWidgetProps) {
-  const columnName = Lib.displayInfo(query, stageIndex, column).longDisplayName;
-
-  const options = useMemo(
-    () => getAvailableOperatorOptions(query, stageIndex, column, OPTIONS),
+  const columnInfo = useMemo(
+    () => Lib.displayInfo(query, stageIndex, column),
     [query, stageIndex, column],
   );
 
-  const [optionType, setOptionType] = useState(() =>
-    getOptionType(query, stageIndex, filter),
-  );
+  const {
+    optionType,
+    isExpanded,
+    visibleOptions,
+    getFilterClause,
+    setOptionType,
+    setIsExpanded,
+  } = useBooleanOptionFilter({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
 
-  const [isExpanded, setIsExpanded] = useState(
-    () => OPTIONS[optionType].isAdvanced,
-  );
-
-  const visibleOptions = useMemo(() => {
-    return isExpanded ? options : options.filter(option => !option.isAdvanced);
-  }, [options, isExpanded]);
-
-  const handleOptionChange = (type: string) => {
-    const option = checkNotNull(options.find(option => option.type === type));
-    setOptionType(option.type);
+  const handleOptionChange = (optionValue: string) => {
+    const option = visibleOptions.find(({ type }) => type === optionValue);
+    if (option) {
+      setOptionType(option.type);
+    }
   };
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    onChange(getFilterClause(column, optionType));
+    onChange(getFilterClause());
   };
 
   return (
@@ -58,7 +57,10 @@ export function BooleanFilterPicker({
       data-testid="boolean-filter-picker"
       onSubmit={handleSubmit}
     >
-      <FilterPickerHeader columnName={columnName} onBack={onBack} />
+      <FilterPickerHeader
+        columnName={columnInfo.longDisplayName}
+        onBack={onBack}
+      />
       <div>
         <Radio.Group value={optionType} onChange={handleOptionChange}>
           <Stack p="md" pb={isExpanded ? "md" : 0} spacing="sm">

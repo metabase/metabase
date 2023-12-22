@@ -5,12 +5,13 @@
    [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
+   [medley.core :as m]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
-;;; metabase-lib/metadata/Metadata comes in a class like
+;;; metabase-lib/metadata/Metadata comes in an object like
 ;;;
 ;;;    {
 ;;;      databases: {},
@@ -22,6 +23,11 @@
 ;;;    }
 ;;;
 ;;; where keys are a map of String ID => metadata
+
+(def ^:private ^{:arglists '([k])} memoized-kebab-key
+  "Even tho [[u/->kebab-case-en]] has LRU memoization, plain memoization is significantly faster, and since the keys
+  we're parsing here are bounded it's fine to memoize this stuff forever."
+  (memoize u/->kebab-case-en))
 
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
@@ -100,7 +106,7 @@
     (comp
      ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
-            [(cond-> (keyword (u/->kebab-case-en k))
+            [(cond-> (keyword (memoized-kebab-key k))
                rename-key (#(or (rename-key %) %)))
              v]))
      ;; remove [[excluded-keys]]
@@ -114,20 +120,28 @@
        (map (fn [[k v]]
               [k (parse-field k v)]))))))
 
+(defmulti ^:private parse-object-fn*
+  {:arglists '([object-type opts])}
+  (fn
+    [object-type _opts]
+    object-type))
+
 (defn- parse-object-fn
-  ([object-type]
-   (parse-object-fn object-type {}))
-  ([object-type opts]
-   (let [xform         (parse-object-xform object-type)
-         lib-type-name (lib-type object-type)]
-     (fn [object]
-       (try
-         (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
-           (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
-           parsed)
-         (catch js/Error e
-           (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
-           nil))))))
+  ([object-type]      (parse-object-fn* object-type {}))
+  ([object-type opts] (parse-object-fn* object-type opts)))
+
+(defmethod parse-object-fn* :default
+  [object-type opts]
+  (let [xform         (parse-object-xform object-type)
+        lib-type-name (lib-type object-type)]
+    (fn [object]
+      (try
+        (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
+          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          parsed)
+        (catch js/Error e
+          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          nil)))))
 
 (defmulti ^:private parse-objects
   {:arglists '([object-type metadata])}
@@ -205,7 +219,6 @@
     :database
     :default-dimension-option
     :dimension-options
-    :dimensions
     :metrics
     :table})
 
@@ -214,7 +227,9 @@
   {:source          :lib/source
    :unit            :metabase.lib.field/temporal-unit
    :expression-name :lib/expression-name
-   :binning-info    :metabase.lib.field/binning})
+   :binning-info    :metabase.lib.field/binning
+   :dimensions      ::dimension
+   :values          ::field-values})
 
 (defn- parse-field-id
   [id]
@@ -227,7 +242,7 @@
   [m]
   (obj->clj
    (map (fn [[k v]]
-          (let [k (keyword (u/->kebab-case-en k))
+          (let [k (keyword (memoized-kebab-key k))
                 k (if (= k :binning-strategy)
                     :strategy
                     k)
@@ -236,6 +251,33 @@
                     v)]
             [k v])))
    m))
+
+(defn- parse-field-values [field-values]
+  (when (= (object-get field-values "type") "full")
+    {:values                (js->clj (object-get field-values "values"))
+     :human-readable-values (js->clj (object-get field-values "human_readable_values"))}))
+
+(defn- parse-dimension
+  "`:dimensions` comes in as an array for historical reasons, even tho a Field can only have one. So it should never
+  have more than one element. See #27054. Anyways just to be safe let's make sure it's either `:external` or
+  `:internal`."
+  [dimensions]
+  (when-let [dimension (m/find-first (fn [dimension]
+                                       (#{"external" "internal"} (object-get dimension "type")))
+                                     dimensions)]
+    (let [dimension-type (keyword (object-get dimension "type"))]
+      (merge
+       {:id   (object-get dimension "id")
+        :name (object-get dimension "name")}
+       (case dimension-type
+         ;; external = mapped to a different column
+         :external
+         {:lib/type :metadata.column.remapping/external
+          :field-id (object-get dimension "human_readable_field_id")}
+
+         ;; internal = mapped to FieldValues
+         :internal
+         {:lib/type :metadata.column.remapping/internal})))))
 
 (defmethod parse-field-fn :field
   [_object-type]
@@ -257,11 +299,28 @@
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
       :metabase.lib.field/binning       (parse-binning-info v)
+      ::field-values                    (parse-field-values v)
+      ::dimension                       (parse-dimension v)
       v)))
+
+(defmethod parse-object-fn* :field
+  [object-type opts]
+  (let [f ((get-method parse-object-fn* :default) object-type opts)]
+    (fn [unparsed]
+      (let [{{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
+        (-> (case dimension-type
+              :metadata.column.remapping/external
+              (assoc parsed :lib/external-remap dimension)
+
+              :metadata.column.remapping/internal
+              (assoc parsed :lib/internal-remap (merge dimension field-values))
+
+              parsed)
+            (dissoc ::dimension ::field-values))))))
 
 (defmethod parse-objects :field
   [object-type metadata]
-  (let [parse-object (parse-object-fn object-type)
+  (let [parse-object    (parse-object-fn object-type)
         unparsed-fields (object-get metadata "fields")]
     (obj->clj (keep (fn [[k v]]
                       ;; Sometimes fields coming from saved questions are only present with their ID
@@ -443,13 +502,9 @@
     a-segment))
 
 (defn- setting [setting-key ^js unparsed-metadata]
-  (if (and js/describe js/it)
-    ;; Trust the metadata's settings in tests.
-    (-> unparsed-metadata
-        (.-settings)
-        (aget (name setting-key)))
-    ;; And use the global, async-updated one in prod.
-    (.get js/__metabaseSettings (name setting-key))))
+  (-> unparsed-metadata
+    (object-get "settings")
+    (object-get (name setting-key))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

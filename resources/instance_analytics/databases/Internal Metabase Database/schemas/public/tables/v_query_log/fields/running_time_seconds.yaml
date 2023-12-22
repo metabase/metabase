@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: running_time_seconds
   model: Field
+database_indexed: null

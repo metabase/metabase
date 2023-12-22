@@ -37,3 +37,4 @@ serdes/meta:
   model: Table
 - id: is_on_demand
   model: Field
+database_indexed: null

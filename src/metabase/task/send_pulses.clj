@@ -71,7 +71,7 @@
                               (when (and (empty? (get-in channel [:details :emails]))
                                          (not (get-in channel [:details :channel])))
                                 (:id channel))))]
-   (t2/delete! PulseChannel :id [:in ids-to-delete])))
+    (t2/delete! PulseChannel :id [:in ids-to-delete])))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 

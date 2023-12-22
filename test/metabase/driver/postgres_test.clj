@@ -36,8 +36,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
@@ -51,8 +49,7 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false
-                                hx/*honey-sql-version*                   2]
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
 (deftest ^:parallel interval-test
@@ -707,7 +704,7 @@
   (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
-    (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)))
+    (driver/notify-database-updated :postgres database)))
 
 (deftest enums-test
   (mt/test-driver :postgres
@@ -1110,19 +1107,23 @@
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query people
                       {:fields [!month.birth_date
                                 !month.created_at
                                 !month.id]
                        :limit  1})]
-          (is (sql= '{:select [DATE_TRUNC ("month" people.birth_date)             AS birth_date
-                               DATE_TRUNC ("month" people.created_at)             AS created_at
-                               ;; non-temporal types should still get casted.
-                               DATE_TRUNC ("month" CAST (people.id AS timestamp)) AS id]
-                      :from   [people]
-                      :limit  [1]}
-                    query)))))))
+          (is (= {:query ["SELECT"
+                          "  DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS \"birth_date\","
+                          "  DATE_TRUNC('month', \"public\".\"people\".\"created_at\") AS \"created_at\","
+                          "  DATE_TRUNC('month', CAST(\"public\".\"people\".\"id\" AS timestamp)) AS \"id\""
+                          "FROM"
+                          "  \"public\".\"people\""
+                          "LIMIT"
+                          "  1"]
+                  :params nil}
+                 (-> (qp/compile query)
+                     (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
@@ -1267,7 +1268,7 @@
                             "DROP ROLE privilege_rows_test_example_role;"]]
                 (jdbc/execute! conn-spec stmt)))))))))
 
-(deftest set-role-statement-test
+(deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
     (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))

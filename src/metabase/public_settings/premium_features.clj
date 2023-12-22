@@ -52,13 +52,13 @@
 ;; at a time.
 (let [f        (fn []
                  {:post [(integer? %)]}
-                 (log/info (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
+                 (log/debug (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
                  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
                  ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
                  ;; is from a different thread and is invalid by the time we get to use it
                  (let [result (binding [t2.conn/*current-connectable* nil]
-                                (t2/count :core_user :is_active true))]
-                   (log/info (u/colorize :green "=>") result)
+                                (t2/count :model/User :is_active true :type :personal))]
+                   (log/debug (u/colorize :green "=>") result)
                    result))
       memoized (memoize/ttl
                 f

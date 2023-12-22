@@ -1715,17 +1715,20 @@
    :action
    :ad-hoc
    :collection
-   :csv-download
-   :dashboard
-   :embedded-dashboard
-   :embedded-question
-   :json-download
    :map-tiles
+   :pulse
+   :dashboard
+   :question
+   :csv-download
+   :xlsx-download
+   :json-download
    :public-dashboard
    :public-question
-   :pulse
-   :question
-   :xlsx-download])
+   :embedded-dashboard
+   :embedded-question
+   :embedded-csv-download
+   :embedded-xlsx-download
+   :embedded-json-download])
 
 (def ^:private Hash
   #?(:clj bytes?

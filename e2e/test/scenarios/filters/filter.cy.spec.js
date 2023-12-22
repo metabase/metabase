@@ -20,7 +20,7 @@ import {
   queryBuilderMain,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -406,8 +406,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Reviewer").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Is").click();
+    cy.findByDisplayValue("Is").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is empty").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -438,8 +437,7 @@ describe("scenarios > question > filter", () => {
     cy.contains("Rating").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Equal to").click();
+    cy.findByDisplayValue("Equal to").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Is empty").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -554,7 +552,7 @@ describe("scenarios > question > filter", () => {
     popover().findByLabelText("Options").click();
     popover()
       .last()
-      .findByRole("menuitem", { name: /Include/ })
+      .findByTestId("include-current-interval-option")
       .should("have.attr", "aria-selected", "true");
   });
 
@@ -828,47 +826,6 @@ describe("scenarios > question > filter", () => {
         .and("contain", "Count")
         .and("contain", "Average of Total");
     }
-  });
-
-  describe("currency filters", () => {
-    beforeEach(() => {
-      // set the currency on the Orders/Discount column to Euro
-      cy.visit(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-      );
-      // this value isn't actually selected, it's just the default
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("US Dollar").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Euro").click();
-
-      openOrdersTable();
-    });
-
-    it("should show correct currency symbols in currency single field filter", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount (€)").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      cy.findByTestId("input-prefix").should("contain", "€");
-    });
-
-    it("should show correct currency symbols in currency between field filter", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount (€)").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Equal to").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Between").click();
-
-      cy.findAllByTestId("input-prefix").then(els => {
-        expect(els).to.have.lengthOf(2);
-        expect(els[0].innerText).to.equal("€");
-        expect(els[1].innerText).to.equal("€");
-      });
-    });
   });
 
   describe("specific combination of filters can cause frontend reload or blank screen (metabase#16198)", () => {

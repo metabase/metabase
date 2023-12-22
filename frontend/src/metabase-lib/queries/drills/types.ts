@@ -3,9 +3,9 @@ import type Question from "metabase-lib/Question";
 import type { ClickObject } from "metabase-lib/types";
 
 export type {
-  ClickObjectDimension,
-  ClickObjectDataRow,
   ClickObject,
+  ClickObjectDataRow,
+  ClickObjectDimension,
 } from "metabase-lib/types";
 
 export type ClickActionProps = {
@@ -14,5 +14,3 @@ export type ClickActionProps = {
   settings?: VisualizationSettings;
   extraData?: Record<string, any>;
 };
-
-export type DrillProps = Pick<ClickActionProps, "question" | "clicked">;

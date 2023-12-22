@@ -1,5 +1,18 @@
 (ns metabase.server.middleware.session
-  "Ring middleware related to session (binding current user and permissions)."
+  "Ring middleware related to session and API-key based authentication (binding current user and permissions).
+
+  How do authenticated API requests work? There are two main paths to authentication: a session or an API key.
+
+  For session authentication, Metabase first looks for a cookie called `metabase.SESSION`. This is the normal way of
+  doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly cookie and thus can't
+  be viewed by FE code. If the session is a full-app embedded session, then the cookie is `metabase.EMBEDDED_SESSION`
+  instead.
+
+  Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
+  Session ID.
+
+  The second main path to authentication is an API key. For this, we look at the `X-Api-Key` header. If that matches
+  an ApiKey in our database, you'll be authenticated as that ApiKey's associated User."
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -14,6 +27,7 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.api-key :as api-key]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -24,26 +38,13 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.password :as u.password]
    [ring.util.response :as response]
    [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util UUID)))
-
-;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
-;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
-;; cookie and thus can't be viewed by FE code. If the session is a full-app embedded session, then the cookie is
-;; `metabase.EMBEDDED_SESSION` instead.
-;;
-;; If that cookie is isn't present, we look for the `metabase.SESSION_ID`, which is the old session cookie set in
-;; 0.31.x and older. Unlike `metabase.SESSION`, this cookie was set directly by the frontend and thus was not
-;; HttpOnly; for 0.32.x we'll continue to accept it rather than logging every one else out on upgrade. (We've
-;; switched to a new Cookie name for 0.32.x because the new cookie includes a `path` attribute, thus browsers consider
-;; it to be a different Cookie; Ring cookie middleware does not handle multiple cookies with the same name.)
-;;
-;; Finally we'll check for the presence of a `X-Metabase-Session` header. If that isn't present, you don't have a
-;; Session ID and thus are definitely not authenticated
 
 (def ^:private ^String metabase-session-cookie          "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
@@ -290,6 +291,32 @@
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
 
+
+;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
+;; and only compile it to SQL once rather than every time
+(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-api-key-prefix-query
+  (memoize
+   (fn [enable-advanced-permissions?]
+     (first
+      (t2.pipeline/compile*
+       (cond-> {:select    [[:api_key.user_id :metabase-user-id]
+                            [:api_key.key :api-key]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.locale :user-locale]]
+                :from      :api_key
+                :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
+                :where     [:and
+                            [:= :api_key.key_prefix [:raw "?"]]]
+                :limit     [:inline 1]}
+         enable-advanced-permissions?
+         (->
+          (sql.helpers/select
+           [:pgm.is_group_manager :is-group-manager?])
+          (sql.helpers/left-join
+           [:permissions_group_membership :pgm] [:and
+                                                 [:= :pgm.user_id :user.id]
+                                                 [:is :pgm.is_group_manager true]]))))))))
+
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
   [session-id anti-csrf-token]
@@ -305,17 +332,43 @@
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
+(def ^:private api-key-that-should-never-match (str (random-uuid)))
+(def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
+
+(defn- do-useless-hash []
+  (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
+
+(defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
+  ;; if we get an API key, check the hash against the passed value. If not, don't reveal info via a timing attack - do
+  ;; a useless hash, *then* return `false`.
+  (if api-key
+    (u.password/verify-password passed-api-key "" api-key)
+    (do-useless-hash)))
+
+(defn- current-user-info-for-api-key
+  "Return User ID and superuser status for an API Key with `api-key-id"
+  [api-key]
+  (when (and api-key (init-status/complete?))
+    (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
+                                                 (premium-features/enable-advanced-permissions?))
+                                                [(api-key/prefix api-key)]))
+                               (update :is-group-manager? boolean))]
+      (when (matching-api-key? user-data api-key)
+        (dissoc user-data :api-key)))))
+
 (defn- merge-current-user-info
-  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]
+  [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
   (merge
    request
-   (current-user-info-for-session metabase-session-id anti-csrf-token)
+   (or (current-user-info-for-session metabase-session-id anti-csrf-token)
+       (current-user-info-for-api-key x-api-key))
    (when x-metabase-locale
      (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
-  "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session token was passed."
+  "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
+  token OR a valid API key was passed."
   [handler]
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))

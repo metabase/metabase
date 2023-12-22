@@ -6,7 +6,6 @@ import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
-import { Mode } from "metabase/visualizations/click-actions/Mode";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -29,7 +28,6 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-import { ObjectMode } from "metabase/visualizations/click-actions/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import * as ML from "metabase-lib/v2";
@@ -534,11 +532,8 @@ const isZoomingRow = createSelector(
 );
 
 export const getMode = createSelector(
-  [getLastRunQuestion, isZoomingRow],
-  (question, isZoomingRow) =>
-    isZoomingRow
-      ? new Mode(question, ObjectMode)
-      : question && getQuestionMode(question),
+  [getLastRunQuestion],
+  question => question && getQuestionMode(question),
 );
 
 export const getIsObjectDetail = createSelector(

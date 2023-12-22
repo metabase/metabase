@@ -29,15 +29,16 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type      ::upload/boolean)
-(def ^:private int-type       ::upload/int)
-(def ^:private float-type     ::upload/float)
-(def ^:private vchar-type     ::upload/varchar-255)
-(def ^:private date-type      ::upload/date)
-(def ^:private datetime-type  ::upload/datetime)
-(def ^:private offset-dt-type ::upload/offset-datetime)
-(def ^:private text-type      ::upload/text)
-(def ^:private auto-pk-type ::upload/auto-incrementing-int-pk)
+(def ^:private bool-type        ::upload/boolean)
+(def ^:private int-type         ::upload/int)
+(def ^:private bool-or-int-type ::upload/boolean-or-int)
+(def ^:private float-type       ::upload/float)
+(def ^:private vchar-type       ::upload/varchar-255)
+(def ^:private date-type        ::upload/date)
+(def ^:private datetime-type    ::upload/datetime)
+(def ^:private offset-dt-type   ::upload/offset-datetime)
+(def ^:private text-type        ::upload/text)
+(def ^:private auto-pk-type     ::upload/auto-incrementing-int-pk)
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -128,6 +129,10 @@
            ["9,986,000"  9986000        int-type ".,"]
            ["9.986.000"  9986000        int-type ",."]
            ["9’986’000"  9986000        int-type ".’"]
+           ["$0"         0              int-type]
+           ["-1"         -1             int-type]
+           ["0"          false          bool-or-int-type]
+           ["1"          true           bool-or-int-type]
            ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
            ["3.14"       3.14           float-type "."]
@@ -186,42 +191,47 @@
            [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
-    (let [settings {:number-separators (or seps ".,")}
-          type     (#'upload/value->type string-value settings)
-          parser   (upload-parsing/upload-type->parser type settings)]
+    (let [settings   {:number-separators (or seps ".,")}
+          value-type (#'upload/value->type string-value settings)
+          ;; get the type of the column, if it were filled with only that value
+          col-type   (first (upload/column-types-from-rows settings 1 [[string-value]]))
+          parser     (upload-parsing/upload-type->parser col-type settings)]
       (testing (format "\"%s\" is a %s" string-value type)
         (is (= expected-type
-               type)))
+               value-type)))
       (testing (format "\"%s\" is parsed into %s" string-value expected-value)
         (is (= expected-value
                (parser string-value)))))))
 
 (deftest ^:parallel type-coalescing-test
-  (doseq [[type-a          type-b        expected]
-          [[bool-type      bool-type     bool-type]
-           [bool-type      int-type      int-type]
-           [bool-type      date-type     vchar-type]
-           [bool-type      datetime-type vchar-type]
-           [bool-type      vchar-type    vchar-type]
-           [bool-type      text-type     text-type]
-           [int-type       bool-type     int-type]
-           [int-type       float-type    float-type]
-           [int-type       date-type     vchar-type]
-           [int-type       datetime-type vchar-type]
-           [int-type       vchar-type    vchar-type]
-           [int-type       text-type     text-type]
-           [float-type     vchar-type    vchar-type]
-           [float-type     text-type     text-type]
-           [float-type     date-type     vchar-type]
-           [float-type     datetime-type vchar-type]
-           [date-type      datetime-type datetime-type]
-           [date-type      vchar-type    vchar-type]
-           [date-type      text-type     text-type]
-           [datetime-type  vchar-type    vchar-type]
-           [offset-dt-type vchar-type    vchar-type]
-           [datetime-type  text-type     text-type]
-           [offset-dt-type text-type     text-type]
-           [vchar-type     text-type     text-type]]]
+  (doseq [[type-a            type-b           expected]
+          [[bool-type        bool-type        bool-type]
+           [bool-type        int-type         vchar-type]
+           [bool-type        bool-or-int-type bool-type]
+           [bool-type        date-type        vchar-type]
+           [bool-type        datetime-type    vchar-type]
+           [bool-type        vchar-type       vchar-type]
+           [bool-type        text-type        text-type]
+           [int-type         bool-type        vchar-type]
+           [int-type         float-type       float-type]
+           [int-type         date-type        vchar-type]
+           [int-type         datetime-type    vchar-type]
+           [int-type         vchar-type       vchar-type]
+           [int-type         text-type        text-type]
+           [int-type         bool-or-int-type int-type]
+           [bool-or-int-type bool-or-int-type bool-or-int-type]
+           [float-type       vchar-type       vchar-type]
+           [float-type       text-type        text-type]
+           [float-type       date-type        vchar-type]
+           [float-type       datetime-type    vchar-type]
+           [date-type        datetime-type    datetime-type]
+           [date-type        vchar-type       vchar-type]
+           [date-type        text-type        text-type]
+           [datetime-type    vchar-type       vchar-type]
+           [offset-dt-type   vchar-type       vchar-type]
+           [datetime-type    text-type        text-type]
+           [offset-dt-type   text-type        text-type]
+           [vchar-type       text-type        text-type]]]
     (is (= expected (#'upload/lowest-common-ancestor type-a type-b))
         (format "%s + %s = %s" (name type-a) (name type-b) (name expected)))))
 
@@ -280,16 +290,27 @@
                 "Rey Skywalker, 170, 15"
                 "Darth Vader, 202.0, 41.9BBY"]))))
     (testing "Boolean coalescing"
-      (is (=? (with-ai-id {:name          vchar-type
-                           :is_jedi_      bool-type
-                           :is_jedi__int_ int-type
-                           :is_jedi__vc_  vchar-type})
+      (is (=? (with-ai-id {:name                    vchar-type
+                           :is_jedi_                bool-type
+                           :is_jedi__int_and_bools_ vchar-type
+                           :is_jedi__vc_            vchar-type})
               (detect-schema-with-csv-rows
-               ["Name, Is Jedi?, Is Jedi (int), Is Jedi (VC)"
-                "Rey Skywalker, yes, true, t"
-                "Darth Vader, YES, TRUE, Y"
-                "Grogu, 1, 9001, probably?"
-                "Han Solo, no, FaLsE, 0"]))))
+               ["         Name, Is Jedi?, Is Jedi (int and bools), Is Jedi (VC)"
+                "Rey Skywalker,      yes,                    true,            t"
+                "  Darth Vader,      YES,                    TRUE,            Y"
+                "        Grogu,        1,                    9001,    probably?"
+                "     Han Solo,       no,                   FaLsE,            0"]))))
+    (testing "Boolean and integers together"
+      (is (=? (with-ai-id {:vchar       vchar-type
+                           :bool        bool-type
+                           :bool_or_int bool-type
+                           :int         int-type})
+              (detect-schema-with-csv-rows
+               ["vchar,bool,bool-or-int,int"
+                " true,true,          1,  1"
+                "    1,   1,          0,  0"
+                "    2,   0,          0,  0"
+                "   no,  no,          1,  2"]))))
     (testing "Order is ensured"
       (let [header "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,zz,yy,xx,ww,vv,uu,tt,ss,rr,qq,pp,oo,nn,mm,ll,kk,jj,ii,hh,gg,ff,ee,dd,cc,bb,aa"]
         (is (= (map keyword (str/split header #","))
@@ -607,6 +628,31 @@
                 (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                        (column-names-for-table table)))))))))))
 
+(deftest load-from-csv-bool-and-int-test
+  (testing "Upload a CSV file with integers and booleans in the same column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (mt/with-empty-db
+          (@#'upload/load-from-csv!
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["vchar,bool,bool-or-int,int"
+                           " true,true,          1,  1"
+                           "    1,   1,          0,  0"
+                           "    2,   0,          0,  0"
+                           "   no,  no,          1,  2"]))
+          (testing "Table and Fields exist after sync"
+            (sync/sync-database! (mt/db))
+            (let [table (t2/select-one Table :db_id (mt/id))]
+              (is (=? {:name #"(?i)upload_test"} table))
+              (testing "Check the data was uploaded into the table correctly"
+                (is (= [[1 " true"  true true  1]
+                        [2 "    1"  true false 0]
+                        [3 "    2" false false 0]
+                        [4 "   no" false true  2]]
+                       (rows-for-table table)))))))))))
+
 (deftest load-from-csv-existing-id-column-test
   (testing "Upload a CSV file with an existing ID column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -878,10 +924,6 @@
                           first
                           :value))))))))
 
-;; Cal TODO: move this to driver test multimethod
-(defn- supports-schemas? [driver]
-  (not= driver :mysql))
-
 (defn upload-example-csv!
   "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
   current user is granted data permissions to the database."
@@ -924,7 +966,7 @@
     (apply upload/append-csv! args)))
 
 (deftest create-csv-upload!-schema-test
-  (mt/test-drivers (filter supports-schemas? (mt/normal-drivers-with-feature :uploads))
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
     (mt/with-empty-db
       (let [db                   (mt/db)
             db-id                (u/the-id db)
@@ -978,7 +1020,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Happy path with table prefix, and without schema"
-        (if (supports-schemas? driver/*driver*)
+        (if (driver/database-supports? driver/*driver* :schemas (mt/db))
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^A schema has not been set."
@@ -995,20 +1037,19 @@
   (testing "The auto-generated column display_name should be the same as its name"
    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
      (mt/with-empty-db
-       (let [db-id (u/the-id (mt/db))]
-         (when (supports-schemas? driver/*driver*)
-           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
-             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                            ["CREATE SCHEMA \"not_public\";"])))
-         (upload-example-csv! {:schema-name (if (supports-schemas? driver/*driver*)
-                                              "not_public"
-                                              nil)
-                               :table-prefix "uploads_"})
-         (let [new-table (t2/select-one Table :db_id db-id)
-               new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
-           (is (= "_mb_row_id"
-                  (:name new-field)
-                  (:display_name new-field)))))))))
+       (when (driver/database-supports? driver/*driver* :schemas (mt/db))
+         (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                          ["CREATE SCHEMA \"not_public\";"])))
+       (upload-example-csv! {:schema-name (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+                                            "not_public"
+                                            nil)
+                             :table-prefix "uploads_"})
+       (let [new-table (t2/select-one Table :db_id (mt/id))
+             new-field (t2/select-one Field :table_id (:id new-table) :name "_mb_row_id")]
+         (is (= "_mb_row_id"
+                (:name new-field)
+                (:display_name new-field))))))))
 
 (deftest csv-upload-snowplow-test
   ;; Just test with h2 because snowplow should be independent of the driver
@@ -1104,7 +1145,7 @@
   Returns the table.
 
   Defaults to a table with an auto-incrementing integer ID column, and a name column."
-  [& {:keys [table-name col->upload-type rows]
+  [& {:keys [schema-name table-name col->upload-type rows]
       :or {table-name       (mt/random-name)
            col->upload-type (ordered-map/ordered-map
                              (keyword upload/auto-pk-column-name) ::upload/auto-incrementing-int-pk
@@ -1112,34 +1153,36 @@
            rows             [["Obi-Wan Kenobi"]]}}]
   (let [driver driver/*driver*
         db-id (mt/id)
+        schema+table-name (if schema-name
+                            (str schema-name "." table-name)
+                            table-name)
         insert-col-names (remove #{(keyword upload/auto-pk-column-name)} (keys col->upload-type))
         col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
-        _ (driver/create-table! driver db-id table-name col->database-type)
-        _ (driver/insert-into! driver db-id table-name insert-col-names rows)
-        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema nil})]
+        _ (driver/create-table! driver db-id schema+table-name col->database-type)
+        _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
+        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema schema-name})]
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*sync-synchronously?* true]
       (#'upload/scan-and-sync-table! (mt/db) table))
     table))
 
 (defn append-csv-with-defaults!
-  "Upload a small CSV file to the given collection ID. Default args can be overridden"
+  "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden"
   [& {:keys [uploads-enabled user-id file table-id is-upload]
-      :or {uploads-enabled   true
-           user-id           (mt/user->id :crowberto)
-           file              (csv-file-with
-                              ["name"
-                               "Luke Skywalker"
-                               "Darth Vader"]
-                              (str (mt/random-name) ".csv"))
-           is-upload          true}}]
+      :or {uploads-enabled true
+           user-id         (mt/user->id :crowberto)
+           file            (csv-file-with
+                            ["name"
+                             "Luke Skywalker"
+                             "Darth Vader"]
+                            (str (mt/random-name) ".csv"))
+           is-upload       true}}]
   (try
     (mt/with-temporary-setting-values [uploads-enabled uploads-enabled]
       (mt/with-current-user user-id
-        (let [table (create-upload-table!)]
-          (when-not is-upload
-            (t2/update! :model/Table (:id table) {:is_upload false}))
-          (append-csv! {:table-id (or table-id (:id table))
+        (let [table-id (or table-id (:id (create-upload-table!)))]
+          (t2/update! :model/Table table-id {:is_upload is-upload})
+          (append-csv! {:table-id table-id
                         :file     file}))))
     (finally
       (io/delete-file file))))
@@ -1177,8 +1220,8 @@
               :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
     (testing "The CSV file must not be empty"
-      (is (= {:data {:status-code 422},
-              :message "The schema of the CSV file does not match the schema of the table."}
+      (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+              :data    {:status-code 422}}
              (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
     (testing "Uploads must be supported"
       (with-redefs [driver/database-supports? (constantly false)]
@@ -1223,19 +1266,28 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (with-uploads-allowed
       (testing "Append should fail if there are extra or missing columns in the CSV file"
-        (doseq [csv-rows [["_mb_row_id,name,extra_column" "2,Luke Skywalker,so extra"] ;; extra column
-                          ["_mb_row_id" "2,Luke Skywalker"]                            ;; missing column
-                          ["_mb_row_id,extra_column" "2,so extra"]]]                   ;; extra and missing column
+        (doseq [[csv-rows error-message]
+                {["_mb_row_id,id,name,extra column one,EXTRA COLUMN TWO"]
+                 "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
+
+                 [""]
+                 "The CSV file contains extra columns that are not in the table: \"id\", \"name\"."
+
+                 ["_mb_row_id,extra 1, extra 2"]
+                 "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
           (mt/with-empty-db
-            (let [table (create-upload-table!)
+            (let [table (create-upload-table!
+                         {:col->upload-type (ordered-map/ordered-map
+                                             :id         ::upload/int
+                                             :name       ::upload/varchar-255)
+                          :rows [[1,"some_text"]]})
                   file  (csv-file-with csv-rows (mt/random-name))]
-              ;; TODO: specialise this error message
-              (is (= {:message "The schema of the CSV file does not match the schema of the table."
+              (is (= {:message error-message
                       :data {:status-code 422}}
                      (catch-ex-info (append-csv! {:file     file
                                                   :table-id (:id table)}))))
               (testing "Check the data was not uploaded into the table"
-                (is (= [[1 "Obi-Wan Kenobi"]]
+                (is (= [[1 "some_text"]]
                        (rows-for-table table))))
               (io/delete-file file))))))))
 

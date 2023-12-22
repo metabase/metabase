@@ -7,11 +7,11 @@ import {
   resetTestTable,
   restore,
   resyncDatabase,
-  undoToast,
   visitDashboard,
   visitModel,
   createModelFromTableName,
   createImplicitActions,
+  undoToastList,
 } from "e2e/support/helpers";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
@@ -303,14 +303,20 @@ function assertUpdatedScoreNotInTable() {
 
 function assertSuccessfullUpdateToast() {
   cy.log("it shows a toast informing the update was successful");
-  undoToast().should("have.attr", "color", "success");
-  undoToast().findByText("Successfully updated").should("be.visible");
+  undoToastList()
+    .last()
+    .should("be.visible")
+    .should("have.attr", "color", "success")
+    .should("contain.text", "Successfully updated");
 }
 
 function assertSuccessfullDeleteToast() {
   cy.log("it shows a toast informing the delete was successful");
-  undoToast().should("have.attr", "color", "success");
-  undoToast().findByText("Successfully deleted").should("be.visible");
+  undoToastList()
+    .last()
+    .should("be.visible")
+    .should("have.attr", "color", "success")
+    .should("contain.text", "Successfully deleted");
 }
 
 function actionForm() {

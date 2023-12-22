@@ -4,8 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (deftest ^:parallel quote-name-test
   (are [driver expected] (= expected
@@ -14,32 +13,40 @@
     :h2       "\"wow\""
     :postgres "\"wow\""))
 
+(deftest ^:parallel select-clause-alias-everything-test
+  (testing "first column is just <identifer>, wrap it like [<identifier> <alias>]"
+    (is (= [[(h2x/identifier :field "A" "B" "C" "D") (h2x/identifier :field-alias "D")]
+            [(h2x/identifier :field "F")             (h2x/identifier :field-alias "G")]]
+           (sql.u/select-clause-alias-everything
+            [(h2x/identifier :field "A" "B" "C" "D")
+             [(h2x/identifier :field "F")            (h2x/identifier :field-alias "G")]])))))
+
 (deftest ^:parallel select-clause-deduplicate-aliases
   (testing 'select-clause-deduplicate-aliases
     (testing "should use the last component of an identifier as the alias if it does not already have one"
-      (is (= [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
-              [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]
+      (is (= [[(h2x/identifier :field "A" "B" "C" "D") (h2x/identifier :field-alias "D")]
+              [(h2x/identifier :field "F")             (h2x/identifier :field-alias "G")]]
              (sql.u/select-clause-deduplicate-aliases
-              [(hx/identifier :field "A" "B" "C" "D")
-               [(hx/identifier :field "F")            (hx/identifier :field-alias "G")]]))))
+              [(h2x/identifier :field "A" "B" "C" "D")
+               [(h2x/identifier :field "F")            (h2x/identifier :field-alias "G")]]))))
 
     (testing "should append numeric suffixes to duplicate aliases"
-      (is (= [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
-              [(hx/identifier :field "E" "D")         (hx/identifier :field-alias "D_2")]
-              [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]
+      (is (= [[(h2x/identifier :field "A" "B" "C" "D") (h2x/identifier :field-alias "D")]
+              [(h2x/identifier :field "E" "D")         (h2x/identifier :field-alias "D_2")]
+              [(h2x/identifier :field "F")             (h2x/identifier :field-alias "G")]]
              (sql.u/select-clause-deduplicate-aliases
-              [(hx/identifier :field "A" "B" "C" "D")
-               (hx/identifier :field "E" "D")
-               [(hx/identifier :field "F")            (hx/identifier :field-alias "G")]]))))
+              [(h2x/identifier :field "A" "B" "C" "D")
+               (h2x/identifier :field "E" "D")
+               [(h2x/identifier :field "F")            (h2x/identifier :field-alias "G")]]))))
 
     (testing "should handle aliases that are already suffixed gracefully"
-      (is (= [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
-              [(hx/identifier :field "E" "D")         (hx/identifier :field-alias "D_2")]
-              [(hx/identifier :field "F")             (hx/identifier :field-alias "D_3")]]
+      (is (= [[(h2x/identifier :field "A" "B" "C" "D") (h2x/identifier :field-alias "D")]
+              [(h2x/identifier :field "E" "D")         (h2x/identifier :field-alias "D_2")]
+              [(h2x/identifier :field "F")             (h2x/identifier :field-alias "D_3")]]
              (sql.u/select-clause-deduplicate-aliases
-              [(hx/identifier :field "A" "B" "C" "D")
-               (hx/identifier :field "E" "D")
-               [(hx/identifier :field "F")            (hx/identifier :field-alias "D_2")]]))))))
+              [(h2x/identifier :field "A" "B" "C" "D")
+               (h2x/identifier :field "E" "D")
+               [(h2x/identifier :field "F")            (h2x/identifier :field-alias "D_2")]]))))))
 
 (deftest ^:parallel escape-sql-test
   (doseq [[escape-strategy s->expected]

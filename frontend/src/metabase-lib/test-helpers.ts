@@ -155,6 +155,13 @@ interface BreakoutClauseOpts {
   binningStrategyName?: string;
 }
 
+interface ExpressionClauseOpts {
+  name: string;
+  operator: Lib.ExpressionOperatorName;
+  args: (Lib.ExpressionArg | Lib.ExpressionClause)[];
+  options?: Lib.ExpressionOptions | null;
+}
+
 interface OrderByClauseOpts {
   columnName: string;
   tableName: string;
@@ -163,6 +170,7 @@ interface OrderByClauseOpts {
 
 interface QueryWithClausesOpts {
   query?: Lib.Query;
+  expressions?: ExpressionClauseOpts[];
   aggregations?: AggregationClauseOpts[];
   breakouts?: BreakoutClauseOpts[];
   orderBys?: OrderByClauseOpts[];
@@ -170,10 +178,24 @@ interface QueryWithClausesOpts {
 
 export function createQueryWithClauses({
   query = createQuery(),
+  expressions = [],
   aggregations = [],
   breakouts = [],
   orderBys = [],
 }: QueryWithClausesOpts) {
+  const queryWithExpressions = expressions.reduce((query, expression) => {
+    return Lib.expression(
+      query,
+      -1,
+      expression.name,
+      Lib.expressionClause(
+        expression.operator,
+        expression.args,
+        expression.options,
+      ),
+    );
+  }, query);
+
   const queryWithAggregations = aggregations.reduce((query, aggregation) => {
     return Lib.aggregate(
       query,
@@ -182,7 +204,7 @@ export function createQueryWithClauses({
         findAggregationOperator(query, aggregation.operatorName),
       ),
     );
-  }, query);
+  }, queryWithExpressions);
 
   const queryWithBreakouts = breakouts.reduce((query, breakout) => {
     const breakoutColumn = columnFinder(

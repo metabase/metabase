@@ -39,7 +39,7 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
    (org.postgresql.copy CopyManager)
@@ -54,6 +54,9 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
+(defmethod driver/display-name :postgres [_] "PostgreSQL")
+
+;; Features that are supported by Postgres and all of its child drivers like Redshift
 (doseq [[feature supported?] {:convert-timezone         true
                               :datetime-diff            true
                               :now                      true
@@ -67,18 +70,14 @@
   [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             metabase.driver impls                                              |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/display-name :postgres [_] "PostgreSQL")
-
+;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :table-privileges]]
+                 :table-privileges
+                 :uploads
+                 :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
-    ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -216,10 +215,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod sql.qp/honey-sql-version :postgres
-  [_driver]
-  2)
 
 (defn- ->timestamp [honeysql-form]
   (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
@@ -832,7 +827,7 @@
 (defmethod driver/insert-into! :postgres
   [driver db-id table-name column-names values]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-    (let [copy-manager (CopyManager. (.unwrap (:connection conn) PgConnection))
+    (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           [sql & _]    (sql/format {::copy       (keyword table-name)
                                     :columns     (map keyword column-names)
                                     ::from-stdin "''"}

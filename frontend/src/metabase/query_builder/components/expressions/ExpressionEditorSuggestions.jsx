@@ -85,6 +85,7 @@ export default class ExpressionEditorSuggestions extends Component {
         sizeToFit
         visible
         reference={target}
+        zIndex={300}
         content={
           <ExpressionList
             data-testid="expression-suggestions-list"

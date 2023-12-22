@@ -187,10 +187,14 @@
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
 
-      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :limited
+      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'users)      :full
+                                                        (mt/id 'categories) :full
+                                                        (mt/id 'venues)     :limited
                                                         (mt/id 'checkins)   :full
-                                                        (mt/id 'users)      :full
-                                                        (mt/id 'categories) :full}}}
+                                                        (mt/id 'products)   :limited
+                                                        (mt/id 'people)     :limited
+                                                        (mt/id 'reviews)    :limited
+                                                        (mt/id 'orders)     :limited}}}
         (streaming-test/do-test
          "A user with limited download perms for a table has their query results limited for queries on that table"
          {:query      {:database (mt/id)

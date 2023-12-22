@@ -151,6 +151,8 @@ export function DashCardCardParameterMapper({
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
+              role="button"
+              aria-label={t`Disconnect`}
               onClick={e => {
                 handleChangeTarget(null);
                 e.stopPropagation();

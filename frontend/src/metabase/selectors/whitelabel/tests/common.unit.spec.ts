@@ -1,4 +1,8 @@
-import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
+import {
+  getApplicationName,
+  getIsWhiteLabeling,
+  getWhiteLabeledLoadingMessage,
+} from "..";
 import { setup } from "./setup";
 
 describe("getWhiteLabeledLoadingMessage (OSS)", () => {
@@ -32,5 +36,19 @@ describe("getIsWhiteLabeling (OSS)", () => {
     const { getState } = setup({ applicationName: "something else" });
 
     expect(getIsWhiteLabeling(getState())).toBe(false);
+  });
+});
+
+describe("getApplicationName (OSS)", () => {
+  it("should return Metabase when application-name is unchanged", () => {
+    const { getState } = setup();
+
+    expect(getApplicationName(getState())).toBe("Metabase");
+  });
+
+  it("should return Metabase when application-name is changed", () => {
+    const { getState } = setup({ applicationName: "something else" });
+
+    expect(getApplicationName(getState())).toBe("Metabase");
   });
 });

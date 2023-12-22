@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BackButton } from "../BackButton";
+import { PopoverBackButton } from "metabase/ui";
 import { FilterHeaderRoot } from "./FilterPickerHeader.styled";
 
 interface FilterPickerHeaderProps {
@@ -15,7 +15,9 @@ export function FilterPickerHeader({
 }: FilterPickerHeaderProps) {
   return (
     <FilterHeaderRoot p="sm" justify="space-between">
-      {onBack && <BackButton onClick={onBack}>{columnName}</BackButton>}
+      {onBack && (
+        <PopoverBackButton onClick={onBack}>{columnName}</PopoverBackButton>
+      )}
       {children}
     </FilterHeaderRoot>
   );
