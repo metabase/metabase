@@ -96,7 +96,7 @@ describe("SmartScalar > utils", () => {
         "scalar.field": FIELD_NAME,
       };
 
-      it("should return only previousValue option if no dateUnit", () => {
+      it("should not return 'periods ago' or `previous period` option if no dateUnit", () => {
         const rows = [
           ["2019-10-01", 100],
           ["2019-11-01", 300],
@@ -108,6 +108,7 @@ describe("SmartScalar > utils", () => {
 
         expect(comparisonOptions).toEqual([
           COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
         ]);
       });
 
