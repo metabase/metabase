@@ -136,26 +136,26 @@
                          :pie.show_data_labels     labels})))))))
 
 (deftest encrypted-data-with-no-secret-test
-  (testing "Just parses string normally when there is no key and the string is JSON"
-    (is (= {:a 1}
-           (mi/encrypted-json-out "{\"a\": 1}"))))
-  (testing "Also parses string if it's encrypted and JSON"
-    (is (= {:a 1}
-           (encryption-test/with-secret-key "qwe"
-             (mi/encrypted-json-out
-              (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
-  (testing "Logs an error message when incoming data looks encrypted"
-    (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
-            (tu.log/with-log-messages-for-level :error
-              (mi/encrypted-json-out
-               (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
-
-  (testing "Invalid JSON throws correct error"
-    (is (=? [[:error JsonParseException "Error parsing JSON"]]
-            (tu.log/with-log-messages-for-level :error
-              (mi/encrypted-json-out "{\"a\": 1"))))
-    (is (=? [[:error JsonParseException "Error parsing JSON"]]
-            (tu.log/with-log-messages-for-level :error
-              (encryption-test/with-secret-key "qwe"
+  (encryption-test/with-secret-key nil
+    (testing "Just parses string normally when there is no key and the string is JSON"
+      (is (= {:a 1}
+             (mi/encrypted-json-out "{\"a\": 1}"))))
+    (testing "Also parses string if it's encrypted and JSON"
+      (is (= {:a 1}
+             (encryption-test/with-secret-key "qwe"
+               (mi/encrypted-json-out
+                (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+    (testing "Logs an error message when incoming data looks encrypted"
+      (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
+              (tu.log/with-log-messages-for-level :error
                 (mi/encrypted-json-out
-                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1"))))))))
+                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+    (testing "Invalid JSON throws correct error"
+      (is (=? [[:error JsonParseException "Error parsing JSON"]]
+              (tu.log/with-log-messages-for-level :error
+                (mi/encrypted-json-out "{\"a\": 1"))))
+      (is (=? [[:error JsonParseException "Error parsing JSON"]]
+              (tu.log/with-log-messages-for-level :error
+                (encryption-test/with-secret-key "qwe"
+                  (mi/encrypted-json-out
+                   (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))))))))
