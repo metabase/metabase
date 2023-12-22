@@ -51,11 +51,13 @@ export type DimensionModel = {
 export type Datum = Record<DataKey, RowValue>;
 export type GroupedDataset = Datum[];
 export type Extent = [number, number];
+export type Range = [RowValue, RowValue];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type AxisFormatter = (value: RowValue) => string;
 
 export type XAxisModel = {
   label?: string;
+  range: Range | null;
   formatter: AxisFormatter;
 };
 

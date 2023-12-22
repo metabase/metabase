@@ -14,7 +14,7 @@ import type {
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { getDimensionDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/option/types";
+import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/types";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
@@ -147,6 +147,8 @@ export const buildDimensionAxis = (
       show: false,
     },
     type: axisType,
+    min: "dataMin",
+    max: "dataMax",
     axisLabel: {
       margin:
         CHART_STYLE.axisTicksMarginX +

@@ -9,6 +9,8 @@ export interface TicksDimensions {
   yTicksWidthLeft: number;
   yTicksWidthRight: number;
   xTicksHeight: number;
+  leftXTickWidth: number;
+  rightXTickWidth: number;
 }
 
 export interface ChartMeasurements {

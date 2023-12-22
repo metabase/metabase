@@ -109,7 +109,8 @@ export const getCartesianChartModel = (
   const insights = rawSeries.flatMap(series => series.data.insights ?? []);
 
   const xAxisModel = getXAxisModel(
-    dimensionModel.column,
+    dimensionModel,
+    transformedDataset,
     settings,
     renderingContext,
   );

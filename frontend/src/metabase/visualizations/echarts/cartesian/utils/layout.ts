@@ -11,7 +11,8 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import type {
   ChartMeasurements,
   Padding,
-} from "metabase/visualizations/echarts/cartesian/option/types";
+  TicksDimensions,
+} from "metabase/visualizations/echarts/cartesian/types";
 
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
@@ -109,16 +110,67 @@ const getXAxisTicksHeight = (
   return CHART_STYLE.axisTicks.size + CHART_STYLE.axisNameMargin;
 };
 
+const getXAxisTickWidth = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  formatter: AxisFormatter,
+  renderingContext: RenderingContext,
+) => {
+  renderingContext.measureText(
+    chartModel.xAxisModel.formatter(chartModel.xAxisModel.range[0]),
+    {
+      ...CHART_STYLE.axisTicks,
+      family: renderingContext.fontFamily,
+    },
+  );
+
+  chartModel.xAxisModel.range[0];
+  const xAxisDisplay = settings["graph.x_axis.axis_enabled"];
+  if (!xAxisDisplay) {
+    return 0;
+  }
+
+  if (xAxisDisplay === true || xAxisDisplay === "compact") {
+    return CHART_STYLE.axisTicks.size;
+  }
+
+  const tickWidths = chartModel.dataset.map(datum => {
+    return renderingContext.measureText(
+      formatter(datum[chartModel.dimensionModel.dataKey]),
+      {
+        ...CHART_STYLE.axisTicks,
+        family: renderingContext.fontFamily,
+      },
+    );
+  });
+
+  const maxTickWidth = Math.max(...tickWidths);
+
+  if (xAxisDisplay === "rotate-90") {
+    return maxTickWidth;
+  }
+
+  if (xAxisDisplay === "rotate-45") {
+    return maxTickWidth / Math.sqrt(2);
+  }
+
+  console.warn(`Unexpected "graph.x_axis.axis_enabled" value ${xAxisDisplay}`);
+
+  return CHART_STYLE.axisTicks.size + CHART_STYLE.axisNameMargin;
+};
+
 export const getTicksDimensions = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
-) => {
-  const ticksDimensions = {
+): TicksDimensions => {
+  const ticksDimensions: TicksDimensions = {
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
     xTicksHeight: 0,
+    leftXTickWidth: 0,
+    rightXTickWidth: 0,
   };
 
   if (chartModel.leftAxisModel) {
@@ -147,6 +199,11 @@ export const getTicksDimensions = (
       ) +
       CHART_STYLE.axisTicksMarginX +
       (hasTimelineEvents ? CHART_STYLE.timelineEvents.height : 0);
+
+    ticksDimensions.leftXTickWidth = renderingContext.measureText(
+      formattedValue,
+      fontStyle,
+    );
   }
 
   return ticksDimensions;

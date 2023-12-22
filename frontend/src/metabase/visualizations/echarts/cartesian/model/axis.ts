@@ -3,8 +3,10 @@ import _ from "underscore";
 import type {
   AxisFormatter,
   DataKey,
+  DimensionModel,
   Extent,
   GroupedDataset,
+  Range,
   SeriesExtents,
   SeriesModel,
   XAxisModel,
@@ -448,8 +450,26 @@ export function getYAxesModels(
   };
 }
 
+const getXAxisRange = (
+  dimensionModel: DimensionModel,
+  sortedDataset: GroupedDataset,
+  settings: ComputedVisualizationSettings,
+): null | Range => {
+  const isContinuous = settings["graph.x_axis.scale"] !== "ordinal";
+  if (!isContinuous || sortedDataset.length === 0) {
+    return null;
+  }
+
+  const firstValue = sortedDataset[0]?.[dimensionModel.dataKey];
+  const lastValue =
+    sortedDataset[sortedDataset.length - 1]?.[dimensionModel.dataKey];
+
+  return [firstValue, lastValue];
+};
+
 export function getXAxisModel(
-  column: DatasetColumn,
+  dimensionModel: DimensionModel,
+  sortedDataset: GroupedDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): XAxisModel {
@@ -459,6 +479,7 @@ export function getXAxisModel(
 
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
 
+  const column = dimensionModel.column;
   const formatter = (value: RowValue) =>
     renderingContext.formatValue(value, {
       column,
@@ -466,8 +487,11 @@ export function getXAxisModel(
       noRange: isHistogram,
     });
 
+  const range = getXAxisRange(dimensionModel, sortedDataset, settings);
+
   return {
     formatter,
     label,
+    range,
   };
 }

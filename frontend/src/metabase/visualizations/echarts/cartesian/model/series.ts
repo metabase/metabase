@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
+  DimensionModel,
   LegacySeriesSettingsObjectKey,
   SeriesModel,
   VizSettingsKey,
@@ -194,7 +195,7 @@ export const getCardSeriesModels = (
 export const getDimensionModel = (
   rawSeries: RawSeries,
   cardColumns: CartesianChartColumns[],
-) => {
+): DimensionModel => {
   return {
     dataKey: getDatasetKey(
       cardColumns[0].dimension.column,

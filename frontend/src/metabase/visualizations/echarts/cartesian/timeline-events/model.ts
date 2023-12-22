@@ -13,7 +13,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
-import type { ChartMeasurements } from "../option/types";
+import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesian/types";
 
 const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {
@@ -26,19 +26,12 @@ const tryGetDate = (rowValue: RowValue): Dayjs | null => {
 const getDimensionRange = (
   chartModel: CartesianChartModel,
 ): DateRange | null => {
-  const {
-    transformedDataset,
-    dimensionModel: { dataKey: dimensionKey },
-  } = chartModel;
-  if (chartModel.transformedDataset.length === 0) {
+  if (!chartModel.xAxisModel.range) {
     return null;
   }
 
-  // Assume the dataset is sorted
-  const minDate = tryGetDate(transformedDataset[0][dimensionKey]);
-  const maxDate = tryGetDate(
-    transformedDataset[transformedDataset.length - 1][dimensionKey],
-  );
+  const minDate = tryGetDate(chartModel.xAxisModel.range[0]);
+  const maxDate = tryGetDate(chartModel.xAxisModel.range[1]);
 
   if (minDate == null || maxDate == null) {
     return null;
@@ -182,14 +175,14 @@ export const getTimelineEventsModel = (
     return null;
   }
 
-  const dimensionRange = getDimensionRange(chartModel);
-  if (!dimensionRange) {
+  const xAxisRange = getDimensionRange(chartModel);
+  if (!xAxisRange) {
     return null;
   }
 
   const visibleTimelineEvents = getTimelineEventsInsideRange(
     timelineEvents,
-    dimensionRange,
+    xAxisRange,
   );
 
   const hasTimelineEvents = visibleTimelineEvents.length === 0;
@@ -209,7 +202,7 @@ export const getTimelineEventsModel = (
     renderingContext,
   );
 
-  const dayWidth = getDayWidth(dimensionRange, chartMeasurements, width);
+  const dayWidth = getDayWidth(xAxisRange, chartMeasurements, width);
   return mergeOverlappingTimelineEventGroups(
     timelineEventsByUnitStart,
     dayWidth,
