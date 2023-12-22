@@ -1,5 +1,7 @@
 ---
 title: Interactive embedding quick start
+redirect_from:
+  - /learn/customer-facing-analytics/interactive-embedding-quick-start
 ---
 
 # Interactive embedding quick start
@@ -32,6 +34,7 @@ Click on the **Interactive embedding** card. Under **Authorized origins**, add t
 #### SameSite configuration
 
 If you're embedding Metabase in a different domain, you may need to [set the session cookie's SameSite value to `none`](./interactive-embedding.md#embedding-metabase-in-a-different-domain)
+
 #### Enable authentication with JWT
 
 While still in the Admin panel's **Settings** section, click on **Authentication**.
@@ -109,7 +112,7 @@ function restrict(req, res, next) {
 We need to write a function to sign user JWTs, using the JWT library.
 
 ```javascript
-const signUserToken = (user) =>
+const signUserToken = user =>
   jwt.sign(
     {
       email: user.email,
@@ -180,7 +183,7 @@ Now that you have SSO and interactive embedding set up, it's time to set up grou
 Recall the `signUserToken` function used to create the JWTs. Add a `groups` key to the signed token that maps to an array. Metabase will look at the values in that array to see if any of the values map to a group in Metabase (We'll walk through mapping groups in a bit).
 
 ```javascript
-const signUserToken = (user) =>
+const signUserToken = user =>
   jwt.sign(
     {
       email: user.email,
@@ -242,7 +245,7 @@ You can include user attributes in the JSON web token. Metabase will pick up any
 If you're using our sample app, edit the `signUserToken` function used to create the JWT by adding a key `account_id` with value `28`.
 
 ```javascript
-const signUserToken = (user) =>
+const signUserToken = user =>
   jwt.sign(
     {
       email: user.email,
