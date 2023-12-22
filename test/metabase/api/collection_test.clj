@@ -238,7 +238,7 @@
     (with-collection-hierarchy [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
-        (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true&location=/")]
+        (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true")]
           (testing "Make sure overall tree shape of the response is as is expected"
             (is (= [{:name     "A"
                      :children true}
@@ -261,8 +261,8 @@
                              :authority_level   nil}
                             (some #(when (= (:id %) (u/the-id personal-collection)) %)
                                   response))))))
-        (let [response (mt/user-http-request :rasta :get 200 (str "collection/tree?shallow=true&location=/" (:id a) "/"))]
-          (testing "Make sure each location param works as expected"
+        (let [response (mt/user-http-request :rasta :get 200 (str "collection/tree?shallow=true&collection-id=" (:id a)))]
+          (testing "Make sure collection-id param works as expected"
             (is (= [{:name     "B"
                      :children false}
                     {:name     "C"
