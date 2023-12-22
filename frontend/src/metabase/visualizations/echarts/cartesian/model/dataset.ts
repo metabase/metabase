@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 import type {
+  CartesianChartModel,
   DataKey,
   DimensionModel,
   GroupedDataset,
@@ -10,7 +11,9 @@ import type {
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { isEmpty } from "metabase/lib/validate";
-import { isMetric } from "metabase-lib/types/utils/isa";
+import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
+
+import { getXAxisType } from "../option/axis";
 
 /**
  * Sums two metric column values.
@@ -193,6 +196,17 @@ export const getTransformedDataset = (
     );
   }
 
+  // only scatter plot can have `pow` for `x_axis.scale`
+  if (settings["graph.x_axis.scale"] === "pow") {
+    transformedDataset = replaceValues(
+      transformedDataset,
+      (dataKey: string, value: RowValue) =>
+        dataKey === dimensionModel.dataKey
+          ? applySquareRootScaling(value)
+          : value,
+    );
+  }
+
   if (settings["graph.x_axis.scale"] === "timeseries") {
     transformedDataset = sortTimeSeriesDataset(
       transformedDataset,
@@ -223,6 +237,27 @@ const sortTimeSeriesDataset = (
     return 0;
   });
 };
+
+export function getDimensionDisplayValueGetter(
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+) {
+  const axisType = getXAxisType(settings);
+  const isPowerScale = settings["graph.x_axis.scale"] === "pow";
+
+  return (value: string) => {
+    if (isPowerScale) {
+      return typeof value === "number" ? Math.pow(value, 2) : value;
+    }
+    if (axisType === "time") {
+      return dayjs(value).format("YYYY-MM-DDTHH:mm:ss");
+    }
+    if (isNumeric(chartModel.dimensionModel.column)) {
+      return parseInt(value, 10);
+    }
+    return value;
+  };
+}
 
 export const getMetricDisplayValueGetter = (
   settings: ComputedVisualizationSettings,
