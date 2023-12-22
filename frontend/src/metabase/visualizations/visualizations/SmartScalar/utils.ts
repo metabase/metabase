@@ -176,16 +176,21 @@ export function isComparisonValid(
   series: RawSeries,
   settings: VisualizationSettings,
 ) {
+  const comparison = settings["scalar.comparisons"];
+  const comparisonType = comparison?.type;
+
   const [
     {
       data: { insights },
     },
   ] = series;
 
-  if (
-    settings["scalar.comparisons"]?.type === COMPARISON_TYPES.PREVIOUS_VALUE
-  ) {
+  if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return true;
+  }
+
+  if (comparisonType === COMPARISON_TYPES.STATIC_NUMBER) {
+    return !isEmpty(comparison?.value) && !isEmpty(comparison?.label);
   }
 
   const dateUnit = insights?.find(

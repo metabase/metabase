@@ -5,6 +5,7 @@ import type {
   Insight,
   RelativeDatetimeUnit,
   RowValues,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockColumn,
@@ -182,9 +183,79 @@ describe("SmartScalar > utils", () => {
         expect(isValid).toBeTruthy();
       });
 
-      it("should return false if no dateUnit", () => {
+      it.each([
+        ["missing", undefined],
+        [
+          COMPARISON_TYPES.PERIODS_AGO,
+          { type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
+        ],
+        [
+          COMPARISON_TYPES.PREVIOUS_PERIOD,
+          { type: COMPARISON_TYPES.PREVIOUS_PERIOD },
+        ],
+      ])(
+        "should return false for %s comparison when dateUnit is missing",
+        (_, comparison) => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": comparison,
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings,
+          );
+
+          expect(isValid).toBeFalsy();
+        },
+      );
+
+      it.each([
+        ["missing", undefined],
+        [
+          COMPARISON_TYPES.PERIODS_AGO,
+          { type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
+        ],
+        [
+          COMPARISON_TYPES.PREVIOUS_PERIOD,
+          { type: COMPARISON_TYPES.PREVIOUS_PERIOD },
+        ],
+        [
+          COMPARISON_TYPES.STATIC_NUMBER,
+          { type: COMPARISON_TYPES.STATIC_NUMBER, value: 100, label: "Goal" },
+        ],
+      ])(
+        "should return true for %s comparison when dateUnit is supplied",
+        (_, comparison) => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": comparison,
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
+          const insights = createInsights("month");
+          const isValid = isComparisonValid(
+            series({ rows, insights }),
+            settings,
+          );
+
+          expect(isValid).toBeTruthy();
+        },
+      );
+
+      it("should return true for staticNumber comparison when dateUnit is missing", () => {
         const settings = {
           "scalar.field": FIELD_NAME,
+          "scalar.comparisons": {
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            value: 100,
+            label: "Goal",
+          },
         };
         const rows = [
           ["2019-10-01", 100],
@@ -195,21 +266,49 @@ describe("SmartScalar > utils", () => {
           settings,
         );
 
-        expect(isValid).toBeFalsy();
+        expect(isValid).toBeTruthy();
       });
 
-      it("should return true if dateUnit is supplied", () => {
+      it("should return false for staticNumber comparison when value is missing", () => {
         const settings = {
           "scalar.field": FIELD_NAME,
+          "scalar.comparisons": {
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            label: "Goal",
+          },
         };
         const rows = [
           ["2019-10-01", 100],
           ["2019-11-01", 300],
         ];
-        const insights = createInsights("month");
-        const isValid = isComparisonValid(series({ rows, insights }), settings);
 
-        expect(isValid).toBeTruthy();
+        const isValid = isComparisonValid(
+          series({ rows, insights: [] }),
+          settings as VisualizationSettings,
+        );
+
+        expect(isValid).toBeFalsy();
+      });
+
+      it("should return false for staticNumber comparison when label is missing", () => {
+        const settings = {
+          "scalar.field": FIELD_NAME,
+          "scalar.comparisons": {
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            value: 100,
+          },
+        };
+        const rows = [
+          ["2019-10-01", 100],
+          ["2019-11-01", 300],
+        ];
+
+        const isValid = isComparisonValid(
+          series({ rows, insights: [] }),
+          settings as VisualizationSettings,
+        );
+
+        expect(isValid).toBeFalsy();
       });
     });
   });
