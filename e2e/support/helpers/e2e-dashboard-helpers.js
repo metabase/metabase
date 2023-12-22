@@ -94,21 +94,12 @@ export function editDashboard() {
 export function saveDashboard({
   buttonLabel = "Save",
   editBarText = "You're editing this dashboard.",
-  waitForDashcard = false,
+  waitMs = 1,
 } = {}) {
-  if (waitForDashcard) {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "saveDashboardDashcardQuery",
-    );
-  }
-
   cy.button(buttonLabel).click();
   cy.findByText(editBarText).should("not.exist");
-  cy.wait(1); // this is stupid but necessary to due to the dashboard resizing and detaching elements
-
-  if (waitForDashcard) {
-    cy.wait("@saveDashboardDashcardQuery");
-  }
+  // the default 1 is stupid but necessary to due to the dashboard resizing and detaching elements
+  cy.wait(waitMs);
 }
 
 export function checkFilterLabelAndValue(label, value) {
