@@ -1,6 +1,5 @@
 (ns metabase.models.api-key
   (:require [crypto.random :as crypto-random]
-            [metabase.api.common :as api]
             [metabase.models.audit-log :as audit-log]
             [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
@@ -80,26 +79,17 @@
 
     true (dissoc :unhashed_key)))
 
-(defn- add-updated-by-id [api-key]
-  (update api-key :updated_by_id #(or % api/*current-user-id*)))
-
-(defn- add-created-by-id [api-key]
-  (update api-key :creator_id #(or % api/*current-user-id*)))
-
 (t2/define-before-insert :model/ApiKey
   [api-key]
   (-> api-key
       add-prefix
-      add-key
-      add-updated-by-id
-      add-created-by-id))
+      add-key))
 
 (t2/define-before-update :model/ApiKey
   [api-key]
   (-> api-key
       add-prefix
-      add-key
-      add-updated-by-id))
+      add-key))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
