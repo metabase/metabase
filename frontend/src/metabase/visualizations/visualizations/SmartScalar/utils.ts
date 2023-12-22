@@ -280,8 +280,7 @@ function createComparisonMenuOption(
   }
 
   if (type === COMPARISON_TYPES.STATIC_NUMBER) {
-    const { name } = COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER;
-    return { type, name };
+    return COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER;
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
