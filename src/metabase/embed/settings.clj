@@ -25,8 +25,8 @@
                 (when (not= new-value (setting/get-value-of-type :boolean :enable-embedding))
                   (setting/set-value-of-type! :boolean :enable-embedding new-value)
                   (let [snowplow-payload {:embedding-app-origin-set   (boolean (embedding-app-origin))
-                                          :number-embedded-questions  (t2/count :model/Dashboard :enable_embedding true)
-                                          :number-embedded-dashboards (t2/count :model/Card :enable_embedding true)}]
+                                          :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
+                                          :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}]
                     (if new-value
                       (snowplow/track-event! ::snowplow/embedding-enabled api/*current-user-id* snowplow-payload)
                       (snowplow/track-event! ::snowplow/embedding-disabled api/*current-user-id* snowplow-payload))))))
