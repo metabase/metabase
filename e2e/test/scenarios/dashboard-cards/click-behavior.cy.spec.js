@@ -947,7 +947,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "dashcardQuery",
+      );
+
       saveDashboard();
+      // We need to wait so that the query has enough time to get resolved
+      cy.wait("@dashcardQuery");
 
       clickLineChartPoint();
       cy.findAllByTestId("field-set")
