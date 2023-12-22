@@ -406,31 +406,31 @@
   (testing "Table with decimal types"
     (with-numeric-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema test-db-name, :name tbl-nm :database_require_filter false})
+                     {:schema test-db-name :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
       (is (= {:schema test-db-name
               :name   tbl-nm
-              :fields #{{:name "numeric_col"
-                         :database-type "NUMERIC"
-                         :base-type :type/Decimal
+              :fields #{{:base-type :type/Decimal
+                         :database-partitioned false
                          :database-position 0
-                         :database-partitioned false}
-                        {:name "decimal_col"
                          :database-type "NUMERIC"
-                         :base-type :type/Decimal
+                         :name "numeric_col"}
+                        {:base-type :type/Decimal
+                         :database-partitioned false
                          :database-position 1
-                         :database-partitioned false}
-                        {:name "bignumeric_col"
+                         :database-type "NUMERIC"
+                         :name "decimal_col"}
+                        {:base-type :type/Decimal
+                         :database-partitioned false
+                         :database-position 2
                          :database-type "BIGNUMERIC"
-                         :base-type :type/Decimal
-                         :database-position 2}
-                        :database-partitioned false
-                        {:name "bigdecimal_col"
-                         :database-type "BIGNUMERIC"
-                         :base-type :type/Decimal
+                         :name "bignumeric_col"}
+                        {:base-type :type/Decimal
+                         :database-partitioned false
                          :database-position 3
-                         :database-partitioned false}}}
-             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
+                         :database-type "BIGNUMERIC"
+                         :name "bigdecimal_col"}}}
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -460,9 +460,9 @@
       (fn [tbl-nm]
         (is (= {:schema test-db-name
                 :name   tbl-nm
-                :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
-                          {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema test-db-name}))
+                :fields #{{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
+                          {:name "array_col" :database-type "INTEGER" :base-type :type/Array :database-position 1 :database-partitioned false}}}
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm :schema test-db-name}))
             "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
