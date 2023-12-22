@@ -157,8 +157,9 @@
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
                         chunks)]
-    (doseq [sql sqls]
-      (qp.writeback/execute-write-sql! db-id sql))))
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (doseq [sql sqls]
+        (jdbc/execute! conn sql)))))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name col->type]
