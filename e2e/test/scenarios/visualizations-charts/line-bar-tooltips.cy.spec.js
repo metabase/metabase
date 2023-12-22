@@ -481,5 +481,5 @@ function saveDashCardVisualizationOptions() {
     cy.findByText("Done").click();
   });
 
-  saveDashboard();
+  saveDashboard({ waitMs: 250 });
 }
