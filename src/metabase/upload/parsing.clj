@@ -10,7 +10,6 @@
    (java.text NumberFormat)
    (java.util Locale)))
 
-
 (set! *warn-on-reflection* true)
 
 (def currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
@@ -71,7 +70,7 @@
     - d MMMM, yyyy"
   [s]
   (try
-    (t/local-date s)
+    (LocalDate/parse s local-date-formatter)
     (catch Exception _
       (throw (IllegalArgumentException.
               (tru "''{0}'' is not a recognizable date" s))))))
@@ -90,7 +89,7 @@
   (-> s (str/replace \space \T) t/local-date-time))
 
 (defn- parse-as-datetime
-  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-date]] and [[parse-datetime]]."
+  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-local-date]] and [[parse-datetime]]."
   [s]
   (try
     (t/local-date-time (parse-local-date s) (t/local-time "00:00:00"))
