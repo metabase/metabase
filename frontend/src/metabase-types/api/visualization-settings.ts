@@ -1,22 +1,48 @@
 // SmartScalar (Trend Chart)
-export type SmartScalarComparisonPeriodsAgo = {
+export type SmartScalarComparisonType =
+  | "anotherColumn"
+  | "previousValue"
+  | "previousPeriod"
+  | "periodsAgo"
+  | "staticNumber";
+
+interface BaseSmartScalarComparison {
+  type: SmartScalarComparisonType;
+}
+
+export interface SmartScalarComparisonAnotherColumn
+  extends BaseSmartScalarComparison {
+  type: "anotherColumn";
+  column: string;
+  label: string;
+}
+
+export interface SmartScalarComparisonPeriodsAgo
+  extends BaseSmartScalarComparison {
   type: "periodsAgo";
   value: number;
-};
-type SmartScalarComparisonPreviousPeriod = {
+}
+
+export interface SmartScalarComparisonPreviousPeriod
+  extends BaseSmartScalarComparison {
   type: "previousPeriod";
-};
-type SmartScalarComparisonCompareToPrevious = {
+}
+
+export interface SmartScalarComparisonPreviousValue
+  extends BaseSmartScalarComparison {
   type: "previousValue";
-};
-export type SmartScalarComparisonStaticNumber = {
+}
+
+export interface SmartScalarComparisonStaticNumber
+  extends BaseSmartScalarComparison {
   type: "staticNumber";
   value: number;
   label: string;
-};
+}
 
 export type SmartScalarComparison =
-  | SmartScalarComparisonCompareToPrevious
+  | SmartScalarComparisonAnotherColumn
+  | SmartScalarComparisonPreviousValue
   | SmartScalarComparisonPreviousPeriod
   | SmartScalarComparisonPeriodsAgo
   | SmartScalarComparisonStaticNumber;
