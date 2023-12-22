@@ -3,7 +3,7 @@ import { useAsync, useDebounce } from "react-use";
 import { t } from "ttag";
 import type { FieldId, FieldValue } from "metabase-types/api";
 import { MultiSelect } from "metabase/ui";
-import { getMergedItems } from "../utils";
+import { getEffectiveOptions } from "../utils";
 import { SEARCH_DEBOUNCE } from "./constants";
 import { shouldSearch, getSearchValues } from "./utils";
 
@@ -13,6 +13,7 @@ interface SearchValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
+  nothingFound?: string;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
 }
@@ -23,6 +24,7 @@ export function SearchValuePicker({
   fieldValues: initialFieldValues,
   selectedValues,
   placeholder,
+  nothingFound,
   autoFocus,
   onChange,
 }: SearchValuePickerProps) {
@@ -34,8 +36,8 @@ export function SearchValuePicker({
     [fieldId, searchFieldId, searchQuery],
   );
 
-  const items = useMemo(
-    () => getMergedItems(fieldValues, selectedValues),
+  const options = useMemo(
+    () => getEffectiveOptions(fieldValues, selectedValues),
     [fieldValues, selectedValues],
   );
 
@@ -56,10 +58,11 @@ export function SearchValuePicker({
 
   return (
     <MultiSelect
-      data={items}
+      data={options}
       value={selectedValues}
-      placeholder={placeholder}
       searchValue={searchValue}
+      placeholder={placeholder}
+      nothingFound={nothingFound}
       searchable
       autoFocus={autoFocus}
       aria-label={t`Filter value`}

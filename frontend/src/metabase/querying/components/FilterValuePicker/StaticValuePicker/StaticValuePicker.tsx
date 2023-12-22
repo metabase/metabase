@@ -1,7 +1,7 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 import { MultiSelect } from "metabase/ui";
-import { getSelectedItems } from "../utils";
+import { getEffectiveOptions } from "../utils";
 
 interface StaticValuePickerProps {
   selectedValues: string[];
@@ -22,11 +22,11 @@ export function StaticValuePicker({
   onFocus,
   onBlur,
 }: StaticValuePickerProps) {
-  const items = getSelectedItems(selectedValues);
+  const options = getEffectiveOptions([], selectedValues);
 
   return (
     <MultiSelect
-      data={items}
+      data={options}
       value={selectedValues}
       placeholder={placeholder}
       shouldCreate={shouldCreate}

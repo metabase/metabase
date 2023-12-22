@@ -29,27 +29,27 @@ export function canSearchFieldValues(
   );
 }
 
-export function getFieldItems(fieldValues: FieldValue[]): SelectItem[] {
+function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
   return fieldValues.map(([value, label = value]) => ({
     value: String(value),
     label: String(label),
   }));
 }
 
-export function getSelectedItems(selectedValues: string[]): SelectItem[] {
+function getSelectedOptions(selectedValues: string[]): SelectItem[] {
   return selectedValues.map(value => ({
     value,
     label: value,
   }));
 }
 
-export function getMergedItems(
+export function getEffectiveOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
 ): SelectItem[] {
   const options = [
-    ...getFieldItems(fieldValues),
-    ...getSelectedItems(selectedValues),
+    ...getFieldOptions(fieldValues),
+    ...getSelectedOptions(selectedValues),
   ];
 
   const mapping = options.reduce((map: Record<string, string>, option) => {

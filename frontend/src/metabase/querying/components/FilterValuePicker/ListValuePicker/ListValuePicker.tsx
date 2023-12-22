@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { Checkbox, MultiSelect, Stack, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
-import { getMergedItems } from "../utils";
-import { LONG_ITEM_LENGTH, MAX_INLINE_ITEMS } from "./constants";
-import { searchItems } from "./utils";
+import { getEffectiveOptions } from "../utils";
+import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
+import { searchOptions } from "./utils";
 import { ColumnGrid } from "./ListValuePicker.styled";
 
 interface ListValuePickerProps {
@@ -36,7 +36,7 @@ export function ListValuePicker({
         onChange={onChange}
       />
     );
-  } else if (fieldValues.length <= MAX_INLINE_ITEMS) {
+  } else if (fieldValues.length <= MAX_INLINE_OPTIONS) {
     return (
       <CheckboxValuePicker
         fieldValues={fieldValues}
@@ -65,8 +65,8 @@ function DefaultValuePicker({
   onChange,
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const items = getMergedItems(fieldValues, selectedValues);
-  const visibleItems = searchItems(items, searchValue);
+  const options = getEffectiveOptions(fieldValues, selectedValues);
+  const visibleOptions = searchOptions(options, searchValue);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.currentTarget.value);
@@ -81,9 +81,9 @@ function DefaultValuePicker({
         onChange={handleInputChange}
       />
       <Checkbox.Group value={selectedValues} onChange={onChange}>
-        {visibleItems.length > 0 ? (
+        {visibleOptions.length > 0 ? (
           <Stack>
-            {visibleItems.map(option => (
+            {visibleOptions.map(option => (
               <Checkbox
                 key={option.value}
                 value={option.value}
@@ -107,18 +107,22 @@ function CheckboxValuePicker({
   selectedValues,
   onChange,
 }: ListValuePickerProps) {
-  const items = getMergedItems(fieldValues, selectedValues);
-  const hasLongItems = items.some(
-    ({ label }) => label != null && label.length > LONG_ITEM_LENGTH,
+  const options = getEffectiveOptions(fieldValues, selectedValues);
+  const hasLongOptions = options.some(
+    ({ label }) => label != null && label.length > LONG_OPTION_LENGTH,
   );
-  const cols = hasLongItems ? 1 : 2;
-  const rows = Math.ceil(items.length / cols);
+  const cols = hasLongOptions ? 1 : 2;
+  const rows = Math.ceil(options.length / cols);
 
   return (
     <Checkbox.Group value={selectedValues} onChange={onChange}>
       <ColumnGrid rows={rows}>
-        {items.map(item => (
-          <Checkbox key={item.value} value={item.value} label={item.label} />
+        {options.map(option => (
+          <Checkbox
+            key={option.value}
+            value={option.value}
+            label={option.label}
+          />
         ))}
       </ColumnGrid>
     </Checkbox.Group>
@@ -132,11 +136,11 @@ export function SelectValuePicker({
   autoFocus,
   onChange,
 }: ListValuePickerProps) {
-  const items = getMergedItems(fieldValues, selectedValues);
+  const options = getEffectiveOptions(fieldValues, selectedValues);
 
   return (
     <MultiSelect
-      data={items}
+      data={options}
       value={selectedValues}
       placeholder={placeholder}
       autoFocus={autoFocus}

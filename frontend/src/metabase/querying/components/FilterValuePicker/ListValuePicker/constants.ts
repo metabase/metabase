@@ -1,2 +1,2 @@
-export const MAX_INLINE_ITEMS = 12;
-export const LONG_ITEM_LENGTH = 20;
+export const MAX_INLINE_OPTIONS = 12;
+export const LONG_OPTION_LENGTH = 20;
