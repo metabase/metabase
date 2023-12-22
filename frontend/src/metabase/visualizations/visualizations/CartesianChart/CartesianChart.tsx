@@ -26,6 +26,7 @@ import {
   getStackedTooltipModel,
 } from "metabase/visualizations/visualizations/CartesianChart/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
 import Question from "metabase-lib/Question";
 import {
   updateDateTimeFilter,
@@ -45,6 +46,8 @@ export function CartesianChart({
   actionButtons,
   isQueryBuilder,
   isFullscreen,
+  timelineEvents = [],
+  selectedTimelineEventIds = [],
   hovered,
   visualizationIsClickable,
   onHoverChange,
@@ -78,12 +81,37 @@ export function CartesianChart({
     [seriesToRender, renderingContext, settings],
   );
 
+  const timelineEventsModel = useMemo(
+    () =>
+      getTimelineEventsModel(
+        chartModel,
+        timelineEvents,
+        settings,
+        width,
+        renderingContext,
+      ),
+    [chartModel, timelineEvents, settings, width, renderingContext],
+  );
+
   const legendItems = useMemo(() => getLegendItems(chartModel), [chartModel]);
   const hasLegend = legendItems.length > 1;
 
   const option = useMemo(
-    () => getCartesianChartOption(chartModel, settings, renderingContext),
-    [chartModel, renderingContext, settings],
+    () =>
+      getCartesianChartOption(
+        chartModel,
+        timelineEventsModel,
+        selectedTimelineEventIds,
+        settings,
+        renderingContext,
+      ),
+    [
+      chartModel,
+      renderingContext,
+      selectedTimelineEventIds,
+      settings,
+      timelineEventsModel,
+    ],
   );
 
   const openQuestion = useCallback(() => {

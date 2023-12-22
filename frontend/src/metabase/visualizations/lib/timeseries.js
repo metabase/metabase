@@ -218,7 +218,7 @@ export function computeTimeseriesTicksInterval(
 }
 
 // We should always have results_timezone, but just in case we fallback to UTC
-const DEFAULT_TIMEZONE = "Etc/UTC";
+export const DEFAULT_TIMEZONE = "Etc/UTC";
 
 export function getTimezone(series, warn) {
   series = series._raw || series;
