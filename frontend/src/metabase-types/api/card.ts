@@ -120,9 +120,11 @@ export type TableColumnOrderSetting = {
   field_ref?: DimensionReference;
 };
 
+export type StackType = "stacked" | "normalized" | null;
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
-  "stackable.stack_type"?: "stacked" | "normalized" | null;
+  "stackable.stack_type"?: StackType;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];

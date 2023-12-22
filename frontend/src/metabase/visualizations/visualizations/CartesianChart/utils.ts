@@ -112,7 +112,8 @@ export const getStackedTooltipModel = (
   seriesIndex: number,
   dataIndex: number,
 ) => {
-  const column = chartModel.leftAxisColumn ?? chartModel.rightAxisColumn;
+  const column =
+    chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column;
 
   const formatter = (value: unknown) =>
     String(
