@@ -13,7 +13,12 @@ type PeriodsAgoMenuOption = {
   name: string;
   maxValue: number;
 };
+type StaticNumberMenuOption = {
+  type: typeof COMPARISON_TYPES.STATIC_NUMBER;
+  name: string;
+};
 export type ComparisonMenuOption =
   | PreviousValueMenuOption
   | PreviousPeriodMenuOption
-  | PeriodsAgoMenuOption;
+  | PeriodsAgoMenuOption
+  | StaticNumberMenuOption;

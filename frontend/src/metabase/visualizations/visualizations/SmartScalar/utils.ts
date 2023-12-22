@@ -93,6 +93,10 @@ export const COMPARISON_SELECTOR_OPTIONS = {
     type: COMPARISON_TYPES.PREVIOUS_VALUE,
     name: t`Previous value`,
   },
+  STATIC_NUMBER: {
+    type: COMPARISON_TYPES.STATIC_NUMBER,
+    name: t`Custom value…`,
+  },
 } as const;
 
 export function getDefaultComparison(
@@ -131,29 +135,25 @@ export function getComparisonOptions(
     },
   ] = series;
 
+  const options: ComparisonMenuOption[] = [
+    createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
+    createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
+  ];
+
   const dateUnit = insights?.find(
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
   if (!dateUnit) {
-    return [
-      createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
-    ];
+    return options;
   }
-
-  const options: ComparisonMenuOption[] = [
-    createComparisonMenuOption({
-      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-      dateUnit,
-    }),
-  ];
 
   const maxPeriodsAgo = getMaxPeriodsAgo({ cols, rows, dateUnit });
 
   // only add this option is # number of selectable periods ago is >= 2
   // since we already have an option for 1 period ago -> PREVIOUS_PERIOD
   if (maxPeriodsAgo && maxPeriodsAgo >= 2) {
-    options.push(
+    options.unshift(
       createComparisonMenuOption({
         type: COMPARISON_TYPES.PERIODS_AGO,
         dateUnit,
@@ -162,8 +162,11 @@ export function getComparisonOptions(
     );
   }
 
-  options.push(
-    createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
+  options.unshift(
+    createComparisonMenuOption({
+      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+      dateUnit,
+    }),
   );
 
   return options;
@@ -173,16 +176,21 @@ export function isComparisonValid(
   series: RawSeries,
   settings: VisualizationSettings,
 ) {
+  const comparison = settings["scalar.comparisons"];
+  const comparisonType = comparison?.type;
+
   const [
     {
       data: { insights },
     },
   ] = series;
 
-  if (
-    settings["scalar.comparisons"]?.type === COMPARISON_TYPES.PREVIOUS_VALUE
-  ) {
+  if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return true;
+  }
+
+  if (comparisonType === COMPARISON_TYPES.STATIC_NUMBER) {
+    return !isEmpty(comparison?.value) && !isEmpty(comparison?.label);
   }
 
   const dateUnit = insights?.find(
@@ -247,6 +255,9 @@ type GetComparisonMenuOptionParameters =
       type: typeof COMPARISON_TYPES.PERIODS_AGO;
       maxValue: number;
       dateUnit: RelativeDatetimeUnit;
+    }
+  | {
+      type: typeof COMPARISON_TYPES.STATIC_NUMBER;
     };
 
 function createComparisonMenuOption(
@@ -271,6 +282,10 @@ function createComparisonMenuOption(
       name: formatPeriodsAgoOptionName(dateUnit),
       maxValue,
     };
+  }
+
+  if (type === COMPARISON_TYPES.STATIC_NUMBER) {
+    return COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER;
   }
 
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;

@@ -18,4 +18,5 @@ export const COMPARISON_TYPES = {
   PREVIOUS_VALUE: "previousValue",
   PREVIOUS_PERIOD: "previousPeriod",
   PERIODS_AGO: "periodsAgo",
+  STATIC_NUMBER: "staticNumber",
 } as const;

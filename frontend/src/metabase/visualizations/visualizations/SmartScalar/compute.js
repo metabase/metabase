@@ -100,6 +100,10 @@ function computeComparison({ currentMetricData, series, settings }) {
     });
   }
 
+  if (type === COMPARISON_TYPES.STATIC_NUMBER) {
+    return computeTrendStaticValue({ settings });
+  }
+
   throw Error("Invalid comparison type specified");
 }
 
@@ -172,6 +176,14 @@ function getCurrentMetricData({ series, insights, settings }) {
       latestRowIndex,
     },
     value,
+  };
+}
+
+function computeTrendStaticValue({ settings }) {
+  const { value, label } = settings["scalar.comparisons"];
+  return {
+    comparisonDescStr: t`vs. ${label.toLowerCase()}`,
+    comparisonValue: value,
   };
 }
 
