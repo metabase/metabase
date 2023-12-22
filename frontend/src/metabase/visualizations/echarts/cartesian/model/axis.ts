@@ -1,17 +1,31 @@
 import d3 from "d3";
 import _ from "underscore";
 import type {
-  AxisExtent,
-  AxisExtents,
+  AxisFormatter,
   DataKey,
   Extent,
   GroupedDataset,
   SeriesExtents,
   SeriesModel,
+  XAxisModel,
+  YAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { SeriesSettings } from "metabase-types/api";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "metabase/visualizations/types";
+import type {
+  SeriesSettings,
+  StackType,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
+import {
+  getDatasetExtents,
+  getMetricDisplayValueGetter,
+} from "metabase/visualizations/echarts/cartesian/model/dataset";
+import { getObjectEntries, getObjectKeys } from "metabase/lib/objects";
 
 const KEYS_TO_COMPARE = new Set([
   "number_style",
@@ -166,7 +180,7 @@ export function computeSplit(
   left: DataKey[] = [],
   right: DataKey[] = [],
 ): AxisSplit {
-  const unassigned: DataKey[] = Object.keys(extents).filter(
+  const unassigned: DataKey[] = getObjectKeys(extents).filter(
     key => left.indexOf(key) < 0 && right.indexOf(key) < 0,
   );
 
@@ -211,12 +225,12 @@ export const getYAxisSplit = (
 
     acc[seriesModel.dataKey] = seriesSettings?.["axis"];
     return acc;
-  }, {} as Record<string, string | undefined>);
+  }, {} as Record<DataKey, string | undefined>);
 
-  const left = [];
-  const right = [];
-  const auto = [];
-  for (const [dataKey, axis] of Object.entries(axisBySeriesKey)) {
+  const left: DataKey[] = [];
+  const right: DataKey[] = [];
+  const auto: DataKey[] = [];
+  for (const [dataKey, axis] of getObjectEntries(axisBySeriesKey)) {
     if (axis === "left") {
       left.push(dataKey);
     } else if (axis === "right") {
@@ -256,11 +270,7 @@ export const getYAxisSplit = (
 const calculateStackedExtent = (
   seriesKeys: DataKey[],
   data: GroupedDataset,
-): AxisExtent => {
-  if (seriesKeys.length === 0) {
-    return null;
-  }
-
+): Extent => {
   let min = 0;
   let max = 0;
 
@@ -287,11 +297,7 @@ const calculateStackedExtent = (
 function calculateNonStackedExtent(
   seriesKeys: DataKey[],
   data: GroupedDataset,
-): AxisExtent {
-  if (seriesKeys.length === 0) {
-    return null;
-  }
-
+): Extent {
   let min = Infinity;
   let max = -Infinity;
 
@@ -306,7 +312,7 @@ function calculateNonStackedExtent(
   });
 
   if (min === Infinity || max === -Infinity) {
-    return null;
+    return [0, 0];
   }
 
   return [min, max];
@@ -314,36 +320,154 @@ function calculateNonStackedExtent(
 
 const NORMALIZED_RANGE: Extent = [0, 1];
 
-export function getYAxesExtents(
-  axisSplit: [DataKey[], DataKey[]],
-  data: GroupedDataset,
+const getYAxisFormatter = (
+  column: DatasetColumn,
   settings: ComputedVisualizationSettings,
-): AxisExtents {
-  if (data.length === 0) {
-    return [null, null];
+  renderingContext: RenderingContext,
+): AxisFormatter => {
+  const isNormalized = settings["stackable.stack_type"] === "normalized";
+
+  if (isNormalized) {
+    return (value: unknown) =>
+      renderingContext.formatValue(value, {
+        column,
+        number_style: "percent",
+      });
   }
 
-  const [leftAxisKeys, rightAxisKeys] = axisSplit;
+  const valueGetter = getMetricDisplayValueGetter(settings);
+  return (value: RowValue) => {
+    const restoredValue = valueGetter(value);
+    return renderingContext.formatValue(restoredValue, {
+      column,
+      ...(settings.column?.(column) ?? {}),
+    });
+  };
+};
 
-  const isNormalizedStacking =
-    settings["stackable.stack_type"] === "normalized";
-
-  if (isNormalizedStacking) {
-    return [
-      leftAxisKeys.length > 0 ? NORMALIZED_RANGE : null,
-      rightAxisKeys.length > 0 ? NORMALIZED_RANGE : null,
-    ];
+export const getYAxisLabel = (
+  axisSeriesKeys: DataKey[],
+  axisColumn: DatasetColumn,
+  settings: ComputedVisualizationSettings,
+) => {
+  if (settings["graph.y_axis.labels_enabled"] === false) {
+    return undefined;
   }
 
-  const isStacked = settings["stackable.stack_type"] === "stacked";
+  const specifiedAxisName = settings["graph.y_axis.title_text"];
 
-  const leftAxisExtent = isStacked
-    ? calculateStackedExtent(leftAxisKeys, data)
-    : calculateNonStackedExtent(leftAxisKeys, data);
+  if (specifiedAxisName != null) {
+    return specifiedAxisName;
+  }
 
-  const rightAxisExtent = isStacked
-    ? calculateStackedExtent(rightAxisKeys, data)
-    : calculateNonStackedExtent(rightAxisKeys, data);
+  if (axisSeriesKeys.length > 1) {
+    return undefined;
+  }
 
-  return [leftAxisExtent, rightAxisExtent];
+  return axisColumn.display_name;
+};
+
+function getYAxisExtent(
+  seriesKeys: DataKey[],
+  dataset: GroupedDataset,
+  stackType?: StackType,
+): Extent {
+  if (dataset.length === 0) {
+    return [0, 0];
+  }
+
+  if (stackType === "normalized") {
+    return NORMALIZED_RANGE;
+  }
+
+  return stackType === "stacked"
+    ? calculateStackedExtent(seriesKeys, dataset)
+    : calculateNonStackedExtent(seriesKeys, dataset);
+}
+
+function getYAxisModel(
+  seriesKeys: DataKey[],
+  dataset: GroupedDataset,
+  settings: ComputedVisualizationSettings,
+  columnByDataKey: Record<DataKey, DatasetColumn>,
+  renderingContext: RenderingContext,
+): YAxisModel | null {
+  if (seriesKeys.length === 0) {
+    return null;
+  }
+
+  const stackType = settings["stackable.stack_type"];
+
+  const extent = getYAxisExtent(seriesKeys, dataset, stackType);
+  const column = columnByDataKey[seriesKeys[0]];
+  const label = getYAxisLabel(seriesKeys, column, settings);
+  const formatter = getYAxisFormatter(column, settings, renderingContext);
+
+  return {
+    seriesKeys,
+    extent,
+    column,
+    label,
+    formatter,
+  };
+}
+
+export function getYAxesModels(
+  seriesModels: SeriesModel[],
+  dataset: GroupedDataset,
+  settings: ComputedVisualizationSettings,
+  columnByDataKey: Record<DataKey, DatasetColumn>,
+  isAutoSplitSupported: boolean,
+  renderingContext: RenderingContext,
+) {
+  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+  const extents = getDatasetExtents(seriesDataKeys, dataset);
+
+  const [leftAxisSeries, rightAxisSeries]: AxisSplit = getYAxisSplit(
+    seriesModels,
+    extents,
+    settings,
+    isAutoSplitSupported,
+  );
+
+  return {
+    leftAxisModel: getYAxisModel(
+      leftAxisSeries,
+      dataset,
+      settings,
+      columnByDataKey,
+      renderingContext,
+    ),
+    rightAxisModel: getYAxisModel(
+      rightAxisSeries,
+      dataset,
+      settings,
+      columnByDataKey,
+      renderingContext,
+    ),
+  };
+}
+
+export function getXAxisModel(
+  column: DatasetColumn,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): XAxisModel {
+  const label = settings["graph.x_axis.labels_enabled"]
+    ? settings["graph.x_axis.title_text"]
+    : undefined;
+
+  const isHistogram = settings["graph.x_axis.scale"] === "histogram";
+
+  const formatter = (value: RowValue) =>
+    renderingContext.formatValue(value, {
+      column,
+      ...(settings.column?.(column) ?? {}),
+      noRange: isHistogram,
+    });
+
+  return {
+    formatter,
+    label,
+  };
 }

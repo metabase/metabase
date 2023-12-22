@@ -4,15 +4,12 @@ export function getSeriesYAxisIndex(
   seriesModel: SeriesModel,
   chartModel: CartesianChartModel,
 ): number {
-  const hasSingleYAxis = chartModel.yAxisSplit.some(
-    yAxisKeys => yAxisKeys.length === 0,
-  );
+  const { leftAxisModel, rightAxisModel } = chartModel;
+  const hasSingleYAxis = leftAxisModel == null || rightAxisModel == null;
 
   if (hasSingleYAxis) {
     return 0;
   }
 
-  return chartModel.yAxisSplit.findIndex(yAxis =>
-    yAxis.includes(seriesModel.dataKey),
-  );
+  return leftAxisModel.seriesKeys.includes(seriesModel.dataKey) ? 0 : 1;
 }
