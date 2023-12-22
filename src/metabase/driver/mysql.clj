@@ -747,21 +747,20 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (let [temp-file (File/createTempFile table-name ".tsv")
-            file-path (.getAbsolutePath temp-file)]
-        (try
-          (let [tsvs (map (partial row->tsv driver (count column-names)) values)
-                sql  (sql/format {::load   [file-path (keyword table-name)]
-                                  :columns (map keyword column-names)}
-                                 :quoted  true
-                                 :dialect (sql.qp/quote-style driver))]
-            (with-open [^java.io.Writer writer (jio/writer file-path)]
-              (doseq [value (interpose \newline tsvs)]
-                (.write writer (str value))))
-            (jdbc/execute! conn sql {:transaction? false}))
-          (finally
-            (.delete temp-file)))))))
+    (let [temp-file (File/createTempFile table-name ".tsv")
+          file-path (.getAbsolutePath temp-file)]
+      (try
+        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
+              sql  (sql/format {::load   [file-path (keyword table-name)]
+                                :columns (map keyword column-names)}
+                               :quoted  true
+                               :dialect (sql.qp/quote-style driver))]
+          (with-open [^java.io.Writer writer (jio/writer file-path)]
+            (doseq [value (interpose \newline tsvs)]
+              (.write writer (str value))))
+          (sql-jdbc.execute/do-with-connection-with-options driver db-id nil (fn [conn] (jdbc/execute! conn sql))))
+        (finally
+          (.delete temp-file))))))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
