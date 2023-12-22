@@ -9,6 +9,7 @@ import type {
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
 
 export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
 
@@ -147,3 +148,39 @@ export const getDefaultXAxisScale = (
   }
   return "ordinal";
 };
+
+/**
+ * Returns the default column names to be used for scatter plot viz settings.
+ *
+ * @param data - property on the series object from the `rawSeries` array
+ * @returns object containing column names
+ */
+export function getDefaultScatterColumns(data: DatasetData) {
+  const dimensions = data.cols.filter(isDimension);
+  const metrics = data.cols.filter(isMetric);
+
+  if (dimensions.length === 2 && metrics.length < 2) {
+    return {
+      dimensions: [dimensions[0].name],
+      metrics: [dimensions[1].name],
+      bubble: metrics.length === 1 ? metrics[0].name : null,
+    };
+  } else {
+    return {
+      dimensions: [null],
+      metrics: [null],
+      bubble: null,
+    };
+  }
+}
+
+/**
+ * Returns the default column name for the bubble size setting
+ * on the scatter plot. If there is no suitable default, it will return `null`.
+ *
+ * @param data - property on the series object from the `rawSeries` array
+ * @returns column name string or `null`
+ */
+export function getDefaultBubbleSizeCol(data: DatasetData) {
+  return getDefaultScatterColumns(data).bubble;
+}
