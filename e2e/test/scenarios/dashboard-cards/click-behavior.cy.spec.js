@@ -215,7 +215,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("aside").findByText("No available targets").should("exist");
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      // We need to wait so that the query has enough time to get resolved
+      saveDashboard({ waitMs: 500 });
 
       cy.intercept(
         "GET",
@@ -266,7 +267,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.findAllByTestId("field-set")
@@ -369,7 +370,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.findAllByTestId("field-set")
@@ -443,7 +444,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .should("not.exist");
       cy.button("Done").should("be.enabled").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.get("@targetDashboardId").then(targetDashboardId => {
@@ -488,7 +489,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.button("Done").should("be.enabled").click();
       saveDashboard();
 
-      clickLineChartPoint();
+      clickLineChartPoint({ waitMs: 500 });
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -603,7 +604,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionDestination();
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       cy.intercept(
         "GET",
@@ -647,7 +648,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionCreatedAtParameter();
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.findByTestId("qb-filters-panel").should(
@@ -686,7 +687,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addSavedQuestionQuantityParameter();
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.wait("@dataset");
@@ -756,7 +757,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       onNextAnchorClick(anchor => {
         expect(anchor).to.have.attr("href", URL);
@@ -798,7 +799,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       });
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       cy.button(DASHBOARD_FILTER_TEXT.name).click();
       popover().within(() => {
@@ -851,7 +852,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTextParameter();
       cy.get("aside").button("Done").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.findAllByTestId("field-set")
@@ -902,7 +903,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .click();
       cy.get("aside").button("Remove").click();
 
-      saveDashboard();
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.findAllByTestId("field-set")
@@ -947,13 +948,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       addTimeParameter();
       cy.get("aside").button("Done").click();
 
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
-      saveDashboard();
       // We need to wait so that the query has enough time to get resolved
-      cy.wait("@dashcardQuery");
+      saveDashboard({ waitMs: 500 });
 
       clickLineChartPoint();
       cy.findAllByTestId("field-set")
@@ -1693,10 +1689,7 @@ const testChangingBackToDefaultBehavior = () => {
   cy.get("aside").findByText("Open the Metabase drill-through menu").click();
   cy.get("aside").button("Done").click();
 
-  saveDashboard();
-  // this is necessary due to query params being reset after saving dashboard
-  // with filter applied, which causes dashcard to be refetched
-  cy.wait(1);
+  saveDashboard({ waitMs: 500 });
 
   clickLineChartPoint();
   assertDrillThroughMenuOpen();
