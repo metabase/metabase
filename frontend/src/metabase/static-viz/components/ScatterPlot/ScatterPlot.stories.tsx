@@ -90,3 +90,10 @@ TimeseriesXScale.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const GoalLine = Template.bind({});
+GoalLine.args = {
+  rawSeries: data.goalLine as any,
+  dashcardSettings: {},
+  renderingContext,
+};
