@@ -223,6 +223,9 @@ const getXAxisType = (settings: ComputedVisualizationSettings) => {
       return "time";
     case "linear":
       return "value";
+    // log x-axis is only for scatter plot
+    case "log":
+      return "log";
     default:
       return "category";
   }
