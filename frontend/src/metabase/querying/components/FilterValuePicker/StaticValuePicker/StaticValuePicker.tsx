@@ -1,12 +1,9 @@
-import { useMemo } from "react";
 import type { FocusEvent } from "react";
 import { t } from "ttag";
-import { MultiAutocomplete } from "metabase/ui";
-import type { FieldValue } from "metabase-types/api";
-import { getFieldOptions } from "../utils";
+import { MultiSelect } from "metabase/ui";
+import { getSelectedItems } from "../utils";
 
 interface StaticValuePickerProps {
-  fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
   shouldCreate: (query: string) => boolean;
@@ -17,7 +14,6 @@ interface StaticValuePickerProps {
 }
 
 export function StaticValuePicker({
-  fieldValues,
   selectedValues,
   placeholder,
   shouldCreate,
@@ -26,11 +22,11 @@ export function StaticValuePicker({
   onFocus,
   onBlur,
 }: StaticValuePickerProps) {
-  const options = useMemo(() => getFieldOptions(fieldValues), [fieldValues]);
+  const items = getSelectedItems(selectedValues);
 
   return (
-    <MultiAutocomplete
-      data={options}
+    <MultiSelect
+      data={items}
       value={selectedValues}
       placeholder={placeholder}
       shouldCreate={shouldCreate}

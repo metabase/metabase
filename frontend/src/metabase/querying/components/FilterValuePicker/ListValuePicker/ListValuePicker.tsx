@@ -1,19 +1,18 @@
+import type { ChangeEvent } from "react";
 import { useState } from "react";
-import type { KeyboardEvent, ChangeEvent } from "react";
 import { t } from "ttag";
-import { Checkbox, Stack, Text, TextInput } from "metabase/ui";
+import { Checkbox, MultiSelect, Stack, Text, TextInput } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type { FieldValue } from "metabase-types/api";
-import { getMergedOptions, hasDuplicateOption } from "../utils";
-import { LONG_OPTION_LENGTH } from "./constants";
-import { searchOptions } from "./utils";
+import { getMergedItems } from "../utils";
+import { LONG_ITEM_LENGTH, MAX_INLINE_ITEMS } from "./constants";
+import { searchItems } from "./utils";
 import { ColumnGrid } from "./ListValuePicker.styled";
 
 interface ListValuePickerProps {
   fieldValues: FieldValue[];
   selectedValues: string[];
   placeholder?: string;
-  shouldCreate: (query: string) => boolean;
   autoFocus?: boolean;
   compact?: boolean;
   onChange: (newValues: string[]) => void;
@@ -23,56 +22,54 @@ export function ListValuePicker({
   fieldValues,
   selectedValues,
   placeholder,
-  shouldCreate,
   autoFocus,
   compact,
   onChange,
 }: ListValuePickerProps) {
-  return compact ? (
-    <CompactValuePicker
-      fieldValues={fieldValues}
-      selectedValues={selectedValues}
-      placeholder={placeholder}
-      shouldCreate={shouldCreate}
-      onChange={onChange}
-    />
-  ) : (
-    <DefaultValuePicker
-      fieldValues={fieldValues}
-      selectedValues={selectedValues}
-      placeholder={placeholder}
-      shouldCreate={shouldCreate}
-      autoFocus={autoFocus}
-      onChange={onChange}
-    />
-  );
+  if (!compact) {
+    return (
+      <DefaultValuePicker
+        fieldValues={fieldValues}
+        selectedValues={selectedValues}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        onChange={onChange}
+      />
+    );
+  } else if (fieldValues.length <= MAX_INLINE_ITEMS) {
+    return (
+      <CheckboxValuePicker
+        fieldValues={fieldValues}
+        selectedValues={selectedValues}
+        placeholder={placeholder}
+        onChange={onChange}
+      />
+    );
+  } else {
+    return (
+      <SelectValuePicker
+        fieldValues={fieldValues}
+        selectedValues={selectedValues}
+        placeholder={placeholder}
+        onChange={onChange}
+      />
+    );
+  }
 }
 
 function DefaultValuePicker({
   fieldValues,
   selectedValues,
   placeholder,
-  shouldCreate,
   autoFocus,
   onChange,
 }: ListValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const options = getMergedOptions(fieldValues, selectedValues);
-  const visibleOptions = searchOptions(options, searchValue);
+  const items = getMergedItems(fieldValues, selectedValues);
+  const visibleItems = searchItems(items, searchValue);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     setSearchValue(event.currentTarget.value);
-  };
-
-  const handleInputKeydown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      const isValid = shouldCreate(searchValue);
-      const isDuplicate = hasDuplicateOption(options, searchValue);
-      if (isValid && !isDuplicate) {
-        event.preventDefault();
-        onChange([...selectedValues, searchValue]);
-      }
-    }
   };
 
   return (
@@ -82,12 +79,11 @@ function DefaultValuePicker({
         placeholder={placeholder}
         autoFocus={autoFocus}
         onChange={handleInputChange}
-        onKeyDown={handleInputKeydown}
       />
       <Checkbox.Group value={selectedValues} onChange={onChange}>
-        {visibleOptions.length > 0 ? (
+        {visibleItems.length > 0 ? (
           <Stack>
-            {visibleOptions.map(option => (
+            {visibleItems.map(option => (
               <Checkbox
                 key={option.value}
                 value={option.value}
@@ -106,29 +102,46 @@ function DefaultValuePicker({
   );
 }
 
-function CompactValuePicker({
+function CheckboxValuePicker({
   fieldValues,
   selectedValues,
   onChange,
 }: ListValuePickerProps) {
-  const options = getMergedOptions(fieldValues, selectedValues);
-  const hasLongOptions = options.some(
-    option => option.label.length > LONG_OPTION_LENGTH,
+  const items = getMergedItems(fieldValues, selectedValues);
+  const hasLongItems = items.some(
+    ({ label }) => label != null && label.length > LONG_ITEM_LENGTH,
   );
-  const cols = hasLongOptions ? 1 : 2;
-  const rows = Math.ceil(options.length / cols);
+  const cols = hasLongItems ? 1 : 2;
+  const rows = Math.ceil(items.length / cols);
 
   return (
     <Checkbox.Group value={selectedValues} onChange={onChange}>
       <ColumnGrid rows={rows}>
-        {options.map(option => (
-          <Checkbox
-            key={option.value}
-            value={option.value}
-            label={option.label}
-          />
+        {items.map(item => (
+          <Checkbox key={item.value} value={item.value} label={item.label} />
         ))}
       </ColumnGrid>
     </Checkbox.Group>
+  );
+}
+
+export function SelectValuePicker({
+  fieldValues,
+  selectedValues,
+  placeholder,
+  autoFocus,
+  onChange,
+}: ListValuePickerProps) {
+  const items = getMergedItems(fieldValues, selectedValues);
+
+  return (
+    <MultiSelect
+      data={items}
+      value={selectedValues}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      aria-label={t`Filter value`}
+      onChange={onChange}
+    />
   );
 }
