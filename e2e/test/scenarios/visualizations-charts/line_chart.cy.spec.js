@@ -526,6 +526,7 @@ describe("scenarios > visualizations > line chart", () => {
         });
       cy.button("Save").click();
       cy.findByText("You're editing this dashboard.").should("not.exist");
+      cy.wait(250);
     }
 
     function assertOnLegendItemsValues() {
