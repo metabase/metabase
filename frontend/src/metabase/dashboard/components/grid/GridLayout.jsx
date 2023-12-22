@@ -44,20 +44,9 @@ export function GridLayout({
     setCurrentBreakpoint(newBreakpoint);
   }, []);
 
-  const margin = useMemo(
-    () => marginMap[currentBreakpoint],
-    [marginMap, currentBreakpoint],
-  );
-
-  const layout = useMemo(
-    () => layouts[currentBreakpoint],
-    [layouts, currentBreakpoint],
-  );
-
-  const cols = useMemo(
-    () => columnsMap[currentBreakpoint],
-    [columnsMap, currentBreakpoint],
-  );
+  const margin = marginMap[currentBreakpoint];
+  const layout = layouts[currentBreakpoint];
+  const cols = columnsMap[currentBreakpoint];
 
   const cellSize = useMemo(() => {
     const marginSlotsCount = cols - 1;
