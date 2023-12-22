@@ -22,14 +22,14 @@
   []
   {:number-separators (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,")})
 
-(defn parse-bool
+(defn- parse-bool
   "Parses a boolean value (true/t/yes/y/1 and false/f/no/n/0). Case-insensitive."
   [s]
   (cond
     (re-matches #"(?i)true|t|yes|y|1" s) true
     (re-matches #"(?i)false|f|no|n|0" s) false
     :else                                (throw (IllegalArgumentException.
-                                                 (tru "{0} is not a recognizable boolean" s)))))
+                                                 (tru "''{0}'' is not a recognizable boolean" s)))))
 
 (def local-date-patterns
   "patterns used to generate the local date formatter. Excludes ISO_LOCAL_DATE (yyyy-MM-dd) because there's
@@ -70,7 +70,7 @@
     - d MMMM, yyyy"
   [s]
   (try
-    (LocalDate/parse s local-date-formatter)
+    (t/local-date s)
     (catch Exception _
       (throw (IllegalArgumentException.
               (tru "''{0}'' is not a recognizable date" s))))))
@@ -89,7 +89,7 @@
   (-> s (str/replace \space \T) t/local-date-time))
 
 (defn- parse-as-datetime
-  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-local-date]] and [[parse-datetime]]."
+  "Parses a string `s` as a LocalDateTime. Supports all the formats for [[parse-date]] and [[parse-datetime]]."
   [s]
   (try
     (t/local-date-time (parse-local-date s) (t/local-time "00:00:00"))
@@ -98,7 +98,7 @@
         (parse-local-datetime s)
         (catch Exception _
           (throw (IllegalArgumentException.
-                  (tru "{0} is not a recognizable datetime" s))))))))
+                  (tru "''{0}'' is not a recognizable datetime" s))))))))
 
 (defn parse-offset-datetime
   "Parses a string representing an offset datetime into an OffsetDateTime.
@@ -119,10 +119,10 @@
   [s]
   (try
     (-> s (str/replace \space \T) t/offset-date-time)
-    (catch Exception e
-      (throw (IllegalArgumentException. (tru "{0} is not a recognizable zoned datetime" s) e)))))
+    (catch Exception _
+      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s))))))
 
-(defn remove-currency-signs
+(defn- remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
   [s]
   (str/replace s currency-regex ""))
@@ -143,7 +143,7 @@
         (- parsed-number)
         parsed-number))))
 
-(defn parse-number
+(defn- parse-number
   "Parse an integer or float"
   [number-separators s]
   (try
@@ -151,11 +151,13 @@
          (str/trim)
          (remove-currency-signs)
          (parse-plain-number number-separators))
-    (catch Throwable e
-      (throw (ex-info
-              (tru "{0} is not a recognizable number" s)
-              {}
-              e)))))
+    (catch Exception _
+      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable number" s))))))
+
+(defn- parse-as-biginteger
+  "Parses a string representing a number as a java.math.BigInteger, rounding down if necessary."
+  [number-separators s]
+  (biginteger (parse-number number-separators s)))
 
 (defmulti upload-type->parser
   "Returns a function for the given `metabase.upload` column type that will parse a string value (from a CSV) into a value
@@ -174,7 +176,7 @@
 
 (defmethod upload-type->parser :metabase.upload/int
   [_ {:keys [number-separators]}]
-  (partial parse-number number-separators))
+  (partial parse-as-biginteger number-separators))
 
 (defmethod upload-type->parser :metabase.upload/float
   [_ {:keys [number-separators]}]
@@ -182,7 +184,7 @@
 
 (defmethod upload-type->parser :metabase.upload/auto-incrementing-int-pk
   [_ {:keys [number-separators]}]
-  (partial parse-number number-separators))
+  (partial parse-as-biginteger number-separators))
 
 (defmethod upload-type->parser :metabase.upload/boolean
   [_ _]

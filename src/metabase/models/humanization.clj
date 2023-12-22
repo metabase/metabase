@@ -11,6 +11,7 @@
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
@@ -63,7 +64,7 @@
     (when-not (get-method u.humanization/name->human-readable-name new-strategy)
       (throw (IllegalArgumentException.
                (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
-                    new-strategy (keys (methods name->human-readable-name))))))
+                    new-strategy (keys (methods u.humanization/name->human-readable-name))))))
     (let [old-strategy (setting/get-value-of-type :keyword :humanization-strategy)]
       ;; ok, now set the new value
       (setting/set-value-of-type! :keyword :humanization-strategy new-value)
@@ -82,10 +83,9 @@
   :visibility :settings-manager
   :audit      :raw-value
   :getter     (fn []
-                (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)]
-                  ;; actual advanced method has been excised. Use `:simple` instead if someone had specified
-                  ;; `:advanced`.
-                  (if (= strategy :advanced)
-                    :simple
-                    strategy)))
+                (let [strategy (setting/get-value-of-type :keyword :humanization-strategy)
+                      valid-values (set (keys (methods u.humanization/name->human-readable-name)))
+                      valid-strategy? (contains? valid-values strategy)]
+                  (when (not valid-strategy?) (log/warn (u/format-color :yellow "Invalid humanization strategy '%s'. Defaulting to 'simple'" strategy)))
+                  (if valid-strategy? strategy :simple)))
   :setter     set-humanization-strategy!)

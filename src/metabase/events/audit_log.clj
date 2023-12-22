@@ -199,3 +199,12 @@
 (methodical/defmethod events/publish-event! ::settings-changed-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::api-key-event ::event)
+(derive :event/api-key-create ::api-key-event)
+(derive :event/api-key-update ::api-key-event)
+(derive :event/api-key-regenerate ::api-key-event)
+
+(methodical/defmethod events/publish-event! ::api-key-event
+  [topic event]
+  (audit-log/record-event! topic event))
