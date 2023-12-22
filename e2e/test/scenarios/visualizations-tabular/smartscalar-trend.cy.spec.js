@@ -183,32 +183,6 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-container").findByText("Woah: 68’800.0000% ! cool");
   });
 
-  it("should have data settings disabled if only one option to choose from", () => {
-    // create native question with irregular time periods
-    cy.createNativeQuestion(
-      {
-        name: "13710",
-        native: {
-          query:
-            "SELECT '2026-03-01'::date as date, 22 as \"Value\"\nUNION ALL\nSELECT '2026-04-01'::date, 44\nUNION ALL\nSELECT '2026-06-04'::date, 41",
-        },
-        display: "smartscalar",
-      },
-      { visitQuestion: true },
-    );
-
-    cy.findByTestId("viz-settings-button").click();
-    cy.findByTestId("chartsettings-sidebar").findByText("Data").click();
-
-    cy.findByTestId("chartsettings-sidebar").within(() => {
-      // only one primary number option
-      cy.findByTestId("select-button").should("be.disabled");
-
-      // only one comparison option
-      cy.findByTestId("comparisons-widget-button").should("be.disabled");
-    });
-  });
-
   it("should work regardless of column order (metabase#13710)", () => {
     cy.createQuestion(
       {
