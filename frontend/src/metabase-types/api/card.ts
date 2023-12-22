@@ -149,6 +149,9 @@ export type VisualizationSettings = {
 
   "graph.series_order"?: SeriesOrderSetting[];
 
+  // Scatter plot settings
+  "scatter.bubble"?: string; // col name
+
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
 
