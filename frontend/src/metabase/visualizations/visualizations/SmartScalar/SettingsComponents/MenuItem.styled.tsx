@@ -3,10 +3,7 @@ import type { HTMLAttributes } from "react";
 import type { MenuItemProps } from "metabase/ui";
 import { Menu } from "metabase/ui";
 
-type MenuItemStyledProps = MenuItemProps &
-  HTMLAttributes<HTMLButtonElement> & {
-    "aria-selected"?: boolean;
-  };
+type MenuItemStyledProps = MenuItemProps & HTMLAttributes<HTMLButtonElement>;
 
 export const MenuItemStyled = styled(Menu.Item)<MenuItemStyledProps>`
   ${({ theme, "aria-selected": isSelected }) =>
