@@ -3,15 +3,10 @@ import type { Insight } from "metabase-types/api/insight";
 
 export type DataKey = string;
 export type VizSettingsKey = string;
-export type LegacySeriesSettingsObjectKey = {
-  card: {
-    _seriesKey: VizSettingsKey;
-  };
-};
 
 export type LegacySeriesSettingsObjectKey = {
   card: {
-    _seriesKey: string;
+    _seriesKey: VizSettingsKey;
   };
 };
 
