@@ -103,7 +103,8 @@
         (#{:line
            :area
            :bar
-           :combo} display-type)
+           :combo
+           :scatter} display-type)
         (chart-type :isomorphic "display-type is %s" display-type)
 
         (#{:scalar
