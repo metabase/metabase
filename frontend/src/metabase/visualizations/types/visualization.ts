@@ -4,6 +4,8 @@ import type {
   DatasetData,
   RawSeries,
   Series,
+  TimelineEvent,
+  TimelineEventId,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -60,6 +62,8 @@ export interface VisualizationProps {
   isSettings: boolean;
   hovered?: HoveredObject;
   className?: string;
+  timelineEvents?: TimelineEvent[];
+  selectedTimelineEventIds?: TimelineEventId[];
 
   gridSize?: VisualizationGridSize;
   width: number;
@@ -80,6 +84,8 @@ export interface VisualizationProps {
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onDeselectTimelineEvents?: () => void;
 
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];

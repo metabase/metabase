@@ -197,7 +197,7 @@ export const getTransformedDataset = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
   dimensionModel: DimensionModel,
-) => {
+): Record<DataKey, RowValue>[] => {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
   const seriesDataKeysSet = new Set(seriesDataKeys);
 
