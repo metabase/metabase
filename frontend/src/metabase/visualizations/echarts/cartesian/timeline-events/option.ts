@@ -51,6 +51,7 @@ export const getTimelineEventsSeries = (
       const dataUri = svgToDataUri(iconSvg);
 
       return {
+        name: "timeline-event",
         xAxis: date,
         symbolSize: 16,
         symbolOffset: [0, 12],
@@ -72,7 +73,7 @@ export const getTimelineEventsSeries = (
     });
 
   return {
-    id: "timelineEvents",
+    id: "timeline-events",
     animation: false,
     type: "line",
     data: [],
