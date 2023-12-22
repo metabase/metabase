@@ -45,6 +45,8 @@ export const ComboChart = ({
 
   const option = getCartesianChartOption(
     chartModel,
+    null,
+    [],
     computedVisualizationSettings,
     renderingContext,
   );

@@ -6,17 +6,36 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
-import { getAxesFormatters } from "metabase/visualizations/echarts/cartesian/option/format";
 
-import { getChartGrid } from "./grid";
+import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/utils/layout";
+import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+import type { TimelineEventId } from "metabase-types/api";
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
+  timelineEventsModel: TimelineEventsModel | null,
+  selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): EChartsOption => {
+  const hasTimelineEvents = timelineEventsModel != null;
+  const chartMeasurements = getChartMeasurements(
+    chartModel,
+    settings,
+    hasTimelineEvents,
+    renderingContext,
+  );
+  const timelineEventsSeries = hasTimelineEvents
+    ? getTimelineEventsSeries(
+        timelineEventsModel,
+        selectedTimelineEventsIds,
+        renderingContext,
+      )
+    : null;
+
   // series option
   const dataSeriesOptions = buildEChartsSeries(
     chartModel,
@@ -31,16 +50,11 @@ export const getCartesianChartOption = (
   const { options: trendSeriesOptions, datasets: trendDatasets } =
     getTrendLineOptionsAndDatasets(chartModel, settings, renderingContext);
 
-  const axesFormatters = getAxesFormatters(
-    chartModel,
-    settings,
-    renderingContext,
-  );
-
   const seriesOption = [
     goalSeriesOption,
     trendSeriesOptions,
     dataSeriesOptions,
+    timelineEventsSeries,
   ].flatMap(option => option ?? []);
 
   // dataset option
@@ -63,9 +77,18 @@ export const getCartesianChartOption = (
       throttleType: "debounce",
       throttleDelay: 200,
     },
-    grid: getChartGrid(chartModel, settings),
+    grid: {
+      ...chartMeasurements.padding,
+      containLabel: true,
+    },
     dataset: echartsDataset,
     series: seriesOption,
-    ...buildAxes(chartModel, settings, axesFormatters, renderingContext),
+    ...buildAxes(
+      chartModel,
+      settings,
+      chartMeasurements,
+      hasTimelineEvents,
+      renderingContext,
+    ),
   } as EChartsOption;
 };
