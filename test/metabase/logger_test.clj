@@ -59,13 +59,13 @@
                        entry))
                    (logger/messages))))))
 
-(deftest fork-logs-off
+(deftest fork-logs-test
   (testing "logger/for-ns works properly"
     (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
       (try
         (with-open [_ (logger/for-ns 'metabase.logger-test f {:additive false})]
           (log/info "just a test"))
-        (is (=? #".*metabase.logger-test :: just a test\n"
+        (is (=? #".*just a test\n"
                 (slurp f)))
         (finally
           (when (.exists f)
@@ -73,5 +73,5 @@
     (let [baos (java.io.ByteArrayOutputStream.)]
       (with-open [_ (logger/for-ns 'metabase.logger-test baos {:additive false})]
         (log/info "just a test"))
-      (is (=? #".*metabase.logger-test :: just a test\n"
+      (is (=? #".*just a test\n"
               (.toString baos "UTF-8"))))))
