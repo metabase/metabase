@@ -54,6 +54,15 @@ export const getCartesianChartOption = (
   ];
 
   return {
+    toolbox: {
+      show: false,
+    },
+    brush: {
+      toolbox: ["lineX"],
+      xAxisIndex: 0,
+      throttleType: "debounce",
+      throttleDelay: 200,
+    },
     grid: getChartGrid(chartModel, settings),
     dataset: echartsDataset,
     series: seriesOption,
