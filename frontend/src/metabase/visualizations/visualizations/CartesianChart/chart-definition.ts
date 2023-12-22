@@ -47,7 +47,10 @@ export const getCartesianChartDefinition = (
       {
         card: {
           display: "line",
-          visualization_settings: {},
+          visualization_settings: {
+            "graph.metrics": ["x"],
+            "graph.dimensions": ["y"],
+          },
           dataset_query: { type: "query" },
         },
         data: {
