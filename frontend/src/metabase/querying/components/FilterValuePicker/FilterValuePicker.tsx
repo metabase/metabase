@@ -111,13 +111,17 @@ export function StringFilterValuePicker({
   values,
   ...props
 }: FilterValuePickerProps<string>) {
+  const shouldCreate = (query: string) => {
+    return query.length > 0 && !values.includes(query);
+  };
+
   return (
     <FilterValuePicker
       {...props}
       column={column}
       values={values}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-      shouldCreate={query => query.length > 0}
+      shouldCreate={shouldCreate}
     />
   );
 }
@@ -128,13 +132,18 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<number>) {
+  const shouldCreate = (query: string) => {
+    const number = parseFloat(query);
+    return isFinite(number) && !values.includes(number);
+  };
+
   return (
     <FilterValuePicker
       {...props}
       column={column}
       values={values.map(value => String(value))}
       placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      shouldCreate={query => isFinite(parseFloat(query))}
+      shouldCreate={shouldCreate}
       onChange={newValue => onChange(newValue.map(value => parseFloat(value)))}
     />
   );

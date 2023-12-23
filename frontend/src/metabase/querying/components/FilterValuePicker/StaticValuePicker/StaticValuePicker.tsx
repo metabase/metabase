@@ -49,8 +49,7 @@ export function StaticValuePicker({
     setSearchValue(newSearchValue);
 
     const isValid = shouldCreate(newSearchValue);
-    const isDuplicate = lastValues.includes(newSearchValue);
-    if (isValid && !isDuplicate) {
+    if (isValid) {
       onChange?.([...lastValues, newSearchValue]);
     } else {
       onChange?.(lastValues);
