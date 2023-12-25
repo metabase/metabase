@@ -67,6 +67,10 @@
   :setter     :none
   :getter     (constantly true))
 
+(defsetting test-char-setting
+  "Test setting - this only shows up in dev (9)"
+  :type       :char)
+
 (def ^:private ^:dynamic *enabled?* false)
 
 (defsetting test-enabled-setting-no-default
@@ -414,6 +418,38 @@
       (is (= false
              (test-boolean-setting))))))
 
+;;; ------------------------------------------------- CHAR SETTINGS --------------------------------------------------
+
+(deftest char-settings-tag-test
+  (testing "Char settings should have correct `:tag` metadata"
+    (test-assert-setting-has-tag #'test-char-setting 'java.lang.Character)))
+
+(deftest char-setting-user-facing-info-test
+  (testing "user-facing info should return `nil` for empty setting "
+   (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_CHAR_SETTING", :default nil}
+          (user-facing-info-with-db-and-env-var-values :test-char-setting nil nil)))))
+
+(deftest set-char-setting-test
+  (testing "should be able to set char settings with a char value"
+    (is (= "a"
+           (test-char-setting! \a)))
+    (is (= \a
+           (do
+             (test-char-setting! \a)
+             (test-char-setting)))))
+  (testing "should be able to set char settings with a string value"
+    (is (= "a"
+           (test-char-setting! "a")))
+    (is (= \a
+           (do
+             (test-char-setting! "a")
+             (test-char-setting))))
+    (is (= "aaaa"
+           (test-char-setting! "aaaa")))
+    (is (= \a
+           (do
+             (test-char-setting! "aaaa")
+             (test-char-setting))))))
 
 ;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
