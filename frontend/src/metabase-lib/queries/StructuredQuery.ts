@@ -373,13 +373,7 @@ class StructuredQuery extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
     }
 
-    query = query.cleanJoins().cleanExpressions().cleanFields();
-
-    if (!skipFilters) {
-      query = query.cleanFilters();
-    }
-
-    return query.cleanEmpty();
+    return query.cleanJoins().cleanExpressions().cleanFields().cleanEmpty();
   }
 
   /**
