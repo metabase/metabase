@@ -46,7 +46,7 @@ const commonOptions = [
 ];
 
 describe("SettingSelectWithOther", () => {
-  it("should correctly display default value", () => {
+  it("should correctly display the default value", () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: null,
@@ -64,7 +64,7 @@ describe("SettingSelectWithOther", () => {
     expect(onChange).toHaveBeenCalledTimes(0);
   });
 
-  it("should correctly display a value from options", () => {
+  it("should correctly display a value from the options", () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: "2",
@@ -82,7 +82,7 @@ describe("SettingSelectWithOther", () => {
     expect(onChange).toHaveBeenCalledTimes(0);
   });
 
-  it("should correctly display other value", () => {
+  it('should correctly display the "other" value', () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: "some other",
@@ -101,7 +101,7 @@ describe("SettingSelectWithOther", () => {
     expect(onChange).toHaveBeenCalledTimes(0);
   });
 
-  it("should correctly switch from one value from options to another", () => {
+  it("should correctly switch from a value from the options to another one", () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: null,
@@ -118,7 +118,7 @@ describe("SettingSelectWithOther", () => {
     expect(onChange).toHaveBeenCalledWith("2");
   });
 
-  it('should display textbox when switching to "other" value', () => {
+  it('should display textbox when switching to the "other" value', () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: null,
@@ -138,7 +138,7 @@ describe("SettingSelectWithOther", () => {
     expect(onChange).toHaveBeenCalledTimes(0);
   });
 
-  it('should not call onChange before finishing inputting "other" value', () => {
+  it("should not call onChange before a user finishes inputting the value into the textbox", () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: null,
@@ -183,7 +183,7 @@ describe("SettingSelectWithOther", () => {
     expect(onChange).toHaveBeenCalledWith("something");
   });
 
-  it('should correctly switch from the "other" value to the value from options', () => {
+  it('should correctly switch from the "other" value to the value from the options', () => {
     const setupOpts: SetupOpts = {
       key: "test",
       value: "some other",

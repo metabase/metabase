@@ -34,7 +34,7 @@ export interface SelectWithOtherProps {
 }
 
 /**
- * A widget which allows to choose a value from a list of options or input a different value.
+ * Widget which allows to choose a value from a list of options or input a different value.
  * Under the hood the widget consist of a `Select` component
  * and a `TextInput` shown only if "other" option is selected
  *
@@ -66,9 +66,8 @@ export const SettingSelectWithOther: FunctionComponent<
     },
   ];
 
-  // look up for the raw value in the list of options
-  // raw value might be null which means it should be the default one
-  // in that case look up for the default value
+  // trying to locate the value in the list of options
+  // null value should be treated as the setting's default
   const effectiveValue = value ?? setting.default;
   const valueFoundInOptions = coercedOptions.filter(
     x => x.value === effectiveValue,
@@ -81,7 +80,7 @@ export const SettingSelectWithOther: FunctionComponent<
     useState<UnderlyingType>(initSelectValue);
   const [textValue, setTextValue] = useState<UnderlyingType>(initTextValue);
 
-  // update states when the compo
+  // re-render when the value is changed from the outside
   useEffect(() => {
     setTextValue(initTextValue);
     setSelectValue(initSelectValue);
@@ -92,7 +91,7 @@ export const SettingSelectWithOther: FunctionComponent<
       setSelectValue(newValue);
 
       if (isOtherSelectValue(newValue)) {
-        // display an empty text input to the user when switching to other value
+        // display an empty text input to the user when switching to the "other" value
         setTextValue(null);
       } else {
         onChange(newValue);

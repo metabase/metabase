@@ -25,7 +25,11 @@ export function getSettingsElementWithKnownKey(
   key: string,
 ) {
   const element = elements.filter(x => x.key === key);
-  // eslint-disable-next-line no-console
-  console.assert(element.length === 1);
+  if (element.length !== 1) {
+    const allElementKeys = elements.map(x => x.key).join(", ");
+    throw new Error(
+      `Key ${key} was expected to be found in the following list of elements: ${allElementKeys}`,
+    );
+  }
   return element[0];
 }
