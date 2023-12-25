@@ -151,13 +151,6 @@ export default class NativeQuery extends AtomicQuery {
     return database && database.engine;
   }
 
-  /**
-   * Opposite of isEditable
-   */
-  readOnly(): boolean {
-    return !this.isEditable();
-  }
-
   // Whether the user can modify and run this query
   // Determined based on availability of database metadata and native database permissions
   isEditable(): boolean {

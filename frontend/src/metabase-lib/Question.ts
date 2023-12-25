@@ -495,6 +495,11 @@ class Question {
     return (db && db.auto_run_queries) || false;
   }
 
+  isQueryEditable(): boolean {
+    const query = this.query();
+    return query ? query.isEditable() : false;
+  }
+
   /**
    * Returns the type of alert that current question supports
    *
@@ -1103,7 +1108,7 @@ class Question {
       this.isSaved() &&
       this.parameters().length === 0 &&
       this.query().canNest() &&
-      !this.query().readOnly() // originally "canRunAdhocQuery"
+      this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }
 

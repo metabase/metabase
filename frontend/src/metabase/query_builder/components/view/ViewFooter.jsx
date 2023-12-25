@@ -43,7 +43,7 @@ const ViewFooter = ({
     return null;
   }
 
-  const hasDataPermission = question.query().isEditable();
+  const hasDataPermission = question.isQueryEditable();
   const hideChartSettings = result.error && !hasDataPermission;
 
   return (
