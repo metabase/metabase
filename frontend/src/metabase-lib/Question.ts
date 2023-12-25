@@ -44,7 +44,7 @@ import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
+import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   aggregate,
@@ -1028,7 +1028,7 @@ class Question {
     const stageIndex = -1;
     const filters = this.parameters()
       .map(parameter =>
-        fieldFilterParameterToMBQLFilter(query, stageIndex, parameter),
+        fieldFilterParameterToFilter(query, stageIndex, parameter),
       )
       .filter(mbqlFilter => mbqlFilter != null);
 

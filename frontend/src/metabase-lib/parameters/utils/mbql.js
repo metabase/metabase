@@ -177,8 +177,8 @@ function isFieldFilterParameterConveratableToMBQL(parameter) {
   return hasValue && hasWellFormedTarget && hasFieldDimensionTarget;
 }
 
-/** compiles a parameter with value to an MBQL clause */
-export function fieldFilterParameterToMBQLFilter(query, stageIndex, parameter) {
+/** compiles a parameter with value to MBQL */
+function fieldFilterParameterToMBQL(query, stageIndex, parameter) {
   if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
     return null;
   }
@@ -196,11 +196,21 @@ export function fieldFilterParameterToMBQLFilter(query, stageIndex, parameter) {
 
   const column = columns[columnIndex];
   const fieldRef = Lib.legacyRef(column);
+
   if (isDateParameter(parameter)) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else if (Lib.isNumeric(column)) {
     return numberParameterValueToMBQL(parameter, fieldRef);
   } else {
     return stringParameterValueToMBQL(parameter, fieldRef);
+  }
+}
+
+export function fieldFilterParameterToFilter(query, stageIndex, parameter) {
+  const mbql = fieldFilterParameterToMBQL(query, stageIndex, parameter);
+  if (mbql) {
+    return Lib.expressionClauseForLegacyExpression(query, stageIndex, mbql);
+  } else {
+    return null;
   }
 }
