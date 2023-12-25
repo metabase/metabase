@@ -1,7 +1,6 @@
 (ns metabase.upload-test
   (:require
    [clj-bom.core :as bom]
-   [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -26,6 +25,14 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)))
+
+;; CSV parsing functions use csv-delimeter and csv-quote public settings
+;; In order to avoid inconsistent test result based on the repl state
+;; run each test with the default CSV parsing settings
+(use-fixtures :each (fn [f]
+                      (with-redefs
+                       [upload/get-csv-opts (constantly {})]
+                        (f))))
 
 (set! *warn-on-reflection* true)
 
