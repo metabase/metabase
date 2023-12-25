@@ -5107,7 +5107,7 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-- changeSet:
+  - changeSet:
       id: v49.2023-12-14T08:54:54
       author: qnkhuat
       comment: No op, testing the new migration id format
