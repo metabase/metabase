@@ -753,3 +753,10 @@
   :visibility :authenticated
   :type       :string
   :audit      :getter)
+
+(defsetting csv-delimiter
+  (deferred-tru "Character used to separate values in the CSV record")
+  :visibility :authenticated
+  :type       :char
+  :audit      :getter
+  :default    \,)

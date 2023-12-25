@@ -245,6 +245,8 @@
 (defmethod default-tag-for-type :double    [_] `Double)
 (defmethod default-tag-for-type :timestamp [_] `Temporal)
 (defmethod default-tag-for-type :keyword   [_] `Keyword)
+(defmethod default-tag-for-type :char      [_] `Character)
+
 
 (defn- validate-default-value-for-type
   "Check whether the `:default` value of a Setting (if provided) agrees with the Setting's `:type` and its `:tag` (which
@@ -640,6 +642,11 @@
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
 
+(defmethod get-value-of-type :char
+  [_setting-type setting-definition-or-name]
+  (get-raw-value setting-definition-or-name char? #(clojure.core/get % 0)))
+
+
 (defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
 
@@ -825,6 +832,11 @@
 (defmethod set-value-of-type! :csv
   [_setting-type setting-definition-or-name new-value]
   (set-value-of-type! :string setting-definition-or-name (serialize-csv new-value)))
+
+(defmethod set-value-of-type! :char
+  [_setting-type setting-definition-or-name new-value]
+  (set-value-of-type! :string setting-definition-or-name (str new-value)))
+
 
 (defn- default-setter-for-type [setting-type]
   (partial set-value-of-type! (keyword setting-type)))

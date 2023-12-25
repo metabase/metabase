@@ -385,6 +385,19 @@
       auto-pk-indices
       (map (partial remove-indices auto-pk-indices)))))
 
+(defn- read-csv-with-opts
+  "Wraps around the `clojure.data.csv/read-csv` function guarding from nils and values of incorrect types.
+
+   Accepts a map of options with the following possible keys:
+   :delimiter - delimiter symbol
+   :quote     - quote symbol."
+  [input {:keys [delimiter quote]}]
+  (let [delimiter (or delimiter \,)
+        quote (or quote \")]
+    (assert (char? delimiter))
+    (assert (char? quote))
+    (csv/read-csv input :separator delimiter :quote quote)))
+
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
