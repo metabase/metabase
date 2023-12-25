@@ -256,10 +256,12 @@
 
 (defn- detect-schema-with-csv-rows
   "Calls detect-schema on rows from a CSV file. `rows` is a vector of strings"
-  [rows]
-  (with-open [reader (io/reader (csv-file-with rows))]
-    (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema header rows))))
+  ([rows]
+   (detect-schema-with-csv-rows rows {}))
+  ([rows opts]
+   (with-open [reader (io/reader (csv-file-with rows))]
+     (let [[header & rows] (#'upload/read-csv-with-opts reader opts)]
+       (#'upload/detect-schema header rows)))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -374,15 +376,13 @@
         (is (=? (with-ai-id {:name             vchar-type
                              :age              int-type
                              :favorite_pokemon vchar-type})
-                (@#'upload/detect-schema
-                 (csv-file-with (->> ["Name, Age, Favorite Pokémon"
-                                      "Tim, 12, ___Haunter___"
-                                      "Ryan, 97, Paras"]
-                                     (map #(str/replace % "," (str (or delimiter \,))))
-                                     (map #(str/replace % "___" (str (or quote \"))))))
+                (detect-schema-with-csv-rows (->> ["Name, Age, Favorite Pokémon"
+                                                   "Tim, 12, ___Haunter___"
+                                                   "Ryan, 97, Paras"]
+                                               (map #(str/replace % "," (str (or delimiter \,))))
+                                               (map #(str/replace % "___" (str (or quote \")))))
                  {:delimiter delimiter
                   :quote quote})))))))
-
 
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)

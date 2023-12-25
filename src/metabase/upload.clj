@@ -407,7 +407,7 @@
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
   ([driver db-id table-name ^File csv-file]
-   (load-from-csv! driver db-id table-name csv-file))
+   (load-from-csv! driver db-id table-name csv-file {}))
   ([driver db-id table-name ^File csv-file opts]
    (with-open [reader (bom/bom-reader csv-file)]
      (let [{:keys [header rows]}   (read-headers+rows-from-csv reader opts)
