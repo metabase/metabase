@@ -17,7 +17,7 @@ export const EmbeddingSwitchWidget = ({
     <Switch
       labelPosition="left"
       checked={Boolean(setting.value)}
-      label={<strong>{t`Embedding Enabled`}</strong>}
+      label={<strong>{t`Enable Embedding`}</strong>}
       onChange={e => onChange(e.target.checked)}
     />
   </Stack>
