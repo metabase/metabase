@@ -5116,8 +5116,6 @@ databaseChangeLog:
       rollback:
         - sql: select 1
 
-
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
