@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import * as Lib from "metabase-lib";
-import { ORDERS, PRODUCTS } from "metabase-types/api/mocks/presets";
+import { PRODUCTS, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
@@ -240,7 +240,7 @@ describe("parameters/utils/mbql", () => {
   });
 
   describe("fieldFilterParameterToFilter", () => {
-    const query = createQuery();
+    const query = Lib.withDifferentTable(createQuery(), PRODUCTS_ID);
     const stageIndex = -1;
 
     it("should return null for parameter targets that are not field dimension targets", () => {
@@ -279,7 +279,7 @@ describe("parameters/utils/mbql", () => {
 
     it("should return mbql filter for date parameter", () => {
       const filter = fieldFilterParameterToFilter(query, stageIndex, {
-        target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+        target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
         type: "date/single",
         value: "01-01-2020",
       });
