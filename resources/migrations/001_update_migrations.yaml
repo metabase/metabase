@@ -4450,7 +4450,6 @@ databaseChangeLog:
             columnDataType: integer
             oldColumnName: created_by
             newColumnName: creator_id
->>>>>>> master
 
   - changeSet:
       id: v49.00-016
@@ -5111,7 +5110,7 @@ databaseChangeLog:
       changes:
         - modifyDataType:
             tableName: metabase_table
-            columnName: database_require_filter
+              columnName: database_require_filter
             newDataType: ${boolean.type}
       rollback:
         - modifyDataType:
