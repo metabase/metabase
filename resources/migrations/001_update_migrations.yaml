@@ -4406,6 +4406,52 @@ databaseChangeLog:
                   remarks: 'Whether the table is partitioned by this field'
 
   - changeSet:
+      id: v49.00-013
+      author: johnswanson
+      comment: Add `api_key.updated_by_id`
+      rollback: # will be removed with the table
+      changes:
+        - addColumn:
+            tableName: api_key
+            columns:
+              - column:
+                  remarks: The ID of the user that last updated this API key
+                  name: updated_by_id
+                  type: integer
+                  constraints:
+                    # no default and nullable: false for a new column? yikes! But this should probably be ok, because
+                    # we don't yet have any UI for creating a new API key.
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_api_key_updated_by_id_user_id
+
+  - changeSet:
+      id: v49.00-014
+      author: johnswanson
+      comment: Add an index on `api_key.updated_by_id`
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: api_key
+            indexName: idx_api_key_updated_by_id
+            columns:
+              column:
+                name: updated_by_id
+
+  - changeSet:
+      id: v49.00-015
+      author: johnswanson
+      comment: Rename `created_by` to `creator_id`
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - renameColumn:
+            tableName: api_key
+            columnDataType: integer
+            oldColumnName: created_by
+            newColumnName: creator_id
+
+  - changeSet:
       id: v49.00-016
       author: noahmoss
       comment: >-
