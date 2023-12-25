@@ -398,29 +398,36 @@
     (assert (char? quote))
     (csv/read-csv input :separator delimiter :quote quote)))
 
+(defn- read-headers+rows-from-csv [reader opts]
+  (let [[header & rows] (without-auto-pk-columns (read-csv-with-opts reader opts))]
+    {:header header
+     :rows rows}))
+
 (defn- load-from-csv!
   "Loads a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
-  [driver db-id table-name ^File csv-file]
-  (with-open [reader (bom/bom-reader csv-file)]
-    (let [[header & rows]         (without-auto-pk-columns (csv/read-csv reader))
-          {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
-          cols->upload-type       (merge generated-columns extant-columns)
-          col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
-          csv-col-names           (keys extant-columns)
-          col-upload-types        (vals extant-columns)
-          parsed-rows             (vec (parse-rows col-upload-types rows))]
-      (driver/create-table! driver db-id table-name col-to-create->col-spec)
-      (try
-        (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
-        {:num-rows          (count rows)
-         :num-columns       (count extant-columns)
-         :generated-columns (count generated-columns)
-         :size-mb           (/ (.length csv-file)
-                               1048576.0)}
-        (catch Throwable e
-          (driver/drop-table! driver db-id table-name)
-          (throw (ex-info (ex-message e) {:status-code 400})))))))
+  ([driver db-id table-name ^File csv-file]
+   (load-from-csv! driver db-id table-name csv-file))
+  ([driver db-id table-name ^File csv-file opts]
+   (with-open [reader (bom/bom-reader csv-file)]
+     (let [{:keys [header rows]}   (read-headers+rows-from-csv reader opts)
+           {:keys [extant-columns generated-columns]} (detect-schema header (sample-rows rows))
+           cols->upload-type       (merge generated-columns extant-columns)
+           col-to-create->col-spec (upload-type->col-specs driver cols->upload-type)
+           csv-col-names           (keys extant-columns)
+           col-upload-types        (vals extant-columns)
+           parsed-rows             (vec (parse-rows col-upload-types rows))]
+       (driver/create-table! driver db-id table-name col-to-create->col-spec)
+       (try
+         (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
+         {:num-rows          (count rows)
+          :num-columns       (count extant-columns)
+          :generated-columns (count generated-columns)
+          :size-mb           (/ (.length csv-file)
+                                1048576.0)}
+         (catch Throwable e
+           (driver/drop-table! driver db-id table-name)
+           (throw (ex-info (ex-message e) {:status-code 400}))))))))
 
 ;;;; +------------------+
 ;;;; |  Create upload
@@ -486,6 +493,10 @@
   [db schema-name]
   (nil? (can-create-upload-error db schema-name)))
 
+(defn- get-csv-opts []
+  {:delimiter (public-settings/csv-delimiter)
+   :quote     (public-settings/csv-quote)})
+
 ;;; +-----------------------------------------
 ;;; |  public interface for creating CSV table
 ;;; +-----------------------------------------
@@ -522,7 +533,8 @@
        [:table-prefix {:optional true} [:maybe :string]]]]
   (let [database (or (t2/select-one Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
-                                     {:status-code 422})))]
+                                     {:status-code 422})))
+        opts     (get-csv-opts)]
     (check-can-create-upload database schema-name)
     (collection/check-write-perms-for-collection collection-id)
     (try
@@ -534,7 +546,7 @@
                                    (unique-table-name driver)
                                    (u/lower-case-en))
             schema+table-name (table-identifier {:schema schema-name :name table-name})
-            stats             (load-from-csv! driver (:id database) schema+table-name file)
+            stats             (load-from-csv! driver (:id database) schema+table-name file opts)
             ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
             table             (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})
             _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
@@ -565,7 +577,7 @@
         card)
       (catch Throwable e
         (let [fail-stats (with-open [reader (bom/bom-reader file)]
-                           (let [rows (csv/read-csv reader)]
+                           (let [rows (read-csv-with-opts reader opts)]
                              {:size-mb     (/ (.length file) 1048576.0)
                               :num-columns (count (first rows))
                               :num-rows    (count (rest rows))}))]
@@ -618,32 +630,34 @@
         (throw (ex-info error-message {:status-code 422}))))))
 
 (defn- append-csv!*
-  [database table file]
-  (with-open [reader (bom/bom-reader file)]
-    (let [[header & rows]    (without-auto-pk-columns (csv/read-csv reader))
-          driver             (driver.u/database->driver database)
-          normed-name->field (m/index-by (comp normalize-column-name :name)
-                                         (t2/select :model/Field :table_id (:id table) :active true))
-          normed-header      (map normalize-column-name header)
-          create-auto-pk?    (not (contains? normed-name->field auto-pk-column-name))
-          _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
-          col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
-          parsed-rows        (parse-rows col-upload-types rows)]
-      (try
-        (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
-        (catch Throwable e
+  ([database table file]
+   (append-csv!* database table file {}))
+  ([database table file opts]
+   (with-open [reader (bom/bom-reader file)]
+     (let [{:keys [header rows]} (read-headers+rows-from-csv reader opts)
+           driver                (driver.u/database->driver database)
+           normed-name->field    (m/index-by (comp normalize-column-name :name)
+                                             (t2/select :model/Field :table_id (:id table) :active true))
+           normed-header         (map normalize-column-name header)
+           create-auto-pk?       (not (contains? normed-name->field auto-pk-column-name))
+           _                     (check-schema (dissoc normed-name->field auto-pk-column-name) header)
+           col-upload-types      (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
+           parsed-rows           (parse-rows col-upload-types rows)]
+       (try
+         (driver/insert-into! driver (:id database) (table-identifier table) normed-header parsed-rows)
+         (catch Throwable e
 
-          (throw (ex-info (ex-message e) {:status-code 422}))))
-      (when create-auto-pk?
-        (driver/add-columns! driver
-                             (:id database)
-                             (table-identifier table)
-                             {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
-      (scan-and-sync-table! database table)
-      (when create-auto-pk?
-        (let [auto-pk-field (table-id->auto-pk-column (:id table))]
-          (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
-      {:row-count (count parsed-rows)})))
+           (throw (ex-info (ex-message e) {:status-code 422}))))
+       (when create-auto-pk?
+         (driver/add-columns! driver
+                              (:id database)
+                              (table-identifier table)
+                              {(keyword auto-pk-column-name) (driver/upload-type->database-type driver ::auto-incrementing-int-pk)}))
+       (scan-and-sync-table! database table)
+       (when create-auto-pk?
+         (let [auto-pk-field (table-id->auto-pk-column (:id table))]
+           (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))
+       {:row-count (count parsed-rows)}))))
 
 (defn- can-append-error
   "Returns an ExceptionInfo object if the user cannot upload to the given database and schema. Returns nil otherwise."
@@ -681,6 +695,7 @@
        [:table-id ms/PositiveInt]
        [:file (ms/InstanceOfClass File)]]]
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
-        database (table/database table)]
+        database (table/database table)
+        opts     (get-csv-opts)]
     (check-can-append database table)
-    (append-csv!* database table file)))
+    (append-csv!* database table file opts)))
