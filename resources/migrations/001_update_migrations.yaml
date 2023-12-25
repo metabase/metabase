@@ -5110,7 +5110,7 @@ databaseChangeLog:
       changes:
         - modifyDataType:
             tableName: metabase_table
-              columnName: database_require_filter
+            columnName: database_require_filter
             newDataType: ${boolean.type}
       rollback:
         - modifyDataType:
