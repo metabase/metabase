@@ -360,6 +360,30 @@
                 "1,Serenity,Malcolm Reynolds,Pistol"
                 "2,Millennium Falcon, Han Solo,Blaster"]))))))
 
+(deftest detect-schema-with-csv-options-test
+  (doseq [[delimiter quote]
+          [[nil, nil]
+           [\, nil]
+           [nil, \"]
+           [\, \"]
+           [\; nil]
+           [nil \']
+           [\; \']]]
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+                     (testing (format "Passing delimiter: '%s' and quote '%s' into the [[upload/detect-schema]] function" delimiter quote)
+                       (is (=? (with-ai-id {:name             vchar-type
+                                            :age              int-type
+                                            :favorite_pokemon vchar-type})
+                               (@#'upload/detect-schema
+                                (csv-file-with (->> ["Name, Age, Favorite Pokémon"
+                                                     "Tim, 12, ___Haunter___"
+                                                     "Ryan, 97, Paras"]
+                                                    (map #(str/replace % "," (str (or delimiter \,))))
+                                                    (map #(str/replace % "___" (str (or quote \"))))))
+                                {:delimiter delimiter
+                                 :quote quote})))))))
+
+
 (deftest ^:parallel detect-schema-dates-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (testing "Dates"
@@ -462,6 +486,66 @@
               (testing "Check the data was uploaded into the table"
                 (is (= 2
                        (count (rows-for-table table))))))))))))
+
+(deftest load-from-csv-with-options-test
+  (doseq [[delimiter quote]
+          [[nil, nil]
+           [\, nil]
+           [nil, \"]
+           [\, \"]
+           [\; nil]
+           [nil \']
+           [\; \']]]
+    (testing (format "Passing delimiter: '%s' and quote '%s' into the [[upload/load-from-csv!]] function" delimiter quote)
+      (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+                       (with-mysql-local-infile-on-and-off
+                         (mt/with-empty-db
+                           (@#'upload/load-from-csv!
+                            driver/*driver*
+                            (mt/id)
+                            "upload_test"
+                            (csv-file-with (->> ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
+                                                 "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                                                 "___ 3___,,           b,false,___$ 1000.1___,2022-02-01,2022-02-01T00:00:00"]
+                                                (map #(str/replace % "," (str (or delimiter \,))))
+                                                (map #(str/replace % "___" (str (or quote \"))))))
+                            {:delimiter delimiter
+                             :quote quote})
+                           (testing "Table and Fields exist after sync"
+                             (sync/sync-database! (mt/db))
+                             (let [table (t2/select-one Table :db_id (mt/id))]
+                               (is (=? {:name         #"(?i)upload_test"
+                                        :display_name "Upload Test"}
+                                       table))
+                               (is (=? {:name          #"(?i)_mb_row_id"
+                                        :semantic_type :type/PK
+                                        :base_type     :type/BigInteger}
+                                       (t2/select-one Field :database_position 0 :table_id (:id table))))
+                               (is (=? {:name          #"(?i)id"
+                                        :semantic_type :type/PK
+                                        :base_type     :type/BigInteger}
+                                       (t2/select-one Field :database_position 1 :table_id (:id table))))
+                               (is (=? {:name      #"(?i)nulls"
+                                        :base_type :type/Text}
+                                       (t2/select-one Field :database_position 2 :table_id (:id table))))
+                               (is (=? {:name      #"(?i)string"
+                                        :base_type :type/Text}
+                                       (t2/select-one Field :database_position 3 :table_id (:id table))))
+                               (is (=? {:name      #"(?i)bool"
+                                        :base_type :type/Boolean}
+                                       (t2/select-one Field :database_position 4 :table_id (:id table))))
+                               (is (=? {:name      #"(?i)number"
+                                        :base_type :type/Float}
+                                       (t2/select-one Field :database_position 5 :table_id (:id table))))
+                               (is (=? {:name      #"(?i)date"
+                                        :base_type :type/Date}
+                                       (t2/select-one Field :database_position 6 :table_id (:id table))))
+                               (is (=? {:name      #"(?i)datetime"
+                                        :base_type :type/DateTime}
+                                       (t2/select-one Field :database_position 7 :table_id (:id table))))
+                               (testing "Check the data was uploaded into the table"
+                                 (is (= 2
+                                        (count (rows-for-table table)))))))))))))
 
 (deftest load-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
