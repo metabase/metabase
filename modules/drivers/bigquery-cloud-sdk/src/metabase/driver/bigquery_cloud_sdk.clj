@@ -194,8 +194,9 @@
   "_PARTITIONTIME")
 
 (def ^:private partitioned-date-field-name
-  "The name of pseudo-column for tables that are partitioned by ingestion time.
-  See https://cloud.google.com/bigquery/docs/partitioned-tables#ingestion_time"
+  "This is also a pseudo-column, similiar to [[partitioned-time-field-name]].
+  In fact _PARTITIONDATE is _PARTITIONTIME truncated to DATE.
+  See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
