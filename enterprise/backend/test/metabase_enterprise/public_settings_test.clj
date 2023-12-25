@@ -1,8 +1,10 @@
 (ns metabase-enterprise.public-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.embed.settings :as embed.settings]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))
@@ -34,19 +36,19 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Setting embedding-app-origin is not enabled because feature :embedding is not available"
-             (public-settings/embedding-app-origin! "https://metabase.com")))
+             (embed.settings/embedding-app-origin! "https://metabase.com")))
 
         (testing "even if env is set, return the default value"
           (mt/with-temp-env-var-value [mb-embedding-app-origin "https://metabase.com"]
-            (is (nil? (public-settings/embedding-app-origin)))))))
+            (is (nil? (embed.settings/embedding-app-origin)))))))
 
     (testing "can change embedding-app-origin if :embedding is enabled"
       (premium-features-test/with-premium-features #{:embedding}
-        (public-settings/embedding-app-origin! "https://metabase.com")
+        (embed.settings/embedding-app-origin! "https://metabase.com")
         (is (= "https://metabase.com"
-               (public-settings/embedding-app-origin)))
+               (embed.settings/embedding-app-origin)))
 
         (testing "it works with env too"
           (mt/with-temp-env-var-value [mb-embedding-app-origin "ssh://metabase.com"]
             (is (= "ssh://metabase.com"
-                   (public-settings/embedding-app-origin)))))))))
+                   (embed.settings/embedding-app-origin)))))))))

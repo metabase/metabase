@@ -179,7 +179,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula").clear().type("[Price] > 1 AND [Price] < 5{enter}");
+    cy.get("@formula")
+      .invoke("val", "") // this is a more reliable .clear()
+      .type("[Price] > 1 AND [Price] < 5{enter}");
+
+    // In case it does exist, it usually is an error in expression (caused by not clearing
+    // the input properly before typing), and this check helps to highlight that.
+    cy.findByTestId("expression-editor-textfield").should("not.exist");
 
     getNotebookStep("filter")
       .contains("Price is greater than 1")
@@ -218,7 +224,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2").click();
 
-    popover().findByRole("textbox").type("3{enter}{enter}");
+    popover().within(() => {
+      cy.findByLabelText("Filter value").focus().type("3").blur();
+      cy.button("Update filter").click();
+    });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
 
@@ -288,6 +297,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   describe("arithmetic (metabase#13175)", () => {
     beforeEach(() => {
+      // This is required because TableInteractive won't render columns
+      // that don't fit into the viewport
+      cy.viewport(1400, 1000);
       openOrdersTable({ mode: "notebook" });
     });
 

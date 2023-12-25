@@ -2,6 +2,7 @@ import {
   restore,
   visitQuestionAdhoc,
   queryBuilderHeader,
+  modal,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -47,10 +48,10 @@ describe("issue 25990", () => {
 
     queryBuilderHeader().button("Filter").click();
 
-    cy.get(".Modal").within(() => {
-      cy.findByText("People - User").click();
+    modal().within(() => {
+      cy.findByText("Person").click();
       cy.findByPlaceholderText("Enter an ID").type("10");
-      cy.button("Apply Filters").click();
+      cy.button("Apply filters").click();
     });
 
     cy.wait("@dataset");

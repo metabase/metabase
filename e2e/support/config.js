@@ -36,6 +36,14 @@ const defaultConfig = {
      **                        PREPROCESSOR                            **
      ********************************************************************/
 
+    if (runWithReplay) {
+      on = replay.wrapOn(on);
+      replay.default(on, config, {
+        upload: true,
+        apiKey: process.env.REPLAY_API_KEY,
+      });
+    }
+
     on(
       "file:preprocessor",
       createBundler({ plugins: [NodeModulesPolyfillPlugin()] }),
@@ -104,13 +112,6 @@ const defaultConfig = {
 
     require("@cypress/grep/src/plugin")(config);
 
-    if (runWithReplay) {
-      replay.default(on, config, {
-        upload: true,
-        apiKey: process.env.REPLAY_API_KEY,
-      });
-    }
-
     return config;
   },
   supportFile: "e2e/support/cypress.js",
@@ -119,7 +120,7 @@ const defaultConfig = {
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
-  specPattern: "e2e/test/**/*.cy.spec.js",
+  specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
 };
 
 const mainConfig = {
@@ -147,13 +148,13 @@ const snapshotsConfig = {
 const crossVersionSourceConfig = {
   ...defaultConfig,
   baseUrl: "http://localhost:3000",
-  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.js",
+  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.{js,ts}",
 };
 
 const crossVersionTargetConfig = {
   ...defaultConfig,
   baseUrl: "http://localhost:3001",
-  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.js",
+  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.{js,ts}",
 };
 
 const stressTestConfig = {
