@@ -278,6 +278,8 @@ export interface Settings {
   "uploads-database-id": number | null;
   "uploads-schema-name": string | null;
   "uploads-table-prefix": string | null;
+  "csv-delimiter": string | null;
+  "csv-quote": string | null;
   "user-visibility": string | null;
   "last-acknowledged-version": string | null;
 }

@@ -755,8 +755,15 @@
   :audit      :getter)
 
 (defsetting csv-delimiter
-  (deferred-tru "Character used to separate values in the CSV record")
+  (deferred-tru "Symbol to separate values in the CSV record")
   :visibility :authenticated
   :type       :char
   :audit      :getter
   :default    \,)
+
+(defsetting csv-quote
+  (deferred-tru "Symbol which surrounds CSV fields with reserved characters")
+  :visibility :authenticated
+  :type       :char
+  :audit      :getter
+  :default    \")

@@ -22,10 +22,14 @@ import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 import Alert from "metabase/core/components/Alert";
 
+import type { SettingKey, SettingValue } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import type Schema from "metabase-lib/metadata/Schema";
 
 import SettingHeader from "../SettingHeader";
+import type { SettingElement } from "../../types";
+import SettingsSetting from "../SettingsSetting";
+import { getSettingsElementWithKnownKey } from "../../utils";
 import { SectionTitle, ColorText, PaddedForm } from "./UploadSetting.styled";
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 
@@ -38,11 +42,14 @@ export interface UploadSettings {
   uploads_database_id: number | null;
   uploads_schema_name: string | null;
   uploads_table_prefix: string | null;
+  csv_delimiter: string;
+  csv_quote: string;
 }
 
 export interface UploadSettingProps {
   databases: Database[];
   settings: UploadSettings;
+  elements: SettingElement[];
   updateSettings: (
     settings: Record<string, string | number | boolean | null>,
   ) => Promise<void>;
@@ -52,6 +59,12 @@ export interface UploadSettingProps {
     setSaveError: (msg: string) => void;
     clear: () => void;
   }>;
+  updateSetting: (
+    settingElement: SettingElement,
+    newValue: SettingValue,
+  ) => void;
+  onChangeSetting?: (key: SettingKey, value: SettingValue) => void;
+  reloadSettings: VoidFunction;
 }
 
 const mapStateToProps = (state: State) => ({
@@ -60,6 +73,8 @@ const mapStateToProps = (state: State) => ({
     uploads_database_id: getSetting(state, "uploads-database-id"),
     uploads_schema_name: getSetting(state, "uploads-schema-name"),
     uploads_table_prefix: getSetting(state, "uploads-table-prefix"),
+    csv_delimiter: getSetting(state, "csv-delimiter"),
+    csv_quote: getSetting(state, "csv-quote"),
   },
 });
 
@@ -86,6 +101,10 @@ const Header = () => (
 export function UploadSettingsView({
   databases,
   settings,
+  elements,
+  updateSetting,
+  onChangeSetting,
+  reloadSettings,
   updateSettings,
   saveStatusRef,
 }: UploadSettingProps) {
@@ -106,6 +125,15 @@ export function UploadSettingsView({
   const enableButtonRef = useRef<ActionButton>(null);
   const disableButtonRef = useRef<ActionButton>(null);
   const updateButtonRef = useRef<ActionButton>(null);
+
+  const delimiterSetting = getSettingsElementWithKnownKey(
+    elements,
+    "csv-quote",
+  );
+  const quoteSetting = getSettingsElementWithKnownKey(
+    elements,
+    "csv-delimiter",
+  );
 
   const resetButtons = () => {
     enableButtonRef?.current?.resetState();
@@ -169,112 +197,139 @@ export function UploadSettingsView({
   );
 
   return (
-    <PaddedForm aria-label={t`Upload Settings Form`}>
-      <Header />
-      {isH2db && <H2PersistenceWarning />}
-      <Group>
-        <Stack>
-          <SectionTitle>{t`Database to use for uploads`}</SectionTitle>
-          <Select
-            value={dbId ?? 0}
-            placeholder={t`Select a database`}
-            disabled={!hasValidDatabases}
-            options={databaseOptions}
-            onChange={(e: SelectChangeEvent<number>) => {
-              setDbId(e.target.value);
-              if (e.target.value) {
-                resetButtons();
-                dbHasSchema(databases, e.target.value)
-                  ? setTablePrefix(null)
-                  : setTablePrefix("upload_");
-                setSchemaName(null);
-              }
-            }}
-          />
-        </Stack>
-        {!!showSchema && (
-          <Schemas.ListLoader query={{ dbId, getAll: true }}>
-            {({ list: schemaList }: { list: Schema[] }) => (
-              <Stack>
-                <SectionTitle>{t`Schema`}</SectionTitle>
-                {schemaList?.length ? (
-                  <Select
-                    value={schemaName ?? ""}
-                    placeholder={t`Select a schema`}
-                    options={getSchemaOptions(schemaList)}
-                    onChange={(e: SelectChangeEvent<string>) => {
-                      resetButtons();
-                      setSchemaName(e.target.value);
-                    }}
-                  />
-                ) : (
-                  <EmptyState message={t`We couldn't find any schema.`} />
-                )}
-              </Stack>
-            )}
-          </Schemas.ListLoader>
-        )}
-        {!!showPrefix && (
+    <>
+      <PaddedForm aria-label={t`Upload Settings Form`}>
+        <Header />
+        {isH2db && <H2PersistenceWarning />}
+        <Group>
           <Stack>
-            <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
-            <Input
-              value={tablePrefix ?? ""}
-              placeholder={t`upload_`}
-              onChange={e => {
-                resetButtons();
-                setTablePrefix(e.target.value);
+            <SectionTitle>{t`Database to use for uploads`}</SectionTitle>
+            <Select
+              value={dbId ?? 0}
+              placeholder={t`Select a database`}
+              disabled={!hasValidDatabases}
+              options={databaseOptions}
+              onChange={(e: SelectChangeEvent<number>) => {
+                setDbId(e.target.value);
+                if (e.target.value) {
+                  resetButtons();
+                  dbHasSchema(databases, e.target.value)
+                    ? setTablePrefix(null)
+                    : setTablePrefix("upload_");
+                  setSchemaName(null);
+                }
               }}
             />
           </Stack>
-        )}
-      </Group>
-      <Group mt="lg">
-        {settings.uploads_enabled ? (
-          settingsChanged ? (
+          {!!showSchema && (
+            <Schemas.ListLoader query={{ dbId, getAll: true }}>
+              {({ list: schemaList }: { list: Schema[] }) => (
+                <Stack>
+                  <SectionTitle>{t`Schema`}</SectionTitle>
+                  {schemaList?.length ? (
+                    <Select
+                      value={schemaName ?? ""}
+                      placeholder={t`Select a schema`}
+                      options={getSchemaOptions(schemaList)}
+                      onChange={(e: SelectChangeEvent<string>) => {
+                        resetButtons();
+                        setSchemaName(e.target.value);
+                      }}
+                    />
+                  ) : (
+                    <EmptyState message={t`We couldn't find any schema.`} />
+                  )}
+                </Stack>
+              )}
+            </Schemas.ListLoader>
+          )}
+          {!!showPrefix && (
+            <Stack>
+              <SectionTitle>{t`Upload Table Prefix (optional)`}</SectionTitle>
+              <Input
+                value={tablePrefix ?? ""}
+                placeholder={t`upload_`}
+                onChange={e => {
+                  resetButtons();
+                  setTablePrefix(e.target.value);
+                }}
+              />
+            </Stack>
+          )}
+        </Group>
+
+        <Group mt="lg">
+          {settings.uploads_enabled ? (
+            settingsChanged ? (
+              <ActionButton
+                ref={updateButtonRef}
+                normalText={t`Update settings`}
+                successText={t`Settings updated`}
+                disabled={!hasValidSettings}
+                failedText={t`Failed to save upload settings`}
+                actionFn={handleEnableUploads}
+                primary
+                useLoadingSpinner
+                type="submit"
+              />
+            ) : (
+              <ActionButton
+                ref={disableButtonRef}
+                normalText={t`Disable uploads`}
+                successText={
+                  t`Uploads enabled` /* yes, this is backwards intentionally */
+                }
+                failedText={t`Failed to disable uploads`}
+                actionFn={handleDisableUploads}
+                type="button"
+                danger
+                useLoadingSpinner
+              />
+            )
+          ) : (
             <ActionButton
-              ref={updateButtonRef}
-              normalText={t`Update settings`}
-              successText={t`Settings updated`}
-              disabled={!hasValidSettings}
-              failedText={t`Failed to save upload settings`}
+              ref={enableButtonRef}
+              normalText={t`Enable uploads`}
+              successText={
+                t`Uploads disabled` /* yes, this is backwards intentionally */
+              }
+              failedText={t`Failed to enable uploads`}
               actionFn={handleEnableUploads}
-              primary
+              primary={!!hasValidSettings}
+              disabled={!hasValidSettings || !hasValidDatabases}
               useLoadingSpinner
               type="submit"
             />
-          ) : (
-            <ActionButton
-              ref={disableButtonRef}
-              normalText={t`Disable uploads`}
-              successText={
-                t`Uploads enabled` /* yes, this is backwards intentionally */
-              }
-              failedText={t`Failed to disable uploads`}
-              actionFn={handleDisableUploads}
-              type="button"
-              danger
-              useLoadingSpinner
-            />
-          )
-        ) : (
-          <ActionButton
-            ref={enableButtonRef}
-            normalText={t`Enable uploads`}
-            successText={
-              t`Uploads disabled` /* yes, this is backwards intentionally */
-            }
-            failedText={t`Failed to enable uploads`}
-            actionFn={handleEnableUploads}
-            primary={!!hasValidSettings}
-            disabled={!hasValidSettings || !hasValidDatabases}
-            useLoadingSpinner
-            type="submit"
-          />
-        )}
-      </Group>
-      {!hasValidDatabases && <NoValidDatabasesMessage />}
-      {errorMessage && <ColorText color="danger">{errorMessage}</ColorText>}
-    </PaddedForm>
+          )}
+        </Group>
+        {!hasValidDatabases && <NoValidDatabasesMessage />}
+        {errorMessage && <ColorText color="danger">{errorMessage}</ColorText>}
+      </PaddedForm>
+      <ul>
+        <SettingsSetting
+          key={delimiterSetting.key}
+          setting={delimiterSetting}
+          onChange={(newValue: SettingValue) =>
+            updateSetting(delimiterSetting, newValue)
+          }
+          onChangeSetting={onChangeSetting}
+          reloadSettings={reloadSettings}
+          autoFocus={false}
+          settingValues={settings.csv_delimiter}
+        />
+        <SettingsSetting
+          key={quoteSetting.key}
+          setting={quoteSetting}
+          onChange={(newValue: SettingValue) =>
+            updateSetting(quoteSetting, newValue)
+          }
+          onChangeSetting={onChangeSetting}
+          reloadSettings={reloadSettings}
+          autoFocus={false}
+          settingValues={settings.csv_quote}
+        />
+      </ul>
+    </>
   );
 }
 
