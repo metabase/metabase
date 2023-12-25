@@ -576,4 +576,16 @@ describe("Admin > Settings > UploadSetting", () => {
       screen.getByText(/uploads to the Sample Database are for testing only/i),
     ).toBeInTheDocument();
   });
+
+  it("should display the csv delimiter field", async () => {
+    setup();
+
+    expect(screen.getByText(/csv quote symbol/i)).toBeInTheDocument();
+  });
+
+  it("should display the csv quote field", async () => {
+    setup();
+
+    expect(screen.getByText(/csv field delimiter symbol/i)).toBeInTheDocument();
+  });
 });

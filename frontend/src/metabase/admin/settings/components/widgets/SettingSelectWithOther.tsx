@@ -20,17 +20,17 @@ const isOtherSelectValue = (selectValue: UnderlyingType) => {
   return selectValue === OTHER_VALUE_PLACEHOLDER;
 };
 
-interface SelectWithOtherProps {
-  className: string;
+export interface SelectWithOtherProps {
+  className?: string;
   setting: {
     value: UnderlyingType;
     default: UnderlyingType;
     options: { value: string; name: string }[];
-    placeholder: string;
+    placeholder?: string;
   };
   autoFocus?: boolean;
   onChange: (newValue: UnderlyingType) => void;
-  disabled: boolean;
+  disabled?: boolean;
 }
 
 /**
