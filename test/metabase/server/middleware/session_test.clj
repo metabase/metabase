@@ -247,10 +247,11 @@
              (select-keys (wrapped-handler request) [:anti-csrf-token :cookies :metabase-session-id :uri]))))))
 
 (deftest current-user-info-for-api-key-test
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name         "An API Key"
-                                            :user_id      (mt/user->id :lucky)
-                                            :created_by   (mt/user->id :lucky)
-                                            :unhashed_key "mb_foobar"}]
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  "mb_foobar"}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -286,27 +287,29 @@
      (fn [e] (throw e)))))
 
 (deftest user-data-is-correctly-bound-for-api-keys
-  (t2.with-temp/with-temp [:model/ApiKey _ {:name         "An API Key"
-                                            :user_id      (mt/user->id :lucky)
-                                            :created_by   (mt/user->id :lucky)
-                                            :unhashed_key "mb_foobar"}
-                           :model/ApiKey _ {:name "A superuser API Key"
-                                            :user_id (mt/user->id :crowberto)
-                                            :created_by (mt/user->id :crowberto)
-                                            :unhashed_key "mb_superuser"}]
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key"
+                                            :user_id       (mt/user->id :lucky)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  "mb_foobar"}
+                           :model/ApiKey _ {:name          "A superuser API Key"
+                                            :user_id       (mt/user->id :crowberto)
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  "mb_superuser"}]
     (testing "A valid API key works, and user info is added to the request"
-      (is (= {:is-superuser? false
+      (is (= {:is-superuser?     false
               :is-group-manager? false
-              :user-id (mt/user->id :lucky)
-              :user {:id (mt/user->id :lucky)
-                     :email (:email (mt/fetch-user :lucky))}}
+              :user-id           (mt/user->id :lucky)
+              :user              {:id    (mt/user->id :lucky)
+                                  :email (:email (mt/fetch-user :lucky))}}
              (simple-auth-handler {:headers {"x-api-key" "mb_foobar"}}))))
     (testing "A superuser API key has `*is-superuser?*` bound correctly"
-      (is (= {:is-superuser? true
+      (is (= {:is-superuser?     true
               :is-group-manager? false
-              :user-id (mt/user->id :crowberto)
-              :user {:id (mt/user->id :crowberto)
-                     :email (:email (mt/fetch-user :crowberto))}}
+              :user-id           (mt/user->id :crowberto)
+              :user              {:id    (mt/user->id :crowberto)
+                                  :email (:email (mt/fetch-user :crowberto))}}
              (simple-auth-handler {:headers {"x-api-key" "mb_superuser"}}))))))
 
 (deftest current-user-info-for-session-test

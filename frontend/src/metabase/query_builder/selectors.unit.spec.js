@@ -7,6 +7,7 @@ import {
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import { createMockEntitiesState } from "__support__/store";
+import { createMockTable } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
@@ -26,7 +27,10 @@ import Join from "metabase-lib/queries/structured/Join";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
   return createMockState({
-    entities: createMockEntitiesState({ databases: [createSampleDatabase()] }),
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      tables: [createMockTable({ id: "card__1" })],
+    }),
     qb: createMockQueryBuilderState({
       ...state,
       uiControls: createMockQueryBuilderUIControlsState({
