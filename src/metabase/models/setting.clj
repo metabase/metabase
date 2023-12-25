@@ -208,7 +208,9 @@
      subscription-allowed-domains
      uploads-enabled
      uploads-database-id
-     uploads-schema-name})
+     uploads-schema-name
+     csv-delimiter
+     csv-quote})
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
