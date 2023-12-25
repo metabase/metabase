@@ -11,59 +11,91 @@ import {
 import { t } from "ttag";
 import { Select, Stack, TextInput } from "metabase/ui";
 
-import type { SettingElement } from "../../types";
-
 export const OTHER_VALUE_PLACEHOLDER = "__OTHER";
-export const OTHER_LABEL = t`other`;
+export const OTHER_LABEL = t`Other`;
 
-const isValueIsOther = (value: string | null) => {
-  return value === OTHER_VALUE_PLACEHOLDER;
+type UnderlyingType = string | null;
+
+const isOtherSelectValue = (selectValue: UnderlyingType) => {
+  return selectValue === OTHER_VALUE_PLACEHOLDER;
 };
 
-interface SelectWithOtherProps<T> {
+interface SelectWithOtherProps {
   className: string;
-  setting: SettingElement & { value: T; default: T };
-  onChange: any;
+  setting: {
+    value: UnderlyingType;
+    default: UnderlyingType;
+    options: { value: string; name: string }[];
+    placeholder: string;
+  };
+  autoFocus?: boolean;
+  onChange: (newValue: UnderlyingType) => void;
   disabled: boolean;
 }
 
+/**
+ * A widget which allows to choose a value from a list of options or input a different value.
+ * Under the hood the widget consist of a `Select` component
+ * and a `TextInput` shown only if "other" option is selected
+ *
+ * Automatically injects the placeholder for the "other" value into the supplied list of options
+ */
 export const SettingSelectWithOther: FunctionComponent<
-  SelectWithOtherProps<string>
-> = ({ className = "", setting, onChange, disabled = false }) => {
-  const coercedOptions = (setting.options || []).map(option => {
-    return { value: option.value as string, label: option.name };
-  });
+  SelectWithOtherProps
+> = ({
+  className = "",
+  setting,
+  onChange,
+  disabled = false,
+  autoFocus = false,
+}) => {
+  const { value, options, placeholder } = setting;
 
-  const other = {
-    label: OTHER_LABEL,
-    value: OTHER_VALUE_PLACEHOLDER,
-  } as const;
+  // to the format of "metabase/ui" select control
+  const coercedOptions = (options || []).map(x => ({
+    value: x.value,
+    label: x.name,
+  }));
 
-  const populatedOptions = [...coercedOptions, other];
+  // append the "other" option to dropdown
+  const populatedOptions = [
+    ...coercedOptions,
+    {
+      label: OTHER_LABEL,
+      value: OTHER_VALUE_PLACEHOLDER,
+    },
+  ];
 
-  const valueToSearchInOptions = setting.value ?? setting.default;
-
+  // look up for the raw value in the list of options
+  // raw value might be null which means it should be the default one
+  // in that case look up for the default value
+  const effectiveValue = value ?? setting.default;
   const valueFoundInOptions = coercedOptions.filter(
-    x => x.value === valueToSearchInOptions,
+    x => x.value === effectiveValue,
   )[0]?.value;
 
   const initSelectValue = valueFoundInOptions ?? OTHER_VALUE_PLACEHOLDER;
-  const initSelectValueAsStr = initSelectValue;
+  const initTextValue = valueFoundInOptions ? null : value;
 
-  const [selectValue, setSelectValue] = useState<string>(initSelectValueAsStr);
-  const [textValue, setTextValue] = useState<string>();
+  const [selectValue, setSelectValue] =
+    useState<UnderlyingType>(initSelectValue);
+  const [textValue, setTextValue] = useState<UnderlyingType>(initTextValue);
 
+  // update states when the compo
   useEffect(() => {
-    setTextValue(valueToSearchInOptions);
-    setSelectValue(initSelectValueAsStr);
-  }, [initSelectValueAsStr, setting.value, valueToSearchInOptions]);
+    setTextValue(initTextValue);
+    setSelectValue(initSelectValue);
+  }, [initSelectValue, initTextValue]);
 
   const handleSelectChange = useCallback(
-    value => {
-      setSelectValue(value);
-      if (!isValueIsOther(value)) {
-        setTextValue(value);
-        onChange(value);
+    newValue => {
+      setSelectValue(newValue);
+
+      if (isOtherSelectValue(newValue)) {
+        // display an empty text input to the user when switching to other value
+        setTextValue(null);
+      } else {
+        onChange(newValue);
       }
     },
     [onChange],
@@ -72,17 +104,21 @@ export const SettingSelectWithOther: FunctionComponent<
   const handleTextInputChange = useCallback<
     ChangeEventHandler<HTMLInputElement>
   >(e => {
-    const value = e.target.value;
-    setTextValue(value);
+    setTextValue(e.target.value);
   }, []);
 
   const handleTextInputBlur = useCallback<ChangeEventHandler<HTMLInputElement>>(
     e => {
-      const value = e.target.value;
-      setTextValue(value);
-      if (isValueIsOther(selectValue)) {
-        onChange(value);
+      const newValue = e.target.value;
+
+      if (
+        newValue === "" || // do not update with null (default) values
+        !isOtherSelectValue(selectValue) // just in case do not update if non-other option was selected
+      ) {
+        return;
       }
+
+      onChange(newValue);
     },
     [onChange, selectValue],
   );
@@ -91,14 +127,15 @@ export const SettingSelectWithOther: FunctionComponent<
     <Stack>
       <Select
         className={cx("SettingsInput", className)}
-        placeholder={setting.placeholder}
+        placeholder={placeholder}
         value={selectValue || ""}
         disabled={disabled}
         onChange={handleSelectChange}
         data={populatedOptions}
+        autoFocus={autoFocus}
       />
 
-      {isValueIsOther(selectValue) && (
+      {isOtherSelectValue(selectValue) && (
         <TextInput
           className={cx("SettingsInput", className)}
           value={textValue || ""}

@@ -411,7 +411,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "csv-delimiter",
         display_name: t`CSV field delimiter symbol`,
         description: t`Symbol to separate values in the CSV record.`,
-        placeholder: ",",
         type: "string",
         required: false,
         options: [
@@ -426,7 +425,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "csv-quote",
         display_name: t`CSV quote symbol`,
         description: t`Symbol which surrounds CSV fields with reserved characters.`,
-        placeholder: '"',
         type: "string",
         required: false,
         options: [

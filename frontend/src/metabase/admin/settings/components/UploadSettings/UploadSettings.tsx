@@ -42,8 +42,6 @@ export interface UploadSettings {
   uploads_database_id: number | null;
   uploads_schema_name: string | null;
   uploads_table_prefix: string | null;
-  csv_delimiter: string;
-  csv_quote: string;
 }
 
 export interface UploadSettingProps {
@@ -63,8 +61,6 @@ export interface UploadSettingProps {
     settingElement: SettingElement,
     newValue: SettingValue,
   ) => void;
-  onChangeSetting?: (key: SettingKey, value: SettingValue) => void;
-  reloadSettings: VoidFunction;
 }
 
 const mapStateToProps = (state: State) => ({
@@ -103,8 +99,6 @@ export function UploadSettingsView({
   settings,
   elements,
   updateSetting,
-  onChangeSetting,
-  reloadSettings,
   updateSettings,
   saveStatusRef,
 }: UploadSettingProps) {
@@ -312,8 +306,6 @@ export function UploadSettingsView({
           onChange={(newValue: SettingValue) =>
             updateSetting(delimiterSetting, newValue)
           }
-          onChangeSetting={onChangeSetting}
-          reloadSettings={reloadSettings}
           autoFocus={false}
         />
         <SettingsSetting
@@ -322,8 +314,6 @@ export function UploadSettingsView({
           onChange={(newValue: SettingValue) =>
             updateSetting(quoteSetting, newValue)
           }
-          onChangeSetting={onChangeSetting}
-          reloadSettings={reloadSettings}
           autoFocus={false}
         />
       </ul>

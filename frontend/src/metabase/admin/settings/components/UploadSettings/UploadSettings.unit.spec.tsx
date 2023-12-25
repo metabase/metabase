@@ -2,13 +2,14 @@ import userEvent from "@testing-library/user-event";
 
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { Database } from "metabase-types/api";
+import type { Database, SettingKey } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 
+import { ADMIN_SETTINGS_SECTIONS } from "../../selectors";
 import type { UploadSettings } from "./UploadSettings";
 import { UploadSettingsView } from "./UploadSettings";
 
@@ -77,6 +78,14 @@ function setup({
   const savingSpy = jest.fn();
   const savedSpy = jest.fn();
   const clearSpy = jest.fn();
+  const updateSettingSpy = jest.fn();
+
+  const uploadSectionElements = ADMIN_SETTINGS_SECTIONS.uploads.settings.map(
+    x => ({
+      ...x,
+      key: x.key as SettingKey,
+    }),
+  );
 
   renderWithProviders(
     <UploadSettingsView
@@ -90,6 +99,8 @@ function setup({
           clear: clearSpy,
         } as any,
       }}
+      elements={uploadSectionElements}
+      updateSetting={updateSettingSpy}
     />,
     { storeInitialState: {} },
   );

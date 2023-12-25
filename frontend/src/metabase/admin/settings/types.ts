@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import type { ReactElement, FunctionComponent } from "react";
 import type {
   SettingDefinition,
   SettingKey,
@@ -23,7 +23,7 @@ export type SettingElement = {
   noHeader?: boolean;
   disableDefaultUpdate?: boolean;
   validations?: [string, string][];
-  widget?: ReactElement;
+  widget?: ReactElement | FunctionComponent<any>;
   warningMessage?: string;
   postUpdateActions?: VoidFunction[];
   getProps?: (setting: SettingDefinition) => Record<string, any>;
