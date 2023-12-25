@@ -49,6 +49,7 @@ import {
 } from "./analytics";
 
 import RedirectWidget from "./components/widgets/RedirectWidget";
+import { SettingSelectWithOther } from "./components/widgets/SettingSelectWithOther";
 import {
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
@@ -413,6 +414,13 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: ",",
         type: "string",
         required: false,
+        options: [
+          { value: ",", name: t`Comma (default)` },
+          { value: ";", name: t`Semicolon` },
+          { value: "\t", name: t`Tab` },
+          { value: " ", name: t`Space` },
+        ],
+        widget: SettingSelectWithOther,
       },
       {
         key: "csv-quote",
@@ -421,6 +429,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: '"',
         type: "string",
         required: false,
+        options: [
+          { value: '"', name: t`Double quote (default)` },
+          { value: "'", name: t`Single quote` },
+        ],
+        widget: SettingSelectWithOther,
       },
     ],
   },

@@ -315,7 +315,6 @@ export function UploadSettingsView({
           onChangeSetting={onChangeSetting}
           reloadSettings={reloadSettings}
           autoFocus={false}
-          settingValues={settings.csv_delimiter}
         />
         <SettingsSetting
           key={quoteSetting.key}
@@ -326,7 +325,6 @@ export function UploadSettingsView({
           onChangeSetting={onChangeSetting}
           reloadSettings={reloadSettings}
           autoFocus={false}
-          settingValues={settings.csv_quote}
         />
       </ul>
     </>
