@@ -126,11 +126,12 @@ describe("scenarios > public > question", () => {
     });
 
     cy.findByTestId("dashboard-embed-button").realHover();
-    cy.findByRole("tooltip").within(() => {
-      cy.findByText("Ask your admin to create a public link").should(
-        "be.visible",
-      );
-    });
+
+    cy.wait(1000);
+
+    cy.findByRole("tooltip")
+      .findByText("Ask your admin to create a public link")
+      .should("be.visible");
   });
 
   Object.entries(USERS).map(([userType, setUser]) =>
