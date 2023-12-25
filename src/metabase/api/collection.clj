@@ -126,7 +126,7 @@
   [collection-id]
   (if collection-id
     [:like :location (tru "%/{0}/%" collection-id)]
-    [:or [:like :location "/%"]]))
+    [:not [:like :location "/%/%/"]]))
 
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
