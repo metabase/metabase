@@ -350,7 +350,7 @@ export const getQuestion = createSelector(
 );
 
 function isQuestionEditable(question) {
-  return question.isQueryEditable();
+  return question ? question.isQueryEditable() : false;
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
