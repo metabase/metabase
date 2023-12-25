@@ -87,7 +87,13 @@ export const InteractiveEmbeddingOptionCard = () => {
 
   return (
     <EmbeddingOption
-      icon={enabled ? <InteractiveEmbeddingOn /> : <InteractiveEmbeddingOff />}
+      icon={
+        !isEE || enabled ? (
+          <InteractiveEmbeddingOn />
+        ) : (
+          <InteractiveEmbeddingOff />
+        )
+      }
       title={t`Interactive embedding`}
       label={t`PRO & ENTERPRISE`}
       description={jt`Use interactive embedding when you want to ${(

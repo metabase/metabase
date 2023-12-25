@@ -10,7 +10,8 @@ import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector(state =>
     getDocsUrl(state, {
-      page: "embedding/interactive-embedding#embedding-metabase-in-a-different-domain",
+      page: "embedding/interactive-embedding",
+      anchor: "embedding-metabase-in-a-different-domain",
     }),
   );
 
