@@ -1,5 +1,5 @@
 import fetchMock from "fetch-mock";
-import type { Card, Dataset } from "metabase-types/api";
+import type { Card, CardId, Dataset } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   getQuestionVirtualTableId,
@@ -65,4 +65,14 @@ export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {
 
 export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
   fetchMock.post(`path:/api/card/${card.id}/query/${type}`, {});
+}
+
+export function setupCardPublicLinkEndpoints(cardId: CardId) {
+  fetchMock.post(`path:/api/card/${cardId}/public_link`, {
+    id: cardId,
+    uuid: "mock-uuid",
+  });
+  fetchMock.delete(`path:/api/card/${cardId}/public_link`, {
+    id: cardId,
+  });
 }

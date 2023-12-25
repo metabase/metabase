@@ -1,12 +1,10 @@
 import { useState } from "react";
 import _ from "underscore";
-import { t } from "ttag";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
-import { ModalContentActionIcon } from "metabase/components/ModalContent";
+
+import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import type {
   ActivePreviewPane,
   EmbeddingDisplayOptions,
@@ -18,10 +16,12 @@ import type {
   EmbedType,
 } from "./EmbeddingModal/EmbeddingModalContent.types";
 import AdvancedEmbedPane from "./AdvancedEmbedPane";
-import SharingPane from "./SharingPane";
-import { EmbedModalHeader } from "./EmbedModalContent.styled";
+import { SharingPane } from "./SharingPane";
 
 export interface EmbedModalContentProps {
+  embedType: EmbedType;
+  setEmbedType: (type: EmbedType) => void;
+
   resource: EmbedResource;
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
@@ -29,12 +29,12 @@ export interface EmbedModalContentProps {
   onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;
   onUpdateEmbeddingParams: (embeddingParams: EmbeddingParameters) => void;
 
-  extensions?: string[];
   onCreatePublicLink: () => void;
-  onDisablePublicLink: () => void;
-  getPublicUrl: (resource: EmbedResource, extension?: string | null) => string;
-
-  onClose: () => void;
+  onDeletePublicLink: () => void;
+  getPublicUrl: (
+    resource: EmbedResource,
+    extension?: ExportFormatType,
+  ) => string | null;
 
   className?: string;
 }
@@ -43,36 +43,28 @@ export const EmbedModalContent = (
   props: EmbedModalContentProps,
 ): JSX.Element => {
   const {
+    embedType,
+    setEmbedType,
     resource,
     resourceType,
     resourceParameters,
-    extensions,
     onUpdateEnableEmbedding,
     onUpdateEmbeddingParams,
     onCreatePublicLink,
-    onDisablePublicLink,
+    onDeletePublicLink,
     getPublicUrl,
-    onClose,
   } = props;
 
   const [pane, setPane] = useState<ActivePreviewPane>("code");
 
-  const isAdmin = useSelector(getUserIsAdmin);
   const siteUrl = useSelector(state => getSetting(state, "site-url"));
   const secretKey = useSelector(state =>
     getSetting(state, "embedding-secret-key"),
-  );
-  const isPublicSharingEnabled = useSelector(state =>
-    getSetting(state, "enable-public-sharing"),
-  );
-  const isApplicationEmbeddingEnabled = useSelector(state =>
-    getSetting(state, "enable-embedding"),
   );
 
   const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
     getDefaultEmbeddingParams(resource, resourceParameters),
   );
-  const [embedType, setEmbedType] = useState<EmbedType>(null);
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
@@ -130,87 +122,65 @@ export const EmbedModalContent = (
     embeddingParams,
   );
 
+  if (!embedType) {
+    return (
+      <SharingPane
+        resource={resource}
+        resourceType={resourceType}
+        onCreatePublicLink={onCreatePublicLink}
+        onDeletePublicLink={onDeletePublicLink}
+        getPublicUrl={getPublicUrl}
+        onChangeEmbedType={setEmbedType}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-column full-height">
-      {embedType !== null && (
-        <EmbedModalHeader
-          onClose={() => {
-            MetabaseAnalytics.trackStructEvent("Sharing Modal", "Modal Closed");
-            onClose();
-          }}
-        >
-          <ModalContentActionIcon
-            name="chevronleft"
-            onClick={() => setEmbedType(null)}
-          />
-
-          {t`Static embedding`}
-        </EmbedModalHeader>
-      )}
-
-      {embedType == null ? (
-        <div className="flex-full">
-          <div className="ml-auto mr-auto" style={{ maxWidth: 1040 }}>
-            <SharingPane
-              resource={resource}
-              resourceType={resourceType}
-              onCreatePublicLink={onCreatePublicLink}
-              onDisablePublicLink={onDisablePublicLink}
-              extensions={extensions}
-              getPublicUrl={getPublicUrl}
-              onChangeEmbedType={setEmbedType}
-              isAdmin={isAdmin}
-              isPublicSharingEnabled={isPublicSharingEnabled}
-              isApplicationEmbeddingEnabled={isApplicationEmbeddingEnabled}
-            />
-          </div>
-        </div>
-      ) : embedType === "application" ? (
-        <div className="flex flex-full">
-          <AdvancedEmbedPane
-            pane={pane}
-            resource={resource}
-            resourceType={resourceType}
-            embedType={embedType}
-            token={getSignedToken(
-              resourceType,
-              resource.id,
-              previewParametersBySlug,
-              secretKey,
-              embeddingParams,
-            )}
-            iframeUrl={getSignedPreviewUrl(
-              siteUrl,
-              resourceType,
-              resource.id,
-              previewParametersBySlug,
-              displayOptions,
-              secretKey,
-              embeddingParams,
-            )}
-            siteUrl={siteUrl}
-            secretKey={secretKey}
-            params={previewParametersBySlug}
-            displayOptions={displayOptions}
-            previewParameters={previewParameters}
-            parameterValues={parameterValues}
-            resourceParameters={resourceParameters}
-            embeddingParams={embeddingParams}
-            onChangeDisplayOptions={setDisplayOptions}
-            onChangeEmbeddingParameters={setEmbeddingParams}
-            onChangeParameterValue={(id: string, value: string) =>
-              setParameterValues(prevState => ({
-                ...prevState,
-                [id]: value,
-              }))
-            }
-            onChangePane={setPane}
-            onSave={handleSave}
-            onUnpublish={handleUnpublish}
-            onDiscard={handleDiscard}
-          />
-        </div>
-      ) : null}
+      <div className="flex flex-full">
+        <AdvancedEmbedPane
+          pane={pane}
+          resource={resource}
+          resourceType={resourceType}
+          embedType={embedType}
+          token={getSignedToken(
+            resourceType,
+            resource.id,
+            previewParametersBySlug,
+            secretKey,
+            embeddingParams,
+          )}
+          iframeUrl={getSignedPreviewUrl(
+            siteUrl,
+            resourceType,
+            resource.id,
+            previewParametersBySlug,
+            displayOptions,
+            secretKey,
+            embeddingParams,
+          )}
+          siteUrl={siteUrl}
+          secretKey={secretKey}
+          params={previewParametersBySlug}
+          displayOptions={displayOptions}
+          previewParameters={previewParameters}
+          parameterValues={parameterValues}
+          resourceParameters={resourceParameters}
+          embeddingParams={embeddingParams}
+          onChangeDisplayOptions={setDisplayOptions}
+          onChangeEmbeddingParameters={setEmbeddingParams}
+          onChangeParameterValue={(id: string, value: string) =>
+            setParameterValues(prevState => ({
+              ...prevState,
+              [id]: value,
+            }))
+          }
+          onChangePane={setPane}
+          onSave={handleSave}
+          onUnpublish={handleUnpublish}
+          onDiscard={handleDiscard}
+        />
+      </div>
     </div>
   );
 };

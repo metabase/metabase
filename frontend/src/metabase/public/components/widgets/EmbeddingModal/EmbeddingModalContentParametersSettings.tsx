@@ -19,6 +19,7 @@ import type {
   EmbeddingDisplayOptions,
   EmbedResource,
   EmbedType,
+  EmbedResourceParameterWithValue,
 } from "./EmbeddingModalContent.types";
 import { SettingsTabLayout } from "./EmbeddingModalContent.styled";
 
@@ -68,7 +69,11 @@ export const EmbeddingModalContentParametersSettings = ({
   onChangePane,
 }: EmbeddingModalContentParametersSettingsProps): JSX.Element => {
   const valuePopulatedParameters = useMemo(
-    () => getValuePopulatedParameters(previewParameters, parameterValues),
+    () =>
+      getValuePopulatedParameters(
+        previewParameters,
+        parameterValues,
+      ) as EmbedResourceParameterWithValue[],
     [previewParameters, parameterValues],
   );
 
@@ -96,7 +101,7 @@ export const EmbeddingModalContentParametersSettings = ({
                   }}
                   className="ml-auto bg-white"
                   value={embeddingParams[parameter.slug] || "disabled"}
-                  onChange={e =>
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                     onChangeEmbeddingParameters({
                       ...embeddingParams,
                       [parameter.slug]: e.target.value,
@@ -114,6 +119,9 @@ export const EmbeddingModalContentParametersSettings = ({
           {previewParameters.length > 0 && (
             <EmbeddingModalContentSection title={t`Preview Locked Parameters`}>
               <p>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</p>
+              {/* ParametersList has to be migrated to TS to cover optional props */}
+              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+              {/* @ts-ignore */}
               <ParametersList
                 className="mt2"
                 vertical

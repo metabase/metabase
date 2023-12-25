@@ -1,13 +1,10 @@
+import type { Card, Dashboard } from "metabase-types/api";
+
 export type ActivePreviewPane = "preview" | "code";
 
 export type EmbedType = "application" | null;
 
-export type EmbedResource = {
-  id: number | string;
-  dashboard?: number;
-  question?: number;
-  public_uuid?: string;
-  enable_embedding?: boolean;
+export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters;
 };
 
@@ -18,6 +15,10 @@ export type EmbedResourceParameter = {
   name: string;
   slug: string;
   type: string;
+};
+
+export type EmbedResourceParameterWithValue = EmbedResourceParameter & {
+  value: string;
 };
 
 export type EmbeddingParameters = {

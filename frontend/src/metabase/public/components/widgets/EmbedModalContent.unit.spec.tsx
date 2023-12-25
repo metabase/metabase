@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import type { EmbedResource } from "./EmbeddingModal/EmbeddingModalContent.types";
@@ -12,10 +12,8 @@ describe("EmbedModalContent", () => {
   it("should render", () => {
     setup();
 
-    expect(screen.getByText("Sharing")).toBeInTheDocument();
-    expect(screen.getByText("Public link")).toBeInTheDocument();
     expect(screen.getByText("Public embed")).toBeInTheDocument();
-    expect(screen.getByText("Embed in your application")).toBeInTheDocument();
+    expect(screen.getByText("Static embed")).toBeInTheDocument();
   });
 
   it("should render unsaved parameters", () => {
@@ -38,7 +36,7 @@ describe("EmbedModalContent", () => {
   it("should render saved parameters", () => {
     setup({
       resource: {
-        id: 1,
+        ...createMockDashboard(),
         embedding_params: {
           my_param: "locked",
         },
@@ -66,7 +64,7 @@ describe("EmbedModalContent", () => {
   it("should only render valid parameters", () => {
     setup({
       resource: {
-        id: 1,
+        ...createMockDashboard(),
         embedding_params: {
           old_param: "locked",
         },
@@ -89,7 +87,7 @@ describe("EmbedModalContent", () => {
   it("should update a card with only valid parameters", async () => {
     const { mocks } = setup({
       resource: {
-        id: 1,
+        ...createMockDashboard(),
         embedding_params: {
           old_param: "locked",
         },
@@ -119,31 +117,34 @@ describe("EmbedModalContent", () => {
 });
 
 function setup({
+  embedType = null,
   resource = {} as EmbedResource,
   resourceType = "dashboard",
   resourceParameters = [],
   getPublicUrl,
 }: Partial<EmbedModalContentProps> = {}) {
   const mocks = {
+    setEmbedType: jest.fn(),
     getPublicUrl: getPublicUrl || jest.fn(_resource => "some URL"),
     onUpdateEmbeddingParams: jest.fn(),
     onUpdateEnableEmbedding: jest.fn(),
     onClose: jest.fn(),
     onCreatePublicLink: jest.fn(),
-    onDisablePublicLink: jest.fn(),
+    onDeletePublicLink: jest.fn(),
   };
 
   const view = renderWithProviders(
     <EmbedModalContent
+      embedType={embedType}
+      setEmbedType={mocks.setEmbedType}
       resource={resource}
       resourceType={resourceType}
       resourceParameters={resourceParameters}
       getPublicUrl={mocks.getPublicUrl}
       onUpdateEmbeddingParams={mocks.onUpdateEmbeddingParams}
       onUpdateEnableEmbedding={mocks.onUpdateEnableEmbedding}
-      onClose={mocks.onClose}
       onCreatePublicLink={mocks.onCreatePublicLink}
-      onDisablePublicLink={mocks.onDisablePublicLink}
+      onDeletePublicLink={mocks.onDeletePublicLink}
     />,
     {
       storeInitialState: {
@@ -162,7 +163,7 @@ function setup({
 function openEmbedModal() {
   screen
     .getByRole("button", {
-      name: "Set up",
+      name: "Set this up",
     })
     .click();
 }

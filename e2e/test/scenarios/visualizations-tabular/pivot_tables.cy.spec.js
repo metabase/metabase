@@ -11,6 +11,8 @@ import {
   main,
   modal,
   getIframeBody,
+  openPublicLinkPopoverFromMenu,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -24,8 +26,6 @@ const {
   PEOPLE,
   REVIEWS,
   REVIEWS_ID,
-  ANALYTIC_EVENTS,
-  ANALYTIC_EVENTS_ID,
 } = SAMPLE_DATABASE;
 
 const QUESTION_NAME = "Cypress Pivot Table";
@@ -675,14 +675,12 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           cy.visit("collection/root");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(test.subject).click();
-          cy.icon("share").click();
         });
 
         it("should display pivot table in a public link", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Public link")
-            .parent()
-            .find("input")
+          openPublicLinkPopoverFromMenu();
+          cy.findByTestId("public-link-popover-content")
+            .findByTestId("public-link-input")
             .invoke("val")
             .then($value => {
               cy.visit($value);
@@ -702,8 +700,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/Embed in your application/).click();
+          openStaticEmbeddingModal();
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Publish").click();
@@ -1108,23 +1105,11 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       const query = {
         type: "query",
         query: {
-          "source-table": ANALYTIC_EVENTS_ID,
+          "source-table": PRODUCTS_ID,
           aggregation: [["count"]],
           breakout: [
-            [
-              "field",
-              ANALYTIC_EVENTS.BUTTON_LABEL,
-              { "base-type": "type/Text" },
-            ],
-            ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
-            [
-              "field",
-              ANALYTIC_EVENTS.TIMESTAMP,
-              { "base-type": "type/DateTime", "temporal-unit": "day" },
-            ],
-            ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
-            ["field", ANALYTIC_EVENTS.ACCOUNT_ID, { "base-type": "type/Text" }],
-            ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+            ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+            ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
           ],
         },
         database: SAMPLE_DB_ID,
@@ -1136,27 +1121,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         visualization_settings: {
           "pivot_table.column_split": {
             rows: [
-              ["field", ANALYTIC_EVENTS.PAGE_URL, { "base-type": "type/Text" }],
-              [
-                "field",
-                ANALYTIC_EVENTS.BUTTON_LABEL,
-                { "base-type": "type/Text" },
-              ],
-              [
-                "field",
-                ANALYTIC_EVENTS.ACCOUNT_ID,
-                { "base-type": "type/Text" },
-              ],
-              [
-                "field",
-                ANALYTIC_EVENTS.TIMESTAMP,
-                { "base-type": "type/DateTime", "temporal-unit": "day" },
-              ],
-              ["field", ANALYTIC_EVENTS.ID, { "base-type": "type/Text" }],
+              ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+              ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
             ],
-            columns: [
-              ["field", ANALYTIC_EVENTS.EVENT, { "base-type": "type/Text" }],
-            ],
+            columns: [["field", "count", { "base-type": "type/Integer" }]],
             values: [["aggregation", 0]],
           },
         },
@@ -1164,7 +1132,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       cy.findByTestId("question-row-count").should(
         "have.text",
-        "Showing first 52,711 rows",
+        "Showing 205 rows",
       );
 
       cy.findByTestId("qb-header-action-panel").findByText("Save").click();
@@ -1176,7 +1144,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       cy.findByTestId("question-row-count").should(
         "have.text",
-        "Showing first 52,711 rows",
+        "Showing 205 rows",
       );
     },
   );
