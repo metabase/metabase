@@ -9,6 +9,7 @@ import { Box } from "metabase/ui";
 import type { EmbedType } from "metabase/public/components/widgets/EmbeddingModal/EmbeddingModalContent.types";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ModalContentActionIcon } from "metabase/components/ModalContent";
+import { color } from "metabase/lib/colors";
 import { EmbedModalHeader } from "./EmbedModal.styled";
 
 export const EmbedModal = ({
@@ -30,6 +31,8 @@ export const EmbedModal = ({
   const [embedType, setEmbedType] = useState<EmbedType>(null);
   const applicationName = useSelector(getApplicationName);
 
+  const isEmbeddingStage = embedType === "application";
+
   const onEmbedClose = () => {
     MetabaseAnalytics.trackStructEvent("Sharing Modal", "Modal Closed");
     onClose();
@@ -40,13 +43,13 @@ export const EmbedModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onEmbedClose}
-      title={!embedType ? t`Embed ${applicationName}` : undefined}
+      title={!isEmbeddingStage ? t`Embed ${applicationName}` : undefined}
       fit
       formModal={false}
       {...modalProps}
     >
-      <Box bg="bg.0" h="100%">
-        {embedType && (
+      <Box bg={isEmbeddingStage ? color("white") : "bg.0"} h="100%">
+        {isEmbeddingStage && (
           <EmbedModalHeader onClose={onEmbedClose}>
             <ModalContentActionIcon
               name="chevronleft"

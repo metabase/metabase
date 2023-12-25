@@ -7,6 +7,7 @@ import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import Select, { Option } from "metabase/core/components/Select";
 import ParametersList from "metabase/parameters/components/ParametersList";
+import { Box, Divider } from "metabase/ui";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { EmbeddingModalContentSection } from "./EmbeddingModalContentSection";
@@ -80,57 +81,65 @@ export const EmbeddingModalContentParametersSettings = ({
   return (
     <SettingsTabLayout
       settingsSlot={
-        <>
-          <EmbeddingModalContentSection title={t`Enable or lock parameters`}>
-            {resourceParameters.length > 0 ? (
+        resourceParameters.length > 0 ? (
+          <>
+            <EmbeddingModalContentSection title={t`Enable or lock parameters`}>
               <p>{t`Enabling a parameter lets viewers interact with it. Locking one lets you pass it a value from your app while hiding it from viewers.`}</p>
-            ) : (
-              <p>{t`This ${resourceType} doesn't have any parameters to configure yet.`}</p>
-            )}
-            {resourceParameters.map(parameter => (
-              <div key={parameter.id} className="flex align-center my1">
-                <Icon
-                  name={getIconForParameter(parameter)}
-                  className="mr2"
-                  style={{ color: color("text-light") }}
-                />
-                <h3>{parameter.name}</h3>
-                <Select
-                  buttonProps={{
-                    "aria-label": parameter.name,
-                  }}
-                  className="ml-auto bg-white"
-                  value={embeddingParams[parameter.slug] || "disabled"}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                    onChangeEmbeddingParameters({
-                      ...embeddingParams,
-                      [parameter.slug]: e.target.value,
-                    })
-                  }
-                >
-                  <Option icon="close" value="disabled">{t`Disabled`}</Option>
-                  <Option icon="pencil" value="enabled">{t`Editable`}</Option>
-                  <Option icon="lock" value="locked">{t`Locked`}</Option>
-                </Select>
-              </div>
-            ))}
-          </EmbeddingModalContentSection>
 
-          {previewParameters.length > 0 && (
-            <EmbeddingModalContentSection title={t`Preview Locked Parameters`}>
-              <p>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</p>
-              {/* ParametersList has to be migrated to TS to cover optional props */}
-              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-              {/* @ts-ignore */}
-              <ParametersList
-                className="mt2"
-                vertical
-                parameters={valuePopulatedParameters}
-                setParameterValue={onChangeParameterValue}
-              />
+              {resourceParameters.map(parameter => (
+                <div key={parameter.id} className="flex align-center my1">
+                  <Icon
+                    name={getIconForParameter(parameter)}
+                    className="mr2"
+                    style={{ color: color("text-light") }}
+                  />
+                  <h3>{parameter.name}</h3>
+                  <Select
+                    buttonProps={{
+                      "aria-label": parameter.name,
+                    }}
+                    className="ml-auto bg-white"
+                    value={embeddingParams[parameter.slug] || "disabled"}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      onChangeEmbeddingParameters({
+                        ...embeddingParams,
+                        [parameter.slug]: e.target.value,
+                      })
+                    }
+                  >
+                    <Option icon="close" value="disabled">{t`Disabled`}</Option>
+                    <Option icon="pencil" value="enabled">{t`Editable`}</Option>
+                    <Option icon="lock" value="locked">{t`Locked`}</Option>
+                  </Select>
+                </div>
+              ))}
             </EmbeddingModalContentSection>
-          )}
-        </>
+
+            {previewParameters.length > 0 && (
+              <EmbeddingModalContentSection
+                title={t`Preview Locked Parameters`}
+              >
+                <p>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</p>
+                {/* ParametersList has to be migrated to TS to cover optional props */}
+                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                {/* @ts-ignore */}
+                <ParametersList
+                  className="mt2"
+                  vertical
+                  parameters={valuePopulatedParameters}
+                  setParameterValue={onChangeParameterValue}
+                />
+              </EmbeddingModalContentSection>
+            )}
+          </>
+        ) : (
+          <>
+            <Box mb="2rem">
+              {t`This ${resourceType} doesn't have any parameters to configure yet.`}
+            </Box>
+            <Divider />
+          </>
+        )
       }
       previewSlot={
         <>
