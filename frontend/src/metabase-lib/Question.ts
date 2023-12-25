@@ -1024,24 +1024,23 @@ class Question {
       return this;
     }
 
-    const mbqlFilters = this.parameters()
-      .map(parameter => {
-        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
-      })
+    const query = this._getMLv2Query();
+    const stageIndex = -1;
+    const filters = this.parameters()
+      .map(parameter =>
+        fieldFilterParameterToMBQLFilter(query, stageIndex, parameter),
+      )
       .filter(mbqlFilter => mbqlFilter != null);
 
-    const query = mbqlFilters.reduce((query, mbqlFilter) => {
-      return query.filter(mbqlFilter);
-    }, this.query());
-
-    const hasQueryBeenAltered = mbqlFilters.length > 0;
-
-    const question = query
-      .question()
+    const newQuery = filters.reduce((query, filter) => {
+      return ML.filter(query, stageIndex, filter);
+    }, query);
+    const newQuestion = this._setMLv2Query(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return hasQueryBeenAltered ? question.markDirty() : question;
+    const hasQueryBeenAltered = filters.length > 0;
+    return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
   _getMLv2Query(metadata = this._metadata): Query {
