@@ -3,8 +3,9 @@ import _ from "underscore";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+
+import { EmbeddingModalContentStatusBar } from "./EmbeddingModal/EmbeddingModalContentStatusBar";
 import type {
   ActivePreviewPane,
   EmbeddingDisplayOptions,
@@ -135,8 +136,22 @@ export const EmbedModalContent = (
     );
   }
 
+  const hasSettingsChanges = !_.isEqual(
+    resource.embedding_params,
+    embeddingParams,
+  );
+
   return (
     <div className="flex flex-column full-height">
+      <EmbeddingModalContentStatusBar
+        resourceType={resourceType}
+        isEmbeddingEnabled={resource.enable_embedding}
+        hasSettingsChanges={hasSettingsChanges}
+        onSave={handleSave}
+        onUnpublish={handleUnpublish}
+        onDiscard={handleDiscard}
+      />
+
       <div className="flex flex-full">
         <AdvancedEmbedPane
           pane={pane}
@@ -176,9 +191,6 @@ export const EmbedModalContent = (
             }))
           }
           onChangePane={setPane}
-          onSave={handleSave}
-          onUnpublish={handleUnpublish}
-          onDiscard={handleDiscard}
         />
       </div>
     </div>

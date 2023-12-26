@@ -34,4 +34,5 @@ export type EmbeddingDisplayOptions = {
   theme: null | string;
   bordered: boolean;
   titled: boolean;
+  hide_download_button?: true | null;
 };

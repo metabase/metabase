@@ -58,7 +58,7 @@ export const EmbeddingModalContentOverviewSettings = ({
       }
       previewSlot={
         <EmbedCodePane
-          className="flex-full"
+          className="flex-full w-full"
           embedType={embedType}
           resource={resource}
           resourceType={resourceType}
@@ -68,6 +68,7 @@ export const EmbeddingModalContentOverviewSettings = ({
           secretKey={secretKey}
           params={params}
           displayOptions={displayOptions}
+          withExamplesLink
         />
       }
     />

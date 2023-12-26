@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { Tabs } from "metabase/ui";
 import { EmbeddingModalContentParametersSettings } from "./EmbeddingModal/EmbeddingModalContentParametersSettings";
 import { EmbeddingModalContentAppearanceSettings } from "./EmbeddingModal/EmbeddingModalContentAppearanceSettings";
-import { EmbeddingModalContentStatusBar } from "./EmbeddingModal/EmbeddingModalContentStatusBar";
 import { EmbeddingModalContentOverviewSettings } from "./EmbeddingModal/EmbeddingModalContentOverviewSettings";
 
 const TABS = {
@@ -33,29 +32,13 @@ const AdvancedEmbedPane = ({
   onChangeEmbeddingParameters,
   onChangeParameterValue,
   onChangePane,
-  onSave,
-  onUnpublish,
-  onDiscard,
 }) => {
-  const hasSettingsChanges = !_.isEqual(
-    resource.embedding_params,
-    embeddingParams,
-  );
-
   return (
     <div className="full flex">
       <div
         className="flex-full flex flex-column"
         data-testid="embedding-preview"
       >
-        <EmbeddingModalContentStatusBar
-          resourceType={resourceType}
-          isEmbeddingEnabled={resource.enable_embedding}
-          hasSettingsChanges={hasSettingsChanges}
-          onSave={onSave}
-          onUnpublish={onUnpublish}
-          onDiscard={onDiscard}
-        />
         <Tabs defaultValue={TABS.Overview}>
           <Tabs.List p="0 1.5rem">
             <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>

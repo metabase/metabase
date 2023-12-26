@@ -1,13 +1,15 @@
 import { jt, t } from "ttag";
-import ToggleLarge from "metabase/components/ToggleLarge";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
 import EmbedCodePane from "metabase/public/components/widgets/EmbedCodePane";
-import DisplayOptionsPane from "metabase/public/components/widgets/DisplayOptionsPane";
-import { Text } from "metabase/ui";
+import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl } from "metabase/selectors/settings";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
+import Select from "metabase/core/components/Select";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 
+import { color } from "metabase/lib/colors";
 import type {
   ActivePreviewPane,
   EmbeddingDisplayOptions,
@@ -16,8 +18,19 @@ import type {
   EmbedResourceType,
   EmbedType,
 } from "./EmbeddingModalContent.types";
-import { SettingsTabLayout } from "./EmbeddingModalContent.styled";
+import {
+  CodePreviewControlOptions,
+  DisplayOptionSection,
+  SettingsTabLayout,
+} from "./EmbeddingModalContent.styled";
 import { EmbeddingModalContentSection } from "./EmbeddingModalContentSection";
+
+const THEME_OPTIONS = [
+  { label: t`Light`, value: "light" },
+  { label: t`Dark`, value: "night" },
+  { label: t`Transparent`, value: "transparent" },
+];
+const DEFAULT_THEME = THEME_OPTIONS[0].value;
 
 interface EmbeddingModalContentAppearanceSettingsProps {
   activePane: ActivePreviewPane;
@@ -54,13 +67,12 @@ export const EmbeddingModalContentAppearanceSettings = ({
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
+  const canWhitelabel = useSelector(PLUGIN_SELECTORS.canWhitelabel);
+  const availableFonts = useSelector(state =>
+    getSetting(state, "available-fonts"),
+  );
 
-  const embeddingAppearanceDocsLink = (
-    <ExternalLink key="doc" href={docsUrl}>{t`documentation`}</ExternalLink>
-  );
-  const removeBannerDocsLink = (
-    <ExternalLink key="doc" href={docsUrl}>{t`a paid plan`}</ExternalLink>
-  );
+  const fontControlLabelId = useUniqueId("display-option");
 
   return (
     <SettingsTabLayout
@@ -69,39 +81,151 @@ export const EmbeddingModalContentAppearanceSettings = ({
           <EmbeddingModalContentSection
             title={t`Customizing your embed’s appearance`}
           >
-            <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${embeddingAppearanceDocsLink} for more.`}</Text>
-          </EmbeddingModalContentSection>
-          <EmbeddingModalContentSection title={t`Play with the options here`}>
-            <DisplayOptionsPane
-              className="pt1"
-              displayOptions={displayOptions}
-              onChangeDisplayOptions={onChangeDisplayOptions}
-              // We only show the "Download Data" toggle if the users are pro/enterprise
-              // and they're sharing a question metabase#23477
-              showDownloadDataButtonVisibilityToggle={
-                resourceType === "question"
-              }
-            />
+            <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
+              <ExternalLink
+                key="doc"
+                href={docsUrl}
+              >{t`documentation`}</ExternalLink>
+            )} for more.`}</Text>
           </EmbeddingModalContentSection>
           <EmbeddingModalContentSection
-            title={t`Removing the “Powered by Metabase” banner`}
+            title={t`Play with the options here`}
+            mt="2rem"
           >
-            <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${removeBannerDocsLink} to remove the banner.`}</Text>
+            <Stack spacing="1rem">
+              <DisplayOptionSection title={t`Background`}>
+                <SegmentedControl
+                  value={displayOptions.theme || DEFAULT_THEME}
+                  data={THEME_OPTIONS}
+                  fullWidth
+                  bg={color("bg-light")}
+                  onChange={value => {
+                    const newValue = value === DEFAULT_THEME ? null : value;
+
+                    onChangeDisplayOptions({
+                      ...displayOptions,
+                      theme: newValue,
+                    });
+                  }}
+                />
+              </DisplayOptionSection>
+
+              <Switch
+                label={t`Dashboard title`}
+                labelPosition="left"
+                size="sm"
+                variant="stretch"
+                checked={displayOptions.titled}
+                onChange={e =>
+                  onChangeDisplayOptions({
+                    ...displayOptions,
+                    titled: e.target.checked,
+                  })
+                }
+              />
+
+              <Switch
+                label={t`Border`}
+                labelPosition="left"
+                size="sm"
+                variant="stretch"
+                checked={displayOptions.bordered}
+                onChange={e =>
+                  onChangeDisplayOptions({
+                    ...displayOptions,
+                    bordered: e.target.checked,
+                  })
+                }
+              />
+
+              <DisplayOptionSection
+                title={t`Font`}
+                titleId={fontControlLabelId}
+              >
+                {canWhitelabel ? (
+                  <Select
+                    value={displayOptions.font}
+                    options={[
+                      {
+                        name: t`Use instance font`,
+                        value: null,
+                      },
+                      ...availableFonts?.map(font => ({
+                        name: font,
+                        value: font,
+                      })),
+                    ]}
+                    buttonProps={{
+                      "aria-labelledby": fontControlLabelId,
+                    }}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                      onChangeDisplayOptions({
+                        ...displayOptions,
+                        font: e.target.value,
+                      });
+                    }}
+                  />
+                ) : (
+                  <Text>{jt`You can change the font with ${(
+                    <ExternalLink href="https://www.metabase.com/pricing/">{t`a paid plan`}</ExternalLink>
+                  )}.`}</Text>
+                )}
+              </DisplayOptionSection>
+
+              {canWhitelabel && (
+                <>
+                  {
+                    // We only show the "Download Data" toggle if the users are pro/enterprise
+                    // and they're sharing a question metabase#23477
+                    resourceType === "question" && (
+                      <DisplayOptionSection title={t`Download data`}>
+                        <Switch
+                          label={t`Enable users to download data from this embed?`}
+                          labelPosition="left"
+                          size="sm"
+                          variant="stretch"
+                          checked={!displayOptions.hide_download_button}
+                          onChange={e =>
+                            onChangeDisplayOptions({
+                              ...displayOptions,
+                              hide_download_button: !e.target.checked
+                                ? true
+                                : null,
+                            })
+                          }
+                        />
+                      </DisplayOptionSection>
+                    )
+                  }
+                </>
+              )}
+            </Stack>
           </EmbeddingModalContentSection>
+          {!canWhitelabel && (
+            <>
+              <Divider my="2rem" />
+              <EmbeddingModalContentSection
+                title={t`Removing the “Powered by Metabase” banner`}
+              >
+                <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
+                  <ExternalLink
+                    key="doc"
+                    href="https://www.metabase.com/pricing/"
+                  >{t`a paid plan`}</ExternalLink>
+                )} to remove the banner.`}</Text>
+              </EmbeddingModalContentSection>
+            </>
+          )}
         </>
       }
       previewSlot={
         <>
-          <ToggleLarge
-            className="mb2 flex-no-shrink"
-            style={{ width: 244, height: 34 }}
-            value={activePane === "code"}
-            textLeft={t`Code`}
-            textRight={t`Preview`}
-            onChange={() =>
-              onChangePane(activePane === "preview" ? "code" : "preview")
-            }
+          <SegmentedControl
+            value={activePane}
+            data={CodePreviewControlOptions}
+            onChange={onChangePane}
           />
+
           {activePane === "preview" ? (
             <PreviewPane
               className="flex-full"
@@ -110,7 +234,7 @@ export const EmbeddingModalContentAppearanceSettings = ({
             />
           ) : activePane === "code" ? (
             <EmbedCodePane
-              className="flex-full"
+              className="flex-full w-full"
               embedType={embedType}
               resource={resource}
               resourceType={resourceType}

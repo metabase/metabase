@@ -1,13 +1,12 @@
 import { t } from "ttag";
 import { useMemo } from "react";
-import ToggleLarge from "metabase/components/ToggleLarge";
 import PreviewPane from "metabase/public/components/widgets/PreviewPane";
 import EmbedCodePane from "metabase/public/components/widgets/EmbedCodePane";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import Select, { Option } from "metabase/core/components/Select";
-import ParametersList from "metabase/parameters/components/ParametersList";
-import { Box, Divider } from "metabase/ui";
+import { Box, Divider, SegmentedControl, Stack, Text } from "metabase/ui";
+import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import { EmbeddingModalContentSection } from "./EmbeddingModalContentSection";
@@ -22,7 +21,10 @@ import type {
   EmbedType,
   EmbedResourceParameterWithValue,
 } from "./EmbeddingModalContent.types";
-import { SettingsTabLayout } from "./EmbeddingModalContent.styled";
+import {
+  CodePreviewControlOptions,
+  SettingsTabLayout,
+} from "./EmbeddingModalContent.styled";
 
 interface EmbeddingModalContentParametersSettingsProps {
   activePane: ActivePreviewPane;
@@ -84,52 +86,68 @@ export const EmbeddingModalContentParametersSettings = ({
         resourceParameters.length > 0 ? (
           <>
             <EmbeddingModalContentSection title={t`Enable or lock parameters`}>
-              <p>{t`Enabling a parameter lets viewers interact with it. Locking one lets you pass it a value from your app while hiding it from viewers.`}</p>
+              <Stack spacing="1rem">
+                <Text>{t`Enabling a parameter lets viewers interact with it. Locking one lets you pass it a value from your app while hiding it from viewers.`}</Text>
 
-              {resourceParameters.map(parameter => (
-                <div key={parameter.id} className="flex align-center my1">
-                  <Icon
-                    name={getIconForParameter(parameter)}
-                    className="mr2"
-                    style={{ color: color("text-light") }}
-                  />
-                  <h3>{parameter.name}</h3>
-                  <Select
-                    buttonProps={{
-                      "aria-label": parameter.name,
-                    }}
-                    className="ml-auto bg-white"
-                    value={embeddingParams[parameter.slug] || "disabled"}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                      onChangeEmbeddingParameters({
-                        ...embeddingParams,
-                        [parameter.slug]: e.target.value,
-                      })
-                    }
-                  >
-                    <Option icon="close" value="disabled">{t`Disabled`}</Option>
-                    <Option icon="pencil" value="enabled">{t`Editable`}</Option>
-                    <Option icon="lock" value="locked">{t`Locked`}</Option>
-                  </Select>
-                </div>
-              ))}
+                {resourceParameters.map(parameter => (
+                  <div key={parameter.id} className="flex align-center">
+                    <Icon
+                      name={getIconForParameter(parameter)}
+                      className="mr2"
+                      style={{ color: color("text-light") }}
+                    />
+                    <h3>{parameter.name}</h3>
+                    <Select
+                      buttonProps={{
+                        "aria-label": parameter.name,
+                      }}
+                      className="ml-auto bg-white"
+                      value={embeddingParams[parameter.slug] || "disabled"}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        onChangeEmbeddingParameters({
+                          ...embeddingParams,
+                          [parameter.slug]: e.target.value,
+                        })
+                      }
+                    >
+                      <Option
+                        icon="close"
+                        value="disabled"
+                      >{t`Disabled`}</Option>
+                      <Option
+                        icon="pencil"
+                        value="enabled"
+                      >{t`Editable`}</Option>
+                      <Option icon="lock" value="locked">{t`Locked`}</Option>
+                    </Select>
+                  </div>
+                ))}
+              </Stack>
             </EmbeddingModalContentSection>
 
             {previewParameters.length > 0 && (
-              <EmbeddingModalContentSection
-                title={t`Preview Locked Parameters`}
-              >
-                <p>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</p>
-                {/* ParametersList has to be migrated to TS to cover optional props */}
-                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                {/* @ts-ignore */}
-                <ParametersList
-                  className="mt2"
-                  vertical
-                  parameters={valuePopulatedParameters}
-                  setParameterValue={onChangeParameterValue}
-                />
-              </EmbeddingModalContentSection>
+              <>
+                <Divider my="2rem" />
+                <EmbeddingModalContentSection
+                  title={t`Preview locked parameters`}
+                >
+                  <Stack spacing="1rem">
+                    <Text>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</Text>
+
+                    {valuePopulatedParameters.map(parameter => (
+                      <StaticParameterWidget
+                        key={parameter.id}
+                        className="m0"
+                        parameter={parameter}
+                        parameters={valuePopulatedParameters}
+                        setValue={(value: string) =>
+                          onChangeParameterValue(parameter.id, value)
+                        }
+                      />
+                    ))}
+                  </Stack>
+                </EmbeddingModalContentSection>
+              </>
             )}
           </>
         ) : (
@@ -143,16 +161,12 @@ export const EmbeddingModalContentParametersSettings = ({
       }
       previewSlot={
         <>
-          <ToggleLarge
-            className="mb2 flex-no-shrink"
-            style={{ width: 244, height: 34 }}
-            value={activePane === "code"}
-            textLeft={t`Code`}
-            textRight={t`Preview`}
-            onChange={() =>
-              onChangePane(activePane === "preview" ? "code" : "preview")
-            }
+          <SegmentedControl
+            value={activePane}
+            data={CodePreviewControlOptions}
+            onChange={onChangePane}
           />
+
           {activePane === "preview" ? (
             <PreviewPane
               className="flex-full"
@@ -161,7 +175,7 @@ export const EmbeddingModalContentParametersSettings = ({
             />
           ) : activePane === "code" ? (
             <EmbedCodePane
-              className="flex-full"
+              className="flex-full w-full"
               embedType={embedType}
               resource={resource}
               resourceType={resourceType}

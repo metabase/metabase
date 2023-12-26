@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 import type { ReactNode } from "react";
 import { color } from "metabase/lib/colors";
+import { Box, Center, Text } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
 
 const ContentWrapper = styled.div`
   width: 100%;
@@ -22,6 +24,13 @@ const PreviewAreaBlock = styled.div`
   width: 100%;
   min-width: 810px;
 
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: stretch;
+
+  gap: 1rem;
+
   padding: 0.5rem 1.5rem 2rem;
   background-color: ${color("bg-light")};
 `;
@@ -40,3 +49,41 @@ export const SettingsTabLayout = ({
     </ContentWrapper>
   );
 };
+
+export const CodePreviewControlOptions = [
+  {
+    label: (
+      <Center>
+        <Icon name="embed" />
+        <Box ml="0.5rem">Code</Box>
+      </Center>
+    ),
+    value: "code",
+  },
+  {
+    label: (
+      <Center>
+        <Icon name="eye_filled" />
+        <Box ml="0.5rem">Preview</Box>
+      </Center>
+    ),
+    value: "preview",
+  },
+];
+
+export const DisplayOptionSection = ({
+  title,
+  titleId,
+  children,
+}: {
+  title: string;
+  titleId?: string;
+  children: React.ReactNode;
+}) => (
+  <div>
+    <Text fw="bold" mb="0.25rem" lh="1rem" id={titleId}>
+      {title}
+    </Text>
+    {children}
+  </div>
+);
