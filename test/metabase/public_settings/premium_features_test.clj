@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]
+   [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.user :refer [User]]

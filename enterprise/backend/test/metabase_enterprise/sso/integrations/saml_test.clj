@@ -31,17 +31,20 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
-(defn- disable-other-sso-types [thunk]
+(defn- disable-other-sso-types! [thunk]
   (classloader/require 'metabase.api.ldap)
   (let [current-features (premium-features/*token-features*)]
     ;; The :sso-jwt token is needed to set the jwt-enabled setting
-    (mt/with-premium-features #{:sso-jwt}
-      (mt/with-temporary-setting-values [ldap-enabled false
-                                         jwt-enabled  false]
-        (mt/with-premium-features current-features
-          (thunk))))))
+    (mt/with-test-helpers-set-global-values!
+      (mt/with-premium-features #{:sso-jwt}
+        (mt/with-temporary-setting-values [ldap-enabled false
+                                           jwt-enabled  false]
+          (premium-features-test/with-premium-features current-features
+            (thunk)))))))
 
-(use-fixtures :each disable-other-sso-types)
+(comment
+ ;; maybe we'll need it later
+ disable-other-sso-types!)
 
 (def ^:private default-idp-uri            "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri       "http://localhost:3000/test")
@@ -78,12 +81,12 @@
 (defmacro with-saml-default-setup [& body]
   ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
   `(mt/with-test-helpers-set-global-values!
-    (mt/with-additional-premium-features #{:sso-saml}
-      (call-with-login-attributes-cleared!
-       (fn []
-         (call-with-default-saml-config
-          (fn []
-            ~@body)))))))
+     (mt/with-additional-premium-features #{:sso-saml}
+       (call-with-login-attributes-cleared!
+         (fn []
+           (call-with-default-saml-config
+            (fn []
+              ~@body)))))))
 
 (defn client
   "Same as `client/client` but doesn't include the `/api` in the URL prefix"
@@ -433,11 +436,12 @@
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
-    (mt/with-premium-features #{:audit-app}
-      (do-with-some-validators-disabled
-        (fn []
-          (with-saml-default-setup
-            (try
+    (mt/with-test-helpers-set-global-values!
+      (mt/with-premium-features #{:audit-app}
+        (do-with-some-validators-disabled
+         (fn []
+           (with-saml-default-setup
+             (try
               (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
               (let [req-options (saml-post-request-options (new-user-saml-test-response)
                                                            (saml/str->base64 default-redirect-uri))]
@@ -468,7 +472,7 @@
                 (is (= (some-saml-attributes "newuser")
                        (saml-login-attributes "newuser@metabase.com"))))
               (finally
-                (t2/delete! User :%lower.email "newuser@metabase.com")))))))))
+               (t2/delete! User :%lower.email "newuser@metabase.com"))))))))))
 
 (deftest login-update-account-test
   (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
