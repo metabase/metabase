@@ -39,7 +39,7 @@
       (mt/with-premium-features #{:sso-jwt}
         (mt/with-temporary-setting-values [ldap-enabled false
                                            jwt-enabled  false]
-          (premium-features-test/with-premium-features current-features
+          (mt/with-premium-features current-features
             (thunk)))))))
 
 (comment
