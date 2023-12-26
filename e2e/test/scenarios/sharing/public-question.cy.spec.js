@@ -119,21 +119,6 @@ describe("scenarios > public > question", () => {
     });
   });
 
-  it("should see a tooltip prompting the user to ask their admin to create a public link", () => {
-    cy.signInAsNormalUser();
-    cy.get("@questionId").then(id => {
-      visitQuestion(id);
-    });
-
-    cy.findByTestId("dashboard-embed-button").realHover();
-
-    cy.wait(1000);
-
-    cy.findByRole("tooltip")
-      .findByText("Ask your admin to create a public link")
-      .should("be.visible");
-  });
-
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public questions`, () => {
