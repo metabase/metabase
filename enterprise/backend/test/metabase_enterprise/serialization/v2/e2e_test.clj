@@ -20,7 +20,6 @@
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -703,7 +702,7 @@
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{:serialization}
+      (mt/with-premium-features #{:serialization}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation
@@ -720,7 +719,7 @@
 
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation

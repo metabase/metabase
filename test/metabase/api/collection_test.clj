@@ -16,8 +16,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -838,7 +836,7 @@
                         (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
 
         (testing "Snippets in nested collections should be returned as a flat list on OSS"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
              (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
                                                                          :name      "Nested Snippet Collection"
                                                                          :location  (collection/location-path collection)}

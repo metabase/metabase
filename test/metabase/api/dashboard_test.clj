@@ -40,8 +40,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -3865,7 +3863,7 @@
                                          dashboard-id
                                          dashcard-id)]
                 (testing "with :advanced-permissions feature flag"
-                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                  (mt/with-premium-features #{:advanced-permissions}
                     (testing "for non-magic group"
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)

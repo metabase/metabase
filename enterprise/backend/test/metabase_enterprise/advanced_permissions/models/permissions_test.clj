@@ -7,7 +7,6 @@
    [metabase.models.database :as database]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -24,7 +23,7 @@
 (deftest update-db-download-permissions-test
   (mt/with-model-cleanup [Permissions]
     (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-      (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:advanced-permissions}
         (testing "Download perms for all schemas can be set and revoked"
           (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full})
           (is (= {:schemas :full, :native :full}
@@ -143,7 +142,7 @@
           (@#'perms/update-db-data-access-permissions! group-id (mt/id) {:schemas :block})
           (is (= nil (download-perms-by-group-id group-id)))))
 
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -191,7 +190,7 @@
               graph {:schemas {"PUBLIC"
                                (-> (into {} (for [id table-ids] [id :full]))
                                    (assoc limited-downloads-id :limited))}}]
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (@#'ee-perms/update-db-download-permissions! (u/the-id (perms-group/all-users)) db-id graph))
           (is (= :limited (all-users-native-download-perms)))
           (replace-tables ["Table 1" "Table 2" "Table 3" "Table 4"])
@@ -215,7 +214,7 @@
 (deftest update-db-data-model-permissions-test
   (mt/with-model-cleanup [Permissions]
     (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-      (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:advanced-permissions}
         (testing "Data model perms for an entire DB can be set and revoked"
           (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all})
           (is (= {:schemas :all}
@@ -253,7 +252,7 @@
                                                                                        id-4 :none}}})
               (is (nil? (data-model-perms-by-group-id group-id)))))))
 
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (testing "Data model permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -270,7 +269,7 @@
 (deftest update-db-details-permissions-test
   (mt/with-model-cleanup [Permissions]
     (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-      (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:advanced-permissions}
             (testing "Detail perms for a DB can be set and revoked"
               (ee-perms/update-db-details-permissions! group-id (mt/id) :yes)
               (is (= :yes (details-perms-by-group-id group-id)))
@@ -278,7 +277,7 @@
               (ee-perms/update-db-details-permissions! group-id (mt/id) :no)
               (is (nil? (details-perms-by-group-id group-id)))))
 
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (testing "Detail permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
@@ -295,7 +294,7 @@
 (deftest update-db-execute-permissions-test
   (mt/with-model-cleanup [Permissions]
     (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
-      (premium-features-test/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:advanced-permissions}
         (testing "Execute perms for a DB can be set and revoked"
           (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
           (is (= :all (execute-perms-by-group-id group-id)))
@@ -303,7 +302,7 @@
           (ee-perms/update-db-execute-permissions! group-id (mt/id) :none)
           (is (nil? (execute-perms-by-group-id group-id)))))
 
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (testing "Execute permissions cannot be modified without the :advanced-permissions feature flag"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo

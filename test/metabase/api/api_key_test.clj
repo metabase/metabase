@@ -5,7 +5,6 @@
    [metabase.http-client :as client]
    [metabase.models.api-key :as api-key]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -210,7 +209,7 @@
                   (mt/user-http-request :crowberto :get 200 "api-key")))))))
 
 (deftest api-key-operations-are-audit-logged
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (mt/with-empty-h2-app-db
       (t2.with-temp/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
                                :model/PermissionsGroup {group-id-2 :id} {:name "Less Cool Friends"}]

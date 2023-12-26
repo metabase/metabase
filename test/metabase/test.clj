@@ -37,6 +37,7 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
+   [metabase.test.util.public-settings :as tu.public-setings]
    [metabase.test.util.random :as tu.random]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
@@ -82,6 +83,7 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
+  tu.public-setings/keep-me
   tu.random/keep-me
   tu/keep-me
   tx.env/keep-me
@@ -262,6 +264,10 @@
   test-qp-middleware
   with-clock
   with-single-admin-user]
+
+ [tu.public-setings
+  with-premium-features
+  with-additional-premium-features]
 
  [tu.random
   random-name

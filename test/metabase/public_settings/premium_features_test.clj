@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clj-http.fake :as http-fake]
-   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
@@ -13,44 +12,8 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
-
-(defn do-with-premium-features
-  "Impl for [[with-premium-features]] and [[with-additional-premium-features]]."
-  [features thunk]
-  (let [features (set (map name features))]
-    (testing (format "\nWith premium token features = %s" (pr-str features))
-      (if tu.thread-local/*thread-local*
-        (binding [premium-features/*token-features* (constantly features)]
-          (thunk))
-        (with-redefs [premium-features/*token-features* (constantly features)]
-          (thunk))))))
-
-(defmacro with-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use testing
-  feature-flagging.
-
-    (with-premium-features #{:audit-app}
-      ;; audit app will be enabled for body, but no other premium features
-      ...)"
-  {:style/indent 1}
-  [features & body]
-  `(do-with-premium-features ~features (^:once fn* [] ~@body)))
-
-(defmacro with-additional-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
-  the current feature set. Intended for use testing feature-flagging, if you don't want to override other features
-  that are already enabled.
-
-    (with-additional-premium-features #{:audit-app}
-      ;; audit app will be enabled for body, as well as any that are already enabled
-      ...)"
-  {:style/indent 1}
-  [features & body]
-  `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
-                             (^:once fn* [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]
@@ -170,20 +133,20 @@
                (greeting :rasta))))
 
       (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-        (with-premium-features #{:special-greeting}
+        (mt/with-premium-features #{:special-greeting}
           (is (= "Hi rasta, you're an extra special EE customer!"
                  (special-greeting :rasta))))
 
-        (with-premium-features #{}
+        (mt/with-premium-features #{}
           (is (= "Hi rasta, you're not extra special :("
                  (special-greeting :rasta)))))
 
       (testing "when :fallback is a function, it is run when the required token is not present"
-        (with-premium-features #{:special-greeting}
+        (mt/with-premium-features #{:special-greeting}
           (is (= "Hi rasta, you're an extra special EE customer!"
                  (special-greeting-or-custom :rasta))))
 
-        (with-premium-features #{}
+        (mt/with-premium-features #{}
           (is (= "Hi rasta, you're an EE customer but not extra special."
                  (special-greeting-or-custom :rasta))))))))
 
@@ -238,7 +201,7 @@
       (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
              (greeting-with-invalid-oss-return-schema :rasta)))
 
-      (with-premium-features #{:custom-feature}
+      (mt/with-premium-features #{:custom-feature}
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid output: \[\"should be a keyword\"\]"
                               (greeting-with-invalid-ee-return-schema :rasta)))))

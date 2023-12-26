@@ -9,8 +9,6 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
@@ -24,7 +22,7 @@
         db-id                        (u/the-id db-or-id)
         current-download-perms-graph (get-in (perms/data-perms-graph)
                                              [:groups all-users-group-id db-id :download])]
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (ee.perms/update-db-download-permissions! all-users-group-id db-id graph)
       (try
         (f)
