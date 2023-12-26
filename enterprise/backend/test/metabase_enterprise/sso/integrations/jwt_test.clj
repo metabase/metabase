@@ -56,7 +56,7 @@
       ~@body)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
-  `(mt/with-ensure-with-temp-no-transaction!
+  `(mt/with-test-helpers-set-global-values!
      (premium-features-test/with-premium-features #{:audit-app}
        (disable-other-sso-types
         (fn []

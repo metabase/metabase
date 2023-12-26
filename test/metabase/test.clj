@@ -38,6 +38,7 @@
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
    [metabase.test.util.random :as tu.random]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
@@ -211,10 +212,6 @@
   with-temp
   with-temp-defaults]
 
- [test.redefs
-  with-temp!
-  with-ensure-with-temp-no-transaction!]
-
  [tu
   boolean-ids-and-timestamps
   call-with-paused-query
@@ -271,6 +268,9 @@
   random-hash
   random-email]
 
+ [tu.thread-local
+  with-test-helpers-set-global-values!]
+
  [test.tz
   with-system-timezone-id]
 
@@ -301,4 +301,4 @@
 ;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
 (p/import-fn hawk.approx/malli malli=?)
 
-(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
+(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, wraps the [[with-temp]] with [[mt/with-test-helpers-set-global-values!]]\n"))
