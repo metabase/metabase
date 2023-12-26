@@ -5,6 +5,7 @@
    [clj-http.fake :as http-fake]
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [mb.hawk.parallel]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.user :refer [User]]
@@ -26,6 +27,7 @@
         (binding [premium-features/*token-features* (constantly features)]
           (thunk))
         (with-redefs [premium-features/*token-features* (constantly features)]
+          (mb.hawk.parallel/assert-test-is-not-parallel `do-with-premium-features)
           (thunk))))))
 
 (defmacro with-premium-features

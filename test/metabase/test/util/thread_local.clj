@@ -13,8 +13,8 @@
   (if-not *thread-local*
     (thunk)
     (binding [*thread-local* false]
-      (mb.hawk.parallel/assert-test-is-not-parallel `test-helpers-set-global-values!)
-      (t/testing (u/colorize :red "\n\n***** metabase.test/test-helpers-set-global-values! ENABLED, TEST HELPERS THAT SUPPORT IT WILL SET VALUES GLOBALLY ***\n\n")
+      (mb.hawk.parallel/assert-test-is-not-parallel `with-test-helpers-set-global-values!)
+      (t/testing (u/colorize :red "\n\n***** metabase.test/with-test-helpers-set-global-values! ENABLED, TEST HELPERS THAT SUPPORT IT WILL SET VALUES GLOBALLY ***\n\n")
         (thunk)))))
 
 (defmacro with-test-helpers-set-global-values!
