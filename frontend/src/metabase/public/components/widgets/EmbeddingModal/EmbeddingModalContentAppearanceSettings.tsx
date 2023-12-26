@@ -172,32 +172,24 @@ export const EmbeddingModalContentAppearanceSettings = ({
                 )}
               </DisplayOptionSection>
 
-              {canWhitelabel && (
-                <>
-                  {
-                    // We only show the "Download Data" toggle if the users are pro/enterprise
-                    // and they're sharing a question metabase#23477
-                    resourceType === "question" && (
-                      <DisplayOptionSection title={t`Download data`}>
-                        <Switch
-                          label={t`Enable users to download data from this embed?`}
-                          labelPosition="left"
-                          size="sm"
-                          variant="stretch"
-                          checked={!displayOptions.hide_download_button}
-                          onChange={e =>
-                            onChangeDisplayOptions({
-                              ...displayOptions,
-                              hide_download_button: !e.target.checked
-                                ? true
-                                : null,
-                            })
-                          }
-                        />
-                      </DisplayOptionSection>
-                    )
-                  }
-                </>
+              {canWhitelabel && resourceType === "question" && (
+                // We only show the "Download Data" toggle if the users are pro/enterprise
+                // and they're sharing a question metabase#23477
+                <DisplayOptionSection title={t`Download data`}>
+                  <Switch
+                    label={t`Enable users to download data from this embed?`}
+                    labelPosition="left"
+                    size="sm"
+                    variant="stretch"
+                    checked={!displayOptions.hide_download_button}
+                    onChange={e =>
+                      onChangeDisplayOptions({
+                        ...displayOptions,
+                        hide_download_button: !e.target.checked ? true : null,
+                      })
+                    }
+                  />
+                </DisplayOptionSection>
               )}
             </Stack>
           </EmbeddingModalContentSection>
