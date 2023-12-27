@@ -2684,10 +2684,10 @@
     redux-thunk "^2.4.2"
     reselect "^4.1.7"
 
-"@replayio/cypress@^1.7.10":
-  version "1.7.10"
-  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.10.tgz#5788799684a68c01653009e8c278937d1516d3b1"
-  integrity sha512-B3ChgiAgSuN33vuxjCr949/WixHgBPkz4LuZjepCgNy4f68hXZH+5IDmP3N+DehHXvQ2msZWpm/mODXcLtGQQw==
+"@replayio/cypress@^1.7.11":
+  version "1.7.11"
+  resolved "https://registry.yarnpkg.com/@replayio/cypress/-/cypress-1.7.11.tgz#bbe5747bd3477477ab17e02ad27c27949b6c4137"
+  integrity sha512-G86CTTwsiUwpni0pojXOfCJZttp2sS2neEDaoD4wT2xU+8/Jl+g5O6mDZx6WrEHceiOaDxYdpVLuJyIOT8RZpA==
   dependencies:
     "@replayio/replay" "^0.20.1"
     "@replayio/test-utils" "^1.3.8"
