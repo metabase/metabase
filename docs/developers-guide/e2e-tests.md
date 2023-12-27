@@ -99,6 +99,19 @@ Tests that depend on Snowplow expect a running server. To run them, you need to:
 - run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
 - pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
 
+### Cypress comes with `Lodash` for free
+
+We don't need to have [Lodash](https://lodash.com/) in our direct dependencies to be able to [use it with Cypress](https://docs.cypress.io/api/utilities/_). It is aliased with an underscore and its methods can be accessed with `Cypress._.method()`. We can use `_.times` method to stress-test a certain test (or a set of tests) locally.
+
+```js
+// Run the test N times
+Cypress._.times(N, ()=> {
+  it("should foo", ()=> {
+    // ...
+  });
+});
+```
+
 ## DB Snapshots
 
 At the beginning of each test suite we wipe the backend's db and settings cache. This ensures that the test suite starts in a predictable state.
