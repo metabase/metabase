@@ -31,10 +31,11 @@ interface ValidateFilterCase {
 describe("useNumberFilter", () => {
   const defaultQuery = createQuery();
   const stageIndex = 0;
-  const column = columnFinder(
-    defaultQuery,
-    Lib.filterableColumns(defaultQuery, stageIndex),
-  )("ORDERS", "TOTAL");
+  const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
+  const column = columnFinder(defaultQuery, availableColumns)(
+    "ORDERS",
+    "TOTAL",
+  );
 
   it.each<CreateFilterCase>([
     {
@@ -168,6 +169,10 @@ describe("useNumberFilter", () => {
     {
       operator: "=",
       values: [],
+    },
+    {
+      operator: ">",
+      values: [""],
     },
     {
       operator: "between",

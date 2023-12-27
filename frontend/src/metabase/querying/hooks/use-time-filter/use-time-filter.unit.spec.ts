@@ -64,10 +64,11 @@ const METADATA = createMockMetadata({
 describe("useTimeFilter", () => {
   const defaultQuery = createQuery({ metadata: METADATA });
   const stageIndex = 0;
-  const column = columnFinder(
-    defaultQuery,
-    Lib.filterableColumns(defaultQuery, stageIndex),
-  )("ORDERS", TIME_FIELD.name);
+  const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
+  const column = columnFinder(defaultQuery, availableColumns)(
+    "ORDERS",
+    TIME_FIELD.name,
+  );
 
   it.each<CreateFilterCase>([
     {

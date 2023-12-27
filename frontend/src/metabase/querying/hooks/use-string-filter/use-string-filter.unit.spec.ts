@@ -26,10 +26,11 @@ interface ValidateFilterCase {
 describe("useStringFilter", () => {
   const defaultQuery = Lib.withDifferentTable(createQuery(), PRODUCTS_ID);
   const stageIndex = 0;
-  const column = columnFinder(
-    defaultQuery,
-    Lib.filterableColumns(defaultQuery, stageIndex),
-  )("PRODUCTS", "CATEGORY");
+  const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
+  const column = columnFinder(defaultQuery, availableColumns)(
+    "PRODUCTS",
+    "CATEGORY",
+  );
 
   it.each<CreateFilterCase>([
     {
