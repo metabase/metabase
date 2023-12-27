@@ -3,7 +3,7 @@ import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import { Flex, Paper, Text } from "metabase/ui";
 
-interface EmbeddingModalContentStatusBarProps {
+interface EmbedModalContentStatusBarProps {
   isEmbeddingEnabled: boolean;
   resourceType: string;
   hasSettingsChanges: boolean;
@@ -12,14 +12,14 @@ interface EmbeddingModalContentStatusBarProps {
   onSave: () => void;
 }
 
-export const EmbeddingModalContentStatusBar = ({
+export const EmbedModalContentStatusBar = ({
   isEmbeddingEnabled,
   resourceType,
   hasSettingsChanges,
   onDiscard,
   onUnpublish,
   onSave,
-}: EmbeddingModalContentStatusBarProps): JSX.Element => {
+}: EmbedModalContentStatusBarProps): JSX.Element => {
   return (
     <Paper withBorder shadow="lg" m="1.5rem 2rem" p="0.75rem 1rem">
       <Flex w="100%" justify="space-between" align="center" gap="0.5rem">

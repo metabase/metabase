@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import { SharingPaneButtonContent } from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
+
+import { SharingPaneButtonContent } from "../../SharingPaneButton/SharingPaneButton.styled";
 
 export const StaticEmbedIconRoot = styled.svg`
   ${({ theme }) =>

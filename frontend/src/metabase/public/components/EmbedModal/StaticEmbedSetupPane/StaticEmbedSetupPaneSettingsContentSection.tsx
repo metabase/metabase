@@ -3,19 +3,19 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import type { BoxProps } from "metabase/ui";
 import { Box, Text } from "metabase/ui";
 
-interface EmbeddingModalContentSectionProps extends BoxProps {
+interface StaticEmbedSetupPaneSettingsContentSectionProps extends BoxProps {
   title?: string;
   className?: string;
 
   children: ReactNode;
 }
 
-export const EmbeddingModalContentSection = ({
+export const StaticEmbedSetupPaneSettingsContentSection = ({
   className,
   title,
   children,
   ...restProps
-}: EmbeddingModalContentSectionProps): JSX.Element => {
+}: StaticEmbedSetupPaneSettingsContentSectionProps): JSX.Element => {
   const sectionId = useUniqueId();
   return (
     <Box className={className} aria-labelledby={sectionId} {...restProps}>

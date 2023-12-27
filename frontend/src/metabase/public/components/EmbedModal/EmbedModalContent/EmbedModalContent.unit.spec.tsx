@@ -4,7 +4,7 @@ import { renderWithProviders } from "__support__/ui";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import type { EmbedResource } from "./EmbeddingModal/EmbeddingModalContent.types";
+import type { EmbedResource } from "../EmbedModal.types";
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
 

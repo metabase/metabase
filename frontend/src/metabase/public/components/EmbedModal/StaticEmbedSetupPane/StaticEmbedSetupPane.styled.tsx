@@ -50,7 +50,7 @@ export const SettingsTabLayout = ({
   );
 };
 
-export const CodePreviewControlOptions = [
+export const CODE_PREVIEW_CONTROL_OPTIONS = [
   {
     label: (
       <Center>
@@ -78,7 +78,7 @@ export const DisplayOptionSection = ({
 }: {
   title: string;
   titleId?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) => (
   <div>
     <Text fw="bold" mb="0.25rem" lh="1rem" id={titleId}>

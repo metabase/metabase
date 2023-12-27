@@ -1,11 +1,12 @@
-/* eslint-disable react/prop-types */
-import _ from "underscore";
-
 import { t } from "ttag";
 import { Tabs } from "metabase/ui";
-import { EmbeddingModalContentParametersSettings } from "./EmbeddingModal/EmbeddingModalContentParametersSettings";
-import { EmbeddingModalContentAppearanceSettings } from "./EmbeddingModal/EmbeddingModalContentAppearanceSettings";
-import { EmbeddingModalContentOverviewSettings } from "./EmbeddingModal/EmbeddingModalContentOverviewSettings";
+
+import type { ParametersSettingsProps } from "./ParametersSettings";
+import { ParametersSettings } from "./ParametersSettings";
+import type { AppearanceSettingsProps } from "./AppearanceSettings";
+import { AppearanceSettings } from "./AppearanceSettings";
+import type { OverviewSettingsProps } from "./OverviewSettings";
+import { OverviewSettings } from "./OverviewSettings";
 
 const TABS = {
   Overview: "overview",
@@ -13,8 +14,12 @@ const TABS = {
   Appearance: "appearance",
 };
 
-const AdvancedEmbedPane = ({
-  pane,
+type StaticEmbedSetupPaneProps = OverviewSettingsProps &
+  ParametersSettingsProps &
+  AppearanceSettingsProps;
+
+export const StaticEmbedSetupPane = ({
+  activePane,
   resource,
   resourceType,
   embedType,
@@ -32,7 +37,7 @@ const AdvancedEmbedPane = ({
   onChangeEmbeddingParameters,
   onChangeParameterValue,
   onChangePane,
-}) => {
+}: StaticEmbedSetupPaneProps): JSX.Element => {
   return (
     <div className="full flex">
       <div
@@ -46,7 +51,7 @@ const AdvancedEmbedPane = ({
             <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value={TABS.Overview}>
-            <EmbeddingModalContentOverviewSettings
+            <OverviewSettings
               embedType={embedType}
               resource={resource}
               resourceType={resourceType}
@@ -59,8 +64,8 @@ const AdvancedEmbedPane = ({
             />
           </Tabs.Panel>
           <Tabs.Panel value={TABS.Parameters}>
-            <EmbeddingModalContentParametersSettings
-              activePane={pane}
+            <ParametersSettings
+              activePane={activePane}
               resource={resource}
               resourceType={resourceType}
               resourceParameters={resourceParameters}
@@ -80,8 +85,8 @@ const AdvancedEmbedPane = ({
             />
           </Tabs.Panel>
           <Tabs.Panel value={TABS.Appearance}>
-            <EmbeddingModalContentAppearanceSettings
-              activePane={pane}
+            <AppearanceSettings
+              activePane={activePane}
               embedType={embedType}
               resource={resource}
               resourceType={resourceType}
@@ -100,5 +105,3 @@ const AdvancedEmbedPane = ({
     </div>
   );
 };
-
-export default AdvancedEmbedPane;

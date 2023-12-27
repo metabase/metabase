@@ -8,7 +8,7 @@ export type EmbedResource = (Card | Dashboard) & {
   embedding_params?: EmbeddingParameters;
 };
 
-export type EmbedResourceType = "dashboard" | "question" | "application";
+export type EmbedResourceType = "dashboard" | "question";
 
 export type EmbedResourceParameter = {
   id: string;

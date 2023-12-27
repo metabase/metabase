@@ -5,7 +5,8 @@ import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 import { checkNotNull } from "metabase/lib/types";
 import { mockSettings } from "__support__/settings";
-import { SharingPane } from "./SharingPane";
+
+import { SelectEmbedTypePane } from "./SelectEmbedTypePane";
 
 const setup = ({
   isAdmin = false,
@@ -34,7 +35,7 @@ const setup = ({
     <Route
       path="*"
       component={() => (
-        <SharingPane
+        <SelectEmbedTypePane
           resource={TEST_DASHBOARD}
           resourceType="dashboard"
           onCreatePublicLink={onCreatePublicLink}
@@ -65,7 +66,7 @@ const setup = ({
   };
 };
 
-describe("SharingPane", () => {
+describe("SelectEmbedTypePane", () => {
   describe("static embed button", () => {
     describe("when the resource is published", () => {
       it("should render `Edit settings`", () => {
@@ -103,6 +104,7 @@ describe("SharingPane", () => {
       });
     });
   });
+
   describe("public embed button", () => {
     describe("when public sharing is disabled", () => {
       it("should render link to settings and a disabled button with `Get an embed link`", () => {
@@ -171,6 +173,7 @@ describe("SharingPane", () => {
         expect(onDeletePublicLink).toHaveBeenCalled();
       });
     });
+
     describe("when a public link doesn't exist", () => {
       it("should render `Get an embed link` and `Use this` description", () => {
         setup({ hasPublicLink: false, isPublicSharingEnabled: true });

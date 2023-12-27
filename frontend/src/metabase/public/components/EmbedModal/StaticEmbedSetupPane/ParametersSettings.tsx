@@ -1,7 +1,5 @@
 import { t } from "ttag";
 import { useMemo } from "react";
-import PreviewPane from "metabase/public/components/widgets/PreviewPane";
-import EmbedCodePane from "metabase/public/components/widgets/EmbedCodePane";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 import Select, { Option } from "metabase/core/components/Select";
@@ -9,7 +7,6 @@ import { Box, Divider, SegmentedControl, Stack, Text } from "metabase/ui";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import { EmbeddingModalContentSection } from "./EmbeddingModalContentSection";
 import type {
   ActivePreviewPane,
   EmbedResourceParameter,
@@ -20,13 +17,16 @@ import type {
   EmbedResource,
   EmbedType,
   EmbedResourceParameterWithValue,
-} from "./EmbeddingModalContent.types";
+} from "../EmbedModal.types";
+import EmbedCodePane from "./EmbedCodePane";
+import PreviewPane from "./PreviewPane";
 import {
-  CodePreviewControlOptions,
+  CODE_PREVIEW_CONTROL_OPTIONS,
   SettingsTabLayout,
-} from "./EmbeddingModalContent.styled";
+} from "./StaticEmbedSetupPane.styled";
+import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
-interface EmbeddingModalContentParametersSettingsProps {
+export interface ParametersSettingsProps {
   activePane: ActivePreviewPane;
 
   resource: EmbedResource;
@@ -52,7 +52,7 @@ interface EmbeddingModalContentParametersSettingsProps {
   onChangePane: (pane: ActivePreviewPane) => void;
 }
 
-export const EmbeddingModalContentParametersSettings = ({
+export const ParametersSettings = ({
   activePane,
   resource,
   resourceType,
@@ -70,7 +70,7 @@ export const EmbeddingModalContentParametersSettings = ({
   onChangeEmbeddingParameters,
   onChangeParameterValue,
   onChangePane,
-}: EmbeddingModalContentParametersSettingsProps): JSX.Element => {
+}: ParametersSettingsProps): JSX.Element => {
   const valuePopulatedParameters = useMemo(
     () =>
       getValuePopulatedParameters(
@@ -85,7 +85,9 @@ export const EmbeddingModalContentParametersSettings = ({
       settingsSlot={
         resourceParameters.length > 0 ? (
           <>
-            <EmbeddingModalContentSection title={t`Enable or lock parameters`}>
+            <StaticEmbedSetupPaneSettingsContentSection
+              title={t`Enable or lock parameters`}
+            >
               <Stack spacing="1rem">
                 <Text>{t`Enabling a parameter lets viewers interact with it. Locking one lets you pass it a value from your app while hiding it from viewers.`}</Text>
 
@@ -123,12 +125,12 @@ export const EmbeddingModalContentParametersSettings = ({
                   </div>
                 ))}
               </Stack>
-            </EmbeddingModalContentSection>
+            </StaticEmbedSetupPaneSettingsContentSection>
 
             {previewParameters.length > 0 && (
               <>
                 <Divider my="2rem" />
-                <EmbeddingModalContentSection
+                <StaticEmbedSetupPaneSettingsContentSection
                   title={t`Preview locked parameters`}
                 >
                   <Stack spacing="1rem">
@@ -146,7 +148,7 @@ export const EmbeddingModalContentParametersSettings = ({
                       />
                     ))}
                   </Stack>
-                </EmbeddingModalContentSection>
+                </StaticEmbedSetupPaneSettingsContentSection>
               </>
             )}
           </>
@@ -163,7 +165,7 @@ export const EmbeddingModalContentParametersSettings = ({
         <>
           <SegmentedControl
             value={activePane}
-            data={CodePreviewControlOptions}
+            data={CODE_PREVIEW_CONTROL_OPTIONS}
             onChange={onChangePane}
           />
 

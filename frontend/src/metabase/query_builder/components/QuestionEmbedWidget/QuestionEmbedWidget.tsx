@@ -3,17 +3,19 @@ import type { EmbedOptions } from "metabase-types/store";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
-import { EmbedModal } from "metabase/public/components/widgets/EmbedModal";
-import { EmbedModalContent } from "metabase/public/components/widgets/EmbedModalContent";
+import {
+  EmbedModal,
+  EmbedModalContent,
+} from "metabase/public/components/EmbedModal";
+import type { EmbedResource } from "metabase/public/components/EmbedModal";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { EmbedResource } from "metabase/public/components/widgets/EmbeddingModal/EmbeddingModalContent.types";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
 import {
   createPublicLink,
   deletePublicLink,
-  updateEnableEmbedding,
   updateEmbeddingParams,
+  updateEnableEmbedding,
 } from "../../actions";
 
 type QuestionEmbedWidgetProps = {

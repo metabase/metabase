@@ -5,7 +5,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 
-import { EmbeddingModalContentStatusBar } from "./EmbeddingModal/EmbeddingModalContentStatusBar";
+import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 import type {
   ActivePreviewPane,
   EmbeddingDisplayOptions,
@@ -15,9 +15,11 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
   EmbedType,
-} from "./EmbeddingModal/EmbeddingModalContent.types";
-import AdvancedEmbedPane from "./AdvancedEmbedPane";
-import { SharingPane } from "./SharingPane";
+} from "../EmbedModal.types";
+import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
+import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
+
+const FALLBACK_SECRET_KEY = "<METABASE_SECRET_KEY>";
 
 export interface EmbedModalContentProps {
   embedType: EmbedType;
@@ -59,9 +61,10 @@ export const EmbedModalContent = (
   const [pane, setPane] = useState<ActivePreviewPane>("code");
 
   const siteUrl = useSelector(state => getSetting(state, "site-url"));
-  const secretKey = useSelector(state =>
-    getSetting(state, "embedding-secret-key"),
-  );
+  const secretKey =
+    useSelector(state => getSetting(state, "embedding-secret-key")) ||
+    // "secretKey" should always exist if embedding has been turned on, but to fix typings we add here a fallback value
+    FALLBACK_SECRET_KEY;
 
   const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
     getDefaultEmbeddingParams(resource, resourceParameters),
@@ -96,7 +99,12 @@ export const EmbedModalContent = (
   };
 
   const handleUnpublish = async () => {
-    await onUpdateEnableEmbedding(false);
+    try {
+      await onUpdateEnableEmbedding(false);
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   };
 
   const handleDiscard = () => {
@@ -125,7 +133,7 @@ export const EmbedModalContent = (
 
   if (!embedType) {
     return (
-      <SharingPane
+      <SelectEmbedTypePane
         resource={resource}
         resourceType={resourceType}
         onCreatePublicLink={onCreatePublicLink}
@@ -143,7 +151,7 @@ export const EmbedModalContent = (
 
   return (
     <div className="flex flex-column full-height">
-      <EmbeddingModalContentStatusBar
+      <EmbedModalContentStatusBar
         resourceType={resourceType}
         isEmbeddingEnabled={resource.enable_embedding}
         hasSettingsChanges={hasSettingsChanges}
@@ -153,8 +161,8 @@ export const EmbedModalContent = (
       />
 
       <div className="flex flex-full">
-        <AdvancedEmbedPane
-          pane={pane}
+        <StaticEmbedSetupPane
+          activePane={pane}
           resource={resource}
           resourceType={resourceType}
           embedType={embedType}

@@ -1,6 +1,4 @@
 import { jt, t } from "ttag";
-import PreviewPane from "metabase/public/components/widgets/PreviewPane";
-import EmbedCodePane from "metabase/public/components/widgets/EmbedCodePane";
 import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
@@ -8,8 +6,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-
 import { color } from "metabase/lib/colors";
+
 import type {
   ActivePreviewPane,
   EmbeddingDisplayOptions,
@@ -17,13 +15,15 @@ import type {
   EmbedResource,
   EmbedResourceType,
   EmbedType,
-} from "./EmbeddingModalContent.types";
+} from "../EmbedModal.types";
+import EmbedCodePane from "./EmbedCodePane";
+import PreviewPane from "./PreviewPane";
 import {
-  CodePreviewControlOptions,
+  CODE_PREVIEW_CONTROL_OPTIONS,
   DisplayOptionSection,
   SettingsTabLayout,
-} from "./EmbeddingModalContent.styled";
-import { EmbeddingModalContentSection } from "./EmbeddingModalContentSection";
+} from "./StaticEmbedSetupPane.styled";
+import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 const THEME_OPTIONS = [
   { label: t`Light`, value: "light" },
@@ -32,7 +32,7 @@ const THEME_OPTIONS = [
 ];
 const DEFAULT_THEME = THEME_OPTIONS[0].value;
 
-interface EmbeddingModalContentAppearanceSettingsProps {
+export interface AppearanceSettingsProps {
   activePane: ActivePreviewPane;
 
   embedType: EmbedType;
@@ -49,7 +49,7 @@ interface EmbeddingModalContentAppearanceSettingsProps {
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
 }
 
-export const EmbeddingModalContentAppearanceSettings = ({
+export const AppearanceSettings = ({
   activePane,
   embedType,
   resource,
@@ -63,7 +63,7 @@ export const EmbeddingModalContentAppearanceSettings = ({
 
   onChangePane,
   onChangeDisplayOptions,
-}: EmbeddingModalContentAppearanceSettingsProps): JSX.Element => {
+}: AppearanceSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
@@ -78,7 +78,7 @@ export const EmbeddingModalContentAppearanceSettings = ({
     <SettingsTabLayout
       settingsSlot={
         <>
-          <EmbeddingModalContentSection
+          <StaticEmbedSetupPaneSettingsContentSection
             title={t`Customizing your embed’s appearance`}
           >
             <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
@@ -87,8 +87,8 @@ export const EmbeddingModalContentAppearanceSettings = ({
                 href={docsUrl}
               >{t`documentation`}</ExternalLink>
             )} for more.`}</Text>
-          </EmbeddingModalContentSection>
-          <EmbeddingModalContentSection
+          </StaticEmbedSetupPaneSettingsContentSection>
+          <StaticEmbedSetupPaneSettingsContentSection
             title={t`Play with the options here`}
             mt="2rem"
           >
@@ -192,11 +192,11 @@ export const EmbeddingModalContentAppearanceSettings = ({
                 </DisplayOptionSection>
               )}
             </Stack>
-          </EmbeddingModalContentSection>
+          </StaticEmbedSetupPaneSettingsContentSection>
           {!canWhitelabel && (
             <>
               <Divider my="2rem" />
-              <EmbeddingModalContentSection
+              <StaticEmbedSetupPaneSettingsContentSection
                 title={t`Removing the “Powered by Metabase” banner`}
               >
                 <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
@@ -205,7 +205,7 @@ export const EmbeddingModalContentAppearanceSettings = ({
                     href="https://www.metabase.com/pricing/"
                   >{t`a paid plan`}</ExternalLink>
                 )} to remove the banner.`}</Text>
-              </EmbeddingModalContentSection>
+              </StaticEmbedSetupPaneSettingsContentSection>
             </>
           )}
         </>
@@ -214,7 +214,7 @@ export const EmbeddingModalContentAppearanceSettings = ({
         <>
           <SegmentedControl
             value={activePane}
-            data={CodePreviewControlOptions}
+            data={CODE_PREVIEW_CONTROL_OPTIONS}
             onChange={onChangePane}
           />
 

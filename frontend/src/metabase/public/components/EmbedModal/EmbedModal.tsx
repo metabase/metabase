@@ -5,18 +5,17 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import Modal from "metabase/components/Modal";
 import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
 import { Box } from "metabase/ui";
-
-import type { EmbedType } from "metabase/public/components/widgets/EmbeddingModal/EmbeddingModalContent.types";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ModalContentActionIcon } from "metabase/components/ModalContent";
 import { color } from "metabase/lib/colors";
+
+import type { EmbedType } from "./EmbedModal.types";
 import { EmbedModalHeader } from "./EmbedModal.styled";
 
 export const EmbedModal = ({
   children,
   isOpen,
   onClose,
-  ...modalProps
 }: {
   isOpen?: boolean;
   onClose: () => void;
@@ -46,7 +45,6 @@ export const EmbedModal = ({
       title={!isEmbeddingStage ? t`Embed ${applicationName}` : undefined}
       fit
       formModal={false}
-      {...modalProps}
     >
       <Box bg={isEmbeddingStage ? color("white") : "bg.0"} h="100%">
         {isEmbeddingStage && (
@@ -55,10 +53,10 @@ export const EmbedModal = ({
               name="chevronleft"
               onClick={() => setEmbedType(null)}
             />
-
             {t`Static embedding`}
           </EmbedModalHeader>
         )}
+
         {children({ embedType, setEmbedType })}
       </Box>
     </Modal>

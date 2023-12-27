@@ -14,13 +14,13 @@ import type {
   EmbedResource,
   EmbedResourceType,
   EmbedType,
-} from "../EmbeddingModal/EmbeddingModalContent.types";
+} from "../EmbedModal.types";
 import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 
-interface SharingPaneProps {
+interface SelectEmbedTypePaneProps {
   resource: EmbedResource;
   resourceType: EmbedResourceType;
   onCreatePublicLink: () => void;
@@ -32,14 +32,14 @@ interface SharingPaneProps {
   onChangeEmbedType: (embedType: EmbedType) => void;
 }
 
-function SharingPane({
+export function SelectEmbedTypePane({
   resource,
   resourceType,
   onCreatePublicLink,
   onDeletePublicLink,
   getPublicUrl,
   onChangeEmbedType,
-}: SharingPaneProps) {
+}: SelectEmbedTypePaneProps) {
   const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
 
   const hasPublicLink = !!resource.public_uuid;
@@ -156,5 +156,3 @@ function SharingPane({
     </Stack>
   );
 }
-
-export { SharingPane };

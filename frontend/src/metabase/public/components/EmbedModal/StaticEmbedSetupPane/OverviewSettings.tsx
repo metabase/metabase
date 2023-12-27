@@ -1,20 +1,21 @@
 import { jt, t } from "ttag";
 import { Text } from "metabase/ui";
-import EmbedCodePane from "metabase/public/components/widgets/EmbedCodePane";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-import { EmbeddingModalContentSection } from "./EmbeddingModalContentSection";
+
 import type {
   EmbeddingParameters,
   EmbedResource,
   EmbedResourceType,
   EmbedType,
   EmbeddingDisplayOptions,
-} from "./EmbeddingModalContent.types";
-import { SettingsTabLayout } from "./EmbeddingModalContent.styled";
+} from "../EmbedModal.types";
+import EmbedCodePane from "./EmbedCodePane";
+import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
+import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
-interface EmbeddingModalOverviewSettingsProps {
+export interface OverviewSettingsProps {
   embedType: EmbedType;
   resource: EmbedResource;
   resourceType: EmbedResourceType;
@@ -26,7 +27,7 @@ interface EmbeddingModalOverviewSettingsProps {
   displayOptions: EmbeddingDisplayOptions;
 }
 
-export const EmbeddingModalContentOverviewSettings = ({
+export const OverviewSettings = ({
   embedType,
   resource,
   resourceType,
@@ -36,7 +37,7 @@ export const EmbeddingModalContentOverviewSettings = ({
   secretKey,
   params,
   displayOptions,
-}: EmbeddingModalOverviewSettingsProps): JSX.Element => {
+}: OverviewSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
@@ -48,13 +49,15 @@ export const EmbeddingModalContentOverviewSettings = ({
   return (
     <SettingsTabLayout
       settingsSlot={
-        <EmbeddingModalContentSection title={t`Setting up a static embed`}>
+        <StaticEmbedSetupPaneSettingsContentSection
+          title={t`Setting up a static embed`}
+        >
           <Text>{t`To embed this ${resourceType} in your application you’ll just need to publish it, and paste these code snippets in the proper places in your app.`}</Text>
           <br />
           <Text>{t`You can also hide or lock any of the dashboard’s parameters.`}</Text>
           <br />
           <Text>{jt`Check out the ${staticEmbedDocsLink} for more.`}</Text>
-        </EmbeddingModalContentSection>
+        </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={
         <EmbedCodePane
