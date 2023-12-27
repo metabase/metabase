@@ -162,9 +162,7 @@ function DashCardInner({
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
   const isLoading = useMemo(
-    () =>
-      isDashcardLoading(dashcard, dashcardData) ||
-      loadingDashcardIds.includes(dashcard.id),
+    () => isDashcardLoading(dashcard, dashcardData, loadingDashcardIds),
     [dashcard, dashcardData, loadingDashcardIds],
   );
 

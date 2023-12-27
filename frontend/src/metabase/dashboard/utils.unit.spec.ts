@@ -155,6 +155,18 @@ describe("Dashboard utils", () => {
         }),
       ).toBe(true);
     });
+
+    it("should return true when id is in loadingIds", () => {
+      expect(
+        isDashcardLoading(
+          createMockDashboardCard({ id: 1 }),
+          {
+            1: { 2: createMockDataset() },
+          },
+          [1],
+        ),
+      ).toBe(true);
+    });
   });
 
   describe("getDashcardResultsError", () => {

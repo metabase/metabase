@@ -178,12 +178,17 @@ export function getDatasetQueryParams(
 export function isDashcardLoading(
   dashcard: DashboardCard,
   dashcardsData: Record<DashCardId, Record<CardId, Dataset | null>>,
+  loadingIds: number[] = [],
 ) {
   if (isVirtualDashCard(dashcard)) {
     return false;
   }
 
   if (dashcardsData[dashcard.id] == null) {
+    return true;
+  }
+
+  if (loadingIds.includes(dashcard.id)) {
     return true;
   }
 
