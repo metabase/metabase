@@ -9,7 +9,6 @@ import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartSc
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 export function computeTrend(series, insights, settings) {
   // get current metric data
@@ -198,7 +197,7 @@ function computeTrendAnotherColumn({ currentMetricData, series, settings }) {
   const comparison = settings["scalar.comparisons"];
 
   const columnIndex = cols.findIndex(
-    column => getColumnKey(column) === comparison.column,
+    column => column.name === comparison.column,
   );
   const column = cols[columnIndex];
 

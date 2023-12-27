@@ -13,7 +13,6 @@ import type {
   DatasetColumn,
   SmartScalarComparisonAnotherColumn,
 } from "metabase-types/api";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import { COMPARISON_TYPES } from "../constants";
 import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
@@ -31,21 +30,21 @@ export function AnotherColumnForm({
   onBack,
 }: AnotherColumnFormProps) {
   const [label, setLabel] = useState(selectedValue?.label || "");
-  const [columnKey, setColumnKey] = useState(selectedValue?.column || "");
+  const [column, setColumn] = useState(selectedValue?.column || "");
 
-  const canSubmit = label.length > 0 && columnKey.length > 0;
+  const canSubmit = label.length > 0 && column.length > 0;
 
   const columnOptions = useMemo(
     () =>
       columns.map(column => ({
         label: column.display_name,
-        value: getColumnKey(column),
+        value: column.name,
       })),
     [columns],
   );
 
   const handleChangeColumnKey = (value: string) => {
-    setColumnKey(value);
+    setColumn(value);
     const option = columnOptions.find(option => option.value === value);
     setLabel(option?.label || "");
   };
@@ -60,7 +59,7 @@ export function AnotherColumnForm({
     onChange({
       type: COMPARISON_TYPES.ANOTHER_COLUMN,
       label,
-      column: columnKey,
+      column,
     });
   };
 
@@ -72,8 +71,8 @@ export function AnotherColumnForm({
         >{t`Value from another column`}</PopoverBackButton>
         <Stack pos="relative" w="100%" spacing="md">
           <Select
-            autoFocus={!columnKey}
-            value={columnKey}
+            autoFocus={!column}
+            value={column}
             data={columnOptions}
             label={t`Column`}
             searchable

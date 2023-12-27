@@ -15,7 +15,7 @@ import type {
 import { isEmpty } from "metabase/lib/validate";
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
 
 import {
   COMPARISON_TYPES,
@@ -127,6 +127,15 @@ export function getDefaultComparison(
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
     dateUnit,
   });
+}
+
+export function getColumnsForComparison(
+  columns: DatasetColumn[],
+  settings: VisualizationSettings,
+) {
+  return columns.filter(
+    column => isNumeric(column) && column.name !== settings["scalar.field"],
+  );
 }
 
 export function getComparisonOptions(
