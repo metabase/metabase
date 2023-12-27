@@ -63,7 +63,13 @@ const QUESTION_LINE_CHART = {
   display: "line",
   query: {
     aggregation: [["count"]],
-    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
     "source-table": ORDERS_ID,
     limit: 5,
   },
@@ -105,14 +111,21 @@ const DASHBOARD_FILTER_TIME = createMockActionParameter({
 
 const QUERY_FILTER_CREATED_AT = [
   "between",
-  ["field", ORDERS.CREATED_AT, null],
+  [
+    "field",
+    ORDERS.CREATED_AT,
+    {
+      "base-type": "type/DateTime",
+      "temporal-unit": "month",
+    },
+  ],
   "2022-08-01",
   "2022-08-31",
 ];
 
 const QUERY_FILTER_QUANTITY = [
   "=",
-  ["field", ORDERS.QUANTITY, null],
+  ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
   POINT_COUNT,
 ];
 
