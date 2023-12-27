@@ -151,6 +151,12 @@ describe("useCoordinateFilter", () => {
       values: ["", 10],
       displayName: "Latitude is less than or equal to 10",
     },
+    {
+      operator: "inside",
+      values: [-90, 180, 90, -180],
+      displayName:
+        "Latitude is between -90 and 90 and Longitude is between -180 and 180",
+    },
   ])(
     'should allow to coerce a filter for "$operator" operator',
     ({ operator, values, displayName }) => {
@@ -189,6 +195,10 @@ describe("useCoordinateFilter", () => {
     {
       operator: "between",
       values: ["", ""],
+    },
+    {
+      operator: "inside",
+      values: ["", "", "", ""],
     },
   ])(
     'should validate values for "$operator" operator',
