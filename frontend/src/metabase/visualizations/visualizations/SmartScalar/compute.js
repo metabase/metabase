@@ -199,9 +199,15 @@ function computeTrendAnotherColumn({ currentMetricData, series, settings }) {
   const columnIndex = cols.findIndex(
     column => column.name === comparison.column,
   );
-  const column = cols[columnIndex];
 
-  // TODO if (!column) { ... }
+  if (columnIndex === -1) {
+    return {
+      comparisonValueStr: t`(No data)`,
+      comparisonDescStr: t`vs. N/A`,
+    };
+  }
+
+  const column = cols[columnIndex];
 
   const lastRow = rows[latestRowIndex];
   const comparisonValue = lastRow[columnIndex];
