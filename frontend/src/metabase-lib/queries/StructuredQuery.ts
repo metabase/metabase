@@ -199,13 +199,6 @@ class StructuredQuery extends AtomicQuery {
     return database && database.engine;
   }
 
-  /**
-   * Opposite of isEditable
-   */
-  readOnly(): boolean {
-    return !this.isEditable();
-  }
-
   /* Methods unique to this query type */
 
   /**

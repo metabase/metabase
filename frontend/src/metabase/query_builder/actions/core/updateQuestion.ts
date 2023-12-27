@@ -125,7 +125,7 @@ export const updateQuestion = (
     const shouldTurnIntoAdHoc =
       shouldStartAdHocQuestion &&
       newQuestion.isSaved() &&
-      newQuestion.query().isEditable() &&
+      newQuestion.isQueryEditable() &&
       queryBuilderMode !== "dataset";
 
     if (shouldTurnIntoAdHoc) {
