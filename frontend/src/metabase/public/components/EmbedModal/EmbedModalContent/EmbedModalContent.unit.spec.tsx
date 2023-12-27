@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
-
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
@@ -18,6 +18,7 @@ describe("EmbedModalContent", () => {
 
   it("should render unsaved parameters", () => {
     setup({
+      embedType: "application",
       resourceParameters: [
         {
           id: "my_param",
@@ -28,13 +29,19 @@ describe("EmbedModalContent", () => {
       ],
     });
 
-    openEmbedModal();
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Parameters",
+      }),
+    );
+
     expect(screen.getByText("My param")).toBeInTheDocument();
     expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
   });
 
   it("should render saved parameters", () => {
     setup({
+      embedType: "application",
       resource: {
         ...createMockDashboard(),
         embedding_params: {
@@ -51,10 +58,15 @@ describe("EmbedModalContent", () => {
       ],
     });
 
-    openEmbedModal();
-    const parametersSection = screen.getByRole("region", {
-      name: "Parameters",
-    });
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Parameters",
+      }),
+    );
+
+    const parametersSection = screen.getByLabelText(
+      "Enable or lock parameters",
+    );
     expect(within(parametersSection).getByText("My param")).toBeInTheDocument();
     expect(
       within(parametersSection).getByLabelText("My param"),
@@ -63,6 +75,7 @@ describe("EmbedModalContent", () => {
 
   it("should only render valid parameters", () => {
     setup({
+      embedType: "application",
       resource: {
         ...createMockDashboard(),
         embedding_params: {
@@ -79,13 +92,19 @@ describe("EmbedModalContent", () => {
       ],
     });
 
-    openEmbedModal();
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Parameters",
+      }),
+    );
+
     expect(screen.getByText("My param")).toBeInTheDocument();
     expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
   });
 
   it("should update a card with only valid parameters", async () => {
     const { mocks } = setup({
+      embedType: "application",
       resource: {
         ...createMockDashboard(),
         embedding_params: {
@@ -102,12 +121,21 @@ describe("EmbedModalContent", () => {
       ],
     });
 
-    openEmbedModal();
+    userEvent.click(
+      screen.getByRole("tab", {
+        name: "Parameters",
+      }),
+    );
+
     expect(screen.getByText("My param")).toBeInTheDocument();
     expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
+
     screen.getByLabelText("My param").click();
+
     screen.getByText("Locked").click();
-    screen.getByRole("button", { name: "Publish" }).click();
+
+    screen.getByRole("button", { name: "Publish changes" }).click();
+
     await waitFor(() =>
       expect(mocks.onUpdateEmbeddingParams).toHaveBeenCalledWith({
         my_param: "locked",
@@ -158,12 +186,4 @@ function setup({
   );
 
   return { mocks, view };
-}
-
-function openEmbedModal() {
-  screen
-    .getByRole("button", {
-      name: "Set this up",
-    })
-    .click();
 }

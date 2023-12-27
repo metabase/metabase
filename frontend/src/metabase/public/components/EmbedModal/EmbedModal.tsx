@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import Modal from "metabase/components/Modal";
-import type { WindowModalProps } from "metabase/components/Modal/WindowModal";
 import { Box } from "metabase/ui";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ModalContentActionIcon } from "metabase/components/ModalContent";
@@ -12,11 +11,7 @@ import { color } from "metabase/lib/colors";
 import type { EmbedType } from "./EmbedModal.types";
 import { EmbedModalHeader } from "./EmbedModal.styled";
 
-export const EmbedModal = ({
-  children,
-  isOpen,
-  onClose,
-}: {
+interface EmbedModalProps {
   isOpen?: boolean;
   onClose: () => void;
   children: ({
@@ -26,7 +21,9 @@ export const EmbedModal = ({
     embedType: EmbedType;
     setEmbedType: (type: EmbedType) => void;
   }) => JSX.Element;
-} & WindowModalProps) => {
+}
+
+export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
   const [embedType, setEmbedType] = useState<EmbedType>(null);
   const applicationName = useSelector(getApplicationName);
 

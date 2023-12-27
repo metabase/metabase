@@ -139,9 +139,11 @@ export function SelectEmbedTypePane({
             ) : (
               <Text>
                 {t`Public embeds and links are disabled.`}{" "}
-                <Link to="/admin/settings/public-sharing">
-                  <Anchor data-testid="sharing-pane-settings-link">{t`Settings`}</Anchor>
-                </Link>
+                <Anchor
+                  component={Link}
+                  to="/admin/settings/public-sharing"
+                  data-testid="sharing-pane-settings-link"
+                >{t`Settings`}</Anchor>
               </Text>
             )
           }
