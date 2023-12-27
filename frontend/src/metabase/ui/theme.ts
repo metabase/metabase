@@ -4,6 +4,7 @@ import { color } from "metabase/lib/colors";
 import {
   getAccordionOverrides,
   getAnchorOverrides,
+  getAutocompleteOverrides,
   getButtonOverrides,
   getCalendarOverrides,
   getCardOverrides,
@@ -116,6 +117,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
   components: {
     ...getAccordionOverrides(),
     ...getAnchorOverrides(),
+    ...getAutocompleteOverrides(),
     ...getButtonOverrides(),
     ...getCalendarOverrides(),
     ...getCardOverrides(),
