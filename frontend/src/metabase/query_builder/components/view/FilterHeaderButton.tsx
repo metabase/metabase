@@ -45,6 +45,6 @@ FilterHeaderButton.shouldRender = ({
 }: RenderCheckOpts) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
-  question.query().isEditable() &&
+  question.isQueryEditable() &&
   !isObjectDetail &&
   isActionListVisible;

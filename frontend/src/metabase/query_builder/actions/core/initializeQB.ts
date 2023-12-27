@@ -319,7 +319,7 @@ async function handleQBInit(
     uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
   }
 
-  if (question.isNative() && !question.query().readOnly()) {
+  if (question.isNative() && question.isQueryEditable()) {
     const query = question.query() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setQuery(newQuery);

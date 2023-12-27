@@ -69,7 +69,7 @@ QuestionSummarizeWidget.shouldRender = ({
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
-  question.query().isEditable() &&
+  question.isQueryEditable() &&
   question.query().table() &&
   !isObjectDetail &&
   isActionListVisible;

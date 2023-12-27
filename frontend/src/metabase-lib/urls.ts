@@ -59,7 +59,7 @@ export function getUrlWithParameters(
   if (question.isStructured()) {
     let questionWithParameters = question.setParameters(parameters);
 
-    if (question.query().isEditable()) {
+    if (question.isQueryEditable()) {
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
