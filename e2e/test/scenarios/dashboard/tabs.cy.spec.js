@@ -355,7 +355,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
   });
 
-  it("should apply filter and show loading spinner when changing tabs", () => {
+  it("should apply filter and show loading spinner when changing tabs (#33767)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
     createNewTab();
