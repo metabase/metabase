@@ -27,6 +27,10 @@ import {
   moveDashCardToTab,
   addTextBoxWhileEditing,
   expectGoodSnowplowEvent,
+  selectDashboardFilter,
+  filterWidget,
+  popover,
+  postponeRequest,
 } from "e2e/support/helpers";
 
 import {
@@ -350,6 +354,60 @@ describe("scenarios > dashboard > tabs", () => {
     goToTab("Tab 2");
     cy.get("@publicFirstTabQuery").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuery").should("have.been.calledOnce");
+  });
+
+  it("should apply filter and show loading spinner when changing tabs", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    createNewTab();
+    saveDashboard();
+
+    goToTab("Tab 2");
+    editDashboard();
+    openQuestionsSidebar();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
+
+    cy.findByTestId("dashboard-header").within(() => {
+      cy.icon("filter").click();
+    });
+
+    popover().within(() => {
+      cy.contains("Time").click();
+      cy.findByText("Relative Date").click();
+    });
+
+    // Auto-connection happens here
+    selectDashboardFilter(getDashboardCard(0), "Created At");
+    saveDashboard();
+
+    cy.intercept(
+      "POST",
+      "/api/dashboard/*/dashcard/*/card/*/query",
+      postponeRequest(500),
+    ).as("saveCard");
+
+    filterWidget().contains("Relative Date").click();
+    popover().within(() => {
+      cy.findByText("Today").click();
+    });
+
+    // Loader in the 2nd tab
+    getDashboardCard(0).within(() => {
+      cy.findByTestId("loading-spinner").should("exist");
+      cy.wait("@saveCard");
+      cy.findByText("14").should("exist");
+    });
+
+    // Loader in the 1st tab
+    goToTab("Tab 1");
+    getDashboardCard(0).within(() => {
+      cy.findByTestId("loading-spinner").should("exist");
+      cy.wait("@saveCard");
+      cy.findByText("58.4") // this is total from the first row
+        .should("exist");
+    });
   });
 });
 
