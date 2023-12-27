@@ -325,9 +325,9 @@ export const fetchCardData = createThunkAction(
         dashcard && dashcard.parameter_mappings,
       );
 
+      const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
       if (!reload) {
         // if reload not set, check to see if the last result has the same query dict and return that
-        const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
         if (
           lastResult &&
           equals(
@@ -345,7 +345,14 @@ export const fetchCardData = createThunkAction(
 
       cancelFetchCardData(card.id, dashcard.id);
 
-      if (clearCache) {
+      const hasParametersChanged =
+        !lastResult ||
+        !equals(
+          getDatasetQueryParams(lastResult.json_query).parameters,
+          getDatasetQueryParams(datasetQuery).parameters,
+        );
+
+      if (clearCache || hasParametersChanged) {
         // clears the card data to indicate the card is reloading
         dispatch(clearCardData(card.id, dashcard.id));
       }
