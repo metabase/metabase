@@ -1,7 +1,9 @@
 import {
   describeEE,
+  editDashboard,
   popover,
   restore,
+  saveDashboard,
   sendEmailAndVisitIt,
   setTokenFeatures,
   setupSMTP,
@@ -52,7 +54,7 @@ describeEE("issue 24223", () => {
 });
 
 function addParametersToDashboard() {
-  cy.icon("pencil").click();
+  editDashboard();
 
   // add Category > Dropdown "Category" filter
   cy.icon("filter").click();
@@ -75,7 +77,5 @@ function addParametersToDashboard() {
   popover().find("input").type("Awesome");
   popover().button("Add filter").click();
 
-  cy.findByText("Save").click();
-  // wait for dashboard to save
-  cy.contains("You're editing this dashboard.").should("not.exist");
+  saveDashboard();
 }

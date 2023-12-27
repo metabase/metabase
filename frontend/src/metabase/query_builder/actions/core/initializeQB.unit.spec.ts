@@ -607,9 +607,6 @@ describe("QB Actions > initializeQB", () => {
         const clone = { ...card };
 
         jest
-          .spyOn(NativeQuery.prototype, "readOnly")
-          .mockReturnValue(!hasDatabaseWritePermission);
-        jest
           .spyOn(NativeQuery.prototype, "isEditable")
           .mockReturnValue(hasDatabaseWritePermission);
 
