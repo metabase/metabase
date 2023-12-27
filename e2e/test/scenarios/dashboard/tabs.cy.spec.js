@@ -30,7 +30,7 @@ import {
   selectDashboardFilter,
   filterWidget,
   popover,
-  postponeRequest,
+  delayResponse,
 } from "e2e/support/helpers";
 
 import {
@@ -385,7 +385,7 @@ describe("scenarios > dashboard > tabs", () => {
     cy.intercept(
       "POST",
       "/api/dashboard/*/dashcard/*/card/*/query",
-      postponeRequest(500),
+      delayResponse(500),
     ).as("saveCard");
 
     filterWidget().contains("Relative Date").click();
