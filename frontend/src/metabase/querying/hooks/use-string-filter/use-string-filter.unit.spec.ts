@@ -58,7 +58,7 @@ describe("useStringFilter", () => {
       displayName: "Category is not empty",
     },
   ])(
-    'should allow to create a string filter for "$operator" operator',
+    'should allow to create a filter for "$operator" operator',
     ({ operator, values, displayName }) => {
       const { result } = renderHook(() =>
         useStringFilter({
@@ -113,7 +113,7 @@ describe("useStringFilter", () => {
       displayName: "Category starts with Wi",
     },
   ])(
-    'should allow to update a string filter for "$operator" operator',
+    'should allow to update a filter for "$operator" operator',
     ({ expression, values, displayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
