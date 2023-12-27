@@ -144,7 +144,7 @@ export function getComparisonOptions(
 ) {
   const [
     {
-      data: { cols, insights, rows },
+      data: { cols, insights = [], rows },
     },
   ] = series;
 
@@ -152,16 +152,18 @@ export function getComparisonOptions(
     createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
   ];
 
-  // TODO Put a condition here
-  options.push(
-    createComparisonMenuOption({ type: COMPARISON_TYPES.ANOTHER_COLUMN }),
-  );
+  const comparableColumns = getColumnsForComparison(cols, settings);
+  if (comparableColumns.length > 0) {
+    options.push(
+      createComparisonMenuOption({ type: COMPARISON_TYPES.ANOTHER_COLUMN }),
+    );
+  }
 
   options.push(
     createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
   );
 
-  const dateUnit = insights?.find(
+  const dateUnit = insights.find(
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
