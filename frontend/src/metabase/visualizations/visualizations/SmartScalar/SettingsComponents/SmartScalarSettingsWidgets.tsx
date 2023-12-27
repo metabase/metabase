@@ -63,6 +63,54 @@ export function SmartScalarComparisonWidget({
     setOpen(isOpen);
   };
 
+  const renderMenuDropdownContent = () => {
+    if (tab === "anotherColumn") {
+      return (
+        <AnotherColumnForm
+          value={
+            selectedValue.type === COMPARISON_TYPES.ANOTHER_COLUMN
+              ? selectedValue
+              : undefined
+          }
+          columns={comparableColumns}
+          onChange={nextValue => {
+            onChange(nextValue);
+            setOpen(false);
+          }}
+          onBack={() => setTab(null)}
+        />
+      );
+    }
+    if (tab === "staticNumber") {
+      return (
+        <StaticNumberForm
+          value={
+            selectedValue.type === COMPARISON_TYPES.STATIC_NUMBER
+              ? selectedValue
+              : undefined
+          }
+          onChange={nextValue => {
+            handleEditedValueChange(nextValue, true);
+          }}
+          onBack={() => setTab(null)}
+        />
+      );
+    }
+    return (
+      <Stack spacing="sm">
+        {options.map(optionArgs =>
+          renderMenuOption({
+            editedValue,
+            selectedValue,
+            optionArgs,
+            onChange: handleEditedValueChange,
+            onChangeTab: setTab,
+          }),
+        )}
+      </Stack>
+    );
+  };
+
   return (
     <Menu
       opened={open}
@@ -85,45 +133,7 @@ export function SmartScalarComparisonWidget({
       </Menu.Target>
 
       <Menu.Dropdown miw="18.25rem">
-        {tab === "anotherColumn" ? (
-          <AnotherColumnForm
-            value={
-              selectedValue.type === COMPARISON_TYPES.ANOTHER_COLUMN
-                ? selectedValue
-                : undefined
-            }
-            columns={comparableColumns}
-            onChange={nextValue => {
-              onChange(nextValue);
-              setOpen(false);
-            }}
-            onBack={() => setTab(null)}
-          />
-        ) : tab === "staticNumber" ? (
-          <StaticNumberForm
-            value={
-              selectedValue.type === COMPARISON_TYPES.STATIC_NUMBER
-                ? selectedValue
-                : undefined
-            }
-            onChange={nextValue => {
-              handleEditedValueChange(nextValue, true);
-            }}
-            onBack={() => setTab(null)}
-          />
-        ) : (
-          <Stack spacing="sm">
-            {options.map(optionArgs =>
-              renderMenuOption({
-                editedValue,
-                selectedValue,
-                optionArgs,
-                onChange: handleEditedValueChange,
-                onChangeTab: setTab,
-              }),
-            )}
-          </Stack>
-        )}
+        {renderMenuDropdownContent()}
       </Menu.Dropdown>
     </Menu>
   );
