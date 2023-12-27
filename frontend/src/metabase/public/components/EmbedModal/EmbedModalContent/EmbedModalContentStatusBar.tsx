@@ -32,13 +32,13 @@ export const EmbedModalContentStatusBar = ({
         </Text>
 
         <div className="flex-no-shrink">
-          {isEmbeddingEnabled ? (
-            hasSettingsChanges ? (
+          {isEmbeddingEnabled &&
+            (hasSettingsChanges ? (
               <Button
                 className="ml1"
                 medium
                 onClick={onDiscard}
-              >{t`Discard Changes`}</Button>
+              >{t`Discard changes`}</Button>
             ) : (
               <Button
                 className="ml1"
@@ -46,8 +46,9 @@ export const EmbedModalContentStatusBar = ({
                 warning
                 onClick={onUnpublish}
               >{t`Unpublish`}</Button>
-            )
-          ) : (
+            ))}
+
+          {(!isEmbeddingEnabled || hasSettingsChanges) && (
             <ActionButton
               className="ml1"
               primary
@@ -56,7 +57,9 @@ export const EmbedModalContentStatusBar = ({
               activeText={t`Updating...`}
               successText={t`Updated`}
               failedText={t`Failed!`}
-            >{t`Publish`}</ActionButton>
+            >
+              {hasSettingsChanges ? t`Publish changes` : t`Publish`}
+            </ActionButton>
           )}
         </div>
       </Flex>
