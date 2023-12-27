@@ -10,6 +10,7 @@ import {
   openStaticEmbeddingModal,
   downloadAndAssert,
   assertSheetRowsCount,
+  modal,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -54,21 +55,21 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       openStaticEmbeddingModal();
+      cy.findByRole("tab", { name: "Parameters" }).click();
 
-      cy.findByRole("heading", { name: "Parameters" })
-        .parent()
-        .as("allParameters")
-        .within(() => {
-          // verify that all the parameters on the dashboard are defaulted to disabled
-          cy.findAllByText("Disabled").should("have.length", 4);
+      cy.findByLabelText("Enable or lock parameters").as("allParameters");
 
-          // select the dropdown next to the Name parameter so that we can set it to editable
-          cy.findByText("Name")
-            .parent()
-            .within(() => {
-              cy.findByText("Disabled").click();
-            });
-        });
+      cy.get("@allParameters").within(() => {
+        // verify that all the parameters on the dashboard are defaulted to disabled
+        cy.findAllByText("Disabled").should("have.length", 4);
+
+        // select the dropdown next to the Name parameter so that we can set it to editable
+        cy.findByText("Name")
+          .parent()
+          .within(() => {
+            cy.findByText("Disabled").click();
+          });
+      });
 
       popover().findByText("Editable").click();
 
@@ -80,18 +81,19 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       popover().findByText("Locked").click();
 
-      // set the locked parameter's value
-      cy.findByTestId("embedding-settings")
-        .findByText("Preview Locked Parameters")
-        .parent()
-        .findByText("Id")
-        .click();
+      modal().within(() => {
+        // set the locked parameter's value
+        cy.findByText("Preview locked parameters")
+          .parent()
+          .findByText("Id")
+          .click();
 
-      cy.findByPlaceholderText("Search by Name or enter an ID").type(
-        "1{enter}3{enter}",
-      );
+        cy.findByPlaceholderText("Search by Name or enter an ID").type(
+          "1{enter}3{enter}",
+        );
 
-      cy.button("Add filter").click();
+        cy.button("Add filter").click();
+      });
 
       // publish the embedded dashboard so that we can directly navigate to its url
       publishChanges(({ request }) => {
@@ -102,6 +104,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       // directly navigate to the embedded dashboard
+      modal().findByText("Preview").click();
       visitIframe();
 
       // verify that the Id parameter doesn't show up but that its value is reflected in the dashcard
@@ -135,6 +138,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       openStaticEmbeddingModal();
+      cy.findByRole("tab", { name: "Parameters" }).click();
 
       cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();
@@ -149,6 +153,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         });
       });
 
+      modal().findByText("Preview").click();
       visitIframe();
 
       filterWidget().should("not.exist");
@@ -400,6 +405,8 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
     openStaticEmbeddingModal();
+    cy.findByRole("tab", { name: "Parameters" }).click();
+
     // ID param is disabled by default
     setParameter("Name", "Editable");
     setParameter("Source", "Locked");
@@ -409,6 +416,8 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
         name: "enabled",
       });
     });
+
+    modal().findByText("Preview").click();
     visitIframe();
     // The ID default (1 and 2) should apply, because it is disabled.
     // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
@@ -425,7 +434,7 @@ function openFilterOptions(name) {
 function publishChanges(callback) {
   cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
 
-  cy.button("Publish").click();
+  cy.button("Publish changes").click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.
@@ -438,7 +447,7 @@ function publishChanges(callback) {
 }
 
 function setParameter(name, filter) {
-  cy.findByText("Which parameters can users of this embed use?")
+  cy.findByLabelText("Enable or lock parameters")
     .parent()
     .findByText(name)
     .siblings("a")

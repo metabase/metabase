@@ -703,9 +703,13 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           openStaticEmbeddingModal();
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Publish").click();
+          cy.findByText("Publish changes").click();
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
+          modal().within(() => {
+            cy.findByRole("tab", { name: "Parameters" }).click();
+            cy.findByText("Preview").click();
+          });
           visitIframe();
 
           cy.get(".EmbedFrame-header").contains(test.subject);

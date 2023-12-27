@@ -4,6 +4,7 @@ import {
   describeEE,
   setTokenFeatures,
   openStaticEmbeddingModal,
+  modal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -39,6 +40,11 @@ describeEE("issue 30535", () => {
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
     openStaticEmbeddingModal();
+
+    modal().within(() => {
+      cy.findByRole("tab", { name: "Parameters" }).click();
+      cy.findByText("Preview").click();
+    });
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");

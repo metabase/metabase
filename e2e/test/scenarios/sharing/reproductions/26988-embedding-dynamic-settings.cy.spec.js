@@ -1,6 +1,7 @@
 import {
   describeEE,
   getIframeBody,
+  modal,
   openStaticEmbeddingModal,
   popover,
   restore,
@@ -35,17 +36,27 @@ describeEE("issue 26988", () => {
     });
 
     openStaticEmbeddingModal();
-    cy.wait("@dashboard");
 
+    modal().within(() => {
+      cy.findByRole("tab", { name: "Appearance" }).click();
+      cy.findByText("Preview").click();
+    });
+
+    cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);
 
-    cy.findByTestId("embedding-settings").findByLabelText("Font").click();
+    cy.findByLabelText("Play with the options here")
+      .findByLabelText("Font")
+      .as("font-control")
+      .click();
     popover().findByText("Oswald").click();
+
     cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Oswald, sans-serif`);
 
-    cy.findByTestId("embedding-settings").findByLabelText("Font").click();
+    cy.get("@font-control").click();
     popover().findByText("Slabo 27px").click();
+
     cy.wait("@dashboard");
     getIframeBody().should(
       "have.css",

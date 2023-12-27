@@ -6,6 +6,7 @@ import {
   visitEmbeddedPage,
   visitIframe,
   openStaticEmbeddingModal,
+  modal,
 } from "e2e/support/helpers";
 
 import { questionDetails } from "./shared/embedding-native";
@@ -27,10 +28,13 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should not display disabled parameters", () => {
+      cy.findByRole("tab", { name: "Parameters" }).click();
+
       publishChanges(({ request }) => {
         assert.deepEqual(request.body.embedding_params, {});
       });
 
+      modal().findByText("Preview").click();
       visitIframe();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -44,6 +48,8 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should display and work with enabled parameters while hiding the locked one", () => {
+      cy.findByRole("tab", { name: "Parameters" }).click();
+
       setParameter("Order ID", "Editable");
       setParameter("Created At", "Editable");
       setParameter("Total", "Locked");
@@ -52,7 +58,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // We must enter a value for a locked parameter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview Locked Parameters")
+      cy.findByText("Preview locked parameters")
         .parent()
         .within(() => {
           cy.findByText("Total").click();
@@ -76,6 +82,7 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(actual, expected);
       });
 
+      modal().findByText("Preview").click();
       visitIframe();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -267,6 +274,9 @@ describe("scenarios > embedding > native questions with default parameters", () 
       visitQuestion: true,
     });
     openStaticEmbeddingModal();
+
+    cy.findByRole("tab", { name: "Parameters" }).click();
+
     // Note: ID is disabled
     setParameter("Source", "Locked");
     setParameter("Name", "Editable");
@@ -276,7 +286,10 @@ describe("scenarios > embedding > native questions with default parameters", () 
         name: "enabled",
       });
     });
+
+    modal().findByText("Preview").click();
     visitIframe();
+
     // Remove default filter value
     clearFilterWidget();
     // The ID default (1, 2) should apply, because it is disabled.
@@ -288,7 +301,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
 });
 
 function setParameter(name, filter) {
-  cy.findByText("Which parameters can users of this embed use?")
+  cy.findByLabelText("Enable or lock parameters")
     .parent()
     .within(() => {
       cy.findByText(name).siblings("a").click();
@@ -300,7 +313,7 @@ function setParameter(name, filter) {
 function publishChanges(callback) {
   cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-  cy.button("Publish").click();
+  cy.button("Publish changes").click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.
