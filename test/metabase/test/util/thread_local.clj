@@ -5,7 +5,7 @@
    [metabase.util :as u]))
 
 (def ^{:dynamic true
-       :doc     "Used to tells testl helpers to run in an unsafe manner.
+       :doc     "Used to toggle the behavior of test helpers to run in an unsafe manner or set value globally.
                 You shouldn't set this directly, instead wrap the form with [[with-test-helpers-set-global-values!]]."}
   *thread-local* true)
 
