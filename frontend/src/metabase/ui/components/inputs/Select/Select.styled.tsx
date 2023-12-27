@@ -21,7 +21,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
-      ...getSelectInputOverrides(theme),
+      ...getSelectInputOverrides(theme, size),
       ...getSelectItemsOverrides(theme, size),
     }),
   },
@@ -29,6 +29,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
 
 export const getSelectInputOverrides = (
   theme: MantineTheme,
+  size: MantineSize | number,
 ): Record<string, CSSObject> => {
   return {
     root: {
@@ -42,6 +43,8 @@ export const getSelectInputOverrides = (
     },
     label: {
       ref: getStylesRef("label"),
+      color: theme.colors.text[1],
+      fontSize: getSize({ size, sizes: theme.fontSizes }),
     },
     description: {
       ref: getStylesRef("description"),
