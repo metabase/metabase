@@ -83,7 +83,7 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/notify-database-updated database))
+  (sql-jdbc.conn/invalidate-pool-for-db! database))
 
 (defmethod driver/dbms-version :sql-jdbc
   [driver database]
