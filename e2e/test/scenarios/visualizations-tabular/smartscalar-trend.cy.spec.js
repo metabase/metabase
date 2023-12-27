@@ -201,16 +201,19 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("chartsettings-sidebar").findByText("Display").click();
 
     cy.findByTestId("scalar-container").findByText("3,440,000");
+    cy.findByTestId("scalar-previous-value").findByText("5,270,000");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
       .click();
     cy.findByTestId("scalar-container").findByText("3.4M");
+    cy.findByTestId("scalar-previous-value").findByText("5.3M");
 
     cy.findByTestId("chartsettings-sidebar")
       .findByLabelText("Compact number")
       .click();
     cy.findByTestId("scalar-container").findByText("3,440,000");
+    cy.findByTestId("scalar-previous-value").findByText("5,270,000");
   });
 
   it("should work regardless of column order (metabase#13710)", () => {
