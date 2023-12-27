@@ -345,6 +345,8 @@ export const fetchCardData = createThunkAction(
 
       cancelFetchCardData(card.id, dashcard.id);
 
+      // When dashcard parameters change, we need to clean previous (stale)
+      // state so that the loader spinner shows as expected (#33767)
       const hasParametersChanged =
         !lastResult ||
         !equals(
