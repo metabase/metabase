@@ -189,7 +189,7 @@
 
 (deftest set-many!-test-2
   (testing "if one change fails, the entire set of changes should be reverted"
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-setting-1 "123"
                                          test-setting-2 "123"]
         (let [orig  setting/set!
