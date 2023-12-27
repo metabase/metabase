@@ -210,7 +210,11 @@ export function isComparisonValid(
 
   // TODO test
   if (comparisonType === COMPARISON_TYPES.ANOTHER_COLUMN) {
-    return !isEmpty(comparison?.column) && !isEmpty(comparison?.label);
+    return (
+      !isEmpty(comparison?.column) &&
+      !isEmpty(comparison?.label) &&
+      comparison?.column !== settings["scalar.field"]
+    );
   }
 
   if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
