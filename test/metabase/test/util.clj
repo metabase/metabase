@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -23,7 +24,6 @@
             Permissions
             PermissionsGroup
             PermissionsGroupMembership
-            Setting
             Table
             User]]
    [metabase.models.collection :as collection]
@@ -31,8 +31,6 @@
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.setting :as setting]
-   [metabase.models.setting.cache :as setting.cache]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
@@ -42,6 +40,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.random :as tu.random]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
@@ -63,7 +62,6 @@
          test-runner.assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
-
 
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
@@ -303,22 +301,6 @@
       u/lower-case-en
       keyword))
 
-(defn do-with-temp-env-var-value
-  "Impl for [[with-temp-env-var-value]] macro."
-  [env-var-keyword value thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-env-var-value")
-  (let [value (str value)]
-    (testing (colorize/blue (format "\nEnv var %s = %s\n" env-var-keyword (pr-str value)))
-      (try
-        ;; temporarily override the underlying environment variable value
-        (with-redefs [env/env (assoc env/env env-var-keyword value)]
-          ;; flush the Setting cache so it picks up the env var value for the Setting (if applicable)
-          (setting.cache/restore-cache!)
-          (thunk))
-        (finally
-          ;; flush the cache again so the original value of any env var Settings get restored
-          (setting.cache/restore-cache!))))))
-
 (defmacro with-temp-env-var-value
   "Temporarily override the value of one or more environment variables and execute `body`. Resets the Setting cache so
   any env var Settings will see the updated value, and resets the cache again at the conclusion of `body` so the
@@ -328,138 +310,51 @@
       ...)"
   [[env-var value & more :as bindings] & body]
   {:pre [(vector? bindings) (even? (count bindings))]}
-  `(do-with-temp-env-var-value
+  `(tu.setting/do-with-temp-env-var-value
     ~(->lisp-case-keyword env-var)
     ~value
     (fn [] ~@(if (seq more)
                [`(with-temp-env-var-value ~(vec more) ~@body)]
                body))))
 
-(setting/defsetting with-temp-env-var-value-test-setting
-  "Setting for the `with-temp-env-var-value-test` test."
-  :visibility :internal
-  :setter     :none
-  :default    "abc")
-
-(deftest with-temp-env-var-value-test
-  (is (= "abc"
-         (with-temp-env-var-value-test-setting)))
-  (with-temp-env-var-value [mb-with-temp-env-var-value-test-setting "def"]
-    (testing "env var value"
-      (is (= "def"
-             (env/env :mb-with-temp-env-var-value-test-setting))))
-    (testing "Setting value"
-      (is (= "def"
-             (with-temp-env-var-value-test-setting)))))
-  (testing "original value should be restored"
-    (testing "env var value"
-      (is (= nil
-             (env/env :mb-with-temp-env-var-value-test-setting))))
-    (testing "Setting value"
-      (is (= "abc"
-             (with-temp-env-var-value-test-setting)))))
-
-  (testing "override multiple env vars"
-    (with-temp-env-var-value [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
-      (testing "Should convert values to strings"
-        (is (= "123"
-               (:some-fake-env-var env/env))))
-      (testing "should handle CAPITALS/SNAKE_CASE"
-        (is (= "def"
-               (:another-fake-env-var env/env))))))
-
-  (testing "validation"
-    (are [form] (thrown?
-                 clojure.lang.Compiler$CompilerException
-                 (macroexpand form))
-      (list `with-temp-env-var-value '[a])
-      (list `with-temp-env-var-value '[a b c]))))
-
-(defn- upsert-raw-setting!
-  [original-value setting-k value]
-  (if original-value
-    (t2/update! Setting setting-k {:value value})
-    (t2/insert! Setting :key setting-k :value value))
-  (setting.cache/restore-cache!))
-
-(defn- restore-raw-setting!
-  [original-value setting-k]
-  (if original-value
-    (t2/update! Setting setting-k {:value original-value})
-    (t2/delete! Setting :key setting-k))
-  (setting.cache/restore-cache!))
-
-(defn do-with-temporary-setting-value
-  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
-  the original value. This works much the same way as [[binding]].
-
-  If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
-
-  If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
-  is thrown if the `setting-k` already exists.
-
-  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
-  [setting-k value thunk & {:keys [raw-setting?]}]
-  ;; plugins have to be initialized because changing `report-timezone` will call driver methods
-  (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
-  (initialize/initialize-if-needed! :db :plugins)
-  (let [setting-k     (name setting-k)
-        setting       (try
-                        (#'setting/resolve-setting setting-k)
-                        (catch Exception e
-                          (when-not raw-setting?
-                            (throw e))))]
-    (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
-      (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
-      (let [original-value (if raw-setting?
-                             (t2/select-one-fn :value Setting :key setting-k)
-                             (#'setting/get setting-k))]
-        (try
-          (try
-            (if raw-setting?
-              (upsert-raw-setting! original-value setting-k value)
-              ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
-                (setting/set! setting-k value)))
-            (catch Throwable e
-              (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                              {:setting  setting-k
-                               :location (symbol (name (:namespace setting)) (name setting-k))
-                               :value    value}
-                              e))))
-          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-            (thunk))
-          (finally
-            (try
-              (if raw-setting?
-                (restore-raw-setting! original-value setting-k)
-                ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
-                  (setting/set! setting-k original-value)))
-              (catch Throwable e
-                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                                {:setting        setting-k
-                                 :location       (symbol (name (:namespace setting)) setting-k)
-                                 :original-value original-value}
-                                e))))))))))
+(s/def ::with-temporary-setting-values-bindings
+  (s/spec (s/* (s/cat
+                :setting any?
+                :value   any?))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
-  This works much the same way as `binding`.
+  This works much the same way as `binding`. Thread-safe.
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\"
 
-  If an env var value is set for the setting, this will change the env var rather than the setting stored in the DB.
-  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
-  [[setting-k value & more :as bindings] & body]
-  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
-  (if (empty? bindings)
-    `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-setting-values ~more
-           ~@body)))))
+  To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]].
+
+  Supports [[metabase.test/test-helpers-set-global-values!]]; use this in the body of a
+  `test-helpers-set-global-values!` form to set Setting values globally.
+
+  Changes to Settings with values bound here will be captured, and ultimately discarded at the conclusion of this form
+  e.g.
+
+    (my-setting) ; => 1
+    (with-temporary-setting-values [my-setting 2]
+      (my-setting) ; => 2
+      (my-setting! 3)
+      (my-setting) ; => 3
+      ...)
+    (my-setting) ; => 1"
+  {:style/indent :defn}
+  [bindings & body]
+  `(tu.setting/do-with-temporary-setting-values
+    ~(into {}
+           (map (fn [{:keys [setting value]}]
+                  [(cond-> setting
+                     (symbol? setting) (#(keyword (name %))))
+                   value]))
+           (s/conform ::with-temporary-setting-values-bindings bindings))
+    (^:once fn* []
+     ~@body)))
 
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
@@ -468,20 +363,12 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-raw-setting-values ~more
-           ~@body))
-       :raw-setting? true)))
-
-(defn do-with-discarded-setting-changes [settings thunk]
-  (initialize/initialize-if-needed! :db :plugins)
-  ((reduce
-    (fn [thunk setting-k]
-      (fn []
-        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
-    thunk
-    settings)))
+    `(tu.setting/do-with-temporary-global-setting-value
+      ~(keyword setting-k) ~value
+      (^:once fn* []
+       (with-temporary-raw-setting-values ~more
+         ~@body))
+      :raw-setting? true)))
 
 (defmacro discard-setting-changes
   "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
@@ -491,7 +378,7 @@
       ...)"
   {:style/indent 1}
   [settings & body]
-  `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
+  `(tu.setting/do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
 (defn do-with-temp-vals-in-db
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
@@ -886,40 +773,6 @@
            ~@body)))
     `(do-with-discard-model-updates ~models (fn [] ~@body))))
 
-(deftest with-discard-model-changes-test
-  (t2.with-temp/with-temp
-    [:model/Card      {card-id :id :as card} {:name "A Card"}
-     :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
-    (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
-
-      (testing "with single model"
-        (with-discard-model-updates [:model/Card]
-          (t2/update! :model/Card card-id {:name "New Card name"})
-          (testing "the changes takes affect inside the macro"
-            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
-
-        (testing "outside macro, the changes should be reverted"
-          (is (= card (t2/select-one :model/Card card-id)))))
-
-      (testing "with multiple models"
-        (with-discard-model-updates [:model/Card :model/Dashboard]
-          (testing "the changes takes affect inside the macro"
-            (t2/update! :model/Card card-id {:name "New Card name"})
-            (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-
-            (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
-            (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
-
-        (testing "outside macro, the changes should be reverted"
-          (is (= (dissoc card :updated_at)
-                 (dissoc (t2/select-one :model/Card card-id) :updated_at)))
-          (is (= (dissoc dash :updated_at)
-                 (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
-
-      (testing "make sure that we cleaned up the aux methods after"
-        (is (= count-aux-method-before
-               (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
-
 (defn do-with-non-admin-groups-no-collection-perms [collection f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-non-admin-groups-no-collection-perms")
   (try
@@ -1180,49 +1033,6 @@
       ~@(if (seq more)
           [`(with-temp-file ~(vec more) ~@body)]
           body))))
-
-(deftest with-temp-file-test
-  (testing "random filename"
-    (let [temp-filename (atom nil)]
-      (with-temp-file [filename]
-        (is (string? filename))
-        (is (not (.exists (io/file filename))))
-        (spit filename "wow")
-        (reset! temp-filename filename))
-      (testing "File should be deleted at end of macro form"
-        (is (not (.exists (io/file @temp-filename)))))))
-
-  (testing "explicit filename"
-    (with-temp-file [filename "parrot-list.txt"]
-      (is (string? filename))
-      (is (not (.exists (io/file filename))))
-      (is (str/ends-with? filename "parrot-list.txt"))
-      (spit filename "wow")
-      (testing "should delete existing file"
-        (with-temp-file [filename "parrot-list.txt"]
-          (is (not (.exists (io/file filename))))))))
-
-  (testing "multiple bindings"
-    (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
-      (is (string? filename))
-      (is (string? filename-2))
-      (is (not (.exists (io/file filename))))
-      (is (not (.exists (io/file filename-2))))
-      (is (not (str/ends-with? filename "parrot-list.txt")))
-      (is (str/ends-with? filename-2 "parrot-list.txt"))))
-
-  (testing "should delete existing file"
-    (with-temp-file [filename "parrot-list.txt"]
-      (spit filename "wow")
-      (with-temp-file [filename "parrot-list.txt"]
-        (is (not (.exists (io/file filename)))))))
-
-  (testing "validation"
-    (are [form] (thrown?
-                 clojure.lang.Compiler$CompilerException
-                 (macroexpand form))
-      `(with-temp-file [])
-      `(with-temp-file (+ 1 2)))))
 
 (defn do-with-temp-dir
   "Impl for [[with-temp-dir]] macro."

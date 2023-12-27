@@ -86,7 +86,7 @@
   :default :lax
   :getter (fn session-cookie-samesite-getter []
             (let [value (normalized-session-cookie-samesite
-                         (setting/get-raw-value :session-cookie-samesite))]
+                         (setting/get-value-of-type :keyword :session-cookie-samesite))]
               (if (valid-session-cookie-samesite? value)
                 value
                 (throw (ex-info "Invalid value for session cookie samesite"
@@ -352,7 +352,7 @@
     (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                  (premium-features/enable-advanced-permissions?))
                                                 [(api-key/prefix api-key)]))
-                               (update :is-group-manager? boolean))]
+                            (update :is-group-manager? boolean))]
       (when (matching-api-key? user-data api-key)
         (dissoc user-data :api-key)))))
 
