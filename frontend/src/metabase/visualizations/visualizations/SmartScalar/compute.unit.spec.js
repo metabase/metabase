@@ -1952,6 +1952,55 @@ describe("SmartScalar > compute", () => {
         },
       );
     });
+
+    describe("format options", () => {
+      const series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: {
+              rows: [
+                [100, "2023-10-01T00:00:00"],
+                [300, "2024-10-01T00:00:00"],
+              ],
+              cols: [
+                createMockNumberColumn({ name: "Count" }),
+                createMockDateTimeColumn({ name: "Month" }),
+              ],
+            },
+          },
+        ),
+      ];
+
+      const insights = [{ unit: "month", col: "Count" }];
+
+      const createVizSettings = settings =>
+        createMockVisualizationSettings({
+          "scalar.field": "Count",
+          "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_VALUE },
+          ...settings,
+        });
+
+      it("should have `compact: false` by default", () => {
+        const { formatOptions } = computeTrend(
+          series,
+          insights,
+          createVizSettings(),
+        );
+        expect(formatOptions.compact).toBeFalsy();
+      });
+
+      it("should have `compact: true` with `scalar.compact_primary_number` viz setting", () => {
+        const { formatOptions } = computeTrend(
+          series,
+          insights,
+          createVizSettings({
+            "scalar.compact_primary_number": true,
+          }),
+        );
+        expect(formatOptions.compact).toBe(true);
+      });
+    });
   });
 });
 
