@@ -30,16 +30,17 @@ export function spyRequestFinished(name = "requestFinishedSpy") {
 }
 
 /**
- * When you need to postpone a request (to check for loading spinners or alike),
+ * When you need to postpone a response (to check for loading spinners or alike),
  * use this:
  *
- * `cy.intercept('POST', path, postponeRequest(1000)).as('postponedRequest')`
+ * `cy.intercept('POST', path, delayResponse(1000)).as('delayed')`
  *
- * `cy.wait('@postponedRequest')` - you'll have 1000 ms until this resolves
- *
+ * `cy.wait('@delayed')` - you'll have 1000 ms until this resolves
  */
-export function postponeRequest(delayMs) {
-  return function delayedInterceptor(req) {
-    return new Promise(resolve => setTimeout(() => resolve(req), delayMs));
+export function delayResponse(delayMs) {
+  return function (req) {
+    req.on("response", res => {
+      res.setDelay(delayMs);
+    });
   };
 }
