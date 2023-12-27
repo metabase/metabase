@@ -235,7 +235,7 @@
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (tu/do-with-temporary-setting-value setting db-value
     (fn []
-      (tu/do-with-temp-env-var-value
+      (tu/do-with-temp-env-var-value!
        (setting/setting-env-map-name (keyword setting))
        env-var-value
        (fn []
@@ -718,7 +718,7 @@
                                                (t2/delete! Setting :key (name setting-name))
                                                (setting.cache/restore-cache!)))))
                                        (fn [thunk]
-                                         (tu/do-with-temp-env-var-value
+                                         (tu/do-with-temp-env-var-value!
                                           (setting/setting-env-map-name setting-name)
                                           site-wide-value
                                           thunk))]]
