@@ -33,12 +33,13 @@
 (def ^:private default-redirect-uri "/")
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
-(defmacro with-sso-jwt-token
+(defmacro with-sso-jwt-token!
   "Stubs the `premium-features/*token-features*` function to simulate a premium token with the `:sso-jwt` feature.
    This needs to be included to test any of the JWT features."
   [& body]
-  `(premium-features-test/with-additional-premium-features #{:sso-jwt}
-     ~@body))
+  `(mt/with-test-helpers-set-global-values!
+     (premium-features-test/with-additional-premium-features #{:sso-jwt}
+       ~@body)))
 
 (defn- call-with-default-jwt-config [f]
   (let [current-features (premium-features/*token-features*)]
@@ -60,7 +61,7 @@
      (premium-features-test/with-premium-features #{:audit-app}
        (disable-other-sso-types
         (fn []
-          (with-sso-jwt-token
+          (with-sso-jwt-token!
             (saml-test/call-with-login-attributes-cleared!
              (fn []
                (call-with-default-jwt-config
@@ -68,7 +69,7 @@
                   ~@body))))))))))
 
 (deftest sso-prereqs-test
-  (with-sso-jwt-token
+  (with-sso-jwt-token!
     (testing "SSO requests fail if JWT hasn't been configured or enabled"
       (mt/with-temporary-setting-values [jwt-enabled               false
                                          jwt-identity-provider-uri nil
@@ -259,7 +260,7 @@
 
 (deftest group-mappings-test
   (testing "make sure our setting for mapping group names -> IDs works"
-    (with-sso-jwt-token
+    (with-sso-jwt-token!
       (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
                                                              "group_2" [3 4]
                                                              "group_3" [5]}]

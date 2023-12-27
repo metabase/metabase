@@ -29,7 +29,7 @@
 
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Input .* does not match schema"
+             #"Invalid input: \[\"should be a string\"]"
              (advanced-config.file/initialize!)))
         (testing "value should not have been updated"
           (is (= "wow"

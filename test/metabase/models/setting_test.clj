@@ -263,7 +263,7 @@
 
 (deftest user-facing-info-test-3
   (testing "user-facing info w/ no db value, env var value, no default value -- shouldn't leak env var value"
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-setting-1 nil]
         (mt/with-temp-env-var-value [:mb-test-setting-1 "TOUCANS"]
           (is (=? {:value          nil
@@ -274,7 +274,7 @@
 
 (deftest user-facing-info-test-4
   (testing "user-facing info w/ no db value, env var value, default value"
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-setting-2 nil]
         (mt/with-temp-env-var-value [:mb-test-setting-2 "TOUCANS"]
           (is (=? {:value          nil
@@ -300,7 +300,7 @@
 (deftest user-facing-info-test-7
   (testing (str "user-facing info w/ db value, env var value, no default value -- the env var should take precedence "
                 "over the db value, but should be obfuscated")
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-setting-1 "TOUCANS"]
         (mt/with-temp-env-var-value [mb-test-setting-1 "ENV VAR"]
           (is (=? {:value          nil
@@ -312,7 +312,7 @@
 (deftest user-facing-info-test-8
   (testing (str "user-facing info w/ db value, env var value, default value -- env var should take precedence over "
                 "default, but should be obfuscated")
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-setting-2 "TOUCANS"]
         (mt/with-temp-env-var-value [mb-test-setting-2 "ENV VAR"]
           (is (=? {:value          nil
@@ -898,7 +898,7 @@
   (testing "Reading and writing a user-local-allowed setting in the context of a user uses the user-local value"
     ;; TODO: mt/with-temporary-setting-values only affects site-wide value, we should figure out whether it should also
     ;; affect user-local settings.
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-user-local-allowed-setting nil]
         (mt/with-current-user (mt/user->id :rasta)
           (test-user-local-allowed-setting! "ABC")
@@ -940,7 +940,7 @@
 
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
-    (mt/test-helpers-set-global-values!
+    (mt/with-test-helpers-set-global-values!
       (mt/with-temporary-setting-values [test-setting-1 "123"
                                           test-setting-2 "123"]
         (is (= "5f7f150c"
@@ -989,7 +989,7 @@
               (is (= "setting-default"
                      (test-feature-setting)))))
           (testing "a DB value is set"
-            (mt/test-helpers-set-global-values!
+            (mt/with-test-helpers-set-global-values!
               (mt/with-temporary-setting-values [test-feature-setting "wow"]
                 (is (= "setting-default"
                        (test-feature-setting))))))
