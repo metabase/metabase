@@ -1952,6 +1952,59 @@ describe("SmartScalar > compute", () => {
         },
       );
     });
+
+    describe("format options", () => {
+      const countColumn = createMockNumberColumn({ name: "Count" });
+      const monthColumn = createMockDateTimeColumn({ name: "Month" });
+
+      const cols = [countColumn, monthColumn];
+      const rows = [
+        [105000, "2023-10-01T00:00:00"],
+        [210000, "2024-10-01T00:00:00"],
+      ];
+
+      const series = [createMockSingleSeries({}, { data: { rows, cols } })];
+
+      const insights = [{ unit: "month", col: "Count" }];
+
+      const createVizSettings = settings =>
+        createMockVisualizationSettings({
+          column: column => ({ column }),
+          "scalar.field": "Count",
+          "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_VALUE },
+          ...settings,
+        });
+
+      it("should have `compact: false` by default", () => {
+        const {
+          comparison: { display: comparisonDisplay },
+          display,
+          formatOptions,
+        } = computeTrend(series, insights, createVizSettings());
+
+        expect(formatOptions.compact).toBeFalsy();
+        expect(display.value).toBe("210,000");
+        expect(comparisonDisplay.comparisonValue).toBe("105,000");
+      });
+
+      it("should have `compact: true` with `scalar.compact_primary_number` viz setting", () => {
+        const {
+          comparison: { display: comparisonDisplay },
+          display,
+          formatOptions,
+        } = computeTrend(
+          series,
+          insights,
+          createVizSettings({
+            "scalar.compact_primary_number": true,
+          }),
+        );
+
+        expect(formatOptions.compact).toBe(true);
+        expect(display.value).toBe("210.0k");
+        expect(comparisonDisplay.comparisonValue).toBe("105.0k");
+      });
+    });
   });
 });
 
@@ -2165,6 +2218,7 @@ function getTrend(trend) {
 function createMockDateTimeColumn(opts) {
   return createMockColumn({
     base_type: "type/DateTime",
+    effective_type: "type/DateTime",
     semantic_type: null,
     ...opts,
   });
@@ -2173,6 +2227,7 @@ function createMockDateTimeColumn(opts) {
 function createMockNumberColumn(opts) {
   return createMockColumn({
     base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/Number",
     ...opts,
   });

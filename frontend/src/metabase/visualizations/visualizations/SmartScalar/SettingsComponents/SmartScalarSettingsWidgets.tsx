@@ -84,8 +84,7 @@ export function SmartScalarComparisonWidget({
                 : undefined
             }
             onChange={nextValue => {
-              onChange(nextValue);
-              setOpen(false);
+              handleEditedValueChange(nextValue, true);
             }}
             onBack={() => setTab(null)}
           />

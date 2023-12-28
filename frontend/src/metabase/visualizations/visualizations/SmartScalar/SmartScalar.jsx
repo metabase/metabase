@@ -296,6 +296,13 @@ Object.assign(SmartScalar, {
       widget: "toggle",
       inline: true,
     },
+    "scalar.compact_primary_number": {
+      section: t`Display`,
+      title: t`Compact number`,
+      widget: "toggle",
+      inline: true,
+      default: false,
+    },
     ...columnSettings({
       section: t`Display`,
       getColumns: (
