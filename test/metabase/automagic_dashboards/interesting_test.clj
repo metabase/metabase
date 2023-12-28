@@ -240,7 +240,6 @@
                          quantity-dim
                          unmatched-dim]
           bindings      (vals (#'interesting/candidate-bindings context dimensions))]
-      bindings
       (testing "3 results are returned - one for each matched field group"
         (is (= 3 (count bindings))))
       (testing "The return data shape is a vector for each field, each of which is a vector of
