@@ -759,8 +759,8 @@
             no-viz-render     (renderfn {})
             viz-a-render      (renderfn {:graph.y_axis.max 14
                                          :graph.y_axis.min -14})
-            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-text no-viz-render %))) to-find)
-            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-text viz-a-render %))) to-find)]
+            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-exact-text no-viz-render %))) to-find)
+            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-exact-text viz-a-render %))) to-find)]
         ;; we only see 14/-14 in the render where min and max are explicitly set.
         ;; this is because the data's min and max values are only -3 and 6, and the viz will minimize the axis range
         ;; without cutting off the chart's actual values
@@ -772,7 +772,7 @@
       (let [viz-b-render   (renderfn {:graph.y_axis.max 1
                                       :graph.y_axis.min -1})
             to-find        ["14" "2" "-2" "-14"]
-            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-text viz-b-render %))) to-find)]
+            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-exact-text viz-b-render %))) to-find)]
         (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))
 
 (deftest invalid-graph-dim-render-test

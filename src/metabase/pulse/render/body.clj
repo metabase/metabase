@@ -52,10 +52,6 @@
                           :padding     :16px})}
            (trs "An error occurred while displaying this card.")]}))
 
-(def rows-limit
-  "Maximum number of rows to render in a Pulse image."
-  10)
-
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -187,7 +183,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take rows-limit rows)
+       (take (min (public-settings/attachment-table-row-limit) 100) rows)
        viz-settings
        data-attributes)))))
 
@@ -245,7 +241,7 @@
                                       (color/make-color-selector data viz-settings)
                                       (mapv :name ordered-cols)
                                       (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning rows-limit (count rows))]]
+                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
      nil
 
