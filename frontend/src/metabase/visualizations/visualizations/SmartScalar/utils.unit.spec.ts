@@ -375,6 +375,24 @@ describe("SmartScalar > utils", () => {
 
           expect(isValid).toBe(false);
         });
+
+        it("should return false when column is missing in the series", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              label: "Missing",
+              column: "Missing",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
       });
 
       describe("static number comparison", () => {

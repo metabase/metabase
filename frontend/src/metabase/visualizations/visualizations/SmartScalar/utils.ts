@@ -204,16 +204,26 @@ export function isComparisonValid(
 
   const [
     {
-      data: { insights },
+      data: { cols, insights },
     },
   ] = series;
 
   if (comparisonType === COMPARISON_TYPES.ANOTHER_COLUMN) {
-    return (
-      !isEmpty(comparison?.column) &&
-      !isEmpty(comparison?.label) &&
-      comparison?.column !== settings["scalar.field"]
-    );
+    if (
+      !comparison ||
+      isEmpty(comparison.column) ||
+      isEmpty(comparison.label)
+    ) {
+      return false;
+    }
+
+    const isExistingColumn =
+      cols.find(col => col.name === comparison?.column) != null;
+
+    const isDifferentFromPrimaryColumn =
+      comparison.column !== settings["scalar.field"];
+
+    return isExistingColumn && isDifferentFromPrimaryColumn;
   }
 
   if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
