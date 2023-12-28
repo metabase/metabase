@@ -28,6 +28,7 @@ export default class PreviewPane extends Component {
         className={cx(className, "flex relative")}
       >
         <iframe
+          data-testid="embed-preview-iframe"
           className="flex-full"
           src={previewUrl}
           frameBorder={0}

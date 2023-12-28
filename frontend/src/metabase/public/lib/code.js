@@ -1,41 +1,55 @@
 import { optionsToHashParams } from "./embed";
 
-export const getPublicEmbedOptions = ({ iframeUrl }) => [
-  {
-    name: "HTML",
-    source: () => html({ iframeUrl: `"${iframeUrl}"` }),
-    mode: "ace/mode/html",
-  },
-];
-
 export const getSignedEmbedOptions = () => [
   {
     name: "Mustache",
-    source: () => html({ iframeUrl: `"{{iframeUrl}}"`, mode: "ace/mode/html" }),
+    source: html({ iframeUrl: `"{{iframeUrl}}"` }),
+    mode: "ace/mode/html",
   },
-  { name: "Pug / Jade", source: () => pug({ iframeUrl: `iframeUrl` }) },
-  { name: "ERB", source: () => html({ iframeUrl: `"<%= @iframe_url %>"` }) },
+  {
+    name: "Pug / Jade",
+    source: pug({ iframeUrl: `iframeUrl` }),
+    mode: "ace/mode/jade",
+  },
+  {
+    name: "ERB",
+    source: html({ iframeUrl: `"<%= @iframe_url %>"` }),
+    mode: "ace/mode/html_ruby",
+  },
   {
     name: "JSX",
-    source: () => jsx({ iframeUrl: `{iframeUrl}`, mode: "ace/mode/jsx" }),
+    source: jsx({ iframeUrl: `{iframeUrl}` }),
+    mode: "ace/mode/jsx",
   },
 ];
 
 export const getSignTokenOptions = params => [
   {
     name: "Node.js",
-    source: () => node(params),
+    source: node(params),
+    parametersDiffSource: nodeParameters(params),
     mode: "ace/mode/javascript",
     embedOption: "Pug / Jade",
   },
   {
     name: "Ruby",
-    source: () => ruby(params),
+    source: ruby(params),
+    parametersDiffSource: rubyParameters(params),
     mode: "ace/mode/ruby",
     embedOption: "ERB",
   },
-  { name: "Python", source: () => python(params), mode: "ace/mode/python" },
-  { name: "Clojure", source: () => clojure(params), mode: "ace/mode/clojure" },
+  {
+    name: "Python",
+    source: python(params),
+    parametersDiffSource: pythonParameters(params),
+    mode: "ace/mode/python",
+  },
+  {
+    name: "Clojure",
+    source: clojure(params),
+    parametersDiffSource: clojureParameters(params),
+    mode: "ace/mode/clojure",
+  },
 ];
 
 export const getPublicEmbedHTML = iframeUrl =>
@@ -83,11 +97,7 @@ var jwt = require("jsonwebtoken");
 var METABASE_SITE_URL = ${JSON.stringify(siteUrl)};
 var METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
 
-var payload = {
-  resource: { ${resourceType}: ${resourceId} },
-  params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},
-  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
-};
+${nodeParameters({ resourceType, resourceId, params })}
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
@@ -95,6 +105,13 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
       ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
       : ""
   };`;
+
+const nodeParameters = ({ resourceType, resourceId, params }) =>
+  `var payload = {
+  resource: { ${resourceType}: ${resourceId} },
+  params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},
+  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
+};`;
 
 const ruby = ({
   siteUrl,
@@ -111,7 +128,17 @@ require 'jwt'
 METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
-payload = {
+${rubyParameters({ resourceType, resourceId, params })}
+token = JWT.encode payload, METABASE_SECRET_KEY
+
+iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
+    optionsToHashParams(displayOptions)
+      ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
+      : ""
+  }`;
+
+const rubyParameters = ({ resourceType, resourceId, params }) =>
+  `payload = {
   :resource => {:${resourceType} => ${resourceId}},
   :params => {
     ${Object.entries(params)
@@ -124,14 +151,7 @@ payload = {
       .join(",\n    ")}
   },
   :exp => Time.now.to_i + (60 * 10) # 10 minute expiration
-}
-token = JWT.encode payload, METABASE_SECRET_KEY
-
-iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
-    optionsToHashParams(displayOptions)
-      ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
-      : ""
-  }`;
+}`;
 
 const python = ({
   siteUrl,
@@ -149,15 +169,7 @@ import time
 METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
 METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
-payload = {
-  "resource": {"${resourceType}": ${resourceId}},
-  "params": {
-    ${Object.entries(params)
-      .map(([key, value]) => JSON.stringify(key) + ": " + JSON.stringify(value))
-      .join(",\n    ")}
-  },
-  "exp": round(time.time()) + (60 * 10) # 10 minute expiration
-}
+${pythonParameters({ resourceType, resourceId, params })}
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
 iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
@@ -165,6 +177,17 @@ iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
       ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
       : ""
   }`;
+
+const pythonParameters = ({ resourceType, resourceId, params }) =>
+  `payload = {
+  "resource": {"${resourceType}": ${resourceId}},
+  "params": {
+    ${Object.entries(params)
+      .map(([key, value]) => JSON.stringify(key) + ": " + JSON.stringify(value))
+      .join(",\n    ")}
+  },
+  "exp": round(time.time()) + (60 * 10) # 10 minute expiration
+}`;
 
 const clojure = ({
   siteUrl,
@@ -179,12 +202,7 @@ const clojure = ({
 (def metabase-site-url   ${JSON.stringify(siteUrl)})
 (def metabase-secret-key ${JSON.stringify(secretKey)})
 
-(def payload
-  {:resource {:${resourceType} ${resourceId}}
-   :params   {${Object.entries(params)
-     .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
-     .join(",\n              ")}}
-   :exp      (+ (int (/ (System/currentTimeMillis) 1000)) (* 60 10))}) ; 10 minute expiration
+${clojureParameters({ resourceType, resourceId, params })}
 
 (def token (jwt/sign payload metabase-secret-key))
 
@@ -193,3 +211,11 @@ const clojure = ({
       ? " " + JSON.stringify(optionsToHashParams(displayOptions))
       : ""
   }))`;
+
+const clojureParameters = ({ resourceType, resourceId, params }) =>
+  `(def payload
+  {:resource {:${resourceType} ${resourceId}}
+   :params   {${Object.entries(params)
+     .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
+     .join(",\n              ")}}
+   :exp      (+ (int (/ (System/currentTimeMillis) 1000)) (* 60 10))}) ; 10 minute expiration`;

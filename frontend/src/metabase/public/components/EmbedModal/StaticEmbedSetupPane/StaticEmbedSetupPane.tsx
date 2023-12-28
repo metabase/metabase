@@ -22,8 +22,6 @@ export const StaticEmbedSetupPane = ({
   activePane,
   resource,
   resourceType,
-  embedType,
-  token,
   iframeUrl,
   siteUrl,
   secretKey,
@@ -32,6 +30,7 @@ export const StaticEmbedSetupPane = ({
   lockedParameters,
   parameterValues,
   resourceParameters,
+  initialEmbeddingParams,
   embeddingParams,
   onChangeDisplayOptions,
   onChangeEmbeddingParameters,
@@ -47,11 +46,8 @@ export const StaticEmbedSetupPane = ({
       </Tabs.List>
       <Tabs.Panel value={TABS.Overview}>
         <OverviewSettings
-          embedType={embedType}
           resource={resource}
           resourceType={resourceType}
-          iframeUrl={iframeUrl}
-          token={token}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={params}
@@ -64,12 +60,11 @@ export const StaticEmbedSetupPane = ({
           resource={resource}
           resourceType={resourceType}
           resourceParameters={resourceParameters}
+          initialEmbeddingParams={initialEmbeddingParams}
           embeddingParams={embeddingParams}
           lockedParameters={lockedParameters}
           parameterValues={parameterValues}
-          embedType={embedType}
           iframeUrl={iframeUrl}
-          token={token}
           siteUrl={siteUrl}
           secretKey={secretKey}
           params={params}
@@ -82,13 +77,12 @@ export const StaticEmbedSetupPane = ({
       <Tabs.Panel value={TABS.Appearance}>
         <AppearanceSettings
           activePane={activePane}
-          embedType={embedType}
           resource={resource}
           resourceType={resourceType}
           iframeUrl={iframeUrl}
-          token={token}
           siteUrl={siteUrl}
           secretKey={secretKey}
+          initialEmbeddingParams={initialEmbeddingParams}
           params={params}
           displayOptions={displayOptions}
           onChangePane={onChangePane}
