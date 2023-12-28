@@ -87,7 +87,9 @@ describe("scenarios > embedding > dashboard parameters", () => {
           .parent()
           .findByText("Id")
           .click();
+      });
 
+      popover().within(() => {
         cy.findByPlaceholderText("Search by Name or enter an ID").type(
           "1{enter}3{enter}",
         );
