@@ -116,6 +116,14 @@ Tests that depend on Snowplow expect a running server. To run them, you need to:
 - run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
 - pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
 
+### Running tests that require SMTP server
+
+Some of our tests, that depend on the email being set up, require a local SMTP server. We use `maildev` Docker image for that purpose. At the time of this writing the image we use is `maildev/maildev:2.1.0`. It should be safe to always use the `:latest` image in your local development. Run this command:
+
+```sh
+docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:latest
+```
+
 ### Cypress comes with `Lodash` for free
 
 We don't need to have [Lodash](https://lodash.com/) in our direct dependencies to be able to [use it with Cypress](https://docs.cypress.io/api/utilities/_). It is aliased with an underscore and its methods can be accessed with `Cypress._.method()`. We can use `_.times` method to stress-test a certain test (or a set of tests) locally.
