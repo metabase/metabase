@@ -46,10 +46,10 @@ function setup({ query, stageIndex, column, filter }: SetupOpts) {
 }
 
 describe("StringFilterEditor", () => {
-  const query = createQuery();
+  const defaultQuery = createQuery();
   const stageIndex = 0;
-  const availableColumns = Lib.filterableColumns(query, stageIndex);
-  const findColumn = columnFinder(query, availableColumns);
+  const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
+  const findColumn = columnFinder(defaultQuery, availableColumns);
   const column = findColumn("PRODUCTS", "CATEGORY");
 
   beforeAll(() => {
@@ -63,15 +63,17 @@ describe("StringFilterEditor", () => {
   describe("new filter", () => {
     it("should handle list values", async () => {
       const { getNextFilter, onInput } = setup({
-        query,
+        query: defaultQuery,
         stageIndex,
         column,
       });
 
       userEvent.click(await screen.findByText("Gadget"));
 
-      const filter = getNextFilter();
-      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+      const nextFilter = getNextFilter();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, nextFilter),
+      ).toMatchObject({
         displayName: "Category is Gadget",
       });
       expect(onInput).not.toHaveBeenCalled();
@@ -85,7 +87,7 @@ describe("StringFilterEditor", () => {
       ]);
 
       const { getNextFilter, onInput } = setup({
-        query,
+        query: defaultQuery,
         stageIndex,
         column: findColumn("PEOPLE", "EMAIL"),
       });
@@ -97,8 +99,10 @@ describe("StringFilterEditor", () => {
       act(() => jest.advanceTimersByTime(1000));
       userEvent.click(await screen.findByText(searchResult));
 
-      const filter = getNextFilter();
-      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+      const nextFilter = getNextFilter();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, nextFilter),
+      ).toMatchObject({
         displayName: `Email is ${searchResult}`,
       });
       expect(onInput).not.toHaveBeenCalled();
@@ -106,7 +110,7 @@ describe("StringFilterEditor", () => {
 
     it("should handle non-searchable values", async () => {
       const { getNextFilter, onInput } = setup({
-        query,
+        query: defaultQuery,
         stageIndex,
         column: findColumn("PEOPLE", "PASSWORD"),
       });
@@ -114,8 +118,10 @@ describe("StringFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Test");
       userEvent.click(document.body);
 
-      const filter = getNextFilter();
-      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+      const nextFilter = getNextFilter();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, nextFilter),
+      ).toMatchObject({
         displayName: `Password is Test`,
       });
       expect(onInput).toHaveBeenCalled();
@@ -123,7 +129,7 @@ describe("StringFilterEditor", () => {
 
     it("should add a filter with one value", async () => {
       const { getNextFilter, onInput } = setup({
-        query,
+        query: defaultQuery,
         stageIndex,
         column,
       });
@@ -133,8 +139,10 @@ describe("StringFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Ga");
       userEvent.click(document.body);
 
-      const filter = getNextFilter();
-      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+      const nextFilter = getNextFilter();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, nextFilter),
+      ).toMatchObject({
         displayName: "Category starts with Ga",
       });
       expect(onInput).toHaveBeenCalled();
@@ -142,7 +150,7 @@ describe("StringFilterEditor", () => {
 
     it("should add a filter with no value", async () => {
       const { getNextFilter } = setup({
-        query,
+        query: defaultQuery,
         stageIndex,
         column,
       });
@@ -150,15 +158,17 @@ describe("StringFilterEditor", () => {
       userEvent.click(screen.getByText("is"));
       userEvent.click(await screen.findByText("Is empty"));
 
-      const filter = getNextFilter();
-      expect(Lib.displayInfo(query, stageIndex, filter)).toMatchObject({
+      const nextFilter = getNextFilter();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, nextFilter),
+      ).toMatchObject({
         displayName: "Category is empty",
       });
     });
 
     it("should not accept an empty string as a value", async () => {
       const { getNextFilter } = setup({
-        query,
+        query: defaultQuery,
         stageIndex,
         column,
       });
@@ -170,6 +180,41 @@ describe("StringFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Ga");
       userEvent.clear(screen.getByPlaceholderText("Enter some text"));
       expect(getNextFilter()).toBeUndefined();
+    });
+  });
+
+  describe("existing filter", () => {
+    it("should handle list values", async () => {
+      const query = Lib.filter(
+        defaultQuery,
+        stageIndex,
+        Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: ["Gadget"],
+          options: {},
+        }),
+      );
+      const [filter] = Lib.filters(query, stageIndex);
+
+      const { getNextFilter } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(
+        await screen.findByRole("checkbox", { name: "Gadget" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Widget" }),
+      ).not.toBeChecked();
+
+      userEvent.click(screen.getByRole("checkbox", { name: "Widget" }));
+      const nextFilter = getNextFilter();
+      expect(Lib.displayInfo(query, stageIndex, nextFilter)).toMatchObject({
+        displayName: "Category is 2 selections",
+      });
     });
   });
 });
