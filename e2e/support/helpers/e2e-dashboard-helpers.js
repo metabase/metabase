@@ -90,10 +90,11 @@ export function editDashboard() {
 export function saveDashboard({
   buttonLabel = "Save",
   editBarText = "You're editing this dashboard.",
+  waitMs = 1,
 } = {}) {
   cy.findByText(buttonLabel).click();
   cy.findByText(editBarText).should("not.exist");
-  cy.wait(1); // this is stupid but necessary to due to the dashboard resizing and detaching elements
+  cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
 export function checkFilterLabelAndValue(label, value) {
