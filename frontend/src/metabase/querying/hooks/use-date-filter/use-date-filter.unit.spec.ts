@@ -55,7 +55,7 @@ describe("useDateFilter", () => {
     },
   );
 
-  it("should return available operators and units for the column", () => {
+  it("should return available operators for a column", () => {
     const { result } = renderHook(() =>
       useDateFilter({
         query: defaultQuery,
@@ -64,7 +64,7 @@ describe("useDateFilter", () => {
       }),
     );
 
-    const { availableOperators, availableUnits } = result.current;
+    const { availableOperators } = result.current;
     expect(availableOperators).toEqual([
       "!=",
       "=",
@@ -74,6 +74,18 @@ describe("useDateFilter", () => {
       "is-null",
       "not-null",
     ]);
+  });
+
+  it("should return available units for a regular column", () => {
+    const { result } = renderHook(() =>
+      useDateFilter({
+        query: defaultQuery,
+        stageIndex,
+        column,
+      }),
+    );
+
+    const { availableUnits } = result.current;
     expect(availableUnits).toEqual([
       "hour-of-day",
       "day-of-week",
