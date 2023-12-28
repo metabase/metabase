@@ -10,11 +10,16 @@ Metabase uses Cypress for “end-to-end testing”, that is, tests that are exec
 
 Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `e2e/test/scenarios/admin/datamodel`.
 
+Our custom Cypress runner builds its own backend and creates a temporary H2 app db. Both are destroyed when this process is killed. The reserved default port is `4000` on the local host. There is nothing stopping you from running your local Metabase instance on `localhost:3000` at the same time. This might even be helpful for debugging purposes.
+
 ### Standard Development Flow
-1. Run `yarn build-hot` to continuously build the frontend
+1. Continuously build the frontend
 
-2. then `yarn test-cypress-open --browser electron` to open the Cypress application where you can execute tests you are working on
+    a. If you need only the frontend, run `yarn build-hot`
 
+    b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `yarn dev` or `yarn dev-ee` (both rely on frontend hot reloading under the hood)
+
+2. In a separate terminal session (without killing the previous one) run `yarn test-cypress-open`. This will open a Cypress GUI that will let you choose which tests to run. Alterantively, take a look at more running options below.
 
 ### Running Options
 
