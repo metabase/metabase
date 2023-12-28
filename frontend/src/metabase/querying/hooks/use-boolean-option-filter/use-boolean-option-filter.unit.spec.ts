@@ -17,6 +17,12 @@ interface CreateFilterCase {
   displayName: string;
 }
 
+interface UpdateFilterCase {
+  expression: Lib.ExpressionClause;
+  optionType: OptionType;
+  displayName: string;
+}
+
 const BOOLEAN_FIELD = createMockField({
   id: 102,
   table_id: ORDERS_ID,
@@ -61,6 +67,58 @@ describe("useBooleanOptionFilter", () => {
           query: defaultQuery,
           stageIndex,
           column,
+        }),
+      );
+
+      act(() => {
+        const { setOptionType } = result.current;
+        setOptionType(optionType);
+      });
+
+      act(() => {
+        const { getFilterClause } = result.current;
+        const newFilter = getFilterClause();
+
+        expect(
+          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+        ).toMatchObject({
+          displayName,
+        });
+      });
+    },
+  );
+
+  it.each<UpdateFilterCase>([
+    {
+      expression: Lib.booleanFilterClause({
+        operator: "=",
+        column,
+        values: [true],
+      }),
+      optionType: "false",
+      displayName: "Is trial is false",
+    },
+    {
+      expression: Lib.booleanFilterClause({
+        operator: "=",
+        column,
+        values: [true],
+      }),
+      optionType: "is-null",
+      displayName: "Is trial is empty",
+    },
+  ])(
+    'should allow to update a filter for "$optionType"',
+    ({ expression, optionType, displayName }) => {
+      const query = Lib.filter(defaultQuery, stageIndex, expression);
+      const [filter] = Lib.filters(query, stageIndex);
+
+      const { result } = renderHook(() =>
+        useBooleanOptionFilter({
+          query: defaultQuery,
+          stageIndex,
+          column,
+          filter,
         }),
       );
 
