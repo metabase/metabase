@@ -24,21 +24,25 @@ Our custom Cypress runner builds its own backend and creates a temporary H2 app 
 ### Running Options
 
 To run all Cypress tests programmatically in the terminal:
-```
+```sh
 yarn run test-cypress-run
 ```
 
-You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
+You can run a specific set of scenarios by using a custom `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
 
-```
+```sh
 yarn run test-cypress-run --folder sharing
 ```
 
-You can quickly test a single file only by using the `--spec` flag.
+You can quickly test a single file only by using the official `--spec` flag.
 
-```
+```sh
 yarn test-cypress-run --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
+
+You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/guides/guides/launching-browsers).
+
+Specifying a browser makes most sense when running Cypress in a _run_ mode. On the other hand, Cypress _open_ mode (GUI) allows one to easily switch between all available browsers on the system. However, some people prefer to specify a browser even in this scenario. If you do this, keep in mind that you are merely preselecting an initial browser for Cypress but you still have the option to choose a different one.
 
 ## Anatomy of the Test
 
