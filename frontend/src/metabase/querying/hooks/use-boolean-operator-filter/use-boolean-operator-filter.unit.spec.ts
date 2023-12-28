@@ -18,6 +18,17 @@ interface CreateFilterCase {
   displayName: string;
 }
 
+interface UpdateFilterCase {
+  expression: Lib.ExpressionClause;
+  operator: Lib.BooleanFilterOperatorName;
+  displayName: string;
+}
+
+interface ValidateFilterCase {
+  operator: Lib.BooleanFilterOperatorName;
+  values: boolean[];
+}
+
 const BOOLEAN_FIELD = createMockField({
   id: 102,
   table_id: ORDERS_ID,
@@ -55,6 +66,21 @@ describe("useBooleanOptionFilter", () => {
       values: [true],
       displayName: "Is trial is true",
     },
+    {
+      operator: "=",
+      values: [false],
+      displayName: "Is trial is false",
+    },
+    {
+      operator: "is-null",
+      values: [],
+      displayName: "Is trial is empty",
+    },
+    {
+      operator: "not-null",
+      values: [],
+      displayName: "Is trial is not empty",
+    },
   ])(
     'should allow to create a filter for "$operator" operator',
     ({ operator, values, displayName }) => {
@@ -81,6 +107,77 @@ describe("useBooleanOptionFilter", () => {
         ).toMatchObject({
           displayName,
         });
+      });
+    },
+  );
+
+  it.each<UpdateFilterCase>([
+    {
+      expression: Lib.booleanFilterClause({
+        operator: "=",
+        column,
+        values: [true],
+      }),
+      operator: "is-null",
+      displayName: "Is trial is empty",
+    },
+  ])(
+    'should allow to update a filter for "$operator" operator',
+    ({ expression, operator, displayName }) => {
+      const query = Lib.filter(defaultQuery, stageIndex, expression);
+      const [filter] = Lib.filters(query, stageIndex);
+
+      const { result } = renderHook(() =>
+        useBooleanOperatorFilter({
+          query,
+          stageIndex,
+          column,
+          filter,
+        }),
+      );
+
+      act(() => {
+        const { getDefaultValues, setOperator, setValues } = result.current;
+        setOperator(operator);
+        setValues(getDefaultValues());
+      });
+
+      act(() => {
+        const { operator, values, getFilterClause } = result.current;
+        const newFilter = checkNotNull(getFilterClause(operator, values));
+
+        expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
+          displayName,
+        });
+      });
+    },
+  );
+
+  it.each<ValidateFilterCase>([
+    {
+      operator: "=",
+      values: [],
+    },
+  ])(
+    'should validate values for "$operator" operator',
+    ({ operator, values }) => {
+      const { result } = renderHook(() =>
+        useBooleanOperatorFilter({
+          query: defaultQuery,
+          stageIndex,
+          column,
+        }),
+      );
+
+      act(() => {
+        const { setOperator, setValues } = result.current;
+        setOperator(operator);
+        setValues(values);
+      });
+
+      act(() => {
+        const { operator, values, getFilterClause } = result.current;
+        expect(getFilterClause(operator, values)).toBeUndefined();
       });
     },
   );

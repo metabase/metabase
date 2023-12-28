@@ -92,13 +92,13 @@ describe("useCoordinateFilter", () => {
 
   it.each<UpdateFilterCase>([
     {
-      operator: "=",
       expression: Lib.coordinateFilterClause({
         operator: "=",
         column: latitudeColumn,
         longitudeColumn,
         values: [10],
       }),
+      operator: "=",
       values: [20],
       displayName: "Latitude is equal to 20",
     },
