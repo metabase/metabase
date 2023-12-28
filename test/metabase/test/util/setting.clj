@@ -112,9 +112,7 @@
       (binding [setting/*thread-local-values* (atom (merge (some-> setting/*thread-local-values* deref)
                                                            ;; we don't actually set value here, we just make sure
                                                            ;; the setting are availabl ein the thread local scope
-                                                           (update-vals bindings-map (constantly true))))]
-
-
+                                                           bindings-map))]
         ;; now the key exists in thread local values
         ;; set it explicitly in case the setting have some specical setter
         ;; we also need to bypass feature flag for setting if they have one
