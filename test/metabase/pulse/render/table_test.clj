@@ -242,15 +242,15 @@
                   :rows [[1 2] [3 4]]}})))))
 
 (deftest attachment-rows-limit-test
-  (doseq [[test-explanation env-var-value] [["defaults to 20 rows." nil]
-                                            ["is respected in table renders when below the previous default of 20." 5]
-                                            ["is respected in table renders when above the previous default of 20." 20]
-                                            ["is set to 20 when the value doesn't make sense." -20]]]
+  (doseq [[test-explanation env-var-value expected]
+          [["defaults to 20 rows." nil 20]
+           ["is respected in table renders when below the default of 20." 5 5]
+           ["is respected in table renders when above the default of 20." 25 25]
+           ["is set to 20 when the value doesn't make sense." -20 20]
+           ["is limited to a max. of 100 rows." 200 100]]]
     (testing (format "The `metabase.public-settings/attachment-rows-limit` %s" test-explanation)
       (mt/with-temp-env-var-value ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
-        (is (= (if (pos-int? env-var-value)
-                 env-var-value
-                 20)
+        (is (= expected
                (count (-> (render-table
                            {:visualization_settings {:table.columns
                                                      [{:name "a" :enabled true}]}}
@@ -258,6 +258,6 @@
                                            :display_name "a",
                                            :base_type    :type/BigInteger
                                            :semantic_type nil}]
-                                   :rows (repeat 30 ["I will keep default limits."])}})
+                                   :rows (repeat 200 ["I will keep default limits."])}})
                           :content
                           (render.tu/nodes-with-text "I will keep default limits.")))))))))

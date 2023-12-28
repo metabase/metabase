@@ -167,7 +167,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take (public-settings/attachment-table-row-limit) rows)
+       (take (min (public-settings/attachment-table-row-limit) 100) rows)
        viz-settings
        data-attributes)))))
 
