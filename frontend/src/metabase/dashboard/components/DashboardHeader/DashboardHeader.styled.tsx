@@ -18,9 +18,17 @@ export const DashboardHeaderButton = styled(Button)<{
   visibleOnSmallScreen?: boolean;
   hasBackground?: boolean;
 }>`
-  padding: 0.25rem 0.5rem;
-  height: 2rem;
-  min-width: 2rem;
+  ${({ hasBackground }) =>
+    hasBackground
+      ? css`
+          padding: 0.25rem 0.5rem;
+          height: 2rem;
+          min-width: 2rem;
+        `
+      : css`
+          padding: 0;
+        `}
+
   color: ${props => (props.isActive ? color("brand") : color("text-medium"))};
   font-size: 1rem;
 

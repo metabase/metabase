@@ -8,18 +8,23 @@ type SharingPaneElementProps = {
   disabled?: boolean;
 };
 
-export const SharingPaneButtonContent = styled(Paper)<PaperProps>`
-  cursor: pointer;
+export const SharingPaneButtonContent = styled(Paper)<
+  PaperProps & { disabled?: boolean }
+>`
+  cursor: ${({ disabled }) => (disabled ? "default" : "pointer")};
 `;
 
 export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
   ${({ disabled, theme }) =>
-    !disabled &&
-    css`
-      ${SharingPaneButtonContent}:hover & {
-        color: ${theme.colors.brand[1]};
-      }
-    `}
+    !disabled
+      ? css`
+          ${SharingPaneButtonContent}:hover & {
+            color: ${theme.colors.brand[1]};
+          }
+        `
+      : css`
+          color: ${theme.colors.text[0]};
+        `}
 `;
 
 export const SharingPaneActionButton = styled(Button)<
