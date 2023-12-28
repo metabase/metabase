@@ -36,7 +36,9 @@ export function ListValuePicker({
         onChange={onChange}
       />
     );
-  } else if (fieldValues.length <= MAX_INLINE_OPTIONS) {
+  }
+
+  if (fieldValues.length <= MAX_INLINE_OPTIONS) {
     return (
       <CheckboxValuePicker
         fieldValues={fieldValues}
@@ -45,16 +47,16 @@ export function ListValuePicker({
         onChange={onChange}
       />
     );
-  } else {
-    return (
-      <SelectValuePicker
-        fieldValues={fieldValues}
-        selectedValues={selectedValues}
-        placeholder={placeholder}
-        onChange={onChange}
-      />
-    );
   }
+
+  return (
+    <SelectValuePicker
+      fieldValues={fieldValues}
+      selectedValues={selectedValues}
+      placeholder={placeholder}
+      onChange={onChange}
+    />
+  );
 }
 
 function DefaultValuePicker({
