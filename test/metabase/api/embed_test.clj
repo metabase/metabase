@@ -493,8 +493,8 @@
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
-  (with-embedding-enabled-and-new-secret-key
-    (mt/with-test-helpers-set-global-values!
+  (mt/with-test-helpers-set-global-values!
+    (with-embedding-enabled-and-new-secret-key
       (mt/with-temp [Card card (card-with-date-field-filter)]
         ;; make sure the URL doesn't include /api/ at the beginning like it normally would
         (binding [client/*url-prefix* ""]

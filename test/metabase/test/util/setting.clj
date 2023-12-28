@@ -110,6 +110,10 @@
     (testing (format "\nwith temporary (thread-local) Setting values\n%s\n" (u/pprint-to-str bindings-map))
       (binding [setting/*thread-local-values* (atom (merge (some-> setting/*thread-local-values* deref)
                                                            bindings-map))]
+        ;; now the key exists in thread local values
+        ;; set it explicitly in case the setting have some specical setter
+        (doseq [[k v] bindings-map]
+          (setting/set! k v))
         (thunk)))))
 
 (mu/defn do-with-temporary-setting-values

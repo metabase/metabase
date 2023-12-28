@@ -369,6 +369,7 @@
     metabase.test.redefs                                            test.redefs
     metabase.test.util.js                                           test.js
     metabase.test.util.timezone                                     test.tz
+    metabase.test.util.setting                                      tu.setting
     metabase.timeseries-query-processor-test.util                   tqpt
     metabase.transforms.core                                        tf
     metabase.transforms.materialize                                 tf.materialize

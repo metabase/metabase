@@ -374,7 +374,7 @@
 (defsetting test-i18n-setting
   (deferred-tru "Test setting - with i18n"))
 
-(deftest ^:parallel validate-description-test
+(deftest validate-description-test
   (testing "Validate setting description with i18n string"
     (mt/with-test-user :crowberto
       (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}

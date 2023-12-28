@@ -10,6 +10,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util.setting :as tu.setting]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -171,9 +172,7 @@
     ;;
     ;; require/resolve used here to avoid circular refs
     (if (driver/report-timezone)
-      ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
-       :report-timezone nil
-       thunk)
+      (tu.setting/do-with-temporary-setting-values {:report-timezone nil} thunk)
       (thunk))))
 
 (defn- create-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]

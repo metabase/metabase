@@ -25,9 +25,10 @@
   with and without encryption disabled."
   {:style/indent 1}
   [^String secret-key & body]
-  `(let [secret-key# ~secret-key]
-     (testing (format "\nwith secret key %s" (pr-str secret-key#))
-       (do-with-secret-key secret-key# (fn [] ~@body)))))
+  `(mt/with-test-helpers-set-global-values!
+     (let [secret-key# ~secret-key]
+        (testing (format "\nwith secret key %s" (pr-str secret-key#))
+          (do-with-secret-key secret-key# (fn [] ~@body))))))
 
 (def ^:private secret-string "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=")
 
