@@ -293,67 +293,69 @@ describe("SmartScalar > utils", () => {
         },
       );
 
-      it("should return true for staticNumber comparison when dateUnit is missing", () => {
-        const settings = {
-          "scalar.field": FIELD_NAME,
-          "scalar.comparisons": {
-            type: COMPARISON_TYPES.STATIC_NUMBER,
-            value: 100,
-            label: "Goal",
-          },
-        };
-        const rows = [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ];
-        const isValid = isComparisonValid(
-          series({ rows, insights: [] }),
-          settings,
-        );
+      describe("static number comparison", () => {
+        it("should return true when valid", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.STATIC_NUMBER,
+              value: 100,
+              label: "Goal",
+            },
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings,
+          );
 
-        expect(isValid).toBeTruthy();
-      });
+          expect(isValid).toBeTruthy();
+        });
 
-      it("should return false for staticNumber comparison when value is missing", () => {
-        const settings = {
-          "scalar.field": FIELD_NAME,
-          "scalar.comparisons": {
-            type: COMPARISON_TYPES.STATIC_NUMBER,
-            label: "Goal",
-          },
-        };
-        const rows = [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ];
+        it("should return false when value is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.STATIC_NUMBER,
+              label: "Goal",
+            },
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
 
-        const isValid = isComparisonValid(
-          series({ rows, insights: [] }),
-          settings as VisualizationSettings,
-        );
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings as VisualizationSettings,
+          );
 
-        expect(isValid).toBeFalsy();
-      });
+          expect(isValid).toBeFalsy();
+        });
 
-      it("should return false for staticNumber comparison when label is missing", () => {
-        const settings = {
-          "scalar.field": FIELD_NAME,
-          "scalar.comparisons": {
-            type: COMPARISON_TYPES.STATIC_NUMBER,
-            value: 100,
-          },
-        };
-        const rows = [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ];
+        it("should return false when label is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.STATIC_NUMBER,
+              value: 100,
+            },
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
 
-        const isValid = isComparisonValid(
-          series({ rows, insights: [] }),
-          settings as VisualizationSettings,
-        );
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings as VisualizationSettings,
+          );
 
-        expect(isValid).toBeFalsy();
+          expect(isValid).toBeFalsy();
+        });
       });
     });
   });
