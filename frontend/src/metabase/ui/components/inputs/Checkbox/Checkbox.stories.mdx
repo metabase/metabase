@@ -1,0 +1,175 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Checkbox, Stack } from "metabase/ui";
+
+export const args = {
+  label: "Label",
+  description: undefined,
+  disabled: false,
+  labelPosition: "right",
+  size: "md",
+};
+
+export const argTypes = {
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  labelPosition: {
+    options: ["left", "right"],
+    control: { type: "inline-radio" },
+  },
+  size: {
+    options: ["xs", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  variant: {
+    options: ["default", "stacked"],
+    control: { type: "inline-radio" },
+  },
+};
+
+<Meta
+  title="Inputs/Checkbox"
+  component={Checkbox}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Checkbox
+
+Our themed wrapper around [Mantine Checkbox](https://v6.mantine.dev/core/checkbox/).
+
+## When to use Checkbox
+
+Checkbox buttons allow users to select a single option from a list of mutually exclusive options. All possible options are exposed up front for users to compare.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/sF1qSHk6yVqO1rFgmH0nzT/Input-%2F-Checkbox?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Checkbox Docs](https://v6.mantine.dev/core/checkbox/)
+
+## Usage guidelines
+
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Checkbox or Select.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Checkbox.Group>` to provide a set of options and help with defaultValues and state management between them.
+
+## Examples
+
+export const DefaultTemplate = args => <Checkbox {...args} />;
+
+export const CheckboxGroupTemplate = args => (
+  <Checkbox.Group
+    defaultValue={["react"]}
+    label="An array of good frameworks"
+    description="But which one to use?"
+  >
+    <Stack mt="md">
+      <Checkbox {...args} value="react" label="React" />
+      <Checkbox {...args} value="svelte" label="Svelte" />
+      <Checkbox {...args} value="ng" label="Angular" />
+      <Checkbox {...args} value="vue" label="Vue" />
+    </Stack>
+  </Checkbox.Group>
+);
+
+export const StateTemplate = args => (
+  <Stack>
+    <Checkbox {...args} label="Default checkbox" />
+    <Checkbox {...args} label="Indeterminate checkbox" indeterminate />
+    <Checkbox
+      {...args}
+      label="Indeterminate checked checkbox"
+      defaultChecked
+      indeterminate
+    />
+    <Checkbox {...args} label="Checked checkbox" defaultChecked />
+    <Checkbox {...args} label="Disabled checkbox" disabled />
+    <Checkbox
+      {...args}
+      label="Disabled indeterminate checked checkbox"
+      disabled
+      defaultChecked
+      indeterminate
+    />
+    <Checkbox
+      {...args}
+      label="Disabled checked checkbox"
+      disabled
+      defaultChecked
+    />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Checkbox.Group
+
+export const CheckboxGroup = CheckboxGroupTemplate.bind({});
+
+<Canvas>
+  <Story name="Checkbox group">{CheckboxGroup}</Story>
+</Canvas>
+
+### Label
+
+export const Label = StateTemplate.bind({});
+
+<Canvas>
+  <Story name="Label">{Label}</Story>
+</Canvas>
+
+#### Left label position
+
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
+
+<Canvas>
+  <Story name="Label, left position">{LabelLeft}</Story>
+</Canvas>
+
+### Description
+
+export const Description = StateTemplate.bind({});
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
+</Canvas>
+
+#### Left label position
+
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  labelPosition: "left",
+};
+
+<Canvas>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
+</Canvas>
+
+#### Stacked Variant
+
+export const Stacked = StateTemplate.bind({});
+Stacked.args = {
+  variant: "stacked",
+};
+
+<Canvas>
+  <Story name="Stacked">{Stacked}</Story>
+</Canvas>
+
+## Related components
+
+- Radio
+- Select

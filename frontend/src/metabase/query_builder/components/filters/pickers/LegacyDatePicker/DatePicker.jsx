@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
 
@@ -176,7 +177,7 @@ function getDateTimeFieldAndValues(filter, count) {
 
 const ALL_TIME_OPERATOR = {
   name: "all",
-  displayName: t`All Time`,
+  displayName: t`All time`,
   init: () => null,
   test: op => op === null,
 };
@@ -313,7 +314,7 @@ export default class DatePicker extends Component {
       if (filter) {
         onFilterChange(operator.init(filter));
       } else {
-        // from All Time (null filter)
+        // from All time (null filter)
         const { dimension } = this.props;
         onFilterChange(operator.init(["time-interval", dimension?.mbql()]));
       }

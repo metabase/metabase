@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { withRouter } from "react-router";
 
-class ScrollToTopInner extends React.Component {
+class ScrollToTopInner extends Component {
   componentDidUpdate(prevProps) {
     // Compare location.pathame to see if we're on a different URL. Do this to ensure
     // that query strings don't cause a scroll to the top

@@ -1,5 +1,9 @@
 import { t } from "ttag";
 import { assocIn } from "icepick";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { barRenderer } from "../lib/LineAreaBarRenderer";
 import { GRAPH_GOAL_SETTINGS } from "../lib/settings/goal";
@@ -18,6 +22,9 @@ export default class BarChart extends LineAreaBarChart {
   static iconName = "bar";
   static noun = t`bar chart`;
 
+  static minSize = getMinSize("bar");
+  static defaultSize = getDefaultSize("bar");
+
   static settings = {
     ...STACKABLE_SETTINGS,
     ...GRAPH_GOAL_SETTINGS,
@@ -35,4 +42,11 @@ export default class BarChart extends LineAreaBarChart {
     [0, "card", "display"],
     "bar",
   );
+
+  static onDisplayUpdate = settings => {
+    if (settings["stackable.stack_display"]) {
+      settings["stackable.stack_display"] = "bar";
+    }
+    return settings;
+  };
 }

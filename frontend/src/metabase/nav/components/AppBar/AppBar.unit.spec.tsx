@@ -1,7 +1,7 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import { createMockUser } from "metabase-types/api/mocks";
-import AppBar, { AppBarProps } from "./AppBar";
+import type { AppBarProps } from "./AppBar";
+import AppBar from "./AppBar";
 
 const NewItemButtonMock = () => <div data-testid="new-button" />;
 const SearchBarMock = () => <div data-testid="search-bar" />;
@@ -9,7 +9,7 @@ const BreadcrumbsMock = () => <div data-testid="collection-path" />;
 const QuestionLineageMock = () => <div data-testid="question-lineage" />;
 
 jest.mock("../NewItemButton", () => NewItemButtonMock);
-jest.mock("../SearchBar", () => SearchBarMock);
+jest.mock("../search/SearchBar/SearchBar", () => SearchBarMock);
 jest.mock("../../containers/CollectionBreadcrumbs", () => BreadcrumbsMock);
 jest.mock("../../containers/QuestionLineage", () => QuestionLineageMock);
 
@@ -35,6 +35,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
         isSearchVisible: true,
         isNewButtonVisible: true,
+        isLogoVisible: true,
       });
 
       render(<AppBar {...props} />);
@@ -80,6 +81,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
         isSearchVisible: true,
         isNewButtonVisible: true,
+        isLogoVisible: true,
       });
 
       render(<AppBar {...props} />);

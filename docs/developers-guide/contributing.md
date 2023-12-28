@@ -24,7 +24,7 @@ We don't like getting sued, so before merging any pull request, we'll need each 
 
 ## What we're trying to build
 
-Metabase is all about letting non-technical users get access to the their organization's data. We're trying to maximize the amount of power that can be comfortably used by someone who understands their business, is quantitatively bent, but probably only comfortable with Excel.
+Metabase is all about letting non-technical users get access to their organization's data. We're trying to maximize the amount of power that can be comfortably used by someone who understands their business, is quantitatively bent, but probably only comfortable with Excel.
 
 It's important to keep in mind these goals of the Metabase project. Many times
 proposals will be marked "Out of Scope" or otherwise deprioritized. This doesn't mean the proposal isn't useful, or that we wouldn't be interested in seeing it done as a side project or as an experimental branch. However, it does mean that we won't point the core team or contributors to it in the near term. Issues that are slightly out of scope will be kept open in case there is community support (and ideally contributions).
@@ -55,7 +55,7 @@ Features that are ready for design are tagged [Design Needed](https://github.com
 
 Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
 
-If you're building something that users will see in Metabase, please refer to the Style Guide (found at `https://localhost:3000/_internal` while running the development environment to learn how and when to use various Metabase UI elements.
+If you're building something that users will see in Metabase, please refer to the Style Guide (found at `https://storybook.metabase.com`) to learn how and when to use various Metabase UI elements.
 
 Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/.In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature.
 

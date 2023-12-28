@@ -1,4 +1,5 @@
-import React from "react";
+import { Component } from "react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import _ from "underscore";
 import { t } from "ttag";
@@ -19,7 +20,7 @@ type State = {
   year: number;
 };
 
-class DateQuarterYearWidget extends React.Component<Props, State> {
+class DateQuarterYearWidget extends Component<Props, State> {
   state: State = {
     quarter: null,
     year: moment().year(),
@@ -93,4 +94,5 @@ const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
   </QuarterRoot>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateQuarterYearWidget;

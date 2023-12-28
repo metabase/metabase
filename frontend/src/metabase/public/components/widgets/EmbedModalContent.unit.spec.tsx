@@ -1,23 +1,52 @@
-import React from "react";
-import { screen, waitFor } from "@testing-library/react";
-import _ from "underscore";
+import { screen, waitFor, within } from "@testing-library/react";
+
+import { useState } from "react";
 import { renderWithProviders } from "__support__/ui";
+import type { Parameter } from "metabase-types/api";
+import { createMockUser } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
+
 import EmbedModalContent from "./EmbedModalContent";
+
+const TestEmbedModalContent = ({
+  resource,
+  resourceParameters,
+  getPublicUrl,
+  onUpdateEmbeddingParams,
+  onUpdateEnableEmbedding,
+}: {
+  resource: { embedding_params?: Record<string, unknown> };
+  resourceParameters: Partial<Parameter>[];
+  getPublicUrl: () => void;
+  onUpdateEmbeddingParams?: () => void;
+  onUpdateEnableEmbedding?: () => void;
+}) => {
+  const [embedType, setEmbedType] = useState(null);
+  return (
+    <EmbedModalContent
+      resource={resource}
+      resourceParameters={resourceParameters}
+      getPublicUrl={getPublicUrl}
+      onUpdateEmbeddingParams={onUpdateEmbeddingParams}
+      onUpdateEnableEmbedding={onUpdateEnableEmbedding}
+      embedType={embedType}
+      setEmbedType={setEmbedType}
+    />
+  );
+};
 
 describe("EmbedModalContent", () => {
   it("should render", () => {
     renderWithConfiguredProviders(
-      <EmbedModalContent
+      <TestEmbedModalContent
         resource={{}}
         resourceParameters={[]}
         getPublicUrl={jest.fn()}
       />,
     );
 
-    expect(screen.getByText("Sharing")).toBeInTheDocument();
-    expect(screen.getByText("Public link")).toBeInTheDocument();
     expect(screen.getByText("Public embed")).toBeInTheDocument();
-    expect(screen.getByText("Embed in your application")).toBeInTheDocument();
+    expect(screen.getByText("Static embed")).toBeInTheDocument();
   });
 
   it("should render parameters", () => {
@@ -26,7 +55,7 @@ describe("EmbedModalContent", () => {
     ];
 
     renderWithConfiguredProviders(
-      <EmbedModalContent
+      <TestEmbedModalContent
         resource={{}}
         resourceParameters={parameters}
         getPublicUrl={jest.fn()}
@@ -44,7 +73,7 @@ describe("EmbedModalContent", () => {
     ];
 
     renderWithConfiguredProviders(
-      <EmbedModalContent
+      <TestEmbedModalContent
         resource={{}}
         resourceParameters={parameters}
         getPublicUrl={jest.fn()}
@@ -67,7 +96,7 @@ describe("EmbedModalContent", () => {
     ];
 
     renderWithConfiguredProviders(
-      <EmbedModalContent
+      <TestEmbedModalContent
         resource={resource}
         resourceParameters={parameters}
         getPublicUrl={jest.fn()}
@@ -75,8 +104,13 @@ describe("EmbedModalContent", () => {
     );
 
     openEmbedModal();
-    expect(screen.getByText("My param")).toBeInTheDocument();
-    expect(screen.getByLabelText("My param")).toHaveTextContent("Locked");
+    const parametersSection = screen.getByRole("region", {
+      name: "Parameters",
+    });
+    expect(within(parametersSection).getByText("My param")).toBeInTheDocument();
+    expect(
+      within(parametersSection).getByLabelText("My param"),
+    ).toHaveTextContent("Locked");
   });
 
   it("should only render valid parameters", () => {
@@ -90,7 +124,7 @@ describe("EmbedModalContent", () => {
     ];
 
     renderWithConfiguredProviders(
-      <EmbedModalContent
+      <TestEmbedModalContent
         resource={resource}
         resourceParameters={parameters}
         getPublicUrl={jest.fn()}
@@ -114,7 +148,7 @@ describe("EmbedModalContent", () => {
     const onUpdateEmbeddingParams = jest.fn();
 
     renderWithConfiguredProviders(
-      <EmbedModalContent
+      <TestEmbedModalContent
         resource={resource}
         resourceParameters={parameters}
         onUpdateEmbeddingParams={onUpdateEmbeddingParams}
@@ -137,25 +171,14 @@ describe("EmbedModalContent", () => {
   });
 });
 
-const storeInitialState = {
-  currentUser: {
-    is_superuser: true,
-  },
-  settings: {
-    values: {
-      "enable-embedding": true,
-      "embedding-secret-key": "my_super_secret_key",
-    },
-  },
-};
-
 function renderWithConfiguredProviders(element: JSX.Element) {
   renderWithProviders(element, {
-    storeInitialState,
-    reducers: {
-      settings: (state: Record<string, any> = storeInitialState.settings) => {
-        return state;
-      },
+    storeInitialState: {
+      currentUser: createMockUser({ is_superuser: true }),
+      settings: createMockSettingsState({
+        "enable-embedding": true,
+        "embedding-secret-key": "my_super_secret_key",
+      }),
     },
   });
 }
@@ -163,7 +186,7 @@ function renderWithConfiguredProviders(element: JSX.Element) {
 function openEmbedModal() {
   screen
     .getByRole("button", {
-      name: "Set up",
+      name: "Set this up",
     })
     .click();
 }

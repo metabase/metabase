@@ -9,11 +9,12 @@ import { updateGoogleSettings } from "../../../settings";
 
 const mapStateToProps = (state: State) => ({
   isEnabled: getSetting(state, "google-auth-enabled"),
-  isSsoEnabled: getSetting(state, "token-features").sso,
+  isSsoEnabled: getSetting(state, "token-features").sso_google,
 });
 
 const mapDispatchToProps = {
   onSubmit: updateGoogleSettings,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(GoogleAuthForm);

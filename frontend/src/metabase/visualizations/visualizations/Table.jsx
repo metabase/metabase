@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,18 +7,26 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import * as DataGrid from "metabase/lib/data_grid";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import {
+  columnSettings,
+  buildTableColumnSettings,
+  getTitleForColumn,
+  isPivoted as _isPivoted,
+} from "metabase/visualizations/lib/settings/column";
 
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
+import { getDefaultPivotColumn } from "metabase/visualizations/lib/utils";
 import {
   isMetric,
   isDimension,
@@ -38,8 +46,10 @@ export default class Table extends Component {
   static uiName = t`Table`;
   static identifier = "table";
   static iconName = "table";
+  static canSavePng = false;
 
-  static minSize = { width: 4, height: 3 };
+  static minSize = getMinSize("table");
+  static defaultSize = getDefaultSize("table");
 
   static isSensible({ cols, rows }) {
     return true;
@@ -57,28 +67,7 @@ export default class Table extends Component {
     // scalar can always be rendered, nothing needed here
   }
 
-  static isPivoted(series, settings) {
-    const [{ data }] = series;
-
-    if (!settings["table.pivot"]) {
-      return false;
-    }
-
-    const pivotIndex = _.findIndex(
-      data.cols,
-      col => col.name === settings["table.pivot_column"],
-    );
-    const cellIndex = _.findIndex(
-      data.cols,
-      col => col.name === settings["table.cell_column"],
-    );
-    const normalIndex = _.findIndex(
-      data.cols,
-      (col, index) => index !== pivotIndex && index !== cellIndex,
-    );
-
-    return pivotIndex >= 0 && cellIndex >= 0 && normalIndex >= 0;
-  }
+  static isPivoted = _isPivoted;
 
   static settings = {
     ...columnSettings({ hidden: true }),
@@ -88,29 +77,30 @@ export default class Table extends Component {
       widget: "toggle",
       inline: true,
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
-      getDefault: ([{ card, data }]) =>
-        data &&
-        data.cols.length === 3 &&
-        Q_DEPRECATED.isStructured(card.dataset_query) &&
-        data.cols.filter(isMetric).length === 1 &&
-        data.cols.filter(isDimension).length === 2,
+      getDefault: ([{ card, data }]) => {
+        if (
+          !data ||
+          data.cols.length !== 3 ||
+          !Q_DEPRECATED.isStructured(card.dataset_query) ||
+          data.cols.filter(isMetric).length !== 1 ||
+          data.cols.filter(isDimension).length !== 2
+        ) {
+          return false;
+        }
+
+        return getDefaultPivotColumn(data.cols, data.rows) != null;
+      },
     },
     "table.pivot_column": {
       section: t`Columns`,
       title: t`Pivot column`,
       widget: "field",
-      getDefault: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ],
-        settings,
-      ) => {
-        const col = _.min(cols.filter(isDimension), col =>
-          getColumnCardinality(cols, rows, cols.indexOf(col)),
-        );
-        return col && col.name;
+      getDefault: ([
+        {
+          data: { cols, rows },
+        },
+      ]) => {
+        return getDefaultPivotColumn(cols, rows)?.name;
       },
       getProps: (
         [
@@ -159,43 +149,7 @@ export default class Table extends Component {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
-    //   { name: "COLUMN_NAME", enabled: true }
-    //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
-    "table.columns": {
-      section: t`Columns`,
-      title: t`Columns`,
-      widget: ChartSettingOrderedColumns,
-      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }]) =>
-        // If "table.columns" happened to be an empty array,
-        // it will be treated as "all columns are hidden",
-        // This check ensures it's not empty,
-        // otherwise it will be overwritten by `getDefault` below
-        card.visualization_settings["table.columns"].length !== 0 &&
-        _.all(
-          card.visualization_settings["table.columns"],
-          columnSetting =>
-            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
-        ),
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          fieldRef: col.field_ref,
-          enabled: col.visibility_type !== "details-only",
-        })),
-      getProps: ([
-        {
-          data: { cols },
-        },
-      ]) => ({
-        columns: cols,
-      }),
-    },
+    ...buildTableColumnSettings(),
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
@@ -418,15 +372,7 @@ export default class Table extends Component {
       return null;
     }
     const { series, settings } = this.props;
-    const isPivoted = Table.isPivoted(series, settings);
-    const column = cols[columnIndex];
-    if (isPivoted) {
-      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
-    } else {
-      return (
-        settings.column(column)["_column_title_full"] || formatColumn(column)
-      );
-    }
+    return getTitleForColumn(cols[columnIndex], series, settings);
   };
 
   render() {

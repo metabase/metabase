@@ -11,20 +11,24 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
+   [metabase.db.setup :as mdb.setup]
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]
+   [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import
-   (liquibase Contexts Liquibase)
-   (liquibase.changelog ChangeSet DatabaseChangeLog)))
+   (liquibase LabelExpression)
+   (liquibase.changelog  ChangeLogHistoryServiceFactory)
+   (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult)))
+
+(set! *warn-on-reflection* true)
 
 (defmulti do-with-temp-empty-app-db*
   "Create a new completely empty app DB for `driver`, then call `(f jdbc-spec)` with a spec for that DB. Should clean up
@@ -161,27 +165,25 @@
                                 [conn [start-id end-id] {:keys [inclusive-end?], :or {inclusive-end? true}}])}
   [^java.sql.Connection conn [start-id end-id] & [range-options]]
   (liquibase/with-liquibase [liquibase conn]
-    (let [change-log        (.getDatabaseChangeLog liquibase)
-          ;; create a new change log that only has the subset of migrations we want to run.
-          subset-change-log (doto (DatabaseChangeLog.)
-                              ;; we don't actually use this for anything but if we don't set it then Liquibase barfs
-                              (.setPhysicalFilePath (.getPhysicalFilePath change-log)))]
-      ;; add the relevant migrations (change sets) to our subset change log
-      (doseq [^ChangeSet change-set (.getChangeSets change-log)
-              :let                  [id (.getId change-set)
-                                     _ (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
-                                                   id start-id end-id
-                                                   (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
-                                                   (migration-id-in-range? start-id id end-id range-options))]
-              :when                 (migration-id-in-range? start-id id end-id range-options)]
-        (.addChangeSet subset-change-log change-set))
-      ;; now create a new instance of Liquibase that will run just the subset change log
-      (let [subset-liquibase (Liquibase. subset-change-log (.getResourceAccessor liquibase) (.getDatabase liquibase))]
-        (when-let [unrun (not-empty (.listUnrunChangeSets subset-liquibase nil))]
-          (log/debugf "Running migrations %s...%s (inclusive)"
-                      (.getId ^ChangeSet (first unrun)) (.getId ^ChangeSet (last unrun))))
-        ;; run the migrations
-        (.update subset-liquibase (Contexts.))))))
+    (let [database (.getDatabase liquibase)
+          change-set-filters [(reify ChangeSetFilter
+                                (accepts [this change-set]
+                                  (let [id      (.getId change-set)
+                                        accept? (boolean (migration-id-in-range? start-id id end-id range-options))]
+                                    (log/tracef "Migration %s in range [%s ↔ %s] %s ? => %s"
+                                                id start-id end-id
+                                                (if (:inclusive-end? range-options) "(inclusive)" "(exclusive)")
+                                                accept?)
+                                    (ChangeSetFilterResult. accept? "decision according to range" (class this)))))]
+          change-log-service (.getChangeLogService (ChangeLogHistoryServiceFactory/getInstance) database)]
+      (liquibase/run-in-scope-locked
+       liquibase
+       (fn []
+         ;; Calling .listUnrunChangeSets has the side effect of creating the Liquibase tables
+         ;; and initializing checksums so that they match the ones generated in production.
+         (.listUnrunChangeSets liquibase nil (LabelExpression.))
+         (.generateDeploymentId change-log-service)
+         (liquibase/update-with-change-log liquibase {:change-set-filters change-set-filters}))))))
 
 (defn- test-migrations-for-driver [driver [start-id end-id] f]
   (log/debug (u/format-color 'yellow "Testing migrations for driver %s..." driver))
@@ -195,11 +197,25 @@
                   (str "'Empty' application DB is not actually empty. Found tables:\n"
                        (u/pprint-to-str tables))))))
     (log/debugf "Finding and running migrations before %s..." start-id)
-    (run-migrations-in-range! conn [1 start-id] {:inclusive-end? false})
-    (f
-     (fn migrate! []
-       (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
-       (run-migrations-in-range! conn [start-id end-id]))))
+    (run-migrations-in-range! conn ["v00.00-000" start-id] {:inclusive-end? false})
+    (letfn [(migrate
+              ([]
+               (migrate :up nil))
+              ([direction]
+               (migrate direction nil))
+
+              ([direction version]
+               (case direction
+                 :up
+                 (do
+                  (log/debugf "Finding and running migrations between %s and %s (inclusive)" start-id (or end-id "end"))
+                  (run-migrations-in-range! conn [start-id end-id]))
+
+                 :down
+                 (do
+                  (assert (int? version), "Downgrade requires a version")
+                  (mdb.setup/migrate! driver (mdb.connection/data-source) :down version)))))]
+     (f migrate)))
   (log/debug (u/format-color 'green "Done testing migrations for driver %s." driver)))
 
 (defn do-test-migrations
@@ -211,7 +227,7 @@
                             migration-range
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
-      (mt/test-drivers #{:h2 :mysql :postgres}
+      (datasets/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 
 (defmacro test-migrations
@@ -221,7 +237,7 @@
   this order:
 
   1. Load data and check any preconditions before running migrations you're testing.
-     Prefer [[toucan.db/simple-insert!]] or plain SQL for loading data to avoid dependencies on the current state of
+     Prefer [[t2/insert!]] with a table name or plain SQL for loading data to avoid dependencies on the current state of
      the schema that may be present in Toucan `pre-insert` functions and the like.
 
   2. Call `(migrate!)` to run migrations in range of `start-id` -> `end-id` (inclusive)
@@ -241,7 +257,8 @@
       (is (= ...)))
 
   For convenience `migration-range` can be either a range of migrations IDs to test (e.g. `[100 105]`) or just a
-  single migration ID (e.g. `100`).
+  single migration ID (e.g. `100`). A single ID in a vector (e.g. `[100]`) is treated as the start of an open-ended
+  range.
 
   These run against the current set of test `DRIVERS` (by default H2), so if you want to run against more than H2
   either set the `DRIVERS` env var or use [[mt/set-test-drivers!]] from the REPL."

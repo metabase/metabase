@@ -1,4 +1,4 @@
-import reducer from "./reducers";
+import { dashboardReducers as reducer } from "./reducers";
 import {
   INITIALIZE,
   SET_EDITING_DASHBOARD,
@@ -8,6 +8,7 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
+  FETCH_CARD_DATA_PENDING,
 } from "./actions";
 
 describe("dashboard reducers", () => {
@@ -19,23 +20,30 @@ describe("dashboard reducers", () => {
   it("should return the initial state", () => {
     expect(initState).toEqual({
       dashboardId: null,
+      selectedTabId: null,
       dashboards: {},
       dashcardData: {},
       dashcards: {},
       isAddParameterPopoverOpen: false,
+      isNavigatingBackToDashboard: false,
       isEditing: null,
       loadingDashCards: {
-        dashcardIds: [],
         loadingIds: [],
         startTime: null,
+        endTime: null,
         loadingStatus: "idle",
       },
       parameterValues: {},
-      parameterValuesSearchCache: {},
+      draftParameterValues: {},
       sidebar: { props: {} },
       slowCards: {},
       loadingControls: {},
       missingActionParameters: null,
+      autoApplyFilters: {
+        toastId: null,
+        toastDashboardId: null,
+      },
+      tabDeletions: {},
     });
   });
 
@@ -95,10 +103,50 @@ describe("dashboard reducers", () => {
         ),
       ).toEqual({ ...initState, isEditing: null });
     });
+
+    it("should return unchanged state if `clearCache: false` passed", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            draftParameterValues: {
+              "60bca071": ["Gadget", "Doohickey", "Gizmo"],
+            },
+          },
+          {
+            type: INITIALIZE,
+            payload: {
+              clearCache: false,
+            },
+          },
+        ),
+      ).toEqual({
+        ...initState,
+        draftParameterValues: {
+          "60bca071": ["Gadget", "Doohickey", "Gizmo"],
+        },
+      });
+    });
+
+    it("should reset state if `clearCache`: false` is not passed", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            draftParameterValues: {
+              "60bca071": ["Gadget", "Doohickey", "Gizmo"],
+            },
+          },
+          {
+            type: INITIALIZE,
+          },
+        ),
+      ).toEqual(initState);
+    });
   });
 
   describe("SET_EDITING_DASHBOARD", () => {
-    it("should clear sideabr state when entering edit mode", () => {
+    it("should clear sidebar state when entering edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },
@@ -111,7 +159,7 @@ describe("dashboard reducers", () => {
       ).toEqual({ ...state, isEditing: true, sidebar: { props: {} } });
     });
 
-    it("should clear sideabr state when leaving edit mode", () => {
+    it("should clear sidebar state when leaving edit mode", () => {
       const state = {
         ...initState,
         sidebar: { name: "foo", props: { abc: 123 } },
@@ -146,7 +194,7 @@ describe("dashboard reducers", () => {
   describe("SET_DASHBOARD_ATTRIBUTES", () => {
     const emptyDashboard = {
       archived: false,
-      ordered_cards: [],
+      dashcards: [],
       can_write: true,
       enable_embedding: false,
       show_in_getting_started: false,
@@ -226,7 +274,6 @@ describe("dashboard reducers", () => {
     it("should change to running when loading cards", () => {
       const dashcardIds = [1, 2, 3];
       const loadingMatch = {
-        dashcardIds: dashcardIds,
         loadingIds: dashcardIds,
         loadingStatus: "running",
         startTime: expect.any(Number),
@@ -237,13 +284,12 @@ describe("dashboard reducers", () => {
           {
             ...initState,
             loadingDashCards: {
-              dashcardIds: dashcardIds,
               loadingIds: dashcardIds,
             },
           },
           {
             type: FETCH_DASHBOARD_CARD_DATA,
-            payload: {},
+            payload: { currentTime: 100, loadingIds: dashcardIds },
           },
         ),
       ).toMatchObject({
@@ -256,15 +302,15 @@ describe("dashboard reducers", () => {
       expect(
         reducer(initState, {
           type: FETCH_DASHBOARD_CARD_DATA,
-          payload: {},
+          payload: { currentTime: 100, loadingIds: [] },
         }),
       ).toEqual({
         ...initState,
         loadingDashCards: {
-          dashcardIds: [],
           loadingIds: [],
           loadingStatus: "idle",
           startTime: null,
+          endTime: null,
         },
       });
     });
@@ -275,26 +321,52 @@ describe("dashboard reducers", () => {
           {
             ...initState,
             loadingDashCards: {
-              dashcardIds: [1, 2, 3],
               loadingIds: [3],
               loadingStatus: "running",
+              startTime: 100,
             },
           },
           {
             type: FETCH_CARD_DATA,
-            payload: { dashcard_id: 3, card_id: 1, result: {} },
+            payload: {
+              dashcard_id: 3,
+              card_id: 1,
+              result: {},
+              currentTime: 200,
+            },
           },
         ),
       ).toEqual({
         ...initState,
         loadingDashCards: {
-          dashcardIds: [1, 2, 3],
           loadingIds: [],
           loadingStatus: "complete",
-          startTime: null,
+          startTime: 100,
+          endTime: 200,
         },
         dashcardData: { 3: { 1: {} } },
       });
+    });
+
+    it("should not have duplicated elements in loadingIds on pending (metabase#33692, metabase#34767)", () => {
+      const result = reducer(
+        {
+          ...initState,
+          loadingDashCards: {
+            loadingIds: [3],
+            loadingStatus: "running",
+            startTime: 100,
+          },
+        },
+        {
+          type: FETCH_CARD_DATA_PENDING,
+          payload: {
+            dashcard_id: 3,
+            card_id: 1,
+          },
+        },
+      );
+      expect(result.loadingDashCards.loadingIds).toEqual([3]);
     });
   });
 });

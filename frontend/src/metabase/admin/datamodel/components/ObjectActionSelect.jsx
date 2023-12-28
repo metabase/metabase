@@ -1,20 +1,20 @@
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { capitalize } from "metabase/lib/formatting";
 import ObjectRetireModal from "./ObjectRetireModal";
 
-import { ActionLink } from "./ObjectActionSelect.styled";
+import { TriggerIconContainer, ActionLink } from "./ObjectActionSelect.styled";
 
 export default class ObjectActionsSelect extends Component {
   constructor(props) {
     super(props);
 
-    this.retireModal = React.createRef();
+    this.retireModal = createRef();
   }
   static propTypes = {
     object: PropTypes.object.isRequired,
@@ -33,9 +33,9 @@ export default class ObjectActionsSelect extends Component {
       <div>
         <PopoverWithTrigger
           triggerElement={
-            <span className="text-light text-brand-hover">
+            <TriggerIconContainer>
               <Icon name="ellipsis" />
-            </span>
+            </TriggerIconContainer>
           }
         >
           <ul className="UserActionsSelect">

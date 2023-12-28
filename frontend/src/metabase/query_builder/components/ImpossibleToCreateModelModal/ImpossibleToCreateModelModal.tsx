@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -12,12 +11,12 @@ type Props = {
 };
 
 function SQLSnippetsDocLink() {
-  const href = MetabaseSettings.docsUrl("users-guide/sql-snippets");
+  const href = MetabaseSettings.docsUrl("questions/native-editor/sql-snippets");
   return <ExternalLink href={href}>{t`SQL snippets`}</ExternalLink>;
 }
 
 function ReferencingQuestionsDocLink() {
-  const href = MetabaseSettings.docsUrl("users-guide/sql-snippets");
+  const href = MetabaseSettings.docsUrl("questions/native-editor/sql-snippets");
   return (
     <ExternalLink
       href={href}

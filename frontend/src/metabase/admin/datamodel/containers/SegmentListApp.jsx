@@ -1,18 +1,19 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Segment from "metabase/entities/segments";
+import Segments from "metabase/entities/segments";
 import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
-class SegmentListAppInner extends React.Component {
+class SegmentListAppInner extends Component {
   render() {
-    const { segments, tableSelector } = this.props;
+    const { segments, tableSelector, setArchived } = this.props;
 
     return (
       <div className="px3 pb2">
@@ -34,7 +35,7 @@ class SegmentListAppInner extends React.Component {
             {segments.map(segment => (
               <SegmentItem
                 key={segment.id}
-                onRetire={() => segment.setArchived(true)}
+                onRetire={() => setArchived(segment, true)}
                 segment={segment}
               />
             ))}
@@ -51,8 +52,9 @@ class SegmentListAppInner extends React.Component {
 }
 
 const SegmentListApp = _.compose(
-  Segment.loadList({ wrapped: true }),
+  Segments.loadList(),
   FilteredToUrlTable("segments"),
+  connect(null, { setArchived: Segments.actions.setArchived }),
 )(SegmentListAppInner);
 
 export default SegmentListApp;

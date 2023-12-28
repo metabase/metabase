@@ -5,7 +5,7 @@ export const useScrollOnMount = () => {
 
   useEffect(() => {
     if (ref.current) {
-      ref.current.scrollIntoView({ block: "center" });
+      ref.current.scrollIntoView?.({ block: "center" });
     }
   }, []);
 

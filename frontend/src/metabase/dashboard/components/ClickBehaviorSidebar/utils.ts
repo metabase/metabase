@@ -1,17 +1,16 @@
-import { t } from "ttag";
 import { getIn } from "icepick";
 
 import type {
   ClickBehaviorType,
-  DashboardOrderedCard,
+  DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
-import { hasActionsMenu } from "metabase/lib/click-behavior";
+import type { IconName } from "metabase/core/components/Icon";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 
 type ClickBehaviorOption = {
   value: ClickBehaviorType | "menu";
-  icon: string;
+  icon: IconName;
 };
 
 export const clickBehaviorOptions: ClickBehaviorOption[] = [
@@ -20,28 +19,8 @@ export const clickBehaviorOptions: ClickBehaviorOption[] = [
   { value: "crossfilter", icon: "filter" },
 ];
 
-export function getClickBehaviorOptionName(
-  value: ClickBehaviorType | "menu",
-  dashcard: DashboardOrderedCard,
-) {
-  if (value === "menu") {
-    return hasActionsMenu(dashcard)
-      ? t`Open the Metabase actions menu`
-      : t`Do nothing`;
-  }
-  if (value === "link") {
-    return t`Go to a custom destination`;
-  }
-  if (value === "crossfilter") {
-    return t`Update a dashboard filter`;
-  }
-  if (value === "action") {
-    return t`Perform action`;
-  }
-  return t`Unknown`;
-}
 export function getClickBehaviorForColumn(
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
   column: DatasetColumn,
 ) {
   return getIn(dashcard, [

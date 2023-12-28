@@ -42,6 +42,7 @@ Metabase recognizes the following field types:
   - Quantity
   - Score
   - Share
+  - Percentage
 - **Profile**
   - Birthday
   - Company
@@ -81,22 +82,26 @@ Metabase recognizes the following field types:
 
 ## Using field types in Metabase
 
+### Fields types in models
+
+You can set field types for models, which helps Metabase understand how to work with data in models built using SQL. You can also configure text fields in models to [surface individual records in search](./models.md#surface-individual-records-in-search-by-matching-against-this-column).
+
 ### X-rays
 
-When you [X-ray](../exploration-and-organization/x-rays.md) a table, Metabase considers both the data type and the field type to display different charts that summarize that data.
+When you [X-ray](../exploration-and-organization/x-rays.md) a table or model, Metabase considers both the data type and the field type to display different charts that summarize that data.
 
 ### Field Filters
 
 Knowing what field types are and how they work is helpful when using [field filters](https://www.metabase.com/learn/sql-questions/field-filters.html), as you can only create field filters for [certain field types](../questions/native-editor/sql-parameters.md#field-filter-compatible-types).
 
-### Editing types in the Data Model page
+### Editing types in the Table Metadata page
 
-If you're an administrator, you can edit field types using the [Data Model page](./metadata-editing.md) in the Admin Panel.
+If you're an administrator, you can edit field types using the [Table Metadata page](./metadata-editing.md) in the Admin Panel.
 
 While data types themselves can't be edited in Metabase, admins can manually [cast data types](./metadata-editing.md#casting-to-a-specific-data-type) to be read differently, like interpreting a numerical data type as a date format.
 
 ## Further Reading
 
 - [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).
-- [The Data Model page: editing metadata](./metadata-editing.md).
+- [The Table Metadata page: editing metadata](./metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/sql-questions/field-filters.html).

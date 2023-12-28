@@ -11,7 +11,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
-   [metabase.query-processor.context.default :as context.default]
+   [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
    [metabase.util :as u])
@@ -97,7 +97,7 @@
 
 ;; Inspired by the similar middleware wrapper [[metabase.query-processor.middleware.limit-test/limit]]
 (defn- limit-download-result-rows [query]
-  (let [rff (ee.qp.perms/limit-download-result-rows query context.default/default-rff)
+  (let [rff (ee.qp.perms/limit-download-result-rows query qp.reducible/default-rff)
         rf  (rff {})]
     (transduce identity rf (repeat (inc @#'ee.qp.perms/max-rows-in-limited-downloads) [:ok]))))
 
@@ -187,10 +187,14 @@
           :endpoints  [:card :dataset]
           :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))
 
-      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'venues)     :limited
+      (with-download-perms (mt/id) {:schemas {"PUBLIC" {(mt/id 'users)      :full
+                                                        (mt/id 'categories) :full
+                                                        (mt/id 'venues)     :limited
                                                         (mt/id 'checkins)   :full
-                                                        (mt/id 'users)      :full
-                                                        (mt/id 'categories) :full}}}
+                                                        (mt/id 'products)   :limited
+                                                        (mt/id 'people)     :limited
+                                                        (mt/id 'reviews)    :limited
+                                                        (mt/id 'orders)     :limited}}}
         (streaming-test/do-test
          "A user with limited download perms for a table has their query results limited for queries on that table"
          {:query      {:database (mt/id)

@@ -2,16 +2,22 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [schema.core :as s]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
-(s/defn normalize :- s/Str
+(defn wildcard-match
+  "Returns a string pattern to match a wildcard search term."
+  [s]
+  (str "%" s "%"))
+
+(mu/defn normalize :- :string
   "Normalize a `query` to lower-case."
-  [query :- s/Str]
-  (str/lower-case (str/trim query)))
+  [query :- :string]
+  (u/lower-case-en (str/trim query)))
 
-(s/defn tokenize :- [s/Str]
+(mu/defn tokenize :- [:sequential :string]
   "Break a search `query` into its constituent tokens"
-  [query :- s/Str]
+  [query :- :string]
   (filter seq
           (str/split query #"\s+")))
 

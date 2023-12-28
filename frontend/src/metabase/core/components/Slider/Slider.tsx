@@ -1,11 +1,5 @@
-import React, {
-  ChangeEvent,
-  InputHTMLAttributes,
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-} from "react";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import _ from "underscore";
 
 import {
@@ -155,4 +149,5 @@ const getTooltipPosition = (basePosition: number) =>
 
 const hasDecimal = (value: number) => !isNaN(value) && value % 1 !== 0;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Slider;

@@ -5,6 +5,8 @@
    [metabase.async.util :as async.u]
    [metabase.test.util.async :as tu.async]))
 
+(set! *warn-on-reflection* true)
+
 (deftest promise-chan?-test
   (doseq [[x expected] {(a/promise-chan) true
                         (a/chan 1)       false

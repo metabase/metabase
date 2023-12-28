@@ -1,0 +1,135 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Radio, Stack } from "metabase/ui";
+
+export const args = {
+  label: "Label",
+  description: "",
+  disabled: false,
+  labelPosition: "right",
+};
+
+export const argTypes = {
+  label: {
+    control: { type: "text" },
+  },
+  description: {
+    control: { type: "text" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  labelPosition: {
+    options: ["left", "right"],
+    control: { type: "inline-radio" },
+  },
+};
+
+<Meta title="Inputs/Radio" component={Radio} args={args} argTypes={argTypes} />
+
+# Radio
+
+Our themed wrapper around [Mantine Radio](https://v6.mantine.dev/core/radio/).
+
+## When to use Radio
+
+Radio buttons allow users to select a single option from a list of mutually exclusive options. All possible options are exposed up front for users to compare.
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/7LCGPhkbJdrhdIaeiU1O9c/Input-%2F-Radio?type=design&node-id=1-96&mode=design&t=yaNljw178EFJeU7k-0)
+- [Mantine Radio Docs](https://v6.mantine.dev/core/radio/)
+
+## Usage guidelines
+
+- **Use this component if there are more than 5 options**. If there are fewer options, feel free to check out Radio or Select.
+- For option ordering, try to use your best judgement on a sensible order. For example, Yes should come before No. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Radio.Group>` to provide a set of options and help with defaultValues and state management between them.
+
+## Examples
+
+export const DefaultTemplate = args => <Radio {...args} />;
+
+export const RadioGroupTemplate = args => (
+  <Radio.Group
+    defaultValue={"react"}
+    label="An array of good frameworks"
+    description="But which one to use?"
+  >
+    <Stack mt="md">
+      <Radio value="react" label="React" />
+      <Radio value="svelte" label="Svelte" />
+      <Radio value="ng" label="Angular" />
+      <Radio value="vue" label="Vue" />
+    </Stack>
+  </Radio.Group>
+);
+
+export const StateTemplate = args => (
+  <Stack>
+    <Radio {...args} label="Default radio" />
+    <Radio {...args} label="Checked radio" defaultChecked />
+    <Radio {...args} label="Disabled radio" disabled />
+    <Radio {...args} label="Disabled checked radio" disabled defaultChecked />
+  </Stack>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Radio.Group
+
+export const RadioGroup = RadioGroupTemplate.bind({});
+
+<Canvas>
+  <Story name="Radio group">{RadioGroup}</Story>
+</Canvas>
+
+### Label
+
+export const Label = StateTemplate.bind({});
+
+<Canvas>
+  <Story name="Label">{Label}</Story>
+</Canvas>
+
+#### Left label position
+
+export const LabelLeft = StateTemplate.bind({});
+LabelLeft.args = {
+  labelPosition: "left",
+};
+
+<Canvas>
+  <Story name="Label, left position">{LabelLeft}</Story>
+</Canvas>
+
+### Description
+
+export const Description = StateTemplate.bind({});
+Description.args = {
+  description: "Description",
+};
+
+<Canvas>
+  <Story name="Description">{Description}</Story>
+</Canvas>
+
+export const DescriptionLeft = StateTemplate.bind({});
+DescriptionLeft.args = {
+  description: "Description",
+  labelPosition: "left",
+};
+
+#### Left label position
+
+<Canvas>
+  <Story name="Description, left position">{DescriptionLeft}</Story>
+</Canvas>
+
+## Related components
+
+- Checkbox
+- Select

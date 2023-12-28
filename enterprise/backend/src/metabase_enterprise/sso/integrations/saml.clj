@@ -19,8 +19,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
@@ -29,14 +28,20 @@
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [saml20-clj.core :as saml]
    [schema.core :as s])
-  (:import [java.util Base64 UUID]))
+  (:import
+   (java.net URI URISyntaxException)
+   (java.util Base64 UUID)))
+
+(set! *warn-on-reflection* true)
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
@@ -79,7 +84,7 @@
   (let [new-user {:first_name       first-name
                   :last_name        last-name
                   :email            email
-                  :sso_source       "saml"
+                  :sso_source       :saml
                   :login_attributes user-attributes}]
     (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
                         (sso-utils/create-new-sso-user! new-user))]
@@ -107,19 +112,30 @@
   (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
+(defn- has-host? [uri]
+  (try
+    (-> uri URI. .getHost some?)
+    (catch URISyntaxException _ false)))
+
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
   [req]
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
-  (let [redirect-url (or (get-in req [:params :redirect])
+  (let [redirect (get-in req [:params :redirect])
+        redirect-url (if (nil? redirect)
+                       (do
                          (log/warn (trs "Warning: expected `redirect` param, but none is present"))
-                         (public-settings/site-url))]
+                         (public-settings/site-url))
+                       (if (has-host? redirect)
+                         redirect
+                         (str (public-settings/site-url) redirect)))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (UUID/randomUUID))
+                           {:request-id (str "id-" (random-uuid))
                             :sp-name    (sso-settings/saml-application-name)
                             :issuer     (sso-settings/saml-application-name)
                             :acs-url    (acs-url)
@@ -176,6 +192,7 @@
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
   ;; `(get-in saml-info [:assertions :attrs])
   [{:keys [params], :as request}]
+  (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) base64-decode)]

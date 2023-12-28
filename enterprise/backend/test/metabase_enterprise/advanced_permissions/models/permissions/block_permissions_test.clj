@@ -12,8 +12,8 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;;; Graph-related stuff
 
@@ -35,9 +35,9 @@
                              "the API"
                              api-test-db-perms}]
       (testing (str message "\n"))
-      (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                      Permissions      [_ {:group_id group-id
-                                           :object   (perms/database-block-perms-path (mt/id))}]]
+      (mt/with-temp [PermissionsGroup {group-id :id} {}
+                     Permissions      _ {:group_id group-id
+                                         :object   (perms/database-block-perms-path (mt/id))}]
         (is (= {:schemas :block}
                (perms group-id)))
         (testing (str "\nBlock perms and data perms shouldn't exist together at the same time, but if they do for some "
@@ -46,8 +46,8 @@
                         (perms/data-perms-path (mt/id) "public")
                         (perms/data-perms-path (mt/id) "public" (mt/id :venues))]]
             (testing (format "\nPath = %s" (pr-str path))
-              (mt/with-temp* [Permissions [_ {:group_id group-id
-                                              :object   path}]]
+              (mt/with-temp [Permissions _ {:group_id group-id
+                                            :object   path}]
                 (is (= (merge {:schemas :block}
                               ;; block perms won't affect the value of `:native`; if a given group has both
                               ;; `/db/1/` and `/block/db/1/` then the graph will come back with `:native
@@ -73,7 +73,7 @@
   (testing "PUT /api/permissions/graph"
     (testing (str "fails when a group has a block permission set, and the instance doesn't have the "
                   ":advanced-permissions premium feature enabled")
-      (mt/with-temp PermissionsGroup [{group-id :id}]
+      (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
         (let [current-graph (perms/data-perms-graph)
               new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
               result        (premium-features-test/with-premium-features #{} ; disable premium features
@@ -91,7 +91,7 @@
                                   "the perms graph API endpoint"
                                   api-grant-block-perms!}]
       (testing (str description "\n")
-        (mt/with-temp PermissionsGroup [{group-id :id}]
+        (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
           (testing "Group should have no perms upon creation"
             (is (= nil
                    (test-db-perms group-id))))
@@ -107,28 +107,28 @@
               (is (= {:schemas :block}
                      (test-db-perms group-id)))
               (is (= #{(perms/database-block-perms-path (mt/id))}
-                     (db/select-field :object Permissions {:where [:and
-                                                                   [:or
-                                                                    [:like :object "/block/%"]
-                                                                    [:like :object "/db/%"]]
-                                                                   [:= :group_id group-id]]}))))))))))
+                     (t2/select-fn-set :object Permissions {:where [:and
+                                                                    [:or
+                                                                     [:like :object "/block/%"]
+                                                                     [:like :object "/db/%"]]
+                                                                    [:= :group_id group-id]]}))))))))))
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
     (premium-features-test/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
-        (mt/with-temp* [PermissionsGroup       [{group-id :id}]
-                        GroupTableAccessPolicy [_ {:table_id (mt/id :venues)
-                                                   :group_id group-id}]]
+        (mt/with-temp [PermissionsGroup       {group-id :id} {}
+                       GroupTableAccessPolicy _ {:table_id (mt/id :venues)
+                                                 :group_id group-id}]
           (grant-block-perms! group-id)
           (is (= {:schemas :block}
                  (test-db-perms group-id)))
-          (is (not (db/exists? GroupTableAccessPolicy :group_id group-id))))))))
+          (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
   (testing "granting data permissions should delete existing block permissions"
-    (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                    Permissions      [_ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]]
+    (mt/with-temp [PermissionsGroup {group-id :id} {}
+                   Permissions      _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
       (is (= {:schemas :block}
              (test-db-perms group-id)))
       (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"public" {(mt/id :venues) {:read :all}}})
@@ -137,13 +137,13 @@
 
 (deftest update-graph-disallow-native-query-perms-test
   (testing "Disallow block permissions + native query permissions"
-    (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                    Permissions      [_ {:group_id group-id, :object (perms/data-perms-path (mt/id))}]]
+    (mt/with-temp [PermissionsGroup {group-id :id} {}
+                   Permissions      _ {:group_id group-id, :object (perms/data-perms-path (mt/id))}]
       (testing "via the fn"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              ;; TODO -- this error message is totally garbage, fix this
-             #"DB permissions with a valid combination of values for :native and :schemas"
+             #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
              ;; #"DB permissions with a valid combination of values for :native and :schemas"
              (perms/update-data-perms-graph! [group-id (mt/id) :data]
                                              {:schemas :block, :native :write}))))
@@ -152,20 +152,19 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
-          (is (schema= {:message  #".*DB permissions with a valid combination of values for :native and :schemas.*"
-                        s/Keyword s/Any}
-                       (premium-features-test/with-premium-features #{:advanced-permissions}
-                         (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
+          (is (=? {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
+                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                    (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
-    (mt/with-temp* [Database    [{db-id :id}]
-                    Permissions [_ {:group_id (u/the-id (perms-group/all-users))
-                                    :object   (perms/database-block-perms-path db-id)}]]
+    (mt/with-temp [Database    {db-id :id} {}
+                   Permissions _ {:group_id (u/the-id (perms-group/all-users))
+                                  :object   (perms/database-block-perms-path db-id)}]
       (letfn [(perms-exist? []
-                (db/exists? Permissions :object (perms/database-block-perms-path db-id)))]
+                (t2/exists? Permissions :object (perms/database-block-perms-path db-id)))]
         (is (perms-exist?))
-        (db/delete! Database :id db-id)
+        (t2/delete! Database :id db-id)
         (is (not (perms-exist?)))))))
 
 ;;;; QP perms-check related stuff.
@@ -176,13 +175,13 @@
                  :type     :query
                  :query    {:source-table (mt/id :venues)
                             :limit        1}}]
-      (mt/with-temp* [User                       [{user-id :id}]
-                      PermissionsGroup           [{group-id :id}]
-                      PermissionsGroupMembership [_ {:group_id group-id, :user_id user-id}]
-                      Collection                 [{collection-id :id}]
-                      Card                       [{card-id :id} {:collection_id collection-id
-                                                                 :dataset_query query}]
-                      Permissions                [_ {:group_id group-id, :object (perms/collection-read-path collection-id)}]]
+      (mt/with-temp [User                       {user-id :id} {}
+                     PermissionsGroup           {group-id :id} {}
+                     PermissionsGroupMembership _ {:group_id group-id :user_id user-id}
+                     Collection                 {collection-id :id} {}
+                     Card                       {card-id :id} {:collection_id collection-id
+                                                               :dataset_query query}
+                     Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
         (premium-features-test/with-premium-features #{:advanced-permissions}
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (perms/revoke-data-perms! group-id (mt/id))
@@ -207,7 +206,7 @@
               (is (= ::block-perms/no-block-permissions-for-db
                      (check-block-perms))))
             ;; 'grant' the block permissions.
-            (mt/with-temp Permissions [_ {:group_id group-id, :object (perms/database-block-perms-path (mt/id))}]
+            (t2.with-temp/with-temp [Permissions _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
               (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
                 (premium-features-test/with-premium-features #{}
                   (is (= ::block-perms/advanced-permissions-not-enabled
@@ -222,23 +221,25 @@
                      #"Blocked: you are not allowed to run queries against Database \d+"
                      (run-saved-question))))
               (testing "\nAllow running if current User has data permissions from another group."
-                (mt/with-temp* [PermissionsGroup           [{group-2-id :id}]
-                                PermissionsGroupMembership [_ {:group_id group-2-id, :user_id user-id}]]
+                (mt/with-temp [PermissionsGroup           {group-2-id :id} {}
+                               PermissionsGroupMembership _ {:group_id group-2-id :user_id user-id}]
                   (doseq [[message perms] {"with full DB perms"                   (perms/data-perms-path (mt/id))
                                            "with perms for the Table in question" (perms/table-query-path (mt/id :venues))}]
-                    (mt/with-temp Permissions [_ {:group_id group-2-id, :object perms}]
+                    (t2.with-temp/with-temp [Permissions _ {:group_id group-2-id :object perms}]
                       (testing (format "Should be able to run the query %s" message)
-                        (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                             "Saved Questions" run-saved-question}]
+                        (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                                 "Saved Questions" run-saved-question}]
                           (testing message
-                            (is (f)))))))
+                            (is (=? {:status :completed}
+                                    (thunk))))))))
                   (testing "\nSandboxed permissions"
-                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxing}
-                      (mt/with-temp* [Permissions            [_ {:group_id group-2-id
-                                                                 :object   (perms/table-segmented-query-path (mt/id :venues))}]
-                                      GroupTableAccessPolicy [_ {:table_id (mt/id :venues), :group_id group-id}]]
+                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxes}
+                      (mt/with-temp [Permissions            _ {:group_id group-2-id
+                                                               :object   (perms/table-sandboxed-query-path (mt/id :venues))}
+                                     GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]
                         (testing "Should be able to run the query"
-                          (doseq [[message f] {"ad-hoc queries"  run-ad-hoc-query
-                                               "Saved Questions" run-saved-question}]
+                          (doseq [[message thunk] {"ad-hoc queries"  run-ad-hoc-query
+                                                   "Saved Questions" run-saved-question}]
                             (testing message
-                              (is (f)))))))))))))))))
+                              (is (=? {:status :completed}
+                                      (thunk))))))))))))))))))

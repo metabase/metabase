@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import { getUser } from "metabase/selectors/user";
 
@@ -20,4 +20,5 @@ const mapDispatchToProps = {
   onSubmit: updateUser,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(UserProfileForm);

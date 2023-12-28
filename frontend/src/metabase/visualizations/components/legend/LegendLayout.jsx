@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -31,6 +30,8 @@ const propTypes = {
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onRemoveSeries: PropTypes.func,
+  isReversed: PropTypes.bool,
+  canRemoveSeries: PropTypes.func,
 };
 
 const LegendLayout = ({
@@ -48,6 +49,8 @@ const LegendLayout = ({
   onHoverChange,
   onSelectSeries,
   onRemoveSeries,
+  isReversed,
+  canRemoveSeries,
 }) => {
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
   const maxXItems = Math.floor(width / MIN_ITEM_WIDTH);
@@ -76,6 +79,8 @@ const LegendLayout = ({
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
             onRemoveSeries={onRemoveSeries}
+            isReversed={isReversed}
+            canRemoveSeries={canRemoveSeries}
           />
           {!isVertical && actionButtons && (
             <LegendActions>{actionButtons}</LegendActions>

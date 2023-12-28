@@ -1,22 +1,31 @@
-import React from "react";
+import { Fragment, useMemo } from "react";
+import type { MouseEvent } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { DatasetData } from "metabase-types/types/Dataset";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
 
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-import { isa, isID } from "metabase-lib/types/utils/isa";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import {
+  isa,
+  isID,
+  isImageURL,
+  isAvatarURL,
+} from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
-import { OnVisualizationClickType } from "./types";
+import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
   GridContainer,
   GridCell,
-} from "./ObjectDetail.styled";
+  FitImage,
+} from "./ObjectDetailsTable.styled";
 
 export interface DetailsTableCellProps {
   column: any;
@@ -41,8 +50,13 @@ export function DetailsTableCell({
   const clicked = { column: null, value: null };
   let isLink;
 
+  const columnSettings = settings?.column?.(column) ?? {};
+  const columnTitle =
+    columnSettings?.["_column_title_full"] || formatColumn(column);
+
   if (isColumnName) {
-    cellValue = column !== null ? formatColumn(column) : null;
+    const title = column !== null ? columnTitle : null;
+    cellValue = <Ellipsified lines={8}>{title}</Ellipsified>;
     clicked.column = column;
     isLink = false;
   } else {
@@ -61,7 +75,7 @@ export function DetailsTableCell({
       cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
     } else {
       cellValue = formatValue(value, {
-        ...settings.column(column),
+        ...columnSettings,
         jsx: true,
         rich: true,
       });
@@ -74,28 +88,39 @@ export function DetailsTableCell({
     isLink = isID(column);
   }
 
-  const isClickable = onVisualizationClick && visualizationIsClickable(clicked);
+  const isClickable = onVisualizationClick != null;
+
+  const isImage =
+    !isColumnName &&
+    (isImageURL(column) || isAvatarURL(column)) &&
+    typeof value === "string" &&
+    value.startsWith("http");
+
+  const handleClick = (e: MouseEvent<HTMLSpanElement>) => {
+    if (onVisualizationClick && visualizationIsClickable(clicked)) {
+      onVisualizationClick({ ...clicked, element: e.currentTarget });
+    }
+  };
 
   return (
     <div>
       <span
         className={cx(
           {
-            "cursor-pointer": isClickable,
+            "cursor-pointer": onVisualizationClick,
             link: isClickable && isLink,
           },
           className,
         )}
-        onClick={
-          isClickable
-            ? e => {
-                onVisualizationClick({ ...clicked, element: e.currentTarget });
-              }
-            : undefined
-        }
+        onClick={handleClick}
       >
         {cellValue}
       </span>
+      {isImage && (
+        <div>
+          <FitImage src={value} alt={value} />
+        </div>
+      )}
     </div>
   );
 }
@@ -103,9 +128,9 @@ export function DetailsTableCell({
 export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
-  settings: unknown;
+  settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
-  visualizationIsClickable: (clicked: any) => boolean;
+  visualizationIsClickable: (clicked: unknown) => boolean;
 }
 
 export function DetailsTable({
@@ -115,42 +140,72 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { cols } = data;
-  const row = zoomedRow;
+  const { cols: columns } = data;
+  const columnSettings = settings["table.columns"];
+
+  const { cols, row } = useMemo(() => {
+    if (!columnSettings) {
+      return { cols: columns, row: zoomedRow };
+    }
+    const columnIndexes = columnSettings
+      .filter(columnSetting => columnSetting?.enabled)
+      .map(columnSetting =>
+        findColumnIndexForColumnSetting(columns, columnSetting),
+      )
+      .filter(
+        (columnIndex: number) =>
+          columnIndex >= 0 && columnIndex < columns.length,
+      );
+
+    return {
+      cols: columnIndexes.map((i: number) => columns[i]) as any[],
+      row: columnIndexes.map((i: number) => zoomedRow[i]),
+    };
+  }, [columns, zoomedRow, columnSettings]);
+
+  if (!cols?.length) {
+    return (
+      <EmptyState message={t`Select at least one column`} className="p3" />
+    );
+  }
 
   if (!row?.length) {
-    return <EmptyState message={t`No details found`} />;
+    return <EmptyState message={t`No details found`} className="p3" />;
   }
 
   return (
     <ObjectDetailsTable>
       <GridContainer cols={3}>
-        {cols.map((column, columnIndex) => (
-          <React.Fragment key={columnIndex}>
-            <GridCell>
-              <DetailsTableCell
-                column={column}
-                value={row[columnIndex] ?? t`Empty`}
-                isColumnName
-                settings={settings}
-                className="text-bold text-medium"
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-              />
-            </GridCell>
-            <GridCell colSpan={2}>
-              <DetailsTableCell
-                column={column}
-                value={row[columnIndex]}
-                isColumnName={false}
-                settings={settings}
-                className="text-bold text-dark text-spaced text-wrap"
-                onVisualizationClick={onVisualizationClick}
-                visualizationIsClickable={visualizationIsClickable}
-              />
-            </GridCell>
-          </React.Fragment>
-        ))}
+        {cols.map((column, columnIndex) => {
+          const columnValue = row[columnIndex];
+
+          return (
+            <Fragment key={columnIndex}>
+              <GridCell>
+                <DetailsTableCell
+                  column={column}
+                  value={row[columnIndex] ?? t`Empty`}
+                  isColumnName
+                  settings={settings}
+                  className="text-bold text-medium"
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </GridCell>
+              <GridCell colSpan={2}>
+                <DetailsTableCell
+                  column={column}
+                  value={columnValue}
+                  isColumnName={false}
+                  settings={settings}
+                  className="text-bold text-dark text-spaced text-wrap"
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </GridCell>
+            </Fragment>
+          );
+        })}
       </GridContainer>
     </ObjectDetailsTable>
   );

@@ -1,11 +1,12 @@
 (ns metabase.query-processor.middleware.fix-bad-references
   (:require
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (defn- find-source-table [{:keys [source-table source-query]}]
   (or source-table
@@ -22,8 +23,11 @@
 
 (defn- table [table-id]
   (when table-id
-    (qp.store/fetch-and-store-tables! #{table-id})
-    (qp.store/table table-id)))
+    (lib.metadata/table (qp.store/metadata-provider) table-id)))
+
+(def ^:dynamic *bad-field-reference-fn*
+  "A function to be called on each bad field found by this middleware. Not used except for in tests."
+  (constantly nil))
 
 (defn- fix-bad-references*
   ([inner-query]
@@ -47,12 +51,12 @@
      ;; :source-table]` path that do not have `:join-alias` info
      [:field
       (id :guard (every-pred integer? (fn [id]
-                                        (let [{table-id :table_id} (qp.store/field id)]
+                                        (let [{:keys [table-id]} (lib.metadata/field (qp.store/metadata-provider) id)]
                                           (not (some (partial = table-id)
                                                      (cons source-table sources)))))))
       (opts :guard (complement :join-alias))]
-     (let [{table-id :table_id, :as field} (qp.store/field id)
-           {join-alias :alias}             (find-join-against-table inner-query table-id)]
+     (let [{:keys [table-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id)
+           {join-alias :alias}           (find-join-against-table inner-query table-id)]
        (log/warn (u/colorize 'yellow (str (trs "Bad :field clause {0} for field {1} at {2}: clause should have a :join-alias."
                                                (pr-str &match)
                                                (pr-str (format "%s.%s"
@@ -63,6 +67,7 @@
                                           (if join-alias
                                             (trs "Guessing join {0}" (pr-str join-alias))
                                             (trs "Unable to infer an appropriate join. Query may not work as expected.")))))
+       (*bad-field-reference-fn* &match)
        (if join-alias
          [:field id (assoc opts :join-alias join-alias)]
          &match)))))

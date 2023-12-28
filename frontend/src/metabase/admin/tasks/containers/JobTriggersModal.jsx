@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
@@ -50,7 +50,7 @@ const renderTriggersTable = triggers => {
   );
 };
 
-class JobTriggersModal extends React.Component {
+class JobTriggersModal extends Component {
   state = {
     triggers: null,
     error: null,

@@ -7,15 +7,18 @@
    [crypto.random :as crypto-random]
    [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
    [metabase-enterprise.sso.integrations.saml-test :as saml-test]
+   [metabase.config :as config]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
-   [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+   [metabase.models.permissions-group-membership
+    :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test
+    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -27,62 +30,77 @@
 (use-fixtures :each disable-other-sso-types)
 
 (def ^:private default-idp-uri      "http://test.idp.metabase.com")
-(def ^:private default-redirect-uri "http://localhost:3000/test")
+(def ^:private default-redirect-uri "/")
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
+(defmacro with-sso-jwt-token
+  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-jwt` feature.
+   This needs to be included to test any of the JWT features."
+  [& body]
+  `(premium-features-test/with-additional-premium-features #{:sso-jwt}
+     ~@body))
+
+(defn- call-with-default-jwt-config [f]
+  (let [current-features (premium-features/token-features)]
+    (premium-features-test/with-additional-premium-features #{:sso-jwt}
+      (mt/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         default-jwt-secret
+                                         site-url                  (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+        (premium-features-test/with-premium-features current-features
+          (f))))))
+
+(defmacro with-default-jwt-config [& body]
+  `(call-with-default-jwt-config
+    (fn []
+      ~@body)))
+
+(defmacro ^:private with-jwt-default-setup [& body]
+  `(mt/with-ensure-with-temp-no-transaction!
+     (premium-features-test/with-premium-features #{:audit-app}
+       (disable-other-sso-types
+        (fn []
+          (with-sso-jwt-token
+            (saml-test/call-with-login-attributes-cleared!
+             (fn []
+               (call-with-default-jwt-config
+                (fn []
+                  ~@body))))))))))
+
 (deftest sso-prereqs-test
-  (testing "SSO requests fail if JWT hasn't been configured or enabled"
-    (mt/with-temporary-setting-values [jwt-enabled               false
-                                       jwt-identity-provider-uri nil
-                                       jwt-shared-secret         nil]
-      (saml-test/with-valid-premium-features-token
+  (with-sso-jwt-token
+    (testing "SSO requests fail if JWT hasn't been configured or enabled"
+      (mt/with-temporary-setting-values [jwt-enabled               false
+                                         jwt-identity-provider-uri nil
+                                         jwt-shared-secret         nil]
         (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))
+               (saml-test/client :get 400 "/auth/sso")))
 
-      (testing "SSO requests fail if they don't have a valid premium-features token"
-        (premium-features-test/with-premium-features nil
-          (is (= "SSO requires a valid token"
-                 (saml-test/client :get 403 "/auth/sso")))))))
+        (testing "SSO requests fail if they don't have a valid premium-features token"
+          (with-default-jwt-config
+            (premium-features-test/with-premium-features #{}
+              (is (= "SSO has not been enabled and/or configured"
+                     (saml-test/client :get 400 "/auth/sso"))))))))
 
-  (testing "SSO requests fail if JWT is enabled but hasn't been configured"
-    (saml-test/with-valid-premium-features-token
+    (testing "SSO requests fail if JWT is enabled but hasn't been configured"
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri nil]
         (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))))
+               (saml-test/client :get 400 "/auth/sso")))))
 
-  (testing "SSO requests fail if JWT is configured but hasn't been enabled"
-    (saml-test/with-valid-premium-features-token
+    (testing "SSO requests fail if JWT is configured but hasn't been enabled"
       (mt/with-temporary-setting-values [jwt-enabled               false
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         default-jwt-secret]
         (is (= "SSO has not been enabled and/or configured"
-               (saml-test/client :get 400 "/auth/sso"))))))
+               (saml-test/client :get 400 "/auth/sso")))))
 
-  (testing "The JWT Shared Secret must also be included for SSO to be configured"
-    (saml-test/with-valid-premium-features-token
+    (testing "The JWT Shared Secret must also be included for SSO to be configured"
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         nil]
         (is (= "SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso")))))))
-
-(defn- call-with-default-jwt-config [f]
-  (mt/with-temporary-setting-values [jwt-enabled               true
-                                     jwt-identity-provider-uri default-idp-uri
-                                     jwt-shared-secret         default-jwt-secret
-                                     site-url                  "http://localhost"]
-    (f)))
-
-(defmacro ^:private with-jwt-default-setup [& body]
-  `(disable-other-sso-types
-    (fn []
-      (saml-test/with-valid-premium-features-token
-        (saml-test/call-with-login-attributes-cleared!
-         (fn []
-           (call-with-default-jwt-config
-            (fn []
-              ~@body))))))))
 
 (deftest redirect-test
   (testing "with JWT configured, a GET request should result in a redirect to the IdP"
@@ -120,21 +138,24 @@
                  (get-in response [:headers "Location"]))))
         (testing "login attributes"
           (is (= {"extra" "keypairs", "are" "also present"}
-                 (db/select-one-field :login_attributes User :email "rasta@metabase.com"))))))))
+                 (t2/select-one-fn :login_attributes User :email "rasta@metabase.com"))))))))
 
 (deftest no-open-redirect-test
-  (testing "Check a JWT with bad (open redirect)"
+  (testing "Check that we prevent open redirects to untrusted sites"
     (with-jwt-default-setup
-      (is (= "SSO is trying to do an open redirect to an untrusted site"
-             (saml-test/client
-               :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-               :return_to "https://evilsite.com"
-               :jwt (jwt/sign {:email      "rasta@metabase.com"
-                               :first_name "Rasta"
-                               :last_name  "Toucan"
-                               :extra      "keypairs"
-                               :are        "also present"}
-                              default-jwt-secret)))))))
+      (doseq [redirect-uri ["https://badsite.com"
+                            "//badsite.com"]]
+        (is (= "Invalid redirect URL"
+               (-> (saml-test/client
+                    :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                    :return_to redirect-uri
+                    :jwt (jwt/sign {:email      "rasta@metabase.com"
+                                    :first_name "Rasta"
+                                    :last_name  "Toucan"
+                                    :extra      "keypairs"
+                                    :are        "also present"}
+                                   default-jwt-secret))
+                   :message)))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"
@@ -150,16 +171,15 @@
   `(try
      ~@body
      (finally
-       (db/delete! User :%lower.email (u/lower-case-en ~user-email)))))
+       (t2/delete! User :%lower.email (u/lower-case-en ~user-email)))))
 
 (deftest create-new-account-test
   (testing "A new account will be created for a JWT user we haven't seen before"
     (with-jwt-default-setup
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn [(new-user-exists? []
-                  (boolean (seq (db/select User :%lower.email "newuser@metabase.com"))))]
-          (is (= false
-                 (new-user-exists?)))
+                  (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
+          (is (false? (new-user-exists?)))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
                                                          {:request-options {:redirect-strategy :none}}
                                                          :return_to default-redirect-uri
@@ -170,28 +190,34 @@
                                                                          :for        "the new user"}
                                                                         default-jwt-secret))]
             (is (saml-test/successful-login? response))
-            (testing "new user"
-              (is (= [{:email        "newuser@metabase.com"
-                       :first_name   "New"
-                       :is_qbnewb    true
-                       :is_superuser false
-                       :id           true
-                       :last_name    "User"
-                       :date_joined  true
-                       :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
-                          (map #(dissoc % :last_login))))))
-            (testing "attributes"
-              (is (= {"more" "stuff"
-                      "for"  "the new user"}
-                     (db/select-one-field :login_attributes User :email "newuser@metabase.com"))))))))))
+            (let [new-user (t2/select-one User :email "newuser@metabase.com")]
+              (testing "new user"
+                (is (= {:email        "newuser@metabase.com"
+                        :first_name   "New"
+                        :is_qbnewb    true
+                        :is_superuser false
+                        :id           true
+                        :last_name    "User"
+                        :date_joined  true
+                        :common_name  "New User"}
+                       (-> (mt/boolean-ids-and-timestamps [new-user])
+                           first
+                           (dissoc :last_login)))))
+              (testing "User Invite Event is logged."
+                (is (= "newuser@metabase.com"
+                       (get-in (mt/latest-audit-log-entry :user-invited (:id new-user))
+                               [:details :email]))))
+              (testing "attributes"
+                (is (= {"more" "stuff"
+                        "for"  "the new user"}
+                       (t2/select-one-fn :login_attributes User :email "newuser@metabase.com")))))))))))
 
 (deftest update-account-test
   (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
     (with-jwt-default-setup
       (with-users-with-email-deleted "newuser@metabase.com"
         (letfn [(new-user-exists? []
-                  (boolean (seq (db/select User :%lower.email "newuser@metabase.com"))))]
+                  (boolean (seq (t2/select User :%lower.email "newuser@metabase.com"))))]
           (is (= false
                  (new-user-exists?)))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
@@ -209,7 +235,7 @@
                        :last_name    nil
                        :date_joined  true
                        :common_name  "newuser@metabase.com"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
                                                            {:request-options {:redirect-strategy :none}}
@@ -228,29 +254,30 @@
                        :last_name    "User"
                        :date_joined  true
                        :common_name  "New User"}]
-                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                     (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))))))))
 
 (deftest group-mappings-test
   (testing "make sure our setting for mapping group names -> IDs works"
-    (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
-                                                           "group_2" [3 4]
-                                                           "group_3" [5]}]
-      (testing "keyword group names"
-        (is (= #{1 2 3 4}
-               (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
-      (testing "string group names"
-        (is (= #{3 4 5}
-               (#'mt.jwt/group-names->ids ["group_2" "group_3"])))))))
+    (with-sso-jwt-token
+      (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
+                                                             "group_2" [3 4]
+                                                             "group_3" [5]}]
+        (testing "keyword group names"
+          (is (= #{1 2 3 4}
+                 (#'mt.jwt/group-names->ids [:group_1 :group_2]))))
+        (testing "string group names"
+          (is (= #{3 4 5}
+                 (#'mt.jwt/group-names->ids ["group_2" "group_3"]))))))))
 
 (defn- group-memberships [user-or-id]
-  (when-let [group-ids (seq (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
-    (db/select-field :name PermissionsGroup :id [:in group-ids])))
+  (when-let [group-ids (seq (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id)))]
+    (t2/select-fn-set :name PermissionsGroup :id [:in group-ids])))
 
 (deftest login-sync-group-memberships-test
   (testing "login should sync group memberships if enabled"
     (with-jwt-default-setup
-      (tt/with-temp PermissionsGroup [my-group {:name (str ::my-group)}]
+      (mt/with-temp [PermissionsGroup my-group {:name (str ::my-group)}]
         (mt/with-temporary-setting-values [jwt-group-sync       true
                                            jwt-group-mappings   {"my_group" [(u/the-id my-group)]}
                                            jwt-attribute-groups "GrOuPs"]
@@ -268,4 +295,4 @@
               (is (saml-test/successful-login? response))
               (is (= #{"All Users"
                        ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
-                     (group-memberships (u/the-id (db/select-one-id User :email "newuser@metabase.com"))))))))))))
+                     (group-memberships (u/the-id (t2/select-one-pk User :email "newuser@metabase.com"))))))))))))

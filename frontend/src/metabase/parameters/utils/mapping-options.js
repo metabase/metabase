@@ -1,4 +1,6 @@
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
+import { isActionDashCard } from "metabase/actions/utils";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import Question from "metabase-lib/Question";
 import { ExpressionDimension } from "metabase-lib/Dimension";
 import {
@@ -52,18 +54,37 @@ function buildTextTagOption(tagName) {
   };
 }
 
+/**
+ *
+ * @param {import("metabase-lib/metadata/Metadata").default} metadata
+ * @param {import("metabase-types/api").ParameterTarget|null} parameter
+ * @param {import("metabase-types/api").Card} card
+ * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
+ * @returns {*}
+ */
 export function getParameterMappingOptions(
   metadata,
   parameter = null,
   card,
   dashcard = null,
 ) {
-  if (dashcard && card.display === "text") {
+  if (dashcard && ["heading", "text"].includes(card.display)) {
     const tagNames = tag_names(dashcard.visualization_settings.text || "");
     return tagNames ? tagNames.map(buildTextTagOption) : [];
   }
 
-  if (!card.dataset_query) {
+  if (isActionDashCard(dashcard)) {
+    const actionParams = dashcard?.action?.parameters?.map(param => ({
+      icon: "variable",
+      isForeign: false,
+      name: param.id,
+      ...param,
+    }));
+
+    return actionParams || [];
+  }
+
+  if (!card.dataset_query || isVirtualDashCard(dashcard)) {
     return [];
   }
 

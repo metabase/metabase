@@ -2,13 +2,14 @@
   "Middlware that optimizes equality filter clauses against bucketed temporal fields. See docstring for
   `optimize-temporal-filters` for more details."
   (:require
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
-   [schema.core :as s]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
@@ -62,14 +63,18 @@
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)
          (field-and-temporal-value-have-compatible-units? field temporal-value-2))))
 
-(s/defn ^:private temporal-literal-lower-bound [unit t :- java.time.temporal.Temporal]
+(mu/defn ^:private temporal-literal-lower-bound
+  [unit t :- (ms/InstanceOfClass java.time.temporal.Temporal)]
   (:start (u.date/range t unit)))
 
-(s/defn ^:private temporal-literal-upper-bound [unit t :- java.time.temporal.Temporal]
+(mu/defn ^:private temporal-literal-upper-bound
+  [unit t :- (ms/InstanceOfClass java.time.temporal.Temporal)]
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (mbql.u/update-field-options field assoc :temporal-unit :default))
+  (mbql.u/replace field
+    [:field _ (_ :guard (comp optimizable-units :temporal-unit))]
+    (mbql.u/update-field-options &match assoc :temporal-unit :default)))
 
 (defmulti ^:private temporal-value-lower-bound
   "Get a clause representing the *lower* bound that should be used when converting a `temporal-value-clause` (e.g.
@@ -106,7 +111,7 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod optimize-filter :=
-  [[_ field temporal-value]]
+  [[_tag field temporal-value]]
   (let [temporal-unit (mbql.u/match-one field [:field _ (opts :guard :temporal-unit)] (:temporal-unit opts))]
     (when (field-and-temporal-value-have-compatible-units? field temporal-value)
       (let [field' (change-temporal-unit-to-default field)]

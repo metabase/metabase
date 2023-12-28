@@ -3,30 +3,34 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail :as card-and-dash-detail]
+   [metabase-enterprise.audit-app.pages.common.card-and-dashboard-detail
+    :as card-and-dash-detail]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.models.permissions :as perms]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 ;; Get views of a Dashboard broken out by a time `unit`, e.g. `day` or `day-of-week`.
-(s/defmethod audit.i/internal-query ::views-by-time
-  [_ dashboard-id  :- su/IntGreaterThanZero datetime-unit :- common/DateTimeUnitStr]
+(mu/defmethod audit.i/internal-query ::views-by-time
+  [_query-type
+   dashboard-id  :- ms/PositiveInt
+   datetime-unit :- common/DateTimeUnitStr]
   (card-and-dash-detail/views-by-time "dashboard" dashboard-id datetime-unit))
 
 ;; Revision history for a specific Dashboard.
-(s/defmethod audit.i/internal-query ::revision-history
-  [_ dashboard-id :- su/IntGreaterThanZero]
+(mu/defmethod audit.i/internal-query ::revision-history
+  [_query-type dashboard-id :- ms/PositiveInt]
   (card-and-dash-detail/revision-history Dashboard dashboard-id))
 
 ;; View log for a specific Dashboard.
-(s/defmethod audit.i/internal-query ::audit-log
-  [_ dashboard-id :- su/IntGreaterThanZero]
+(mu/defmethod audit.i/internal-query ::audit-log
+  [_query-type dashboard-id :- ms/PositiveInt]
   (card-and-dash-detail/audit-log "dashboard" dashboard-id))
 
 ;; Information about the Saved Questions (Cards) in this instance.
-(s/defmethod audit.i/internal-query ::cards
-  [_ dashboard-id :- su/IntGreaterThanZero]
+(mu/defmethod audit.i/internal-query ::cards
+  [_query-type dashboard-id :- ms/PositiveInt]
   {:metadata [[:card_id             {:display_name "Card ID",              :base_type :type/Integer, :remapped_to   :card_name}]
               [:card_name           {:display_name "Title",                :base_type :type/Name,    :remapped_from :card_id}]
               [:collection_id       {:display_name "Collection ID",        :base_type :type/Integer, :remapped_to   :collection_name}]
@@ -45,7 +49,9 @@
                                             [:dc.created_at :dashcard_created_at]]
                                    :from   [[:report_dashboardcard :dc]]
                                    :join   [[:report_card :card] [:= :card.id :dc.card_id]]
-                                   :where  [:= :dc.dashboard_id dashboard-id]}]
+                                   :where  [:and
+                                            [:= :dc.dashboard_id dashboard-id]
+                                            [:not= :card.database_id perms/audit-db-id]]}]
                            cards/avg-exec-time
                            cards/views]
                :select    [[:card.id :card_id]
@@ -67,4 +73,4 @@
                            [:metabase_table :t]     [:= :card.table_id :t.id]
                            [:collection :coll]      [:= :card.collection_id :coll.id]
                            :card_views              [:= :card.id :card_views.card_id]]
-               :order-by  [[:%lower.card.name :asc]]})})
+               :order-by  [[[:lower :card.name] :asc]]})})

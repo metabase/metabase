@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import renderPropToHOC from "metabase/hoc/RenderPropToHOC";
 
 import AdHocQuestionLoader from "metabase/containers/AdHocQuestionLoader";

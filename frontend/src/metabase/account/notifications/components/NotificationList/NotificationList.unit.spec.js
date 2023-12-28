@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import NotificationList from "./NotificationList";
 
@@ -22,7 +21,7 @@ describe("NotificationList", () => {
       <NotificationList items={[{ item: pulse, type: "pulse" }]} user={user} />,
     );
 
-    screen.getByText("Pulse");
+    expect(screen.getByText("Pulse")).toBeInTheDocument();
   });
 
   it("should render empty state when there are no items", () => {
@@ -30,6 +29,8 @@ describe("NotificationList", () => {
 
     render(<NotificationList items={[]} user={user} />);
 
-    screen.getByText("you’ll be able to manage those here", { exact: false });
+    expect(
+      screen.getByText("you’ll be able to manage those here", { exact: false }),
+    ).toBeInTheDocument();
   });
 });

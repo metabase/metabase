@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 
 import type { State } from "metabase-types/store";
@@ -23,7 +23,7 @@ export const canManageSubscriptions = createSelector(
 
 export const getUserAttributes = createSelector(
   [getUser],
-  user => user?.login_attributes || [],
+  user => user?.login_attributes || {},
 );
 
 export const getUserPersonalCollectionId = createSelector(

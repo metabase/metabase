@@ -1,10 +1,8 @@
-import React from "react";
-
 import PersistedModels from "metabase/entities/persisted-models";
-import { ModelCacheRefreshStatus } from "metabase-types/api";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
-import { renderWithProviders, waitFor, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 
 import ModelCacheRefreshJobs from "./ModelCacheRefreshJobs";
 
@@ -25,16 +23,15 @@ async function setup({ logs = [] }: { logs?: ModelCacheRefreshStatus[] } = {}) {
     });
   });
 
-  const utils = renderWithProviders(
+  renderWithProviders(
     <ModelCacheRefreshJobs>
       <></>
     </ModelCacheRefreshJobs>,
   );
 
-  await waitFor(() => utils.queryByTestId("model-cache-logs"));
+  await screen.findByTestId("model-cache-logs");
 
   return {
-    ...utils,
     onRefreshMock,
   };
 }

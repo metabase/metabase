@@ -17,9 +17,10 @@
    [metabase.transforms.specs :refer [Step transform-specs TransformSpec]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (s/defn ^:private add-bindings :- Bindings
   [bindings :- Bindings, source :- SourceName, new-bindings :- (s/maybe DimensionBindings)]
@@ -37,10 +38,12 @@
     field-name
 
     [:field (id :guard integer?) _]
-    (db/select-one-field :name Field :id id)))
+    (t2/select-one-fn :name Field :id id)))
 
 (s/defn ^:private infer-resulting-dimensions :- DimensionBindings
-  [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
+  [bindings             :- Bindings
+   {:keys [joins name]} :- Step
+   query                :- (s/pred mbql.s/valid-query?)]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
     (into {} (for [{:keys [name] :as col} (qp/query->expected-cols query)]
@@ -131,7 +134,9 @@
     (assoc bindings name {:entity     (tf.materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(def ^:private Tableset [(mi/InstanceOf Table)])
+(def ^:private Tableset
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  [(mi/InstanceOf:Schema Table)])
 
 (s/defn ^:private find-tables-with-domain-entity :- Tableset
   [tableset :- Tableset, domain-entity-spec :- DomainEntitySpec]
@@ -174,7 +179,7 @@
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
   (table/with-fields
     (de/with-domain-entity
-      (db/select 'Table :db_id db-id :schema schema))))
+      (t2/select 'Table :db_id db-id :schema schema))))
 
 (s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.

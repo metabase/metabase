@@ -10,9 +10,14 @@ import {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(collections, userPersonalCollectionId) {
+function getExpandedCollectionsById(
+  collections,
+  userPersonalCollectionId,
+  collectionFilter = () => true,
+) {
   const collectionsById = {};
-  for (const c of collections) {
+  const filteredCollections = collections.filter(collectionFilter);
+  for (const c of filteredCollections) {
     collectionsById[c.id] = {
       ...c,
       path:
@@ -23,7 +28,6 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
           : null,
       parent: null,
       children: [],
-      is_personal: c.personal_owner_id != null,
     };
   }
 
@@ -39,14 +43,16 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
   };
 
   // "My personal collection"
-  if (userPersonalCollectionId != null) {
+  if (
+    userPersonalCollectionId != null &&
+    !!collectionsById[userPersonalCollectionId]
+  ) {
     const personalCollection = collectionsById[userPersonalCollectionId];
     collectionsById[ROOT_COLLECTION.id].children.push({
       ...PERSONAL_COLLECTION,
       id: userPersonalCollectionId,
       parent: collectionsById[ROOT_COLLECTION.id],
       children: personalCollection?.children || [],
-      is_personal: true,
     });
   }
 
@@ -55,7 +61,6 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
     ...PERSONAL_COLLECTIONS,
     parent: collectionsById[ROOT_COLLECTION.id],
     children: [],
-    is_personal: true,
   };
   collectionsById[ROOT_COLLECTION.id].children.push(
     collectionsById[PERSONAL_COLLECTIONS.id],
@@ -63,7 +68,7 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
 
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
-  for (const { id } of collections) {
+  for (const { id } of filteredCollections) {
     const c = collectionsById[id];
     // don't add root as parent of itself
     if (c.path && c.id !== ROOT_COLLECTION.id) {

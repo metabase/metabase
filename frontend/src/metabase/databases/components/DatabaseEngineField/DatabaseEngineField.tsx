@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useFormikContext } from "formik";
-import { DatabaseData, Engine } from "metabase-types/api";
+import type { DatabaseData, Engine } from "metabase-types/api";
 import { getEngineOptions } from "../../utils/engine";
 import DatabaseEngineSelect from "./DatabaseEngineSelect";
 import DatabaseEngineWidget from "./DatabaseEngineWidget";
@@ -42,4 +42,5 @@ const DatabaseEngineField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEngineField;

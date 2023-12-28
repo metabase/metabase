@@ -2,11 +2,11 @@
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [context defroutes GET]]
    [compojure.route :as route]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.routes :as api]
+   [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.connection-pool-setup :as mdb.connection-pool-setup]
@@ -16,9 +16,11 @@
    [metabase.server.routes.index :as index]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]))
 
-(u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
+(when config/ee-available?
+  (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
 (defn- redirect-including-query-string
   "Like `response/redirect`, but passes along query string URL params as well. This is important because the public and

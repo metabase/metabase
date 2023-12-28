@@ -1,6 +1,7 @@
-import React from "react";
+import type * as React from "react";
 
-import Icon, { IconProps } from "metabase/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   Name,
@@ -28,7 +29,7 @@ function CloseIcon({
 }) {
   return (
     <CloseIconContainer className={className} onClick={onClick}>
-      <Icon name="close" size={12} />
+      <Icon name="close" />
     </CloseIconContainer>
   );
 }

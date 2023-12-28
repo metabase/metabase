@@ -1,6 +1,6 @@
 import { getAccentColors, getPreferredColor } from "./groups";
 import { ACCENT_COUNT } from "./palette";
-import { ColorPalette } from "./types";
+import type { ColorPalette } from "./types";
 
 export const getColorsForValues = (
   keys: string[],

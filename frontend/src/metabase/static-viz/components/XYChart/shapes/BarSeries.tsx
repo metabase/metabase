@@ -1,8 +1,8 @@
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import { Bar } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleBand } from "@visx/scale";
-import { PositionScale } from "@visx/shape/lib/types";
+import type { PositionScale } from "@visx/shape/lib/types";
 import { getY } from "metabase/static-viz/components/XYChart/utils";
 
 import type {

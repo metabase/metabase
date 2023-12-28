@@ -7,9 +7,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
-   [medley.core :as m]
    [metabase.api.common
     :as api
     :refer [*current-user-id* *current-user-permissions-set*]]
@@ -17,55 +14,79 @@
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.schema :as su]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
    [potemkin :as p]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models])
-  (:import
-   (metabase.models.collection.root RootCollection)))
+   [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]
+   [toucan2.realize :as t2.realize]))
+
+(set! *warn-on-reflection* true)
 
 (comment collection.root/keep-me)
 (comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
-(p/import-vars [collection.root root-collection])
+(p/import-vars [collection.root root-collection root-collection-with-ui-details])
+
+(def ^:private RootCollection
+  "Schema for things that are instances of [[metabase.models.collection.root.RootCollection]]."
+  [:fn
+   {:error/message (str "an instance of the root Collection")}
+   #'collection.root/is-root-collection?])
 
 (def ^:private ^:const collection-slug-max-length
   "Maximum number of characters allowed in a Collection `slug`."
-  254)
+  510)
 
-(models/defmodel Collection :collection)
+(def Collection
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Card symbol in our codebase."
+  :model/Collection)
+
+(methodical/defmethod t2/table-name :model/Collection [_model] :collection)
+
+(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
+  [_original-model _k]
+  :model/Collection)
+
+(t2/deftransforms :model/Collection
+  {:namespace       mi/transform-keyword
+   :authority_level mi/transform-keyword})
 
 (doto Collection
+  (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defmethod mi/can-write? Collection
+  ([instance]
+   (mi/can-write? :model/Collection (:id instance)))
+  ([model pk]
+   (if (= pk (:id (perms/default-audit-collection)))
+     false
+     (mi/current-user-has-full-permissions? :write model pk))))
+
+(defmethod mi/can-read? Collection
+  ([instance]
+   (perms/can-read-audit-helper :model/Collection instance))
+  ([_ pk]
+   (mi/can-read? (t2/select-one :model/Collection :id pk))))
+
 (def AuthorityLevel
-  "Schema for valid collection authority levels"
-  (s/maybe (s/enum "official")))
-
+  "Malli Schema for valid collection authority levels."
+  [:enum "official"])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Slug & Hex Color & Validation                                          |
+;;; |                                              Slug Validation                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(def ^:const ^java.util.regex.Pattern hex-color-regex
-  "Regex for a valid value of `:color`, a 7-character hex string including the preceding hash sign."
-  #"^#[0-9A-Fa-f]{6}$")
-
-(defn- assert-valid-hex-color [^String hex-color]
-  (when (or (not (string? hex-color))
-            (not (re-matches hex-color-regex hex-color)))
-    (throw (ex-info (tru "Invalid color")
-                    {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
@@ -94,7 +115,7 @@
 ;; assembling IDs into a location path, and so forth.
 
 (defn- unchecked-location-path->ids
-  "*** Don't use this directly! Instead use `location-path->ids`. ***
+  "*** Don't use this directly! Instead use [[location-path->ids]]. ***
 
   'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers. THIS DOES NOT VALIDATE
   THAT THE PATH OR RESULTS ARE VALID. This unchecked version exists solely to power the other version below."
@@ -110,15 +131,15 @@
           (or (empty? ids)
               (apply distinct? ids))))))
 
-(def LocationPath
+(def ^:private LocationPath
   "Schema for a directory-style 'path' to the location of a Collection."
-  (s/pred valid-location-path?))
+  [:fn #'valid-location-path?])
 
-(s/defn location-path :- LocationPath
+(mu/defn location-path :- LocationPath
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [(s/cond-pre su/IntGreaterThanZero su/Map)]]
+  [& collections-or-ids :- [:* [:or ms/PositiveInt :map]]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -127,21 +148,21 @@
                      (u/the-id collection-or-id)))
      "/")))
 
-(s/defn location-path->ids :- [su/IntGreaterThanZero]
+(mu/defn location-path->ids :- [:sequential ms/PositiveInt]
   "'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers.
 
      (location-path->ids \"/10/20/\") ; -> [10 20]"
   [location-path :- LocationPath]
   (unchecked-location-path->ids location-path))
 
-(s/defn location-path->parent-id :- (s/maybe su/IntGreaterThanZero)
+(mu/defn location-path->parent-id :- [:maybe ms/PositiveInt]
   "Given a `location-path` fetch the ID of the direct of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
   [location-path :- LocationPath]
   (last (location-path->ids location-path)))
 
-(s/defn all-ids-in-location-path-are-valid? :- s/Bool
+(mu/defn all-ids-in-location-path-are-valid? :- :boolean
   "Do all the IDs in `location-path` belong to actual Collections? (This requires a DB call to check this, so this
   should only be used when creating/updating a Collection. Don't use this for casual schema validation.)"
   [location-path :- LocationPath]
@@ -152,7 +173,7 @@
    ;; of IDs
    (let [ids (location-path->ids location-path)]
      (= (count ids)
-        (db/count Collection :id [:in ids])))))
+        (t2/count Collection :id [:in ids])))))
 
 (defn- assert-valid-location
   "Assert that the `location` property of a `collection`, if specified, is valid. This checks that it is valid both from
@@ -181,7 +202,7 @@
   {:pre [(contains? collection :namespace)]}
   (when location
     (when-let [parent-id (location-path->parent-id location)]
-      (let [parent-namespace (db/select-one-field :namespace Collection :id parent-id)]
+      (let [parent-namespace (t2/select-one-fn :namespace Collection :id parent-id)]
         (when-not (= (keyword collection-namespace) (keyword parent-namespace))
           (let [msg (tru "Collection must be in the same namespace as its parent")]
             (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
@@ -190,37 +211,27 @@
     (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
 
-(defn root-collection-with-ui-details
-  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
-  [collection-namespace]
-  (m/assoc-some root-collection
-                :name (case (keyword collection-namespace)
-                        :snippets (tru "Top folder")
-                        (tru "Our analytics"))
-                :namespace collection-namespace
-                :id   "root"))
-
 (def ^:private CollectionWithLocationOrRoot
-  (s/cond-pre
+  [:or
    RootCollection
-   {:location LocationPath
-    s/Keyword s/Any}))
+   [:map
+    [:location LocationPath]]])
 
 (def CollectionWithLocationAndIDOrRoot
   "Schema for a valid `CollectionInstance` that has valid `:location` and `:id` properties, or the special
   `root-collection` placeholder object."
-  (s/cond-pre
+  [:or
    RootCollection
-   {:location LocationPath
-    :id       su/IntGreaterThanZero
-    s/Keyword s/Any}))
+   [:map
+    [:location LocationPath]
+    [:id       ms/PositiveInt]]])
 
-(s/defn ^:private parent :- CollectionWithLocationAndIDOrRoot
+(mu/defn ^:private parent :- CollectionWithLocationAndIDOrRoot
   "Fetch the parent Collection of `collection`, or the Root Collection special placeholder object if this is a
   top-level Collection."
   [collection :- CollectionWithLocationOrRoot]
   (if-let [new-parent-id (location-path->parent-id (:location collection))]
-    (db/select-one Collection :id new-parent-id)
+    (t2/select-one Collection :id new-parent-id)
     root-collection))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -234,12 +245,15 @@
 ;; 10 and 30, but not 20, we will show them an "effective" location path of `/10/30/`. This is used for things like
 ;; breadcrumbing in the frontend.
 
-(def VisibleCollections
+(def ^:private VisibleCollections
   "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
   represent the root collection."
-  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZero)}))
+  [:or
+   [:= :all]
+   [:set
+    [:or [:= "root"] ms/PositiveInt]]])
 
-(s/defn permissions-set->visible-collection-ids :- VisibleCollections
+(mu/defn permissions-set->visible-collection-ids :- VisibleCollections
   "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
   permissions set allows you to view. For those with *root* permissions (e.g., an admin), this function will return
   `:all`, signifying that you are allowed to view all Collections. For *Root Collection* permissions, the response
@@ -270,21 +284,22 @@
        (cond-> id-str
          (not= id-str "root") Integer/parseInt)))))
 
-(s/defn visible-collection-ids->honeysql-filter-clause
+(mu/defn visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
   returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
   function, including `:all` and `nil` Collection IDs (for the Root Collection).
 
   Guaranteed to always generate a valid HoneySQL form, so this can be used directly in a query without further checks.
 
-    (db/select Card
+    (t2/select Card
       {:where (collection/visible-collection-ids->honeysql-filter-clause
                (collection/permissions-set->visible-collection-ids
                 @*current-user-permissions-set*))})"
   ([collection-ids :- VisibleCollections]
    (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
 
-  ([collection-id-field :- s/Keyword, collection-ids :- VisibleCollections]
+  ([collection-id-field :- :keyword
+    collection-ids      :- VisibleCollections]
    (if (= collection-ids :all)
      true
      (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
@@ -302,7 +317,7 @@
          :else
          false)))))
 
-(s/defn visible-collection-ids->direct-visible-descendant-clause
+(mu/defn visible-collection-ids->direct-visible-descendant-clause
   "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
   This property is being a descendant of a visible collection other than A. Used for effective children calculations"
   [parent-collection :- CollectionWithLocationAndIDOrRoot, collection-ids :- VisibleCollections]
@@ -311,53 +326,74 @@
                               "/"
                               (format "%%/%s/" (str parent-id)))]
     (into
-      ; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
-      ; the [:= 1 1] is to prevent this
-      [:and [:= 1 1]]
-      (if (= collection-ids :all)
-        ; In the case that visible-collection-ids is all, that means there's no invisible collection ids
-        ; meaning, the effective children are always the direct children. So check for being a direct child.
-        [[:like :location (hx/literal child-literal)]]
-        (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
-              disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
-          (for [visible-collection-id disj-collection-ids]
-            [:not-like :location (hx/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
+     ;; if the collection-ids are empty, the whole into turns into nil and we have a dangling [:and] clause in query.
+     ;; the (1 = 1) is to prevent this
+     [:and [:= [:inline 1] [:inline 1]]]
+     (if (= collection-ids :all)
+       ;; In the case that visible-collection-ids is all, that means there's no invisible collection ids
+       ;; meaning, the effective children are always the direct children. So check for being a direct child.
+       [[:like :location (h2x/literal child-literal)]]
+       (let [to-disj-ids         (location-path->ids (or (:effective_location parent-collection) "/"))
+             disj-collection-ids (apply disj collection-ids (conj to-disj-ids parent-id))]
+         (for [visible-collection-id disj-collection-ids]
+           [:not-like :location (h2x/literal (format "%%/%s/%%" (str visible-collection-id)))]))))))
 
 
-(s/defn effective-location-path :- (s/maybe LocationPath)
-  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
-  Collections for which we do not have read perms) we should show to the User.
-
-  When called with a single argument, `collection`, this is used as a hydration function to hydrate
-  `:effective_location`."
-  {:hydrate :effective_location}
+(mu/defn ^:private effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
    (if (collection.root/is-root-collection? collection)
      nil
-     (effective-location-path (:location collection)
-                              (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
+     (effective-location-path* (:location collection)
+                               (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
 
-  ([real-location-path :- LocationPath, allowed-collection-ids :- VisibleCollections]
+  ([real-location-path     :- LocationPath
+    allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
      real-location-path
      (apply location-path (for [id    (location-path->ids real-location-path)
                                 :when (contains? allowed-collection-ids id)]
                             id)))))
 
+(mi/define-simple-hydration-method effective-location-path
+  :effective_location
+  "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
+  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
+  Collections for which we do not have read perms) we should show to the User.
+
+  When called with a single argument, `collection`, this is used as a hydration function to hydrate
+  `:effective_location`."
+  ([collection]
+   (effective-location-path* collection))
+  ([real-location-path allowed-collection-ids]
+   (effective-location-path* real-location-path allowed-collection-ids)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private ^:hydrate ancestors :- [(mi/InstanceOf Collection)]
-  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
-  highest-level (e.g. most distant) ancestor."
+(mu/defn ^:private ancestors* :- [:maybe [:sequential (mi/InstanceOf Collection)]]
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
-    (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:location]})))
+    (t2/select [Collection :name :id :personal_owner_id]
+      :id [:in ancestor-ids]
+      {:order-by [:location]})))
 
-(s/defn effective-ancestors :- [(s/cond-pre RootCollection (mi/InstanceOf Collection))]
+(mi/define-simple-hydration-method ^:private ancestors
+  :ancestors
+  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
+  highest-level (e.g. most distant) ancestor."
+  [collection]
+  (ancestors* collection))
+
+(mu/defn ^:private effective-ancestors* :- [:sequential [:or RootCollection (mi/InstanceOf Collection)]]
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (if (collection.root/is-root-collection? collection)
+    []
+    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+
+(mi/define-simple-hydration-method effective-ancestors
+  :effective_ancestors
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -374,38 +410,41 @@
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
-  {:hydrate :effective_ancestors}
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (if (collection.root/is-root-collection? collection)
-    []
-    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+  [collection]
+  (effective-ancestors* collection))
 
-(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
-  "Get the immediate parent `collection` id, if set."
-  {:hydrate :parent_id}
+(mu/defn ^:private parent-id* :- [:maybe ms/PositiveInt]
   [{:keys [location]} :- CollectionWithLocationOrRoot]
   (some-> location location-path->parent-id))
 
-(s/defn children-location :- LocationPath
+(mi/define-simple-hydration-method parent-id
+  :parent_id
+  "Get the immediate parent `collection` id, if set."
+  [collection]
+  (parent-id* collection))
+
+(mu/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
 
      (children-location collection) ; -> \"/10/20/30/\";
 
      ;; To get children of this collection:
-     (db/select Collection :location \"/10/20/30/\")"
+     (t2/select Collection :location \"/10/20/30/\")"
   [{:keys [location], :as collection} :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     "/"
     (str location (u/the-id collection) "/")))
 
 (def ^:private Children
-  (s/both
-   (mi/InstanceOf Collection)
-   {:children #{(s/recursive #'Children)}
-    s/Keyword s/Any}))
+  [:schema
+   {:registry {::children [:and
+                           (mi/InstanceOf Collection)
+                           [:map
+                            [:children [:set [:ref ::children]]]]]}}
+   [:ref ::children]])
 
-(s/defn ^:private descendants :- #{Children}
+(mu/defn ^:private descendants :- [:set Children]
   "Return all descendant Collections of a `collection`, including children, grandchildren, and so forth. This is done
   primarily to power the `effective-children` feature below, and thus the descendants are returned in a hierarchy,
   rather than as a flat set. e.g. results will be something like:
@@ -421,7 +460,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
   ;; first, fetch all the descendants of the `collection`, and build a map of location -> children. This will be used
   ;; so we can fetch the immediate children of each Collection
-  (let [location->children (group-by :location (db/select [Collection :name :id :location :description]
+  (let [location->children (group-by :location (t2/select [Collection :name :id :location :description]
                                                  {:where
                                                   (apply
                                                    vector
@@ -447,31 +486,32 @@
         ;; key
         :children)))
 
-(s/defn descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(mu/defn descendant-ids :- [:maybe [:set ms/PositiveInt]]
   "Return a set of IDs of all descendant Collections of a `collection`."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (db/select-ids Collection :location [:like (str (children-location collection) \%)]))
+  (t2/select-pks-set Collection :location [:like (str (children-location collection) \%)]))
 
-(s/defn ^:private effective-children-where-clause
+(mu/defn ^:private effective-children-where-clause
   [collection & additional-honeysql-where-clauses]
   (let [visible-collection-ids (permissions-set->visible-collection-ids @*current-user-permissions-set*)]
     ;; Collection B is an effective child of Collection A if...
     (into
       [:and
        ;; it is a descendant of Collection A
-       [:like :location (hx/literal (str (children-location collection) "%"))]
+       [:like :location (h2x/literal (str (children-location collection) "%"))]
        ;; it is visible.
        (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A
-       (visible-collection-ids->direct-visible-descendant-clause (hydrate collection :effective_location) visible-collection-ids)
-       ;; if it is a personal Collection, it belongs to the current User.
-       [:or
-        [:= :personal_owner_id nil]
-        [:= :personal_owner_id *current-user-id*]]]
+       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
+       ;; don't want personal collections in collection items. Only on the sidebar
+       [:= :personal_owner_id nil]]
       ;; (any additional conditions)
       additional-honeysql-where-clauses)))
 
-(s/defn effective-children-query :- {:select s/Any :from s/Any :where s/Any}
+(mu/defn effective-children-query :- [:map
+                                      [:select :any]
+                                      [:from   :any]
+                                      [:where  :any]]
   "Return a query for the descendant Collections of a `collection`
   that should be presented to the current user as the children of this Collection.
   This takes into account descendants that get filtered out when the current user can't see them. For
@@ -495,25 +535,29 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-  [collection :- CollectionWithLocationAndIDOrRoot, & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   {:select [:id :name :description]
-   :from   [[Collection :col]]
+   :from   [[:collection :col]]
    :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
 
-(s/defn effective-children :- #{(mi/InstanceOf Collection)}
+(mu/defn ^:private effective-children* :- [:set (mi/InstanceOf Collection)]
+  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
+  (set (t2/select [Collection :id :name :description]
+                  {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
+
+(mi/define-simple-hydration-method effective-children
+  :effective_children
   "Get the descendant Collections of `collection` that should be presented to the current User as direct children of
   this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
-  {:hydrate :effective_children}
-  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
-  (set (db/select [Collection :id :name :description]
-                  {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
+  [collection & additional-honeysql-where-clauses]
+  (apply effective-children* collection additional-honeysql-where-clauses))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn perms-for-archiving :- #{perms/Path}
+(mu/defn perms-for-archiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
   permissions for the Collection itself and all its descendants, but not for its parent Collection.
@@ -531,18 +575,21 @@
   ;; Make sure we're not trying to archive the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot archive the Root Collection."))))
+  ;; Make sure we're not trying to archive the Custom Reports Collection...
+  (when (= (perms/default-custom-reports-collection) collection)
+    (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (db/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
+  (when (t2/exists? Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
     (throw (Exception. (tru "You cannot archive a Personal Collection."))))
   (set
    (for [collection-or-id (cons
                            (parent collection)
                            (cons
                             collection
-                            (db/select-ids Collection :location [:like (str (children-location collection) "%")])))]
+                            (t2/select-pks-set Collection :location [:like (str (children-location collection) "%")])))]
      (perms/collection-readwrite-path collection-or-id))))
 
-(s/defn perms-for-moving :- #{perms/Path}
+(mu/defn perms-for-moving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
   perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
 
@@ -560,7 +607,8 @@
   *  B, since it's the Collection we're operating on
   *  C, since it will by definition be affected too
   *  D, because it's the new parent Collection, and moving something into it requires write perms."
-  [collection :- CollectionWithLocationAndIDOrRoot, new-parent :- CollectionWithLocationAndIDOrRoot]
+  [collection :- CollectionWithLocationAndIDOrRoot
+   new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
   (when (collection.root/is-root-collection? collection)
     (throw (Exception. (tru "You cannot move the Root Collection."))))
@@ -573,7 +621,7 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-archiving collection))))
 
-(s/defn move-collection!
+(mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
   [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
   (let [orig-children-location (children-location collection)
@@ -581,47 +629,49 @@
     ;; first move this Collection
     (log/info (trs "Moving Collection {0} and its descendants from {1} to {2}"
                    (u/the-id collection) (:location collection) new-location))
-    (db/transaction
-      (db/update! Collection (u/the-id collection) :location new-location)
+    (t2/with-transaction [_conn]
+      (t2/update! Collection (u/the-id collection) {:location new-location})
       ;; we need to update all the descendant collections as well...
-      (db/execute!
-       {:update Collection
-        :set    {:location (hsql/call :replace :location orig-children-location new-children-location)}
+      (t2/query-one
+       {:update :collection
+        :set    {:location [:replace :location orig-children-location new-children-location]}
         :where  [:like :location (str orig-children-location "%")]}))))
 
-(s/defn ^:private collection->descendant-ids :- (s/maybe #{su/IntGreaterThanZero})
+(mu/defn ^:private collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
-  (apply db/select-ids Collection
+  (apply t2/select-pks-set Collection
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
-(s/defn ^:private archive-collection!
+(mu/defn ^:private archive-collection!
   "Archive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived false))]
-    (db/transaction
-      (db/update-where! Collection {:id       [:in affected-collection-ids]
-                                    :archived false}
-        :archived true)
-      (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                 :archived      false}
-          :archived true)))))
+    (t2/with-transaction [_conn]
+      (t2/update! (t2/table-name Collection)
+                  {:id       [:in affected-collection-ids]
+                   :archived false}
+                  {:archived true})
+     (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
+       (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      false}
+                    {:archived true})))))
 
-(s/defn ^:private unarchive-collection!
+(mu/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
   [collection :- CollectionWithLocationAndIDOrRoot]
   (let [affected-collection-ids (cons (u/the-id collection)
                                       (collection->descendant-ids collection, :archived true))]
-    (db/transaction
-      (db/update-where! Collection {:id       [:in affected-collection-ids]
-                                    :archived true}
-        :archived false)
+    (t2/with-transaction [_conn]
+      (t2/update! (t2/table-name Collection)
+               {:id       [:in affected-collection-ids]
+                :archived true}
+               {:archived false})
       (doseq [model '[Card Dashboard NativeQuerySnippet Pulse]]
-        (db/update-where! model {:collection_id [:in affected-collection-ids]
-                                 :archived      true}
-          :archived false)))))
+        (t2/update! model {:collection_id [:in affected-collection-ids]
+                           :archived      true}
+                   {:archived false})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -631,11 +681,11 @@
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
   neccesarily non-nil)."
-  {:location          LocationPath
-   :personal_owner_id (s/maybe su/IntGreaterThanZero)
-   s/Keyword          s/Any})
+  [:map
+   [:location          LocationPath]
+   [:personal_owner_id [:maybe ms/PositiveInt]]])
 
-(s/defn is-personal-collection-or-descendant-of-one? :- s/Bool
+(mu/defn is-personal-collection-or-descendant-of-one? :- :boolean
   "Is `collection` a Personal Collection, or a descendant of one?"
   [collection :- CollectionWithLocationAndPersonalOwnerID]
   (boolean
@@ -645,16 +695,16 @@
     ;; Otherwise try to get the ID of its highest-level ancestor, e.g. if `location` is `/1/2/3/` we would get `1`.
     ;; Then see if the root-level ancestor is a Personal Collection (Personal Collections can only got in the Root
     ;; Collection.)
-    (db/exists? Collection
-      :id                (first (location-path->ids (:location collection)))
-      :personal_owner_id [:not= nil]))))
+    (t2/exists? Collection
+                :id                (first (location-path->ids (:location collection)))
+                :personal_owner_id [:not= nil]))))
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
-(defn- pre-insert [{collection-name :name, color :color, :as collection}]
+(t2/define-before-insert :model/Collection
+  [{collection-name :name, :as collection}]
   (assert-valid-location collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (assert-valid-hex-color color)
   (assoc collection :slug (slugify collection-name)))
 
 (defn- copy-collection-permissions!
@@ -662,12 +712,12 @@
   and write perms for every Group with write perms for the source Collection."
   [source-collection-or-id dest-collections-or-ids]
   ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (db/select-field :group_id Permissions
-                                     :object (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (db/select-field :group_id Permissions
-                                     :object (perms/collection-readwrite-path source-collection-or-id))]
+  (let [group-ids-with-read-perms  (t2/select-fn-set :group_id Permissions
+                                                     :object (perms/collection-read-path source-collection-or-id))
+        group-ids-with-write-perms (t2/select-fn-set :group_id Permissions
+                                                     :object (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
-    (db/insert-many! Permissions
+    (t2/insert! Permissions
       (concat
        ;; insert all the new read-perms records
        (for [dest     dest-collections-or-ids
@@ -696,17 +746,18 @@
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
 
-(defn- post-insert [collection]
+(t2/define-after-insert :model/Collection
+  [collection]
   (u/prog1 collection
-    (copy-parent-permissions! collection)))
-
+    (copy-parent-permissions! (t2.realize/realize collection))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
-(s/defn ^:private check-changes-allowed-for-personal-collection
+(mu/defn ^:private check-changes-allowed-for-personal-collection
   "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
   have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot
+   collection-updates        :- :map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
@@ -723,9 +774,10 @@
       (throw
        (ex-info msg {:status-code 400 :errors {k msg}})))))
 
-(s/defn ^:private maybe-archive-or-unarchive!
+(mu/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
-  [collection-before-updates :- CollectionWithLocationAndIDOrRoot, collection-updates :- su/Map]
+  [collection-before-updates :- CollectionWithLocationAndIDOrRoot
+   collection-updates        :- :map]
   ;; If the updates map contains a value for `:archived`, see if it's actually something different than current value
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
@@ -755,7 +807,7 @@
 ;; to it. The steps taken in each direction are explained in more detail for in the docstrings of their respective
 ;; implementing functions below.
 
-(s/defn ^:private grant-perms-when-moving-out-of-personal-collection!
+(mu/defn ^:private grant-perms-when-moving-out-of-personal-collection!
   "When moving a descendant of a Personal Collection into the Root Collection, or some other Collection not descended
   from a Personal Collection, we need to grant it Permissions, since now that it has moved across the boundary into
   impersonal-land it *requires* Permissions to be seen or 'curated'. If we did not grant Permissions when moving, it
@@ -765,18 +817,18 @@
   [collection :- (mi/InstanceOf Collection) new-location :- LocationPath]
   (copy-collection-permissions! (parent {:location new-location}) (cons collection (descendants collection))))
 
-(s/defn ^:private revoke-perms-when-moving-into-personal-collection!
+(mu/defn ^:private revoke-perms-when-moving-into-personal-collection!
   "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
   its descendants (moving across the boundary in the other direction), any previous Group Permissions entries for it
   need to be deleted, so other users cannot access this newly-Personal Collection.
 
   This needs to be done recursively for all descendants as well."
   [collection :- (mi/InstanceOf Collection)]
-  (db/execute! {:delete-from Permissions
-                :where       [:in :object (for [collection (cons collection (descendants collection))
-                                                path-fn    [perms/collection-read-path
-                                                            perms/collection-readwrite-path]]
-                                            (path-fn collection))]}))
+  (t2/query-one {:delete-from :permissions
+                 :where       [:in :object (for [collection (cons collection (descendants collection))
+                                                 path-fn    [perms/collection-read-path
+                                                             perms/collection-readwrite-path]]
+                                             (path-fn collection))]}))
 
 (defn- update-perms-when-moving-across-personal-boundry!
   "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
@@ -814,8 +866,11 @@
                  (if (keyword? v) (name v) (str v)))]
     (apply = (map std-fn namespaces))))
 
-(defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (db/select-one Collection :id id)]
+(t2/define-before-update :model/Collection
+  [collection]
+  (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
+        {collection-name :name
+         :as collection-updates}  (or (t2/changes collection) {})]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -832,9 +887,6 @@
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
-    ;; (5) make sure hex color is valid
-    (when (api/column-will-change? :color collection-before-updates collection-updates)
-      (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
@@ -842,7 +894,6 @@
     ;; to Toucan's `update!` impl
     (cond-> collection-updates
       collection-name (assoc :slug (slugify collection-name)))))
-
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -853,18 +904,19 @@
   *allow-deleting-personal-collections*
   false)
 
-(defn- pre-delete [collection]
+(t2/define-before-delete :model/Collection
+  [collection]
   ;; Delete all the Children of this Collection
-  (db/delete! Collection :location (children-location collection))
+  (t2/delete! Collection :location (children-location collection))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (db/execute! {:delete-from Permissions
-                :where       [:or
-                              [:= :object (perms/collection-readwrite-path collection)]
-                              [:= :object (perms/collection-read-path collection)]]}))
+  (t2/query-one {:delete-from :permissions
+                 :where       [:or
+                               [:= :object (perms/collection-readwrite-path collection)]
+                               [:= :object (perms/collection-read-path collection)]]}))
 
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
@@ -873,7 +925,7 @@
 (defmethod mi/perms-objects-set Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
-                     (db/select-one [Collection :id :namespace] :id (collection-or-id))
+                     (t2/select-one [Collection :id :namespace] :id (collection-or-id))
                      collection-or-id)]
     ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
     ;;
@@ -889,99 +941,81 @@
 
 (defn- parent-identity-hash [coll]
   (let [parent-id (-> coll
-                      (hydrate :parent_id)
+                      (t2/hydrate :parent_id)
                       :parent_id)]
-   (if parent-id
-     (serdes.hash/identity-hash (db/select-one Collection :id parent-id))
-     "ROOT")))
+    (if parent-id
+      (serdes/identity-hash (t2/select-one Collection :id parent-id))
+      "ROOT")))
 
-(defmethod serdes.hash/identity-hash-fields Collection
+(defmethod serdes/hash-fields Collection
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Collection)
-  models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:collection])
-          :types          (constantly {:namespace       :keyword
-                                       :authority_level :keyword})
-          :properties     (constantly {:entity_id true})
-          :pre-insert     pre-insert
-          :post-insert    post-insert
-          :pre-update     pre-update
-          :pre-delete     pre-delete}))
-
-(defmethod serdes.base/extract-query "Collection" [_ {:keys [collection-set]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
   (if (seq collection-set)
-    (db/select-reducible Collection :id [:in collection-set])
-    (db/select-reducible Collection :personal_owner_id nil)))
+    (t2/reducible-select Collection :id [:in collection-set])
+    (t2/reducible-select Collection :personal_owner_id nil)))
 
-(defmethod serdes.base/extract-one "Collection"
+(defmethod serdes/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
   [_model-name _opts coll]
   (let [fetch-collection (fn [id]
-                           (db/select-one Collection :id id))
+                           (t2/select-one Collection :id id))
         parent           (some-> coll
                                  :id
                                  fetch-collection
-                                 (hydrate :parent_id)
+                                 (t2/hydrate :parent_id)
                                  :parent_id
                                  fetch-collection)
         parent-id        (when parent
-                           (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+                           (or (:entity_id parent) (serdes/identity-hash parent)))
         owner-email      (when (:personal_owner_id coll)
-                           (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
-    (-> (serdes.base/extract-one-basics "Collection" coll)
+                           (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
+    (-> (serdes/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
         (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
 
-(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id] :as contents}]
+(defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
   (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
+                     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent_id)]
                        (str location id "/"))
                      "/")]
     (-> contents
-        serdes.base/load-xform-basics
         (dissoc :parent_id)
         (assoc :location loc)
-        (update :personal_owner_id serdes.util/import-user))))
+        (update :personal_owner_id serdes/*import-user*)
+        serdes/load-xform-basics)))
 
-(defmethod serdes.base/serdes-dependencies "Collection"
+(defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
     [[{:model "Collection" :id parent_id}]]
     []))
 
-(defmethod serdes.base/serdes-generate-path "Collection" [_ coll]
-  (serdes.base/maybe-labeled "Collection" coll :slug))
+(defmethod serdes/generate-path "Collection" [_ coll]
+  (serdes/maybe-labeled "Collection" coll :slug))
 
-(defmethod serdes.base/serdes-descendants "Collection" [_model-name id]
-  (let [location    (db/select-one-field :location Collection :id id)
-        child-colls (set (for [child-id (db/select-ids Collection {:where [:like :location (str location id "/%")]})]
+(defmethod serdes/ascendants "Collection" [_ id]
+  (let [location (t2/select-one-fn :location Collection :id id)]
+    ;; it would work returning just one, but why not return all if it's cheap
+    (set (map vector (repeat "Collection") (location-path->ids location)))))
+
+(defmethod serdes/descendants "Collection" [_model-name id]
+  (let [location    (t2/select-one-fn :location Collection :id id)
+        child-colls (set (for [child-id (t2/select-pks-set Collection {:where [:like :location (str location id "/%")]})]
                            ["Collection" child-id]))
-        dashboards  (set (for [dash-id (db/select-ids 'Dashboard :collection_id id)]
+        dashboards  (set (for [dash-id (t2/select-pks-set 'Dashboard :collection_id id)]
                            ["Dashboard" dash-id]))
-        cards       (set (for [card-id (db/select-ids 'Card      :collection_id id)]
+        cards       (set (for [card-id (t2/select-pks-set 'Card      :collection_id id)]
                            ["Card" card-id]))]
     (set/union child-colls dashboards cards)))
 
-(defmethod serdes.base/storage-path "Collection" [coll {:keys [collections]}]
+(defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
     (concat ["collections"] parental [(last parental)])))
-
-(serdes.base/register-ingestion-path!
-  "Collection"
-  ;; Collections' paths are ["collections" "grandparent" "parent" "me" "me"]
-  (fn [path]
-    (when-let [[id slug] (and (= (first path) "collections")
-                              (apply = (take-last 2 path))
-                              (serdes.base/split-leaf-file-name (last path)))]
-      (cond-> {:model "Collection" :id id}
-        slug (assoc :label slug)
-        true vector))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
@@ -1015,7 +1049,7 @@
 
     ;; `object-before-update` is the object as it currently exists in the application DB
     ;; `object-updates` is a map of updated values for the object
-    (check-allowed-to-change-collection (db/select-one Card :id 100) http-request-body)"
+    (check-allowed-to-change-collection (t2/select-one Card :id 100) http-request-body)"
   [object-before-update object-updates]
   ;; if collection_id is set to change...
   (when (api/column-will-change? :collection_id object-before-update object-updates)
@@ -1029,7 +1063,7 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn format-personal-collection-name :- su/NonBlankString
+(mu/defn format-personal-collection-name :- ms/NonBlankString
   "Constructs the personal collection name from user name.
   When displaying to users we'll tranlsate it to user's locale,
   but to keeps things consistent in the database, we'll store the name in site's locale.
@@ -1046,12 +1080,12 @@
       (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
       :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
-(s/defn user->personal-collection-name :- su/NonBlankString
+(mu/defn user->personal-collection-name :- ms/NonBlankString
   "Come up with a nice name for the Personal Collection for `user-or-id`."
   [user-or-id user-or-site]
   (let [{first-name :first_name
          last-name  :last_name
-         email      :email} (db/select-one ['User :first_name :last_name :email]
+         email      :email} (t2/select-one ['User :first_name :last_name :email]
                               :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 
@@ -1066,27 +1100,26 @@
              :name collection-name
              :slug (u/slugify collection-name)))))
 
-(s/defn user->existing-personal-collection :- (s/maybe (mi/InstanceOf Collection))
+(mu/defn user->existing-personal-collection :- [:maybe (mi/InstanceOf Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.models.collection/user->personal-collection]] to fetch their personal Collection *and* create it if
   needed."
   [user-or-id]
-  (db/select-one Collection :personal_owner_id (u/the-id user-or-id)))
+  (t2/select-one Collection :personal_owner_id (u/the-id user-or-id)))
 
-(s/defn user->personal-collection :- (mi/InstanceOf Collection)
+(mu/defn user->personal-collection :- (mi/InstanceOf Collection)
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
   (or (user->existing-personal-collection user-or-id)
       (try
-        (db/insert! Collection
-          :name              (user->personal-collection-name user-or-id :site)
-          :personal_owner_id (u/the-id user-or-id)
-          ;; a nice slate blue color
-          :color             "#31698A")
+        (first (t2/insert-returning-instances! Collection
+                                               {:name              (user->personal-collection-name user-or-id :site)
+                                                :personal_owner_id (u/the-id user-or-id)}))
         ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
         ;; condition where some other thread created it in the meantime; try one last time to fetch it
-        (catch Throwable _
-          (db/select-one Collection :personal_owner_id (u/the-id user-or-id))))))
+        (catch Throwable e
+          (or (user->existing-personal-collection user-or-id)
+              (throw e))))))
 
 (def ^:private ^{:arglists '([user-id])} user->personal-collection-id
   "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal
@@ -1103,7 +1136,7 @@
    ;; large
    :ttl/threshold (* 60 60 1000)))
 
-(s/defn user->personal-collection-and-descendant-ids
+(mu/defn user->personal-collection-and-descendant-ids :- [:sequential {:min 1} ms/PositiveInt]
   "Somewhat-optimized function that fetches the ID of a User's Personal Collection as well as the IDs of all descendants
   of that Collection. Exists because this needs to be known to calculate the Current User's permissions set, which is
   done for every API call; this function is an attempt to make fetching this information as efficient as reasonably
@@ -1115,15 +1148,16 @@
           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
           (descendant-ids {:location "/", :id personal-collection-id}))))
 
-(defn include-personal-collection-ids
+(mi/define-batched-hydration-method include-personal-collection-ids
+  :personal_collection_id
   "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
   their Personal Collection.)"
-  {:batched-hydrate :personal_collection_id}
   [users]
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
-    (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
+    (let [user-id->collection-id (t2/select-fn->pk :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/the-id users))])]
+      (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
       ;; as a side-effect. This will ensure this property never comes back as `nil`
@@ -1131,15 +1165,38 @@
         (assoc user :personal_collection_id (or (user-id->collection-id (u/the-id user))
                                                 (user->personal-collection-id (u/the-id user))))))))
 
+(mi/define-batched-hydration-method collection-is-personal
+  :is_personal
+  "Efficiently hydrate the `:is_personal` property of a sequence of Collections.
+  `true` means the collection is or nested in a personal collection."
+  [collections]
+  (if (= 1 (count collections))
+    (let [collection (first collections)]
+      (if (some? collection)
+        [(assoc collection :is_personal (is-personal-collection-or-descendant-of-one? collection))]
+        ;; root collection is nil
+        [collection]))
+    (let [personal-collection-ids (t2/select-pks-set :model/collection :personal_owner_id [:not= nil])
+          location-is-personal    (fn [location]
+                                    (boolean
+                                     (and (string? location)
+                                          (some #(str/starts-with? location (format "/%d/" %)) personal-collection-ids))))]
+      (map (fn [{:keys [location personal_owner_id] :as coll}]
+             (if (some? coll)
+               (assoc coll :is_personal (or (some? personal_owner_id)
+                                            (location-is-personal location)))
+               nil))
+           collections))))
+
 (defmulti allowed-namespaces
   "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
   default namespace (namespace = `nil`)."
   {:arglists '([model])}
-  class)
+  t2.protocols/dispatch-value)
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil})
+  #{nil :analytics})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
@@ -1149,7 +1206,7 @@
     (check-collection-namespace Card new-collection-id)"
   [model collection-id]
   (when collection-id
-    (let [collection           (or (db/select-one [Collection :namespace] :id collection-id)
+    (let [collection           (or (t2/select-one [Collection :namespace] :id collection-id)
                                    (let [msg (tru "Collection does not exist.")]
                                      (throw (ex-info msg {:status-code 404
                                                           :errors      {:collection_id msg}}))))
@@ -1165,7 +1222,7 @@
                                :allowed-namespaces   allowed-namespaces
                                :collection-namespace collection-namespace})))))))
 
-(defn annotate-collections
+(defn- annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
   in the collection at that level."
   [{:keys [dataset card] :as _coll-type-ids} collections]
@@ -1242,6 +1299,8 @@
        ([m]
         (->> (vals m)
              (map #(update % :children ->tree))
-             (sort-by (fn [{coll-name :name, coll-id :id}]
-                        [((fnil u/lower-case-en "") coll-name) coll-id])))))
+             (sort-by (fn [{coll-type :type, coll-name :name, coll-id :id}]
+                        ;; coll-type is `nil` or "instance-analytics"
+                        ;; nil sorts first, so we get instance-analytics at the end, which is what we want
+                        [coll-type ((fnil u/lower-case-en "") coll-name) coll-id])))))
      (annotate-collections coll-type-ids collections))))

@@ -1,4 +1,4 @@
-import { add, update, remove, clear } from "./util";
+import { update, remove, clear } from "./util";
 
 // returns canonical list of OrderBys, with nulls removed
 export function getOrderBys(breakout) {
@@ -6,7 +6,7 @@ export function getOrderBys(breakout) {
 }
 
 // turns a list of OrderBys into the canonical OrderByClause
-export function getOrderByClause(breakouts) {
+function getOrderByClause(breakouts) {
   breakouts = getOrderBys(breakouts);
   if (breakouts.length === 0) {
     return undefined;
@@ -15,9 +15,6 @@ export function getOrderByClause(breakouts) {
   }
 }
 
-export function addOrderBy(breakout, newOrderBy) {
-  return getOrderByClause(add(getOrderBys(breakout), newOrderBy));
-}
 export function updateOrderBy(breakout, index, updatedOrderBy) {
   return getOrderByClause(update(getOrderBys(breakout), index, updatedOrderBy));
 }

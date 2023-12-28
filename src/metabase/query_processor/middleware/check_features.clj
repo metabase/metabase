@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.check-features
   (:require
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -11,7 +12,7 @@
 (defn assert-driver-supports
   "Assert that the driver/database supports keyword `feature`."
   [feature]
-  (when-not (driver/database-supports? driver/*driver* feature (qp.store/database))
+  (when-not (driver/database-supports? driver/*driver* feature (lib.metadata/database (qp.store/metadata-provider)))
     (throw (ex-info (tru "{0} is not supported by this driver." (name feature))
                     {:type    qp.error-type/unsupported-feature
                      :feature feature}))))

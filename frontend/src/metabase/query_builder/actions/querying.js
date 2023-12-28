@@ -1,14 +1,15 @@
 import { t } from "ttag";
 import { createAction } from "redux-actions";
 
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
+import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 
 import Question from "metabase-lib/Question";
@@ -22,6 +23,7 @@ import {
   getQuestion,
   getTimeoutId,
   getIsResultDirty,
+  getOriginalQuestionWithParameterValues,
 } from "../selectors";
 
 import { updateUrl } from "./navigation";
@@ -108,7 +110,7 @@ export const runQuestionQuery = ({
 
     const cardIsDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
-        question.card().id == null
+        question.id() == null
       : true;
 
     if (shouldUpdateUrl) {
@@ -116,9 +118,7 @@ export const runQuestionQuery = ({
         question.isDataset() &&
         isAdHocModelQuestion(question, originalQuestion);
 
-      dispatch(
-        updateUrl(question.card(), { dirty: !isAdHocModel && cardIsDirty }),
-      );
+      dispatch(updateUrl(question, { dirty: !isAdHocModel && cardIsDirty }));
     }
 
     const startTime = new Date();
@@ -126,18 +126,17 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    question
-      .apiGetResults({
-        cancelDeferred: cancelQueryDeferred,
-        ignoreCache: ignoreCache,
-        isDirty: cardIsDirty,
-      })
+    apiRunQuestionQuery(question, {
+      cancelDeferred: cancelQueryDeferred,
+      ignoreCache: ignoreCache,
+      isDirty: cardIsDirty,
+    })
       .then(queryResults => {
         queryTimer(duration =>
           MetabaseAnalytics.trackStructEvent(
             "QueryBuilder",
             "Run Query",
-            question.query().datasetQuery().type,
+            question.type(),
             duration,
           ),
         );
@@ -145,14 +144,14 @@ export const runQuestionQuery = ({
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
-    dispatch.action(RUN_QUERY, { cancelQueryDeferred });
+    dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
 };
 
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
+    const loadingMessage = getWhiteLabeledLoadingMessage(getState());
     const title = {
       onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
@@ -178,9 +177,9 @@ export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
-    const originalQuestion = getOriginalQuestion(getState());
+    const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const isDirty =
-      question.query().isEditable() &&
+      question.isQueryEditable() &&
       question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
@@ -190,16 +189,12 @@ export const queryCompleted = (question, queryResults) => {
           queryResults[0],
         );
       }
-      // Only update the display if the question is new or has been changed.
-      // Otherwise, trust that the question was saved with the correct display.
-      question = question
-        // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
-        .maybeUnlockDisplay(
-          getSensibleDisplays(data),
-          prevData && getSensibleDisplays(prevData),
-        )
-        .setDefaultDisplay()
-        .switchTableScalar(data);
+
+      question = question.maybeResetDisplay(
+        data,
+        getSensibleDisplays(data),
+        prevData && getSensibleDisplays(prevData),
+      );
     }
 
     const card = question.card();
@@ -210,10 +205,13 @@ export const queryCompleted = (question, queryResults) => {
       ? preserveModelMetadata(queryResults, originalQuestion)
       : undefined;
 
-    dispatch.action(QUERY_COMPLETED, {
-      card,
-      queryResults,
-      modelMetadata,
+    dispatch({
+      type: QUERY_COMPLETED,
+      payload: {
+        card,
+        queryResults,
+        modelMetadata,
+      },
     });
     dispatch(loadCompleteUIControls());
   };

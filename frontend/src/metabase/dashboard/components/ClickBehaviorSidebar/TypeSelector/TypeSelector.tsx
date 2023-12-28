@@ -1,19 +1,26 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import Icon from "metabase/components/Icon";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
-import type { DashboardOrderedCard, ClickBehavior } from "metabase-types/api";
+import type {
+  DashboardCard,
+  ClickBehavior,
+  ClickBehaviorType,
+} from "metabase-types/api";
 import type { UiParameter } from "metabase-lib/parameters/types";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
+import { clickBehaviorOptions } from "../utils";
+import { useClickBehaviorOptionName } from "../hooks";
 import { SidebarItem } from "../SidebarItem";
 
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
-  option: string;
-  icon: string;
+  value: ClickBehaviorType | "menu";
+  dashcard: DashboardCard;
+  icon: IconName;
   hasNextStep: boolean;
   selected: boolean;
   disabled?: boolean;
@@ -21,43 +28,47 @@ interface BehaviorOptionProps {
 }
 
 export const BehaviorOption = ({
-  option,
+  value,
+  dashcard,
   icon,
   onClick,
   hasNextStep,
   selected,
   disabled,
-}: BehaviorOptionProps) => (
-  <SidebarItem.Selectable
-    isSelected={selected}
-    onClick={onClick}
-    disabled={disabled}
-  >
-    <BehaviorOptionIcon
-      name={selected ? "check" : icon}
-      color={selected ? color("white") : color("brand")}
+}: BehaviorOptionProps) => {
+  const behaviorOptionName = useClickBehaviorOptionName(value, dashcard);
+  return (
+    <SidebarItem.Selectable
       isSelected={selected}
-    />
-    <SidebarItem.Content>
-      <SidebarItem.Name>{option}</SidebarItem.Name>
-      {hasNextStep && (
-        <span className="ml-auto">
-          <Icon name="chevronright" size={12} />
-        </span>
-      )}
-    </SidebarItem.Content>
-  </SidebarItem.Selectable>
-);
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <BehaviorOptionIcon
+        name={selected ? "check" : icon}
+        color={selected ? color("white") : color("brand")}
+        isSelected={selected}
+      />
+      <SidebarItem.Content>
+        <SidebarItem.Name>{behaviorOptionName}</SidebarItem.Name>
+        {hasNextStep && (
+          <span className="ml-auto">
+            <Icon name="chevronright" size={12} />
+          </span>
+        )}
+      </SidebarItem.Content>
+    </SidebarItem.Selectable>
+  );
+};
 
 interface TypeSelectorProps {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: ClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings?: ClickBehavior) => void;
   moveToNextPage: () => void;
 }
 
-function TypeSelector({
+export function TypeSelector({
   dashcard,
   clickBehavior,
   parameters,
@@ -84,7 +95,8 @@ function TypeSelector({
       {options.map(({ value, icon }) => (
         <div key={value} className="mb1">
           <BehaviorOption
-            option={getClickBehaviorOptionName(value, dashcard)}
+            value={value}
+            dashcard={dashcard}
             selected={clickBehavior.type === value}
             disabled={value === "crossfilter" && parameters.length === 0}
             onClick={() => handleSelect(value)}
@@ -96,5 +108,3 @@ function TypeSelector({
     </div>
   );
 }
-
-export default TypeSelector;

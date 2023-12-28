@@ -1,23 +1,18 @@
-import {
-  ParameterTarget,
-  ParameterDimensionTarget,
-  ParameterVariableTarget,
-} from "metabase-types/types/Parameter";
-import type { Card } from "metabase-types/api";
+import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 import Dimension from "metabase-lib/Dimension";
-import Metadata from "metabase-lib/metadata/Metadata";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 
 export function isVariableTarget(target: ParameterTarget) {
   return target?.[0] === "variable";
 }
 
 export function getTemplateTagFromTarget(target: ParameterTarget) {
-  if (!target?.[1]) {
+  if (!target?.[1] || target?.[0] === "text-tag") {
     return null;
   }
 
@@ -48,20 +43,33 @@ export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {
   return ["variable", variable.mbql()];
 }
 
-export function buildTextTagTarget(tagName: string) {
+export function buildTextTagTarget(tagName: string): ["text-tag", string] {
   return ["text-tag", tagName];
 }
 
 export function getTargetFieldFromCard(
-  target: ParameterVariableTarget | ParameterDimensionTarget,
+  target: ParameterTarget,
   card: Card,
   metadata: Metadata,
 ) {
-  if (!card?.dataset_query) {
-    return null;
-  }
-
   const question = new Question(card, metadata);
   const field = getParameterTargetField(target, metadata, question);
   return field ?? null;
+}
+
+export function compareMappingOptionTargets(
+  target1: ParameterTarget,
+  target2: ParameterTarget,
+  card1: Card,
+  card2: Card,
+  metadata: Metadata,
+) {
+  if (!isDimensionTarget(target1) || !isDimensionTarget(target2)) {
+    return false;
+  }
+
+  const fieldReference1 = getTargetFieldFromCard(target1, card1, metadata);
+  const fieldReference2 = getTargetFieldFromCard(target2, card2, metadata);
+
+  return fieldReference1?.id === fieldReference2?.id;
 }

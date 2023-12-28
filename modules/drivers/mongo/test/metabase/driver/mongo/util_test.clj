@@ -1,9 +1,13 @@
 (ns metabase.driver.mongo.util-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver.mongo.util :as mongo.util]
-            [metabase.driver.util :as driver.u]
-            [metabase.test :as mt])
-  (:import [com.mongodb MongoClient MongoClientOptions$Builder ReadPreference ServerAddress]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.util :as driver.u]
+   [metabase.test :as mt])
+  (:import
+   (com.mongodb MongoClient MongoClientOptions$Builder ReadPreference ServerAddress)))
+
+(set! *warn-on-reflection* true)
 
 (defn- connect-mongo ^MongoClient [opts]
   (let [connection-info (#'mongo.util/details->mongo-connection-info
@@ -18,18 +22,14 @@
 (def srv-passthrough
   (fn [_] {:type :srv}))
 
-(deftest fqdn?-test
+(deftest ^:parallel fqdn?-test
   (testing "test hostname is fqdn"
-    (is (= true
-           (#'mongo.util/fqdn? "db.mongo.com")))
-    (is (= true
-           (#'mongo.util/fqdn? "replica-01.db.mongo.com")))
-    (is (= false
-           (#'mongo.util/fqdn? "localhost")))
-    (is (= false
-           (#'mongo.util/fqdn? "localhost.localdomain")))))
+    (is (true? (#'mongo.util/fqdn? "db.mongo.com")))
+    (is (true? (#'mongo.util/fqdn? "replica-01.db.mongo.com")))
+    (is (false? (#'mongo.util/fqdn? "localhost")))
+    (is (false? (#'mongo.util/fqdn? "localhost.localdomain")))))
 
-(deftest srv-conn-str-test
+(deftest ^:parallel srv-conn-str-test
   (testing "test srv connection string"
     (is (= "mongodb+srv://test-user:test-pass@test-host.place.com/datadb?authSource=authdb"
            (#'mongo.util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "datadb" "authdb")))))
@@ -78,7 +78,7 @@
                          :additional-options ""}]
                (connect-mongo opts)))))))
 
-(deftest srv-connection-properties-test
+(deftest ^:parallel srv-connection-properties-test
   (testing "connection properties when using SRV"
     (are [host msg] (thrown-with-msg? Throwable msg
                       (connect-mongo {:host host
@@ -117,7 +117,7 @@
 (defn- connection-options-builder ^MongoClientOptions$Builder [details]
   (#'mongo.util/connection-options-builder details))
 
-(deftest additional-connection-options-test
+(deftest ^:parallel additional-connection-options-test
   (testing "test that people can specify additional connection options like `?readPreference=nearest`"
     (is (= (ReadPreference/nearest)
            (.getReadPreference (-> (connection-options-builder {:additional-options "readPreference=nearest"})
@@ -143,7 +143,7 @@
            (-> (connection-options-builder {:additional-options "readPreference=ternary"})
                .build))))))
 
-(deftest test-ssh-connection
+(deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to mongo via ssh tunnel"
     (mt/test-driver :mongo
       (is (thrown?

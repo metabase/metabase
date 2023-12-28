@@ -1,8 +1,9 @@
-import React, { FocusEvent, useCallback, useMemo } from "react";
+import type { FocusEvent } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import Input from "metabase/core/components/Input";
-import { FontFile } from "metabase-types/api";
-import { FontFileOption, FontFilesSetting } from "./types";
+import type { FontFile } from "metabase-types/api";
+import type { FontFileOption, FontFilesSetting } from "./types";
 import { FONT_OPTIONS, getFontFiles, getFontUrls } from "./utils";
 import {
   TableBody,
@@ -105,4 +106,5 @@ const FontFileRow = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FontFilesWidget;

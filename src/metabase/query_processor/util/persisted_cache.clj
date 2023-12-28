@@ -1,47 +1,39 @@
 (ns metabase.query-processor.util.persisted-cache
   (:require
-   [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.public-settings :as public-settings]))
+   [metabase.public-settings :as public-settings]
+   [metabase.util.malli :as mu]))
 
-(defn- segmented-user?
-  []
-  (if-let [segmented? (resolve 'metabase-enterprise.sandbox.api.util/segmented-user?)]
-    (segmented?)
-    false))
-
-(defn can-substitute?
+(mu/defn can-substitute?
   "Taking a card and a persisted-info record (possibly nil), returns whether the card's query can be substituted for a
   persisted version."
-  [card persisted-info]
+  [card           :- ::lib.schema.metadata/card
+   persisted-info :- [:maybe ::lib.schema.metadata/persisted-info]]
   (and persisted-info
        persisted-info/*allow-persisted-substitution*
        (:active persisted-info)
        (= (:state persisted-info) "persisted")
        (:definition persisted-info)
-       (:query_hash persisted-info)
-       (= (:query_hash persisted-info) (persisted-info/query-hash (:dataset_query card)))
+       (:query-hash persisted-info)
+       (= (:query-hash persisted-info) (persisted-info/query-hash (:dataset-query card)))
        (= (:definition persisted-info)
-          (persisted-info/metadata->definition (:result_metadata card)
-                                               (:table_name persisted-info)))
-       (not (segmented-user?))))
+          (persisted-info/metadata->definition (:result-metadata card)
+                                               (:table-name persisted-info)))))
 
-(defn persisted-info-native-query
+(mu/defn persisted-info-native-query
   "Returns a native query that selects from the persisted cached table from `persisted-info`. Does not check if
   persistence is appropriate. Use [[can-substitute?]] for that check."
-  [persisted-info]
-  (let [database-id (:database_id persisted-info)
-        driver      (or driver/*driver* (driver.u/database->driver database-id))]
-    (format "select %s from %s.%s"
-            (str/join ", " (map #(sql.u/quote-name
-                                  driver
-                                  :field
-                                  (:field-name %))
-                                (get-in persisted-info [:definition :field-definitions])))
+  [database-id                              :- ::lib.schema.id/database
+   {:keys [table-name] :as _persisted-info} :- ::lib.schema.metadata/persisted-info]
+  (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
+    ;; select * because we don't actually know the name of the fields when in the actual query. See #28902
+    (format "select * from %s.%s"
             (sql.u/quote-name
              driver
              :table
@@ -49,4 +41,4 @@
             (sql.u/quote-name
              driver
              :table
-             (:table_name persisted-info)))))
+             table-name))))

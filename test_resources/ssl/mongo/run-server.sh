@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version="5.0"
+version="5"
 ssl=""
 
 OPTIND=1
@@ -8,7 +8,7 @@ while getopts "hs:v:" opt
 do
     case "$opt" in
         h|\?)
-            echo "Usage: run-server.sh [-s plain|ssl|tls] [-v 4.0|5.0]" 1>&2
+            echo "Usage: run-server.sh [-s plain|tls] [-v 4.2|5]" 1>&2
             exit 0
             ;;
         s)
@@ -22,26 +22,13 @@ done
 shift $((OPTIND-1))
 [ "${1:-}" = "--" ] && shift
 
-if [ "${ssl}" == "tls" ] && [ "${version}" == "4.0" ]
-then
-    echo "Version 4.0 doesn't support TLS falling back to SSL."
-    ssl="ssl"
-fi
 if [ "${ssl}" == "" ]
 then
-    if [ "${version}" == "4.0" ]
-    then
-        ssl="ssl"
-    else
-        ssl="tls"
-    fi
+    ssl="tls"
 fi
 
 params=()
-if [ "${ssl}" == "ssl" ]
-then
-    params=(--sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt)
-elif [ "${ssl}" == "tls" ]
+if [ "${ssl}" == "tls" ]
 then
     params=(--tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt)
 fi

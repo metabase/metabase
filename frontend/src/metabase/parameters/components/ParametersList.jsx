@@ -1,15 +1,14 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import {
   SortableContainer,
   SortableElement,
   SortableHandle,
 } from "metabase/components/sortable";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import StaticParameterWidget from "./ParameterWidget";
+import { ParameterWidget as StaticParameterWidget } from "./ParameterWidget";
 
 const StaticParameterWidgetList = ({
   children,
@@ -22,7 +21,7 @@ const StaticParameterWidgetList = ({
 
 const SortableParameterHandle = SortableHandle(() => (
   <div className="flex layout-centered cursor-grab text-inherit">
-    <Icon name="grabber2" size={12} />
+    <Icon name="grabber" />
   </div>
 ));
 
@@ -35,6 +34,7 @@ function ParametersList({
   className,
 
   parameters,
+  question,
   dashboard,
   editingParameter,
 
@@ -47,7 +47,6 @@ function ParametersList({
 
   setParameterValue,
   setParameterIndex,
-  removeParameter,
   setEditingParameter,
 }) {
   const handleSortStart = () => {
@@ -97,6 +96,7 @@ function ParametersList({
           isNightMode={isNightMode}
           parameter={valuePopulatedParameter}
           parameters={parameters}
+          question={question}
           dashboard={dashboard}
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}

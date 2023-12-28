@@ -1,9 +1,13 @@
 (ns metabase.driver.googleanalytics.metadata
-  (:require [metabase.driver.google :as google]
-            [metabase.driver.googleanalytics.client :as ga.client])
-  (:import com.google.api.services.analytics.Analytics
-           [com.google.api.services.analytics.model Column Columns]
-           java.util.Map))
+  (:require
+   [metabase.driver.google :as google]
+   [metabase.driver.googleanalytics.client :as ga.client])
+  (:import
+   (com.google.api.services.analytics Analytics)
+   (com.google.api.services.analytics.model Column Columns)
+   (java.util Map)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private redundant-date-fields
   "Set of column IDs covered by `unit->ga-dimension` in the GA QP.
@@ -35,10 +39,11 @@
   [^Column column, attribute-name]
   (get (.getAttributes column) (name attribute-name)))
 
-(defn- column-has-attributes? ^Boolean [^Column column, ^Map attributes-map]
+(defn- column-has-attributes? ^Boolean [^Column column ^Map attributes-map]
   (or (empty? attributes-map)
-      (reduce #(and %1 %2) (for [[k v] attributes-map]
-                             (= (column-attribute column k) v)))))
+      (every? (fn [[k v]]
+                (= (column-attribute column k) v))
+              attributes-map)))
 
 (defn columns
   "Return a set of `Column`s for this database. Each table in a Google Analytics database has the same columns."

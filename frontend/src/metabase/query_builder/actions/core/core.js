@@ -5,21 +5,26 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 import { createThunkAction } from "metabase/lib/redux";
 
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
 import { openUrl } from "metabase/redux/app";
 
 import Questions from "metabase/entities/questions";
 import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
+import Revision from "metabase/entities/revisions";
 import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase-lib/queries/utils/card";
 import Query from "metabase-lib/queries/Query";
+import Question from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
@@ -39,7 +44,6 @@ import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
 import { updateQuestion } from "./updateQuestion";
-import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
@@ -61,12 +65,12 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getCard(getState());
+    const outdatedQuestion = getQuestion(getState());
 
     dispatch(resetQB());
 
     const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+      Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
@@ -80,7 +84,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     );
 
     // if the name of the card changed this will update the url slug
-    dispatch(updateUrl(card, { dirty: false }));
+    dispatch(updateUrl(new Question(card), { dirty: false }));
 
     return card;
   };
@@ -96,7 +100,7 @@ export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
 export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
   return async (dispatch, getState) => {
     // clone
-    const card = Utils.copy(nextCard);
+    const card = copy(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
@@ -108,7 +112,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       : null;
 
     // Update the card and originalCard before running the actual query
-    dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
+    dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
     dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
@@ -182,9 +186,10 @@ export const apiCreateQuestion = question => {
       : question;
 
     const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
     const questionToCreate = questionWithVizSettings
-      .setQuery(question.query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setQuery(question.query().clean({ skipFilters: true }))
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
       dispatch,
@@ -195,11 +200,10 @@ export const apiCreateQuestion = question => {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
-    dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",
-      createdQuestion.query().datasetQuery().type,
+      createdQuestion.type(),
     );
     trackNewQuestionSaved(
       question,
@@ -211,7 +215,12 @@ export const apiCreateQuestion = question => {
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
 
-    dispatch.action(API_CREATE_QUESTION, card);
+    dispatch({ type: API_CREATE_QUESTION, payload: card });
+
+    const metadataOptions = { reload: createdQuestion.isDataset() };
+    await dispatch(loadMetadataForCard(card, metadataOptions));
+
+    return createdQuestion;
   };
 };
 
@@ -221,7 +230,18 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    rerunQuery = rerunQuery || getIsResultDirty(getState());
+    const resultsMetadata = getResultsMetadata(getState());
+    const isResultDirty = getIsResultDirty(getState());
+
+    if (question.isDataset()) {
+      resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
+        resultsMetadata.columns,
+      );
+    }
+
+    if (question.isStructured()) {
+      rerunQuery = rerunQuery ?? isResultDirty;
+    }
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -229,13 +249,12 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    const resultsMetadata = getResultsMetadata(getState());
     const questionToUpdate = questionWithVizSettings
       // Before we clean the query, we make sure question is not treated as a dataset
       // as calling table() method down the line would bring unwanted consequences
       // such as dropping joins (as joins are treated differently between pure questions and datasets)
-      .setQuery(question.setDataset(false).query().clean())
-      .setResultsMetadata(resultsMetadata);
+      .setQuery(question.setDataset(false).query().clean({ skipFilters: true }))
+      .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
@@ -255,14 +274,24 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Update Card",
-      updatedQuestion.query().datasetQuery().type,
+      updatedQuestion.type(),
     );
 
-    dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
+    await dispatch({
+      type: API_UPDATE_QUESTION,
+      payload: updatedQuestion.card(),
+    });
+
+    if (question.isDataset()) {
+      // this needs to happen after the question update completes in case we have changed the type
+      // of the primary key field in the same update
+      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+    }
+
+    const metadataOptions = { reload: question.isDataset() };
+    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {
-      const metadataOptions = { reload: question.isDataset() };
-      await dispatch(loadMetadataForCard(question.card(), metadataOptions));
       dispatch(runQuestionQuery());
     }
   };
@@ -272,16 +301,28 @@ export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
-    return { id: parameterId, value };
+    return { id: parameterId, value: normalizeValue(value) };
   },
 );
+
+function normalizeValue(value) {
+  if (value === "") {
+    return null;
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
+    return null;
+  }
+
+  return value;
+}
 
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
   revision => {
     return async dispatch => {
-      await revision.revert();
+      await dispatch(Revision.objectActions.revert(revision));
       await dispatch(reloadCard());
     };
   },

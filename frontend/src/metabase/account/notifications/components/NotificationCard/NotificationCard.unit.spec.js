@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import NotificationCard from "./NotificationCard";
 
@@ -46,9 +45,11 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Alert");
-    screen.getByText("Emailed hourly");
-    screen.getByText("Created by you on May 8, 2021");
+    expect(screen.getByText("Alert")).toBeInTheDocument();
+    expect(screen.getByText("Emailed hourly")).toBeInTheDocument();
+    expect(
+      screen.getByText("Created by you on May 8, 2021"),
+    ).toBeInTheDocument();
   });
 
   it("should render a pulse", () => {
@@ -57,9 +58,11 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={pulse} type="pulse" user={user} />);
 
-    screen.getByText("Pulse");
-    screen.getByText("Emailed hourly");
-    screen.getByText("Created by you on May 8, 2021");
+    expect(screen.getByText("Pulse")).toBeInTheDocument();
+    expect(screen.getByText("Emailed hourly")).toBeInTheDocument();
+    expect(
+      screen.getByText("Created by you on May 8, 2021"),
+    ).toBeInTheDocument();
   });
 
   it("should render a slack alert", () => {
@@ -70,7 +73,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Slack’d hourly to @channel");
+    expect(screen.getByText("Slack’d hourly to @channel")).toBeInTheDocument();
   });
 
   it("should render a daily alert", () => {
@@ -81,7 +84,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Emailed daily at 8:00 AM");
+    expect(screen.getByText("Emailed daily at 8:00 AM")).toBeInTheDocument();
   });
 
   it("should render a weekly alert", () => {
@@ -92,7 +95,7 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Emailed Monday at 8:00 AM");
+    expect(screen.getByText("Emailed Monday at 8:00 AM")).toBeInTheDocument();
   });
 
   it("should render a monthly alert", () => {
@@ -103,7 +106,9 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Emailed monthly on the first Monday at 8:00 AM");
+    expect(
+      screen.getByText("Emailed monthly on the first Monday at 8:00 AM"),
+    ).toBeInTheDocument();
   });
 
   it("should render an alert created by another user", () => {
@@ -112,7 +117,9 @@ describe("NotificationCard", () => {
 
     render(<NotificationCard item={alert} type="alert" user={user} />);
 
-    screen.getByText("Created by John Doe on May 8, 2021");
+    expect(
+      screen.getByText("Created by John Doe on May 8, 2021"),
+    ).toBeInTheDocument();
   });
 
   it("should unsubscribe when the user is not the creator and subscribed", () => {
@@ -183,7 +190,7 @@ describe("NotificationCard", () => {
       />,
     );
 
-    expect(screen.queryByLabelText("close icon")).toBeNull();
+    expect(screen.queryByLabelText("close icon")).not.toBeInTheDocument();
   });
 
   it("should archive when the user is the creator and not subscribed", () => {

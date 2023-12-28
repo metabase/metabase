@@ -1,13 +1,11 @@
-import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
-  act,
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 
 import type { NativeQuerySnippet } from "metabase-types/api";
@@ -35,39 +33,37 @@ async function setup({
   withDefaultFoldersList = true,
   onClose = jest.fn(),
 }: SetupOpts = {}) {
-  nock(location.origin)
-    .get("/api/collection/root?namespace=snippets")
-    .reply(200, TOP_SNIPPETS_FOLDER);
+  fetchMock.get(
+    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
+    TOP_SNIPPETS_FOLDER,
+  );
 
   if (withDefaultFoldersList) {
-    nock(location.origin)
-      .get("/api/collection?namespace=snippets")
-      .reply(200, [TOP_SNIPPETS_FOLDER]);
+    fetchMock.get(
+      { url: "path:/api/collection", query: { namespace: "snippets" } },
+      [TOP_SNIPPETS_FOLDER],
+    );
   }
 
-  nock(location.origin)
-    .post("/api/native-query-snippet")
-    .reply(200, (uri, body) => {
-      if (typeof body === "object") {
-        return createMockNativeQuerySnippet(body);
-      }
-    });
+  fetchMock.post("path:/api/native-query-snippet", async url => {
+    return createMockNativeQuerySnippet(
+      await fetchMock.lastCall(url)?.request?.json(),
+    );
+  });
 
   if (snippet.id) {
-    nock(location.origin)
-      .put(`/api/native-query-snippet/${snippet.id}`)
-      .reply(200, (uri, body) => {
-        if (typeof body === "object") {
-          return createMockNativeQuerySnippet(body);
-        }
-      });
+    fetchMock.put(`path:/api/native-query-snippet/${snippet.id}`, async url => {
+      return createMockNativeQuerySnippet(
+        await fetchMock.lastCall(url)?.request?.json(),
+      );
+    });
   }
 
   renderWithProviders(
     <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
   );
 
-  await waitForElementToBeRemoved(() => screen.getByText(/Loading/i));
+  await waitForLoaderToBeRemoved();
 
   return { onClose };
 }
@@ -87,10 +83,6 @@ const LABEL = {
 };
 
 describe("SnippetFormModal", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("new snippet", () => {
     it("displays correct blank state", async () => {
       await setup();
@@ -118,9 +110,10 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      nock(location.origin)
-        .get("/api/collection?namespace=snippets")
-        .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
+      fetchMock.get(
+        { url: "path:/api/collection", query: { namespace: "snippets" } },
+        [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      );
 
       await setup({ withDefaultFoldersList: false });
 
@@ -131,7 +124,9 @@ describe("SnippetFormModal", () => {
     it("can't submit if content is empty", async () => {
       await setup();
       userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      });
     });
 
     it("can't submit if name is empty", async () => {
@@ -140,21 +135,23 @@ describe("SnippetFormModal", () => {
         screen.getByLabelText(LABEL.CONTENT),
         "WHERE discount > 0",
       );
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      });
     });
 
     it("can submit with name and content", async () => {
       await setup();
 
-      await act(async () => {
-        await userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
-        await userEvent.type(
-          screen.getByLabelText(LABEL.CONTENT),
-          "WHERE discount > 0",
-        );
-      });
+      userEvent.type(screen.getByLabelText(LABEL.NAME), "My snippet");
+      userEvent.type(
+        screen.getByLabelText(LABEL.CONTENT),
+        "WHERE discount > 0",
+      );
 
-      expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      });
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -167,7 +164,9 @@ describe("SnippetFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
     });
 
     it("doesn't show the archive button", async () => {
@@ -211,9 +210,10 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      nock(location.origin)
-        .get("/api/collection?namespace=snippets")
-        .reply(200, [TOP_SNIPPETS_FOLDER, createMockCollection()]);
+      fetchMock.get(
+        { url: "path:/api/collection", query: { namespace: "snippets" } },
+        [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      );
 
       await setupEditing({ withDefaultFoldersList: false });
 
@@ -228,18 +228,18 @@ describe("SnippetFormModal", () => {
 
     it("can't submit if content is empty", async () => {
       await setupEditing();
-      await act(async () => {
-        await userEvent.clear(screen.getByLabelText(LABEL.NAME));
+      userEvent.clear(screen.getByLabelText(LABEL.NAME));
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       });
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("can't submit if name is empty", async () => {
       await setupEditing();
-      await act(async () => {
-        await userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
+      userEvent.clear(screen.getByLabelText(LABEL.CONTENT));
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       });
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("can submit with name and content", async () => {
@@ -251,7 +251,9 @@ describe("SnippetFormModal", () => {
         "WHERE discount > 0",
       );
 
-      expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+      });
     });
 
     it("doesn't show cancel button if onClose props is not set", async () => {
@@ -264,14 +266,16 @@ describe("SnippetFormModal", () => {
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setupEditing();
       userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(onClose).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
     });
 
     it("closes the modal after archiving", async () => {
       const { onClose } = await setupEditing();
       userEvent.click(screen.getByText("Archive"));
       await waitFor(() => {
-        expect(onClose).toBeCalledTimes(1);
+        expect(onClose).toHaveBeenCalledTimes(1);
       });
     });
   });

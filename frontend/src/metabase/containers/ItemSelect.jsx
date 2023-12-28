@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
@@ -19,7 +19,7 @@ const typeNameMap = {
 };
 
 export default (PickerComponent, NameComponent, type) =>
-  class ItemSelect extends React.Component {
+  class ItemSelect extends Component {
     state = {
       width: MIN_POPOVER_WIDTH,
     };

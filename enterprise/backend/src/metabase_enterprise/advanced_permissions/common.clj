@@ -5,7 +5,7 @@
    [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn with-advanced-permissions
   "Adds to `user` a set of boolean flag indiciate whether or not current user has access to an advanced permissions.
@@ -29,7 +29,7 @@
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
-  (db/select-one-field :is_group_manager PermissionsGroupMembership
+  (t2/select-one-fn :is_group_manager PermissionsGroupMembership
                        :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
@@ -49,6 +49,24 @@
        (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                         (perms/feature-perms-path :data-model :all db-id schema table-id)))
      tables)))
+
+(defn filter-schema-by-data-model-perms
+  "Given a list of schema, remove the ones for which `*current-user*` does not have data model editing permissions."
+  [schema]
+  (cond
+    api/*is-superuser?*
+    schema
+
+    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
+    (not (premium-features/enable-advanced-permissions?))
+    (empty schema)
+
+    :else
+    (filter
+     (fn [{db-id :db_id schema :schema}]
+       (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+                                           (perms/feature-perms-path :data-model :all db-id schema)))
+     schema)))
 
 (defn filter-databases-by-data-model-perms
   "Given a list of databases, removes the ones for which `*current-user*` has no data model editing permissions.

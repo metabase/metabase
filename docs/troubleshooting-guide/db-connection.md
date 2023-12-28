@@ -34,6 +34,8 @@ If you don't have access to the Metabase Admin panel, you'll need to ask the per
 
     - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
 
+3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/users-roles-privileges.md).
+
 The steps above will help you detect whether the problem is occurring outside of Metabase. To _fix_ problems with your database server, you'll need to refer to the docs for your database or cloud service. Remember to [test your database connection](#testing-the-connection-status) after you make changes.
 
 If you don't have access to the data warehouse server, you’ll need to ask the person who manages your database or data warehouse.
@@ -51,6 +53,8 @@ If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Tr
 1. Go to **Admin** > **Databases** and select your database.
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
 3. Click **Save**.
+
+The version of Metabase you're using to connect to your data warehouse must support your database's version. For example, Metabase versions older than 46 lack support for Microsoft SQL Server 2022.
 
 ## Testing a database connection
 

@@ -1,10 +1,11 @@
 (ns metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check
   (:require
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.mbql.util :as mbql.u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
 
 (defn- field-ids [form]
   (set (mbql.u/match form
@@ -23,8 +24,9 @@
                          *current-user-id* (pr-str restricted-field-ids) (pr-str fields-ids-in-query)))
           (throw (ex-info (str (tru "User not able to query field")) {:status 403})))))))
 
-(defn maybe-apply-column-level-perms-check
+(defenterprise maybe-apply-column-level-perms-check
   "Check column-level permissions if applicable."
+  :feature :sandboxes
   [qp]
   (fn [query rff context]
     (maybe-apply-column-level-perms-check* query context)

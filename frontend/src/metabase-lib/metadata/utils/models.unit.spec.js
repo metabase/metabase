@@ -1,8 +1,19 @@
-import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
-import { createMockDatabase } from "metabase-types/api/mocks/database";
-import { ORDERS, metadata } from "__support__/sample_database_fixture";
+import _ from "underscore";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  getMockModelCacheInfo,
+  COMMON_DATABASE_FEATURES,
+} from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  createNativeModelCard as _createNativeModelCard,
+  createSavedNativeCard as _createSavedNativeCard,
+  createSavedStructuredCard as _createSavedStructuredCard,
+  createStructuredModelCard as _createStructuredModelCard,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
-import Database from "metabase-lib/metadata/Database";
 
 import {
   checkCanBeModel,
@@ -13,12 +24,86 @@ import {
   getDatasetMetadataCompletenessPercentage,
 } from "metabase-lib/metadata/utils/models";
 
-describe("data model utils", () => {
-  const DB_WITHOUT_NESTED_QUERIES_SUPPORT = new Database({
-    ...createMockDatabase(),
-    features: [],
+function getTemplateTag(tag = {}) {
+  return {
+    id: "_",
+    name: "_",
+    "display-name": "_",
+    type: "card",
+    ...tag,
+  };
+}
+
+function createSavedNativeCard({ tags = {}, ...rest } = {}) {
+  return _createSavedNativeCard({
+    ...rest,
+    dataset_query: {
+      type: "native",
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "select * from orders",
+        "template-tags": tags,
+      },
+    },
+  });
+}
+
+function createNativeModelCard({ tags = {}, ...rest } = {}) {
+  return _createNativeModelCard({
+    ...rest,
+    dataset_query: {
+      type: "native",
+      database: SAMPLE_DB_ID,
+      native: {
+        query: "select * from orders",
+        "template-tags": tags,
+      },
+    },
+  });
+}
+
+function createSavedStructuredCard({ sourceTable = ORDERS_ID, ...rest } = {}) {
+  return _createSavedStructuredCard({
+    ...rest,
+    dataset_query: {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": sourceTable,
+      },
+    },
+  });
+}
+
+function createStructuredModelCard({ sourceTable = ORDERS_ID, ...rest } = {}) {
+  return _createStructuredModelCard({
+    ...rest,
+    dataset_query: {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": sourceTable,
+      },
+    },
+  });
+}
+
+function setup({ cards, hasNestedQueriesSupport = true } = {}) {
+  const features = hasNestedQueriesSupport
+    ? COMMON_DATABASE_FEATURES
+    : _.without(COMMON_DATABASE_FEATURES, "nested-queries");
+
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase({ features })],
+    questions: cards ? cards : [],
   });
 
+  const ordersTable = metadata.table(ORDERS_ID);
+
+  return { metadata, ordersTable };
+}
+
+describe("data model utils", () => {
   describe("checkCanBeModel", () => {
     const UNSUPPORTED_TEMPLATE_TAG_TYPES = [
       "text",
@@ -29,56 +114,78 @@ describe("data model utils", () => {
 
     describe("structured queries", () => {
       it("returns true for regular questions", () => {
-        const question = ORDERS.question();
+        const { ordersTable } = setup();
+        const question = ordersTable.question();
         expect(checkCanBeModel(question)).toBe(true);
       });
 
       it("returns false if database does not support nested queries", () => {
-        const question = ORDERS.question();
-        question.query().database = () => DB_WITHOUT_NESTED_QUERIES_SUPPORT;
+        const { ordersTable } = setup({ hasNestedQueriesSupport: false });
+        const question = ordersTable.question();
         expect(checkCanBeModel(question)).toBe(false);
       });
     });
 
     describe("native queries", () => {
       it("returns true if no variables used", () => {
-        const question = getNativeQuestion();
+        const card = createSavedNativeCard();
+        const { metadata } = setup({ cards: [card] });
+
+        const question = metadata.question(card.id);
+
         expect(checkCanBeModel(question)).toBe(true);
       });
 
       it("returns false if database does not support nested queries", () => {
-        const question = getNativeQuestion();
-        question.query().database = () => DB_WITHOUT_NESTED_QUERIES_SUPPORT;
+        const card = createSavedNativeCard();
+        const { metadata } = setup({
+          cards: [card],
+          hasNestedQueriesSupport: false,
+        });
+
+        const question = metadata.question(card.id);
 
         expect(checkCanBeModel(question)).toBe(false);
       });
       it("returns true when 'card' variables are used", () => {
-        const question = getNativeQuestion({
+        const card = createSavedNativeCard({
           tags: {
             "#5": getTemplateTag({ type: "card" }),
           },
         });
+        const { metadata } = setup({ cards: [card] });
+
+        const question = metadata.question(card.id);
+
         expect(checkCanBeModel(question)).toBe(true);
       });
 
       UNSUPPORTED_TEMPLATE_TAG_TYPES.forEach(tagType => {
         it(`returns false when '${tagType}' variables are used`, () => {
-          const question = getNativeQuestion({
+          const card = createSavedNativeCard({
             tags: {
               foo: getTemplateTag({ type: tagType }),
             },
           });
+          const { metadata } = setup({ cards: [card] });
+
+          const question = metadata.question(card.id);
+
           expect(checkCanBeModel(question)).toBe(false);
         });
       });
 
       it("returns false if at least one unsupported variable type is used", () => {
-        const question = getNativeQuestion({
+        const card = createSavedNativeCard({
           tags: {
             "#5": getTemplateTag({ type: "card" }),
             foo: getTemplateTag({ type: "dimension" }),
           },
         });
+        const { metadata } = setup({ cards: [card] });
+
+        const question = metadata.question(card.id);
+
         expect(checkCanBeModel(question)).toBe(false);
       });
     });
@@ -86,35 +193,38 @@ describe("data model utils", () => {
 
   describe("isAdHocModelQuestion & isAdHocModelQuestionCard", () => {
     it("returns false when original question is not provided", () => {
-      const question = getStructuredQuestion({
+      const modelCard = createStructuredModelCard({ id: 1 });
+      const composedModelCard = createSavedStructuredCard({
         id: 1,
         sourceTable: "card__1",
-        isModel: true,
       });
+      const { metadata } = setup({ cards: [modelCard] });
+      const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question)).toBe(false);
       expect(isAdHocModelQuestionCard(question.card())).toBe(false);
     });
 
     it("returns false for native questions", () => {
-      const question = getNativeQuestion({ isModel: true });
-      const card = question.card();
+      const card = createNativeModelCard();
+      const { metadata } = setup({ cards: [card] });
+
+      const question = metadata.question(card.id);
 
       expect(isAdHocModelQuestion(question, question)).toBe(false);
       expect(isAdHocModelQuestionCard(card, card)).toBe(false);
     });
 
     it("identifies when model goes into ad-hoc exploration mode", () => {
-      const originalQuestion = getStructuredQuestion({
+      const modelCard = createStructuredModelCard({ id: 1 });
+      const composedModelCard = createSavedStructuredCard({
         id: 1,
-        isModel: true,
-        sourceTable: 1,
-      });
-      const question = getStructuredQuestion({
-        id: 1,
-        isModel: false,
         sourceTable: "card__1",
       });
+      const { metadata } = setup({ cards: [modelCard] });
+
+      const originalQuestion = metadata.question(modelCard.id);
+      const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(true);
       expect(
@@ -123,16 +233,15 @@ describe("data model utils", () => {
     });
 
     it("returns false when IDs don't match", () => {
-      const originalQuestion = getStructuredQuestion({
-        id: 2,
-        isModel: true,
-        sourceTable: 1,
-      });
-      const question = getStructuredQuestion({
+      const modelCard = createStructuredModelCard({ id: 2 });
+      const composedModelCard = createSavedStructuredCard({
         id: 1,
-        isModel: false,
         sourceTable: "card__1",
       });
+      const { metadata } = setup({ cards: [modelCard] });
+
+      const originalQuestion = metadata.question(modelCard.id);
+      const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
       expect(
@@ -140,17 +249,16 @@ describe("data model utils", () => {
       ).toBe(false);
     });
 
-    it("returns false when questions are not marked as models", () => {
-      const originalQuestion = getStructuredQuestion({
+    it("returns false when questions are not models", () => {
+      const modelCard = createSavedStructuredCard({ id: 1 });
+      const composedModelCard = createSavedStructuredCard({
         id: 1,
-        isModel: false,
-        sourceTable: 1,
-      });
-      const question = getStructuredQuestion({
-        id: 1,
-        isModel: false,
         sourceTable: "card__1",
       });
+      const { metadata } = setup({ cards: [modelCard] });
+
+      const originalQuestion = metadata.question(modelCard.id);
+      const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
       expect(
@@ -159,16 +267,15 @@ describe("data model utils", () => {
     });
 
     it("returns false when potential ad-hoc model question is not self-referencing", () => {
-      const originalQuestion = getStructuredQuestion({
+      const modelCard = createStructuredModelCard({ id: 1 });
+      const composedModelCard = createSavedStructuredCard({
         id: 1,
-        isModel: true,
-        sourceTable: 1,
+        sourceTable: ORDERS_ID,
       });
-      const question = getStructuredQuestion({
-        id: 1,
-        isModel: false,
-        sourceTable: 1,
-      });
+      const { metadata } = setup({ cards: [modelCard] });
+
+      const originalQuestion = metadata.question(modelCard.id);
+      const question = new Question(composedModelCard, metadata);
 
       expect(isAdHocModelQuestion(question, originalQuestion)).toBe(false);
       expect(
@@ -261,60 +368,3 @@ describe("data model utils", () => {
     });
   });
 });
-
-function getNativeQuestion({ tags = {}, isModel } = {}) {
-  return new Question(
-    {
-      id: 1,
-      dataset: isModel,
-      display: "table",
-      can_write: true,
-      public_uuid: "",
-      dataset_query: {
-        type: "native",
-        database: 1,
-        native: {
-          query: "select * from orders",
-          "template-tags": tags,
-        },
-      },
-      visualization_settings: {},
-    },
-    metadata,
-  );
-}
-
-function getStructuredQuestion({
-  id = 1,
-  sourceTable = 1,
-  isModel = false,
-} = {}) {
-  return new Question(
-    {
-      id,
-      dataset: isModel,
-      display: "table",
-      can_write: true,
-      public_uuid: "",
-      dataset_query: {
-        type: "query",
-        database: 1,
-        query: {
-          "source-table": sourceTable,
-        },
-      },
-      visualization_settings: {},
-    },
-    metadata,
-  );
-}
-
-function getTemplateTag(tag = {}) {
-  return {
-    id: "_",
-    name: "_",
-    "display-name": "_",
-    type: "card",
-    ...tag,
-  };
-}

@@ -1,9 +1,20 @@
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
+import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
 import {
   fieldRefForColumn,
-  syncTableColumnsToQuery,
   findColumnForColumnSetting,
 } from "metabase-lib/queries/utils/dataset";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const productsTable = metadata.table(PRODUCTS_ID);
 
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {
@@ -16,146 +27,155 @@ describe("metabase/util/dataset", () => {
     });
   });
 
-  describe("syncTableColumnsToQuery", () => {
-    it("should not modify `fields` if no `table.columns` setting preset", () => {
-      const question = syncTableColumnsToQuery(
-        ORDERS.query({
-          fields: [["field", ORDERS.TOTAL.id, null]],
-        }).question(),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-        fields: [["field", ORDERS.TOTAL.id, null]],
-      });
-    });
-    it("should sync included `table.columns` by name", () => {
-      const question = syncTableColumnsToQuery(
-        ORDERS.query()
-          .question()
-          .setSettings({
-            "table.columns": [
-              {
-                name: "TOTAL",
-                enabled: true,
-              },
-            ],
-          }),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-        fields: [["field", ORDERS.TOTAL.id, null]],
-      });
-    });
-    it("should sync included `table.columns` by fieldRef", () => {
-      const question = syncTableColumnsToQuery(
-        ORDERS.query()
-          .question()
-          .setSettings({
-            "table.columns": [
-              {
-                fieldRef: ["field", ORDERS.TOTAL.id, null],
-                enabled: true,
-              },
-            ],
-          }),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-        fields: [["field", ORDERS.TOTAL.id, null]],
-      });
-    });
-    it("should not modify columns if all default columns are enabled", () => {
-      const query = ORDERS.query();
-      const question = syncTableColumnsToQuery(
-        query.question().setSettings({
-          "table.columns": query.columnNames().map(name => ({
-            name,
-            enabled: true,
-          })),
-        }),
-      );
-      expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-      });
+  describe("syncColumnsAndSettings", () => {
+    it("should automatically add new metrics when a new aggregrate column is added", () => {
+      const prevQuestion = productsTable
+        .query({
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        })
+        .question()
+        .setSettings({
+          "graph.metrics": ["count"],
+        });
+
+      const newQuestion = prevQuestion
+        .query()
+        .aggregate(["sum", ["field", PRODUCTS.PRICE, null]])
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(newQuestion.setting("graph.metrics")).toMatchObject([
+        "count",
+        "sum",
+      ]);
     });
 
-    describe("with joins", () => {
-      it("should sync included `table.columns` by name to join clauses", () => {
-        const question = syncTableColumnsToQuery(
-          ORDERS.query()
-            .join({
-              alias: "products",
-              fields: "all",
-              "source-table": PRODUCTS.id,
-            })
-            .question()
-            .setSettings({
-              "table.columns": [
-                {
-                  name: "TOTAL",
-                  enabled: true,
-                },
-                {
-                  name: "PRICE",
-                  enabled: true,
-                },
-              ],
-            }),
-        );
-        expect(question.query().query()).toEqual({
-          "source-table": ORDERS.id,
-          joins: [
-            {
-              alias: "products",
-              "source-table": PRODUCTS.id,
-              fields: [
-                ["field", PRODUCTS.PRICE.id, { "join-alias": "products" }],
-              ],
-            },
-          ],
-          fields: [["field", ORDERS.TOTAL.id, null]],
+    it("should automatically remove metrics from settings when an aggregrate column is removed", () => {
+      const prevQuestion = productsTable
+        .query({
+          aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        })
+        .question()
+        .setSettings({
+          "graph.metrics": ["count", "sum"],
         });
-      });
-      it("should sync included `table.columns` by fieldRef to join clauses", () => {
-        const question = syncTableColumnsToQuery(
-          ORDERS.query()
-            .join({
-              alias: "products",
-              fields: "all",
-              "source-table": PRODUCTS.id,
-            })
-            .question()
-            .setSettings({
-              "table.columns": [
-                {
-                  fieldRef: ["field", ORDERS.TOTAL.id, null],
-                  enabled: true,
-                },
-                {
-                  fieldRef: [
-                    "field",
-                    PRODUCTS.PRICE.id,
-                    { "join-alias": "products" },
-                  ],
-                  enabled: true,
-                },
-              ],
-            }),
-        );
-        expect(question.query().query()).toEqual({
-          "source-table": ORDERS.id,
-          joins: [
-            {
-              alias: "products",
-              "source-table": PRODUCTS.id,
-              fields: [
-                ["field", PRODUCTS.PRICE.id, { "join-alias": "products" }],
-              ],
-            },
-          ],
-          fields: [["field", ORDERS.TOTAL.id, null]],
+
+      const newQuestion = prevQuestion
+        .query()
+        .removeAggregation(1)
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(newQuestion.setting("graph.metrics")).toMatchObject(["sum"]);
+    });
+
+    it("Adding a breakout should not affect graph.metrics", () => {
+      const prevQuestion = productsTable
+        .query({
+          aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        })
+        .question()
+        .setSettings({
+          "graph.metrics": ["count", "sum"],
         });
-      });
+
+      const newQuestion = prevQuestion
+        .query()
+        .breakout(["field", PRODUCTS.VENDOR, null])
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(newQuestion.setting("graph.metrics")).toMatchObject([
+        "count",
+        "sum",
+      ]);
+      expect(newQuestion.query().columns()).toHaveLength(4);
+    });
+
+    it("removes columns from table.columns when a column is removed from a query", () => {
+      const prevQuestion = productsTable
+        .query({
+          fields: [
+            ["field", PRODUCTS.ID, null],
+            ["field", PRODUCTS.CATEGORY, null],
+            ["field", PRODUCTS.VENDOR, null],
+          ],
+        })
+        .question()
+        .setSettings({
+          "table.columns": [
+            createMockTableColumnOrderSetting({
+              name: "ID",
+              fieldRef: ["field", PRODUCTS.ID, null],
+              enabled: true,
+            }),
+            createMockTableColumnOrderSetting({
+              name: "CATEGORY",
+              fieldRef: ["field", PRODUCTS.CATEGORY, null],
+              enabled: true,
+            }),
+            createMockTableColumnOrderSetting({
+              name: "VENDOR",
+              fieldRef: ["field", PRODUCTS.VENDOR, null],
+              enabled: true,
+            }),
+          ],
+        });
+
+      const newQuestion = prevQuestion
+        .query()
+        .removeField(2)
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(prevQuestion.setting("table.columns")).toHaveLength(3);
+      expect(newQuestion.setting("table.columns")).toEqual(
+        prevQuestion.setting("table.columns").slice(0, 2),
+      );
+    });
+
+    it("adds columns to table.columns when a column is added to a query", () => {
+      const prevQuestion = productsTable
+        .query({
+          fields: [
+            ["field", PRODUCTS.ID, null],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        })
+        .question()
+        .setSettings({
+          "table.columns": [
+            createMockTableColumnOrderSetting({
+              name: "ID",
+              fieldRef: ["field", PRODUCTS.ID, null],
+              enabled: true,
+            }),
+            createMockTableColumnOrderSetting({
+              name: "CATEGORY",
+              fieldRef: ["field", PRODUCTS.CATEGORY, null],
+              enabled: true,
+            }),
+          ],
+        });
+
+      const newQuestion = prevQuestion
+        .query()
+        .addField(["field", PRODUCTS.VENDOR, null])
+        .question()
+        .syncColumnsAndSettings(prevQuestion);
+
+      expect(prevQuestion.setting("table.columns")).toHaveLength(2);
+      expect(newQuestion.setting("table.columns")).toEqual([
+        ...prevQuestion.setting("table.columns"),
+        createMockTableColumnOrderSetting({
+          name: "VENDOR",
+          fieldRef: ["field", PRODUCTS.VENDOR, null],
+          enabled: true,
+        }),
+      ]);
     });
   });
 

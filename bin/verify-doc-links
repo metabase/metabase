@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 
-const glob = require("glob");
 const fs = require("fs");
+const glob = require("glob");
+const chalk = require("chalk");
 
-glob("./{enterprise/,}frontend/src/**/*.{js,jsx}", (err, files) => {
-  if (err) {
-    console.log(err);
-    process.exit(1);
-  }
+init();
+
+function verifyDocumentationLinks(files) {
   let missing = 0;
   for (const file of files) {
     const text = fs.readFileSync(file, "utf-8");
@@ -19,7 +18,7 @@ glob("./{enterprise/,}frontend/src/**/*.{js,jsx}", (err, files) => {
       if (fs.existsSync(path)) {
         console.log(`Exists:  ${path}`);
       } else {
-        console.log(`Missing: ${path}`);
+        console.log(chalk.red(`Missing: ${path}`));
         missing++;
       }
     }
@@ -27,4 +26,22 @@ glob("./{enterprise/,}frontend/src/**/*.{js,jsx}", (err, files) => {
   if (missing > 0) {
     process.exit(missing);
   }
-});
+}
+
+function verifyAllFiles() {
+  glob("./{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}", (err, files) => {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    verifyDocumentationLinks(files);
+  });
+}
+
+function init() {
+  const stagedFiles = process.argv.slice(2);
+
+  return stagedFiles.length
+    ? verifyDocumentationLinks(stagedFiles)
+    : verifyAllFiles();
+}

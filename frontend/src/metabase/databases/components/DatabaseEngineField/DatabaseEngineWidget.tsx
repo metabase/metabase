@@ -1,17 +1,12 @@
-import React, {
-  ChangeEvent,
-  KeyboardEvent,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import Input from "metabase/core/components/Input";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { getEngineLogo } from "../../utils/engine";
-import { EngineOption } from "../../types";
+import type { EngineOption } from "../../types";
 import {
   EngineButtonRoot,
   EngineCardIcon,
@@ -249,7 +244,9 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
           <ExternalLink
             key="link"
-            href={MetabaseSettings.docsUrl("developers-guide-drivers")}
+            href={MetabaseSettings.docsUrl(
+              "developers-guide/partner-and-community-drivers",
+            )}
           >
             {t`Community Drivers`}
           </ExternalLink>
@@ -339,4 +336,5 @@ const getActiveIndex = (
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEngineWidget;

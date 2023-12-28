@@ -1,4 +1,4 @@
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
@@ -79,4 +79,4 @@ EditHeader.propTypes = {
   revisionMessageFormField: PropTypes.object,
 };
 
-export default React.memo(EditHeader);
+export default memo(EditHeader);

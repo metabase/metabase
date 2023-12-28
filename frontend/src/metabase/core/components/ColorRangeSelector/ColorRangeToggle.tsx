@@ -1,4 +1,3 @@
-import React, { useCallback, useMemo, useState } from "react";
 import {
   ToggleButton,
   ToggleColorRange,
@@ -8,34 +7,36 @@ import {
 export interface ColorRangeToggleProps {
   value: string[];
   isQuantile?: boolean;
-  onChange?: (newValue: string[]) => void;
+  onToggleClick?: () => void;
+  onColorRangeSelect?: (newColorRange: string[]) => void;
+  showToggleButton?: boolean;
 }
 
 const ColorRangeToggle = ({
   value,
   isQuantile,
-  onChange,
+  onToggleClick,
+  onColorRangeSelect,
+  showToggleButton = false,
 }: ColorRangeToggleProps) => {
-  const [isInverted, setIsInverted] = useState(false);
-
-  const displayValue = useMemo(() => {
-    return isInverted ? Array.from(value).reverse() : value;
-  }, [value, isInverted]);
-
-  const handleButtonClick = useCallback(() => {
-    setIsInverted(isInverted => !isInverted);
-  }, []);
-
   return (
     <ToggleRoot>
       <ToggleColorRange
-        colors={displayValue}
+        colors={value}
         isQuantile={isQuantile}
-        onSelect={onChange}
+        onSelect={onColorRangeSelect}
+        aria-label={getColorRangeLabel(value)}
       />
-      <ToggleButton icon="compare" small onClick={handleButtonClick} />
+      {showToggleButton && (
+        <ToggleButton icon="compare" small onClick={onToggleClick} />
+      )}
     </ToggleRoot>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorRangeToggle;
+
+export function getColorRangeLabel(value: string[]) {
+  return value.join("-");
+}

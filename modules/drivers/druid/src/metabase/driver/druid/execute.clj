@@ -1,17 +1,21 @@
 (ns metabase.driver.druid.execute
-  (:require [cheshire.core :as json]
-            [clojure.math.numeric-tower :as math]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver.druid.query-processor :as druid.qp]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.math.numeric-tower :as math]
+   [java-time.api :as t]
+   [medley.core :as m]
+   [metabase.driver.druid.query-processor :as druid.qp]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (defn- resolve-timezone
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
@@ -148,7 +152,7 @@
     :as                                    mbql-query}
    respond]
   {:pre [query]}
-  (let [details    (:details (qp.store/database))
+  (let [details    (:details (lib.metadata/database (qp.store/metadata-provider)))
         query      (if (string? query)
                      (json/parse-string query keyword)
                      query)

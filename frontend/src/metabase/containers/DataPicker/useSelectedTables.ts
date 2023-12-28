@@ -4,12 +4,12 @@ import type { TableId } from "metabase-types/api";
 
 interface SelectedTablesHookOpts {
   initialValues?: TableId[];
-  mode?: "single" | "multiple";
+  isMultiSelect?: boolean;
 }
 
 function useSelectedTables({
   initialValues = [],
-  mode = "single",
+  isMultiSelect,
 }: SelectedTablesHookOpts = {}) {
   const [selectedTableIds, setSelectedTableIds] = useState(
     new Set(initialValues),
@@ -21,14 +21,13 @@ function useSelectedTables({
 
   const addSelectedTableId = useCallback(
     (id: TableId) => {
-      const nextState =
-        mode === "multiple"
-          ? new Set([...selectedTableIds, id])
-          : new Set([id]);
+      const nextState = isMultiSelect
+        ? new Set([...selectedTableIds, id])
+        : new Set([id]);
       setSelectedTableIds(nextState);
       return Array.from(nextState);
     },
-    [selectedTableIds, mode],
+    [selectedTableIds, isMultiSelect],
   );
 
   const removeSelectedTableId = useCallback(
@@ -72,4 +71,5 @@ function useSelectedTables({
   };
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useSelectedTables;

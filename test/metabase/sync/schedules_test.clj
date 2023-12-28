@@ -4,7 +4,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]))
 
-(deftest schedule-map->cron-strings-test
+(deftest ^:parallel schedule-map->cron-strings-test
   (is (= {} (sync.schedules/schedule-map->cron-strings {})))
   (is (= {:cache_field_values_schedule "0 0 4 * * ? *"}
          (sync.schedules/schedule-map->cron-strings {:cache_field_values {:schedule_type "daily"
@@ -15,7 +15,7 @@
                                                                           :schedule_hour 4}
                                                      :metadata_sync      {:schedule_type "hourly"}}))))
 
-(deftest default-randomized-schedule
+(deftest ^:parallel default-randomized-schedule
   (testing "randomized schedule never matches \"default\" values"
     ;; this really checks to prevent flaky tests which assert a non-default value, and to prevent "randomizing" the
     ;; same db schedules multiple times

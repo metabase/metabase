@@ -1,7 +1,7 @@
-import React from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import { Tree } from "metabase/components/tree";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
@@ -29,9 +29,10 @@ function PanePicker({
   onBack,
   children,
 }: PanePickerProps) {
+  const hasContent = data.length > 0;
   return (
     <Root>
-      <LeftPaneContainer>
+      <LeftPaneContainer hasContent={hasContent}>
         {onBack && (
           <BackButton onClick={onBack}>
             <Icon name="chevronleft" className="mr1" />
@@ -47,4 +48,5 @@ function PanePicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PanePicker;

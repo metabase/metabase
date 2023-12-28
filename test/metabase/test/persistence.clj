@@ -23,10 +23,10 @@
 
   (with-persisted [persist-models!]
     (let [mbql-query (mt/mbql-query categories)]
-      (mt/with-temp* [Card [model {:name \"model\"
+      (mt/with-temp [Card model {:name \"model\"
                                    :dataset true
                                    :dataset_query mbql-query
-                                   :database_id (mt/id)}]]
+                                   :database_id (mt/id)}]
         (persist-models!))
         ...))"
   [[persist-fn-binding] & body]

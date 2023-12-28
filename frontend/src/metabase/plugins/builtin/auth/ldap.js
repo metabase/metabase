@@ -6,9 +6,9 @@ import {
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
-import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
+import { SettingsLdapForm } from "metabase/admin/settings/components/SettingsLdapForm";
 import LdapAuthCard from "metabase/admin/settings/auth/containers/LdapAuthCard";
-import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
   sections =>
@@ -101,7 +101,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         },
         {
           key: "ldap-group-sync",
-          display_name: t`Synchronize group memberships`,
           description: null,
           widget: GroupMappingsWidget,
           props: {

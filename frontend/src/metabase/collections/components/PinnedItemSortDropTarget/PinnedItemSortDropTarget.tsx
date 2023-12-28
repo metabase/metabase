@@ -1,9 +1,10 @@
-import React from "react";
+import type {
+  PinDropTargetProps,
+  PinDropTargetRenderArgs,
+} from "./PinnedItemSortDropTarget.styled";
 import {
   StyledPinDropTarget,
   PinDropTargetIndicator,
-  PinDropTargetProps,
-  PinDropTargetRenderArgs,
 } from "./PinnedItemSortDropTarget.styled";
 
 function PinnedItemSortDropTarget(props: PinDropTargetProps) {
@@ -14,4 +15,5 @@ function PinnedItemSortDropTarget(props: PinDropTargetProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedItemSortDropTarget;

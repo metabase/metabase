@@ -1,7 +1,7 @@
 (ns metabase.core.config-from-file
   (:require
-   [clojure.tools.logging :as log]
-   [metabase.plugins.classloader :as classloader]))
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.log :as log]))
 
 (defn init-from-file-if-code-available!
   "Shim for running the config-from-file code, used by [[metabase.core]]. The config-from-file code only ships in the

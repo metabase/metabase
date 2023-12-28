@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { LegendActionsRoot } from "metabase/visualizations/components/legend/LegendActions.styled";
 

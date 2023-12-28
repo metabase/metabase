@@ -1,15 +1,14 @@
-import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { getUiControls } from "metabase/query_builder/selectors";
 import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
+import type { ErrorType } from "metabase-lib/ValidationError";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
-  ErrorType,
 } from "metabase-lib/ValidationError";
 
-import { QueryValidationErrorProps } from "./QueryValidationError";
+import type { QueryValidationErrorProps } from "./QueryValidationError";
 import { QueryErrorActionButton } from "./QueryValidationError.styled";
 
 type QueryBuilderUiControls = {
@@ -21,7 +20,7 @@ export type ErrorActionButtonProps = QueryValidationErrorProps & {
   toggleTemplateTagsEditor: () => void;
 };
 
-const mapStateToProps = (state: any, props: QueryValidationErrorProps) => ({
+const mapStateToProps = (state: any) => ({
   uiControls: getUiControls(state),
 });
 
@@ -60,4 +59,5 @@ export function ErrorActionButton(props: ErrorActionButtonProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(ErrorActionButton);

@@ -1,5 +1,3 @@
-import React from "react";
-
 import { action } from "@storybook/addon-actions";
 import type { ComponentStory } from "@storybook/react";
 import PinnedItemCard from "./PinnedItemCard";
@@ -17,7 +15,6 @@ const collection = {
   archived: false,
 };
 
-const onToggleSelected = action("onToggleSelected");
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 

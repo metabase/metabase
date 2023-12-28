@@ -1,41 +1,44 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import * as Urls from "metabase/lib/urls";
-import { AuthError, AuthErrorContainer, TextLink } from "./GoogleButton.styled";
+import { loginGoogle } from "../../actions";
+import { getGoogleClientId, getSiteLocale } from "../../selectors";
+import {
+  GoogleButtonRoot,
+  AuthError,
+  AuthErrorRoot,
+  TextLink,
+} from "./GoogleButton.styled";
 
-export interface GoogleButtonProps {
-  clientId: string | null;
-  locale: string;
+interface GoogleButtonProps {
   redirectUrl?: string;
   isCard?: boolean;
-  onLogin: (token: string, redirectUrl?: string) => void;
 }
 
 interface CredentialResponse {
   credential?: string;
 }
 
-const GoogleButton = ({
-  clientId,
-  locale,
-  redirectUrl,
-  isCard,
-  onLogin,
-}: GoogleButtonProps) => {
+export const GoogleButton = ({ redirectUrl, isCard }: GoogleButtonProps) => {
+  const clientId = useSelector(getGoogleClientId);
+  const locale = useSelector(getSiteLocale);
   const [errors, setErrors] = useState<string[]>([]);
+  const dispatch = useDispatch();
 
   const handleLogin = useCallback(
     async ({ credential = "" }: CredentialResponse) => {
       try {
         setErrors([]);
-        await onLogin(credential, redirectUrl);
+        await dispatch(loginGoogle({ credential, redirectUrl })).unwrap();
       } catch (error) {
         setErrors(getErrors(error));
       }
     },
-    [onLogin, redirectUrl],
+    [dispatch, redirectUrl],
   );
 
   const handleError = useCallback(() => {
@@ -45,17 +48,18 @@ const GoogleButton = ({
   }, []);
 
   return (
-    <div>
+    <GoogleButtonRoot>
       {isCard && clientId ? (
-        <GoogleOAuthProvider clientId={clientId}>
-          <GoogleLogin
-            useOneTap
-            onSuccess={handleLogin}
-            onError={handleError}
-            locale={locale}
-            width="366"
-          />
-        </GoogleOAuthProvider>
+        <ErrorBoundary>
+          <GoogleOAuthProvider clientId={clientId} nonce={window.MetabaseNonce}>
+            <GoogleLogin
+              useOneTap
+              onSuccess={handleLogin}
+              onError={handleError}
+              locale={locale}
+            />
+          </GoogleOAuthProvider>
+        </ErrorBoundary>
       ) : (
         <TextLink to={Urls.login(redirectUrl)}>
           {t`Sign in with Google`}
@@ -63,13 +67,13 @@ const GoogleButton = ({
       )}
 
       {errors.length > 0 && (
-        <AuthErrorContainer>
+        <AuthErrorRoot>
           {errors.map((error, index) => (
             <AuthError key={index}>{error}</AuthError>
           ))}
-        </AuthErrorContainer>
+        </AuthErrorRoot>
       )}
-    </div>
+    </GoogleButtonRoot>
   );
 };
 
@@ -77,5 +81,3 @@ const getErrors = (error: unknown): string[] => {
   const errors = getIn(error, ["data", "errors"]);
   return errors ? Object.values(errors) : [];
 };
-
-export default GoogleButton;

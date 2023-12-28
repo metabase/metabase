@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import TextPicker from "./TextPicker";
@@ -48,6 +48,7 @@ export default class NumberPicker extends Component {
     return (
       <TextPicker
         {...this.props}
+        data-testid="number-picker"
         isSingleLine
         prefix={this.props.prefix}
         values={values}

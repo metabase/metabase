@@ -31,7 +31,7 @@ export const updateCardVisualizationSettings =
     }
 
     // The check allows users without data permission to resize/rearrange columns
-    const hasWritePermissions = question.query().isEditable();
+    const hasWritePermissions = question.isQueryEditable();
     await dispatch(
       updateQuestion(question.updateSettings(settings), {
         run: hasWritePermissions ? "auto" : false,
@@ -41,13 +41,14 @@ export const updateCardVisualizationSettings =
   };
 
 export const replaceAllCardVisualizationSettings =
-  settings => async (dispatch, getState) => {
-    const question = getQuestion(getState());
+  (settings, question) => async (dispatch, getState) => {
+    question = question ?? getQuestion(getState());
+    question = question.setSettings(settings);
 
     // The check allows users without data permission to resize/rearrange columns
-    const hasWritePermissions = question.query().isEditable();
+    const hasWritePermissions = question.isQueryEditable();
     await dispatch(
-      updateQuestion(question.setSettings(settings), {
+      updateQuestion(question, {
         run: hasWritePermissions ? "auto" : false,
         shouldUpdateUrl: hasWritePermissions,
       }),

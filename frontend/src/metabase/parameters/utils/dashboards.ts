@@ -2,15 +2,13 @@ import _ from "underscore";
 
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { slugify } from "metabase/lib/formatting";
-import type { ParameterMappingOptions } from "metabase-types/types/Parameter";
 import type {
   Card,
   Dashboard,
   DashboardParameterMapping,
-  DashboardOrderedCard,
-  ValuesSourceType,
-  ValuesSourceConfig,
+  DashboardCard,
   Parameter,
+  ParameterMappingOptions,
 } from "metabase-types/api";
 import { isFieldFilterParameter } from "metabase-lib/parameters/utils/parameter-type";
 import type {
@@ -24,6 +22,7 @@ import {
 } from "metabase-lib/parameters/utils/targets";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Field from "metabase-lib/metadata/Field";
+import Question from "metabase-lib/Question";
 
 type ExtendedMapping = DashboardParameterMapping & {
   dashcard_id: number;
@@ -41,23 +40,21 @@ export function createParameter(
     name = (option.combinedName || option.name) + " " + ++nameIndex;
   }
 
-  const parameter = {
+  const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
   };
+
   return setParameterName(parameter, name);
 }
 
 export function setParameterName(
   parameter: Parameter,
-  name?: string,
+  name: string,
 ): Parameter {
-  if (!name) {
-    name = "unnamed";
-  }
   const slug = slugify(name);
   return {
     ...parameter,
@@ -66,21 +63,13 @@ export function setParameterName(
   };
 }
 
-export function getSourceType(parameter: Parameter): ValuesSourceType {
-  return parameter.values_source_type ?? null;
-}
-
-export function getSourceConfig(parameter: Parameter): ValuesSourceConfig {
-  return parameter.values_source_config ?? {};
-}
-
 export function getIsMultiSelect(parameter: Parameter): boolean {
   return parameter.isMultiSelect == null ? true : parameter.isMultiSelect;
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
-  return dashboard.ordered_cards.some(ordered_card => {
-    return ordered_card?.parameter_mappings?.some(parameter_mapping => {
+  return dashboard.dashcards.some(dashcard => {
+    return dashcard?.parameter_mappings?.some(parameter_mapping => {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
@@ -102,8 +91,8 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-function getMappings(ordered_cards: DashboardOrderedCard[]): ExtendedMapping[] {
-  return ordered_cards.flatMap(dashcard => {
+function getMappings(dashcards: DashboardCard[]): ExtendedMapping[] {
+  return dashcards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
     return (parameter_mappings || [])
@@ -125,8 +114,8 @@ export function getDashboardUiParameters(
   dashboard: Dashboard,
   metadata: Metadata,
 ): UiParameter[] {
-  const { parameters, ordered_cards } = dashboard;
-  const mappings = getMappings(ordered_cards);
+  const { parameters, dashcards } = dashboard;
+  const mappings = getMappings(dashcards as DashboardCard[]);
   const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
@@ -150,27 +139,41 @@ function buildFieldFilterUiParameter(
   );
   const mappedFields = mappingsForParameter.map(mapping => {
     const { target, card } = mapping;
-    return getTargetFieldFromCard(target, card, metadata);
+    const question = new Question(card, metadata);
+    const field = getTargetFieldFromCard(target, card, metadata);
+
+    return { field, shouldResolveFkField: !question.isNative() };
   });
-  const fields = mappedFields.filter((field): field is Field => field != null);
+
   const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
     return isVariableTarget(mapping.target);
   });
-  const uniqueFieldsWithFKResolved = _.uniq(
-    fields.map(field => field.target ?? field),
+
+  const uniqueFields = _.uniq(
+    mappedFields
+      .filter(
+        (
+          mappedField,
+        ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
+          return mappedField.field != null;
+        },
+      )
+      .map(({ field, shouldResolveFkField }) => {
+        return shouldResolveFkField ? field.target ?? field : field;
+      }),
     field => field.id,
   );
 
   return {
     ...parameter,
-    fields: uniqueFieldsWithFKResolved,
+    fields: uniqueFields,
     hasVariableTemplateTagTarget,
   };
 }
 
 export function getParametersMappedToDashcard(
   dashboard: Dashboard,
-  dashcard: DashboardOrderedCard,
+  dashcard: DashboardCard,
 ): ParameterWithTarget[] {
   const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
@@ -201,7 +204,7 @@ export function hasMatchingParameters({
   cardId: number;
   parameters: Parameter[];
 }) {
-  const dashcard = _.findWhere(dashboard.ordered_cards, {
+  const dashcard = _.findWhere(dashboard.dashcards, {
     id: dashcardId,
     card_id: cardId,
   });
@@ -209,7 +212,7 @@ export function hasMatchingParameters({
     return false;
   }
 
-  const mappings = getMappings(dashboard.ordered_cards);
+  const mappings = getMappings(dashboard.dashcards as DashboardCard[]);
   const mappingsForDashcard = mappings.filter(
     mapping => mapping.dashcard_id === dashcardId,
   );
@@ -236,26 +239,4 @@ export function getFilteringParameterValuesMap(
   );
 
   return filteringParameterValues;
-}
-
-export function getParameterValuesSearchKey({
-  dashboardId,
-  parameterId,
-  query = null,
-  filteringParameterValues = {},
-}: {
-  dashboardId: number;
-  parameterId: string;
-  query: string | null;
-  filteringParameterValues: { [parameterId: string]: unknown };
-}) {
-  const BY_PARAMETER_ID = "0";
-  // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key
-  const sortedParameterValues = _.sortBy(
-    Object.entries(filteringParameterValues),
-    BY_PARAMETER_ID,
-  );
-  const stringifiedParameterValues = JSON.stringify(sortedParameterValues);
-
-  return `dashboardId: ${dashboardId}, parameterId: ${parameterId}, query: ${query}, filteringParameterValues: ${stringifiedParameterValues}`;
 }

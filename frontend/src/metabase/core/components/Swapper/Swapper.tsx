@@ -1,11 +1,5 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  ReactNode,
-  Ref,
-  useCallback,
-  useState,
-} from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import {
   SwapperDefaultElement,
   SwapperLayeredElement,
@@ -44,4 +38,5 @@ const Swapper = forwardRef(function Swapper(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Swapper;

@@ -1,11 +1,9 @@
-import _ from "underscore";
-
 import {
   PERSONAL_COLLECTIONS,
   buildCollectionTree as _buildCollectionTree,
 } from "metabase/entities/collections";
 import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
@@ -35,7 +33,7 @@ export function buildCollectionTree({
   targetModel = "question",
 }: {
   collections: Collection[];
-  rootCollection: Collection;
+  rootCollection: Collection | undefined;
   currentUser: User;
   targetModel?: "model" | "question";
 }) {
@@ -54,7 +52,7 @@ export function buildCollectionTree({
   if (currentUser.is_superuser) {
     const otherPersonalCollections = collections.filter(
       collection =>
-        isPersonalCollection(collection) &&
+        isRootPersonalCollection(collection) &&
         collection.personal_owner_id !== currentUser.id,
     );
 
@@ -66,9 +64,12 @@ export function buildCollectionTree({
     }
   }
 
-  const targetModels: CollectionContentModel[] =
-    targetModel === "model" ? ["dataset"] : ["card"];
-  const tree = _buildCollectionTree(preparedCollections, { targetModels });
+  const modelFilter =
+    targetModel === "model"
+      ? (model: CollectionContentModel) => model === "dataset"
+      : (model: CollectionContentModel) => model === "card";
+
+  const tree = _buildCollectionTree(preparedCollections, modelFilter);
 
   if (rootCollection) {
     tree.unshift(getOurAnalyticsCollection(rootCollection));

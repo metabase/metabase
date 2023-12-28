@@ -1,13 +1,22 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
-import { entityTypeForObject } from "metabase/lib/schema";
+import { entityForObject } from "metabase/lib/schema";
 
-import { ObjectUnionSchema, ENTITIES_SCHEMA_MAP } from "metabase/schema";
+import { ObjectUnionSchema } from "metabase/schema";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
+import Actions from "./actions";
+import Bookmarks from "./bookmarks";
+import Collections from "./collections";
+import Dashboards from "./dashboards";
+import Metrics from "./metrics";
+import Pulses from "./pulses";
+import Questions from "./questions";
+import Segments from "./segments";
+import Snippets from "./snippets";
+import SnippetCollections from "./snippet-collections";
 
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");
@@ -61,7 +70,22 @@ export default createEntity({
             : [],
         };
       } else {
-        return searchList(query);
+        const { data, ...rest } = await searchList(query);
+
+        return {
+          ...rest,
+          data: data
+            ? data.map(item => {
+                const collectionKey = item.collection
+                  ? { collection_id: item.collection.id }
+                  : {};
+                return {
+                  ...collectionKey,
+                  ...item,
+                };
+              })
+            : [],
+        };
       }
     },
   },
@@ -70,8 +94,7 @@ export default createEntity({
 
   // delegate to the actual object's entity wrapEntity
   wrapEntity(object, dispatch = null) {
-    const entities = require("metabase/entities");
-    const entity = entities[entityTypeForObject(object)];
+    const entity = entityForObject(object);
     if (entity) {
       return entity.wrapEntity(object, dispatch);
     } else {
@@ -80,14 +103,75 @@ export default createEntity({
     }
   },
 
+  objectActions: {
+    setArchived: (object, archived) => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        return entity
+          ? dispatch(entity.actions.setArchived(object, archived))
+          : warnEntityAndReturnObject(object);
+      };
+    },
+
+    delete: object => {
+      return dispatch => {
+        const entity = entityForObject(object);
+        return entity
+          ? dispatch(entity.actions.delete(object))
+          : warnEntityAndReturnObject(object);
+      };
+    },
+  },
+
+  objectSelectors: {
+    getCollection: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getCollection?.(object) ??
+            object?.collection ??
+            null
+        : warnEntityAndReturnObject(object);
+    },
+
+    getName: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getName?.(object) ?? object?.name
+        : warnEntityAndReturnObject(object);
+    },
+
+    getColor: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getColor?.(object) ?? null
+        : warnEntityAndReturnObject(object);
+    },
+
+    getIcon: object => {
+      const entity = entityForObject(object);
+      return entity
+        ? entity?.objectSelectors?.getIcon?.(object) ?? null
+        : warnEntityAndReturnObject(object);
+    },
+  },
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
-    const entities = require("metabase/entities");
-    for (const type of ENTITIES_TYPES) {
-      if (entities[type].actionShouldInvalidateLists(action)) {
-        return true;
-      }
-    }
-    return false;
+    return (
+      Actions.actionShouldInvalidateLists(action) ||
+      Bookmarks.actionShouldInvalidateLists(action) ||
+      Collections.actionShouldInvalidateLists(action) ||
+      Dashboards.actionShouldInvalidateLists(action) ||
+      Metrics.actionShouldInvalidateLists(action) ||
+      Pulses.actionShouldInvalidateLists(action) ||
+      Questions.actionShouldInvalidateLists(action) ||
+      Segments.actionShouldInvalidateLists(action) ||
+      Snippets.actionShouldInvalidateLists(action) ||
+      SnippetCollections.actionShouldInvalidateLists(action)
+    );
   },
 });
+
+function warnEntityAndReturnObject(object) {
+  console.warn("Couldn't find entity for object", object);
+  return object;
+}

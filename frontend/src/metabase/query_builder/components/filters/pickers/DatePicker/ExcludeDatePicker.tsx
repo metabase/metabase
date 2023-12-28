@@ -1,10 +1,9 @@
-import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { EXCLUDE_OPTIONS } from "metabase-lib/queries/utils/query-time";
-import Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
   getInitialMonthOfYearFilter,
@@ -90,6 +89,7 @@ type Props = {
   hideEmptinessOperators?: boolean;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ExcludeDatePicker({
   className,
   onFilterChange,
@@ -164,15 +164,15 @@ export default function ExcludeDatePicker({
         {options.map((inner, index) => (
           <ExcludeColumn key={index}>
             {inner.map(({ displayName, value, test }) => {
-              const checked = !_.find(values, value => test(value));
+              const isValueExcluded = values.find(value => test(value)) != null;
               return (
                 <ExcludeCheckBox
                   key={value}
                   label={<ExcludeLabel>{displayName}</ExcludeLabel>}
-                  checked={checked}
+                  checked={!isValueExcluded}
                   checkedColor={primaryColor}
                   onChange={() => {
-                    if (checked) {
+                    if (!isValueExcluded) {
                       update([...values, value]);
                     } else {
                       update(values.filter(value => !test(value)));

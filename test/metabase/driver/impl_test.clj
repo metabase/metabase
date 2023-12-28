@@ -1,13 +1,20 @@
 (ns metabase.driver.impl-test
   (:require
    [clojure.core.async :as a]
-   [clojure.string :as str]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
-   [metabase.test.util.async :as tu.async]))
+   [metabase.test.util.async :as tu.async]
+   [metabase.util :as u])
+  (:import
+   (com.vladsch.flexmark.ast Heading)
+   (com.vladsch.flexmark.parser Parser)
+   (com.vladsch.flexmark.util.ast Document Node)))
 
-(deftest driver->expected-namespace-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel driver->expected-namespace-test
   (testing "expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`"
     (is (= 'metabase.driver.sql-jdbc
            (#'driver.impl/driver->expected-namespace :sql-jdbc))))
@@ -36,80 +43,65 @@
           (is (= true
                  @finished-loading)))))))
 
-(deftest truncate-string-to-byte-count-test
-  (letfn [(truncate-string-to-byte-count [s byte-length]
-            (let [^String truncated (#'driver.impl/truncate-string-to-byte-count s byte-length)]
-              (is (<= (count (.getBytes truncated "UTF-8")) byte-length))
-              (is (str/starts-with? s truncated))
-              truncated))]
-    (doseq [[s max-length->expected] {"12345"
-                                      {0  ""
-                                       1  "1"
-                                       2  "12"
-                                       3  "123"
-                                       4  "1234"
-                                       5  "12345"
-                                       6  "12345"
-                                       10 "12345"}
+;;;; [[driver-multimethods-in-changelog-test]]
 
-                                      "가나다라"
-                                      {0  ""
-                                       1  ""
-                                       2  ""
-                                       3  "가"
-                                       4  "가"
-                                       5  "가"
-                                       6  "가나"
-                                       7  "가나"
-                                       8  "가나"
-                                       9  "가나다"
-                                       10 "가나다"
-                                       11 "가나다"
-                                       12 "가나다라"
-                                       13 "가나다라"
-                                       15 "가나다라"
-                                       20 "가나다라"}}
-            [max-length expected] max-length->expected]
-      (testing (pr-str (list `driver.impl/truncate-string-to-byte-count s max-length))
-        (is (= expected
-               (truncate-string-to-byte-count s max-length)))))))
+(defn- parse-drivers-changelog
+  "Create a mapping of version to appropriate changelog file section.
+  All level 2 headings containing version and sections following are collected. This approach could handle changes from
+  version 0.42.0 onwards, as prior to this version, this information was stored at github wiki. Output has a following
+  shape {\"0.47.0\" \"...insert-into!...\" ...}."
+  []
+  (let [changelog     (slurp (io/file "docs/developers-guide/driver-changelog.md"))
+        parser        (.build (Parser/builder))
+        document      (.parse ^Parser parser ^String changelog)]
+    (loop [[child & children] (.getChildren ^Document document)
+           version->text      {}
+           last-version       nil]
+      (cond (nil? child)
+            version->text
 
-(deftest truncate-alias-test
-  (letfn [(truncate-alias [s max-bytes]
-            (let [truncated (driver.impl/truncate-alias s max-bytes)]
-              (is (<= (count (.getBytes truncated "UTF-8")) max-bytes))
-              truncated))]
-    (doseq [[s max-bytes->expected] { ;; 20-character plain ASCII string
-                                     "01234567890123456789"
-                                     {12 "012_fc89bad5"
-                                      15 "012345_fc89bad5"
-                                      20 "01234567890123456789"}
+            (and (instance? Heading child)
+                 (= 2 (.getLevel ^Heading child)))
+            (let [heading-str      (str (.getChars ^Node child))
+                  new-last-version (re-find #"(?<=## Metabase )\d+\.\d+\.\d+" heading-str)]
+              (if (some? new-last-version)
+                (recur children version->text new-last-version)
+                (recur children version->text nil)))
 
-                                     ;; two strings that only differ after the point they get truncated
-                                     "0123456789abcde" {12 "012_1629bb92"}
-                                     "0123456789abcdE" {12 "012_2d479b5a"}
+            (some? last-version)
+            (recur children
+                   (update version->text last-version str (.getChars ^Node child))
+                   last-version)
 
-                                     ;; Unicode string: 14 characters, 42 bytes
-                                     "가나다라마바사아자차카타파하"
-                                     {12 "가_b9c95392"
-                                      13 "가_b9c95392"
-                                      14 "가_b9c95392"
-                                      15 "가나_b9c95392"
-                                      20 "가나다_b9c95392"
-                                      30 "가나다라마바사_b9c95392"
-                                      40 "가나다라마바사아자차_b9c95392"
-                                      50 "가나다라마바사아자차카타파하"}
+            :else
+            (recur children version->text last-version)))))
 
-                                     ;; Mixed string: 17 characters, 33 bytes
-                                     "a가b나c다d라e마f바g사h아i"
-                                     {12 "a_99a0fe0c"
-                                      13 "a가_99a0fe0c"
-                                      14 "a가b_99a0fe0c"
-                                      15 "a가b_99a0fe0c"
-                                      20 "a가b나c_99a0fe0c"
-                                      30 "a가b나c다d라e마f_99a0fe0c"
-                                      40 "a가b나c다d라e마f바g사h아i"}}
-            [max-bytes expected] max-bytes->expected]
-      (testing (pr-str (list `driver.impl/truncate-alias s max-bytes))
-        (is (= expected
-               (truncate-alias s max-bytes)))))))
+(defn- collect-metadatas
+  "List metadata for all defmultis of driver namespaces."
+  []
+  (let [nss (filter #(re-find #"^metabase\.driver" (name %)) u/metabase-namespace-symbols)]
+    (apply require nss)
+    (->> (map ns-publics nss)
+         (mapcat vals)
+         (filter #(instance? clojure.lang.MultiFn (deref %)))
+         (map meta))))
+
+(defn- older-than-42?
+  [version]
+  (when-let [version (drop 1 (re-find #"(\d+)\.(\d+)\.(\d+)" (str version)))]
+    (< (compare (mapv #(Integer/parseInt %) version)
+                [0 42 0])
+       0)))
+
+(deftest driver-multimethods-in-changelog-test
+  (let [metadatas             (collect-metadatas)
+        version->section-text (parse-drivers-changelog)]
+    (doseq [m metadatas]
+      (when-not (:changelog-test/ignore m)
+        (let [method (str (:ns m) "/" (:name m))]
+          (testing (str method " has `:added` metadata set")
+            (is (contains? m :added)))
+          (when-not (older-than-42? (:added m))
+            (testing (str method " is mentioned in changelog for version " (:added m))
+              (is (re-find (re-pattern (str "\\Q" (:name m) "\\E"))
+                           (get version->section-text (:added m) ""))))))))))

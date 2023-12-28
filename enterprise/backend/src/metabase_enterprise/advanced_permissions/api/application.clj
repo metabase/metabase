@@ -7,7 +7,9 @@
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.api.common :as api]))
 
-(api/defendpoint-schema GET "/graph"
+(set! *warn-on-reflection* true)
+
+(api/defendpoint GET "/graph"
   "Fetch a graph of Application Permissions."
   []
   (api/check-superuser)
@@ -30,7 +32,7 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
-(api/defendpoint-schema PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Application Permissions by passing a modified graph."
   [:as {:keys [body]}]
   (api/check-superuser)

@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
 import Card from "metabase/components/Card";
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import { Icon } from "metabase/core/components/Icon";
+import Link from "metabase/core/components/Link";
+import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import { color } from "metabase/lib/colors";
 
 export const ItemCard = styled(Card)``;
 
@@ -19,7 +19,11 @@ export const ItemIcon = styled(Icon)`
   width: 1.5rem;
 `;
 
-export const HoverMenu = styled(ActionMenu)`
+export const ActionsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
   visibility: hidden;
 `;
 
@@ -34,11 +38,8 @@ export const Title = styled.div`
   overflow: hidden;
 `;
 
-export const Description = styled.div`
+export const Description = styled(MarkdownPreview)`
   color: ${color("text-medium")};
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
 `;
 
 export const Body = styled.div`
@@ -52,7 +53,7 @@ export const Body = styled.div`
       color: ${color("brand")};
     }
 
-    ${HoverMenu} {
+    ${ActionsContainer} {
       visibility: visible;
     }
   }

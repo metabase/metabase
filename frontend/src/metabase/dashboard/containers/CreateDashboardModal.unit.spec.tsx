@@ -1,44 +1,62 @@
-import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
+
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import MetabaseSettings from "metabase/lib/settings";
-import CreateDashboardModal from "./CreateDashboardModal";
+import { mockSettings } from "__support__/settings";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 
-function mockCachingEnabled(enabled = true) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
-  });
-}
+import { createMockCollection } from "metabase-types/api/mocks";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { openCollection } from "metabase/containers/ItemPicker/test-utils";
+import { CreateDashboardModalConnected } from "./CreateDashboardModal";
 
-function setup({ mockCreateDashboardResponse = true } = {}) {
+const COLLECTION = {
+  ROOT: createMockCollection({
+    ...ROOT_COLLECTION,
+    can_write: true,
+  }),
+  PARENT: createMockCollection({
+    id: 2,
+    name: "Parent collection",
+    can_write: true,
+  }),
+  CHILD: createMockCollection({
+    id: 3,
+    name: "Child collection",
+    can_write: true,
+  }),
+};
+COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
+
+function setup({
+  isCachingEnabled = false,
+  mockCreateDashboardResponse = true,
+} = {}) {
   const onClose = jest.fn();
 
-  if (mockCreateDashboardResponse) {
-    nock(location.origin)
-      .post(`/api/dashboard`)
-      .reply(200, (url, body) => body);
-  }
+  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
 
-  renderWithProviders(<CreateDashboardModal onClose={onClose} />);
+  if (mockCreateDashboardResponse) {
+    fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
+  }
+  const collections = Object.values(COLLECTION);
+  setupCollectionsEndpoints({
+    collections,
+    rootCollection: COLLECTION.ROOT,
+  });
+
+  collections
+    .filter(c => c.id !== "root")
+    .forEach(c => fetchMock.get(`path:/api/collection/${c.id}`, c));
+
+  renderWithProviders(<CreateDashboardModalConnected onClose={onClose} />, {
+    storeInitialState: {
+      entities: createMockEntitiesState({ collections }),
+      settings,
+    },
+  });
 
   return {
     onClose,
@@ -46,22 +64,6 @@ function setup({ mockCreateDashboardResponse = true } = {}) {
 }
 
 describe("CreateDashboardModal", () => {
-  beforeEach(() => {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays empty form fields", () => {
     setup();
 
@@ -79,26 +81,23 @@ describe("CreateDashboardModal", () => {
 
   it("can't submit if name is empty", async () => {
     setup();
-    const submitButton = await waitFor(() =>
-      screen.getByRole("button", { name: "Create" }),
-    );
-    expect(submitButton).toBeDisabled();
+    expect(
+      await screen.findByRole("button", { name: "Create" }),
+    ).toBeDisabled();
   });
 
-  it("calls onClose when Cancel button is clicked", () => {
+  it("calls onClose when Cancel button is clicked", async () => {
     const { onClose } = setup();
     userEvent.click(screen.getByRole("button", { name: "Cancel" }) as Element);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Cache TTL field", () => {
-    beforeEach(() => {
-      mockCachingEnabled();
-    });
-
     describe("OSS", () => {
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -112,12 +111,65 @@ describe("CreateDashboardModal", () => {
       });
 
       it("is not shown", () => {
-        setup();
+        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
         ).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe("new collection modal", () => {
+    const nameField = () => screen.getByRole("textbox", { name: /name/i });
+    const collDropdown = () => screen.getByTestId("select-button");
+    const newCollBtn = () =>
+      screen.getByRole("button", {
+        name: /new collection/i,
+      });
+    const collModalTitle = () =>
+      screen.getByRole("heading", { name: /new collection/i });
+    const dashModalTitle = () =>
+      screen.getByRole("heading", { name: /new dashboard/i });
+    const cancelBtn = () => screen.getByRole("button", { name: /cancel/i });
+
+    it("should have a new collection button in the collection picker", async () => {
+      setup();
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+    });
+    it("should open new collection modal and return to dashboard modal when clicking close", async () => {
+      setup();
+      const name = "my dashboard";
+      userEvent.type(nameField(), name);
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      userEvent.click(newCollBtn());
+      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      userEvent.click(cancelBtn());
+      await waitFor(() => expect(dashModalTitle()).toBeInTheDocument());
+      expect(nameField()).toHaveValue(name);
+    });
+    it("should create collection inside nested folder", async () => {
+      setup();
+      const name = "my dashboard";
+      userEvent.type(nameField(), name);
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      openCollection(COLLECTION.PARENT.name);
+      userEvent.click(newCollBtn());
+      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      expect(collDropdown()).toHaveTextContent(COLLECTION.PARENT.name);
+    });
+    it("should create collection inside root folder", async () => {
+      setup();
+      const name = "my dashboard";
+      userEvent.type(nameField(), name);
+      userEvent.click(collDropdown());
+      await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
+      userEvent.click(newCollBtn());
+      await waitFor(() => expect(collModalTitle()).toBeInTheDocument());
+      expect(collDropdown()).toHaveTextContent(COLLECTION.ROOT.name);
     });
   });
 });

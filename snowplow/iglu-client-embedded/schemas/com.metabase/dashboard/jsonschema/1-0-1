@@ -1,0 +1,43 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Dashboard events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "dashboard",
+    "format": "jsonschema",
+    "version": "1-0-1"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "dashboard_created",
+        "question_added_to_dashboard",
+        "auto_apply_filters_disabled"
+      ],
+      "maxLength": 1024
+    },
+    "dashboard_id": {
+      "description": "Unique identifier for a dashboard within the Metabase instance",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "question_id": {
+      "description": "Unique identifier for a question added to a dashboard",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": [
+    "event",
+    "dashboard_id"
+  ],
+  "additionalProperties": true
+}

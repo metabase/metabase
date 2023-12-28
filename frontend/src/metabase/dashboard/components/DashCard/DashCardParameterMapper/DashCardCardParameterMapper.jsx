@@ -1,11 +1,16 @@
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import {
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
+  MOBILE_DEFAULT_CARD_HEIGHT,
+} from "metabase/visualizations/shared/utils/sizes";
+
+import { Icon } from "metabase/core/components/Icon";
+import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -16,17 +21,21 @@ import {
   getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
+  getVirtualCardType,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 
+import { isActionDashCard } from "metabase/actions/utils";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getParameterTarget,
-  makeGetParameterMappingOptions,
+  getParameterMappingOptions,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
@@ -58,7 +67,7 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: makeGetParameterMappingOptions()(state, props),
+  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
 });
 
@@ -77,7 +86,7 @@ DashCardCardParameterMapper.propTypes = {
   isMobile: PropTypes.bool,
 };
 
-function DashCardCardParameterMapper({
+export function DashCardCardParameterMapper({
   card,
   dashcard,
   editingParameter,
@@ -90,11 +99,9 @@ function DashCardCardParameterMapper({
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
-  const onlyAcceptsSingleValue =
-    isVariableTarget(target) && !isDateParameter(editingParameter);
-  const isDisabled = mappingOptions.length === 0;
-  const selectedMappingOption = _.find(mappingOptions, o =>
-    _.isEqual(o.target, target),
+  const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
+  const selectedMappingOption = _.find(mappingOptions, option =>
+    _.isEqual(normalize(option.target), normalize(target)),
   );
 
   const handleChangeTarget = useCallback(
@@ -105,6 +112,7 @@ function DashCardCardParameterMapper({
   );
 
   const isVirtual = isVirtualDashCard(dashcard);
+  const virtualCardType = getVirtualCardType(dashcard);
   const isNative = isNativeDashCard(dashcard);
 
   const hasPermissionsToMap = useMemo(() => {
@@ -117,7 +125,7 @@ function DashCardCardParameterMapper({
     }
 
     const question = new Question(card, metadata);
-    return question.query().isEditable();
+    return question.isQueryEditable();
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
@@ -143,6 +151,21 @@ function DashCardCardParameterMapper({
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
+              role="button"
+              aria-label={t`Disconnect`}
+              onClick={e => {
+                handleChangeTarget(null);
+                e.stopPropagation();
+              }}
+            />
+          ),
+        };
+      } else if (target != null) {
+        return {
+          buttonVariant: "invalid",
+          buttonText: t`Unknown Field`,
+          buttonIcon: (
+            <CloseIconButton
               onClick={e => {
                 handleChangeTarget(null);
                 e.stopPropagation();
@@ -162,24 +185,37 @@ function DashCardCardParameterMapper({
       hasPermissionsToMap,
       isDisabled,
       selectedMappingOption,
+      target,
       handleChangeTarget,
       isVirtual,
     ]);
 
   const headerContent = useMemo(() => {
-    if (!isVirtual && !(isNative && isDisabled)) {
-      return t`Column to filter on`;
-    } else if (dashcard.size_y !== 1 || isMobile) {
-      return t`Variable to map to`;
-    } else {
-      return null;
+    const layoutHeight = isMobile
+      ? MOBILE_HEIGHT_BY_DISPLAY_TYPE[dashcard.card.display] ||
+        MOBILE_DEFAULT_CARD_HEIGHT
+      : dashcard.size_y;
+
+    if (layoutHeight > 2) {
+      if (!isVirtual && !(isNative && isDisabled)) {
+        return t`Column to filter on`;
+      } else {
+        return t`Variable to map to`;
+      }
     }
+    return null;
   }, [dashcard, isVirtual, isNative, isDisabled, isMobile]);
 
-  const mappingInfoText = t`You can connect widgets to {{variables}} in text cards.`;
+  const mappingInfoText =
+    {
+      heading: t`You can connect widgets to {{variables}} in heading cards.`,
+      text: t`You can connect widgets to {{variables}} in text cards.`,
+      link: t`You cannot connect variables to link cards.`,
+      action: t`Open this card's action settings to connect variables`,
+    }[virtualCardType] ?? "";
 
   return (
-    <Container>
+    <Container isSmall={!isMobile && dashcard.size_y < 2}>
       {hasSeries && <CardLabel>{card.name}</CardLabel>}
       {isVirtual && isDisabled ? (
         showVirtualDashCardInfoText(dashcard, isMobile) ? (
@@ -188,7 +224,7 @@ function DashCardCardParameterMapper({
             {mappingInfoText}
           </TextCardDefault>
         ) : (
-          <TextCardDefault>
+          <TextCardDefault aria-label={mappingInfoText}>
             <Icon
               name="info"
               size={16}
@@ -211,7 +247,11 @@ function DashCardCardParameterMapper({
         </NativeCardDefault>
       ) : (
         <>
-          {headerContent && <Header>{headerContent}</Header>}
+          {headerContent && (
+            <Header>
+              <Ellipsified>{headerContent}</Ellipsified>
+            </Header>
+          )}
           <Tooltip tooltip={buttonTooltip}>
             <TippyPopover
               visible={isDropdownVisible && !isDisabled && hasPermissionsToMap}
@@ -230,6 +270,7 @@ function DashCardCardParameterMapper({
             >
               <TargetButton
                 variant={buttonVariant}
+                aria-label={buttonTooltip}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}
@@ -243,7 +284,9 @@ function DashCardCardParameterMapper({
                 }}
               >
                 {buttonText && (
-                  <TargetButtonText>{buttonText}</TargetButtonText>
+                  <TargetButtonText>
+                    <Ellipsified>{buttonText}</Ellipsified>
+                  </TargetButtonText>
                 )}
                 {buttonIcon}
               </TargetButton>
@@ -251,16 +294,18 @@ function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {onlyAcceptsSingleValue && (
+      {isVariableTarget(target) && (
         <Warning>
-          {t`This field only accepts a single value because it's used in a SQL query.`}
+          {isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+            ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+            : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </Warning>
       )}
     </Container>
   );
 }
 
-export default connect(
+export const DashCardCardParameterMapperConnected = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(DashCardCardParameterMapper);

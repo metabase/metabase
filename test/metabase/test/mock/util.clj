@@ -22,6 +22,7 @@
    :caveats            nil
    :points_of_interest nil
    :fk_target_field_id false
+   :database_is_auto_increment false
    :updated_at         true
    :active             true
    :nfc_path           nil
@@ -32,7 +33,8 @@
    :position           0
    :visibility_type    :normal
    :preview_display    true
-   :created_at         true})
+   :created_at         true
+   :json_unfolding     false})
 
 (def pulse-channel-defaults
   {:schedule_frame nil

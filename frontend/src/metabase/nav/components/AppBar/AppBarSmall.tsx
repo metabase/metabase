@@ -1,7 +1,6 @@
-import React, { useCallback, useState } from "react";
-import { User } from "metabase-types/api";
-import SearchBar from "../SearchBar";
-import ProfileLink from "../ProfileLink";
+import { useCallback, useState } from "react";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
+import { ProfileLink } from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import AppBarToggle from "./AppBarToggle";
@@ -18,9 +17,9 @@ import {
 } from "./AppBarSmall.styled";
 
 export interface AppBarSmallProps {
-  currentUser: User;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -31,9 +30,9 @@ export interface AppBarSmallProps {
 }
 
 const AppBarSmall = ({
-  currentUser,
   isNavBarOpen,
   isNavBarEnabled,
+  isLogoVisible,
   isSearchVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
@@ -46,6 +45,8 @@ const AppBarSmall = ({
 
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
+  const isHeaderVisible =
+    isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleLogoClick = useCallback(() => {
@@ -63,34 +64,41 @@ const AppBarSmall = ({
 
   return (
     <AppBarRoot>
-      <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
-        <AppBarMainContainer>
-          <AppBarToggleContainer>
-            {isNavBarEnabled && (
-              <AppBarToggle
-                isNavBarOpen={isNavBarVisible}
-                onToggleClick={onToggleNavbar}
-              />
+      {isHeaderVisible && (
+        <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
+          <AppBarMainContainer>
+            <AppBarToggleContainer>
+              {isNavBarEnabled && (
+                <AppBarToggle
+                  isSmallAppBar
+                  isNavBarOpen={isNavBarVisible}
+                  onToggleClick={onToggleNavbar}
+                />
+              )}
+            </AppBarToggleContainer>
+            <AppBarSearchContainer>
+              {isSearchVisible && (
+                <SearchBar
+                  onSearchActive={handleSearchActive}
+                  onSearchInactive={handleSearchInactive}
+                />
+              )}
+            </AppBarSearchContainer>
+            {isProfileLinkVisible && (
+              <AppBarProfileLinkContainer>
+                <ProfileLink onLogout={onLogout} />
+              </AppBarProfileLinkContainer>
             )}
-          </AppBarToggleContainer>
-          <AppBarSearchContainer>
-            {isSearchVisible && (
-              <SearchBar
-                onSearchActive={handleSearchActive}
-                onSearchInactive={handleSearchInactive}
-              />
-            )}
-          </AppBarSearchContainer>
-          {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer>
-              <ProfileLink user={currentUser} onLogout={onLogout} />
-            </AppBarProfileLinkContainer>
-          )}
-        </AppBarMainContainer>
-        <AppBarLogoContainer isVisible={!isSearchActive}>
-          <AppBarLogo onLogoClick={handleLogoClick} />
-        </AppBarLogoContainer>
-      </AppBarHeader>
+          </AppBarMainContainer>
+          <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
+            <AppBarLogo
+              isSmallAppBar
+              isLogoVisible={isLogoVisible}
+              onLogoClick={handleLogoClick}
+            />
+          </AppBarLogoContainer>
+        </AppBarHeader>
+      )}
       {isSubheaderVisible && (
         <AppBarSubheader isNavBarOpen={isNavBarVisible}>
           {isQuestionLineageVisible ? (
@@ -104,4 +112,5 @@ const AppBarSmall = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarSmall;

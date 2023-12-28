@@ -10,7 +10,7 @@ If your queries are hanging or timing out, the problem could be coming from your
 - Load balancer
 - Reverse proxy server (e.g., Nginx)
 - Jetty
-- Cloud service (such as AWS’s Elastic Beanstalk, EC2, Heroku, or Google App Engine).
+- Cloud service
 
 ## Resources for common deployments
 
@@ -29,7 +29,7 @@ If you can’t solve your problem using the troubleshooting guides:
 - Search for [known bugs or limitations][known-issues].
 
 [app-engine-timeout]: https://cloud.google.com/appengine/articles/deadlineexceedederrors
-[configuring-jetty]: https://www.eclipse.org/jetty/documentation/current/configuring-connectors.html
+[configuring-jetty]: https://www.eclipse.org/jetty/documentation/current/#configuring-connectors
 [discourse]: https://discourse.metabase.com/
 [ec2-troubleshooting]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/TroubleshootingInstancesConnecting.html
 [elb-timeout]: https://aws.amazon.com/blogs/aws/elb-idle-timeout-control/

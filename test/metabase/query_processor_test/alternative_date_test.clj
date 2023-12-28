@@ -3,18 +3,20 @@
   related types."
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
    (java.time OffsetDateTime)))
 
-(deftest semantic-type->unix-timestamp-unit-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel semantic-type->unix-timestamp-unit-test
   (testing "every descendant of `:Coercion/UNIXTime->Temporal` has a unit associated with it"
     (doseq [semantic-type (descendants :Coercion/UNIXTime->Temporal)]
       (is (sql.qp/semantic-type->unix-timestamp-unit semantic-type))))
@@ -34,7 +36,7 @@
     [[4 1433587200000000]
      [0 1433965860000000]]]])
 
-(deftest microseconds-test
+(deftest ^:parallel microseconds-test
   (mt/test-drivers (disj (mt/normal-drivers) :sqlite)
     (let [results (get {:sqlite #{[1 4 "2015-06-06 10:40:00"] [2 0 "2015-06-10 19:51:00"]}
                         :oracle #{[1M 4M "2015-06-06T10:40:00Z"] [2M 0M "2015-06-10T19:51:00Z"]}}
@@ -75,7 +77,7 @@
               ["2015-06-09"  7]
               ["2015-06-10"  9]]
 
-             (qp.test/tz-shifted-driver-bug? driver/*driver*)
+             (qp.test-util/tz-shifted-driver-bug? driver/*driver*)
              [["2015-06-01T00:00:00-07:00" 6]
               ["2015-06-02T00:00:00-07:00" 10]
               ["2015-06-03T00:00:00-07:00" 4]
@@ -87,7 +89,7 @@
               ["2015-06-09T00:00:00-07:00" 7]
               ["2015-06-10T00:00:00-07:00" 9]]
 
-             (qp.test/supports-report-timezone? driver/*driver*)
+             (qp.test-util/supports-report-timezone? driver/*driver*)
              [["2015-06-01T00:00:00-07:00" 8]
               ["2015-06-02T00:00:00-07:00" 9]
               ["2015-06-03T00:00:00-07:00" 9]
@@ -118,7 +120,7 @@
                        :limit       10}))
                   mt/rows (mt/format-rows-by [identity int])))))))
 
-(deftest substitute-native-parameters-test
+(deftest ^:parallel substitute-native-parameters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
@@ -177,7 +179,7 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19" "10:23:54"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19" "10:23:54"]]]])
 
-(deftest iso-8601-text-fields
+(deftest ^:parallel iso-8601-text-fields
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "return as dates"
       (mt/test-drivers (-> (sql-jdbc.tu/sql-jdbc-drivers)
@@ -297,7 +299,7 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-(deftest yyyymmddhhmmss-binary-dates
+(deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers #{:postgres :h2 :mysql}
     (is (= (case driver/*driver*
              (:h2 :postgres)
@@ -316,8 +318,8 @@
                                   (assoc (mt/mbql-query times)
                                          :middleware {:format-rows? false})))))))))
 
-(deftest yyyymmddhhmmss-dates
-  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver :presto}
+(deftest ^:parallel yyyymmddhhmmss-dates
+  (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}
     (is (= (case driver/*driver*
              :mongo
              [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
@@ -327,7 +329,7 @@
              [[1 "foo" #t "2019-04-21T16:43"]
               [2 "bar" #t "2020-04-21T16:43"]
               [3 "baz" #t "2021-04-21T16:43"]]
-             (:redshift :presto)
+             (:redshift)
              [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
               [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
               [3 "baz" #t "2021-04-21T16:43Z[UTC]"]]

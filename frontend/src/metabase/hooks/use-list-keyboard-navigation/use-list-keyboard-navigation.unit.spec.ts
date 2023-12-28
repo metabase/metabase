@@ -1,5 +1,6 @@
+/* eslint-disable jest/expect-expect */
 import { fireEvent } from "@testing-library/react";
-import { renderHook, act } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react-hooks";
 
 import { useListKeyboardNavigation } from "./use-list-keyboard-navigation";
 
@@ -26,10 +27,7 @@ const assertItemWithIndexSelected = (
   });
 };
 
-const fireKey = (key: string) =>
-  act(() => {
-    fireEvent.keyDown(window, { key });
-  });
+const fireKey = (key: string) => fireEvent.keyDown(window, { key });
 
 describe("useListKeyboardNavigation", () => {
   it("no selected item initially", () => {

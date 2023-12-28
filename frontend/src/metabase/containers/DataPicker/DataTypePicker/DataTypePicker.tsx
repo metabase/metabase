@@ -1,7 +1,4 @@
-import React from "react";
-
-import type { DataTypeInfoItem } from "../utils";
-import type { DataPickerDataType } from "../types";
+import type { DataPickerDataType, DataTypeInfoItem } from "../types";
 
 import {
   List,
@@ -56,4 +53,5 @@ function DataTypePicker({ types, onChange }: DataTypePickerProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataTypePicker;

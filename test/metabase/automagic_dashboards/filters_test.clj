@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.automagic-dashboards.filters :as filters]))
 
-(deftest replace-date-range-test
+(deftest ^:parallel replace-date-range-test
   (testing "Replace range with the more specific `:=`."
     (is (= [:and
             [:= [:field 2 nil] 42]
@@ -16,7 +16,7 @@
               [:< [:field 2 nil] 100]]]
             [:= [:field 2 nil] 42])))))
 
-(deftest merge-using-and-test
+(deftest ^:parallel merge-using-and-test
   (testing "If there's no overlap between filter clauses, just merge using `:and`."
     (is (= [:and
             [:= [:field 3 nil] 42]

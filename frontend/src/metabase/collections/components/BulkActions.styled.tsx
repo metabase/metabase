@@ -1,35 +1,43 @@
 import styled from "@emotion/styled";
-import { breakpointMinSmall } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
-
+import Card from "metabase/components/Card";
+import Button from "metabase/core/components/Button";
+import { alpha, color } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
+import { space } from "metabase/styled-components/theme";
 
-export const FixedBottomBar = styled.div<{ isNavbarOpen: boolean }>`
+export const BulkActionsToast = styled.div<{
+  isNavbarOpen: boolean;
+  translateY: number;
+}>`
   position: fixed;
   bottom: 0;
-  left: ${props => (props.isNavbarOpen ? NAV_SIDEBAR_WIDTH : 0)};
-  right: 0;
-  border-top: 1px solid ${color("border")};
-  background-color: ${color("white")};
+  left: 50%;
+  transform: ${props => `translate(-50%, ${props.translateY}px)`};
+  margin-left: ${props =>
+    props.isNavbarOpen ? `${parseInt(NAV_SIDEBAR_WIDTH) / 2}px` : "0"};
+  margin-bottom: ${space(2)};
+  z-index: 999;
 `;
 
-export const ActionBarContent = styled.div`
-  padding: 0.5rem 1rem;
+export const ToastCard = styled(Card)`
+  padding: 0.75rem ${space(2)};
   display: flex;
   align-items: center;
-  width: 90%;
-  margin: 0 auto;
+  justify-content: space-between;
+  gap: 2.5rem;
+`;
 
-  ${breakpointMinSmall} {
-    padding-left: 2rem;
-    padding-right: 2rem;
+export const CardSide = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${space(2)};
+`;
+
+export const CardButton = styled(Button)`
+  border-color: ${alpha(color("bg-white"), 0)};
+  background-color: ${alpha(color("bg-white"), 0.1)};
+  :hover {
+    border-color: ${alpha(color("bg-white"), 0)};
+    background-color: ${alpha(color("bg-white"), 0.3)};
   }
-`;
-
-export const ActionBarText = styled.div`
-  margin-left: auto;
-`;
-
-export const ActionControlsRoot = styled.div`
-  margin-left: 0.5rem;
 `;

@@ -2,14 +2,15 @@
   "/api/ldap endpoints"
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.schema :as su]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -86,7 +87,8 @@
                         (throw (ex-info (tru "Unable to connect to LDAP server with current settings")
                                         (humanize-error-messages result))))))
                   (setting/set-value-of-type! :boolean :ldap-enabled new-value)))
-  :default    false)
+  :default    false
+  :audit      :getter)
 
 (defn- update-password-if-needed
   "Do not update password if `new-password` is an obfuscated value of the current password."
@@ -96,10 +98,10 @@
       current-password
       new-password)))
 
-(api/defendpoint-schema PUT "/settings"
-  "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
+(api/defendpoint PUT "/settings"
+  "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
-  {settings su/Map}
+  {settings :map}
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (select-keys (keys ldap/mb-settings->ldap-details))
@@ -109,7 +111,7 @@
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (setting/set-many! ldap-settings)
        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message

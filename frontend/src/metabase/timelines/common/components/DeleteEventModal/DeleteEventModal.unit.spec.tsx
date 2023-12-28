@@ -1,11 +1,11 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import DeleteEventModal, { DeleteEventModalProps } from "./DeleteEventModal";
+import type { DeleteEventModalProps } from "./DeleteEventModal";
+import DeleteEventModal from "./DeleteEventModal";
 
 describe("DeleteEventModal", () => {
   it("should submit modal", () => {

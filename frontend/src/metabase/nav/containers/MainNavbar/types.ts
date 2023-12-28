@@ -1,4 +1,4 @@
-import type { Location, LocationDescriptor } from "history";
+import type { Location } from "history";
 
 export interface MainNavbarOwnProps {
   isOpen: boolean;
@@ -17,13 +17,7 @@ export interface MainNavbarDispatchProps {
 export type MainNavbarProps = MainNavbarOwnProps & MainNavbarDispatchProps;
 
 export interface SelectedItem {
-  type:
-    | "card"
-    | "collection"
-    | "dashboard"
-    | "data-app"
-    | "data-app-page"
-    | "non-entity";
+  type: "card" | "collection" | "dashboard" | "non-entity";
   id?: number | string;
   url?: string;
 }

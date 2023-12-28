@@ -11,6 +11,10 @@ import type {
   GroupsPermissions,
   ConcreteTableId,
 } from "metabase-types/api";
+import {
+  isSchemaEntityId,
+  isTableEntityId,
+} from "metabase/admin/permissions/utils/data-entity-id";
 import type Database from "metabase-lib/metadata/Database";
 import type { EntityId } from "../types";
 
@@ -18,7 +22,15 @@ export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
 
 // these are all the permission levels ordered by level of access
-const PERM_LEVELS = ["write", "read", "all", "controlled", "none", "block"];
+const PERM_LEVELS = [
+  "write",
+  "read",
+  "all",
+  "impersonated",
+  "controlled",
+  "none",
+  "block",
+];
 function hasGreaterPermissions(
   a: string,
   b: string,
@@ -95,8 +107,14 @@ export function getControlledDatabaseWarningModal(
     getSchemasPermission(permissions, groupId, entityId, "data") !==
     "controlled"
   ) {
+    const [entityType, entityTypePlural] = isTableEntityId(entityId)
+      ? [t`table`, t`tables`]
+      : isSchemaEntityId(entityId)
+      ? [t`schema`, t`schemas`]
+      : [t`entity`, t`entities`];
     return {
-      title: t`Change access to this database to limited?`,
+      title: t`Change access to this database to granular?`,
+      message: t`Just letting you know that changing the permission setting on this ${entityType} will also update the database permission setting to “Granular” to reflect that some of the database’s ${entityTypePlural} have different permission settings.`,
       confirmButtonText: t`Change`,
       cancelButtonText: t`Cancel`,
     };
@@ -112,7 +130,9 @@ export function getRawQueryWarningModal(
   if (
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
-    getSchemasPermission(permissions, groupId, entityId, "data") !== "all"
+    !["all", "impersonated"].includes(
+      getSchemasPermission(permissions, groupId, entityId, "data"),
+    )
   ) {
     return {
       title: t`Allow native query editing?`,
@@ -140,7 +160,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     getNativePermission(permissions, groupId, entityId) !== "none"
   ) {
     // allTableEntityIds contains tables from all schemas
-    const allTableEntityIds = database.tables.map(table => ({
+    const allTableEntityIds = database.getTables().map(table => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
       tableId: table.id as ConcreteTableId,

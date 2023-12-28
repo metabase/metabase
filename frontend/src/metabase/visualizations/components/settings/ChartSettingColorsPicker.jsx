@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
-import ChartSettingColorPicker from "./ChartSettingColorPicker";
+import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
 
 export default class ChartSettingColorsPicker extends Component {
   render() {

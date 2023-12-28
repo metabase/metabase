@@ -2,9 +2,9 @@
   "Consistent instance-independent naming scheme that replaces IDs with human-readable paths."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
+   [malli.core :as mc]
    [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -18,10 +18,13 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :as i18n :refer [trs]]
-   [metabase.util.schema :as su]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private root-collection-path "/collections/root")
 
@@ -44,7 +47,7 @@
      ([model id]
       (if (string? id)
         id
-        (fully-qualified-name* (db/select-one model :id id)))))))
+        (fully-qualified-name* (t2/select-one model :id id)))))))
 
 (defmethod fully-qualified-name* Database
   [db]
@@ -85,7 +88,7 @@
   (let [parents (some->> (str/split (:location collection) #"/")
                          rest
                          not-empty
-                         (map #(local-collection-name (db/select-one Collection :id (Integer/parseInt %))))
+                         (map #(local-collection-name (t2/select-one Collection :id (Integer/parseInt %))))
                          (apply str))]
     (str root-collection-path parents (local-collection-name collection))))
 
@@ -129,18 +132,19 @@
 
 ;; All the references in the dumps should resolved to entities already loaded.
 (def ^:private Context
-  {(s/optional-key :database)   su/IntGreaterThanZero
-   (s/optional-key :table)      su/IntGreaterThanZero
-   (s/optional-key :schema)     (s/maybe s/Str)
-   (s/optional-key :field)      su/IntGreaterThanZero
-   (s/optional-key :metric)     su/IntGreaterThanZero
-   (s/optional-key :segment)    su/IntGreaterThanZero
-   (s/optional-key :card)       su/IntGreaterThanZero
-   (s/optional-key :dashboard)  su/IntGreaterThanZero
-   (s/optional-key :collection) (s/maybe su/IntGreaterThanZero) ; root collection
-   (s/optional-key :pulse)      su/IntGreaterThanZero
-   (s/optional-key :user)       su/IntGreaterThanZero
-   (s/optional-key :snippet)    (s/maybe su/IntGreaterThanZero)})
+  [:map {:closed true}
+   [:database   {:optional true} ms/PositiveInt]
+   [:table      {:optional true} ms/PositiveInt]
+   [:schema     {:optional true} [:maybe :string]]
+   [:field      {:optional true} ms/PositiveInt]
+   [:metric     {:optional true} ms/PositiveInt]
+   [:segment    {:optional true} ms/PositiveInt]
+   [:card       {:optional true} ms/PositiveInt]
+   [:dashboard  {:optional true} ms/PositiveInt]
+   [:collection {:optional true} [:maybe ms/PositiveInt]] ; root collection
+   [:pulse      {:optional true} ms/PositiveInt]
+   [:user       {:optional true} ms/PositiveInt]
+   [:snippet    {:optional true} [:maybe ms/PositiveInt]]])
 
 (defmulti ^:private path->context* (fn [_ model _ _]
                                      model))
@@ -153,8 +157,8 @@
 (defmethod path->context* "databases"
   [context _ _ db-name]
   (assoc context :database (if (= db-name "__virtual")
-                             mbql.s/saved-questions-virtual-database-id
-                             (db/select-one-id Database :name db-name))))
+                             lib.schema.id/saved-questions-virtual-database-id
+                             (t2/select-one-pk Database :name db-name))))
 
 (defmethod path->context* "schemas"
   [context _ _ schema]
@@ -162,14 +166,14 @@
 
 (defmethod path->context* "tables"
   [context _ _ table-name]
-  (assoc context :table (db/select-one-id Table
+  (assoc context :table (t2/select-one-pk Table
                           :db_id  (:database context)
                           :schema (:schema context)
                           :name   table-name)))
 
 (defmethod path->context* "fields"
   [context _ _ field-name]
-  (assoc context :field (db/select-one-id Field
+  (assoc context :field (t2/select-one-pk Field
                           :table_id (:table context)
                           :name     field-name)))
 
@@ -179,13 +183,13 @@
 
 (defmethod path->context* "metrics"
   [context _ _ metric-name]
-  (assoc context :metric (db/select-one-id Metric
+  (assoc context :metric (t2/select-one-pk Metric
                            :table_id (:table context)
                            :name     metric-name)))
 
 (defmethod path->context* "segments"
   [context _ _ segment-name]
-  (assoc context :segment (db/select-one-id Segment
+  (assoc context :segment (t2/select-one-pk Segment
                             :table_id (:table context)
                             :name     segment-name)))
 
@@ -193,11 +197,11 @@
   [context _ model-attrs collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
-    (assoc context :collection (db/select-one-id Collection
+    (assoc context :collection (t2/select-one-pk Collection
                                  :name      collection-name
                                  :namespace (:namespace model-attrs)
                                  :location  (or (letfn [(collection-location [id]
-                                                          (db/select-one-field :location Collection :id id))]
+                                                          (t2/select-one-fn :location Collection :id id))]
                                                   (some-> context
                                                           :collection
                                                           collection-location
@@ -206,30 +210,30 @@
 
 (defmethod path->context* "dashboards"
   [context _ _ dashboard-name]
-  (assoc context :dashboard (db/select-one-id Dashboard
+  (assoc context :dashboard (t2/select-one-pk Dashboard
                               :collection_id (:collection context)
                               :name          dashboard-name)))
 
 (defmethod path->context* "pulses"
   [context _ _ pulse-name]
-  (assoc context :dashboard (db/select-one-id Pulse
+  (assoc context :dashboard (t2/select-one-pk Pulse
                               :collection_id (:collection context)
                               :name          pulse-name)))
 
 (defmethod path->context* "cards"
   [context _ _ dashboard-name]
-  (assoc context :card (db/select-one-id Card
+  (assoc context :card (t2/select-one-pk Card
                          :collection_id (:collection context)
                          :name          dashboard-name)))
 
 (defmethod path->context* "users"
   [context _ _ email]
-  (assoc context :user (db/select-one-id User
+  (assoc context :user (t2/select-one-pk User
                          :email email)))
 
 (defmethod path->context* "snippets"
   [context _ _ snippet-name]
-  (assoc context :snippet (db/select-one-id NativeQuerySnippet
+  (assoc context :snippet (t2/select-one-pk NativeQuerySnippet
                                             :collection_id (:collection context)
                                             :name          snippet-name)))
 
@@ -309,34 +313,33 @@
                           partition-name-components
                           (map (fn [[model-name & entity-parts]]
                                  (cond-> {::model-name model-name ::entity-name (last entity-parts)}
-                                         (and (= "collections" model-name) (> (count entity-parts) 1))
-                                         (assoc :namespace (->> entity-parts
-                                                                       first ; ns is first/only item after "collections"
-                                                                       rest  ; strip the starting :
-                                                                       (apply str)))))))
+                                   (and (= "collections" model-name) (> (count entity-parts) 1))
+                                   (assoc :namespace (->> entity-parts
+                                                          first ; ns is first/only item after "collections"
+                                                          rest  ; strip the starting :
+                                                          (apply str)))))))
           context (loop [acc-context                   {}
-                         [{:keys [::model-name ::entity-name] :as model-map} & more] components]
+                         [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
                       (if (empty? more)
                         new-context
                         (recur new-context more))))]
-      (try
-        (s/validate (s/maybe Context) context)
-        (catch Exception e
-          (when-not *suppress-log-name-lookup-exception*
-            (log/warn
-             (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                           (str/join ", " (map name (keys (:value (ex-data e)))))
-                           fully-qualified-name)
-                      {:fully-qualified-name fully-qualified-name
-                       :resolve-name-failed? true
-                       :context              context}
-                      e))))))))
+      (if (and
+           (not (mc/validate [:maybe Context] context))
+           (not *suppress-log-name-lookup-exception*))
+        (log/warn
+         (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
+                       (str/join ", " (map name (keys context)))
+                       fully-qualified-name)
+                  {:fully-qualified-name fully-qualified-name
+                   :resolve-name-failed? true
+                   :context              context}))
+        context))))
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"
-  ([entity] (name-for-logging (name entity) entity))
+  ([entity] (name-for-logging (t2.protocols/model entity) entity))
   ([model {:keys [name id]}]
    (cond
      (and name id) (format "%s \"%s\" (ID %s)" model name id)

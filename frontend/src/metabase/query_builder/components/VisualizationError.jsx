@@ -1,14 +1,16 @@
 /* eslint "react/prop-types": "warn" */
 
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import cx from "classnames";
 
 import MetabaseSettings from "metabase/lib/settings";
+import { getEngineNativeType } from "metabase/lib/engine";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
   QueryError,
   QueryErrorHeader,
@@ -87,20 +89,19 @@ class VisualizationError extends Component {
   }
   static propTypes = {
     via: PropTypes.object.isRequired,
-    card: PropTypes.object.isRequired,
+    question: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
-    error: PropTypes.object.isRequired,
+    error: PropTypes.any.isRequired,
     className: PropTypes.string,
   };
 
   render() {
-    const { via, card, duration, error, className } = this.props;
-    console.log("error", error);
+    const { via, question, duration, error, className } = this.props;
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout
       // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
-      if (duration > 15 * 1000) {
+      if (duration > VISUALIZATION_SLOW_TIMEOUT) {
         return (
           <ErrorMessage
             className={className}
@@ -131,11 +132,7 @@ class VisualizationError extends Component {
           </div>
         </div>
       );
-    } else if (
-      card &&
-      card.dataset_query &&
-      card.dataset_query.type === "native"
-    ) {
+    } else if (question?.isNative()) {
       // always show errors for native queries
       let processedError = error;
       const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
@@ -145,6 +142,9 @@ class VisualizationError extends Component {
       if (typeof error === "string") {
         processedError = stripRemarks(processedError);
       }
+      const database = question.database();
+      const isSql = database && getEngineNativeType(database.engine) === "sql";
+
       return (
         <QueryError className={className}>
           <QueryErrorContent>
@@ -153,11 +153,13 @@ class VisualizationError extends Component {
               <QueryErrorTitle>{t`An error occurred in your query`}</QueryErrorTitle>
             </QueryErrorHeader>
             <QueryErrorMessage>{processedError}</QueryErrorMessage>
-            <QueryErrorLink
-              href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
-            >
-              {t`Learn how to debug SQL errors`}
-            </QueryErrorLink>
+            {isSql && (
+              <QueryErrorLink
+                href={MetabaseSettings.learnUrl("debugging-sql/sql-syntax")}
+              >
+                {t`Learn how to debug SQL errors`}
+              </QueryErrorLink>
+            )}
           </QueryErrorContent>
         </QueryError>
       );

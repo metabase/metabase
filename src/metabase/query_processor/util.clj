@@ -7,8 +7,11 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved to [[metabase.mbql.util]]
 
@@ -56,24 +59,23 @@
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
 ;; TODO - this has been moved to `metabase.mbql.util`; use that implementation instead.
-(s/defn ^:deprecated normalize-token :- s/Keyword
+(mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- su/KeywordOrString]
+  [token :- [:or :keyword :string]]
   (-> (name token)
-      str/lower-case
+      u/lower-case-en
       (str/replace #"_" "-")
       keyword))
 
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
-(defn- select-keys-for-hashing
+(mu/defn ^:private select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
-  [query]
-  {:pre [(map? query)]}
+  [query :- :map]
   (let [{:keys [constraints parameters], :as query} (select-keys query [:database :type :query :native :parameters
                                                                         :constraints])]
     (cond-> query
@@ -81,9 +83,9 @@
       (empty? parameters)  (dissoc :parameters))))
 
 #_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
-(s/defn ^bytes query-hash :- (Class/forName "[B")
+(mu/defn ^"[B" query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  [query]
+  [query :- :map]
   (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 
 
@@ -105,6 +107,35 @@
   non-unique at times, numeric ids are not guaranteed."
   [[tyype identifier]]
   [tyype identifier])
+
+(def field-options-for-identification
+  "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
+  #{:source-field :join-alias :base-type})
+
+(defn- field-normalizer
+  [field]
+  (let [[type id-or-name options ] (mbql.normalize/normalize-tokens field)]
+    [type id-or-name (select-keys options field-options-for-identification)]))
+
+(defn field->field-info
+  "Given a field and result_metadata, return a map of information about the field if result_metadata contains a matched field. "
+  [field result-metadata]
+  (let [[_ttype id-or-name options :as field] (field-normalizer field)]
+    (or
+      ;; try match field_ref first
+      (first (filter (fn [field-info]
+                       (= field
+                          (-> field-info
+                              :field_ref
+                              field-normalizer)))
+                     result-metadata))
+      ;; if not match name and base type for aggregation or field with string id
+      (first (filter (fn [field-info]
+                       (and (= (:name field-info)
+                               id-or-name)
+                            (= (:base-type options)
+                               (:base_type field-info))))
+                     result-metadata)))))
 
 (def preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging

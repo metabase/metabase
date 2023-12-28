@@ -14,6 +14,8 @@
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle)
    (java.time.temporal TemporalField)))
 
+(set! *warn-on-reflection* true)
+
 (defprotocol ^:private Section
   (^:private apply-section [this builder]))
 

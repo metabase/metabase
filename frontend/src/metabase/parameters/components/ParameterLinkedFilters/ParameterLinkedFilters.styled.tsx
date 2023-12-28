@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export const SectionRoot = styled.div`
   padding: 1.5rem 1rem;

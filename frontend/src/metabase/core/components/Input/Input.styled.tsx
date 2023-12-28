@@ -8,7 +8,7 @@ import {
   inputPadding,
   inputTypography,
 } from "metabase/core/style/input";
-import { InputSize } from "../../style/types";
+import type { InputSize } from "../../style/types";
 
 export interface InputProps {
   fieldSize?: InputSize;
@@ -65,6 +65,11 @@ export const InputField = styled.input<InputProps>`
   &:hover {
     border-color: ${props => color(props.colorScheme)};
     transition: border 300ms ease-in-out;
+  }
+
+  &:disabled {
+    cursor: default;
+    background-color: ${color("bg-light")};
   }
 
   ${props => focusOutlineStyle(props.colorScheme)};

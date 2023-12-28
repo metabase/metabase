@@ -1,35 +1,30 @@
-import React, { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import cx from "classnames";
+import { usePrevious } from "react-use";
 
 import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-
-import Link from "metabase/core/components/Link";
-import ViewButton from "metabase/query_builder/components/view/ViewButton";
-
-import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
-import { useOnMount } from "metabase/hooks/use-on-mount";
+import Link from "metabase/core/components/Link";
+import Tooltip from "metabase/core/components/Tooltip";
 
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
-import RunButtonWithTooltip from "../RunButtonWithTooltip";
-
+import { navigateBackToDashboard } from "metabase/query_builder/actions";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { getDashboard } from "metabase/query_builder/selectors";
 import QuestionActions from "../QuestionActions";
+import { ExploreResultsLink } from "./ExploreResultsLink";
+import { FilterHeaderButton } from "./FilterHeaderButton";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionNotebookButton from "./QuestionNotebookButton";
+import { QuestionNotebookButton } from "./QuestionNotebookButton";
 import ConvertQueryButton from "./ConvertQueryButton";
-import QuestionFilters, {
-  FilterHeaderToggle,
-  FilterHeader,
-  QuestionFilterWidget,
-} from "./QuestionFilters";
+import { FilterHeaderToggle, FilterHeader } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import {
   AdHocViewHeading,
@@ -45,6 +40,9 @@ import {
   HeaderDivider,
   ViewHeaderActionPanel,
   ViewHeaderIconButtonContainer,
+  BackButton,
+  BackButtonContainer,
+  ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -126,6 +124,7 @@ export function ViewTitleHeader(props) {
         data-testid="qb-header"
         isNavBarOpen={isNavBarOpen}
       >
+        <DashboardBackButton />
         {isSaved ? (
           <SavedQuestionLeftSide {...props} />
         ) : (
@@ -147,7 +146,7 @@ export function ViewTitleHeader(props) {
           onQueryChange={onQueryChange}
         />
       </ViewHeaderContainer>
-      {QuestionFilters.shouldRender(props) && (
+      {FilterHeader.shouldRender(props) && (
         <FilterHeader
           {...props}
           expanded={areFiltersExpanded}
@@ -156,6 +155,36 @@ export function ViewTitleHeader(props) {
         />
       )}
     </>
+  );
+}
+
+function DashboardBackButton() {
+  const dashboard = useSelector(getDashboard);
+  const dispatch = useDispatch();
+
+  const handleClick = () => {
+    dispatch(navigateBackToDashboard(dashboard.id));
+  };
+
+  if (!dashboard) {
+    return null;
+  }
+
+  const label = t`Back to ${dashboard.name}`;
+
+  return (
+    <Tooltip tooltip={label}>
+      <BackButtonContainer>
+        <BackButton
+          as={Link}
+          to={Urls.dashboard(dashboard)}
+          round
+          icon="arrow_left"
+          aria-label={label}
+          onClick={handleClick}
+        />
+      </BackButtonContainer>
+    </Tooltip>
   );
 }
 
@@ -179,12 +208,12 @@ function SavedQuestionLeftSide(props) {
 
   const [showSubHeader, setShowSubHeader] = useState(true);
 
-  useOnMount(() => {
+  useEffect(() => {
     const timerId = setTimeout(() => {
       setShowSubHeader(false);
     }, 4000);
     return () => clearTimeout(timerId);
-  });
+  }, []);
 
   const hasLastEditInfo = question.lastEditInfo() != null;
   const isDataset = question.isDataset();
@@ -192,7 +221,7 @@ function SavedQuestionLeftSide(props) {
   const onHeaderChange = useCallback(
     name => {
       if (name && name !== question.displayName()) {
-        onSave(question.setDisplayName(name).card());
+        onSave(question.setDisplayName(name));
       }
     },
     [question, onSave],
@@ -267,8 +296,7 @@ function AhHocQuestionLeftSide(props) {
   } = props;
 
   const handleTitleClick = () => {
-    const query = question.query();
-    if (!query.readOnly()) {
+    if (question.isQueryEditable()) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
@@ -347,7 +375,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onOpenQuestionInfo: PropTypes.func,
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
-  onModelPersistenceChange: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
 };
 
@@ -360,7 +388,6 @@ function ViewTitleHeaderRightSide(props) {
     toggleBookmark,
     isSaved,
     isDataset,
-    isNative,
     isRunnable,
     isRunning,
     isNativeEditorOpen,
@@ -382,22 +409,14 @@ function ViewTitleHeaderRightSide(props) {
     onCloseQuestionInfo,
     onOpenQuestionInfo,
     onModelPersistenceChange,
-    onQueryChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const query = question.query();
-  const isReadOnlyQuery = query.readOnly();
-  const canEditQuery = !isReadOnlyQuery;
-  const canRunAdhocQueries = !isReadOnlyQuery;
-  const canNest = query.canNest();
+  const canEditQuery = question.isQueryEditable();
   const hasExploreResultsLink =
-    isNative &&
-    canNest &&
-    isSaved &&
-    canRunAdhocQueries &&
+    question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !query.hasData();
+  const isNewQuery = !question.query().hasData();
   const hasSaveButton =
     !isDataset &&
     !!isDirty &&
@@ -416,20 +435,24 @@ function ViewTitleHeaderRightSide(props) {
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
+  const getRunButtonLabel = useCallback(
+    () => (isRunning ? t`Cancel` : t`Refresh`),
+    [isRunning],
+  );
+
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFilters.shouldRender(props) && (
+      {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
-          question={question}
+          query={question._getMLv2Query()}
           expanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
-          onQueryChange={onQueryChange}
         />
       )}
-      {QuestionFilterWidget.shouldRender(props) && (
-        <QuestionFilterWidget
+      {FilterHeaderButton.shouldRender(props) && (
+        <FilterHeaderButton
           className="hide sm-show"
           onOpenModal={onOpenModal}
         />
@@ -464,10 +487,7 @@ function ViewTitleHeaderRightSide(props) {
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
       {hasRunButton && !isShowingNotebook && (
         <ViewHeaderIconButtonContainer>
-          <RunButtonWithTooltip
-            className={cx("text-brand-hover text-dark", {
-              "text-white-hover": isResultDirty,
-            })}
+          <ViewRunButtonWithTooltip
             iconSize={16}
             onlyIcon
             medium
@@ -477,6 +497,7 @@ function ViewTitleHeaderRightSide(props) {
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
             onCancel={cancelQuery}
+            getTooltip={getRunButtonLabel}
           />
         </ViewHeaderIconButtonContainer>
       )}
@@ -495,6 +516,7 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {hasSaveButton && (
         <SaveButton
+          role="button"
           disabled={!question.canRun() || !canEditQuery}
           tooltip={{
             tooltip: t`You don't have permission to save this question.`,
@@ -512,26 +534,6 @@ function ViewTitleHeaderRightSide(props) {
         </SaveButton>
       )}
     </ViewHeaderActionPanel>
-  );
-}
-
-ExploreResultsLink.propTypes = {
-  question: PropTypes.object.isRequired,
-};
-
-function ExploreResultsLink({ question }) {
-  const url = question
-    .composeThisQuery()
-    .setDisplay("table")
-    .setSettings({})
-    .getUrl();
-
-  return (
-    <Link to={url}>
-      <ViewButton medium p={[2, 1]} icon="insight" labelBreakpoint="sm">
-        {t`Explore results`}
-      </ViewButton>
-    </Link>
   );
 }
 

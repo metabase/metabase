@@ -1,7 +1,8 @@
-import useMediaQuery from "metabase/hooks/use-media-query";
+import { useMedia } from "react-use";
 
 const useIsSmallScreen = () => {
-  return useMediaQuery("(max-width: 40em)");
+  return useMedia("(max-width: 40em)");
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useIsSmallScreen;

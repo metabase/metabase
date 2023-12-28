@@ -2,7 +2,7 @@
   "Non-identifying fingerprinters for various field types."
   (:require
    [bigml.histogram.core :as hist]
-   [java-time :as t]
+   [java-time.api :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
    [medley.core :as m]
@@ -10,7 +10,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-trs trs]]
    [redux.core :as redux])
   (:import
    (com.bigml.histogram Histogram)
@@ -18,6 +17,8 @@
    (java.time ZoneOffset)
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
    (java.time.temporal Temporal)))
+
+(set! *warn-on-reflection* true)
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -88,7 +89,7 @@
   [kfs]
   (redux/fuse (m/map-kv-vals (fn [k f]
                                (redux/post-complete
-                                (with-error-handling f (deferred-trs "Error reducing {0}" (name k)))
+                                (with-error-handling f (format "Error reducing %s" (name k)))
                                 (fn [result]
                                   (when-not (instance? Throwable result)
                                     result))))
@@ -163,7 +164,7 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
+         (format "Error generating fingerprint for %s" (sync-util/name-for-logging field#))))))
 
 (declare ->temporal)
 

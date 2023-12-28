@@ -6,13 +6,7 @@ redirect_from:
 
 # Working with MongoDB in Metabase
 
-This article covers:
-
-- [Connecting to MongoDB](#connecting-to-mongodb).
-- [Configuring SSL via the command line](#configuring-ssl-via-the-command-line).
-- [Connecting to a MongoDB Atlas cluster](#connecting-to-a-mongodb-atlas-cluster).
-- [General connectivity concerns](#general-connectivity-concerns).
-- [I added fields to my database but don't see them in Metabase](#i-added-fields-to-my-database-but-dont-see-them-in-metabase).
+Metabase supports MongoDB version 4.2 or higher.
 
 ## How Metabase syncs data in MongoDB
 
@@ -41,11 +35,11 @@ The default way to connect to MongoDB is to fill out your connection details in 
 
 You'll also have the option to **Use a secure connection (SSL)**. Enable SSL and paste the contents of the server's SSL certificate chain in the input text box. This option is available for this method of connection only (i.e. you cannot include a certificate when connecting with a connection string).
 
-#### Advanced settings for direct connection
+## Advanced settings for direct connection
 
 - **Use DNS SRV when connecting** Using this option requires that provided host is a FQDN. If connecting to an Atlas cluster, you might need to enable this option. If you don't know what this means, leave this disabled.
 
-### Using a connection string
+## Using a connection string
 
 If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
 
@@ -57,7 +51,7 @@ Metabase currently does NOT support the following connection string parameters:
 
 If you need to use a certificate, connect via the [default method](#using-metabase-fields) and enable **Use a secure connection(SSL)**.
 
-### Settings common to both connection options
+## Settings common to both connection options
 
 - **Use an SSH tunnel**: Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
 - **Rerun queries for simple exploration**: When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.
@@ -95,9 +89,7 @@ To make sure you are using the correct connection configuration:
 
    ![Connect screengrab](../images/mongo_2.png "Connect")
 
-4. Select **Java** and **3.6 or later**.
-
-   ![Java screengrab](../images/mongo_3.png "Java")
+4. Select **Java** and version.
 
 5. The resulting connection string has the relevant information to provide to Metabase's `Add a Database` form for MongoDB.
 
@@ -111,9 +103,11 @@ To make sure you are using the correct connection configuration:
 
 ## I added fields to my database but don't see them in Metabase
 
-Metabase may not sync all of your fields, as it only scans the first ten thousand documents in a collection to get a sample of the fields the collection contains. Since any document in a MongoDB collection can contain any number of fields, the only way to get 100% coverage of all fields would be to scan every single document in every single collection, which would put too much strain on your database (so we don't do that).
+Metabase may not sync all of your fields. Since any document in a MongoDB collection can contain any number of fields, the only way to get 100% coverage of all fields would be to scan every single document in every single collection. The reason Metabase doesn't do a full scan is because it would put too much strain on your database.
 
-One workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
+Instead, Metabase gets a sample of the fields in a collection by scanning a sample of 1000 documents in each collection (the first 500 documents and the last 500 documents in each collection).
+
+If you're not seeing all of the fields show up for a collection in Metabase, one workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
 
 ## Further reading
 

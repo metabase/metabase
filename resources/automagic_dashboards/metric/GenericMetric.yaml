@@ -37,19 +37,25 @@ groups:
   - Periodicity:
       title: The [[this]] over time
       comparison_title: How they compare across time
+      score: 80
   - Geographical:
       title: The [[this]] by location
       comparison_title: How they compare across location
+      score: 90
   - Categories:
       title: How this metric is distributed across different categories
       comparison_title: How they compare across different categories
+      score: 60
   - Numbers:
       title: How this metric is distributed across different numbers
       comparison_title: How they compare by across different numbers
+      score: 50
   - LargeCategoriesTop:
       title: Top 5 per category
+      score: 75
   - LargeCategoriesBottom:
       title: Bottom 5 per category
+      score: 70
 dashboard_filters:
   - Timestamp
   - State

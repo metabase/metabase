@@ -6,10 +6,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.java.shell :as sh]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [metabase.util.files :as u.files])
+   [metabase.util.files :as u.files]
+   [metabase.util.log :as log])
   (:import
    (java.nio.file Files)))
+
+(set! *warn-on-reflection* true)
 
 ;;; Generic utils
 
@@ -85,7 +87,7 @@
 
 (def ^:private h2-lock (Object.))
 
-(defn update-if-needed
+(defn update-if-needed!
   "Updates H2 database at db-path from version 1.x to 2.x if jdbc-url points
    to version 1 H2 database."
   [jdbc-url]

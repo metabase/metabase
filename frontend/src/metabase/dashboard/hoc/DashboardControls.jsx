@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
@@ -12,8 +12,10 @@ const TICK_PERIOD = 1; // seconds
 
 /* This contains some state for dashboard controls on both private and embedded dashboards.
  * It should probably be in Redux?
+ *
+ * @deprecated HOCs are deprecated
  */
-export default ComposedComponent =>
+export const DashboardControls = ComposedComponent =>
   connect(null, { replace })(
     class extends Component {
       static displayName =
@@ -166,14 +168,15 @@ export default ComposedComponent =>
         const { refreshPeriod } = this.state;
         if (refreshPeriod && this._refreshElapsed >= refreshPeriod) {
           this._refreshElapsed = 0;
-          await this.props.fetchDashboard(
-            this.props.dashboardId,
-            this.props.location.query,
-            true,
-          );
+          await this.props.fetchDashboard({
+            dashId: this.props.dashboardId,
+            queryParams: this.props.location.query,
+            options: { preserveParameters: true },
+          });
           this.props.fetchDashboardCardData({
+            isRefreshing: true,
             reload: true,
-            clear: false,
+            clearCache: false,
           });
         }
         this.setRefreshElapsed(this._refreshElapsed);

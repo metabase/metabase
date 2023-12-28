@@ -1,8 +1,8 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMockUser } from "metabase-types/api/mocks";
-import UserProfileForm, { UserProfileFormProps } from "./UserProfileForm";
+import type { UserProfileFormProps } from "./UserProfileForm";
+import UserProfileForm from "./UserProfileForm";
 
 describe("UserProfileForm", () => {
   it("should show a success message after form submit", async () => {

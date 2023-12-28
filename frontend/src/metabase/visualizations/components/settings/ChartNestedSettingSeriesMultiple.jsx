@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
@@ -10,7 +10,7 @@ import {
 } from "./ChartNestedSettingSeries.styled";
 
 // various props injected by chartSettingNestedSettings HOC
-export default class ChartNestedSettingSeriesMultiple extends React.Component {
+export default class ChartNestedSettingSeriesMultiple extends Component {
   render() {
     const {
       objects,

@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { memo, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import cx from "classnames";
-import Utils from "metabase/lib/utils";
+import { uuid } from "metabase/lib/utils";
 import Select, { Option } from "metabase/core/components/Select";
 import Confirm from "metabase/components/Confirm";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Modal from "metabase/components/Modal";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -150,7 +150,7 @@ export default class CustomGeoJSONWidget extends Component {
               onClick={() =>
                 this.setState({
                   map: {
-                    id: Utils.uuid(),
+                    id: uuid(),
                     name: "",
                     url: "",
                     region_key: null,
@@ -317,7 +317,7 @@ const EditMap = ({
   onCancel,
   onSave,
 }) => (
-  <div>
+  <div data-testid="edit-map-modal">
     <div className="flex">
       <div className="flex-no-shrink">
         <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>
@@ -415,7 +415,7 @@ const EditMap = ({
   </div>
 );
 
-const ChoroplethPreview = React.memo(({ geoJson }) => (
+const ChoroplethPreview = memo(({ geoJson }) => (
   <LeafletChoropleth geoJson={geoJson} />
 ));
 

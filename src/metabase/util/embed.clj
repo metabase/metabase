@@ -12,6 +12,8 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [ring.util.codec :as codec]))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------- PUBLIC LINKS UTIL FNS ----------------------------------------------
 
 (defn- oembed-url
@@ -56,6 +58,7 @@
 (setting/defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
   :visibility :admin
+  :audit :no-value
   :setter (fn [new-value]
             (when (seq new-value)
               (assert (u/hexadecimal-string? new-value)

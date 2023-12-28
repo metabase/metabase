@@ -23,12 +23,11 @@
                            :average-length 13.516}}}
    :base_type           :type/Text})
 
-(deftest should-be-auto-list?-test
+(deftest ^:parallel should-be-auto-list?-test
   (testing "make sure the logic for deciding whether a Field should be a list works as expected"
     (let [field (field-with-distinct-count 2500)]
       (is (= nil
              (#'classifiers.category/field-should-be-auto-list? (:fingerprint field) field))))
-
     (let [field (field-with-distinct-count 99)]
       (is (= true
              (#'classifiers.category/field-should-be-auto-list? (:fingerprint field) field))))))

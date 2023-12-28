@@ -1,4 +1,4 @@
-import { ModelObject, PopularItem, RecentItem } from "metabase-types/api";
+import type { ModelObject, PopularItem, RecentItem } from "metabase-types/api";
 
 export const createMockModelObject = (
   opts?: Partial<ModelObject>,
@@ -12,6 +12,10 @@ export const createMockRecentItem = (
 ): RecentItem => ({
   model: "table",
   model_object: createMockModelObject(),
+  cnt: 1,
+  model_id: 1,
+  max_ts: "2021-03-01T00:00:00.000Z",
+  user_id: 1,
   ...opts,
 });
 

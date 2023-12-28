@@ -26,7 +26,6 @@ You can start a question from:
 Note that there are some kinds of saved questions that can't be used as source data:
 
 - Druid questions
-- Google Analytics questions
 - Mongo questions
 - Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
 - Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
@@ -49,7 +48,7 @@ To the right of completed step is a **Preview** button (looks like a Play button
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results. See also [adding or removing columns in a table](#adding-or-removing-columns-in-a-table).
 
 ## Joining data
 
@@ -67,8 +66,6 @@ You can add subsequent filter steps after each summarize step. This lets you do 
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
-![An active filter](../images/filter-badge.png)
-
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
 ## Filter types
@@ -85,7 +82,7 @@ When viewing a table or chart, clicking on the **Filter** will bring up the filt
 
 ![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom right of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
 
 ### Filtering by date
 
@@ -167,6 +164,14 @@ Once you're done setting your metrics and groupings, click **Visualize** to see 
 
 If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
 
+## Drill-through menu
+
+You can also click through questions to explored the data in greater detail.
+
+![Drill-through menu](../images/drill-through-menu.png)
+
+The drill-through menu will present different options depending on what you click on. You can then optionally save that exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+
 ## Returning to the notebook editor
 
 To return to the notebook editor for a question, click on the show editor button in the upper right.
@@ -195,6 +200,12 @@ Custom columns are helpful when you need to create a new column based on a calcu
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
+## Adding or removing columns in a table
+
+When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
+
+![Adding or removing columns](../images/column-selection.png)
+
 ## Sorting results
 
 ![Sorting](../images/sort-step.png)
@@ -217,7 +228,7 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
+If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [model](../../data-modeling/models.md) to let others know it's a good starting place.
 
 ## Question version history
 

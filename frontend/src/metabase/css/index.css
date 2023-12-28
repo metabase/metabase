@@ -1,7 +1,5 @@
 @import "./vendor.css";
 
-@import "./core/index.css";
-
 @import "./components/buttons.css";
 @import "./components/form.css";
 @import "./components/header.css";

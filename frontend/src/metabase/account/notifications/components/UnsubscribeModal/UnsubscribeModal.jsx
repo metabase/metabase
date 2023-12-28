@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";

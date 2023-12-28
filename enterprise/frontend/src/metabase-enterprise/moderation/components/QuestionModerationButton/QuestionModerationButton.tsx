@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
@@ -14,8 +14,8 @@ import {
   removeCardReview,
 } from "metabase-enterprise/moderation/actions";
 
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
+import type { State } from "metabase-types/store";
+import type Question from "metabase-lib/Question";
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 interface Props {
@@ -36,6 +36,7 @@ const mapDispatchToProps = {
   removeCardReview,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

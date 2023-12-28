@@ -5,9 +5,10 @@
    [metabase.models.interface :as mi]
    [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]))
 
-(def can-edit? #'classifiers.text-fingerprint/can-edit-semantic-type?)
+(def ^:private ^{:arglists '([field])} can-edit?
+  #'classifiers.text-fingerprint/can-edit-semantic-type?)
 
-(deftest can-edit-semantic-type?
+(deftest ^:parallel can-edit-semantic-type?
   (testing "When semantic type is nil we can change it"
     (is (can-edit? {:name "field" :base_type :type/Text})))
   (testing "If we include metadata, can see if original was not set"
@@ -15,11 +16,13 @@
       (is (not (can-edit? field)))
       (is (can-edit? (with-meta field {:sync.classify/original {:name "field" :semantic_type nil}}))))))
 
-(def infer #'classifiers.text-fingerprint/infer-semantic-type-for-text-fingerprint)
-(def threshold @#'classifiers.text-fingerprint/percent-valid-threshold)
-(def lower-threshold @#'classifiers.text-fingerprint/lower-percent-valid-threshold)
+(def ^:private ^{:arglists '([text-fingerprint])} infer
+  #'classifiers.text-fingerprint/infer-semantic-type-for-text-fingerprint)
 
-(deftest infer-semantic-type-for-text-fingerprint-test
+(def ^:private threshold       @#'classifiers.text-fingerprint/percent-valid-threshold)
+(def ^:private lower-threshold @#'classifiers.text-fingerprint/lower-percent-valid-threshold)
+
+(deftest ^:parallel infer-semantic-type-for-text-fingerprint-test
   (let [expectations [[:percent-json  :type/SerializedJSON]
                       [:percent-url   :type/URL]
                       [:percent-email :type/Email]
@@ -32,7 +35,7 @@
     (testing "state has a lower threshold"
       (is (= :type/State (infer (zipmap (map first expectations) (repeat lower-threshold))))))))
 
-(deftest infer-semantic-type-test
+(deftest ^:parallel infer-semantic-type-test
   (let [fingerprint       {:type {:type/Text {:percent-json threshold}}}
         state-fingerprint {:type {:type/Text {:percent-state lower-threshold}}}
         field             (mi/instance Field {:name "field" :base_type :type/Text})]

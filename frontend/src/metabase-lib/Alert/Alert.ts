@@ -1,6 +1,6 @@
-import { VisualizationSettings } from "metabase-types/api/card";
-import { User } from "metabase-types/api/user";
-import Question from "metabase-lib/Question";
+import type { VisualizationSettings } from "metabase-types/api/card";
+import type { User } from "metabase-types/api/user";
+import type Question from "metabase-lib/Question";
 import { ALERT_TYPE_ROWS } from "./constants";
 
 export const getDefaultAlert = (

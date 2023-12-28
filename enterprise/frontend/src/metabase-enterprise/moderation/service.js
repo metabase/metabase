@@ -24,9 +24,14 @@ export function removeReview({ itemId, itemType }) {
 }
 
 const noIcon = {};
-export function getStatusIcon(status) {
+
+export function getStatusIcon(status, filled = false) {
   if (isRemovedReviewStatus(status)) {
     return noIcon;
+  }
+
+  if (status === "verified" && filled) {
+    return MODERATION_STATUS_ICONS[`${status}_filled`];
   }
 
   return MODERATION_STATUS_ICONS[status] || noIcon;
@@ -112,7 +117,7 @@ function getModerationReviewEventText(review, moderatorDisplayName) {
 }
 
 export function getModerationTimelineEvents(reviews, usersById, currentUser) {
-  return reviews.map((review, index) => {
+  return reviews.map(review => {
     const moderator = usersById[review.moderator_id];
     const moderatorDisplayName = getModeratorDisplayName(
       moderator,
@@ -124,7 +129,7 @@ export function getModerationTimelineEvents(reviews, usersById, currentUser) {
       : getIconForReview(review);
 
     return {
-      timestamp: new Date(review.created_at).valueOf(),
+      timestamp: new Date(review.created_at).toISOString(),
       icon,
       title: text,
     };

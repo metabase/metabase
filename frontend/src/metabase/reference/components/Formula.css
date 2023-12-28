@@ -29,10 +29,10 @@
   max-height: 150px;
   transition: max-height 300ms ease-out;
 }
-.formulaDefinition-leave {
+.formulaDefinition-exit {
   max-height: 150px;
 }
-.formulaDefinition-leave.formulaDefinition-leave-active {
+.formulaDefinition-exit.formulaDefinition-exit-active {
   max-height: 0px;
   transition: max-height 300ms ease-out;
 }

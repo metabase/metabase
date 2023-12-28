@@ -1,10 +1,11 @@
-import Dimension from "metabase-lib/Dimension";
-import {
+import type Dimension from "metabase-lib/Dimension";
+import type {
   DimensionFK,
   DimensionOptionsProps,
   DimensionOptionsSection,
 } from "./types";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class DimensionOptions {
   name?: string;
   icon?: string;

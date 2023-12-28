@@ -1,0 +1,103 @@
+import { useState } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Button, Flex, TextInput } from "metabase/ui";
+import { Modal } from "./";
+
+export const args = {
+  centered: true,
+  fullScreen: false,
+  size: "md",
+};
+
+export const argTypes = {
+  centered: {
+    control: { type: "boolean" },
+  },
+  fullScreen: {
+    control: { type: "boolean" },
+  },
+  title: {
+    control: { type: "text" },
+  },
+  size: {
+    control: {
+      type: "select",
+      options: ["xs", "sm", "md", "lg", "xl", "auto"],
+    },
+  },
+};
+
+<Meta
+  title="Overlays/Modal"
+  component={Modal}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Modal
+
+Our themed wrapper around [Mantine Modal](https://v6.mantine.dev/core/modal/).
+
+## Docs
+
+- [Mantine Modal Docs](https://v6.mantine.dev/core/modal/)
+- [Metabase Modal Guidelines](https://www.notion.so/metabase/Modals-guidelines-fdf132ff081444088bcd37622fd8d023)
+
+## Examples
+
+export const SimpleTemplate = args => {
+  const [isOpen, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  return (
+    <Flex justify="center">
+      <Button variant="filled" onClick={handleOpen}>
+        Open modal
+      </Button>
+      <Modal {...args} opened={isOpen} onClose={handleClose}>
+        <Text>This is a simple modal with no interactive content</Text>
+      </Modal>
+    </Flex>
+  );
+};
+
+export const FormTemplate = args => {
+  const [isOpen, setOpen] = useState(false);
+  const handleOpen = () => setOpen(true);
+  const handleClose = () => setOpen(false);
+  return (
+    <Flex justify="center">
+      <Button variant="filled" onClick={handleOpen}>
+        Open modal
+      </Button>
+      <Modal
+        title="New thing"
+        {...args}
+        padding="lg"
+        opened={isOpen}
+        onClose={handleClose}
+      >
+        <form onSubmit={handleClose}>
+          <TextInput label="Name" data-autofocus />
+          <TextInput label="Something else" mt="md" />
+          <Flex direction="row" justify="flex-end" mt="md">
+            <Button onClick={handleClose}>Cancel</Button>
+            <Button type="submit" variant="filled" ml="sm">
+              Create
+            </Button>
+          </Flex>
+        </form>
+      </Modal>
+    </Flex>
+  );
+};
+
+<Canvas>
+  <Story name="Default">{SimpleTemplate}</Story>
+</Canvas>
+
+### Form
+
+<Canvas>
+  <Story name="Form">{FormTemplate}</Story>
+</Canvas>

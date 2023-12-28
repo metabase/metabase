@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -44,9 +44,10 @@ describe("Popover", () => {
 
   it("should be themed as a popover", () => {
     setup({ visible: true });
-    expect(
-      document.querySelector('[data-theme~="popover"'),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tooltip")).toHaveAttribute(
+      "data-theme",
+      "popover",
+    );
   });
 
   describe("lazy", () => {
@@ -64,7 +65,7 @@ describe("Popover", () => {
       const contentFn = jest.fn();
       setup({ contentFn, lazy: false });
       expect(contentFn).toHaveBeenCalled();
-      expect(screen.queryByText("popover content")).toBeNull();
+      expect(screen.queryByText("popover content")).not.toBeInTheDocument();
     });
   });
 

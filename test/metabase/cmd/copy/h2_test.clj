@@ -4,7 +4,7 @@
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.db.data-source :as mdb.data-source]))
 
-(deftest h2-data-source-test
+(deftest ^:parallel h2-data-source-test
   (testing "works without file: schema"
     (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:h2:file:/path/to/metabase.db")
            (copy.h2/h2-data-source "/path/to/metabase.db"))))

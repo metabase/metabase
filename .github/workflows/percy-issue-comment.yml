@@ -8,25 +8,30 @@ on:
 jobs:
   pr_info:
     if: github.event.comment.body == '@metabase-bot run visual tests'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       pull_request_number: ${{ fromJson(steps.fetch_pr.outputs.data).head.number }}
       branch_name: ${{ fromJson(steps.fetch_pr.outputs.data).head.ref }}
       commit_sha: ${{ fromJson(steps.fetch_pr.outputs.data).head.sha }}
     steps:
-      - uses: tibdex/github-app-token@v1.6.0
+      - uses: tibdex/github-app-token@v2.1.0
         id: generate-token
         with:
           app_id: ${{ secrets.METABASE_BOT_APP_ID }}
           private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-      - id: is_organization_member
-        uses: JamesSingleton/is-organization-member@1.0.0
+      - uses: actions/checkout@v3
         with:
-          organization: metabase
-          username: ${{ github.event.issue.user.login }}
-          token: ${{ steps.generate-token.outputs.token }}
+          ref: ${{ needs.pr_info.outputs.branch_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify Membership
+        id: verify-membership
+        uses: ./.github/actions/verify-membership
+        with:
+          github_token: ${{ steps.generate-token.outputs.token }}
+          organization_name: metabase
+          username: ${{ github.event.comment.user.login }}
       - run: |
-          result=${{ steps.is_organization_member.outputs.result }}
+          result=${{ steps.verify-membership.outputs.is_member }}
           if [ $result == false ]; then
               echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
               exit 1
@@ -54,7 +59,8 @@ jobs:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       MB_EDITION: ee
-      MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
     steps:
       - uses: actions/checkout@v3
         with:
@@ -64,15 +70,18 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: percy-issue-comment
+
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-      - run: ./bin/build
+      - run: ./bin/build.sh
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Run maildev
-        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
+        run: docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:2.0.5
       - name: Percy Test
         run: yarn run test-visual-run
         env:

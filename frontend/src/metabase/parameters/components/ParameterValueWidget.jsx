@@ -1,8 +1,7 @@
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import _ from "underscore";
 
 import {
   getParameterIconName,
@@ -10,14 +9,14 @@ import {
 } from "metabase/parameters/utils/ui";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
 import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
-import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
-import TextWidget from "metabase/components/TextWidget";
+import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
+import { TextWidget } from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
@@ -26,13 +25,15 @@ import {
   getNumberParameterArity,
   getStringParameterArity,
 } from "metabase-lib/parameters/utils/operators";
+import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
 import {
   isDateParameter,
   isNumberParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
+import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
-import S from "./ParameterWidget.css";
+import S from "./ParameterValueWidget.css";
 
 const DATE_WIDGETS = {
   "date/single": DateSingleWidget,
@@ -65,8 +66,8 @@ class ParameterValueWidget extends Component {
   constructor(props) {
     super(props);
 
-    this.valuePopover = React.createRef();
-    this.trigger = React.createRef();
+    this.valuePopover = createRef();
+    this.trigger = createRef();
   }
 
   onFocusChanged = isFocused => {
@@ -110,14 +111,13 @@ class ParameterValueWidget extends Component {
           ref={this.trigger}
           className={cx(S.parameter, S.noPopover, className, {
             [S.selected]: hasValue,
-            [S.isEditing]: isEditing,
           })}
         >
           {showTypeIcon && (
             <Icon
               name={parameterTypeIcon}
               className="flex-align-left mr1 flex-no-shrink"
-              size={14}
+              size={16}
             />
           )}
           <Widget
@@ -153,12 +153,14 @@ class ParameterValueWidget extends Component {
               className={cx(S.parameter, className, {
                 [S.selected]: hasValue,
               })}
+              role="button"
+              aria-label={placeholder}
             >
               {showTypeIcon && (
                 <Icon
                   name={parameterTypeIcon}
                   className="flex-align-left mr1 flex-no-shrink"
-                  size={14}
+                  size={16}
                 />
               )}
               <div className="mr1 text-nowrap">
@@ -207,6 +209,7 @@ function Widget({
   placeholder,
   onFocusChanged,
   parameters,
+  question,
   dashboard,
   target,
 }) {
@@ -219,7 +222,7 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
-  } else if (parameter.hasVariableTemplateTagTarget) {
+  } else if (isTextWidget(parameter)) {
     return (
       <TextWidget
         value={value}
@@ -247,12 +250,13 @@ function Widget({
         label={getParameterWidgetTitle(parameter)}
       />
     );
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (isFieldWidget(parameter)) {
     return (
       <ParameterFieldWidget
         target={target}
         parameter={parameter}
         parameters={parameters}
+        question={question}
         dashboard={dashboard}
         placeholder={placeholder}
         value={normalizedValue}
@@ -292,13 +296,26 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (parameter.hasVariableTemplateTagTarget) {
+  } else if (isTextWidget(parameter)) {
     return TextWidget;
   } else if (isNumberParameter(parameter)) {
     return NumberInputWidget;
-  } else if (!_.isEmpty(parameter.fields)) {
+  } else if (isFieldWidget(parameter)) {
     return ParameterFieldWidget;
   } else {
     return StringInputWidget;
   }
+}
+
+function isTextWidget(parameter) {
+  const canQuery = getQueryType(parameter) !== "none";
+  return parameter.hasVariableTemplateTagTarget && !canQuery;
+}
+
+function isFieldWidget(parameter) {
+  const canQuery = getQueryType(parameter) !== "none";
+
+  return parameter.hasVariableTemplateTagTarget
+    ? canQuery
+    : canQuery || hasFields(parameter);
 }

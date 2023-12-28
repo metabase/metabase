@@ -11,86 +11,88 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- download-perms-by-group-id [group-id]
-  (get-in (perms/data-perms-graph) [:groups group-id (mt/id) :download]))
+(defn- download-perms-by-group-id [group-id db-id]
+  (get-in (perms/data-perms-graph) [:groups group-id db-id :download]))
 
 (deftest update-db-download-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [:model/Database         {db-id :id}    {}
+                             :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
+                             :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC"}
+                             :model/PermissionsGroup {group-id :id} {}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Download perms for all schemas can be set and revoked"
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full})
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas :full})
           (is (= {:schemas :full, :native :full}
-                 (download-perms-by-group-id group-id)))
+                 (download-perms-by-group-id group-id db-id)))
 
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :limited})
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas :limited})
           (is (= {:schemas :limited, :native :limited}
-                 (download-perms-by-group-id group-id)))
+                 (download-perms-by-group-id group-id db-id)))
 
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :none})
-          (is (nil? (download-perms-by-group-id group-id))))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas :none})
+          (is (nil? (download-perms-by-group-id group-id db-id))))
 
         (testing "Download perms for individual schemas can be set and revoked"
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" :full}})
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" :full}})
           (is (= {:schemas {"PUBLIC" :full} :native :full}
-                 (download-perms-by-group-id group-id)))
+                 (download-perms-by-group-id group-id db-id)))
 
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" :limited}})
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" :limited}})
           (is (= {:schemas {"PUBLIC" :limited} :native :limited}
-                 (download-perms-by-group-id group-id)))
+                 (download-perms-by-group-id group-id db-id)))
 
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" :none}})
-          (is (nil? (download-perms-by-group-id group-id))))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" :none}})
+          (is (nil? (download-perms-by-group-id group-id db-id))))
 
         (testing "Download perms for individual tables can be set and revoked"
-          (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :full
-                                                                                            id-2 :full
-                                                                                            id-3 :full
-                                                                                            id-4 :full}}})
-            (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
-                    :native :full}
-                   (download-perms-by-group-id group-id)))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" {table-id-1 :full
+                                                                                        table-id-2 :full}}})
+          (is (= {:schemas {"PUBLIC" {table-id-1 :full
+                                      table-id-2 :full}}
+                  :native :full}
+                 (download-perms-by-group-id group-id db-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :limited}}})
-            (is (= {:schemas {"PUBLIC" {id-1 :limited id-2 :full id-3 :full id-4 :full}}
-                    :native :limited}
-                   (download-perms-by-group-id group-id)))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" {table-id-1 :limited
+                                                                                        table-id-2 :full}}})
+          (is (= {:schemas {"PUBLIC" {table-id-1 :limited
+                                      table-id-2 :full}}
+                  :native :limited}
+                 (download-perms-by-group-id group-id db-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-2 :none}}})
-            (is (= {:schemas {"PUBLIC" {id-1 :limited id-3 :full id-4 :full}}}
-                   (download-perms-by-group-id group-id)))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" {table-id-2 :none}}})
+          (is (= {:schemas {"PUBLIC" {table-id-1 :limited}}}
+                 (download-perms-by-group-id group-id db-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :none
-                                                                                            id-3 :none
-                                                                                            id-4 :none}}})
-            (is (nil? (download-perms-by-group-id group-id)))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" {table-id-1 :none
+                                                                                        table-id-2 :none}}})
+          (is (nil? (download-perms-by-group-id group-id db-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-1 :full
-                                                                                            id-2 :full
-                                                                                            id-3 :limited
-                                                                                            id-4 :limited}}})
-            (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :limited id-4 :limited}}
-                    :native :limited}
-                   (download-perms-by-group-id group-id)))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" {table-id-1 :full
+                                                                                        table-id-2 :limited}}})
+          (is (= {:schemas {"PUBLIC" {table-id-1 :full
+                                      table-id-2 :limited}}
+                  :native :limited}
+                 (download-perms-by-group-id group-id db-id)))
 
-            (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas {"PUBLIC" {id-3 :full
-                                                                                            id-4 :full}}})
-            (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
-                    :native :full}
-                   (download-perms-by-group-id group-id)))))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas {"PUBLIC" {table-id-2 :full}}})
+          (is (= {:schemas {"PUBLIC" {table-id-1 :full
+                                      table-id-2 :full}}
+                  :native :full}
+                 (download-perms-by-group-id group-id db-id))))
 
         (testing "Download perms are revoked when block perms are set"
-          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full :native :full})
-          (is (= {:schemas :full :native :full} (download-perms-by-group-id group-id)))
-          (@#'perms/update-db-data-access-permissions! group-id (mt/id) {:schemas :block})
-          (is (= nil (download-perms-by-group-id group-id)))))
+          (ee-perms/update-db-download-permissions! group-id db-id {:schemas :full :native :full})
+          (is (= {:schemas :full :native :full} (download-perms-by-group-id group-id db-id)))
+          (@#'perms/update-db-data-access-permissions! group-id db-id {:schemas :block})
+          (is (= nil (download-perms-by-group-id group-id db-id)))))
 
       (premium-features-test/with-premium-features #{}
         (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
@@ -122,7 +124,7 @@
       {:tables tables})))
 
 (deftest native-download-perms-sync-test
-  (mt/with-temp* [Database [{db-id :id :as database} {:engine ::download-permissions}]]
+  (mt/with-temp [Database {db-id :id :as database} {:engine ::download-permissions}]
     (replace-tables ["Table 1" "Table 2"])
     (letfn [(all-users-native-download-perms []
               (get-in (perms/data-perms-graph) [:groups (u/the-id (perms-group/all-users)) db-id :download :native]))]
@@ -135,7 +137,7 @@
 
       (testing "If a group has granular download perms for a DB, native download perms are removed when a new table is
               found during sync, since the new table has no download perms"
-        (let [table-ids (db/select-ids 'Table :db_id db-id)
+        (let [table-ids (t2/select-pks-set 'Table :db_id db-id)
               limited-downloads-id  (apply min table-ids)
               graph {:schemas {"PUBLIC"
                                (-> (into {} (for [id table-ids] [id :full]))
@@ -163,7 +165,7 @@
 
 (deftest update-db-data-model-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Data model perms for an entire DB can be set and revoked"
           (ee-perms/update-db-data-model-permissions! group-id (mt/id) {:schemas :all})
@@ -218,7 +220,7 @@
 
 (deftest update-db-details-permissions-test
   (mt/with-model-cleanup [Permissions]
-    (mt/with-temp PermissionsGroup [{group-id :id}]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
             (testing "Detail perms for a DB can be set and revoked"
               (ee-perms/update-db-details-permissions! group-id (mt/id) :yes)
@@ -235,6 +237,31 @@
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          DB execute permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- execute-perms-by-group-id [group-id]
+  (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+
+(deftest update-db-execute-permissions-test
+  (mt/with-model-cleanup [Permissions]
+    (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
+      (premium-features-test/with-premium-features #{:advanced-permissions}
+        (testing "Execute perms for a DB can be set and revoked"
+          (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
+          (is (= :all (execute-perms-by-group-id group-id)))
+
+          (ee-perms/update-db-execute-permissions! group-id (mt/id) :none)
+          (is (nil? (execute-perms-by-group-id group-id)))))
+
+      (premium-features-test/with-premium-features #{}
+        (testing "Execute permissions cannot be modified without the :advanced-permissions feature flag"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The execute permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+               (ee-perms/update-db-execute-permissions! group-id (mt/id) :all))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Graph                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -243,7 +270,7 @@
     (doseq [[perm-type perm-value] [[:data-model :all] [:download :full]]]
       (testing (pr-str perm-type)
         (testing "slash"
-          (mt/with-temp PermissionsGroup [group]
+          (t2.with-temp/with-temp [PermissionsGroup group]
             (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema/with_slash")
             (is (= "schema/with_slash"
                    (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
@@ -251,7 +278,7 @@
                        first)))))
 
         (testing "backslash"
-          (mt/with-temp PermissionsGroup [group]
+          (t2.with-temp/with-temp [PermissionsGroup group]
             (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema\\with_backslash")
             (is (= "schema\\with_backslash"
                    (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])

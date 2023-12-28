@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useState,
-  useRef,
-  HTMLAttributes,
-} from "react";
+import type { HTMLAttributes } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { t } from "ttag";
 import { useField } from "formik";
 
@@ -16,6 +11,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
+import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
 import Collections from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -24,6 +20,8 @@ import { isValidCollectionId } from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
+import { useSelector } from "metabase/lib/redux";
+import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import {
   PopoverItemPicker,
   MIN_POPOVER_WIDTH,
@@ -35,9 +33,10 @@ export interface FormCollectionPickerProps
   title?: string;
   placeholder?: string;
   type?: "collections" | "snippet-collections";
+  initialOpenCollectionId?: CollectionId;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
-
-const ITEM_PICKER_MODELS = ["collection"];
 
 function ItemName({
   id,
@@ -60,6 +59,9 @@ function FormCollectionPicker({
   title,
   placeholder = t`Select a collection`,
   type = "collections",
+  initialOpenCollectionId,
+  onOpenCollectionChange,
+  filterPersonalCollections,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -96,6 +98,19 @@ function FormCollectionPicker({
     [id, value, type, title, placeholder, error, touched, className, style],
   );
 
+  const [openCollectionId, setOpenCollectionId] =
+    useState<CollectionId>("root");
+  const openCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: openCollectionId,
+    }),
+  );
+
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showCreateNewCollectionOption =
+    filterPersonalCollections !== "only" ||
+    isOpenCollectionInPersonalCollection;
+
   const renderContent = useCallback(
     ({ closePopover }) => {
       // Search API doesn't support collection namespaces yet
@@ -106,22 +121,46 @@ function FormCollectionPicker({
       return (
         <PopoverItemPicker
           value={{ id: value, model: "collection" }}
-          models={ITEM_PICKER_MODELS}
+          models={["collection"]}
           entity={entity}
-          onChange={({ id }: { id: CollectionId }) => {
+          onChange={({ id }) => {
             setValue(id);
             closePopover();
           }}
           showSearch={hasSearch}
           width={width}
-        />
+          initialOpenCollectionId={initialOpenCollectionId}
+          onOpenCollectionChange={(id: CollectionId) => {
+            onOpenCollectionChange?.(id);
+            setOpenCollectionId(id);
+          }}
+          filterPersonalCollections={filterPersonalCollections}
+        >
+          {showCreateNewCollectionOption && (
+            <CreateCollectionOnTheGoButton
+              filterPersonalCollections={filterPersonalCollections}
+              openCollectionId={openCollectionId}
+            />
+          )}
+        </PopoverItemPicker>
       );
     },
-    [value, type, width, setValue],
+    [
+      type,
+      value,
+      width,
+      initialOpenCollectionId,
+      filterPersonalCollections,
+      showCreateNewCollectionOption,
+      openCollectionId,
+      setValue,
+      onOpenCollectionChange,
+    ],
   );
 
   return (
     <TippyPopoverWithTrigger
+      sizeToFit
       placement="bottom-start"
       renderTrigger={renderTrigger}
       popoverContent={renderContent}
@@ -130,4 +169,5 @@ function FormCollectionPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormCollectionPicker;

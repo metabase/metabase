@@ -4,6 +4,7 @@ export interface EmbedOptions {
   search?: boolean;
   new_button?: boolean;
   breadcrumbs?: boolean;
+  logo?: boolean;
   side_nav?: boolean | "default";
   header?: boolean;
   additional_info?: boolean;

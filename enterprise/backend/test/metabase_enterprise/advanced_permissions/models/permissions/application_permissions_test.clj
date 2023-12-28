@@ -6,14 +6,14 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (deftest application-permissions-graph-test
-  (mt/with-temp* [PermissionsGroup [{group-id :id}]]
+  (mt/with-temp [PermissionsGroup {group-id :id} {}]
     ;; clear the graph revisions
-    (db/delete! ApplicationPermissionsRevision)
+    (t2/delete! ApplicationPermissionsRevision)
     (testing "group should be in graph if one of application permission is enabled"
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
@@ -36,7 +36,7 @@
 (defmacro ^:private with-new-group-and-current-graph
   "Create a new group-id and bind it with the `current-graph`."
   [group-id-binding current-graph-binding & body]
-  `(mt/with-temp* [PermissionsGroup [{group-id# :id}]]
+  `(mt/with-temp [PermissionsGroup {group-id# :id} {}]
      (mt/with-current-user (mt/user->id :crowberto)
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 

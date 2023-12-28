@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CacheTTLField from "./CacheTTLField";
@@ -40,7 +39,7 @@ describe("CacheTTLField", () => {
 
   it("displays message", () => {
     setup({ message: "Cache results for" });
-    expect(screen.queryByText("Cache results for")).toBeInTheDocument();
+    expect(screen.getByText("Cache results for")).toBeInTheDocument();
   });
 
   it("calls onChange correctly", () => {

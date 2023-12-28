@@ -2,8 +2,9 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.util.honeysql-extensions :as hx]
-   [schema.core :as s]))
+   [metabase.models.permissions :as perms]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]))
 
 ;; WITH counts AS (
 ;;     SELECT db."name" AS db_name, t."schema" AS db_schema
@@ -17,6 +18,7 @@
 ;;     WHERE qe.card_id IS NOT NULL
 ;;       AND card.database_id IS NOT NULL
 ;;       AND card.table_id IS NOT NULL
+;;       AND db.id != audit-db-id
 ;; )
 ;;
 ;; SELECT (db_name || ' ' || db_schema) AS "schema", count(*) AS executions
@@ -40,8 +42,9 @@
                                     :where     [:and
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
-                                                [:not= :card.table_id nil]]}]]
-               :select   [[(hx/concat :db_name (hx/literal " ") :db_schema) :schema]
+                                                [:not= :card.table_id nil]
+                                                [:not= :db.id perms/audit-db-id]]}]]
+               :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
                           [:%count.* :executions]]
                :from     [:counts]
                :group-by [:db_name :db_schema]
@@ -60,6 +63,7 @@
 ;;     WHERE qe.card_id IS NOT NULL
 ;;       AND card.database_id IS NOT NULL
 ;;       AND card.table_id IS NOT NULL
+;;       AND db.id != audit-db-id
 ;; )
 ;;
 ;; SELECT (db_name || ' ' || db_schema) AS "schema", avg(running_time) AS avg_running_time
@@ -84,9 +88,10 @@
                                     :where     [:and
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
-                                                [:not= :card.table_id nil]]}]]
-               :select   [[(hx/concat :db_name (hx/literal " ") :db_schema) :schema]
-                          [:%avg.running_time :avg_running_time]]
+                                                [:not= :card.table_id nil]
+                                                [:not= :db.id perms/audit-db-id]]}]]
+               :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
+                          [[:avg :running_time] :avg_running_time]]
                :from     [:counts]
                :group-by [:db_name :db_schema]
                :order-by [[:avg_running_time :desc]]
@@ -106,6 +111,7 @@
 ;;     FROM metabase_table t
 ;;     LEFT JOIN metabase_database db
 ;;       ON t.db_id = db.id
+;;     WHERE db.id != audit-db-id
 ;;     GROUP BY db.id, t."schema"
 ;;     ORDER BY db.name ASC, t."schema" ASC
 ;; )
@@ -118,10 +124,10 @@
 ;;
 ;; DEPRECATED Query that returns a data for a table full of fascinating information about the different schemas in use
 ;; in our application.
-(s/defmethod audit.i/internal-query ::table
+(mu/defmethod audit.i/internal-query ::table
   ([query-type]
    (audit.i/internal-query query-type nil))
-  ([_ query-string :- (s/maybe s/Str)]
+  ([_query-type query-string :- [:maybe :string]]
    {:metadata [[:database_id   {:display_name "Database ID",   :base_type :type/Integer, :remapped_to   :database}]
                [:database      {:display_name "Database",      :base_type :type/Title,   :remapped_from :database_id}]
                [:schema_id     {:display_name "Schema ID",     :base_type :type/Text,    :remapped_to   :schema}]
@@ -143,11 +149,12 @@
                                                     [:%count.* :tables]]
                                         :from      [[:metabase_table :t]]
                                         :left-join [[:metabase_database :db] [:= :t.db_id :db.id]]
+                                        :where     [:not= :db.id perms/audit-db-id]
                                         :group-by  [:db.id :t.schema]
                                         :order-by  [[:db.id :asc] [:t.schema :asc]]}]]
                  :select    [:s.database_id
                              [:s.database_name :database]
-                             [(hx/concat :s.database_id (hx/literal ".") :s.schema) :schema_id]
+                             [(h2x/concat :s.database_id (h2x/literal ".") :s.schema) :schema_id]
                              :s.schema
                              :s.tables
                              [:c.saved_count :saved_queries]]

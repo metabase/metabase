@@ -3,11 +3,11 @@
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]))
 
-(deftest limit-test
+(deftest ^:parallel limit-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns
             ["timestamp"
@@ -29,7 +29,7 @@
              (mt/run-mbql-query checkins
                {:limit 2}))))))
 
-(deftest fields-test
+(deftest ^:parallel fields-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["venue_name" "venue_category_name" "timestamp"],
             :rows    [["Kinaree Thai Bistro"        "Thai" "2013-01-03T00:00:00Z"]
@@ -39,7 +39,7 @@
                {:fields [$venue_name $venue_category_name $timestamp]
                 :limit  2}))))))
 
-(deftest order-by-timestamp-test
+(deftest ^:parallel order-by-timestamp-test
   (tqpt/test-timeseries-drivers
     (testing "query w/o :fields"
       (doseq [[direction expected-rows]
@@ -79,7 +79,7 @@
                       :order-by [[direction $timestamp]]
                       :limit    2})))))))))
 
-(deftest count-test
+(deftest ^:parallel count-test
   (tqpt/test-timeseries-drivers
     (is (= [1000]
            (mt/first-row
@@ -92,7 +92,7 @@
                (mt/run-mbql-query checkins
                  {:aggregation [[:count $user_name]]})))))))
 
-(deftest avg-test
+(deftest ^:parallel avg-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["avg"]
             :rows    [[1.992]]}
@@ -100,7 +100,7 @@
              (mt/run-mbql-query checkins
                {:aggregation [[:avg $venue_price]]}))))))
 
-(deftest sum-test
+(deftest ^:parallel sum-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["sum"]
             :rows    [[1992.0]]}
@@ -108,24 +108,24 @@
              (mt/run-mbql-query checkins
                {:aggregation [[:sum $venue_price]]}))))))
 
-(deftest avg-test-2
+(deftest ^:parallel avg-test-2
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["avg"]
             :rows    [[1.992]]}
            (->> (mt/run-mbql-query checkins
                   {:aggregation [[:avg $venue_price]]})
                 (mt/format-rows-by [3.0])
-                qp.test/rows+column-names)))))
+                qp.test-util/rows+column-names)))))
 
-(deftest distinct-count-test
+(deftest ^:parallel distinct-count-test
   (tqpt/test-timeseries-drivers
     (is (= [[4]]
            (->> (mt/run-mbql-query checkins
                   {:aggregation [[:distinct $venue_price]]})
-                qp.test/rows
+                mt/rows
                 (mt/format-rows-by [int]))))))
 
-(deftest breakout-test
+(deftest ^:parallel breakout-test
   (tqpt/test-timeseries-drivers
     (testing "1 breakout (distinct values)"
       (is (= {:columns ["user_name"]
@@ -165,7 +165,7 @@
                  {:breakout [$user_name $venue_category_name]
                   :limit    10})))))))
 
-(deftest breakout-order-by-test
+(deftest ^:parallel breakout-order-by-test
   (tqpt/test-timeseries-drivers
     (testing "1 breakout w/ explicit order by"
       (is (= {:columns ["user_name"]
@@ -203,7 +203,7 @@
                   :order-by [[:asc $venue_category_name]]
                   :limit    10})))))))
 
-(deftest count-with-breakout-test
+(deftest ^:parallel count-with-breakout-test
   (tqpt/test-timeseries-drivers
     (testing "count w/ 1 breakout"
       (is (= {:columns ["user_name" "count"]
@@ -245,7 +245,7 @@
                   :breakout    [$user_name $venue_category_name]
                   :limit       10})))))))
 
-(deftest comparison-filter-test
+(deftest ^:parallel comparison-filter-test
   (tqpt/test-timeseries-drivers
     (testing "filter >"
       (is (= [49]
@@ -275,7 +275,7 @@
                  {:aggregation [[:count]]
                   :filter      [:<= $venue_price 3]})))))))
 
-(deftest equality-filter-test
+(deftest ^:parallel equality-filter-test
   (tqpt/test-timeseries-drivers
     (testing "filter ="
       (is (= {:columns ["user_name" "venue_name" "venue_category_name" "timestamp"]
@@ -297,7 +297,7 @@
                  {:aggregation [[:count]]
                   :filter      [:!= $user_name "Plato Yeshua"]})))))))
 
-(deftest compound-filter-test
+(deftest ^:parallel compound-filter-test
   (tqpt/test-timeseries-drivers
     (testing "filter AND"
       (is (= {:columns ["user_name" "venue_name" "timestamp"]
@@ -318,7 +318,7 @@
                                 [:= $venue_category_name "Bar"]
                                 [:= $venue_category_name "American"]]})))))))
 
-(deftest between-filter-test
+(deftest ^:parallel between-filter-test
   (tqpt/test-timeseries-drivers
     (testing "filter BETWEEN (inclusive)"
       (is (= [951]
@@ -327,7 +327,7 @@
                  {:aggregation [[:count]]
                   :filter      [:between $venue_price 1 3]})))))))
 
-(deftest inside-filter-test
+(deftest ^:parallel inside-filter-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["venue_name"]
             :rows    [["Red Medicine"]]}
@@ -336,7 +336,7 @@
                {:breakout [$venue_name]
                 :filter   [:inside $venue_latitude $venue_longitude 10.0649 -165.379 10.0641 -165.371]}))))))
 
-(deftest is-null-filter-test
+(deftest ^:parallel is-null-filter-test
   (tqpt/test-timeseries-drivers
     (is (= [0]
            (mt/first-row
@@ -344,7 +344,7 @@
                {:aggregation [[:count]]
                 :filter      [:is-null $venue_category_name]}))))))
 
-(deftest not-null-filter-test
+(deftest ^:parallel not-null-filter-test
   (tqpt/test-timeseries-drivers
     (is (= [1000]
            (mt/first-row
@@ -352,7 +352,7 @@
                {:aggregation [[:count]]
                 :filter      [:not-null $venue_category_name]}))))))
 
-(deftest starts-with-filter-test
+(deftest ^:parallel starts-with-filter-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["venue_category_name"]
             :rows    [["Mediterannian"] ["Mexican"]]}
@@ -376,7 +376,7 @@
                  {:breakout [$venue_category_name]
                   :filter   [:starts-with $venue_category_name "ME" {:case-sensitive false}]})))))))
 
-(deftest ends-with-filter-test
+(deftest ^:parallel ends-with-filter-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["venue_category_name"]
             :rows    [["American"]
@@ -414,7 +414,7 @@
                  {:breakout [$venue_category_name]
                   :filter   [:ends-with $venue_category_name "AN" {:case-sensitive false}]})))))))
 
-(deftest contains-filter-test
+(deftest ^:parallel contains-filter-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["venue_category_name"]
             :rows    [["American"]
@@ -452,7 +452,7 @@
                  {:breakout [$venue_category_name]
                   :filter   [:contains $venue_category_name "eR" {:case-sensitive false}]})))))))
 
-(deftest order-by-aggregate-field-test
+(deftest ^:parallel order-by-aggregate-field-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["user_name" "venue_category_name" "count"]
             :rows    [["Szymon Theutrich"    "Bar"      13]
@@ -472,7 +472,7 @@
                 :order-by    [[:desc [:aggregation 0]]]
                 :limit       10}))))))
 
-(deftest default-date-bucketing-test
+(deftest ^:parallel default-date-bucketing-test
   (tqpt/test-timeseries-drivers
     (testing "default date bucketing (day)"
       (is (= {:columns ["timestamp" "count"]
@@ -487,7 +487,7 @@
                   :breakout    [$timestamp]
                   :limit       5})))))))
 
-(deftest minute-date-bucketing-test
+(deftest ^:parallel minute-date-bucketing-test
   (tqpt/test-timeseries-drivers
     (is (= {:columns ["timestamp" "count"]
             :rows    [["2013-01-03T00:00:00+00:00" 1]
@@ -501,7 +501,7 @@
                 :breakout    [[:field %timestamp {:temporal-unit :minute}]]
                 :limit       5}))))))
 
-(deftest date-bucketing-test
+(deftest ^:parallel date-bucketing-test
   (mt/test-drivers (tqpt/timeseries-drivers)
     (tqpt/with-flattened-dbdef
       (doseq [[unit expected-rows]
@@ -587,7 +587,7 @@
               (is (= expected-rows
                      (take 5 rows))))))))))
 
-(deftest not-filter-test
+(deftest ^:parallel not-filter-test
   (tqpt/test-timeseries-drivers
     (testing "`not` filter -- Test that we can negate the various other filter clauses"
       (testing :=
@@ -724,7 +724,7 @@
                     ;; test data is all in the past so nothing happened today <3
                     :filter      [:not [:time-interval $timestamp :current :day]]}))))))))
 
-(deftest min-test
+(deftest ^:parallel min-test
   (tqpt/test-timeseries-drivers
     (testing "dimension columns"
       (is (= [1.0]
@@ -746,7 +746,7 @@
                  {:aggregation [[:min $venue_latitude]]
                   :breakout    [$venue_price]})))))))
 
-(deftest max-test
+(deftest ^:parallel max-test
   (tqpt/test-timeseries-drivers
     (testing "dimension columns"
       (is (= [4.0]
@@ -767,7 +767,7 @@
                  {:aggregation [[:max $venue_latitude]]
                   :breakout    [$venue_price]})))))))
 
-(deftest multiple-aggregations-test
+(deftest ^:parallel multiple-aggregations-test
   (tqpt/test-timeseries-drivers
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#4166)"
       (is (= [[35643 1992]]
@@ -775,7 +775,7 @@
                (mt/run-mbql-query checkins
                  {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]})))))))
 
-(deftest sort-aggregations-in-timeseries-queries-test
+(deftest ^:parallel sort-aggregations-in-timeseries-queries-test
   (tqpt/test-timeseries-drivers
     (testing "Make sure sorting by aggregations works correctly for Timeseries queries (#9185)"
       (is (= [["Steakhouse" 3.6]

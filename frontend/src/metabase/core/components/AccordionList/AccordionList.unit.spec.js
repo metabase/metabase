@@ -1,4 +1,4 @@
-import React from "react";
+/* eslint-disable jest/expect-expect */
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -114,6 +114,6 @@ function assertAbsence(array) {
 
 function assertPresence(array) {
   array.forEach(item => {
-    screen.getByText(item);
+    expect(screen.getByText(item)).toBeInTheDocument();
   });
 }

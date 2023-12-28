@@ -1,15 +1,17 @@
 (ns metabase.test.data.postgres
   "Postgres driver test extensions."
   (:require
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.data.sql.ddl :as ddl]))
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util.honey-sql-2 :as h2x]))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :postgres)
-
-(defmethod tx/has-questionable-timezone-support? :postgres [_] true) ; TODO - What?
 
 (defmethod tx/sorts-nil-first? :postgres [_ _] false)
 
@@ -34,6 +36,7 @@
                              :type/Float          "FLOAT"
                              :type/Integer        "INTEGER"
                              :type/IPAddress      "INET"
+                             :type/JSON           "JSON"
                              :type/Text           "TEXT"
                              :type/Time           "TIME"
                              :type/TimeWithTZ     "TIME WITH TIME ZONE"
@@ -75,8 +78,24 @@
    (kill-connections-to-db-sql database-name)
    (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) driver dbdef options)))
 
-(defmethod load-data/load-data! :postgres [& args]
-  (apply load-data/load-data-all-at-once! args))
+(defn cast-json-columns
+  "For each `:type/JSON` column, parse them with cheshire so they enter as json and not text."
+  [tabledef]
+  (if (some (comp #{:type/JSON} :base-type) (:field-definitions tabledef))
+    (let [parse-fns (map #(if (= % :type/JSON)
+                            (fn [json]
+                              [::sql.qp/compiled (h2x/cast "json" json)])
+                            identity)
+                         (map :base-type (:field-definitions tabledef)))]
+      (update tabledef :rows (fn [rows]
+                               (map (fn [row]
+                                      (map (fn [parser value] (parser value))
+                                           parse-fns row))
+                                    rows))))
+    tabledef))
+
+(defmethod load-data/load-data! :postgres [driver dbdef tabledef]
+  (load-data/load-data-all-at-once! driver dbdef (cast-json-columns tabledef)))
 
 (defmethod sql.tx/standalone-column-comment-sql :postgres [& args]
   (apply sql.tx/standard-standalone-column-comment-sql args))

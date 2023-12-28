@@ -4,43 +4,76 @@
     "no-undef": 2,
     "no-var": 1,
     "no-unused-vars": [
-      1,
-      { "vars": "all", "args": "none", "varsIgnorePattern": "^_.+" }
+      "error",
+      {
+        "vars": "all",
+        "args": "none",
+        "varsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
     ],
     "no-empty": [1, { "allowEmptyCatch": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "moment",
+            "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            "name": "moment-timezone",
+            "message": "Moment is deprecated, please use dayjs"
+          }
+        ]
+      }
+    ],
     "curly": [1, "all"],
     "eqeqeq": [1, "smart"],
+    "import/no-default-export": 2,
+    "import/no-named-as-default": 0,
     "import/no-commonjs": 1,
-    "import/order": ["error", {
-      "pathGroups": [
-        {
-          "pattern": "react",
-          "group": "builtin",
-          "position": "before"
-        },
-        {
-          "pattern": "metabase/**",
-          "group": "internal"
-        },
-        {
-          "pattern": "metabase/**/components",
-          "group": "internal",
-          "position": "before"
-        },
-        {
-          "pattern": "__**",
-          "group": "internal",
-          "position": "before"
-        },
-        {
-          "pattern": "metabase-lib/**",
-          "group": "internal",
-          "position": "after"
-        }
-      ],
-      "groups": ["builtin", "external", "internal", "parent", "sibling", "index", "object"]
-    }],
-    "no-console": 0,
+    "import/order": [
+      "error",
+      {
+        "pathGroups": [
+          {
+            "pattern": "react",
+            "group": "builtin",
+            "position": "before"
+          },
+          {
+            "pattern": "metabase/**",
+            "group": "internal"
+          },
+          {
+            "pattern": "metabase/**/components",
+            "group": "internal",
+            "position": "before"
+          },
+          {
+            "pattern": "__**",
+            "group": "internal",
+            "position": "before"
+          },
+          {
+            "pattern": "metabase-lib/**",
+            "group": "internal",
+            "position": "after"
+          }
+        ],
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index",
+          "object"
+        ]
+      }
+    ],
+    "no-console": [2, { "allow": ["warn", "error"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
@@ -53,14 +86,35 @@
     "react/no-unescaped-entities": 2,
     "react/jsx-no-target-blank": 2,
     "react/jsx-key": 2,
-    "react/forbid-component-props": [2, { "forbid": ["w", "h"] }],
+    "react/forbid-component-props": [2, { "forbid": ["sx"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
       { "additionalHooks": "(useSyncedQueryString|useSafeAsyncFunction)" }
     ],
     "prefer-const": [1, { "destructuring": "all" }],
     "no-useless-escape": 0,
-    "no-only-tests/no-only-tests": "error",
+    "no-only-tests/no-only-tests": [
+      "error",
+      {
+        "block": [
+          "describe",
+          "it",
+          "context",
+          "test",
+          "tape",
+          "fixture",
+          "serial",
+          "Feature",
+          "Scenario",
+          "Given",
+          "And",
+          "When",
+          "Then",
+          "describeWithSnowplow",
+          "describeEE"
+        ]
+      }
+    ],
     "complexity": ["error", { "max": 54 }]
   },
   "globals": {
@@ -72,20 +126,27 @@
     "browser": true,
     "es6": true,
     "commonjs": true,
-    "jest": true
+    "jest": true,
+    "jest/globals": true
   },
   "parser": "babel-eslint",
   "plugins": ["react", "no-only-tests"],
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
     "plugin:import/errors",
-    "plugin:import/warnings"
+    "plugin:import/warnings",
+    "plugin:import/typescript"
   ],
   "settings": {
     "import/internal-regex": "^metabase/|^metabase-lib/",
-    "import/resolver": "webpack",
+    "import/resolver": {
+      "webpack": {
+        "typescript": true
+      }
+    },
     "import/ignore": ["\\.css$"],
     "react": {
       "version": "detect"
@@ -101,9 +162,6 @@
       "extends": ["plugin:@typescript-eslint/recommended"],
       "files": ["*.ts", "*.tsx"],
       "parser": "@typescript-eslint/parser",
-      "parserOptions": {
-        "project": "./tsconfig.json"
-      },
       "plugins": ["@typescript-eslint"],
       "rules": {
         "prefer-rest-params": "off",
@@ -111,7 +169,33 @@
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
-        "@typescript-eslint/no-unused-vars": "off"
+        "@typescript-eslint/consistent-type-imports": "error",
+        "@typescript-eslint/no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "ignoreRestSiblings": true,
+            "destructuredArrayIgnorePattern": "^_"
+          }
+        ]
+      }
+    },
+    {
+      "extends": [
+        "plugin:jest/recommended",
+        "plugin:jest-dom/recommended",
+        "plugin:testing-library/react"
+      ],
+      "plugins": ["jest", "jest-dom", "testing-library"],
+      "files": [
+        "*.unit.spec.ts",
+        "*.unit.spec.tsx",
+        "*.unit.spec.js",
+        "*.unit.spec.jsx"
+      ],
+      "rules": {
+        "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
       }
     }
   ]

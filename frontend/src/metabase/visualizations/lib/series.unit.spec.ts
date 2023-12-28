@@ -5,7 +5,7 @@ import {
   createMockSeriesOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks/card";
-import { TransformedSeries } from "metabase-types/api";
+import type { TransformedSeries } from "metabase-types/api";
 import { getOrderedSeries } from "./series";
 
 type setupSeriesOpts = { name: string; enabled?: boolean }[];
@@ -61,6 +61,20 @@ describe("series utils", () => {
 
       const orderedSeries = getOrderedSeries(transformedSeries, settings);
       expect(orderedSeries).toHaveProperty("_raw");
+    });
+
+    it("should reverse the order of a series when `isReversed` is `true`", () => {
+      const { series, settings } = setupSeries([
+        { name: "foo" },
+        { name: "bar" },
+        { name: "baz" },
+      ]);
+
+      const stackedOrderedSeries = getOrderedSeries(series, settings, true);
+      expect(stackedOrderedSeries).toHaveLength(3);
+      expect(stackedOrderedSeries[0].card.name).toBe("baz");
+      expect(stackedOrderedSeries[1].card.name).toBe("bar");
+      expect(stackedOrderedSeries[2].card.name).toBe("foo");
     });
   });
 });

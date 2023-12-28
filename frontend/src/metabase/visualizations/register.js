@@ -3,11 +3,14 @@ import {
   setDefaultVisualization,
 } from "metabase/visualizations";
 
-import Scalar from "./visualizations/Scalar";
-import SmartScalar from "./visualizations/SmartScalar";
+import ActionViz from "metabase/actions/components/ActionViz";
+
+import { Scalar } from "./visualizations/Scalar";
+import { SmartScalar } from "./visualizations/SmartScalar";
 import Progress from "./visualizations/Progress";
 import Table from "./visualizations/Table";
-import Text from "./visualizations/Text";
+import { Text } from "./visualizations/Text";
+import { LinkViz } from "./visualizations/LinkViz";
 import LineChart from "./visualizations/LineChart";
 import BarChart from "./visualizations/BarChart";
 import WaterfallChart from "./visualizations/WaterfallChart";
@@ -19,8 +22,9 @@ import MapViz from "./visualizations/Map";
 import ScatterPlot from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
-import ObjectDetail from "./components/ObjectDetail";
+import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
+import { Heading } from "./visualizations/Heading";
 
 export default function () {
   registerVisualization(Scalar);
@@ -29,6 +33,7 @@ export default function () {
   registerVisualization(Gauge);
   registerVisualization(Table);
   registerVisualization(Text);
+  registerVisualization(LinkViz);
   registerVisualization(LineChart);
   registerVisualization(AreaChart);
   registerVisualization(BarChart);
@@ -41,5 +46,7 @@ export default function () {
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
+  registerVisualization(ActionViz);
+  registerVisualization(Heading);
   setDefaultVisualization(Table);
 }

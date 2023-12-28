@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { chain } from "icepick";
@@ -13,7 +13,7 @@ import Question from "metabase-lib/Question";
 
 import { AuditMode } from "../lib/mode";
 import QuestionLoadAndDisplay from "./QuestionLoadAndDisplay";
-import "./AuditTableVisualization";
+import "../components/AuditTableVisualization";
 import { PaginationControlsContainer } from "./AuditTable.styled";
 
 const mapStateToProps = state => ({

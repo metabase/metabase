@@ -1,11 +1,5 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  Ref,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import type { HTMLAttributes, Ref } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
@@ -44,29 +38,54 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
     return customColorMapping ?? getDefaultColorMapping(colors);
   }, [colors, customColorMapping]);
 
+  const [isInverted, setIsInverted] = useState(() =>
+    getDefaultIsInverted(initialValue, colorMapping),
+  );
+
   const [color, setColor] = useState(() =>
     getDefaultColor(initialValue, colors, colorMapping),
   );
 
   const [value, setValue] = useState(() =>
-    getColorRange(color, colorMapping, getInverted(initialValue, colorMapping)),
+    color === "" // empty string is for multi-color selection
+      ? initialValue
+      : getColorRange(color, colorMapping, isInverted),
   );
 
-  const handleSelect = useCallback(
+  const handleColorSelect = useCallback(
     (newColor: string) => {
+      const newValue = getColorRange(newColor, colorMapping, isInverted);
+
       setColor(newColor);
-      setValue(getColorRange(newColor, colorMapping));
+      setValue(newValue);
+      onChange?.(newValue);
     },
-    [colorMapping],
+    [colorMapping, isInverted, onChange],
   );
 
-  const handleChange = useCallback(
-    (newValue: string[]) => {
+  const handleColorRangeSelect = useCallback(
+    (newColorRange: string[]) => {
+      const newValue = isInverted
+        ? [...newColorRange].reverse()
+        : newColorRange;
+
+      setColor("");
+      setValue(newValue);
       onChange?.(newValue);
-      onClose?.();
     },
-    [onChange, onClose],
+    [isInverted, onChange],
   );
+
+  const handleToggleInvertedClick = useCallback(() => {
+    const newValue =
+      color === ""
+        ? [...value].reverse()
+        : getColorRange(color, colorMapping, !isInverted);
+
+    setIsInverted(!isInverted);
+    setValue(newValue);
+    onChange?.(newValue);
+  }, [color, value, colorMapping, isInverted, onChange]);
 
   return (
     <PopoverRoot {...props} ref={ref}>
@@ -76,14 +95,15 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
             key={index}
             color={value}
             isSelected={value === color}
-            onSelect={handleSelect}
+            onSelect={handleColorSelect}
           />
         ))}
       </PopoverColorList>
       <ColorRangeToggle
         value={value}
         isQuantile={isQuantile}
-        onChange={handleChange}
+        onToggleClick={handleToggleInvertedClick}
+        showToggleButton
       />
       {colorRanges.length > 0 && <PopoverDivider />}
       <PopoverColorRangeList>
@@ -92,7 +112,8 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
             key={index}
             value={range}
             isQuantile={isQuantile}
-            onChange={handleChange}
+            onToggleClick={handleToggleInvertedClick}
+            onColorRangeSelect={handleColorRangeSelect}
           />
         ))}
       </PopoverColorRangeList>
@@ -125,14 +146,14 @@ const getDefaultColor = (
     } else {
       return selection;
     }
-  }, colors[0]);
+  }, "" as string);
 };
 
 const getDefaultColorMapping = (colors: string[]) => {
   return Object.fromEntries(colors.map(color => [color, ["white", color]]));
 };
 
-const getInverted = (
+const getDefaultIsInverted = (
   value: string[],
   colorMapping: Record<string, string[]>,
 ) => {
@@ -141,4 +162,5 @@ const getInverted = (
   });
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorSelectorContent;

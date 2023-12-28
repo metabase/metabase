@@ -7,6 +7,8 @@
   (:import
    (java.math MathContext RoundingMode)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
 (deftest last-value-test

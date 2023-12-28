@@ -141,7 +141,7 @@ describe("Collection selectors", () => {
         expect(getInitialCollectionId(state, props)).toBe(TEST_COLLECTION.id);
       });
 
-      it("prioritizes collectionId navigation param ", () => {
+      it("prioritizes collectionId navigation param", () => {
         const props = {
           params: {
             collectionId: TEST_COLLECTION.id,
@@ -157,7 +157,7 @@ describe("Collection selectors", () => {
         expect(getInitialCollectionId(state, props)).toBe(TEST_COLLECTION.id);
       });
 
-      it("prioritizes id from a URL slug ", () => {
+      it("prioritizes id from a URL slug", () => {
         const props = {
           params: {
             slug: `${TEST_COLLECTION.id}-slug`,
@@ -194,7 +194,6 @@ describe("Collection selectors", () => {
       });
 
       it("does not suggest a read-only root collection when others collections permissions had not been loaded yet", () => {
-        // eslint-disable-next-line no-unused-vars
         const { can_write, ...personalCollectionWithoutPermissionsLoaded } =
           PERSONAL_COLLECTION;
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import SlackSettings from "./SlackSettings";
 
@@ -18,12 +17,12 @@ describe("SlackSettings", () => {
     expect(onLoadManifest).not.toHaveBeenCalled();
   });
 
-  it("should render the setup page and load the manifest when the app is not configured", () => {
+  it("should render the setup page and load the manifest when the app is not configured", async () => {
     const onLoadManifest = jest.fn().mockResolvedValue({ payload: "manifest" });
 
     render(<SlackSettings isApp={false} onLoadManifest={onLoadManifest} />);
 
     expect(screen.getByText("SlackSetup")).toBeInTheDocument();
-    waitFor(() => expect(onLoadManifest).toHaveBeenCalled());
+    await waitFor(() => expect(onLoadManifest).toHaveBeenCalled());
   });
 });

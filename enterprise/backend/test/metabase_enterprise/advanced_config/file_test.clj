@@ -8,11 +8,13 @@
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1.0, :max 1.999}]
-                        (premium-features-test/with-premium-features #{:advanced-config}
+                        (premium-features-test/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (defn- re-quote [^String s]
@@ -179,12 +181,12 @@
                log-messages))))))
 
 (deftest require-advanced-config-test
-  (testing "Config files should require the `:advanced-config` token feature"
+  (testing "Config files should require the `:config-text-file` token feature"
     (premium-features-test/with-premium-features #{}
       (binding [advanced-config.file/*config* {:version 1.0, :config {:unknown-section {}}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Metabase config files require a Premium token with the :advanced-config feature"
+             #"Metabase config files require a Premium token with the :config-text-file feature"
              (advanced-config.file/initialize!)))))))
 
 (deftest error-validation-do-not-leak-env-vars-test

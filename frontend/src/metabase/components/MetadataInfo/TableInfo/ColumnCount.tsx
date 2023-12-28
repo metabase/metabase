@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { msgid, ngettext } from "ttag";
 
@@ -25,4 +24,5 @@ function ColumnCount({ table }: { table: Table }) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColumnCount;

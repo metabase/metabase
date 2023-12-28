@@ -4,15 +4,17 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.i18n.plural :as i18n.plural]
+   [metabase.util.log :as log]
    [potemkin.types :as p.types])
   (:import
    (java.text MessageFormat)
    (java.util Locale)
    (org.apache.commons.lang3 LocaleUtils)))
+
+(set! *warn-on-reflection* true)
 
 (p.types/defprotocol+ CoerceToLocale
   "Protocol for anything that can be coerced to a `java.util.Locale`."
@@ -27,6 +29,7 @@
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   ^String [s]
   {:pre [((some-fn nil? string?) s)]}
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
       (let [language (str/lower-case language)]
@@ -200,31 +203,25 @@
              (log/errorf e "Invalid format string %s" (pr-str format-string))
              format-string)))))))
 
-;; We can't fetch the system locale until the application DB has been initiailized. Once that's done, we don't need to
-;; do the check anymore -- swapping out the getter fn with the simpler one speeds things up substantially
-(def ^:private site-locale-from-setting-fn
-  (atom
-   (fn []
-     (when-let [db-is-set-up? (resolve 'metabase.db/db-is-set-up?)]
-       (when (and (bound? db-is-set-up?)
-                  (db-is-set-up?))
-         (when-let [get-value-of-type (resolve 'metabase.models.setting/get-value-of-type)]
-           (when (bound? get-value-of-type)
-             (let [f (fn [] (get-value-of-type :string :site-locale))]
-               (reset! site-locale-from-setting-fn f)
-               (f)))))))))
+(def ^:private ^:dynamic *in-site-locale-from-setting*
+  "Whether we're currently inside a call to [[site-locale-from-setting]], so we can prevent infinite recursion."
+  false)
 
 (defn site-locale-from-setting
-  "Fetch the value of the `site-locale` Setting.
-  When metabase is shutting down, we need to log some messages after the db connection is closed, so we keep around a
-  cached-site-locale for that purpose."
+  "Fetch the value of the `site-locale` Setting, or `nil` if it is unset."
   []
-  (let [cached-site-locale (atom "en")]
-    (try
-      (let [site-locale (@site-locale-from-setting-fn)]
-        (reset! cached-site-locale site-locale)
-        site-locale)
-      (catch Exception _ @cached-site-locale))))
+  (when-let [get-value-of-type (resolve 'metabase.models.setting/get-value-of-type)]
+    (when (bound? get-value-of-type)
+      ;; make sure we don't try to recursively fetch the site locale when we're actively in the process of fetching it,
+      ;; otherwise that will cause infinite loops if we try to log anything... see #32376
+      (when-not *in-site-locale-from-setting*
+        (binding [*in-site-locale-from-setting* true]
+          ;; if there is an error fetching the Setting, e.g. if the app DB is in the process of shutting down, then just
+          ;; return nil.
+          (try
+            (get-value-of-type :string :site-locale)
+            (catch Exception _
+              nil)))))))
 
 (defmethod print-method Locale
   [locale ^java.io.Writer writer]

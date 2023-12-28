@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import { IconProps } from "metabase/components/Icon";
+import type { IconProps } from "metabase/core/components/Icon";
 
 import { getCrumbs } from "metabase/lib/collections";
 
@@ -10,13 +11,18 @@ import Collections from "metabase/entities/collections";
 
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
-import { isRootCollection } from "metabase/collections/utils";
+import {
+  isPersonalCollection,
+  isPublicCollection,
+  isRootCollection,
+} from "metabase/collections/utils";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
   CollectionPickerItem,
+  FilterItemsInPersonalCollection,
   PickerItem,
   PickerModel,
   PickerValue,
@@ -26,23 +32,28 @@ import type {
 import ItemPickerView from "./ItemPickerView";
 import { ScrollAwareLoadingAndErrorWrapper } from "./ItemPicker.styled";
 
-interface OwnProps {
-  value?: PickerValue;
+interface OwnProps<TId> {
+  value?: PickerValue<TId>;
   models: PickerModel[];
   entity?: typeof Collections; // collections/snippets entity
   showSearch?: boolean;
   showScroll?: boolean;
+  filterPersonalCollections?: FilterItemsInPersonalCollection;
   className?: string;
   style?: React.CSSProperties;
-  onChange: (value: PickerValue) => void;
+  onChange: (value: PickerValue<TId>) => void;
+  initialOpenCollectionId?: CollectionId;
+  collectionFilter?: (collection: Collection) => boolean;
+  onOpenCollectionChange?: (collectionId: CollectionId) => void;
+  children?: React.ReactNode;
 }
 
 interface StateProps {
-  collectionsById: Record<Collection["id"], Collection>;
+  collectionsById: Record<CollectionId, Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
-type Props = OwnProps & StateProps;
+export type ItemPickerProps<TId> = OwnProps<TId> & StateProps;
 
 function canWriteToCollectionOrChildren(collection: Collection) {
   return (
@@ -51,19 +62,19 @@ function canWriteToCollectionOrChildren(collection: Collection) {
   );
 }
 
-function mapStateToProps(state: State, props: OwnProps) {
+function mapStateToProps<TId>(state: State, props: OwnProps<TId>) {
   const entity = props.entity || Collections;
   return {
-    collectionsById: entity.selectors.getExpandedCollectionsById(state),
+    collectionsById: entity.selectors.getExpandedCollectionsById(state, props),
     getCollectionIcon: entity.objectSelectors.getIcon,
   };
 }
 
-function getEntityLoaderType(state: State, props: OwnProps) {
+function getEntityLoaderType<TId>(state: State, props: OwnProps<TId>) {
   return props.entity?.name ?? "collections";
 }
 
-function getItemId(item: PickerItem | PickerValue) {
+function getItemId<TId>(item: PickerItem<TId> | PickerValue<TId>) {
   if (!item) {
     return;
   }
@@ -73,24 +84,35 @@ function getItemId(item: PickerItem | PickerValue) {
   return item.id;
 }
 
-function ItemPicker({
+function ItemPicker<TId>({
   value,
   models,
   collectionsById,
   className,
   showSearch = true,
   showScroll = true,
+  filterPersonalCollections,
   style,
   onChange,
   getCollectionIcon,
-}: Props) {
-  const [openCollectionId, setOpenCollectionId] =
-    useState<Collection["id"]>("root");
+  initialOpenCollectionId = "root",
+  onOpenCollectionChange,
+  children,
+}: ItemPickerProps<TId>) {
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
+    initialOpenCollectionId,
+  );
   const [searchString, setSearchString] = useState("");
 
   const isPickingNotCollection = models.some(model => model !== "collection");
 
   const openCollection = collectionsById[openCollectionId];
+  const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
+  const showItems = Boolean(
+    searchString ||
+      filterPersonalCollections !== "only" ||
+      isOpenCollectionInPersonalCollection,
+  );
 
   const collections = useMemo(() => {
     let list = openCollection?.children || [];
@@ -106,18 +128,22 @@ function ItemPicker({
 
     const collectionItems = list
       .filter(canWriteToCollectionOrChildren)
+      .filter(getCollectionFilter(filterPersonalCollections))
       .map(collection => ({
         ...collection,
         model: "collection",
       }));
 
-    return collectionItems as CollectionPickerItem[];
-  }, [openCollection, models]);
+    return collectionItems as CollectionPickerItem<TId>[];
+  }, [openCollection, models, filterPersonalCollections]);
 
   const crumbs = useMemo(
     () =>
-      getCrumbs(openCollection, collectionsById, id => setOpenCollectionId(id)),
-    [openCollection, collectionsById],
+      getCrumbs(openCollection, collectionsById, id => {
+        setOpenCollectionId(id);
+        onOpenCollectionChange?.(id);
+      }),
+    [openCollection, collectionsById, onOpenCollectionChange],
   );
 
   const searchQuery = useMemo(() => {
@@ -125,19 +151,20 @@ function ItemPicker({
 
     if (searchString) {
       query.q = searchString;
+      if (filterPersonalCollections) {
+        query.filter_items_in_personal_collection = filterPersonalCollections;
+      }
     } else {
       query.collection = openCollectionId;
     }
 
-    if (models.length === 1) {
-      query.models = models;
-    }
+    query.models = models;
 
     return query;
-  }, [models, searchString, openCollectionId]);
+  }, [searchString, models, filterPersonalCollections, openCollectionId]);
 
   const checkIsItemSelected = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<TId>) => {
       if (!value || !item) {
         return false;
       }
@@ -148,7 +175,7 @@ function ItemPicker({
   );
 
   const checkCollectionMaybeHasChildren = useCallback(
-    (collection: CollectionPickerItem) => {
+    (collection: CollectionPickerItem<TId>) => {
       if (isPickingNotCollection) {
         // Non-collection models (e.g. questions, dashboards)
         // are loaded on-demand so we don't know ahead of time
@@ -169,7 +196,7 @@ function ItemPicker({
   );
 
   const checkHasWritePermissionForItem = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<TId>) => {
       // if user is selecting a collection, they must have a `write` access to it
       if (models.includes("collection") && item.model === "collection") {
         return item.can_write;
@@ -180,18 +207,21 @@ function ItemPicker({
       const collection = item.collection_id
         ? collectionsById[item.collection_id]
         : collectionsById["root"];
-      return collection.can_write;
+      return collection?.can_write;
     },
     [models, collectionsById],
   );
 
   const handleChange = useCallback(
-    (item: PickerItem) => {
+    (item: PickerItem<TId>) => {
       if (
         item.model === "collection" &&
         isRootCollection(item as unknown as Collection)
       ) {
-        onChange({ id: null, model: "collection" });
+        onChange({
+          id: null,
+          model: "collection",
+        } as unknown as PickerItem<TId>);
       } else {
         onChange(item);
       }
@@ -199,9 +229,13 @@ function ItemPicker({
     [onChange],
   );
 
-  const handleCollectionOpen = useCallback(collectionId => {
-    setOpenCollectionId(collectionId);
-  }, []);
+  const handleCollectionOpen = useCallback(
+    collectionId => {
+      setOpenCollectionId(collectionId);
+      onOpenCollectionChange?.(collectionId);
+    },
+    [onOpenCollectionChange],
+  );
 
   return (
     <ScrollAwareLoadingAndErrorWrapper
@@ -211,7 +245,6 @@ function ItemPicker({
       <ItemPickerView
         className={className}
         models={models}
-        openCollection={openCollection}
         collections={collections}
         searchString={searchString}
         searchQuery={searchQuery}
@@ -225,11 +258,32 @@ function ItemPicker({
         checkHasWritePermissionForItem={checkHasWritePermissionForItem}
         getCollectionIcon={getCollectionIcon}
         style={style}
-      />
+        allowFetch={
+          // "personal" is a fake collection for admins that contains all other user's collections
+          openCollectionId !== "personal" && showItems
+        }
+      >
+        {children}
+      </ItemPickerView>
     </ScrollAwareLoadingAndErrorWrapper>
   );
 }
 
+function getCollectionFilter(
+  filterPersonalCollections?: FilterItemsInPersonalCollection,
+) {
+  if (filterPersonalCollections === "only") {
+    return isPersonalCollection;
+  }
+
+  if (filterPersonalCollections === "exclude") {
+    return isPublicCollection;
+  }
+
+  return _.identity;
+}
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   entityObjectLoader({
     id: "root",
@@ -241,4 +295,4 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),
-)(ItemPicker);
+)(ItemPicker) as <TId>(props: OwnProps<TId>) => JSX.Element;

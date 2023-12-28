@@ -3,19 +3,22 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.string :as str]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.api.common :as api]
    [metabase.api.session :as api.session]
    [metabase.integrations.common :as integrations.common]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response])
   (:import
    (java.net URLEncoder)))
+
+(set! *warn-on-reflection* true)
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
@@ -25,7 +28,7 @@
   (let [user {:first_name       first-name
               :last_name        last-name
               :email            email
-              :sso_source       "jwt"
+              :sso_source       :jwt
               :login_attributes user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user)
         (sso-utils/create-new-sso-user! user))))
@@ -97,6 +100,7 @@
 
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
+  (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (check-jwt-enabled)
   (if jwt
     (login-jwt-user jwt request)

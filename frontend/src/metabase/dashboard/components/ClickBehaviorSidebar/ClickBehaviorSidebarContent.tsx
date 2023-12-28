@@ -1,9 +1,9 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { getIn } from "icepick";
 
 import type {
   Dashboard,
-  DashboardOrderedCard,
+  DashboardCard,
   DashCardId,
   CardId,
   ClickBehavior,
@@ -14,14 +14,14 @@ import type {
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { getClickBehaviorForColumn } from "./utils";
-import ClickBehaviorSidebarMainView from "./ClickBehaviorSidebarMainView";
-import TableClickBehaviorView from "./TableClickBehaviorView";
-import TypeSelector from "./TypeSelector";
+import { ClickBehaviorSidebarMainView } from "./ClickBehaviorSidebarMainView/ClickBehaviorSidebarMainView";
+import { TableClickBehaviorView } from "./TableClickBehaviorView/TableClickBehaviorView";
+import { TypeSelector } from "./TypeSelector/TypeSelector";
 import { SidebarContent } from "./ClickBehaviorSidebar.styled";
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   parameters: UiParameter[];
   clickBehavior?: ClickBehavior;
@@ -32,7 +32,7 @@ interface Props {
   onTypeSelectorVisibilityChange: (isVisible: boolean) => void;
 }
 
-function ClickBehaviorSidebar({
+export function ClickBehaviorSidebarContent({
   dashboard,
   dashcard,
   dashcardData,
@@ -51,7 +51,7 @@ function ClickBehaviorSidebar({
     return { type: "actionMenu" };
   }, [clickBehavior]);
 
-  if (isTableDisplay(dashcard) && !hasSelectedColumn) {
+  if (isTableDisplay(dashcard) && !hasSelectedColumn && dashcard.card_id) {
     const columns = getIn(dashcardData, [dashcard.card_id, "data", "cols"]);
     return (
       <TableClickBehaviorView
@@ -90,5 +90,3 @@ function ClickBehaviorSidebar({
     />
   );
 }
-
-export default ClickBehaviorSidebar;

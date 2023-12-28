@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import * as React from "react";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 import {
   TreeNodeRoot,
@@ -11,9 +11,8 @@ import {
   NameContainer,
   IconContainer,
 } from "./TreeNode.styled";
-import { TreeNodeProps } from "./types";
+import type { TreeNodeProps } from "./types";
 
-// eslint-disable-next-line react/display-name
 const BaseTreeNode = React.memo(
   React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
     {
@@ -54,11 +53,14 @@ const BaseTreeNode = React.memo(
     return (
       <TreeNodeRoot
         role="menuitem"
+        aria-label={name}
         tabIndex={0}
         onClick={onClick}
         {...props}
         depth={depth}
         isSelected={isSelected}
+        aria-selected={isSelected}
+        aria-expanded={isExpanded}
         onKeyDown={handleKeyDown}
         ref={ref}
       >

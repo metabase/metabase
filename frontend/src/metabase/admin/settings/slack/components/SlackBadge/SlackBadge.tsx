@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { BadgeRoot, BadgeIcon, BadgeText } from "./SlackBadge.styled";
 
@@ -24,4 +23,5 @@ const getMessage = (isBot?: boolean, isValid?: boolean): string => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackBadge;

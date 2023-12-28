@@ -6,7 +6,7 @@ redirect_from:
 
 # Account settings
 
-You can view your account settings by going to the top right of the screen and clicking on the **gear** icon > **Account settings**. 
+You can view your account settings by going to the top right of the screen and clicking on the **gear** icon > **Account settings**.
 
 ## Account profile
 
@@ -30,3 +30,7 @@ Whenever you log in from a new device, Metabase will send you an email just to l
 ## Disable animations in Metabase
 
 This isn't an in-Metabase setting, but just so you know: you can disable UI animations in Metabase (like sidebars sliding around, or rotating spinners) by changing the settings for your operating system so it respects the `prefers-reduced-motion` CSS media feature. This change will also affect other applications, not just Metabase. Check out the instructions for how to set the user preferences for your operating system in the [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion#user_preferences).
+
+## Notifications
+
+If you subscribe or are added to dashboard subscriptions or alerts, you’ll be able to manage those notifications here (as well as on the relevant question or dashboard themselves).

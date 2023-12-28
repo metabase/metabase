@@ -37,6 +37,7 @@
          ~(macros.common/ignore-unused 'card-id-nested)               nil
          ~(macros.common/ignore-unused 'card-id-nested-query)         nil
          ~(macros.common/ignore-unused 'card-id-native-query)         nil
+         ~(macros.common/ignore-unused 'card-id-pivot-table)          nil
          ~(macros.common/ignore-unused 'dashcard-id)                  nil
          ~(macros.common/ignore-unused 'dashcard-top-level-click-id)  nil
          ~(macros.common/ignore-unused 'dashcard-with-click-actions)  nil

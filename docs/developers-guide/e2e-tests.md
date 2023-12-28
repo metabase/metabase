@@ -8,16 +8,22 @@ Metabase uses Cypress for “end-to-end testing”, that is, tests that are exec
 
 ## Getting Started
 
-Metabase’s Cypress tests are located in the `frontend/test/metabase/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `frontend/test/metabase/scenarios/admin/datamodel`.
+Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `e2e/test/scenarios/admin/datamodel`.
 
-During development you will want to run `yarn build-hot` to continuously build the frontend, and `yarn test-cypress-open` to open the Cypress application where you can execute the tests you are working on.
+### Standard Development Flow
+1. Run `yarn build-hot` to continuously build the frontend
+
+2. then `yarn test-cypress-open --browser=electron` to open the Cypress application where you can execute tests you are working on
+
+
+### Running Options
 
 To run all Cypress tests programmatically in the terminal:
 ```
 yarn run test-cypress-run
 ```
 
-You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `frontend/test/metabase/scenarios/`.
+You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `e2e/test/scenarios/`.
 
 ```
 yarn run test-cypress-run --folder sharing
@@ -26,8 +32,10 @@ yarn run test-cypress-run --folder sharing
 You can quickly test a single file only by using the `--spec` flag.
 
 ```
-yarn test-cypress-run --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
+yarn test-cypress-run --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
+
+## Anatomy of the Test
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
 
@@ -84,6 +92,13 @@ A subset of our tests depend on the external services that are available through
 
 Please note the minus sign before the `@external` tag. For more details, consult [the official documentation](https://github.com/cypress-io/cypress-grep#filter-with-tags).
 
+### Running tests with Snowplow involved
+
+Tests that depend on Snowplow expect a running server. To run them, you need to:
+
+- run Snowplow locally: `docker-compose -f ./snowplow/docker-compose.yml up -d`
+- pass env variables to the test run: `MB_SNOWPLOW_AVAILABLE=true MB_SNOWPLOW_URL=http://localhost:9090 yarn test-cypress-open`
+
 ## DB Snapshots
 
 At the beginning of each test suite we wipe the backend's db and settings cache. This ensures that the test suite starts in a predictable state.
@@ -95,26 +110,65 @@ Snapshots are created with a separate set of Cypress tests. These tests start wi
 These snapshot-generating tests have the extension `.cy.snap.js`. When these tests run they create db dumps in `frontend/tests/snapshots/*.sql`. They are run before the tests begin and don't get committed to git.
 
 ## Running in CI
+
 Cypress records videos of each test run, which can be helpful in debugging. Additionally, failed tests have higher quality images saved.
 
+These files can be found under the “Artifacts” section for each run's summary in GitHub Actions.
+The example of the artifacts for a failed test in "Onboarding" directory:
+![GitHub Actions artifacts section](https://user-images.githubusercontent.com/31325167/241774190-f19da1d5-8fca-4c48-9342-ead18066bd12.png)
 
-These files can be found under the “Artifacts” tab in Circle:
-![Circle CI Artifacts tab](https://user-images.githubusercontent.com/691495/72190614-f5995380-33cd-11ea-875e-4203d6dcf1c1.png)
+## Running Cypress tests against Metabase® Enterprise Edition™
 
-## Running Cypress tests against EE version of Metabase
+Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITION=ee` environment variable. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the edition.
 
-Prior to running Cypress, make sure you have a valid enterprise token. We have a special `describe` block called `describeEE` that will conditionally skip or run tests based on the existence of two environment variables:
+**Enterprise instance will start without a premium token!**
 
-- `MB_EDITION`
-- `MB_PREMIUM_EMBEDDING_TOKEN`
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
+You must provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
+
+- `CYPRESS_ALL_FEATURES_TOKEN`
+- `CYPRESS_NO_FEATURES_TOKEN`
 
 ```
-MB_EDITION=ee MB_PREMIUM_EMBEDDING_TOKEN=xxxxxx yarn test-cypress-open
+MB_EDITION=ee CYPRESS_ALL_FEATURES_TOKEN=xxxxxx CYPRESS_NO_FEATURES_TOKEN=xxxxxx yarn test-cypress-open
 ```
 
-If you navigate to the `/admin/settings/license` page, the license input field should be disabled and already populated. It should say: "Using MB_PREMIUM_EMBEDDING_TOKEN".
+If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 
-
-- If tests under `describeEE` block are greyed out and not running, make sure you entered the environment variables correctly.
-- If tests start running but the enterprise features are missing: make sure that the token is still valid. 
+- If tests under `describeEE` block are greyed out and not running, make sure you spun up Metabase® Enterprise Edition™.
+- If tests start running but the enterprise features are missing: make sure that the token you use has corresponding feature flags enabled.
 - If everything with the token seems to be okay, go nuclear and destroy all Java processes: run `killall java` and restart Cypress.
+
+## Tags
+
+Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `yarn test-cypress-open --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
+
+These are the tags currently in use:
+
+- `@external` - tests that require an external docker container to run
+- `@actions` - tests that use metabase actions and mutate data in a data source
+
+## How to stress-test a flake fix?
+
+Fixing a flaky test locally doesn't mean the fix works in GitHub's CI environment. The only way to be sure the fix works is to stress-test it in CI. That's what `.github/workflows/e2e-stress-test-flake-fix.yml` is made for. It allows you to quickly test the fix in your branch without waiting for the full build to complete.
+
+Please follow these steps:
+### Prepare
+- Create a new branch with your proposed fix and push it to the remote
+- Either skip opening a PR altogether or open a **draft** pull request
+
+### Trigger the stress-test workflow manually
+- Go to `https://github.com/metabase/metabase/actions/workflows/e2e-stress-test-flake-fix.yml`
+- Click on _Run workflow_ trigger next to "This workflow has a workflow_dispatch event trigger."
+1. Choose your own branch in the first field "Use workflow from" (this part is crucial!)
+2. Copy and paste the relative path of the spec you want to test (e.g. `e2e/test/scenarios/onboarding/urls.cy.spec.js`) - you don't have to wrap it in quotes
+3. Set the desired number of times to run the test
+4. Optionally provide a grep filter, according to [the documentation](https://github.com/cypress-io/cypress/tree/develop/npm/grep)
+5. Click the green "Run workflow" button and wait for the results
+
+### Things to keep in mind when using this workflow
+- It will automatically try to find and download the previously built Metabase uberjar stored as an artifact from one of the past commits / CI runs.
+- It was intended to be used for pure E2E fixes that don't require new Metabase uberjar.
+- If the fix required a source-code change (either backend of frontend), please open a regular PR instead and let the CI run all tests first. After this,
+you can trigger the stress-test workflow manually, as explained above, and it will automatically download newly built artifact from this CI run. Please,
+keep in mind that CI needs to fully finish running first. The workflow uses GitHub REST API which doesn't see artifacts otherwise.

@@ -1,15 +1,16 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { createRef, Component } from "react";
 
 import cx from "classnames";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Popover from "metabase/components/Popover";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";
+import { AlertIcon } from "./QuestionAlertWidget.styled";
 
-export default class QuestionAlertWidget extends React.Component {
+export default class QuestionAlertWidget extends Component {
   state = {
     isOpen: false,
     // this isFrozen nonsense is due to AlertListPopoverContent containing a <Modal>
@@ -28,7 +29,7 @@ export default class QuestionAlertWidget extends React.Component {
   constructor(props, context) {
     super(props, context);
 
-    this.rootRef = React.createRef();
+    this.rootRef = createRef();
   }
 
   render() {
@@ -67,10 +68,11 @@ export default class QuestionAlertWidget extends React.Component {
       );
     } else {
       return (
-        <Icon
+        <AlertIcon
           name="bell"
           tooltip={t`Get alerts`}
-          className={cx(className, "text-brand-hover cursor-pointer")}
+          size={20}
+          className={className}
           onClick={onCreateAlert}
         />
       );

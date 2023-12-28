@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -61,7 +61,7 @@ export function PermissionsEditorContent({
   const handleFilterChange = e => setFilter(e.target.value);
 
   return (
-    <PermissionEditorContentRoot>
+    <PermissionEditorContentRoot data-testid="permissions-editor">
       <Subhead>
         {title}{" "}
         {breadcrumbs && (
@@ -94,7 +94,7 @@ export function PermissionsEditorContent({
           onAction={onAction}
           emptyState={
             <EditorEmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EditorEmptyStateContainer>
           }
         />

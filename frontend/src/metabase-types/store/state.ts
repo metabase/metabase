@@ -1,25 +1,31 @@
-import { User } from "metabase-types/api";
-import { AdminState } from "./admin";
-import { AppState } from "./app";
-import { DashboardState } from "./dashboard";
-import { EmbedState } from "./embed";
-import { EntitiesState } from "./entities";
-import { FormState } from "./forms";
-import { QueryBuilderState } from "./qb";
-import { SettingsState } from "./settings";
-import { SetupState } from "./setup";
+import type { User } from "metabase-types/api";
+import type { AdminState } from "./admin";
+import type { AppState } from "./app";
+import type { DashboardState } from "./dashboard";
+import type { EmbedState } from "./embed";
+import type { EntitiesState } from "./entities";
+import type { MetabotState } from "./metabot";
+import type { QueryBuilderState } from "./qb";
+import type { ParametersState } from "./parameters";
+import type { SettingsState } from "./settings";
+import type { SetupState } from "./setup";
+import type { FileUploadState } from "./upload";
+import type { AuthState } from "./auth";
 
 export interface State {
   admin: AdminState;
   app: AppState;
+  auth: AuthState;
   currentUser: User | null;
   dashboard: DashboardState;
   embed: EmbedState;
   entities: EntitiesState;
-  form: FormState;
+  metabot: MetabotState;
   qb: QueryBuilderState;
+  parameters: ParametersState;
   settings: SettingsState;
   setup: SetupState;
+  upload: FileUploadState;
 }
 
 export type Dispatch<T = any> = (action: T) => void;

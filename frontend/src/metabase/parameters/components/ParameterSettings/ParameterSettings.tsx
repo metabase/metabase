@@ -1,21 +1,17 @@
-import React, {
-  ChangeEvent,
-  FocusEvent,
-  useCallback,
-  useLayoutEffect,
-  useState,
-} from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
-import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
-import { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
+import type {
+  Parameter,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+} from "metabase-types/api";
+import { TextInput } from "metabase/ui";
+import { canUseCustomSource } from "metabase-lib/parameters/utils/parameter-source";
 import { getIsMultiSelect } from "../../utils/dashboards";
-import {
-  canUseCustomSource,
-  isSingleOrMultiSelectable,
-} from "../../utils/parameter-type";
-import ParameterSourceSettings from "../ParameterSourceSettings";
+import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
+import ValuesSourceSettings from "../ValuesSourceSettings";
 import {
   SettingLabel,
   SettingRemoveButton,
@@ -30,37 +26,79 @@ const MULTI_SELECT_OPTIONS = [
 ];
 
 export interface ParameterSettingsProps {
-  parameter: UiParameter;
+  parameter: Parameter;
+  isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
+  onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceConfig: (sourceOptions: ValuesSourceConfig) => void;
+  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onRemoveParameter: () => void;
 }
 
 const ParameterSettings = ({
   parameter,
+  isParameterSlugUsed,
   onChangeName,
-  onChangeSourceType,
-  onChangeSourceConfig,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
+  onChangeSourceType,
+  onChangeSourceConfig,
   onRemoveParameter,
 }: ParameterSettingsProps): JSX.Element => {
+  const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
+
+  useLayoutEffect(() => {
+    setTempLabelValue(parameter.name);
+  }, [parameter.name]);
+
+  const labelError = getLabelError({
+    labelValue: tempLabelValue,
+    isParameterSlugUsed,
+  });
+
+  const handleLabelChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setTempLabelValue(event.target.value);
+  };
+
+  const handleLabelBlur = (event: { target: HTMLInputElement }) => {
+    if (labelError) {
+      // revert to the value before editing
+      setTempLabelValue(parameter.name);
+    } else {
+      onChangeName(event.target.value);
+    }
+  };
+
+  const handleSourceSettingsChange = useCallback(
+    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
+      onChangeSourceType(sourceType);
+      onChangeSourceConfig(sourceConfig);
+    },
+    [onChangeSourceType, onChangeSourceConfig],
+  );
+
   return (
     <SettingsRoot>
       <SettingSection>
         <SettingLabel>{t`Label`}</SettingLabel>
-        <ParameterInput initialValue={parameter.name} onChange={onChangeName} />
+        <TextInput
+          onChange={handleLabelChange}
+          value={tempLabelValue}
+          onBlur={handleLabelBlur}
+          error={labelError}
+          aria-label={t`Label`}
+        />
       </SettingSection>
       {canUseCustomSource(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`Options to pick from`}</SettingLabel>
-          <ParameterSourceSettings
+          <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
+          <ValuesSourceSettings
             parameter={parameter}
-            onChangeSourceType={onChangeSourceType}
-            onChangeSourceConfig={onChangeSourceConfig}
+            onChangeQueryType={onChangeQueryType}
+            onChangeSourceSettings={handleSourceSettingsChange}
           />
         </SettingSection>
       )}
@@ -76,7 +114,7 @@ const ParameterSettings = ({
       </SettingSection>
       {isSingleOrMultiSelectable(parameter) && (
         <SettingSection>
-          <SettingLabel>{t`Users can pick`}</SettingLabel>
+          <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio
             value={getIsMultiSelect(parameter)}
             options={MULTI_SELECT_OPTIONS}
@@ -92,37 +130,21 @@ const ParameterSettings = ({
   );
 };
 
-interface ParameterInputProps {
-  initialValue: string;
-  onChange: (value: string) => void;
+function getLabelError({
+  labelValue,
+  isParameterSlugUsed,
+}: {
+  labelValue: string;
+  isParameterSlugUsed: (value: string) => boolean;
+}) {
+  if (!labelValue) {
+    return t`Required`;
+  }
+  if (isParameterSlugUsed(labelValue)) {
+    return t`This label is already in use`;
+  }
+  return null;
 }
 
-const ParameterInput = ({ initialValue, onChange }: ParameterInputProps) => {
-  const [value, setValue] = useState(initialValue);
-
-  useLayoutEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
-  const handleChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    setValue(event.target.value);
-  }, []);
-
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLInputElement>) => {
-      onChange(event.target.value);
-    },
-    [onChange],
-  );
-
-  return (
-    <Input
-      value={value}
-      fullWidth
-      onChange={handleChange}
-      onBlur={handleBlur}
-    />
-  );
-};
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterSettings;

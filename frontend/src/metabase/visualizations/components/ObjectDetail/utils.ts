@@ -1,19 +1,35 @@
 import { t } from "ttag";
-import _ from "underscore";
 
-import { singularize } from "metabase/lib/formatting";
+import { singularize, formatValue } from "metabase/lib/formatting";
 
-import { DatasetData, Column } from "metabase-types/types/Dataset";
-import { isPK, isEntityName } from "metabase-lib/types/utils/isa";
-import Question from "metabase-lib/Question";
-import Table from "metabase-lib/metadata/Table";
+import {
+  isImplicitDeleteAction,
+  isImplicitUpdateAction,
+} from "metabase/actions/utils";
+import type {
+  DatasetColumn,
+  DatasetData,
+  TableId,
+  VisualizationSettings,
+  WritebackAction,
+} from "metabase-types/api";
 
-import { ObjectId } from "./types";
+import {
+  getIsPKFromTablePredicate,
+  isEntityName,
+  isPK,
+} from "metabase-lib/types/utils/isa";
+import { canRunAction } from "metabase-lib/actions/utils";
+import type Database from "metabase-lib/metadata/Database";
+import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
+
+import type { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table: Table | null;
-  question: Question;
-  cols: Column[];
+  table?: Table | null;
+  question?: Question;
+  cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
 }
 
@@ -41,27 +57,34 @@ export const getObjectName = ({
 };
 
 export interface GetDisplayIdArgs {
-  cols: Column[];
+  cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
+  tableId?: TableId;
+  settings: VisualizationSettings;
 }
 
 export const getDisplayId = ({
   cols,
   zoomedRow,
+  tableId,
+  settings,
 }: GetDisplayIdArgs): ObjectId | null => {
   const hasSinglePk =
-    cols.reduce(
-      (pks: number, col: Column) => (isPK(col) ? pks + 1 : pks),
-      0,
-    ) === 1;
+    cols.filter(getIsPKFromTablePredicate(tableId)).length === 1;
 
   if (!zoomedRow) {
     return null;
   }
 
   if (hasSinglePk) {
-    const pkColumn = cols.findIndex(isPK);
-    return zoomedRow[pkColumn] as ObjectId;
+    const pkColumnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+    const pkColumn = cols[pkColumnIndex];
+    const columnSetting = settings?.column?.(pkColumn) ?? {};
+
+    return formatValue(zoomedRow[pkColumnIndex], {
+      ...columnSetting,
+      column: pkColumn,
+    }) as ObjectId;
   }
 
   const hasEntityName = cols && !!cols?.find(isEntityName);
@@ -71,30 +94,85 @@ export const getDisplayId = ({
   }
 
   // TODO: respect user column reordering
-  return zoomedRow[0] as ObjectId;
+  const defaultColumn = cols[0];
+  const columnSetting = settings?.column?.(defaultColumn) ?? {};
+
+  return formatValue(zoomedRow[0], {
+    ...columnSetting,
+    column: defaultColumn,
+  }) as ObjectId;
 };
 
 export interface GetIdValueArgs {
   data: DatasetData;
-  zoomedRowID?: ObjectId;
+  tableId?: TableId;
 }
 
 export const getIdValue = ({
   data,
-  zoomedRowID,
+  tableId,
 }: GetIdValueArgs): ObjectId | null => {
   if (!data) {
     return null;
   }
-  if (zoomedRowID) {
-    return zoomedRowID;
-  }
 
   const { cols, rows } = data;
-  const columnIndex = _.findIndex(cols, col => isPK(col));
+  const columnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
   return rows[0][columnIndex] as number;
 };
 
 export function getSingleResultsRow(data: DatasetData) {
   return data.rows.length === 1 ? data.rows[0] : null;
 }
+
+export const getSinglePKIndex = (cols: DatasetColumn[]) => {
+  const pkCount = cols?.filter(isPK)?.length;
+  if (pkCount !== 1) {
+    return undefined;
+  }
+  const index = cols?.findIndex(isPK);
+
+  return index === -1 ? undefined : index;
+};
+
+export const getActionItems = ({
+  actions,
+  databases,
+  onDelete,
+  onUpdate,
+}: {
+  actions: WritebackAction[];
+  databases: Database[];
+  onDelete: (action: WritebackAction) => void;
+  onUpdate: (action: WritebackAction) => void;
+}) => {
+  const actionItems = [];
+  /**
+   * Public actions require an additional endpoint which is out of scope
+   * of Milestone 1 in #32320 epic.
+   *
+   * @see https://github.com/metabase/metabase/issues/32320
+   * @see https://metaboat.slack.com/archives/C057T1QTB3L/p1689845931726009?thread_ts=1689665950.493399&cid=C057T1QTB3L
+   */
+  const privateActions = actions.filter(action => !action.public_uuid);
+  const deleteAction = privateActions.find(isValidImplicitDeleteAction);
+  const updateAction = privateActions.find(isValidImplicitUpdateAction);
+
+  if (updateAction && canRunAction(updateAction, databases)) {
+    const action = () => onUpdate(updateAction);
+    actionItems.push({ title: t`Update`, icon: "pencil", action });
+  }
+
+  if (deleteAction && canRunAction(deleteAction, databases)) {
+    const action = () => onDelete(deleteAction);
+    actionItems.push({ title: t`Delete`, icon: "trash", action });
+  }
+
+  return actionItems;
+};
+
+export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
+  isImplicitDeleteAction(action) && !action.archived;
+
+export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
+  isImplicitUpdateAction(action) && !action.archived;

@@ -18,7 +18,7 @@ function translateErrorMessage(message: string) {
     "Start year must be less than stop year": t`Start year must be less than stop year`,
     "(Year) - Unsupported value for field. Possible values are 1970-2099 , - * /": t`Unsupported year value. Possible values are 1970-2099 , - * /`,
     "Minute and Second values must be between 0 and 59 and Hour Values must be between 0 and 23": t`Minute and second values must be between 0 and 59 and hour values must be between 0 and 23`,
-    "? can only be specfied for Day-of-Month -OR- Day-of-Week": t`You must use ? in the day-of-week or day-of-month field`,
+    "? can only be specified for Day-of-Month -OR- Day-of-Week": t`You must use ? in the day-of-week or day-of-month field`,
     "Unexpected end of expression": t`Invalid cron expression`,
   };
   return errorMessageMap[message];

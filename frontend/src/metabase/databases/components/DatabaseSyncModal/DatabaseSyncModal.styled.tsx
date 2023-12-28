@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
-import React from "react";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 
 export const ModalRoot = styled.div`
   position: relative;

@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "baseUrl": "./",
+    "types": ["cypress", "@testing-library/cypress", "cypress-real-events"],
+    "paths": {
+      "*": ["../frontend/src/*"],
+      "e2e/*": ["./*"]
+    }
+  },
+  "include": ["**/*"]
+}

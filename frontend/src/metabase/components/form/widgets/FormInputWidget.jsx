@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 import PropTypes from "prop-types";
 import { formDomOnlyProps } from "metabase/lib/redux";
 import Input from "metabase/core/components/Input";

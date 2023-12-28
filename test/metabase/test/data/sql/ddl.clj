@@ -1,16 +1,14 @@
 (ns metabase.test.data.sql.ddl
   "Methods for creating DDL statements for things like creating/dropping databases and loading data."
   (:require
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defmulti drop-db-ddl-statements
   "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensons namespace, if
@@ -47,32 +45,32 @@
   (let [statements (atom [])
         add!       (fn [& stmnts]
                      (swap! statements concat (filter some? stmnts)))]
-    ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
+      ;; Add the SQL for creating each Table
       (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
-            (sql.tx/create-table-sql driver dbdef tabledef)))
-    ;; Add the SQL for adding FK constraints
-    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
-            {:keys [fk], :as fielddef}                field-definitions]
-      (when fk
-        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef))))
-    ;; Add the SQL for adding table comments
-    (doseq [{:keys [table-comment], :as tabledef} table-definitions]
-      (when table-comment
+            (sql.tx/create-table-sql driver dbdef tabledef))
+      ;; Add the SQL for adding table comments
+      (when (:table-comment tabledef)
         (add! (sql.tx/standalone-table-comment-sql driver dbdef tabledef))))
-    ;; Add the SQL for adding column comments
-    (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
-      (doseq [{:keys [field-comment], :as fielddef} field-definitions]
-        (when field-comment
-          (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef)))))
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions
+            {:keys [fk indexed?], :as fielddef}       field-definitions]
+      ;; Add the SQL for adding FK constraints
+      (when fk
+        (add! (sql.tx/add-fk-sql driver dbdef tabledef fielddef)))
+      ;; Add the SQL for creating index
+      (when indexed?
+        (add! (sql.tx/create-index-sql driver (:table-name tabledef) [(:field-name fielddef)])))
+      ;; Add the SQL for adding column comments
+      (when (:field-comment fielddef)
+        (add! (sql.tx/standalone-column-comment-sql driver dbdef tabledef fielddef))))
     @statements))
 
 ;; The methods below are currently only used by `:sql-jdbc` drivers, but you can use them to help implement your
 ;; `:sql` driver test extensions as well because there's nothing JDBC specific about them
 
 (defmulti insert-rows-honeysql-form
-  "Return an appropriate HoneySQL for inserting `row-or-rows` into a Table named by `table-identifier`."
-  {:arglists '([driver, ^metabase.util.honeysql_extensions.Identifier table-identifier, row-or-rows])}
+  "Return an appropriate Honey SQL form for inserting `row-or-rows` (as maps) into a Table named by `table-identifier`."
+  {:arglists '([driver table-identifier row-or-rows])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -80,42 +78,39 @@
   [driver table-identifier row-or-rows]
   (let [rows    (u/one-or-many row-or-rows)
         columns (keys (first rows))
-        values  (for [row rows]
-                  (for [value (map row columns)]
-                    (sql.qp/->honeysql driver value)))
-        h-cols  (for [column columns]
-                  (sql.qp/->honeysql driver
-                    (hx/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))]
-    ;; explanation for the hack that follows
-    ;; hh/columns has a varargs check to make sure you call it in a varargs manner, which means it checks whether the
-    ;; first non-accumulator (i.e. not the map it's building) argument is a collection, and throws if so
-    ;; unfortunately, (coll? (hx/identifier ...)) is true, so the varargs check fails if we have ONE column here
-    ;; also, we can't simply call (hh/columns (first h-cols)) here, because that returns only the (hx/identifier ...)
-    ;; itself, and NOT a map like {:columns [(hx/identifier ...)]} like the rest of the builder fns are expecting
-    ;; the change in behavior was introduced in honeysql 0.9.7 here:
-    ;; https://github.com/seancorfield/honeysql/commit/4ca74f2b0d0f87827ce34d9baf8dcc8d086ce18e
-    ;; so we seem to have no choice but to reimplement the n=1 case in a hacky manner ourselves :(
-    (-> (case (count h-cols)
-          ;; only 1 column, which is an Identifier; hh/columns can't help us (see above)
-          1 {:columns [(first h-cols)]}
-          ;; at least two columns, so we can use hh/columns, but the first param we pass to it must be a map, since
-          ;; we're using the threading macro backwards
-          (apply hh/columns (conj h-cols {})))
-        (hh/insert-into table-identifier)
-        (hh/values values))))
+        values  (mapv (fn [row]
+                        (try
+                          (mapv (fn [column]
+                                  (let [value (get row column)]
+                                    ;; don't double-compile `:raw` forms
+                                    (if (and (vector? value)
+                                             (= (first value) :raw))
+                                      value
+                                      (sql.qp/->honeysql driver value))))
+                                columns)
+                          (catch Throwable e
+                            (throw (ex-info (format "Error compiling test data row: %s" (ex-message e))
+                                            {:driver driver, :row row}
+                                            e)))))
+                      rows)
+        h-cols  (mapv (fn [column]
+                        (sql.qp/->honeysql
+                         driver
+                         (h2x/identifier :field (ddl.i/format-name driver (u/qualified-name column)))))
+                      columns)]
+    (-> (apply sql.helpers/columns {} h-cols)
+        (assoc :insert-into [table-identifier])
+        (sql.helpers/values values))))
 
 (defmulti insert-rows-ddl-statements
   "Return appropriate SQL DDL statemtents for inserting `row-or-rows` (each row should be a map) into a Table named by
   `table-identifier`. Default implementation simply converts SQL generated by `insert-rows-honeysql-form` into SQL
   with `hsql/format`; in most cases you should only need to override that method. Override this instead if you do not
   want to use HoneySQL to generate the `INSERT` statement."
-  {:arglists '([driver ^metabase.util.honeysql_extensions.Identifier table-identifier row-or-rows])}
+  {:arglists '([driver table-identifier row-or-rows])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmethod insert-rows-ddl-statements :sql/test-extensions
   [driver table-identifier row-or-rows]
-  [(binding [hformat/*subquery?* false]
-     (hsql/format (insert-rows-honeysql-form driver table-identifier row-or-rows)
-       :quoting             (sql.qp/quote-style driver)
-       :allow-dashed-names? true))])
+  [(sql.qp/format-honeysql driver (insert-rows-honeysql-form driver table-identifier row-or-rows))])

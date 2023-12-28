@@ -1,4 +1,11 @@
 name: Prepare Uberjar Artifact
+description: Prepare and upload Metabase JAR as a GitHub artifact.
+
+inputs:
+  name:
+    required: true
+    description: Artifact name
+
 runs:
   using: "composite"
   steps:
@@ -11,7 +18,7 @@ runs:
     - name: Upload JARs as artifact
       uses: actions/upload-artifact@v3
       with:
-        name: metabase-${{ matrix.edition }}-uberjar
+        name: ${{ inputs.name }}
         path: |
           ./target/uberjar/metabase.jar
           ./COMMIT-ID

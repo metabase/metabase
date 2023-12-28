@@ -7,10 +7,11 @@
   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.tools.reader.edn :as edn]
-   [environ.core :refer [env]]
+   [environ.core :as env]
+   [mb.hawk.init]
    [medley.core :as m]
+   [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -19,15 +20,17 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor :as qp]
-   [metabase.test-runner.init :as test-runner.init]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.schema :as su]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
@@ -40,46 +43,53 @@
 (p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
 
 (def ^:private FieldDefinitionSchema
-  {:field-name                         su/NonBlankString
-   :base-type                          (s/conditional
-                                        #(and (map? %) (contains? % :natives))
-                                        {:natives {s/Keyword su/NonBlankString}}
-                                        #(and (map? %) (contains? % :native))
-                                        {:native su/NonBlankString}
-                                        :else
-                                        su/FieldType)
-   ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
-   ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
-   ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
-   ;; datasets e.g. [[metabase.actions.test-util/with-actions-test-data]]
-   (s/optional-key :not-null?)         (s/maybe s/Bool)
-   (s/optional-key :semantic-type)     (s/maybe su/FieldSemanticOrRelationType)
-   (s/optional-key :effective-type)    (s/maybe su/FieldType)
-   (s/optional-key :coercion-strategy) (s/maybe su/CoercionStrategy)
-   (s/optional-key :visibility-type)   (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)                (s/maybe su/KeywordOrString)
-   (s/optional-key :field-comment)     (s/maybe su/NonBlankString)})
+  [:map {:closed true}
+   [:field-name                          ms/NonBlankString]
+   [:base-type                           [:or
+                                          [:map {:closed true}
+                                           [:natives [:map-of :keyword ms/NonBlankString]]]
+                                          [:map {:closed true}
+                                           [:native ms/NonBlankString]]
+                                          ms/FieldType]]
+    ;; this was added pretty recently (in the 44 cycle) so it might not be supported everywhere. It should work for
+    ;; drivers using `:sql/test-extensions` and [[metabase.test.data.sql/field-definition-sql]] but you might need to add
+    ;; support for it elsewhere if you want to use it. It only really matters for testing things that modify test
+    ;; datasets e.g. [[mt/with-actions-test-data]]
+    ;; default is nullable
+   [:not-null?         {:optional true} [:maybe :boolean]]
+   [:unique?           {:optional true} [:maybe :boolean]]
+   ;; should we create an index for this field?
+   [:indexed?          {:optional true} [:maybe :boolean]]
+   [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+   [:effective-type    {:optional true} [:maybe ms/FieldType]]
+   [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
+   [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
+   [:fk                {:optional true} [:maybe ms/KeywordOrString]]
+   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]])
 
 (def ^:private ValidFieldDefinition
-  (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
+  [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])
 
 (def ^:private ValidTableDefinition
-  (s/constrained
-   {:table-name                     su/NonBlankString
-    :field-definitions              [ValidFieldDefinition]
-    :rows                           [[s/Any]]
-    (s/optional-key :table-comment) (s/maybe su/NonBlankString)}
-   (partial instance? TableDefinition)))
+  [:and
+   [:map {:closed true}
+    [:table-name                     ms/NonBlankString]
+    [:field-definitions              [:sequential ValidFieldDefinition]]
+    [:rows                           [:sequential [:sequential :any]]]
+    [:table-comment {:optional true} [:maybe ms/NonBlankString]]]
+   (ms/InstanceOfClass TableDefinition)])
 
 (def ^:private ValidDatabaseDefinition
-  (s/constrained
-   {:database-name     su/NonBlankString
-    :table-definitions [ValidTableDefinition]}
-   (partial instance? DatabaseDefinition)))
+  [:and
+   [:map {:closed true}
+    [:database-name ms/NonBlankString] ; this must be unique
+    [:table-definitions [:sequential ValidTableDefinition]]]
+   (ms/InstanceOfClass DatabaseDefinition)])
 
 ;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
-  "Return a definition of a dataset, so a test database can be created from it."
+  "Return a definition of a dataset, so a test database can be created from it. Returns a map matching
+  the [[ValidDatabaseDefinition]] schema."
   {:arglists '([this])}
   class)
 
@@ -162,7 +172,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
-  (test-runner.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
+  (mb.hawk.init/assert-tests-are-not-initializing (pr-str (list 'the-driver-with-test-extensions driver)))
   (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
@@ -208,7 +218,7 @@
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (-> (or *database-name-override* database-name)
       (str \_ table-name)
-      str/lower-case
+      u/lower-case-en
       (str/replace #"-" "_")
       (->>
         (take-last 30)
@@ -240,9 +250,9 @@
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (db/select-one Field
+  (t2/select-one Field
                  :table_id    (u/the-id table)
-                 :%lower.name (str/lower-case (:field-name this))
+                 :%lower.name (u/lower-case-en (:field-name this))
                  {:order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
@@ -250,11 +260,11 @@
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (letfn [(table-with-name [table-name]
-            (db/select-one Table
+            (t2/select-one Table
                            :db_id       (:id database)
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
-    (or (table-with-name (str/lower-case (:table-name this)))
+    (or (table-with-name (u/lower-case-en (:table-name this)))
         (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
 (defmethod metabase-instance DatabaseDefinition
@@ -262,7 +272,7 @@
   (assert (string? database-name))
   (assert (keyword? driver))
   (mdb/setup-db!)
-  (db/select-one Database
+  (t2/select-one Database
                  :name    database-name
                  :engine (u/qualified-name driver)
                  {:order-by [[:id :asc]]}))
@@ -328,17 +338,6 @@
 
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
-(defmulti has-questionable-timezone-support?
-  "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
-  `US/Pacific` when we're testing?). Defaults to `(not (driver/supports? driver) :set-timezone)`."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod has-questionable-timezone-support? ::test-extensions [driver]
-  (not (driver/supports? driver :set-timezone)))
-
-
 (defmulti id-field-type
   "Return the `base_type` of the `id` Field (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."
   {:arglists '([driver])}
@@ -384,8 +383,7 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   ;; TODO - Can `:cum-count` be used without args as well ??
-   (assert (= aggregation-type :count))
+   (assert (#{:count :cum-count} aggregation-type))
    {:base_type     :type/BigInteger
     :semantic_type :type/Quantity
     :name          "count"
@@ -395,10 +393,14 @@
 
   ([_driver aggregation-type {field-id :id, table-id :table_id}]
    {:pre [(some? table-id)]}
-   (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
-                                    :type     :query
-                                    :query    {:source-table table-id
-                                               :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
+   (merge
+    (first (qp/query->expected-cols {:database (t2/select-one-fn :db_id Table :id table-id)
+                                     :type     :query
+                                     :query    {:source-table table-id
+                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))
+    (when (= aggregation-type :cum-count)
+      {:base_type     :type/BigInteger
+       :semantic_type :type/Quantity}))))
 
 
 (defmulti count-with-template-tag-query
@@ -428,37 +430,40 @@
 
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  [(s/one su/NonBlankString "table name")
-   (s/one [DatasetFieldDefinition] "fields")
-   (s/one [[s/Any]] "rows")])
+  [:tuple
+   ms/NonBlankString
+   [:sequential DatasetFieldDefinition]
+   [:sequential [:sequential :any]]])
 
 ;; TODO - not sure everything below belongs in this namespace
 
-(s/defn ^:private dataset-field-definition :- ValidFieldDefinition
+(mu/defn ^:private dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
   [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
-(s/defn ^:private dataset-table-definition :- ValidTableDefinition
+(mu/defn ^:private dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
   comsumption by various test-data-loading methods."
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
-  ([table-name :- su/NonBlankString, field-definition-maps, rows]
+  ([table-name :- ms/NonBlankString
+    field-definition-maps
+    rows]
    (map->TableDefinition
     {:table-name        table-name
      :rows              rows
      :field-definitions (mapv dataset-field-definition field-definition-maps)})))
 
-(s/defn dataset-definition :- ValidDatabaseDefinition
+(mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
-  [database-name :- su/NonBlankString & table-definitions]
-  (s/validate
-   DatabaseDefinition
+  [database-name :- ms/NonBlankString & table-definitions]
+  (mu/validate-throw
+   (ms/InstanceOfClass DatabaseDefinition)
    (map->DatabaseDefinition
     {:database-name     database-name
      :table-definitions (for [table table-definitions]
@@ -486,7 +491,7 @@
 
   ([dataset-name docstring definition]
    {:pre [(symbol? dataset-name)]}
-   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
+   `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
       (apply dataset-definition ~(name dataset-name) ~definition))))
 
 
@@ -505,10 +510,10 @@
   [^EDNDatasetDefinition this]
   @(.def this))
 
-(s/defn edn-dataset-definition
+(mu/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
-  [dataset-name :- su/NonBlankString]
+  [dataset-name :- ms/NonBlankString]
   (let [get-def (delay
                   (let [file-contents (edn/read-string
                                        {:eof nil, :readers {'t #'u.date/parse}}
@@ -533,10 +538,10 @@
   (pretty [_]
     (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
-(s/defn transformed-dataset-definition
+(mu/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  [new-name :- ms/NonBlankString wrapped-definition & transform-fns]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn
@@ -552,7 +557,7 @@
   (fn [dbdef]
     (apply update dbdef :table-definitions f args)))
 
-(s/defn transform-dataset-only-tables :- (s/pred fn?)
+(mu/defn transform-dataset-only-tables :- fn?
   "Create a function for `transformed-dataset-definition` to only keep some subset of Tables from the original dataset
   definition."
   [& table-names]
@@ -583,34 +588,37 @@
 
 ;; TODO - maybe this should go in a different namespace
 
-(s/defn ^:private tabledef-with-name :- ValidTableDefinition
+(mu/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
-  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)
+   table-name :- ms/NonBlankString]
   (some
    (fn [{this-name :table-name, :as tabledef}]
      (when (= table-name this-name)
        tabledef))
    table-definitions))
 
-(s/defn ^:private fielddefs-for-table-with-name :- [ValidFieldDefinition]
+(mu/defn ^:private fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
+   table-name :- ms/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZero {su/NonBlankString s/Any}}
-  [{:keys [field-definitions rows]} :- TableDefinition]
+(mu/defn ^:private tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
+  [{:keys [field-definitions rows]} :- (ms/InstanceOfClass TableDefinition)]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(s/defn ^:private dbdef->table->id->row :- {su/NonBlankString {su/IntGreaterThanZero {su/NonBlankString s/Any}}}
+(mu/defn ^:private dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
   "Return a map of table name -> map of row ID -> map of column key -> value."
-  [{:keys [table-definitions]} :- DatabaseDefinition]
+  [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
-(s/defn ^:private nest-fielddefs
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+(mu/defn ^:private nest-fielddefs
+  [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
+   table-name :- ms/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
                           [fielddef]
@@ -619,7 +627,9 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+(mu/defn ^:private flatten-rows
+  [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
+   table-name :- ms/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
         resolve-field    (fn resolve-field [table id field-name]
@@ -641,37 +651,50 @@
           (str/replace #"s$" "")
           (str  \_ (flatten-field-name fk-dest-name))))))
 
-(s/defn flattened-dataset-definition
+(mu/defn flattened-dataset-definition
   "Create a flattened version of `dbdef` by following resolving all FKs and flattening all rows into the table with
   `table-name`. For use with timeseries databases like Druid."
-  [dataset-definition, table-name :- su/NonBlankString]
+  [dataset-definition
+   table-name :- ms/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
     (fn [dbdef]
       (assoc dbdef
-        :table-definitions
-        [(map->TableDefinition
-          {:table-name        table-name
-           :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
-                                (update fielddef :field-name flatten-field-name))
-           :rows              (flatten-rows dbdef table-name)})]))))
+             :table-definitions
+             [(map->TableDefinition
+               {:table-name        table-name
+                :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
+                                     (update fielddef :field-name flatten-field-name))
+                :rows              (flatten-rows dbdef table-name)})]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Test Env Vars                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- db-test-env-var-keyword [driver env-var]
+  (keyword (format "mb-%s-test-%s" (name driver) (name env-var))))
+
 (defn db-test-env-var
   "Look up test environment var `env-var` for the given `driver` containing connection related parameters.
   If no `:default` param is specified and the var isn't found, throw.
 
-     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`"
+     (db-test-env-var :mysql :user) ; Look up `MB_MYSQL_TEST_USER`
+
+  You can change this value at run time with [[db-test-env-var!]]."
   ([driver env-var]
    (db-test-env-var driver env-var nil))
 
   ([driver env-var default]
-   (get env
-        (keyword (format "mb-%s-test-%s" (name driver) (name env-var)))
-        default)))
+   (or (not-empty (get env/env (db-test-env-var-keyword driver env-var)))
+       default)))
+
+(defn db-test-env-var!
+  "Update or the value of a test env var. A `nil` new-value removes the env var value."
+  [driver env-var new-value]
+  (if (some? new-value)
+    (alter-var-root #'env/env assoc (db-test-env-var-keyword driver env-var) (str new-value))
+    (alter-var-root #'env/env dissoc (db-test-env-var-keyword driver env-var)))
+  nil)
 
 (defn- to-system-env-var-str
   "Converts the clojure environment variable form (a keyword) to a stringified version that will be specified at the
@@ -682,7 +705,7 @@
   (-> env-var-kwd
       name
       (str/replace "-" "_")
-      str/upper-case))
+      u/upper-case-en))
 
 (defn db-test-env-var-or-throw
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
@@ -693,5 +716,5 @@
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."
                                   (name driver)
-                                  (str/upper-case (str/replace (name driver) #"-" "_"))
+                                  (u/upper-case-en (str/replace (name driver) #"-" "_"))
                                   (to-system-env-var-str env-var)))))))

@@ -33,7 +33,7 @@ describe("getColumnKey", () => {
             expression_name: "foo",
             field_ref: fieldRefEnabled ? ["expression", "foo"] : undefined,
           }),
-        ).toEqual(JSON.stringify(["ref", ["expression", "foo", null]]));
+        ).toEqual(JSON.stringify(["ref", ["expression", "foo"]]));
       });
       it("should return [name ...] for aggregation", () => {
         const col = {
@@ -46,7 +46,7 @@ describe("getColumnKey", () => {
           JSON.stringify(["name", "foo"]),
         );
       });
-      it("should return [name ...] for aggregation", () => {
+      it("should return [name ...] for aggregation on field literal", () => {
         const col = {
           name: "foo",
           id: ["field", "foo", { "base-type": "type/Integer" }],
@@ -83,8 +83,7 @@ describe("getColumnKey", () => {
         field_ref: ["field", 1, { "join-alias": "x" }],
       };
       expect(getColumnKey(col)).toEqual(
-        // NOTE: not ideal, matches existing behavior, but should be ["field", 1, {"join-alias": "x"}]
-        JSON.stringify(["ref", ["field", 1, null]]),
+        JSON.stringify(["ref", ["field", 1, { "join-alias": "x" }]]),
       );
     });
   });

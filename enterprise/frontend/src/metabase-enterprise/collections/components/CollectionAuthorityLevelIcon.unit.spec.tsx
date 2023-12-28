@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -22,7 +21,7 @@ describe("CollectionAuthorityLevelIcon", () => {
     ].forEach(({ collection, name }) => {
       it(`doesn't render for ${name}`, () => {
         render(<CollectionAuthorityLevelIcon collection={collection} />);
-        expect(screen.queryByLabelText("folder icon")).toBeNull();
+        expect(screen.queryByLabelText("folder icon")).not.toBeInTheDocument();
       });
     });
   });
@@ -75,7 +74,7 @@ describe("CollectionAuthorityLevelIcon", () => {
     it(`can hide tooltip`, () => {
       renderOfficialCollection({ tooltip: null });
       userEvent.hover(queryOfficialIcon());
-      expect(screen.queryByLabelText("tooltip")).toBeNull();
+      expect(screen.queryByLabelText("tooltip")).not.toBeInTheDocument();
     });
   });
 });

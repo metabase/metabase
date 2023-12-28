@@ -1,9 +1,8 @@
-import React from "react";
 import _ from "underscore";
-import { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import { XYChart } from "../XYChart";
-import { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
-import { Colors } from "./types";
+import type { CardSeries, ChartSettings, ChartStyle } from "../XYChart/types";
+import type { Colors } from "./types";
 import {
   adjustSettings,
   calculateChartSize,
@@ -91,4 +90,5 @@ function pipe(...functions: ((arg: any) => any)[]) {
   return _.compose(...functions.reverse());
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LineAreaBarChart;

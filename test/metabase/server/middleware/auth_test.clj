@@ -1,7 +1,7 @@
 (ns metabase.server.middleware.auth-test
   (:require
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.models.session :refer [Session]]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.session :as mw.session]
@@ -10,9 +10,9 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [ring.mock.request :as ring.mock]
-   [toucan.db :as db])
-  (:import
-   (java.util UUID)))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -34,18 +34,18 @@
       (assoc :metabase-session-id session-id)))
 
 (defn- random-session-id []
-  (str (UUID/randomUUID)))
+  (str (random-uuid)))
 
 (deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
       (try
-        (db/insert! Session {:id      session-id
+        (t2/insert! Session {:id      session-id
                              :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
                    :metabase-user-id)))
-        (finally (db/delete! Session :id session-id)))))
+        (finally (t2/delete! Session :id session-id)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -58,13 +58,13 @@
       ;; expiration
       (let [session-id (random-session-id)]
         (try
-          (db/insert! Session {:id      session-id
+          (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :rasta)})
-          (db/update-where! Session {:id session-id}
-            :created_at (t/instant 0))
+          (t2/update! (t2/table-name Session) {:id session-id}
+            {:created_at (t/instant 0)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
-          (finally (db/delete! Session :id session-id)))))
+          (finally (t2/delete! Session :id session-id)))))
 
     (testing "when a Session tied to an inactive User is sent with the request"
       ;; create a new session (specifically created some time in the past so it's EXPIRED)
@@ -72,26 +72,26 @@
       ;; NOTE that :trashbird is our INACTIVE test user
       (let [session-id (random-session-id)]
         (try
-          (db/insert! Session {:id      session-id
+          (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :trashbird)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler
                   (request-with-session-id session-id))))
-          (finally (db/delete! Session :id session-id)))))))
+          (finally (t2/delete! Session :id session-id)))))))
 
 
-;;; ------------------------------------------ TEST wrap-api-key middleware ------------------------------------------
+;;; ------------------------------------------ TEST wrap-static-api-key middleware ------------------------------------------
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
 ;; this works in this case because the only impact our middleware has is on the request
 (defn- wrapped-api-key-handler [request]
-  ((mw.auth/wrap-api-key
+  ((mw.auth/wrap-static-api-key
     (fn [request respond _] (respond request)))
    request
    identity
    (fn [e] (throw e))))
 
-(deftest wrap-api-key-test
+(deftest wrap-static-api-key-test
   (testing "No API key in the request"
     (is (nil?
          (:metabase-session-id
@@ -100,16 +100,16 @@
 
   (testing "API Key in header"
     (is (= "foobar"
-           (:metabase-api-key
+           (:static-metabase-api-key
             (wrapped-api-key-handler
-             (ring.mock/header (ring.mock/request :get "/anyurl") @#'mw.auth/metabase-api-key-header "foobar")))))))
+             (ring.mock/header (ring.mock/request :get "/anyurl") @#'mw.auth/static-metabase-api-key-header "foobar")))))))
 
 
-;;; ---------------------------------------- TEST enforce-api-key middleware -----------------------------------------
+;;; ---------------------------------------- TEST enforce-static-api-key middleware -----------------------------------------
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
 (defn- api-key-enforced-handler [request]
-  ((mw.auth/enforce-api-key (fn [_ respond _] (respond {:success true})))
+  ((mw.auth/enforce-static-api-key (fn [_ respond _] (respond {:success true})))
    request
    identity
    (fn [e] (throw e))))
@@ -118,9 +118,9 @@
   "Creates a mock Ring request with the given apikey applied"
   [api-key]
   (-> (ring.mock/request :get "/anyurl")
-      (assoc :metabase-api-key api-key)))
+      (assoc :static-metabase-api-key api-key)))
 
-(deftest enforce-api-key-request
+(deftest enforce-static-api-key-request
   (mt/with-temporary-setting-values [api-key "test-api-key"]
     (testing "no apikey in the request, expect 403"
       (is (= mw.util/response-forbidden
@@ -138,11 +138,9 @@
               (request-with-api-key "foobar"))))))
 
   (testing "no apikey is set, expect 403"
-    (mt/with-temporary-setting-values [api-key nil]
-      (is (= mw.util/response-forbidden
-             (api-key-enforced-handler
-              (ring.mock/request :get "/anyurl")))))
-    (mt/with-temporary-setting-values [api-key ""]
-      (is (= mw.util/response-forbidden
-             (api-key-enforced-handler
-              (ring.mock/request :get "/anyurl")))))))
+    (doseq [api-key-value [nil ""]]
+      (testing (str "when key is " ({nil "nil" "" "empty"} api-key-value))
+       (mt/with-temporary-setting-values [api-key api-key-value]
+         (is (= mw.auth/key-not-set-response
+                (api-key-enforced-handler
+                 (ring.mock/request :get "/anyurl")))))))))

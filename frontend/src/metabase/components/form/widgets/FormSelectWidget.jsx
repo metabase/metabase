@@ -1,6 +1,4 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import Select, { Option } from "metabase/core/components/Select";
 
 const FormSelectWidget = ({ placeholder, options = [], field, disabled }) => (

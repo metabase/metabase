@@ -10,10 +10,9 @@
     :as catch-exceptions]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.data.users :as test.users]
-   [schema.core :as s]))
+   [metabase.test.data.users :as test.users]))
 
-(deftest exception-chain-test
+(deftest ^:parallel exception-chain-test
   (testing "Should be able to get a sequence of exceptions by following causes, with the top-level Exception first"
     (let [e1 (ex-info "1" {:level 1})
           e2 (ex-info "2" {:level 2} e1)
@@ -21,7 +20,7 @@
       (is (= [e1 e2 e3]
              (#'catch-exceptions/exception-chain e3))))))
 
-(deftest exception-response-test
+(deftest ^:parallel exception-response-test
   (testing "Should nicely format a chain of exceptions, with the top-level Exception appearing first"
     (testing "lowest-level error `:type` should be pulled up to the top-level"
       (let [e1 (ex-info "1" {:level 1})
@@ -58,24 +57,25 @@
   ([run query]
    (:metadata (mt/test-qp-middleware catch-exceptions/catch-exceptions query {} [] {:run run}))))
 
-(deftest no-exception-test
+(deftest ^:parallel no-exception-test
   (testing "No Exception -- should return response as-is"
     (is (= {:data {}, :row_count 0, :status :completed}
            (catch-exceptions
-            (fn [])))))
+            (fn []))))))
 
+(deftest ^:synchronized no-exception-test-2
   (testing "compile and preprocess should not be called if no exception occurs"
     (let [compile-call-count (atom 0)
           preprocess-call-count (atom 0)]
-     (with-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
-                   qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
-      (is (= {:data {}, :row_count 0, :status :completed}
-             (catch-exceptions
-              (fn []))))
-      (is (= 0 @compile-call-count))
-      (is (= 0 @preprocess-call-count))))))
+      (with-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
+                    qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
+        (is (= {:data {}, :row_count 0, :status :completed}
+               (catch-exceptions
+                (fn []))))
+        (is (= 0 @compile-call-count))
+        (is (= 0 @preprocess-call-count))))))
 
-(deftest sync-exception-test
+(deftest ^:parallel sync-exception-test
   (testing "if the QP throws an Exception (synchronously), should format the response appropriately"
     (is (= {:status     :failed
             :class      java.lang.Exception
@@ -87,7 +87,7 @@
            (-> (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))
                (update :stacktrace boolean))))))
 
-(deftest async-exception-test
+(deftest ^:parallel async-exception-test
   (testing "if an Exception is returned asynchronously by `raise`, should format it the same way"
     (is (= {:status     :failed
             :class      java.lang.Exception
@@ -103,7 +103,7 @@
                :metadata
                (update :stacktrace boolean))))))
 
-(deftest catch-exceptions-test
+(deftest ^:parallel catch-exceptions-test
   (testing "include-query-execution-info-test"
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
       (is (= {:status     :failed
@@ -152,19 +152,18 @@
     (perms/grant-permissions! (perms-group/all-users) (data/id) "PUBLIC" (data/id :venues))
     (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
                   "the query in the error response")
-      (is (schema= {:native (s/eq nil), :preprocessed (s/pred map?), s/Any s/Any}
-                   (test.users/with-test-user :rasta
-                     (qp/process-userland-query
-                      (data/mbql-query venues {:fields [!month.id]}))))))
+      (is (=? {:native nil, :preprocessed map?}
+              (test.users/with-test-user :rasta
+                (qp/process-userland-query
+                 (data/mbql-query venues {:fields [!month.id]}))))))
 
     (testing "They should see it if they have ad-hoc native query perms"
       (perms/grant-native-readwrite-permissions! (perms-group/all-users) (data/id))
       ;; this is not actually a valid query
-      (is (schema= {:native       (s/eq {:query  (str "SELECT date_trunc('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
-                                                      " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
-                                         :params nil})
-                    :preprocessed (s/pred map?)
-                    s/Any         s/Any}
-                   (test.users/with-test-user :rasta
-                     (qp/process-userland-query
-                      (data/mbql-query venues {:fields [!month.id]}))))))))
+      (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
+                                           " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
+                              :params nil}
+               :preprocessed map?}
+              (test.users/with-test-user :rasta
+                (qp/process-userland-query
+                 (data/mbql-query venues {:fields [!month.id]}))))))))

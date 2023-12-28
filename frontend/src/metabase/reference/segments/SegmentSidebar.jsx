@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -38,7 +38,7 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
         <SidebarItem
           key={`/reference/segments/${segment.id}/questions`}
           href={`/reference/segments/${segment.id}/questions`}
-          icon="all"
+          icon="folder"
           name={t`Questions about this segment`}
         />
         {MetabaseSettings.get("enable-xrays") && (
@@ -69,4 +69,4 @@ SegmentSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default React.memo(SegmentSidebar);
+export default memo(SegmentSidebar);

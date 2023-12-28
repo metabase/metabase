@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 
 import { duration } from "metabase/lib/formatting";
@@ -49,4 +48,5 @@ function LoadingView({ expectedDuration, isSlow }: LoadingViewProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LoadingView;

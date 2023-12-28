@@ -1,21 +1,24 @@
 (ns metabase.driver.googleanalytics-test
   "Tests for the Google Analytics driver and query processor."
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            metabase.driver.googleanalytics
-            [metabase.driver.googleanalytics.execute :as ga.execute]
-            [metabase.driver.googleanalytics.query-processor :as ga.qp]
-            [metabase.models :refer [Card Database Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time.api :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.googleanalytics]
+   [metabase.driver.googleanalytics.execute :as ga.execute]
+   [metabase.driver.googleanalytics.query-processor :as ga.qp]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.models :refer [Card Database Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (comment metabase.driver.googleanalytics/keep-me)
 
@@ -36,12 +39,14 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (binding [qp.store/*store* (atom {:tables {1 #metabase.models.table.TableInstance{:name   "0123456"
-                                                                                    :schema nil
-                                                                                    :id     1}}})]
+  (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                    meta/metadata-provider
+                                    {:tables [{:name   "0123456"
+                                               :schema nil
+                                               :id     1}]})
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
-(deftest basic-compilation-test
+(deftest ^:parallel basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
     (is (= (ga-query {})
            (mbql->native {}))))
@@ -69,7 +74,7 @@
 (defn- ga-date-field [unit]
   [:field "ga:date" {:temporal-unit unit}])
 
-(deftest filter-by-absolute-datetime-test
+(deftest ^:parallel filter-by-absolute-datetime-test
   (is (= (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
          (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime (t/local-date "2016-11-08") :day]]}})))
   (testing "tests off by one day correction for gt/lt operators (GA doesn't support exclusive ranges)"
@@ -150,7 +155,7 @@
                                         [:relative-datetime -4 :month]
                                         [:relative-datetime -1 :month]]}}))))))))))
 
-(deftest limit-test
+(deftest ^:parallel limit-test
   (is (= (ga-query {:max-results 25})
          (mbql->native {:query {:limit 25}}))))
 
@@ -158,11 +163,11 @@
 ;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
 
 (defn do-with-some-fields [thunk]
-  (mt/with-temp* [Database [db                 {:engine "googleanalytics"}]
-                  Table    [table              {:name "98765432", :db_id (u/the-id db)}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/the-id table)}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/the-id table)}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/the-id table)}]]
+  (mt/with-temp [Database db                 {:engine "googleanalytics"}
+                 Table    table              {:name "98765432" :db_id (u/the-id db)}
+                 Field    event-action-field {:name "ga:eventAction" :base_type "type/Text" :table_id (u/the-id table)}
+                 Field    event-label-field  {:name "ga:eventLabel" :base_type "type/Text" :table_id (u/the-id table)}
+                 Field    date-field         {:name "ga:date" :base_type "type/Date" :table_id (u/the-id table)}]
     (mt/with-db db
       (thunk {:db                 db
               :table              table
@@ -231,11 +236,9 @@
                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
-                (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
-                  (qp.store/with-store
-                    (qp.store/fetch-and-store-database! (u/the-id db))
-                    (qp.store/fetch-and-store-tables! [(u/the-id table)])
-                    (qp.store/fetch-and-store-fields! (map u/the-id [event-action-field event-label-field date-field]))
+                (fn [{:keys [db event-action-field event-label-field date-field], :as objects}]
+                  (qp.store/with-metadata-provider (u/the-id db)
+                    (qp.store/bulk-metadata :metadata/column (map u/the-id [event-action-field event-label-field date-field]))
                     (ga.qp/mbql->native (preprocessed-query-with-some-fields objects)))))))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end
@@ -286,7 +289,7 @@
                                         {:name "ga:totalEvents", :base_type :type/Text}]]
                                (#'ga.execute/add-col-metadata query col))
                      rows    [["Toucan Sighting" 1000]]
-                     context {:timeout 500
+                     context {:timeout (u/seconds->ms 2)
                               :runf    (fn [_query rff context]
                                          (let [metadata {:cols cols}]
                                            (qp.context/reducef rff context metadata rows)))}
@@ -356,9 +359,9 @@
 ;; Can we *save* a GA query that has two aggregations?
 
 (deftest save-ga-query-test
-  (mt/with-temp* [Database [db    {:engine :googleanalytics}]
-                  Table    [table {:db_id (u/the-id db)}]
-                  Field    [field {:table_id (u/the-id table)}]]
+  (mt/with-temp [Database db    {:engine :googleanalytics}
+                 Table    table {:db_id (u/the-id db)}
+                 Field    field {:table_id (u/the-id table)}]
     (let [cnt (->> (mt/user-http-request
                     :crowberto :post 200 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
@@ -385,6 +388,6 @@
                    ;; just make sure the API call actually worked by checking that the created Card is actually
                    ;; successfully saved in the DB
                    u/the-id
-                   (db/count Card :id))]
+                   (t2/count Card :id))]
       (is (= 1
              cnt)))))

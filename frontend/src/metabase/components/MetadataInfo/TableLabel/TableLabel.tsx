@@ -1,4 +1,3 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import Table from "metabase-lib/metadata/Table";
@@ -27,4 +26,5 @@ function TableLabel({
 
 TableLabel.propTypes = propTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableLabel;

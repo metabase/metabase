@@ -1,10 +1,13 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { ORDERS } from "__support__/sample_database_fixture";
-
-import type { Table } from "metabase-types/api/table";
-
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import { createSampleDatabase, ORDERS } from "metabase-types/api/mocks/presets";
+import type Table from "metabase-lib/metadata/Table";
 import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const props = {
   hasFiltering: true,
@@ -57,13 +60,11 @@ describe("DataSelectorFieldPicker", () => {
         display_name: tableDisplayName,
       };
 
-      const fields = [ORDERS.PRODUCT_ID];
-
       render(
         <DataSelectorFieldPicker
           {...props}
           selectedTable={selectedTable as Table}
-          fields={fields}
+          fields={[checkNotNull(metadata.field(ORDERS.PRODUCT_ID))]}
         />,
       );
 

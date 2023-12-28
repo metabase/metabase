@@ -3,14 +3,17 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models :refer [Card Collection Metric Segment]]
+   [metabase.api.common :as api]
+   [metabase.models
+    :refer [Card Collection Dashboard DashboardCard Metric Revision Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest collect-context-bearing-forms-test
+(deftest ^:parallel collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
          (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
                                                    ["and" [:= ["field" 2 nil] 2]
@@ -19,18 +22,15 @@
 
 
 (deftest similiarity-test
-  (mt/with-temp* [Card [{card-id-1 :id}
-                        {:dataset_query (mt/mbql-query venues
-                                          {:aggregation  [[:sum $price]]
-                                           :breakout     [$category_id]})}]
-                  Card [{card-id-2 :id}
-                        {:dataset_query (mt/mbql-query venues
-                                          {:aggregation [[:sum $longitude]]
-                                           :breakout    [$category_id]})}]
-                  Card [{card-id-3 :id}
-                        {:dataset_query (mt/mbql-query venues
-                                          {:aggregation  [[:sum $longitude]]
-                                           :breakout     [$latitude]})}]]
+  (mt/with-temp [Card {card-id-1 :id} {:dataset_query (mt/mbql-query venues
+                                                                     {:aggregation  [[:sum $price]]
+                                                                      :breakout     [$category_id]})}
+                 Card {card-id-2 :id} {:dataset_query (mt/mbql-query venues
+                                                                     {:aggregation [[:sum $longitude]]
+                                                                      :breakout    [$category_id]})}
+                 Card {card-id-3 :id} {:dataset_query (mt/mbql-query venues
+                                                                     {:aggregation  [[:sum $longitude]]
+                                                                      :breakout     [$latitude]})}]
     (let [cards {1 card-id-1
                  2 card-id-2
                  3 card-id-3}]
@@ -39,45 +39,42 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (db/select-one Card :id (get cards card-x)) (db/select-one Card :id (get cards card-y)))))))))))
+                 (double (#'related/similarity (t2/select-one Card :id (get cards card-x)) (t2/select-one Card :id (get cards card-y)))))))))))
 
-(def ^:private ^:dynamic *world*)
+(def ^:private ^:dynamic *world* {})
 
 (defn- do-with-world [f]
-  (mt/with-temp* [Collection [{collection-id :id}]
-                  Metric     [{metric-id-a :id} (mt/$ids venues
-                                                  {:table_id   $$venues
-                                                   :definition {:source-table $$venues
-                                                                :aggregation  [[:sum $price]]}})]
-                  Metric     [{metric-id-b :id} (mt/$ids venues
-                                                  {:table_id   $$venues
-                                                   :definition {:source-table $$venues
-                                                                :aggregation  [[:count]]}})]
-                  Segment    [{segment-id-a :id} (mt/$ids venues
-                                                   {:table_id   $$venues
-                                                    :definition {:source-table $$venues
-                                                                 :filter       [:!= $category_id nil]}})]
-                  Segment    [{segment-id-b :id} (mt/$ids venues
-                                                   {:table_id   $$venues
-                                                    :definition {:source-table $$venues
-                                                                 :filter       [:!= $name nil]}})]
-                  Card       [{card-id-a :id}
-                              {:table_id      (mt/id :venues)
-                               :dataset_query (mt/mbql-query venues
-                                                {:aggregation [[:sum $price]]
-                                                 :breakout    [$category_id]})}]
-                  Card       [{card-id-b :id}
-                              {:table_id      (mt/id :venues)
-                               :collection_id collection-id
-                               :dataset_query (mt/mbql-query venues
-                                                {:aggregation [[:sum $longitude]]
-                                                 :breakout    [$category_id]})}]
-                  Card       [{card-id-c :id}
-                              {:table_id      (mt/id :venues)
-                               :dataset_query (mt/mbql-query venues
-                                                {:aggregation [[:sum $longitude]]
-                                                 :breakout    [$name
-                                                               $latitude]})}]]
+  (mt/with-temp [Collection {collection-id :id} {}
+                 Metric     {metric-id-a :id} (mt/$ids venues
+                                                       {:table_id   $$venues
+                                                        :definition {:source-table $$venues
+                                                                     :aggregation  [[:sum $price]]}})
+                 Metric     {metric-id-b :id} (mt/$ids venues
+                                                       {:table_id   $$venues
+                                                        :definition {:source-table $$venues
+                                                                     :aggregation  [[:count]]}})
+                 Segment    {segment-id-a :id} (mt/$ids venues
+                                                        {:table_id   $$venues
+                                                         :definition {:source-table $$venues
+                                                                      :filter       [:!= $category_id nil]}})
+                 Segment    {segment-id-b :id} (mt/$ids venues
+                                                        {:table_id   $$venues
+                                                         :definition {:source-table $$venues
+                                                                      :filter       [:!= $name nil]}})
+                 Card       {card-id-a :id} {:table_id      (mt/id :venues)
+                                             :dataset_query (mt/mbql-query venues
+                                                                           {:aggregation [[:sum $price]]
+                                                                            :breakout    [$category_id]})}
+                 Card       {card-id-b :id} {:table_id      (mt/id :venues)
+                                             :collection_id collection-id
+                                             :dataset_query (mt/mbql-query venues
+                                                                           {:aggregation [[:sum $longitude]]
+                                                                            :breakout    [$category_id]})}
+                 Card       {card-id-c :id} {:table_id      (mt/id :venues)
+                                             :dataset_query (mt/mbql-query venues
+                                                                           {:aggregation [[:sum $longitude]]
+                                                                            :breakout    [$name
+                                                                                          $latitude]})}]
     (binding [*world* {:collection-id collection-id
                        :metric-id-a   metric-id-a
                        :metric-id-b   metric-id-b
@@ -107,7 +104,8 @@
         ;; filter out Cards not created as part of `with-world` so these tests can be ran from the REPL.
         (m/update-existing :similar-questions (partial filter (set ((juxt :card-id-a :card-id-b :card-id-c) *world*))))
         ;; do the same for Collections.
-        (m/update-existing :collections (partial filter (partial = (:collection-id *world*)))))))
+        (m/update-existing :collections (partial filter (partial = (:collection-id *world*))))
+        (m/update-existing :tables set))))
 
 (deftest related-cards-test
   (with-world
@@ -145,10 +143,9 @@
             :segments    (sort [segment-id-a segment-id-b])
             :linking-to  [(mt/id :categories)]
             :linked-from [(mt/id :checkins)]
-            :tables      [(mt/id :users)]}
+            :tables      #{(mt/id :products) (mt/id :orders) (mt/id :users) (mt/id :people) (mt/id :reviews)}}
            (->> (mt/user-http-request :crowberto :get 200 (format "table/%s/related" (mt/id :venues)))
                 result-mask)))))
-
 
 ;; We should ignore non-active entities
 
@@ -196,3 +193,19 @@
                (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-c))
                     result-mask
                     :similar-questions)))))))
+
+(deftest recommended-dashboards-test
+  (t2.with-temp/with-temp [Card          card-1        {}
+                           Card          card-2        {}
+                           Card          card-3        {}
+                           Dashboard     {dash-id :id} {}
+                           Revision      _             {:model    "Dashboard"
+                                                        :model_id dash-id
+                                                        :user_id  (mt/user->id :rasta)
+                                                        :object   {}}
+                           DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
+                           DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
+    (binding [api/*current-user-id*              (mt/user->id :rasta)
+              api/*current-user-permissions-set* (atom #{"/"})]
+      (is (=? [{:id dash-id}]
+              (#'related/recommended-dashboards [card-1 card-2 card-3]))))))

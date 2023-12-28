@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseList from "./DatabaseList";
@@ -23,7 +22,7 @@ describe("DatabaseListApp", () => {
     await setup({ hasSampleDatabase: false, isAdmin: true });
 
     expect(
-      screen.queryByText(CREATE_SAMPLE_DATABASE_BUTTON_LABEL),
+      screen.getByText(CREATE_SAMPLE_DATABASE_BUTTON_LABEL),
     ).toBeInTheDocument();
   });
 

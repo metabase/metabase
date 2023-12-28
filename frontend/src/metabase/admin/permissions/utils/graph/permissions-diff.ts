@@ -1,7 +1,7 @@
 import type {
+  ConcreteTableId,
   Group,
   GroupsPermissions,
-  ConcreteTableId,
 } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import {
@@ -41,7 +41,7 @@ function diffDatabasePermissions(
     databaseDiff.native = newNativePerm;
   }
   // check each table in this db
-  for (const table of database.tables) {
+  for (const table of database.tables ?? []) {
     const oldFieldsPerm = getFieldsPermission(
       oldPerms,
       groupId,

@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -41,7 +41,7 @@ const TableSidebar = ({ database, table, style, className }) => (
       <SidebarItem
         key={`/reference/databases/${database.id}/tables/${table.id}/questions`}
         href={`/reference/databases/${database.id}/tables/${table.id}/questions`}
-        icon="all"
+        icon="folder"
         name={t`Questions about this table`}
       />
       {MetabaseSettings.get("enable-xrays") && (
@@ -63,4 +63,4 @@ TableSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default React.memo(TableSidebar);
+export default memo(TableSidebar);

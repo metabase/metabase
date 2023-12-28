@@ -69,10 +69,3 @@
 :local(.icon) {
   composes: flex-no-shrink from "style";
 }
-
-:local(.noLabelsMessage) {
-  composes: relative from "style";
-  composes: text-centered from "style";
-  composes: p2 my3 from "style";
-  composes: text-brand-light from "style";
-}

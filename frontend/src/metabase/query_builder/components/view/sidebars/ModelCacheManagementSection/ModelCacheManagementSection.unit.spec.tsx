@@ -1,20 +1,27 @@
-import React from "react";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
+import { createMockMetadata } from "__support__/metadata";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+
+import { checkNotNull } from "metabase/lib/types";
 import PersistedModels from "metabase/entities/persisted-models";
-import { ModelCacheRefreshStatus } from "metabase-types/api";
-import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
+import { getMockModelCacheInfo } from "metabase-types/api/mocks";
 import {
-  fireEvent,
-  renderWithProviders,
-  waitFor,
-  screen,
-} from "__support__/ui";
-import { ORDERS } from "__support__/sample_database_fixture";
+  createSampleDatabase,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
 type SetupOpts = Partial<ModelCacheRefreshStatus> & {
   waitForSectionAppearance?: boolean;
@@ -24,7 +31,7 @@ async function setup({
   waitForSectionAppearance = true,
   ...cacheInfo
 }: SetupOpts = {}) {
-  const question = ORDERS.question();
+  const question = ordersTable.question();
   const model = question.setCard({
     ...question.card(),
     id: 1,
@@ -35,16 +42,14 @@ async function setup({
   const modelCacheInfo = getMockModelCacheInfo({
     ...cacheInfo,
     card_id: model.id(),
-    card_name: model.displayName(),
+    card_name: model.displayName() as string,
   });
 
   const onRefreshMock = jest
     .spyOn(PersistedModels.objectActions, "refreshCache")
     .mockReturnValue({ type: "__MOCK__" });
 
-  nock(location.origin)
-    .get(`/api/persist/card/${model.id()}`)
-    .reply(200, modelCacheInfo);
+  fetchMock.get(`path:/api/persist/card/${model.id()}`, modelCacheInfo);
 
   if (!waitForSectionAppearance) {
     jest.spyOn(PersistedModels, "Loader").mockImplementation(props => {
@@ -53,16 +58,13 @@ async function setup({
     });
   }
 
-  const utils = renderWithProviders(
-    <ModelCacheManagementSection model={model} />,
-  );
+  renderWithProviders(<ModelCacheManagementSection model={model} />);
 
   if (waitForSectionAppearance) {
-    await waitFor(() => utils.queryByTestId("model-cache-section"));
+    await screen.findByTestId("model-cache-section");
   }
 
   return {
-    ...utils,
     modelCacheInfo,
     onRefreshMock,
   };
@@ -70,17 +72,16 @@ async function setup({
 
 describe("ModelCacheManagementSection", () => {
   afterEach(() => {
-    nock.cleanAll();
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   it("doesn't show up in 'off' state", async () => {
-    await setup({ state: "off" });
+    await setup({ state: "off", waitForSectionAppearance: false });
     expect(screen.queryByTestId("model-cache-section")).not.toBeInTheDocument();
   });
 
   it("doesn't show up in 'deletable' state", async () => {
-    await setup({ state: "deletable" });
+    await setup({ state: "deletable", waitForSectionAppearance: false });
     expect(screen.queryByTestId("model-cache-section")).not.toBeInTheDocument();
   });
 

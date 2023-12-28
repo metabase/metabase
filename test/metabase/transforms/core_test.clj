@@ -15,7 +15,8 @@
    [metabase.transforms.core :as tf]
    [metabase.transforms.specs :as tf.specs]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :each (fn [thunk]
                       (mt/with-model-cleanup [Card Collection]
@@ -51,16 +52,16 @@
   (testing "Can we turn a given entity into a format suitable for a query's `:source_table`?"
     (testing "for a Table"
       (is (= (mt/id :venues)
-             (#'tf/->source-table-reference (db/select-one Table :id (mt/id :venues))))))
+             (#'tf/->source-table-reference (t2/select-one Table :id (mt/id :venues))))))
 
     (testing "for a Card"
-      (mt/with-temp Card [{card-id :id}]
+      (t2.with-temp/with-temp [Card {card-id :id}]
         (is (= (str "card__" card-id)
-               (#'tf/->source-table-reference (db/select-one Card :id card-id))))))))
+               (#'tf/->source-table-reference (t2/select-one Card :id card-id))))))))
 
 (deftest tableset-test
   (testing "Can we get a tableset for a given schema?"
-    (is (= (db/select-ids Table :db_id (mt/id))
+    (is (= (t2/select-pks-set Table :db_id (mt/id))
            (set (map u/the-id (#'tf/tableset (mt/id) "PUBLIC")))))))
 
 (deftest find-tables-with-domain-entity-test
@@ -79,7 +80,7 @@
   (testing "Can we extract results from the final bindings?"
     (with-test-transform-specs
       (is (= [(mt/id :venues)]
-             (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
+             (map u/the-id (#'tf/resulting-entities {"VenuesEnhanced" {:entity     (t2/select-one Table :id (mt/id :venues))
                                                                        :dimensions {"D1" [:field 1 nil]}}}
                                                     (first @tf.specs/transform-specs))))))))
 
@@ -112,7 +113,7 @@
       (testing "... and do we throw if we didn't get what we expected?"
         (is (thrown?
              java.lang.AssertionError
-             (#'tf/validate-results {"VenuesEnhanced" {:entity     (db/select-one Table :id (mt/id :venues))
+             (#'tf/validate-results {"VenuesEnhanced" {:entity     (t2/select-one Table :id (mt/id :venues))
                                                        :dimensions {"D1" [:field 1 nil]}}}
                                     (first @tf.specs/transform-specs))))))))
 
@@ -134,6 +135,6 @@
     (with-test-transform-specs
       (with-test-domain-entity-specs
         (is (= "Test transform"
-               (-> (tf/candidates (db/select-one Table :id (mt/id :venues)))
+               (-> (tf/candidates (t2/select-one Table :id (mt/id :venues)))
                    first
                    :name)))))))

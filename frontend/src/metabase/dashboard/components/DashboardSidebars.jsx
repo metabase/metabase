@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
@@ -7,9 +7,10 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
-import DashboardInfoSidebar from "./DashboardInfoSidebar";
-import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
+import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
+import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
+import { AddCardSidebar } from "./AddCardSidebar";
+import { ActionSidebarConnected } from "./ActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -27,6 +28,7 @@ DashboardSidebars.propTypes = {
   setParameterName: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
+  setParameterQueryType: PropTypes.func.isRequired,
   setParameterSourceType: PropTypes.func.isRequired,
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
@@ -42,7 +44,7 @@ DashboardSidebars.propTypes = {
   }).isRequired,
   closeSidebar: PropTypes.func.isRequired,
   setDashboardAttribute: PropTypes.func,
-  saveDashboardAndCards: PropTypes.func,
+  selectedTabId: PropTypes.number,
 };
 
 export function DashboardSidebars({
@@ -59,6 +61,7 @@ export function DashboardSidebars({
   setParameterName,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
+  setParameterQueryType,
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
@@ -69,17 +72,18 @@ export function DashboardSidebars({
   sidebar,
   closeSidebar,
   setDashboardAttribute,
-  saveDashboardAndCards,
+  selectedTabId,
 }) {
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
         dashId: dashboard.id,
         cardId: cardId,
+        tabId: selectedTabId,
       });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
-    [addCardToDashboard, dashboard.id],
+    [addCardToDashboard, dashboard.id, selectedTabId],
   );
 
   if (isFullscreen) {
@@ -88,12 +92,23 @@ export function DashboardSidebars({
 
   switch (sidebar.name) {
     case SIDEBAR_NAME.addQuestion:
+      return <AddCardSidebar onSelect={handleAddCard} />;
+    case SIDEBAR_NAME.action: {
+      const onUpdateVisualizationSettings = settings =>
+        onUpdateDashCardVisualizationSettings(
+          sidebar.props.dashcardId,
+          settings,
+        );
+
       return (
-        <AddCardSidebar
-          initialCollection={dashboard.collection_id}
-          onSelect={handleAddCard}
+        <ActionSidebarConnected
+          dashboard={dashboard}
+          dashcardId={sidebar.props.dashcardId}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onClose={closeSidebar}
         />
       );
+    }
     case SIDEBAR_NAME.clickBehavior:
       return (
         <ClickBehaviorSidebar
@@ -124,6 +139,7 @@ export function DashboardSidebars({
           onChangeName={setParameterName}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onChangeQueryType={setParameterQueryType}
           onChangeSourceType={setParameterSourceType}
           onChangeSourceConfig={setParameterSourceConfig}
           onChangeFilteringParameters={setParameterFilteringParameters}
@@ -145,7 +161,6 @@ export function DashboardSidebars({
       return (
         <DashboardInfoSidebar
           dashboard={dashboard}
-          saveDashboardAndCards={saveDashboardAndCards}
           setDashboardAttribute={setDashboardAttribute}
         />
       );

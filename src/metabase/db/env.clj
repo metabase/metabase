@@ -23,10 +23,13 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.db.data-source :as mdb.data-source]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;;; [[env->db-type]]
 
@@ -37,12 +40,10 @@
         "postgresql" :postgres
         (keyword subprotocol)))))
 
-(defn- env->db-type
+(mu/defn ^:private env->db-type :- [:enum :postgres :mysql :h2]
   [{:keys [mb-db-connection-uri mb-db-type]}]
-  {:post [(#{:postgres :mysql :h2} %)]}
   (or (some-> mb-db-connection-uri raw-connection-string->type)
       mb-db-type))
-
 
 ;;;; [[env->DataSource]]
 
@@ -130,7 +131,8 @@
     :mb-db-pass           (config/config-str :mb-db-pass)}
    (env-defaults db-type)))
 
-(def ^:private env
+(def env
+  "Metabase Datatbase environment. Used to setup *application-db* and audit-db for enterprise users."
   (env* (config/config-kw :mb-db-type)))
 
 (def db-type

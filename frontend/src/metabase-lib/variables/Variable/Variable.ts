@@ -1,7 +1,8 @@
-import Query from "metabase-lib/queries/Query";
-import Metadata from "metabase-lib/metadata/Metadata";
+import type Query from "metabase-lib/queries/Query";
+import type Metadata from "metabase-lib/metadata/Metadata";
 
-export default class Variable {
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default abstract class Variable {
   _args: any[];
   _metadata: Metadata | null | undefined;
   _query: Query | null | undefined;
@@ -11,4 +12,6 @@ export default class Variable {
     this._metadata = metadata || (query && query.metadata());
     this._query = query;
   }
+
+  abstract displayName(): string | null | undefined;
 }

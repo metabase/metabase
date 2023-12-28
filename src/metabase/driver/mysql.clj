@@ -1,40 +1,49 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
   (:require
+   [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [java-time :as t]
+   [honey.sql :as sql]
+   [java-time.api :as t]
+   [medley.core :as m]
    [metabase.config :as config]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.models.field :as field]
+   [metabase.lib.field :as lib.field]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.i18n :refer [deferred-tru trs]])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.log :as log])
   (:import
+   (java.io File)
    (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime)
-   (metabase.util.honeysql_extensions Identifier)))
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
+
 (comment
+  ;; method impls live in these namespaces.
+  mysql.actions/keep-me
   mysql.ddl/keep-me)
 
 (driver/register! :mysql, :parent :sql-jdbc)
@@ -44,60 +53,76 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (let [json-setting (get-in database [:details :json-unfolding])]
-    (if (nil? json-setting)
-      true
-      json-setting)))
+(doseq [[feature supported?] {:persist-models                         true
+                              :convert-timezone                       true
+                              :datetime-diff                          true
+                              :now                                    true
+                              :regex                                  false
+                              :percentile-aggregations                false
+                              :full-join                              false
+                              :uploads                                true
+                              :schemas                                false
+                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
+                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
+                              ;; users in the UI
+                              :case-sensitivity-string-filter-options false
+                              :index-info                             true}]
+  (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
+;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
+;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
+;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
+  (driver.common/json-unfolding-default db))
 
-(defmethod driver/database-supports? [:mysql :persist-models-enabled]
-  [_driver _feat db]
-  (-> db :options :persist-models-enabled))
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:mysql feature]
+    [driver _feat _db]
+    ;; Only supported for MySQL right now. Revise when a child driver is added.
+    (= driver :mysql)))
 
-(defmethod driver/database-supports? [:mysql :convert-timezone]
-  [_driver _feature _db]
-  true)
+(defn mariadb?
+  "Returns true if the database is MariaDB. Assumes the database has been synced so `:dbms_version` is present."
+  [database]
+  (-> database :dbms_version :flavor (= "MariaDB")))
 
-(defmethod driver/database-supports? [:mysql :datetime-diff]
-  [_driver _feature _db]
-  true)
-
-(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
-(defmethod driver/supports? [:mysql :regex] [_ _] false)
-(defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
-
+(defmethod driver/database-supports? [:mysql :table-privileges]
+  [driver _feat db]
+  (and (= driver :mysql) (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- mariadb? [^DatabaseMetaData metadata]
-  (= (.getDatabaseProductName metadata) "MariaDB"))
 
 (defn- db-version [^DatabaseMetaData metadata]
   (Double/parseDouble
    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
 
 (defn- unsupported-version? [^DatabaseMetaData metadata]
-  (< (db-version metadata)
-     (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
+  (let [mariadb? (= (.getDatabaseProductName metadata) "MariaDB")]
+    (< (db-version metadata)
+       (if mariadb?
+         min-supported-mariadb-version
+         min-supported-mysql-version))))
 
 (defn- warn-on-unsupported-versions [driver details]
   (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (jdbc/with-db-metadata [metadata jdbc-spec]
-      (when (unsupported-version? metadata)
-        (log/warn
-         (u/format-color 'red
-                         (str
-                          "\n\n********************************************************************************\n"
-                          (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
-                               min-supported-mysql-version
-                               min-supported-mariadb-version)
-                          "\n"
-                          (trs "All Metabase features may not work properly when using an unsupported version.")
-                          "\n********************************************************************************\n")))))))
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     jdbc-spec
+     nil
+     (fn [^java.sql.Connection conn]
+       (when (unsupported-version? (.getMetaData conn))
+         (log/warn
+          (u/format-color 'red
+                          (str
+                           "\n\n********************************************************************************\n"
+                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                                min-supported-mysql-version
+                                min-supported-mariadb-version)
+                           "\n"
+                           (trs "All Metabase features may not work properly when using an unsupported version.")
+                           "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -106,8 +131,6 @@
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
-
-(defmethod driver/supports? [:mysql :full-join] [_ _] false)
 
 (def default-ssl-cert-details
   "Server SSL certificate chain, in PEM format."
@@ -141,12 +164,12 @@
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
     (recur driver hsql-form (/ amount 1000.0) :second)
-    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
+    [:date_add hsql-form [:raw (format "INTERVAL %s %s" amount (name unit))]]))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
   [_]
-  (hx/with-database-type-info (hsql/call :now 6) "timestamp"))
+  (h2x/with-database-type-info [:now [:inline 6]] "timestamp"))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -166,6 +189,7 @@
     ;; else
     message))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
   [_ spec]
   (let [sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
@@ -194,49 +218,52 @@
        offset
        (str \+ offset)))))
 
-;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-;; users in the UI
-(defmethod driver/supports? [:mysql :case-sensitivity-string-filter-options] [_ _] false)
-
 (defmethod driver/db-start-of-week :mysql
   [_]
   :sunday)
-
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
-
-(defmethod sql-jdbc.sync/describe-nested-field-columns :mysql
-  [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
-    (if (> (count fields) max-nested-field-columns)
-      #{}
-      fields)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
-  (hsql/call :from_unixtime expr))
+  [:from_unixtime expr])
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/ISO8601->DateTime]
   [_driver _coercion-strategy expr]
-  (hx/->datetime expr))
+  (h2x/->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:mysql :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _coercion-strategy expr]
-  (hsql/call :convert expr (hsql/raw "DATETIME")))
+  [:convert expr [:raw "DATETIME"]])
 
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
 
-(defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
-(defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
+(defn- date-format [format-str expr]
+  [:date_format expr (h2x/literal format-str)])
+
+(defn- str-to-date
+  "From the dox:
+
+  > STR_TO_DATE() returns a DATETIME value if the format string contains both date and time parts, or a DATE or TIME
+  > value if the string contains only date or time parts.
+
+  See https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-format for a list of format
+  specifiers."
+  [format-str expr]
+  (let [contains-date-parts? (some #(str/includes? format-str %)
+                                   ["%a" "%b" "%c" "%D" "%d" "%e" "%j" "%M" "%m" "%U"
+                                    "%u" "%V" "%v" "%W" "%w" "%X" "%x" "%Y" "%y"])
+        contains-time-parts? (some #(str/includes? format-str %)
+                                   ["%f" "%H" "%h" "%I" "%i" "%k" "%l" "%p" "%r" "%S" "%s" "%T"])
+        database-type        (cond
+                               (and contains-date-parts? (not contains-time-parts?)) "date"
+                               (and contains-time-parts? (not contains-date-parts?)) "time"
+                               :else                                                 "datetime")]
+    (-> [:str_to_date expr (h2x/literal format-str)]
+        (h2x/with-database-type-info database-type))))
 
 (defmethod sql.qp/->float :mysql
   [_ value]
@@ -245,15 +272,15 @@
 
 (defmethod sql.qp/->integer :mysql
   [_ value]
-  (hx/maybe-cast :signed value))
+  (h2x/maybe-cast :signed value))
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:mysql :length]
   [driver [_ arg]]
-  (hsql/call :char_length (sql.qp/->honeysql driver arg)))
+  [:char_length (sql.qp/->honeysql driver arg)])
 
 (def ^:private database-type->mysql-cast-type-name
   "MySQL supports the ordinary SQL standard database type names for actual type stuff but not for coercions, sometimes.
@@ -264,39 +291,48 @@
    "bigint"           "unsigned"})
 
 (defmethod sql.qp/json-query :mysql
-  [_ unwrapped-identifier stored-field]
+  [_driver unwrapped-identifier stored-field]
+  {:pre [(h2x/identifier? unwrapped-identifier)]}
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
-    (let [field-type            (:database_type stored-field)
+    (let [field-type            (:database-type stored-field)
           field-type            (get database-type->mysql-cast-type-name field-type field-type)
-          nfc-path              (:nfc_path stored-field)
-          parent-identifier     (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          nfc-path              (:nfc-path stored-field)
+          parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          json-extract+jsonpath (hsql/call :json_extract (hsql/raw (hformat/to-sql parent-identifier)) jsonpath-query)]
-      (case field-type
+          json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]
+      (case (u/lower-case-en field-type)
         ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
         ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
-        "timestamp" (hsql/call :convert
-                               (hsql/call :str_to_date json-extract+jsonpath "\"%Y-%m-%dT%T.%fZ\"")
-                               (hsql/raw "DATETIME"))
+        "timestamp" [:convert
+                     [:str_to_date json-extract+jsonpath "\"%Y-%m-%dT%T.%fZ\""]
+                     [:raw "DATETIME"]]
 
         "boolean" json-extract+jsonpath
 
-        (hsql/call :convert json-extract+jsonpath (hsql/raw (u/upper-case-en field-type)))))))
+        ;; in older versions of MySQL you can't do `convert(<string>, double)` or `cast(<string> AS double)` which is
+        ;; equivalent; instead you can do `<string> + 0.0` =(
+        ("float" "double") [:+ json-extract+jsonpath [:inline 0.0]]
+
+        [:convert json-extract+jsonpath [:raw (u/upper-case-en field-type)]]))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
-  [driver [_ id-or-name opts :as clause]]
-  (let [stored-field (when (integer? id-or-name)
-                       (qp.store/field id-or-name))
+  [driver [_ id-or-name opts :as mbql-clause]]
+  (let [stored-field  (when (integer? id-or-name)
+                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)]
-    (if (field/json-field? stored-field)
-      (if (::sql.qp/forced-alias opts)
-        (keyword (::add/source-alias opts))
-        (walk/postwalk #(if (instance? Identifier %)
-                          (sql.qp/json-query :mysql % stored-field)
-                          %)
-                       identifier))
-      identifier)))
+        honeysql-expr (parent-method driver mbql-clause)]
+    (cond
+      (not (lib.field/json-field? stored-field))
+      honeysql-expr
+
+      (::sql.qp/forced-alias opts)
+      (keyword (::add/source-alias opts))
+
+      :else
+      (walk/postwalk #(if (h2x/identifier? %)
+                        (sql.qp/json-query :mysql % stored-field)
+                        %)
+                     honeysql-expr))))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -304,83 +340,95 @@
 ;; this will generate a SQL statement casting the TIME to a DATETIME so date_format doesn't fail:
 ;; date_format(CAST(mytime AS DATETIME), '%Y-%m-%d %H') AS mytime
 (defn- trunc-with-format [format-str expr]
-  (str-to-date format-str (date-format format-str (hx/->datetime expr))))
+  (str-to-date format-str (date-format format-str (h2x/->datetime expr))))
 
 (defn- ->date [expr]
-  (if (hx/is-of-type? expr "date")
+  (if (h2x/is-of-type? expr "date")
     expr
-    (-> (hsql/call :date expr)
-        (hx/with-database-type-info "date"))))
+    (-> [:date expr]
+        (h2x/with-database-type-info "date"))))
 
 (defn make-date
   "Create and return a date based on  a year and a number of days value."
   [year-expr number-of-days]
-  (-> (hsql/call :makedate year-expr number-of-days)
-      (hx/with-database-type-info "date")))
+  (-> [:makedate year-expr (sql.qp/inline-num number-of-days)]
+      (h2x/with-database-type-info "date")))
+
+(defmethod sql.qp/date [:mysql :minute]
+  [_driver _unit expr]
+  (let [format-str (if (= (h2x/database-type expr) "time")
+                     "%H:%i"
+                     "%Y-%m-%d %H:%i")]
+    (trunc-with-format format-str expr)))
+
+(defmethod sql.qp/date [:mysql :hour]
+  [_driver _unit expr]
+  (let [format-str (if (= (h2x/database-type expr) "time")
+                     "%H"
+                     "%Y-%m-%d %H")]
+    (trunc-with-format format-str expr)))
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
-(defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (hx/minute expr))
-(defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
-(defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
+(defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (h2x/minute expr))
+(defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (h2x/hour expr))
 (defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
-(defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
-(defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
-(defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
-(defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (hx/year expr) 1))
+(defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] [:dayofmonth expr])
+(defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] [:dayofyear expr])
+(defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (h2x/month expr))
+(defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (h2x/quarter expr))
+(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (make-date (h2x/year expr) 1))
 
 (defmethod sql.qp/date [:mysql :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :mysql (hsql/call :dayofweek expr)))
+  [driver _unit expr]
+  (sql.qp/adjust-day-of-week driver [:dayofweek expr]))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
 (defmethod sql.qp/date [:mysql :week] [_ _ expr]
   (let [extract-week-fn (fn [expr]
                           (str-to-date "%X%V %W"
-                                       (hx/concat (hsql/call :yearweek expr)
-                                                  (hx/literal " Sunday"))))]
+                                       (h2x/concat [:yearweek expr]
+                                                   (h2x/literal " Sunday"))))]
     (sql.qp/adjust-start-of-week :mysql extract-week-fn expr)))
 
-(defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (hx/week expr 3))
+(defmethod sql.qp/date [:mysql :week-of-year-iso] [_ _ expr] (h2x/week expr 3))
 
 (defmethod sql.qp/date [:mysql :month] [_ _ expr]
   (str-to-date "%Y-%m-%d"
-               (hx/concat (date-format "%Y-%m" expr)
-                          (hx/literal "-01"))))
+               (h2x/concat (date-format "%Y-%m" expr)
+                           (h2x/literal "-01"))))
 
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
 (defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
   (str-to-date "%Y-%m-%d"
-               (hx/concat (hx/year expr)
-                          (hx/literal "-")
-                          (hx/- (hx/* (hx/quarter expr)
+               (h2x/concat (h2x/year expr)
+                          (h2x/literal "-")
+                          (h2x/- (h2x/* (h2x/quarter expr)
                                       3)
                                 2)
-                          (hx/literal "-01"))))
+                          (h2x/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr       (sql.qp/->honeysql driver arg)
-        timestamp? (hx/is-of-type? expr "timestamp")]
+        timestamp? (h2x/is-of-type? expr "timestamp")]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
-    (hx/with-database-type-info
-      (hsql/call :convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone)
-      "datetime")))
+    (h2x/with-database-type-info
+     [:convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone]
+     "datetime")))
 
 (defn- timestampdiff-dates [unit x y]
-  (hsql/call :timestampdiff (hsql/raw (name unit)) (hx/->date x) (hx/->date y)))
+  [:timestampdiff [:raw (name unit)] (h2x/->date x) (h2x/->date y)])
 
 (defn- timestampdiff [unit x y]
-  (hsql/call :timestampdiff (hsql/raw (name unit)) x y))
+  [:timestampdiff [:raw (name unit)] x y])
 
 (defmethod sql.qp/datetime-diff [:mysql :year]    [_driver _unit x y] (timestampdiff-dates :year x y))
 (defmethod sql.qp/datetime-diff [:mysql :quarter] [_driver _unit x y] (timestampdiff-dates :quarter x y))
 (defmethod sql.qp/datetime-diff [:mysql :month]   [_driver _unit x y] (timestampdiff-dates :month x y))
 (defmethod sql.qp/datetime-diff [:mysql :week]    [_driver _unit x y] (timestampdiff-dates :week x y))
-(defmethod sql.qp/datetime-diff [:mysql :day]     [_driver _unit x y] (hsql/call :datediff y x))
+(defmethod sql.qp/datetime-diff [:mysql :day]     [_driver _unit x y] [:datediff y x])
 (defmethod sql.qp/datetime-diff [:mysql :hour]    [_driver _unit x y] (timestampdiff :hour x y))
 (defmethod sql.qp/datetime-diff [:mysql :minute]  [_driver _unit x y] (timestampdiff :minute x y))
 (defmethod sql.qp/datetime-diff [:mysql :second]  [_driver _unit x y] (timestampdiff :second x y))
@@ -421,8 +469,8 @@
     :TINYTEXT   :type/Text
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
-    :YEAR       :type/Date
-    :JSON       :type/SerializedJSON}
+    :YEAR       :type/Integer
+    :JSON       :type/JSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
@@ -552,12 +600,15 @@
         (catch Throwable _
           (.getString rs i))))))
 
+;; Mysql 8.1+ returns results of YEAR(..) function having a YEAR type. In Mysql 8.0.33, return value of that function
+;; has an integral type. Let's make the returned values consistent over mysql versions.
+;; Context: https://dev.mysql.com/doc/connector-j/en/connector-j-YEAR.html
 (defmethod sql-jdbc.execute/read-column-thunk [:mysql Types/DATE]
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= "YEAR" (.getColumnTypeName rsmeta i))
     (fn read-time-thunk []
       (when-let [x (.getObject rs i)]
-        (.toLocalDate ^java.sql.Date x)))
+        (.getYear (.toLocalDate ^java.sql.Date x))))
     (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/DATE]) driver rs rsmeta i)]
       parent-thunk)))
 
@@ -586,3 +637,255 @@
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (str (t/zone-id t))))
+
+(defmethod driver/upload-type->database-type :mysql
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar-255              [[:varchar 255]]
+    ::upload/text                     [:text]
+    ::upload/int                      [:bigint]
+    ::upload/auto-incrementing-int-pk [:bigint :not-null :auto-increment :primary-key]
+    ::upload/float                    [:double]
+    ::upload/boolean                  [:boolean]
+    ::upload/date                     [:date]
+    ::upload/datetime                 [:datetime]
+    ::upload/offset-datetime          [:timestamp]))
+
+(defmethod driver/table-name-length-limit :mysql
+  [_driver]
+  ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
+  64)
+
+(defn- format-load
+  [_clause [file-path table-name]]
+  [(format "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" file-path (sql/format-entity table-name))])
+
+(sql/register-clause! ::load format-load :insert-into)
+
+(defn- offset-datetime->unoffset-datetime
+  "Remove the offset from a datetime, returning a string representation in whatever timezone the `database` is
+  configured to use. This is necessary since MariaDB doesn't support timestamp-with-time-zone literals and so we need
+  to calculate one by hand."
+  [driver database ^OffsetDateTime offset-time]
+  (let [zone-id (t/zone-id (driver/db-default-timezone driver database))]
+    (t/local-date-time offset-time zone-id)))
+
+(defmulti ^:private value->string
+  "Convert a value into a string that's safe for insertion"
+  {:arglists '([driver val])}
+  (fn [_ val] (type val)))
+
+(defmethod value->string :default
+  [_driver val]
+  (str val))
+
+(defmethod value->string nil
+  [_driver _val]
+  nil)
+
+(defmethod value->string Boolean
+  [_driver val]
+  (if val
+    "1"
+    "0"))
+
+(defmethod value->string LocalDateTime
+  [_driver val]
+  (t/format :iso-local-date-time val))
+
+(let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
+      offset-fmt       "XXX"
+      zulu-formatter   (DateTimeFormatter/ofPattern zulu-fmt)
+      offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
+  (defmethod value->string OffsetDateTime
+    [driver ^OffsetDateTime val]
+    (let [uploads-db (upload/current-database)]
+      (if (mariadb? uploads-db)
+        (offset-datetime->unoffset-datetime driver uploads-db val)
+        (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
+                    zulu-formatter
+                    offset-formatter)
+                  val)))))
+
+(defn- sanitize-value
+  ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
+  ;; Backslash is the MySQL escape character within strings in SQL statements. Thus, to specify a literal backslash,
+  ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
+  ;; '\t' and '\n' specify tab and newline characters, respectively.
+  [v]
+  (if (nil? v)
+    "\\N"
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})))
+
+(defn- row->tsv
+  [driver column-count row]
+  (when (not= column-count (count row))
+    (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
+  (->> row
+       (map (comp sanitize-value (partial value->string driver)))
+       (str/join "\t")))
+
+(defn- get-global-variable
+  "The value of the given global variable in the DB. Does not do any type coercion, so, e.g., booleans come back as
+  \"ON\" and \"OFF\"."
+  [db-id var-name]
+  (:value
+   (first
+    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                ["show global variables like ?" var-name]))))
+
+(defmethod driver/insert-into! :mysql
+  [driver db-id ^String table-name column-names values]
+  ;; `local_infile` must be turned on per
+  ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
+  (if (not= (get-global-variable db-id "local_infile") "ON")
+    ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
+    ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
+    (let [temp-file (File/createTempFile table-name ".tsv")
+          file-path (.getAbsolutePath temp-file)]
+      (try
+        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
+              sql  (sql/format {::load   [file-path (keyword table-name)]
+                                :columns (map keyword column-names)}
+                               :quoted  true
+                               :dialect (sql.qp/quote-style driver))]
+          (with-open [^java.io.Writer writer (jio/writer file-path)]
+            (doseq [value (interpose \newline tsvs)]
+              (.write writer (str value))))
+          (sql-jdbc.execute/do-with-connection-with-options
+           driver
+           db-id
+           nil
+           (fn [conn]
+             (jdbc/execute! {:connection conn} sql))))
+        (finally
+          (.delete temp-file))))))
+
+(defn- parse-grant
+  "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
+   to reconstruct the set of table privileges that the current user has. Returns nil if the grant doesn't
+   contain any information we care about. Running `help show grants` in the mysql console shows the
+   syntax for the output strings of `SHOW GRANTS` statements.
+
+   There are two types of grants we care about: privileges and roles.
+
+   Privilege example:
+   (parse-grant \"GRANT SELECT, INSERT, UPDATE, DELETE ON `test-data`.* TO 'metabase'@'localhost'\")
+   =>
+   {:type            :privileges
+    :privilege-types #{:select :insert :update :delete}
+    :level           :table
+    :object          \"test-data\"}
+
+   Role example:
+   (parse-grant \"GRANT 'example_role_1'@'%','example_role_2'@'%' TO 'metabase'@'localhost'\")
+   =>
+   {:type  :roles
+    :roles #{'example_role_1'@'%' 'example_role_2'@'%'}}"
+  [grant]
+  (condp re-find grant
+    #"^GRANT PROXY ON "
+    nil
+    #"^GRANT (.+) ON FUNCTION "
+    nil
+    #"^GRANT (.+) ON PROCEDURE "
+    nil
+    ;; GRANT
+    ;;     priv_type [(column_list)]
+    ;;       [, priv_type [(column_list)]] ...
+    ;;     ON object
+    ;;     TO user etc.
+    ;; }
+    ;; For now we ignore column-level privileges. But this is how we could get them in the future.
+    #"^GRANT (.+) ON (.+) TO "
+    :>>
+    (fn [[_ priv-types object]]
+      (when-let [priv-types' (if (= priv-types "ALL PRIVILEGES")
+                               #{:select :update :delete :insert}
+                               (let [split-priv-types (->> (str/split priv-types #", ")
+                                                           (map (comp keyword u/lower-case-en))
+                                                           set)]
+                                 (set/intersection #{:select :update :delete :insert} split-priv-types)))]
+        {:type             :privileges
+         :privilege-types  (not-empty priv-types')
+         :level            (cond
+                             (= object "*.*")             :global
+                             (str/ends-with? object ".*") :database
+                             :else                        :table)
+         :object           object}))
+    ;; GRANT role [, role] ... TO user etc.
+    #"^GRANT (.+) TO "
+    :>>
+    (fn [[_ roles]]
+      {:type  :roles
+       :roles (set (map u/lower-case-en (str/split roles #",")))})))
+
+(defn- privilege-grants-for-user
+  "Returns a list of parsed privilege grants for a user, taking into account the roles that the user has.
+   It does so by first querying: `SHOW GRANTS FOR <user>`. If the results include any roles granted to the user,
+   we query `SHOW GRANTS FOR <user> USING <role1> [,<role2>] ...`. The results from this query will contain
+   all privileges granted for the user, either directly or indirectly through the role hierarchy."
+  [conn-spec user]
+  (let [query  (fn [q] (->> (jdbc/query conn-spec q {:as-arrays? true})
+                            (drop 1)
+                            (map first)))
+        grants (map parse-grant (query (str "SHOW GRANTS FOR " user)))
+        {role-grants      :roles
+         privilege-grants :privileges} (group-by :type grants)]
+    (if (seq role-grants)
+      (let [roles  (:roles (first role-grants))
+            grants (map parse-grant (query (str "SHOW GRANTS FOR " user "USING " (str/join "," roles))))
+            {privilege-grants :privileges} (group-by :type grants)]
+        privilege-grants)
+      privilege-grants)))
+
+(defn- table-names->privileges
+  "Given a set of parsed grants for a user, a database name, and a list of table names in the database,
+   return a map with table names as keys, and the set of privilege types that the user has on the table as values.
+
+   The rules are:
+   - global grants apply to all tables
+   - database grants apply to all tables in the database
+   - table grants apply to the table"
+  [privilege-grants database-name table-names]
+  (let [{global-grants   :global
+         database-grants :database
+         table-grants    :table} (group-by :level privilege-grants)
+        lower-database-name (u/lower-case-en database-name)
+        all-table-privileges (set/union (:privilege-types (first global-grants))
+                                        (:privilege-types (m/find-first #(= (:object %) (str "`" lower-database-name "`.*"))
+                                                                        database-grants)))
+        table-privileges (into {}
+                               (keep (fn [grant]
+                                       (when-let [match (re-find (re-pattern (str "^`" lower-database-name "`.`(.+)`")) (:object grant))]
+                                         (let [[_ table-name] match]
+                                           [table-name (:privilege-types grant)]))))
+                               table-grants)]
+    (into {}
+          (keep (fn [table-name]
+                  (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
+                    [table-name privileges])))
+          table-names)))
+
+(defmethod driver/current-user-table-privileges :mysql
+  [_driver database]
+  ;; MariaDB doesn't allow users to query the privileges of roles a user might have (unless they have select privileges
+  ;; for the mysql database), so we can't query the full privileges of the current user.
+  (when-not (mariadb? database)
+    (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+          table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
+                           (drop 1)
+                           (map first))]
+      (for [[table-name privileges] (table-names->privileges (privilege-grants-for-user conn-spec "CURRENT_USER()")
+                                                             (:name database)
+                                                             table-names)]
+        {:role   nil
+         :schema nil
+         :table  table-name
+         :select (contains? privileges :select)
+         :update (contains? privileges :update)
+         :insert (contains? privileges :insert)
+         :delete (contains? privileges :delete)}))))

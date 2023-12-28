@@ -11,7 +11,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
 - [Aggregations](#aggregations)
   - [Average](#average)
   - [Count](#count)
-  - [CountIf](#countif)
+  - [CountIf](./expressions/countif.md)
   - [CumulativeCount](#cumulativecount)
   - [CumulativeSum](#cumulativesum)
   - [Distinct](#distinct)
@@ -22,7 +22,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [Share](#share)
   - [StandardDeviation](#standarddeviation)
   - [Sum](#sum)
-  - [SumIf](#sumif)
+  - [SumIf](./expressions/sumif.md)
   - [Variance](#variance)
 - [Functions](#functions)
   - [abs](#abs)
@@ -50,6 +50,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [lower](#lower)
   - [minute](#minute)
   - [month](#month)
+  - [now](./expressions/now.md)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -63,6 +64,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [trim](#trim)
   - [upper](#upper)
   - [week](#week)
+  - [weekday](#weekday)
   - [year](#year)
 - [Database limitations](#database-limitations)
 
@@ -86,7 +88,7 @@ Syntax: `Count`
 
 Example: `Count` If a table or result returns 10 rows, `Count` will return `10`.
 
-### CountIf
+### [CountIf](./expressions/countif.md)
 
 Only counts rows where the condition is true.
 
@@ -186,7 +188,7 @@ Syntax: `Sum(column)`
 
 Example: `Sum([Subtotal])` would add up all the values in the `Subtotal` column.
 
-### SumIf
+### [SumIf](./expressions/sumif.md)
 
 Sums up the specified column only for rows where the condition is true.
 
@@ -430,6 +432,12 @@ Syntax: `month([datetime column])`.
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
 
+### [now](./expressions/now.md)
+
+Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+
+Syntax: `now`.
+
 ### power
 
 Raises a number to the power of the exponent value.
@@ -464,7 +472,7 @@ Related: [contains](#contains), [substring](#substring).
 
 ### replace
 
-Replaces a part of the input text with new text.
+Replaces all occurrences of a search text in the input text with the replacement text.
 
 Syntax: `replace(text, find, replace)`.
 
@@ -487,6 +495,8 @@ Rounds a decimal number either up or down to the nearest integer value.
 Syntax: `round(column)`.
 
 Example: `round([Temperature])`. If the temp were `13.5` degrees centigrade, the expression would return `14`.
+
+Example: `round([Temperature] * 10) / 10`. If the temp were `100.75`, the expression would return `100.8`.
 
 ### second
 
@@ -524,7 +534,7 @@ Returns a portion of the supplied text, specified by a starting position and a l
 
 Syntax: `substring(text, position, length)`
 
-Example: `substring([Title], 0, 10)` returns the first 11 letters of a string (the string index starts at position 0).
+Example: `substring([Title], 1, 10)` returns the first 10 letters of a string (the string index starts at position 1).
 
 Related: [regexextract](#regexextract), [replace](#replace).
 
@@ -557,6 +567,27 @@ Example: `week("2021-03-25T12:52:37")` would return the week as an integer, `12`
   - ISO: (default) Week 1 starts on the Monday before the first Thursday of January.
   - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
   - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
+
+### weekday
+
+Takes a datetime and returns an integer (1-7) with the number of the day of the week.
+
+Syntax: `weekday(column)`
+
+- column: The datetime column.
+
+Example:
+
+```
+case(
+  weekday([Created At]) = 1, "Sunday", 
+  weekday([Created At]) = 2, "Monday", 
+  weekday([Created At]) = 3, "Tuesday", 
+  weekday([Created At]) = 4, "Wednesday", 
+  weekday([Created At]) = 5, "Thursday", 
+  weekday([Created At]) = 6, "Friday", 
+  weekday([Created At]) = 7, "Saturday")
+```
 
 ### year
 

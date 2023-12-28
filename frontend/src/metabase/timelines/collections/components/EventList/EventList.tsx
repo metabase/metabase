@@ -1,6 +1,6 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import { t } from "ttag";
-import { Timeline, TimelineEvent } from "metabase-types/api";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 import {
   ListFooter,
@@ -49,4 +49,5 @@ const EventList = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(EventList);

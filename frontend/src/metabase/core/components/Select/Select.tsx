@@ -1,20 +1,20 @@
-import React, {
-  Component,
+import type {
   CSSProperties,
   Key,
   ReactElement,
   ReactNode,
   RefObject,
 } from "react";
+import { createRef, Children, Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
-import { createSelector } from "reselect";
-import Icon from "metabase/components/Icon";
+import { createSelector } from "@reduxjs/toolkit";
+import type { IconName } from "metabase/core/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import SelectButton, {
-  SelectButtonProps,
-} from "metabase/core/components/SelectButton";
+import type { SelectButtonProps } from "metabase/core/components/SelectButton";
+import SelectButton from "metabase/core/components/SelectButton";
 
 import { color } from "metabase/lib/colors";
 
@@ -62,18 +62,19 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   optionDescriptionFn?: (option: TOption) => string | undefined;
   optionSectionFn?: (option: TOption) => string;
   optionDisabledFn?: (option: TOption) => boolean;
-  optionIconFn?: (option: TOption) => string | undefined;
+  optionIconFn?: (option: TOption) => IconName | undefined;
   optionClassNameFn?: (option: TOption) => string | undefined;
   optionStylesFn?: (option: TOption) => CSSProperties | undefined;
 
   footer?: ReactNode;
+  "data-testid"?: string;
 }
 
 export interface SelectOption<TValue = Key> {
   value: TValue;
   name?: string;
   description?: string;
-  icon?: string;
+  icon?: IconName;
   iconSize?: number;
   iconColor?: string;
   disabled?: boolean;
@@ -82,7 +83,7 @@ export interface SelectOption<TValue = Key> {
 
 export interface SelectSection<TOption = SelectOption> {
   name?: string;
-  icon?: string;
+  icon?: IconName;
   items: TOption[];
 }
 
@@ -95,7 +96,7 @@ export interface SelectChangeTarget<TValue> {
   value: TValue;
 }
 
-class Select<TValue, TOption = SelectOption<TValue>> extends Component<
+class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   SelectProps<TValue, TOption>
 > {
   _popover?: any;
@@ -132,7 +133,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
     );
     this._getValues = () => _getValues(this.props);
     this._getValuesSet = () => _getValuesSet(this.props);
-    this.selectButtonRef = React.createRef();
+    this.selectButtonRef = createRef();
   }
 
   _getSections(): SelectSection<TOption>[] {
@@ -142,15 +143,12 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       const optionToItem = (option: any) => option.props;
       const first = (Array.isArray(children) ? children[0] : children) as any;
       if (first && (first as ReactElement).type === OptionSection) {
-        return React.Children.map(children, child => ({
+        return Children.map(children, child => ({
           ...(child as ReactElement<OptionProps<TValue>>).props,
-          items: React.Children.map(
-            (child as any).props.children,
-            optionToItem,
-          ),
+          items: Children.map((child as any).props.children, optionToItem),
         })) as any;
       } else if (first && first.type === Option) {
-        return [{ items: React.Children.map(children, optionToItem) }] as any;
+        return [{ items: Children.map(children, optionToItem) }] as any;
       }
     } else if (options) {
       if (this.props.optionSectionFn) {
@@ -209,7 +207,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return (
         <Icon
           name={icon}
-          size={(item as any).iconSize || 18}
+          size={(item as any).iconSize || 16}
           color={(item as any).iconColor || color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
@@ -220,7 +218,6 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return (
         <Icon
           name="check"
-          size={14}
           color={color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
@@ -253,6 +250,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       disabled,
       width,
       footer,
+      "data-testid": testId,
     } = this.props;
 
     const sections = this._getSections();
@@ -307,6 +305,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           className="MB-Select"
           alwaysExpanded
           width={width}
+          role="listbox"
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
           renderItemName={this.props.optionNameFn}
@@ -321,6 +320,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
           searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
+          data-testid={testId ? `${testId}-list` : null}
         />
         {footer}
       </PopoverWithTrigger>
@@ -328,11 +328,17 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
-export default Uncontrollable()(Select);
+/**
+ * @deprecated: use Select from "metabase/ui"
+ */
+const Select = Uncontrollable()(BaseSelect);
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Select;
 
 export interface OptionSectionProps {
   name?: string;
-  icon?: string;
+  icon?: IconName;
   children?: ReactNode;
 }
 
@@ -349,7 +355,7 @@ export interface OptionProps<TValue> {
   name?: string;
   children?: ReactNode;
 
-  icon?: string;
+  icon?: IconName;
   disabled?: boolean;
 }
 

@@ -3,14 +3,14 @@
  * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.
  */
 
-import { IFRAMED } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/lib/dom";
 import { init } from "./app";
 
 import { getRoutes } from "./routes-embed";
 import reducers from "./reducers-public";
 
 init(reducers, getRoutes, () => {
-  if (IFRAMED) {
+  if (isWithinIframe()) {
     document.body.style.backgroundColor = "transparent";
   }
 });

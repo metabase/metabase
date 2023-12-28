@@ -9,7 +9,7 @@
 
 (driver/register! ::test-driver, :parent #{::sql.qp.empty-string-is-null/empty-string-is-null :sql})
 
-(deftest empty-string-is-null-test
+(deftest ^:parallel empty-string-is-null-test
   (are [s expected] (= expected
                        (sql.qp/->honeysql ::test-driver [:value s {}]))
     nil nil

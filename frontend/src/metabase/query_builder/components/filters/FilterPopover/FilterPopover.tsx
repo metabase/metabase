@@ -1,26 +1,34 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import type * as React from "react";
 import { t } from "ttag";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
-import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
+import { Icon } from "metabase/core/components/Icon";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import type { Expression } from "metabase-types/api";
 import { isStartingFrom } from "metabase-lib/queries/utils/query-time";
-import { FieldDimension } from "metabase-lib/Dimension";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { FieldDimension } from "metabase-lib/Dimension";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
+import { isExpression } from "metabase-lib/expressions";
 
 import DatePicker from "../pickers/DatePicker/DatePicker";
 import TimePicker from "../pickers/TimePicker";
-import { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
+import type { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
 import DimensionList from "../../DimensionList";
-import { Button } from "./FilterPopover.styled";
-import FilterPopoverFooter from "./FilterPopoverFooter";
-import FilterPopoverPicker from "./FilterPopoverPicker";
-import FilterPopoverHeader from "./FilterPopoverHeader";
+import {
+  Button,
+  EmptyFilterPickerPlaceholder,
+  FilterPopoverSeparator,
+} from "./FilterPopover.styled";
+import { FilterPopoverFooter } from "./FilterPopoverFooter";
+import { FilterPopoverPicker } from "./FilterPopoverPicker";
+import { FilterPopoverHeader } from "./FilterPopoverHeader";
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
@@ -31,7 +39,7 @@ type Props = {
   className?: string;
   style?: React.CSSProperties;
   fieldPickerTitle?: string;
-  filter: Filter;
+  filter?: Filter;
   query: StructuredQuery;
   onChange?: (filter: Filter) => void;
   onChangeFilter: (filter: Filter) => void;
@@ -48,13 +56,7 @@ type Props = {
   checkedColor?: string;
 };
 
-type State = {
-  filter: Filter | null;
-  choosingField: boolean;
-  editingFilter: boolean;
-};
-
-export default function FilterPopover({
+export function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,
   style = {},
@@ -62,7 +64,7 @@ export default function FilterPopover({
   showCustom = true,
   noCommitButton,
   className,
-  query,
+  query: legacyQuery,
   showOperatorSelector,
   fieldPickerTitle,
   isTopLevel,
@@ -81,14 +83,18 @@ export default function FilterPopover({
     !!(filter?.isCustom() && !isStartingFrom(filter)),
   );
 
-  const previousQuery = usePrevious(query);
+  const previousQuery = usePrevious(legacyQuery);
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
-    if (filter && filter.query() === previousQuery && query !== previousQuery) {
-      setFilter(filter.setQuery(query));
+    if (
+      filter &&
+      filter.query() === previousQuery &&
+      legacyQuery !== previousQuery
+    ) {
+      setFilter(filter.setQuery(legacyQuery));
     }
-  }, [query, previousQuery, filter]);
+  }, [legacyQuery, previousQuery, filter]);
 
   useEffect(() => {
     if (typeof onChange === "function" && filter && filter !== filterProp) {
@@ -114,17 +120,17 @@ export default function FilterPopover({
   };
 
   const handleUpdateAndCommit = (newFilterMbql: any[]) => {
-    const base = filter || new Filter([], null, query);
+    const base = filter || new Filter([], null, legacyQuery);
     const newFilter = base.set(newFilterMbql) as Filter;
 
     setFilter(newFilter);
-    handleCommitFilter(newFilter, query);
+    handleCommitFilter(newFilter, legacyQuery);
   };
 
   const handleCommit = (newFilterMbql?: any[]) => {
     handleCommitFilter(
       newFilterMbql ? filter?.set(newFilterMbql) : filter,
-      query,
+      legacyQuery,
     );
   };
 
@@ -135,7 +141,7 @@ export default function FilterPopover({
         ? new Filter(
             [],
             null,
-            dimension.query() || (filter && filter.query()) || query,
+            dimension.query() || (filter && filter.query()) || legacyQuery,
           )
         : filter;
 
@@ -147,22 +153,35 @@ export default function FilterPopover({
   };
 
   const handleFilterChange = (mbql: any[] = []) => {
-    const newFilter = filter ? filter.set(mbql) : new Filter(mbql, null, query);
+    const newFilter = filter
+      ? filter.set(mbql)
+      : new Filter(mbql, null, legacyQuery);
     setFilter(newFilter);
     onResize?.();
   };
 
+  const handleExpressionChange = (name: string, expression: Expression) => {
+    if (isExpression(expression) && Array.isArray(expression)) {
+      handleUpdateAndCommit(expression);
+    }
+  };
+
+  const handleExpressionWidgetClose = () => {
+    setEditingFilter(false);
+  };
+
   if (editingFilter) {
+    const filterMBQL = filter?.raw();
+    const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
-      <ExpressionPopover
-        title={CUSTOM_SECTION_NAME}
-        query={query}
-        expression={filter ? filter.raw() : null}
+      <ExpressionWidget
+        query={legacyQuery.question()._getMLv2Query()}
+        stageIndex={-1}
+        expression={expression}
         startRule="boolean"
-        isValid={filter && filter.isValid()}
-        onChange={handleFilterChange}
-        onDone={handleUpdateAndCommit}
-        onBack={() => setEditingFilter(false)}
+        header={<ExpressionWidgetHeader onBack={handleExpressionWidgetClose} />}
+        onChangeExpression={handleExpressionChange}
+        onClose={handleExpressionWidgetClose}
       />
     );
   }
@@ -183,13 +202,13 @@ export default function FilterPopover({
           dimension={dimension}
           sections={
             isTopLevel
-              ? query.topLevelFilterFieldOptionSections()
-              : ((filter && filter.query()) || query).filterFieldOptionSections(
-                  filter,
-                  {
-                    includeSegments: showCustom,
-                  },
-                )
+              ? legacyQuery.topLevelFilterFieldOptionSections()
+              : (
+                  (filter && filter.query()) ||
+                  legacyQuery
+                ).filterFieldOptionSections(filter, {
+                  includeSegments: showCustom,
+                })
           }
           onChangeDimension={(dimension: FieldDimension) =>
             handleDimensionChange(dimension)
@@ -229,7 +248,10 @@ export default function FilterPopover({
   };
 
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
-  const supportsExpressions = query.database()?.supportsExpressions();
+  const supportsExpressions = legacyQuery.database()?.supportsExpressions();
+
+  const filterOperator = filter.operator();
+  const hasPicker = filterOperator && filterOperator.fields.length > 0;
 
   return (
     <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
@@ -251,9 +273,7 @@ export default function FilterPopover({
             data-ui-tag="add-filter"
             primaryColor={primaryColor}
             disabled={!filter.isValid()}
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            ml="auto"
+            className="ml-auto"
             onClick={() => handleCommit()}
           >
             {isNew ? t`Add filter` : t`Update filter`}
@@ -281,15 +301,22 @@ export default function FilterPopover({
                 showFieldPicker={showFieldPicker}
                 forceShowOperatorSelector={showOperatorSelector}
               />
-              <FilterPopoverPicker
-                className="px1 pt1 pb1"
-                filter={filter}
-                onFilterChange={handleFilterChange}
-                onCommit={handleCommit}
-                maxWidth={MAX_WIDTH}
-                primaryColor={primaryColor}
-                checkedColor={checkedColor}
-              />
+              {hasPicker ? (
+                <>
+                  <FilterPopoverSeparator data-testid="filter-popover-separator" />
+                  <FilterPopoverPicker
+                    className="px1 pt1 pb1"
+                    filter={filter}
+                    onFilterChange={handleFilterChange}
+                    onCommit={handleCommit}
+                    maxWidth={MAX_WIDTH}
+                    primaryColor={primaryColor}
+                    checkedColor={checkedColor}
+                  />
+                </>
+              ) : (
+                <EmptyFilterPickerPlaceholder data-testid="empty-picker-placeholder" />
+              )}
             </>
           )}
           <FilterPopoverFooter

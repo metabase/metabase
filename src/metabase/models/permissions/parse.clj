@@ -7,16 +7,21 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [instaparse.core :as insta]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( all | db | block | download | data-model | details | collection )
+  "permission = ( all | execute | db | block | download | data-model | details | collection | data-v2 | query-v2)
   all         = <'/'>
-  db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
+  data-v2     = <'/data/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
+  query-v2    = <'/query/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
+  db          = <'/db/'> #'\\d+' <'/'> ( native | execute | schemas )?
+  execute     = <'/execute/'> ( <'db/'> #'\\d+' <'/'> )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
   schema      = schema-name <'/'> table?
@@ -75,22 +80,29 @@
     [:permission t]                (path1 t)
     [:schema-name schema-name]     (unescape-path-component schema-name)
     [:all]                         [:all] ; admin permissions
-    [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)]
-                                     [[:db db-id :data :native :write]
-                                      [:db db-id :data :schemas :all]])
-    [:db db-id db-node]            (let [db-id (Long/parseUnsignedLong db-id)]
-                                     (into [:db db-id] (path1 db-node)))
-    [:schemas]                     [:data :schemas :all]
-    [:schemas schema]              (into [:data :schemas] (path1 schema))
+
+    [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :data :native :write] [:db db-id :data :schemas :all]])
+    [:db db-id db-node]            (into [:db (Long/parseUnsignedLong db-id) :data] (path1 db-node))
+
+    [:data-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :data :native :write]])
+    [:data-v2 db-id db-node]      (into [:db (Long/parseUnsignedLong db-id) :data] (path1 db-node))
+
+    [:query-v2 db-id]              (let [db-id (Long/parseUnsignedLong db-id)] [[:db db-id :query :native :write] [:db db-id :query :schemas :all]])
+    [:query-v2 db-id db-node]      (into [:db (Long/parseUnsignedLong db-id) :query] (path1 db-node))
+
+    [:schemas]                     [:schemas :all]
+    [:schemas schema]              (into [:schemas] (path1 schema))
     [:schema schema-name]          [(path1 schema-name) :all]
     [:schema schema-name table]    (into [(path1 schema-name)] (path1 table))
+
     [:table table-id]              [(Long/parseUnsignedLong table-id) :all]
     [:table table-id table-perm]   (into [(Long/parseUnsignedLong table-id)] (path1 table-perm))
+
     [:table-perm perm]              (case perm
                                       "read"            [:read :all]
                                       "query"           [:query :all]
                                       "query/segmented" [:query :segmented])
-    [:native]                      [:data :native :write]
+    [:native]                      [:native :write]
     ;; block perms. Parse something like /block/db/1/ to {:db {1 {:schemas :block}}}
     [:block db-id]                 [:db (Long/parseUnsignedLong db-id) :data :schemas :block]
     ;; download perms
@@ -119,6 +131,8 @@
   (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
+    [:execute]                     [:execute :all]
+    [:execute db-id]               [:execute (Long/parseUnsignedLong db-id) :all]
     [:schema-name schema-name]     (unescape-path-component schema-name)
     ;; data model perms
     [:data-model db-node]          (path2 db-node)
@@ -154,19 +168,16 @@
   [paths]
   (->> paths
        (reduce (fn [paths path]
-                 (if (every? vector? path) ;; handle case wher /db/x/ returns two vectors
+                 (if (every? vector? path) ;; handle case where /db/x/ returns two vectors
                    (into paths path)
                    (conj paths path)))
                [])
        (walk/prewalk (fn [x]
-                       (if (and (sequential? x)
-                                (sequential? (first x))
-                                (seq (first x)))
+                       (if (and (sequential? x) (sequential? (first x)) (seq (first x)))
                          (->> x
                               (group-by first)
                               (reduce-kv (fn [m k v]
-                                           (assoc m k (->> (map rest v)
-                                                           (filter seq))))
+                                           (assoc m k (->> (map rest v) (filter seq))))
                                          {}))
                          x)))
        (walk/prewalk (fn [x]
@@ -175,7 +186,7 @@
                                    [:block :all :some :write :read :segmented :full :limited :yes]))
                            x)))))
 
-(defn permissions->graph
+(defn ->graph
   "Given a set of permission strings, return a graph that expresses the most permissions possible for the set"
   [permissions]
   (->> permissions

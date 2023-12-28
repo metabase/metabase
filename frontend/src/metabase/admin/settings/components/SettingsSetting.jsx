@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import SettingHeader from "./SettingHeader";
-import SettingInput from "./widgets/SettingInput";
+import { SettingInput } from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
 import SettingRadio from "./widgets/SettingRadio";
@@ -63,7 +63,7 @@ export default class SettingsSetting extends Component {
 
     return (
       // TODO - this formatting needs to be moved outside this component
-      <SettingRoot>
+      <SettingRoot data-testid={`${setting.key}-setting`}>
         {!setting.noHeader && (
           <SettingHeader id={settingId} setting={setting} />
         )}

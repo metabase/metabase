@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";
@@ -45,9 +45,8 @@ const SnippetCollections = createEntity({
 
   selectors: {
     getExpandedCollectionsById: createSelector(
-      state => state.entities.snippetCollections || {},
-      collections =>
-        getExpandedCollectionsById(Object.values(collections), null),
+      state => SnippetCollections.selectors.getList(state) || [],
+      collections => getExpandedCollectionsById(collections, null),
     ),
   },
 

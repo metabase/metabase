@@ -1,0 +1,130 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { DatePicker } from "metabase/ui";
+
+export const args = {
+  type: "default",
+  allowDeselect: undefined,
+  allowSingleDateInRange: undefined,
+  numberOfColumns: undefined,
+};
+
+export const sampleArgs = {
+  date1: new Date(2023, 9, 8),
+  date2: new Date(2023, 9, 24),
+  date3: new Date(2023, 9, 16),
+};
+
+export const argTypes = {
+  type: {
+    options: ["default", "multiple", "range"],
+    control: { type: "inline-radio" },
+  },
+  allowDeselect: {
+    control: { type: "boolean" },
+  },
+  allowSingleDateInRange: {
+    control: { type: "boolean" },
+  },
+  numberOfColumns: {
+    control: { type: "number" },
+  },
+};
+
+<Meta
+  title="Inputs/DatePicker"
+  component={DatePicker}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# DatePicker
+
+Our themed wrapper around [Mantine DatePicker](https://v6.mantine.dev/dates/date-picker/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/cncRbkG7XJQs144EG9r9hM/Date-Picker?type=design&node-id=0-1&mode=design&t=v00tLhbD9OFEgy25-0)
+- [Mantine DatePicker Docs](https://v6.mantine.dev/dates/date-picker/)
+
+## Examples
+
+export const DefaultTemplate = args => {
+  return <DatePicker {...args} />;
+};
+
+export const Default = DefaultTemplate.bind({});
+Default.args = {
+  defaultDate: sampleArgs.date1,
+};
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Allow deselect
+
+export const AllowDeselect = DefaultTemplate.bind({});
+AllowDeselect.args = {
+  allowDeselect: true,
+  defaultDate: sampleArgs.date1,
+  defaultValue: sampleArgs.date1,
+};
+
+<Canvas>
+  <Story name="Allow deselect">{AllowDeselect}</Story>
+</Canvas>
+
+### Multiple dates
+
+export const MultipleDates = DefaultTemplate.bind({});
+MultipleDates.args = {
+  type: "multiple",
+  defaultValue: [sampleArgs.date1, sampleArgs.date2],
+  defaultDate: sampleArgs.date1,
+};
+
+<Canvas>
+  <Story name="Multiple dates">{MultipleDates}</Story>
+</Canvas>
+
+### Dates range
+
+export const DatesRange = DefaultTemplate.bind({});
+DatesRange.args = {
+  type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date2],
+  defaultDate: sampleArgs.date1,
+};
+
+<Canvas>
+  <Story name="Dates range">{DatesRange}</Story>
+</Canvas>
+
+### Single date in range
+
+export const SingleDateInRange = DefaultTemplate.bind({});
+SingleDateInRange.args = {
+  type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date1],
+  defaultDate: sampleArgs.date1,
+  allowSingleDateInRange: true,
+};
+
+<Canvas>
+  <Story name="Single date in range">{SingleDateInRange}</Story>
+</Canvas>
+
+### Number of columns
+
+export const NumberOfColumns = DefaultTemplate.bind({});
+NumberOfColumns.args = {
+  type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date3],
+  defaultDate: sampleArgs.date1,
+  numberOfColumns: 2,
+};
+
+<Canvas>
+  <Story name="Number of columns">{NumberOfColumns}</Story>
+</Canvas>

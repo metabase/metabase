@@ -1,8 +1,12 @@
 (ns metabase.driver.googleanalytics.client
-  (:require [metabase.driver.google :as google])
-  (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
-           [com.google.api.services.analytics Analytics Analytics$Builder AnalyticsScopes]
-           java.util.Collections))
+  (:require
+   [metabase.driver.google :as google])
+  (:import
+   (com.google.api.client.googleapis.auth.oauth2 GoogleCredential)
+   (com.google.api.services.analytics Analytics Analytics$Builder AnalyticsScopes)
+   (java.util Collections)))
+
+(set! *warn-on-reflection* true)
 
 (defn- credential->client ^Analytics [^GoogleCredential credential]
   (.build (doto (Analytics$Builder. google/http-transport google/json-factory credential)

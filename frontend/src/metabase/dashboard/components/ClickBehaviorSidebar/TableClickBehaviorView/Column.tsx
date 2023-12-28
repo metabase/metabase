@@ -1,4 +1,4 @@
-import React from "react";
+import type * as React from "react";
 import { t, jt, ngettext, msgid } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -8,9 +8,10 @@ import Questions from "metabase/entities/questions";
 import type {
   ClickBehavior,
   CustomDestinationClickBehavior,
+  DatasetColumn,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import type { Column as IColumn } from "metabase-types/types/Dataset";
+import type { IconName } from "metabase/core/components/Icon";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 import { SidebarItem } from "../SidebarItem";
@@ -51,7 +52,7 @@ function getClickBehaviorDescription({
   column,
   clickBehavior,
 }: {
-  column: IColumn;
+  column: DatasetColumn;
   clickBehavior: ClickBehavior;
 }) {
   if (!clickBehavior) {
@@ -78,15 +79,15 @@ function getClickBehaviorDescription({
 }
 
 interface ColumnProps {
-  column: IColumn;
+  column: DatasetColumn;
   clickBehavior: ClickBehavior;
   onClick: () => void;
 }
 
-const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
+export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
-      name={getIconForField(column)}
+      name={getIconForField(column) as unknown as IconName}
       color={color("brand")}
       size={18}
     />
@@ -97,5 +98,3 @@ const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
     </div>
   </SidebarItem>
 );
-
-export default Column;

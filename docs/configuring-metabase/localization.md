@@ -19,6 +19,7 @@ Thanks to our amazing user community, Metabase has been translated into many dif
 The languages you can currently pick from are:
 
 - English (default)
+- Albanian
 - Arabic
 - Bulgarian
 - Catalan
@@ -27,11 +28,14 @@ The languages you can currently pick from are:
 - Czech
 - Dutch
 - Farsi/Persian
+- Finnish
 - French
 - German
 - Indonesian
 - Italian
 - Japanese
+- Korean
+- Latvian
 - Norwegian Bokmål
 - Polish
 - Portuguese
@@ -43,6 +47,8 @@ The languages you can currently pick from are:
 - Turkish
 - Ukrainian
 - Vietnamese
+
+> While Metabase can support languages that read right to left, the Metabase UI is designed around languages that read left to right.
 
 ## Translations
 
@@ -73,6 +79,7 @@ Report timezone is only supported for the following databases:
    - Oracle
    - PostgreSQL
    - Presto
+   - Redshift
    - Vertica
 
 ## First day of the week

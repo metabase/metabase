@@ -1,7 +1,5 @@
-import React from "react";
-
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import { useArgs } from "@storybook/addons";
 
 import { SegmentedControl } from "./SegmentedControl";
 

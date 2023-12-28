@@ -3,9 +3,9 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [java-time :as t]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.public-settings :as public-settings]
+   [java-time.api :as t]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -19,6 +19,8 @@
    (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook)
    (org.apache.poi.ss.util CellRangeAddress)
    (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -44,38 +46,12 @@
     ::mb.viz/time-enabled
     ::mb.viz/time-style})
 
-(defn- merge-global-settings
-  "Merge format settings defined in the localization preferences into the format settings
-  for a single column."
-  [format-settings global-settings-key]
-  (let [global-settings (global-settings-key (public-settings/custom-formatting))
-        normalized      (mb.viz/db->norm-column-settings-entries global-settings)]
-    (merge normalized format-settings)))
-
-(defn- currency-identifier
-  "Given the format settings for a currency column, returns the symbol, code or name for the
-  appropriate currency."
-  [format-settings]
-  (let [currency-code (::mb.viz/currency format-settings "USD")]
-    (condp = (::mb.viz/currency-style format-settings "symbol")
-      "symbol"
-      (if (currency/supports-symbol? currency-code)
-        (get-in currency/currency [(keyword currency-code) :symbol])
-        ;; Fall back to using code if symbol isn't not supported on the Metabase frontend
-        currency-code)
-
-      "code"
-      currency-code
-
-      "name"
-      (get-in currency/currency [(keyword currency-code) :name_plural]))))
-
 (defn- currency-format-string
   "Adds a currency to the base format string as either a suffix (for pluralized names) or
   prefix (for symbols or codes)."
   [base-string format-settings]
   (let [currency-code (::mb.viz/currency format-settings "USD")
-        currency-identifier (currency-identifier format-settings)]
+        currency-identifier (common/currency-identifier format-settings)]
     (condp = (::mb.viz/currency-style format-settings "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
@@ -114,7 +90,7 @@
               is-currency?    (or (isa? semantic-type :type/Currency)
                                   (= (::mb.viz/number-style format-settings) "currency"))
               merged-settings (if is-currency?
-                                (merge-global-settings format-settings :type/Currency)
+                                (common/merge-global-settings format-settings :type/Currency)
                                 format-settings)
               base-string     (if (= (::mb.viz/number-separators format-settings) ".")
                                 ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
@@ -194,7 +170,7 @@
 (defn- add-time-format
   "Adds the appropriate time setting to a date format string if necessary, producing a datetime format string."
   [format-settings unit format-string]
-  (if (or (not unit) (mbql.s/time-bucketing-units unit))
+  (if (or (not unit) (lib.schema.temporal-bucketing/time-bucketing-units unit))
     (if-let [time-format (time-format format-settings)]
       (str format-string ", " time-format)
       format-string)
@@ -211,7 +187,7 @@
 
 (defn- date-format
   [format-settings unit]
-  (let [base-style (str/lower-case (::mb.viz/date-style format-settings "mmmm d, yyyy"))
+  (let [base-style (u/lower-case-en (::mb.viz/date-style format-settings "mmmm d, yyyy"))
         unit-style (case unit
                      :month (month-style base-style)
                      :year "yyyy"
@@ -225,7 +201,7 @@
    (datetime-format-string format-settings nil))
 
   ([format-settings unit]
-   (let [merged-settings (merge-global-settings format-settings :type/Temporal)]
+   (let [merged-settings (common/merge-global-settings format-settings :type/Temporal)]
      (->> (date-format merged-settings unit)
           (add-time-format merged-settings unit)))))
 
@@ -251,8 +227,8 @@
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
   []
-  {:datetime (datetime-format-string (merge-global-settings {} :type/Temporal))
-   :date     (datetime-format-string (merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+  {:datetime (datetime-format-string (common/merge-global-settings {} :type/Temporal))
+   :date     (datetime-format-string (common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
@@ -410,6 +386,15 @@
   formatting can be applied. This should be enabled for generation of pulse/dashboard subscription attachments."
   false)
 
+(defn- maybe-parse-temporal-value
+  [value col]
+  (when (and *parse-temporal-string-values*
+             (isa? (:effective_type col) :type/Temporal)
+             (string? value))
+    (try (u.date/parse value)
+         ;; Fallback to plain string value if it couldn't be parsed
+         (catch Exception _ value
+                value))))
 (defn- add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -428,34 +413,11 @@
                            value)
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (if (and *parse-temporal-string-values* (string? value))
-                           (try (u.date/parse value)
-                                ;; Fallback to plain string value if it couldn't be parsed
-                                (catch Exception _ value))
-                           scaled-val)]
+            parsed-value (or
+                          (maybe-parse-temporal-value value col)
+                          scaled-val)]
         (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
     row))
-
-(defn- column-titles
-  "Generates the column titles that should be used in the export, taking into account viz settings."
-  [ordered-cols col-settings]
-  (for [col ordered-cols]
-    (let [id-or-name       (or (and (:remapped_from col) (:fk_field_id col))
-                               (:id col)
-                               (:name col))
-          format-settings  (or (get col-settings {::mb.viz/field-id id-or-name})
-                               (get col-settings {::mb.viz/column-name id-or-name}))
-          is-currency?     (or (isa? (:semantic_type col) :type/Currency)
-                               (= (::mb.viz/number-style format-settings) "currency"))
-          merged-settings  (if is-currency?
-                             (merge-global-settings format-settings :type/Currency)
-                             format-settings)
-          column-title     (or (::mb.viz/column-title merged-settings)
-                               (:display_name col)
-                               (:name col))]
-      (if (and is-currency? (::mb.viz/currency-in-header merged-settings true))
-        (str column-title " (" (currency-identifier merged-settings) ")")
-        column-title))))
 
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
@@ -497,7 +459,7 @@
         (doseq [i (range (count ordered-cols))]
           (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
         (setup-header-row! sheet (count ordered-cols))
-        (spreadsheet/add-row! sheet (column-titles ordered-cols col-settings)))
+        (spreadsheet/add-row! sheet (common/column-titles ordered-cols col-settings)))
 
       (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (if output-order

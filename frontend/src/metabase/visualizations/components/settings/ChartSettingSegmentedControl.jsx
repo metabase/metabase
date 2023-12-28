@@ -1,4 +1,3 @@
-import React from "react";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 
 function ChartSettingSegmentedControl(props) {

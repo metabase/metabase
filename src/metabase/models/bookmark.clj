@@ -2,20 +2,33 @@
   (:require
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
-   [metabase.models.app :refer [App]]
+   [metabase.db.query :as mdb.query]
+   [metabase.db.util :as mdb.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
-(models/defmodel CardBookmark :card_bookmark)
-(models/defmodel DashboardBookmark :dashboard_bookmark)
-(models/defmodel CollectionBookmark :collection_bookmark)
-(models/defmodel BookmarkOrdering :bookmark_ordering)
+;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+;; We'll keep this till we replace all the symbols in our codebase."
+(def CardBookmark       "CardBookmark model"       :model/CardBookmark)
+(def DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)
+(def CollectionBookmark "CollectionBookmark model" :model/CollectionBookmark)
+(def BookmarkOrdering   "BookmarkOrdering model"   :model/BookmarkOrdering)
+
+(methodical/defmethod t2/table-name :model/CardBookmark       [_model] :card_bookmark)
+(methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
+(methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
+(methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
+
+(derive :model/CardBookmark :metabase/model)
+(derive :model/DashboardBookmark :metabase/model)
+(derive :model/CollectionBookmark :metabase/model)
+(derive :model/BookmarkOrdering :metabase/model)
 
 (defn- unqualify-key
   [k]
@@ -25,18 +38,17 @@
   "Shape of a bookmark returned for user. Id is a string because it is a concatenation of the model and the model's
   id. This is required for the frontend entity loading system and does not refer to any particular bookmark id,
   although the compound key can be inferred from it."
-  {:id                               s/Str
-   :type                             (s/enum "card" "collection" "dashboard")
-   :item_id                          su/IntGreaterThanZero
-   :name                             su/NonBlankString
-   (s/optional-key :dataset)         (s/maybe s/Bool)
-   (s/optional-key :display)         (s/maybe s/Str)
-   (s/optional-key :authority_level) (s/maybe s/Str)
-   (s/optional-key :description)     (s/maybe s/Str)
-   (s/optional-key :app_id)          (s/maybe su/IntGreaterThanOrEqualToZero)
-   (s/optional-key :is_app_page)     (s/maybe s/Bool)})
+  [:map {:closed true}
+   [:id                               :string]
+   [:type                             [:enum "card" "collection" "dashboard"]]
+   [:item_id                          ms/PositiveInt]
+   [:name                             ms/NonBlankString]
+   [:authority_level {:optional true} [:maybe :string]]
+   [:dataset         {:optional true} [:maybe :boolean]]
+   [:description     {:optional true} [:maybe :string]]
+   [:display         {:optional true} [:maybe :string]]])
 
-(s/defn ^:private normalize-bookmark-result :- BookmarkResult
+(mu/defn ^:private normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, and dashboard tables, but only
   points to one of them. Normalizes it so it has just the desired fields."
   [result]
@@ -49,81 +61,84 @@
         id-str            (str (:type normalized-result) "-" (:item_id normalized-result))]
     (-> normalized-result
         (select-keys [:item_id :type :name :dataset :description :display
-                      :authority_level :app_id :is_app_page])
+                      :authority_level])
         (assoc :id id-str))))
 
 (defn- bookmarks-union-query
   [user-id]
-  (let [as-null (when (= (mdb.connection/db-type) :postgres) (hx/->integer nil))]
+  (let [as-null (when (= (mdb.connection/db-type) :postgres) (h2x/->integer nil))]
     {:union-all [{:select [:card_id
                            [as-null :dashboard_id]
                            [as-null :collection_id]
                            [:card_id :item_id]
-                           [(hx/literal "card") :type]
+                           [(h2x/literal "card") :type]
                            :created_at]
-                  :from   [CardBookmark]
+                  :from   [:card_bookmark]
                   :where  [:= :user_id user-id]}
                  {:select [[as-null :card_id]
                            :dashboard_id
                            [as-null :collection_id]
                            [:dashboard_id :item_id]
-                           [(hx/literal "dashboard") :type]
+                           [(h2x/literal "dashboard") :type]
                            :created_at]
-                  :from   [DashboardBookmark]
+                  :from   [:dashboard_bookmark]
                   :where  [:= :user_id user-id]}
                  {:select [[as-null :card_id]
                            [as-null :dashboard_id]
                            :collection_id
                            [:collection_id :item_id]
-                           [(hx/literal "collection") :type]
+                           [(h2x/literal "collection") :type]
                            :created_at]
-                  :from   [CollectionBookmark]
+                  :from   [:collection_bookmark]
                   :where  [:= :user_id user-id]}]}))
 
-(s/defn bookmarks-for-user :- [BookmarkResult]
+(mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (->> (db/query
-        {:select    [[:bookmark.created_at :created_at]
-                     [:bookmark.type :type]
-                     [:bookmark.item_id :item_id]
-                     [:card.name (db/qualify 'Card :name)]
-                     [:card.dataset (db/qualify 'Card :dataset)]
-                     [:card.display (db/qualify 'Card :display)]
-                     [:card.description (db/qualify 'Card :description)]
-                     [:card.archived (db/qualify 'Card :archived)]
-                     [:dashboard.name (db/qualify 'Dashboard :name)]
-                     [:dashboard.description (db/qualify 'Dashboard :description)]
-                     [:dashboard.archived (db/qualify 'Dashboard :archived)]
-                     [:dashboard.is_app_page (db/qualify 'Dashboard :is_app_page)]
-                     [:collection.name (db/qualify 'Collection :name)]
-                     [:collection.authority_level (db/qualify 'Collection :authority_level)]
-                     [:collection.description (db/qualify 'Collection :description)]
-                     [:collection.archived (db/qualify 'Collection :archived)]
-                     [:app.id (db/qualify 'Collection :app_id)]]
+  (->> (mdb.query/query
+        {:select    [[:bookmark.created_at        :created_at]
+                     [:bookmark.type              :type]
+                     [:bookmark.item_id           :item_id]
+                     [:card.name                  (mdb.u/qualify Card :name)]
+                     [:card.dataset               (mdb.u/qualify Card :dataset)]
+                     [:card.display               (mdb.u/qualify Card :display)]
+                     [:card.description           (mdb.u/qualify Card :description)]
+                     [:card.archived              (mdb.u/qualify Card :archived)]
+                     [:dashboard.name             (mdb.u/qualify Dashboard :name)]
+                     [:dashboard.description      (mdb.u/qualify Dashboard :description)]
+                     [:dashboard.archived         (mdb.u/qualify Dashboard :archived)]
+                     [:collection.name            (mdb.u/qualify Collection  :name)]
+                     [:collection.authority_level (mdb.u/qualify Collection :authority_level)]
+                     [:collection.description     (mdb.u/qualify Collection :description)]
+                     [:collection.archived        (mdb.u/qualify Collection :archived)]]
          :from      [[(bookmarks-union-query user-id) :bookmark]]
-         :left-join [[Card :card] [:= :bookmark.card_id :card.id]
-                     [Dashboard :dashboard] [:= :bookmark.dashboard_id :dashboard.id]
-                     [Collection :collection] [:in :collection.id [:bookmark.collection_id
-                                                                   :dashboard.collection_id]]
-                     [App :app] [:= :app.collection_id :collection.id]
-                     [BookmarkOrdering :bookmark_ordering] [:and
-                                                            [:= :bookmark_ordering.user_id user-id]
-                                                            [:= :bookmark_ordering.type :bookmark.type]
-                                                            [:= :bookmark_ordering.item_id :bookmark.item_id]]]
+         :left-join [[:report_card :card]                    [:= :bookmark.card_id :card.id]
+                     [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
+                     ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
+                     [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
+                                                                                  (h2x/identifier :field :dashboard :collection_id)]]
+                     [:bookmark_ordering :bookmark_ordering] [:and
+                                                              [:= :bookmark_ordering.user_id user-id]
+                                                              [:= :bookmark_ordering.type :bookmark.type]
+                                                              [:= :bookmark_ordering.item_id :bookmark.item_id]]]
          :where     (into [:and]
                           (for [table [:card :dashboard :collection]
-                                :let [field (keyword (str (name table) "." "archived"))]]
+                                :let  [field (keyword (str (name table) "." "archived"))]]
                             [:or [:= field false] [:= field nil]]))
-         :order-by [[:bookmark_ordering.ordering :asc-nulls-last] [:created_at :desc]]})
+         :order-by  [[:bookmark_ordering.ordering (case (mdb.connection/db-type)
+                                                    ;; NULLS LAST is not supported by MySQL, but this is default
+                                                    ;; behavior for MySQL anyway
+                                                    (:postgres :h2) :asc-nulls-last
+                                                    :mysql          :asc)]
+                     [:created_at :desc]]})
        (map normalize-bookmark-result)))
 
-(defn save-ordering
+(defn save-ordering!
   "Saves a bookmark ordering of shape `[{:type, :item_id}]`
    Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (db/delete! BookmarkOrdering :user_id user-id)
-  (db/insert-many! BookmarkOrdering (->> orderings
-                                         (map #(select-keys % [:type :item_id]))
-                                         (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+  (t2/delete! BookmarkOrdering :user_id user-id)
+  (t2/insert! BookmarkOrdering (->> orderings
+                                    (map #(select-keys % [:type :item_id]))
+                                    (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))

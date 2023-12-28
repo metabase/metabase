@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 
-import "./AuditTableVisualization";
+import "../components/AuditTableVisualization";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -17,7 +17,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-class AuditTable extends React.Component {
+class AuditTable extends Component {
   render() {
     const { metadata, card } = this.props;
     const question = new Question(card.card, metadata);

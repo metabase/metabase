@@ -50,7 +50,7 @@
 (defn- format-prefix
   "Used to build an environment variable."
   [env-var]
-  (str "MB_" (u/screaming-snake-case (name (:name env-var)))))
+  (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (name (:name env-var)))))
 
 (defn- format-heading
   "Takes an integer and a string and creates a Markdown heading of level n."

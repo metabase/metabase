@@ -1,7 +1,7 @@
 import { assocIn } from "icepick";
-import { VisualizationSettings, Card } from "metabase-types/api/card";
-import { Series, TransformedSeries } from "metabase-types/api/dataset";
-import { isNotNull } from "metabase/core/utils/types";
+import type { VisualizationSettings, Card } from "metabase-types/api/card";
+import type { Series, TransformedSeries } from "metabase-types/api/dataset";
+import { isNotNull } from "metabase/lib/types";
 import { SETTING_ID, keyForSingleSeries } from "./settings/series";
 
 export const updateSeriesColor = (
@@ -19,6 +19,7 @@ export const findSeriesByKey = (series: Series, key: string) => {
 export const getOrderedSeries = (
   series: Series,
   settings: VisualizationSettings,
+  isReversed?: boolean,
 ) => {
   if (
     (settings["graph.dimensions"] &&
@@ -32,6 +33,10 @@ export const getOrderedSeries = (
     ?.filter(orderedItem => orderedItem.enabled)
     .map(orderedItem => findSeriesByKey(series, orderedItem.key))
     .filter(isNotNull);
+
+  if (isReversed) {
+    orderedSeries.reverse();
+  }
 
   if ("_raw" in series) {
     const transformedOrderedSeries = [...orderedSeries] as TransformedSeries;

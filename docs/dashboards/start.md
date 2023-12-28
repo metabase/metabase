@@ -25,3 +25,7 @@ Combine multiple questions on a single chart.
 ## [Dashboard subscriptions](./subscriptions.md)
 
 Set up a dashboard to email or Slack its results on a schedule.
+
+## [Actions on dashboards](./actions.md)
+
+Add action buttons to dashboards.

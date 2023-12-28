@@ -8,7 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(deftest compile-test
+(deftest ^:parallel compile-test
   (testing "Can we convert an MBQL query to a native query?"
     (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\","
                          " \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\","
@@ -21,16 +21,16 @@
             :params nil}
            (qp/compile (mt/mbql-query venues))))))
 
-(deftest already-native-test
+(deftest ^:parallel already-native-test
   (testing "If query is already native, `compile` should still do stuff like parsing parameters"
     (is (= {:query  "SELECT * FROM VENUES WHERE price = 3;"
             :params []}
            (qp/compile
-             {:database   (mt/id)
-              :type       :native
-              :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
-                           :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
-              :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "3"}]}))))
+            {:database   (mt/id)
+             :type       :native
+             :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
+                          :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
+             :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value 3}]}))))
   (testing "If query is already native, `compile` should not execute the query (metabase#13572)"
     ;; 1000,000,000 rows, no way this will finish in 2 seconds if executed
     (let [long-query "SELECT CHECKINS.* FROM CHECKINS LEFT JOIN CHECKINS C2 ON 1=1 LEFT JOIN CHECKINS C3 ON 1=1"]
@@ -52,7 +52,7 @@
                                                         native-perms? (conj (perms/adhoc-native-query-path database-id))))]
     (qp/compile query)))
 
-(deftest permissions-test
+(deftest ^:parallel permissions-test
   (testing "If user permissions are bound, we should still NOT do permissions checking when you call `compile`"
     (testing "Should work if you have the right perms"
       (is (compile-with-user-perms
@@ -63,11 +63,11 @@
            (mt/mbql-query venues)
            {:object-perms? false, :native-perms? true})))))
 
-(deftest error-test
+(deftest ^:parallel error-test
   (testing "If the query is bad in some way it should return a relevant error (?)"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Database \d+ does not exist"
+         #"\QValid Database metadata\E"
          (compile-with-user-perms
           {:database Integer/MAX_VALUE, :type :query, :query {:source-table Integer/MAX_VALUE}}
           {:object-perms? true, :native-perms? true})))))

@@ -1,1 +1,1 @@
-export { default } from "./PasswordButton";
+export * from "./PasswordButton";

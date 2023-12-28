@@ -1,3 +1,4 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   createParameter,
   setParameterName,
@@ -6,11 +7,17 @@ import {
   getParametersMappedToDashcard,
   hasMatchingParameters,
   getFilteringParameterValuesMap,
-  getParameterValuesSearchKey,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
-import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
 import Field from "metabase-lib/metadata/Field";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -91,10 +98,10 @@ describe("metabase/parameters/utils/dashboards", () => {
       });
     });
 
-    it("should default", () => {
+    it("should not default", () => {
       expect(setParameterName({}, "")).toEqual({
-        name: "unnamed",
-        slug: "unnamed",
+        name: "",
+        slug: "",
       });
     });
   });
@@ -104,14 +111,14 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when there are no cards on the dashboard", () => {
       const dashboard = {
-        ordered_cards: [],
+        dashcards: [],
       };
       expect(hasMapping(parameter, dashboard)).toBe(false);
     });
 
     it("should return false when there are no cards with parameter mappings", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [],
           },
@@ -126,14 +133,14 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when missing parameter mappings", () => {
       const dashboard = {
-        ordered_cards: [{ parameter_mappings: undefined }],
+        dashcards: [{ parameter_mappings: undefined }],
       };
       expect(hasMapping(parameter, dashboard)).toBe(false);
     });
 
     it("should return false when there are no matching parameter mapping parameter_ids", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -159,7 +166,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return true when the given parameter's id is found in a parameter_mappings object", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -195,7 +202,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when the given parameter is not found in the dashboard's parameters list", () => {
       const brokenDashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -223,7 +230,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when the given parameter is both found in the dashboard's parameters and also mapped", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -250,7 +257,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return true when the given parameter is found on the dashboard but is not mapped", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             parameter_mappings: [
               {
@@ -335,7 +342,7 @@ describe("metabase/parameters/utils/dashboards", () => {
   describe("hasMatchingParameters", () => {
     it("should return false when the given card is not found on the dashboard", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             id: 1,
             card_id: 123,
@@ -373,7 +380,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return false when a given parameter is not found in the dashcard mappings", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             id: 1,
             card_id: 123,
@@ -419,7 +426,7 @@ describe("metabase/parameters/utils/dashboards", () => {
 
     it("should return true when all given parameters are found mapped to the dashcard", () => {
       const dashboard = {
-        ordered_cards: [
+        dashcards: [
           {
             id: 1,
             card_id: 123,
@@ -517,70 +524,10 @@ describe("metabase/parameters/utils/dashboards", () => {
     });
   });
 
-  describe("getParameterValuesSearchKey", () => {
-    it("should return a string using the given props related to parameter value searching", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          query: "foo",
-          filteringParameterValues: {
-            a: "aaa",
-            b: "bbb",
-          },
-        }),
-      ).toEqual(
-        'dashboardId: 123, parameterId: 456, query: foo, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
-      );
-    });
-
-    it("should default `query` to null", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          filteringParameterValues: {
-            a: "aaa",
-            b: "bbb",
-          },
-        }),
-      ).toEqual(
-        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
-      );
-    });
-
-    it("should sort the entries in the `filteringParameterValues` object", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          filteringParameterValues: {
-            b: "bbb",
-            a: "aaa",
-          },
-        }),
-      ).toEqual(
-        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
-      );
-    });
-
-    it("should handle there being no filteringParameterValues", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          query: "abc",
-        }),
-      ).toEqual(
-        "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
-      );
-    });
-  });
-
   describe("getDashboardUiParameters", () => {
     const dashboard = {
       id: 1,
-      ordered_cards: [
+      dashcards: [
         {
           id: 1,
           card_id: 123,
@@ -595,17 +542,17 @@ describe("metabase/parameters/utils/dashboards", () => {
             {
               card_id: 789,
               parameter_id: "d",
-              target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+              target: ["dimension", ["field", PRODUCTS.RATING, null]],
             },
             {
               card_id: 123,
               parameter_id: "f",
-              target: ["dimension", ["field", PRODUCTS.TITLE.id, null]],
+              target: ["dimension", ["field", PRODUCTS.TITLE, null]],
             },
             {
               card_id: 123,
               parameter_id: "g",
-              target: ["dimension", ["field", PRODUCTS.TITLE.id, null]],
+              target: ["dimension", ["field", PRODUCTS.TITLE, null]],
             },
           ],
         },
@@ -625,7 +572,7 @@ describe("metabase/parameters/utils/dashboards", () => {
                   bar: {
                     type: "dimension",
                     "widget-type": "string/contains",
-                    dimension: ["field", PRODUCTS.TITLE.id, null],
+                    dimension: ["field", PRODUCTS.TITLE, null],
                   },
                 },
               },
@@ -657,12 +604,12 @@ describe("metabase/parameters/utils/dashboards", () => {
             {
               card_id: 999,
               parameter_id: "g",
-              target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+              target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
             {
               card_id: 999,
               parameter_id: "h",
-              target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+              target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             },
           ],
         },

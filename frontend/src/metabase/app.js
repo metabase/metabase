@@ -6,6 +6,13 @@ import "classlist-polyfill";
 
 import "number-to-locale-string";
 
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+// Should be imported before any other metabase import
+import "ee-overrides"; // eslint-disable-line import/no-duplicates
+
+import "metabase/lib/dayjs";
+
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
@@ -21,12 +28,10 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins"; // eslint-disable-line import/no-unresolved
+import "ee-plugins"; // eslint-disable-line import/no-duplicates
 
-import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "@emotion/react";
 
 // router
 import { Router, useRouterHistory } from "react-router";
@@ -36,6 +41,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 // drag and drop
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
+import { ThemeProvider } from "metabase/ui";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { initializeEmbedding } from "metabase/lib/embed";
 import api from "metabase/lib/api";
@@ -45,6 +51,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import { PLUGIN_APP_INIT_FUCTIONS } from "metabase/plugins";
 
 import GlobalStyles from "metabase/styled-components/containers/GlobalStyles";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getStore } from "./store";
 
 // remove trailing slash
@@ -57,10 +64,6 @@ const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });
 
-const theme = {
-  space: [4, 8, 16, 32, 64, 128],
-};
-
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
@@ -70,21 +73,23 @@ function _init(reducers, getRoutes, callback) {
 
   createTracker(store);
 
+  initializeEmbedding(store);
+
   ReactDOM.render(
     <Provider store={store} ref={ref => (root = ref)}>
-      <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
-        <ThemeProvider theme={theme}>
-          <GlobalStyles />
-          <Router history={history}>{routes}</Router>
-        </ThemeProvider>
-      </DragDropContextProvider>
+      <EmotionCacheProvider>
+        <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
+          <ThemeProvider>
+            <GlobalStyles />
+            <Router history={history}>{routes}</Router>
+          </ThemeProvider>
+        </DragDropContextProvider>
+      </EmotionCacheProvider>
     </Provider>,
     document.getElementById("root"),
   );
 
   registerVisualizations();
-
-  initializeEmbedding(store);
 
   store.dispatch(refreshSiteSettings());
 

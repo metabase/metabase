@@ -6,10 +6,10 @@
   Deprecated method impls should call [[log-deprecation-warning]] to gently nudge driver authors to stop using this
   method."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 ;;; This is unused at this moment in time but we can leave it around in case we want to use it again in the
 ;;; future (likely). See the code at `v0.45.0` for example where we were using this a lot

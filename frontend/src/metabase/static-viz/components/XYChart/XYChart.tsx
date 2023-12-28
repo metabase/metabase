@@ -1,5 +1,5 @@
-import React from "react";
-import { Text, TextProps } from "@visx/text";
+import type { TextProps } from "@visx/text";
+import { Text } from "@visx/text";
 import { AxisBottom, AxisLeft, AxisRight } from "@visx/axis";
 import { GridRows } from "@visx/grid";
 import { Group } from "@visx/group";
@@ -30,7 +30,7 @@ import {
   fixTimeseriesTicksExceedXTickCount,
 } from "metabase/static-viz/components/XYChart/utils";
 import { GoalLine } from "metabase/static-viz/components/XYChart/GoalLine";
-import { measureText } from "metabase/static-viz/lib/text";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
 
 import type {
   Series,
@@ -62,7 +62,14 @@ export const XYChart = ({
     series = calculateStackedItems(series);
   }
 
-  const yDomains = calculateYDomains(series, settings.goal?.value);
+  const minValueSetting = settings.visualization_settings["graph.y_axis.min"];
+  const maxValueSetting = settings.visualization_settings["graph.y_axis.max"];
+  const yDomains = calculateYDomains(
+    series,
+    minValueSetting,
+    maxValueSetting,
+    settings.goal?.value,
+  );
   const yTickWidths = getYTickWidths(
     settings.y.format,
     style.axes.ticks.fontSize,
@@ -96,7 +103,10 @@ export const XYChart = ({
     width,
     height,
   );
-  const VALUE_CHAR_SIZE = measureText("0", style.value?.fontSize as number);
+  const VALUE_CHAR_SIZE = measureTextWidth(
+    "0",
+    style.value?.fontSize as number,
+  );
   const valuesLeftOffset = getValuesLeftOffset(
     settings,
     series,

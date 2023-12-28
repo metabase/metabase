@@ -1,10 +1,10 @@
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { getIn } from "icepick";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 
 import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";

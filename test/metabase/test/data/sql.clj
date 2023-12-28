@@ -2,13 +2,16 @@
   "Common test extension functionality for all SQL drivers."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor :as qp]
    [metabase.test.data :as data]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.log :as log]))
+
+(comment metabase.driver.sql/keep-me)
 
 (driver/register! :sql/test-extensions, :abstract? true)
 
@@ -58,7 +61,7 @@
     (qualify-and-quote [driver \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\"
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
-  [[metabase.util.honeysql-extensions/identifier]] instead."
+  [[metabase.util.honey-sql-2/identifier]] instead."
   {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name]), :style/indent 1}
   [driver & names]
   (let [identifier-type (condp = (count names)
@@ -109,7 +112,6 @@
       (qualify-and-quote driver database-name table-name field-name)
       field-comment)))
 
-
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
   {:arglists '([driver comment])}
@@ -117,13 +119,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod inline-table-comment-sql :sql/test-extensions [_ _] nil)
-
-(defn standard-inline-table-comment-sql
-  "Implementation of `inline-table-comment-sql` for driver test extenstions that wish to use it."
-  [_ table-comment]
-  (when (seq table-comment)
-    (format "COMMENT '%s'" table-comment)))
-
 
 (defmulti standalone-table-comment-sql
   "Return standalone `COMMENT` statement for a table."
@@ -167,7 +162,6 @@
         (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
                 driver base-type)))))
 
-
 (defmulti pk-sql-type
   "SQL type of a primary key field."
   {:arglists '([driver])}
@@ -198,11 +192,33 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defn- format-and-quote-field-name [driver field-name]
+(defmulti create-index-sql
+  "Return a `CREATE INDEX` statement.
+  `options` is a map. The supported keys are: unique?, method and condition"
+  {:arglists '([driver table-name field-names]
+               [driver table-name field-names options])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defn format-and-quote-field-name
+  "Format and quote a field name."
+  [driver field-name]
   (sql.u/quote-name driver :field (ddl.i/format-name driver field-name)))
 
+(defmethod create-index-sql :sql/test-extensions
+  ([driver table-name field-names]
+   (create-index-sql driver table-name field-names {}))
+  ([driver table-name field-names {:keys [unique? method condition]}]
+   (format "CREATE %sINDEX %s ON %s%s (%s)%s;"
+           (if unique? "UNIQUE " "")
+           (format-and-quote-field-name driver (str "idx_" table-name "_" (str/join "_" field-names)))
+           (qualify-and-quote driver table-name)
+           (if method (str "USING " method) "")
+           (str/join ", " (map #(format-and-quote-field-name driver %) field-names))
+           (if condition (str " WHERE " condition) ""))))
+
 (defn- field-definition-sql
-  [driver {:keys [field-name base-type field-comment not-null?], :as field-definition}]
+  [driver {:keys [field-name base-type field-comment not-null? unique?], :as field-definition}]
   (let [field-name (format-and-quote-field-name driver field-name)
         field-type (or (cond
                          (and (map? base-type) (contains? base-type :native))
@@ -219,8 +235,10 @@
                                         :driver driver})))
         not-null       (when not-null?
                          "NOT NULL")
+        unique         (when unique?
+                         "UNIQUE")
         inline-comment (inline-column-comment-sql driver field-comment)]
-    (str/join " " (filter some? [field-name field-type not-null inline-comment]))))
+    (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
@@ -247,7 +265,6 @@
   "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support it."
   [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s CASCADE;" (qualify-and-quote driver database-name table-name)))
-
 
 (defmulti add-fk-sql
   "Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement."

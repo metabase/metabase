@@ -21,6 +21,22 @@ let clock;
 
 const actionStub = { type: "ANY_ACTION" };
 
+/**
+ * TODO: better solution is to provide configurable window object
+ * it will be possible after migration to more recent react-router (5+)
+ *
+ * Changes the URL used by the global JSDOM instance in the current window.
+ * jsdom is making more and more properties non-configurable
+ * ref https://github.com/jsdom/jsdom/issues/3492
+ *
+ * NOTE: This does not change the origin which would result in a security exception.
+ */
+function changeJSDOMURL(url) {
+  const newURL = new URL(url);
+  const href = `${window.origin}${newURL.pathname}${newURL.search}${newURL.hash}`;
+  history.replaceState(history.state, null, href);
+}
+
 const setup = () => {
   const dispatchMock = jest.fn();
   const storeMock = { dispatch: dispatchMock };
@@ -65,8 +81,7 @@ describe("createSessionMiddleware", () => {
 
   describe("when logged in", () => {
     beforeEach(() => {
-      delete window.location;
-      window.location = new URL("https://metabase.com/question/1?query=5#hash");
+      changeJSDOMURL("https://metabase.com/question/1?query=5#hash");
     });
 
     it("should not dispatch the logout action when session exists", () => {
@@ -103,11 +118,9 @@ describe("createSessionMiddleware", () => {
 
   describe("when not logged in", () => {
     beforeEach(() => {
-      delete window.location;
-      window.location = new URL(
+      changeJSDOMURL(
         "http://localhost/auth/login?redirect=%2Fquestion%2F1%3Fquery%3D5%23hash",
       );
-      window.location.replace = jest.fn();
     });
 
     it("should redirect to the redirectUrl when a session appears", async () => {

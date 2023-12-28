@@ -1,5 +1,5 @@
 import _ from "underscore";
-import Utils from "metabase/lib/utils";
+import { copy } from "metabase/lib/utils";
 
 import * as QUERY from "./query";
 import * as FieldRef from "./field-ref";
@@ -10,7 +10,7 @@ export * from "./field-ref";
 // need to communicate or use that, use this constant
 export const HARD_ROW_LIMIT = 2000;
 
-export const NEW_QUERY_TEMPLATES = {
+const NEW_QUERY_TEMPLATES = {
   query: {
     database: null,
     type: "query",
@@ -28,7 +28,7 @@ export const NEW_QUERY_TEMPLATES = {
 };
 
 export function createQuery(type = "query", databaseId, tableId) {
-  const dataset_query = Utils.copy(NEW_QUERY_TEMPLATES[type]);
+  const dataset_query = copy(NEW_QUERY_TEMPLATES[type]);
 
   if (databaseId) {
     dataset_query.database = databaseId;
@@ -43,10 +43,6 @@ export function createQuery(type = "query", databaseId, tableId) {
 
 export function isStructured(dataset_query) {
   return dataset_query && dataset_query.type === "query";
-}
-
-export function isNative(dataset_query) {
-  return dataset_query && dataset_query.type === "native";
 }
 
 export function cleanQuery(query) {
@@ -74,7 +70,7 @@ export function cleanQuery(query) {
     _.all(filter, a => a != null),
   );
   if (filters.length > 0) {
-    query.filter = ["and", ...filters];
+    query.filter = QUERY.getFilterClause(filters);
   } else {
     delete query.filter;
   }

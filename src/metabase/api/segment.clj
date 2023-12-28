@@ -1,68 +1,56 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
   (:require
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.api.query-description :as api.qd]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.segment :as segment :refer [Segment]]
-   [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
-(api/defendpoint-schema POST "/"
+(api/defendpoint POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition], :as body} :body}]
-  {name       su/NonBlankString
-   table_id   su/IntGreaterThanZero
-   definition su/Map
-   description (s/maybe s/Str)}
+  {name        ms/NonBlankString
+   table_id    ms/PositiveInt
+   definition  ms/Map
+   description [:maybe :string]}
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
   (let [segment (api/check-500
-                 (db/insert! Segment
-                   :table_id    table_id
-                   :creator_id  api/*current-user-id*
-                   :name        name
-                   :description description
-                   :definition  definition))]
-    (-> (events/publish-event! :segment-create segment)
-        (hydrate :creator))))
+                 (first (t2/insert-returning-instances! Segment
+                                                        :table_id    table_id
+                                                        :creator_id  api/*current-user-id*
+                                                        :name        name
+                                                        :description description
+                                                        :definition  definition)))]
+    (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
+    (t2/hydrate segment :creator)))
 
-(s/defn ^:private hydrated-segment [id :- su/IntGreaterThanZero]
-  (-> (api/read-check (db/select-one Segment :id id))
-      (hydrate :creator)))
+(mu/defn ^:private hydrated-segment [id :- ms/PositiveInt]
+  (-> (api/read-check (t2/select-one Segment :id id))
+      (t2/hydrate :creator)))
 
-(defn- add-query-descriptions
-  [segments] {:pre [(coll? segments)]}
-  (when (some? segments)
-    (for [segment segments]
-      (let [table (db/select-one Table :id (:table_id segment))]
-        (assoc segment
-               :query_description
-               (api.qd/generate-query-description table (:definition segment)))))))
-
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
-  (first (add-query-descriptions [(hydrated-segment id)])))
+  {id ms/PositiveInt}
+  (hydrated-segment id))
 
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
-  (as-> (db/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
+  (as-> (t2/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
-    (hydrate segments :creator)
-    (add-query-descriptions segments)))
+    (t2/hydrate segments :creator :definition_description)))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
@@ -80,57 +68,60 @@
                      new-body)
         archive?   (:archived changes)]
     (when changes
-      (db/update! Segment id changes))
+      (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
-      (events/publish-event! (if archive? :segment-delete :segment-update)
-        (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
+      (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
+                             {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update a `Segment` with ID."
   [id :as {{:keys [name definition revision_message archived caveats description points_of_interest
                    show_in_getting_started]
             :as   body} :body}]
-  {name                    (s/maybe su/NonBlankString)
-   definition              (s/maybe su/Map)
-   revision_message        su/NonBlankString
-   archived                (s/maybe s/Bool)
-   caveats                 (s/maybe s/Str)
-   description             (s/maybe s/Str)
-   points_of_interest      (s/maybe s/Str)
-   show_in_getting_started (s/maybe s/Bool)}
+  {id                      ms/PositiveInt
+   name                    [:maybe ms/NonBlankString]
+   definition              [:maybe :map]
+   revision_message        ms/NonBlankString
+   archived                [:maybe :boolean]
+   caveats                 [:maybe :string]
+   description             [:maybe :string]
+   points_of_interest      [:maybe :string]
+   show_in_getting_started [:maybe :boolean]}
   (write-check-and-update-segment! id body))
 
-(api/defendpoint-schema DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
   [id revision_message]
-  {revision_message su/NonBlankString}
+  {id               ms/PositiveInt
+   revision_message ms/NonBlankString}
   (log/warn
    (trs "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."))
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
-
-(api/defendpoint-schema GET "/:id/revisions"
+(api/defendpoint GET "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
   [id]
+  {id ms/PositiveInt}
   (api/read-check Segment id)
   (revision/revisions+details Segment id))
 
-
-(api/defendpoint-schema POST "/:id/revert"
+(api/defendpoint POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id su/IntGreaterThanZero}
+  {id          ms/PositiveInt
+   revision_id ms/PositiveInt}
   (api/write-check Segment id)
   (revision/revert!
-    :entity      Segment
+   {:entity      Segment
     :id          id
     :user-id     api/*current-user-id*
-    :revision-id revision_id))
+    :revision-id revision_id}))
 
-(api/defendpoint-schema GET "/:id/related"
+(api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (db/select-one Segment :id id) api/read-check related/related))
+  {id ms/PositiveInt}
+  (-> (t2/select-one Segment :id id) api/read-check related/related))
 
 (api/define-routes)

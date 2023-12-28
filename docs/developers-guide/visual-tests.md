@@ -35,7 +35,7 @@ To recap:
 
 We use Cypress to write Percy tests so we can fully use all existing helpers and custom commands.
 
-Visual regression tests live inside the `frontend/test/metabase-visual` directory. Writing a Percy test consists of creating a desired page state and executing `cy.createPercySnapshot()` command.
+Visual regression tests live inside the `e2e/test/visual` directory. Writing a Percy test consists of creating a desired page state and executing `cy.createPercySnapshot()` command.
 
 ### Goal
 
@@ -45,7 +45,7 @@ Each visual test should cover as many as possible different elements, variants o
 
 1. Run Metabase in the dev mode locally (`yarn dev` or similar commands).
 2. Run `yarn test-visual-open` to open Cypress locally. You do not need to export any `PERCY_TOKEN`.
-3. Create a spec inside `frontend/test/metabase-visual` and run it via Cypress runner.
+3. Create a spec inside `e2e/test/visual` and run it via Cypress runner.
 
 At this step, if you added `percySnapshot` command somewhere in your test, you will see `percyHealthCheck` step in your test:
 

@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -18,7 +18,7 @@ export default class RevisionMessageModal extends Component {
   constructor(props) {
     super(props);
 
-    this.modal = React.createRef();
+    this.modal = createRef();
   }
 
   render() {

@@ -1,0 +1,14 @@
+repos:
+  -   repo: https://github.com/clj-kondo/clj-kondo
+      rev: v2022.12.10
+      hooks:
+        - id: clj-kondo
+#  - repo: https://github.com/allie-jo/ns-sort.git
+#    rev: v1.1.3
+#    hooks:
+#     - id: ns-sort-docker
+#  - repo: https://github.com/allie-jo/cljfmt-docker
+#    rev: v0.9.1
+#    hooks:
+#      - id: cljfmt-docker
+#        args: [--indents 2]

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
+import { Icon } from "metabase/core/components/Icon";
 
 export const NoticeRoot = styled.div`
   display: flex;
@@ -14,11 +13,6 @@ export const NoticeContent = styled.div`
   flex: 1 1 auto;
   margin: 0 0.75rem;
   color: ${color("text-dark")};
-`;
-
-export const NoticeLink = styled(Link)`
-  color: ${color("brand")};
-  font-weight: bold;
 `;
 
 export const NoticeWarningIcon = styled(Icon)`

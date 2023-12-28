@@ -1,9 +1,8 @@
-import React from "react";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
-import DashboardCopyModalShallowCheckboxLabel from "metabase/dashboard/components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel";
+import { DashboardCopyModalShallowCheckboxLabel } from "metabase/dashboard/components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 
 function createNameField() {
   return {

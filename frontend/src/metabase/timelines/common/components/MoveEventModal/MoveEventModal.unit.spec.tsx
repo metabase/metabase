@@ -1,11 +1,11 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import MoveEventModal, { MoveEventModalProps } from "./MoveEventModal";
+import type { MoveEventModalProps } from "./MoveEventModal";
+import MoveEventModal from "./MoveEventModal";
 
 describe("MoveEventModal", () => {
   it("should move an event to a different timeline", () => {

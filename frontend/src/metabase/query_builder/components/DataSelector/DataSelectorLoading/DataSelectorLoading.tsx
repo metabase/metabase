@@ -1,5 +1,3 @@
-import React from "react";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { DataSelectorSection } from "../DataSelector.styled";
@@ -16,4 +14,5 @@ const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
     <LoadingAndErrorWrapper loading />
   );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorLoading;

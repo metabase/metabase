@@ -14,29 +14,37 @@ For users to unsubscribe themselves from a pulse subscription.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/`
 
-Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
-  associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
-  created by the user, or for which the user is a known recipient.
+Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write
+  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.
+
+  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.
+
+  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user
+  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,
+  and a subset of the default items returned for admins. This is used to power the /account/notifications page.
+  This may include subscriptions which the current user does not have collection permissions for, in which case
+  some sensitive metadata (the list of cards and recipients) is stripped out.
 
 ### PARAMS:
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`dashboard_id`** nullable value must be an integer greater than zero.
 
-*  **`user_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`creator_or_recipient`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/pulse/:id`
 
-Fetch `Pulse` with ID.
+Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
+  we still return it but with some sensitive metadata removed.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/form_input`
 
@@ -48,7 +56,7 @@ Get HTML rendering of a Card with `id`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/preview_card_info/:id`
 
@@ -56,7 +64,7 @@ Get JSON object containing HTML rendering of a Card with `id` and other informat
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/preview_card_png/:id`
 
@@ -64,7 +72,7 @@ Get PNG rendering of a Card with `id`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/pulse/`
 
@@ -74,19 +82,19 @@ Create a new `Pulse`.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`cards`** value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
+*  **`cards`** one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.
 
-*  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+*  **`channels`** one or more map
 
-*  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
+*  **`skip_if_empty`** nullable boolean
 
-*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`dashboard_id`** nullable value must be an integer greater than zero.
 
-*  **`parameters`** value must be an array. Each value must be a map.
+*  **`parameters`** nullable sequence of map
 
 ## `POST /api/pulse/test`
 
@@ -96,17 +104,17 @@ Test send an unsaved pulse.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`cards`** value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
+*  **`cards`** one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.
 
-*  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
+*  **`channels`** one or more map
 
-*  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
+*  **`skip_if_empty`** nullable boolean
 
-*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`dashboard_id`** nullable value must be an integer greater than zero.
 
 ## `PUT /api/pulse/:id`
 
@@ -114,21 +122,21 @@ Update a Pulse with `id`.
 
 ### PARAMS:
 
-*  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
+*  **`skip_if_empty`** nullable boolean
 
-*  **`parameters`** value must be an array. Each value must be a map.
+*  **`parameters`** nullable sequence of Value must be a map.
 
-*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+*  **`archived`** nullable boolean
 
-*  **`channels`** value may be nil, or if non-nil, value must be an array. Each value must be a map. The array cannot be empty.
+*  **`channels`** nullable one or more map
 
-*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`name`** nullable value must be a non-blank string.
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
+*  **`cards`** nullable one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`.
 
 *  **`pulse-updates`**
 

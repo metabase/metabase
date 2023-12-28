@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import { memo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -32,7 +32,7 @@ const MetricSidebar = ({ metric, user, style, className }) => (
         <SidebarItem
           key={`/reference/metrics/${metric.id}/questions`}
           href={`/reference/metrics/${metric.id}/questions`}
-          icon="all"
+          icon="folder"
           name={t`Questions about ${metric.name}`}
         />
         {MetabaseSettings.get("enable-xrays") && (
@@ -63,4 +63,4 @@ MetricSidebar.propTypes = {
   style: PropTypes.object,
 };
 
-export default React.memo(MetricSidebar);
+export default memo(MetricSidebar);

@@ -1,5 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
+
+import * as React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -9,17 +11,17 @@ import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/core/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
-import MetabaseUtils from "metabase/lib/utils";
-import { updateSettings as defaultUpdateSettings } from "../settings";
+import { isEmail, isEmpty } from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
+import { CollapsibleSectionContent } from "./SettingsBatchForm.styled";
 
 const VALIDATIONS = {
   email: {
-    validate: value => MetabaseUtils.isEmail(value),
+    validate: value => isEmail(value),
     message: t`That's not a valid email address`,
   },
   email_list: {
-    validate: value => value.every(MetabaseUtils.isEmail),
+    validate: value => value.every(isEmail),
     message: t`That's not a valid email address`,
   },
   integer: {
@@ -47,11 +49,14 @@ class SettingsBatchForm extends Component {
   }
 
   static propTypes = {
+    breadcrumbs: PropTypes.array,
     elements: PropTypes.array.isRequired,
-    formErrors: PropTypes.object,
-    updateSettings: PropTypes.func.isRequired,
+    layout: PropTypes.array,
     renderSubmitButton: PropTypes.func,
     renderExtraButtons: PropTypes.func,
+    ref: PropTypes.forwardRef,
+    settingValues: PropTypes.object,
+    updateSettings: PropTypes.func.isRequired,
   };
 
   componentDidMount() {
@@ -85,7 +90,7 @@ class SettingsBatchForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement(validation, value, element) {
-    if (MetabaseUtils.isEmpty(value)) {
+    if (isEmpty(value)) {
       return;
     }
 
@@ -116,7 +121,7 @@ class SettingsBatchForm extends Component {
     if (!enabledKey || formData[enabledKey]) {
       availableElements.forEach(function (element) {
         // test for required elements
-        if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
+        if (element.required && isEmpty(formData[element.key])) {
           valid = false;
         }
 
@@ -307,7 +312,7 @@ class SettingsBatchForm extends Component {
             })
           ) : (
             <Button
-              mr={1}
+              className="mr1"
               primary={!disabled}
               success={submitting === "success"}
               disabled={disabled || pristine}
@@ -333,10 +338,7 @@ class SettingsBatchForm extends Component {
 
 export default connect(
   null,
-  (dispatch, { updateSettings }) => ({
-    updateSettings:
-      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
-  }),
+  null,
   null,
   { forwardRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )(SettingsBatchForm);
@@ -363,15 +365,12 @@ class CollapsibleSection extends React.Component {
     const { show } = this.state;
     return (
       <section className="mb4">
-        <div
-          className="inline-block ml1 cursor-pointer text-brand-hover"
-          onClick={this.handleToggle.bind(this)}
-        >
+        <CollapsibleSectionContent onClick={this.handleToggle.bind(this)}>
           <div className="flex align-center">
             <DisclosureTriangle className="mx1" open={show} />
             <h3>{title}</h3>
           </div>
-        </div>
+        </CollapsibleSectionContent>
         <Collapse isOpened={show} keepCollapsedContent>
           <ul>{children}</ul>
         </Collapse>

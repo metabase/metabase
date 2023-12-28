@@ -1,12 +1,12 @@
-import React from "react";
+import type * as React from "react";
 import { t } from "ttag";
-import { Location } from "history";
+import type { Location } from "history";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import Radio from "metabase/core/components/Radio";
 
-import { State } from "metabase-types/store";
+import type { State } from "metabase-types/store";
 
 import { getSetting } from "metabase/selectors/settings";
 
@@ -85,6 +85,7 @@ function Tools({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<
   ToolsStateProps,
   ToolsDispatchProps,

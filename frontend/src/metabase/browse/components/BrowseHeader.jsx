@@ -1,13 +1,16 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import { t } from "ttag";
 
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import Link from "metabase/core/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
-import { BrowseHeaderContent, BrowseHeaderRoot } from "./BrowseHeader.styled";
+import {
+  BrowseHeaderContent,
+  BrowseHeaderRoot,
+  BrowserHeaderIconContainer,
+} from "./BrowseHeader.styled";
 
 export default function BrowseHeader({ crumbs }) {
   return (
@@ -20,12 +23,12 @@ export default function BrowseHeader({ crumbs }) {
             to="reference"
             data-metabase-event="NavBar;Reference"
           >
-            <div className="flex align-center text-medium text-brand-hover">
+            <BrowserHeaderIconContainer>
               <Icon className="flex align-center" size={14} name="reference" />
               <span className="ml1 flex align-center text-bold">
                 {t`Learn about our data`}
               </span>
-            </div>
+            </BrowserHeaderIconContainer>
           </Link>
         </div>
       </BrowseHeaderContent>

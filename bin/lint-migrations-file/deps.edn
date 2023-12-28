@@ -1,8 +1,7 @@
 {:paths ["src"]
 
  :deps
- {io.forward/yaml      {:mvn/version "1.0.9"}  ; Don't upgrade yet, new version doesn't support Java 8 (see https://github.com/owainlewis/yaml/issues/37)
-  org.flatland/ordered {:mvn/version "1.5.9"}} ; used by io.forward/yaml -- need the newer version
+ {clj-commons/clj-yaml {:mvn/version "1.0.26"}}
 
  :aliases
  {:test {:extra-paths ["test"]

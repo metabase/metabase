@@ -1,14 +1,17 @@
-(ns metabase.public-settings-test
+(ns ^:mb/once metabase.public-settings-test
   (:require
-   [clj-http.fake :as http-fake]
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.public-settings.premium-features-test
+    :as
+    premium-features.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -62,21 +65,19 @@
 (deftest site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
     (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
-      (mt/with-temporary-setting-values [site-url nil]
-        (is (= "localhost:3000/"
-               (setting/get-value-of-type :string :site-url)))
-        (is (= "http://localhost:3000"
-               (public-settings/site-url)))))))
+      (is (= "localhost:3000/"
+             (setting/get-value-of-type :string :site-url)))
+      (is (= "http://localhost:3000"
+             (public-settings/site-url))))))
 
 (deftest invalid-site-url-env-var-test
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
     (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
-      (mt/with-temporary-setting-values [site-url nil]
-        (is (= "asd_12w31%$;"
-               (setting/get-value-of-type :string :site-url)))
-        (is (= nil
-               (public-settings/site-url)))))))
+      (is (= "asd_12w31%$;"
+             (setting/get-value-of-type :string :site-url)))
+      (is (= nil
+             (public-settings/site-url))))))
 
 (deftest site-url-should-update-https-redirect-test
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
@@ -101,7 +102,7 @@
   (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
-             (str (get-in (setting/user-readable-values-map :public)
+             (str (get-in (setting/user-readable-values-map #{:public})
                           [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
@@ -127,41 +128,44 @@
            #"Values greater than 204,800 \(200\.0 MB\) are not allowed"
            (public-settings/query-caching-max-kb! (* 1024 1024)))))))
 
-(deftest site-locale-test
-  (testing "site-locale Setting"
-    (testing "should validate input"
-      (testing "invalid format"
-        (testing "blank string"
-          (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Invalid locale \"\""
-                 (public-settings/site-locale! "")))
-            (is (= "en_US"
-                   (public-settings/site-locale)))))
-
-        (testing "non-existant locale"
-          (mt/with-temporary-setting-values [site-locale "en_US"]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Invalid locale \"en_EN\""
-                 (public-settings/site-locale! "en_EN")))
-            (is (= "en_US"
-                   (public-settings/site-locale)))))))
-
-    (testing "should normalize input"
-      (mt/discard-setting-changes [site-locale]
-        (public-settings/site-locale! "en-us")
+(deftest site-locale-validate-input-test
+  (testing "site-locale should validate input"
+    (testing "blank string"
+      (mt/with-temporary-setting-values [site-locale "en_US"]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid locale \"\""
+             (public-settings/site-locale! "")))
         (is (= "en_US"
                (public-settings/site-locale)))))
+    (testing "non-existant locale"
+      (mt/with-temporary-setting-values [site-locale "en_US"]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid locale \"en_EN\""
+             (public-settings/site-locale! "en_EN")))
+        (is (= "en_US"
+               (public-settings/site-locale)))))))
 
-    (testing "should be able to unset site locale"
-      (mt/discard-setting-changes [site-locale]
-        (public-settings/site-locale! "es")
-        (public-settings/site-locale! nil)
-        (is (= "en"
-               (public-settings/site-locale))
-            "should default to English")))))
+(deftest site-locale-normalize-input-test
+  (testing "site-locale should normalize input"
+    (mt/discard-setting-changes [site-locale]
+      (public-settings/site-locale! "en-us")
+      (is (= "en_US"
+             (public-settings/site-locale))))))
+
+(deftest unset-site-locale-test
+  (testing "should be able to unset site-locale"
+    (mt/discard-setting-changes [site-locale]
+      (public-settings/site-locale! "es")
+      (public-settings/site-locale! nil)
+      (is (= "en"
+             (public-settings/site-locale))
+          "should default to English"))))
+
+(deftest site-locale-only-return-valid-locales-test
+  (mt/with-temporary-raw-setting-values [site-locale "wow_this_in_not_a_locale"]
+    (is (nil? (public-settings/site-locale)))))
 
 (deftest redirect-all-requests-to-https-test
   (testing "Shouldn't be allowed to set `redirect-all-requests-to-https` to `true` unless `site-url` is HTTPS"
@@ -183,32 +187,120 @@
             (is (= false
                    (public-settings/redirect-all-requests-to-https)))))))))
 
+
 (deftest cloud-gateway-ips-test
-  (with-redefs [premium-features/is-hosted? (constantly true)]
-    (testing "Setting calls Store URL to fetch IP addresses"
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      (http-fake/with-fake-routes-in-isolation
-        {{:address (public-settings/cloud-gateway-ips-url)}
-         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
-        (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))
+  (mt/with-temp-env-var-value [mb-cloud-gateway-ips "1.2.3.4,5.6.7.8"]
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (testing "Setting returns ips given comma delimited ips."
+        (is (= ["1.2.3.4" "5.6.7.8"]
+               (public-settings/cloud-gateway-ips)))))
 
-      (testing "Getter is memoized to avoid frequent HTTP calls"
-        (http-fake/with-fake-routes-in-isolation
-          {{:address (public-settings/cloud-gateway-ips-url)}
-           (constantly {:status 200 :body "{\"ip_addresses\": [\"0.0.0.0\"]}"})}
-          (is (= ["127.0.0.1"] (public-settings/cloud-gateway-ips))))))
-
-    (testing "Setting returns nil if URL is unreachable"
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      (http-fake/with-fake-routes-in-isolation
-        {{:address (public-settings/cloud-gateway-ips-url)}
-         (constantly {:status 500})}
-        (is (= nil (public-settings/cloud-gateway-ips))))))
-
-  (testing "Setting returns nil in self-hosted environments"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
-      (memoize/memo-clear! @#'public-settings/fetch-cloud-gateway-ips-fn)
-      (http-fake/with-fake-routes-in-isolation
-        {{:address (public-settings/cloud-gateway-ips-url)}
-         (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
+    (testing "Setting returns nil in self-hosted environments"
+      (with-redefs [premium-features/is-hosted? (constantly false)]
         (is (= nil (public-settings/cloud-gateway-ips)))))))
+
+(deftest start-of-week-test
+  (mt/discard-setting-changes [start-of-week]
+    (testing "Error on invalid value"
+      (is (thrown-with-msg?
+           Throwable
+           #"Invalid day of week: :fraturday"
+           (public-settings/start-of-week! :fraturday))))
+    (mt/with-temp-env-var-value [start-of-week nil]
+      (testing "Should default to Sunday"
+        (is (= :sunday
+               (public-settings/start-of-week))))
+      (testing "Sanity check: make sure we're setting the env var value correctly for the assertion after this"
+        (mt/with-temp-env-var-value [:mb-start-of-week "monday"]
+          (is (= :monday
+                 (public-settings/start-of-week)))))
+      (testing "Fall back to default if value is invalid"
+        (mt/with-temp-env-var-value [:mb-start-of-week "fraturday"]
+          (is (= :sunday
+                 (public-settings/start-of-week))))))))
+
+(deftest help-link-setting-test
+  (premium-features.test/with-premium-features #{:whitelabel}
+    (testing "When whitelabeling is enabled, help-link setting can be set to any valid value"
+      (public-settings/help-link! :metabase)
+      (is (= :metabase (public-settings/help-link)))
+
+      (public-settings/help-link! :hidden)
+      (is (= :hidden (public-settings/help-link)))
+
+      (public-settings/help-link! :custom)
+      (is (= :custom (public-settings/help-link))))
+
+    (testing "help-link cannot be set to an invalid value"
+      (is (thrown-with-msg?
+           Exception #"Invalid help link option"
+           (public-settings/help-link! :invalid)))))
+
+  (premium-features.test/with-premium-features #{}
+    (testing "When whitelabeling is not enabled, help-link setting cannot be set, and always returns :metabase"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting help-link is not enabled because feature :whitelabel is not available"
+           (public-settings/help-link! :hidden)))
+
+      (is (= :metabase (public-settings/help-link))))))
+
+(deftest validate-help-url-test
+  (testing "validate-help-url accepts valid URLs with HTTP or HTTPS protocols"
+    (is (nil? (#'public-settings/validate-help-url "http://www.metabase.com")))
+    (is (nil? (#'public-settings/validate-help-url "https://www.metabase.com"))))
+
+  (testing "validate-help-url accepts valid mailto: links"
+    (is (nil? (#'public-settings/validate-help-url "mailto:help@metabase.com"))))
+
+  (testing "validate-help-url rejects malformed URLs and URLs with invalid protocols"
+    ;; Since validate-help-url calls `u/url?` to validate URLs, we don't need to test all possible malformed URLs here.
+    (is (thrown-with-msg?
+         Exception
+         #"Please make sure this is a valid URL"
+         (#'public-settings/validate-help-url "asdf")))
+
+    (is (thrown-with-msg?
+         Exception
+         #"Please make sure this is a valid URL"
+         (#'public-settings/validate-help-url "ftp://metabase.com"))))
+
+  (testing "validate-help-url rejects mailto: links with invalid email addresses"
+    (is (thrown-with-msg?
+         Exception
+         #"Please make sure this is a valid URL"
+         (#'public-settings/validate-help-url "mailto:help@metabase")))))
+
+(deftest help-link-custom-destination-setting-test
+  (premium-features.test/with-premium-features #{:whitelabel}
+    (testing "When whitelabeling is enabled, help-link-custom-destination can be set to valid URLs"
+      (public-settings/help-link-custom-destination! "http://www.metabase.com")
+      (is (= "http://www.metabase.com" (public-settings/help-link-custom-destination)))
+
+      (public-settings/help-link-custom-destination! "mailto:help@metabase.com")
+      (is (= "mailto:help@metabase.com" (public-settings/help-link-custom-destination))))
+
+    (testing "help-link-custom-destination cannot be set to invalid URLs"
+      (is (thrown-with-msg?
+           Exception
+           #"Please make sure this is a valid URL"
+           (public-settings/help-link-custom-destination! "asdf")))
+
+      (is (thrown-with-msg?
+           Exception
+           #"Please make sure this is a valid URL"
+           (public-settings/help-link-custom-destination! "ftp://metabase.com")))
+
+      (is (thrown-with-msg?
+           Exception
+           #"Please make sure this is a valid URL"
+           (public-settings/help-link-custom-destination! "mailto:help@metabase")))))
+
+  (premium-features.test/with-premium-features #{}
+    (testing "When whitelabeling is not enabled, help-link-custom-destination cannot be set, and always returns its default"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting help-link-custom-destination is not enabled because feature :whitelabel is not available"
+           (public-settings/help-link-custom-destination! "http://www.metabase.com")))
+
+      (is (= nil (public-settings/help-link-custom-destination))))))

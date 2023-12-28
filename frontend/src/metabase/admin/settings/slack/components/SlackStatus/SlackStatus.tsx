@@ -1,4 +1,5 @@
-import React, { ComponentType, useCallback, useMemo, useState } from "react";
+import type { ComponentType } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import Settings from "metabase/lib/settings";
 import Button from "metabase/core/components/Button";
@@ -40,7 +41,7 @@ const SlackStatus = ({
   }, []);
 
   const docsUrl = useMemo(() => {
-    return Settings.docsUrl("administration-guide/09-setting-up-slack");
+    return Settings.docsUrl("configuring-metabase/slack");
   }, []);
 
   return (
@@ -76,4 +77,5 @@ const SlackStatus = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackStatus;

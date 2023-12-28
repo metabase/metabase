@@ -7,6 +7,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (defn- handler [request]
   ((mw.browser-cookie/ensure-browser-id-cookie
     ;; Return ID in the body so we can verify

@@ -3,35 +3,34 @@ import slugg from "slugg";
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { Card as BaseCard } from "metabase-types/types/Card";
-import Question, { QuestionCreatorOpts } from "metabase-lib/Question";
+import type { CardId, Card as SavedCard } from "metabase-types/api";
+import type { QuestionCreatorOpts } from "metabase-lib/Question";
+import Question from "metabase-lib/Question";
+import * as ML_Urls from "metabase-lib/urls";
 
-import { appendSlug, extractQueryParams } from "./utils";
+import { appendSlug, getEncodedUrlSearchParams } from "./utils";
 
-type Card = Partial<BaseCard> & {
-  id?: number | string;
-  card_id?: string;
-  name?: string;
+type Card = Partial<SavedCard> & {
+  card_id?: CardId | string;
   model?: "card" | "dataset";
-  dataset?: boolean;
 };
 
 export const newQuestionFlow = () => "/question/new";
 
-type QuestionUrlBuilderParams = {
+export type QuestionUrlBuilderParams = {
+  mode?: "view" | "notebook";
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
-  isModelDetail?: boolean;
 };
 
 export function question(
   card: Card | null,
   {
+    mode = "view",
     hash = "",
     query = "",
     objectId,
-    isModelDetail = false,
   }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
@@ -39,10 +38,7 @@ export function question(
   }
 
   if (query && typeof query === "object") {
-    query = extractQueryParams(query)
-      .filter(([key, value]) => value !== undefined)
-      .map(kv => kv.map(encodeURIComponent).join("="))
-      .join("&");
+    query = String(getEncodedUrlSearchParams(query));
   }
 
   if (hash && hash.charAt(0) !== "#") {
@@ -79,7 +75,9 @@ export function question(
     path = appendSlug(path, slugg(name));
   }
 
-  if (objectId) {
+  if (mode === "notebook") {
+    path = `${path}/notebook`;
+  } else if (objectId) {
     path = `${path}/${objectId}`;
   }
 
@@ -103,7 +101,7 @@ export function newQuestion({
   ...options
 }: NewQuestionUrlBuilderParams = {}) {
   const question = Question.create(options);
-  const url = question.getUrl({
+  const url = ML_Urls.getUrl(question, {
     creationType,
     query: objectId ? { objectId } : undefined,
   });
@@ -117,16 +115,18 @@ export function newQuestion({
   }
 }
 
-export function dataset(...args: Parameters<typeof question>) {
-  return question(...args);
-}
-
-export function publicQuestion(
-  uuid: string,
-  type: string | null = null,
-  query?: string,
-) {
-  const siteUrl = MetabaseSettings.get("site-url");
+export function publicQuestion({
+  uuid,
+  type = null,
+  query,
+  includeSiteUrl = true,
+}: {
+  uuid: string;
+  type?: string | null;
+  query?: string;
+  includeSiteUrl?: boolean;
+}) {
+  const siteUrl = includeSiteUrl ? MetabaseSettings.get("site-url") : "";
   const searchQuery = query ? `?${query}` : "";
   return (
     `${siteUrl}/public/question/${uuid}` +
@@ -136,8 +136,7 @@ export function publicQuestion(
 }
 
 export function embedCard(token: string, type: string | null = null) {
-  const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
+  return `/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function tableRowsQuery(
@@ -160,4 +159,8 @@ export function tableRowsQuery(
   // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
   // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
   return question(null, { hash: query });
+}
+
+export function xrayModel(id: CardId) {
+  return `/auto/dashboard/model/${id}`;
 }

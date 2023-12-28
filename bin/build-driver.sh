@@ -5,7 +5,7 @@ set -eo pipefail
 driver="$1"
 
 if [ ! "$driver" ]; then
-    echo "Usage: ./bin/build-driver.sh <driver> [edition]"
+    echo "Usage: ./bin/build-driver.sh <driver> [:edition edition]"
     exit -1
 fi
 
@@ -19,5 +19,4 @@ check_clojure_cli
 source "./bin/clear-outdated-cpcaches.sh"
 clear_outdated_cpcaches
 
-cd bin/build-drivers
-clojure -M -m build-driver $@
+clojure -X:build:drivers:build/driver :driver $@

@@ -10,8 +10,6 @@ redirect_from:
 
 You can [join data][join] to combine your current data with another table, or even with a saved question.
 
-Currently you can't use joins if your starting data is from a Google Analytics or MongoDB database.
-
 After you click on the Join Data button to add a join step, you'll need to pick the data (from the same database) that you want to join. You can only pick tables and saved questions that are from the same database as your starting data.
 
 ![Picking the data to join](../images/join-pick-data.png)

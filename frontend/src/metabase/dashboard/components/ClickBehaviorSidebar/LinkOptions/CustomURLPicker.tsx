@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -8,16 +8,16 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
-  DashboardOrderedCard,
+  DashboardCard,
 } from "metabase-types/api";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/parameters/types";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { SidebarItem } from "../SidebarItem";
-import CustomLinkText from "./CustomLinkText";
+import { CustomLinkText } from "./CustomLinkText";
 
-import ValuesYouCanReference from "./ValuesYouCanReference";
+import { ValuesYouCanReference } from "./ValuesYouCanReference";
 import {
   FormDescription,
   DoneButton,
@@ -26,30 +26,35 @@ import {
 } from "./CustomURLPicker.styled";
 
 interface Props {
-  dashcard: DashboardOrderedCard;
+  dashcard: DashboardCard;
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings: ClickBehavior) => void;
 }
 
-function CustomURLPicker({
+export function CustomURLPicker({
   clickBehavior,
   updateSettings,
   dashcard,
   parameters,
 }: Props) {
-  const hasLinkTemplate = clickBehavior.linkTemplate != null;
-  const canSelect = clickBehaviorIsValid(clickBehavior);
+  const [url, setUrl] = useState(clickBehavior?.linkTemplate ?? "");
+  const hasLinkTemplate = !!clickBehavior.linkTemplate;
+  const canSelect = clickBehaviorIsValid({
+    ...clickBehavior,
+    linkTemplate: url,
+  });
 
-  const handleLinkTemplateChange = useCallback(
-    e => {
-      updateSettings({
-        ...clickBehavior,
-        linkTemplate: e.target.value,
-      });
-    },
-    [clickBehavior, updateSettings],
-  );
+  const handleLinkTemplateChange = useCallback(e => {
+    setUrl(e.currentTarget.value);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    updateSettings({
+      ...clickBehavior,
+      linkTemplate: url,
+    });
+  }, [clickBehavior, updateSettings, url]);
 
   const handleReset = useCallback(() => {
     updateSettings({
@@ -79,14 +84,14 @@ function CustomURLPicker({
       {({ onClose }: { onClose: () => void }) => (
         <ModalContent
           title={t`Enter a URL to link to`}
-          onClose={hasLinkTemplate ? onClose : null}
+          onClose={hasLinkTemplate ? onClose : undefined}
         >
           <FormDescription>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
           </FormDescription>
           <InputBlurChange
             autoFocus
-            value={clickBehavior.linkTemplate}
+            value={url}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             onChange={handleLinkTemplateChange}
             className="block full"
@@ -100,7 +105,11 @@ function CustomURLPicker({
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
           <DoneButton
             primary
-            onClick={onClose}
+            type="button"
+            onClick={() => {
+              handleSubmit();
+              onClose();
+            }}
             disabled={!canSelect}
           >{t`Done`}</DoneButton>
         </ModalContent>
@@ -108,5 +117,3 @@ function CustomURLPicker({
     </ModalWithTrigger>
   );
 }
-
-export default CustomURLPicker;

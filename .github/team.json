@@ -1,0 +1,71 @@
+{
+  "teams": [
+    {
+      "name": "Querying Components",
+      "label": ".Team/QueryingComponents",
+      "members": [
+        "ranquild",
+        "uladzimirdev",
+        "kamilmielnik",
+        "oleggromov"
+      ]
+    },
+    {
+      "name": "Embedding",
+      "label": ".Team/Embedding",
+      "members": [
+        "WiNloSt",
+        "deniskaber",
+        "oisincoveney",
+        "npretto"
+      ]
+    },
+    {
+      "name": "BEC",
+      "label": ".Team/BackendComponents",
+      "members": [
+        "tsmacdonald",
+        "qnkhuat",
+        "calherries",
+        "piranha"
+      ]
+    },
+    {
+      "name": "Query Processor",
+      "label": ".Team/QueryProcessor",
+      "members": [
+        "camsaul",
+        "snoe",
+        "bshepherdson",
+        "metamben",
+        "lbrdnk"
+      ]
+    },
+    {
+      "name": "Admin Webapp",
+      "label": ".Team/AdminWebapp",
+      "members": [
+        "noahmoss",
+        "escherize",
+        "qwef",
+        "iethree",
+        "npfitz",
+        "shaunlebron",
+        "johnswanson",
+        "rafpaf"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "alxnddr",
+        "EmmadUsmani",
+        "JesseSDevaney",
+        "kulyk",
+        "markbastian",
+        "adam-james-v"
+      ]
+    }
+  ]
+}

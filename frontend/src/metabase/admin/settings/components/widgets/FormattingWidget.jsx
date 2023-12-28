@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
@@ -18,7 +18,6 @@ const SETTING_TYPES = [
     ],
     column: {
       semantic_type: TYPE.Temporal,
-      unit: "second",
     },
   },
   {
@@ -41,7 +40,7 @@ const SETTING_TYPES = [
   },
 ];
 
-class FormattingWidget extends React.Component {
+class FormattingWidget extends Component {
   render() {
     const { setting, onChange } = this.props;
     const value = setting.value || setting.default;
@@ -59,7 +58,6 @@ class FormattingWidget extends React.Component {
               onChange={settings => onChange({ ...value, [type]: settings })}
               column={column}
               allowlist={new Set(settings)}
-              forcefullyShowHiddenSettings
             />
           </div>
         ))}

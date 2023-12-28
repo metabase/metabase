@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import cx from "classnames";
 
 const DropTargetBackgroundAndBorder = ({
@@ -27,7 +27,7 @@ const DropTargetBackgroundAndBorder = ({
   />
 );
 
-export default class DropArea extends React.Component {
+export default class DropArea extends Component {
   constructor(props) {
     super(props);
     this.state = {

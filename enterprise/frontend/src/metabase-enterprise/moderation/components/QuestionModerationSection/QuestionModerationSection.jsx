@@ -1,4 +1,4 @@
-import React from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
@@ -52,14 +52,14 @@ function QuestionModerationSection({
   };
 
   return (
-    <React.Fragment>
+    <Fragment>
       {latestModerationReview && (
         <ModerationReviewBanner
           className={reviewBannerClassName}
           moderationReview={latestModerationReview}
-          onRemove={isModerator && onRemoveModerationReview}
+          onRemove={isModerator ? onRemoveModerationReview : undefined}
         />
       )}
-    </React.Fragment>
+    </Fragment>
   );
 }

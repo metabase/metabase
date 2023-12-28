@@ -1,18 +1,26 @@
-import React from "react";
+import * as React from "react";
 import { t } from "ttag";
-
-import { color } from "metabase/lib/colors";
-import MetabaseSettings from "metabase/lib/settings";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Icon from "metabase/components/Icon";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { HelpText } from "metabase-lib/expressions/types";
-import { getHelpDocsUrl } from "./ExpressionEditorTextfield/helper-text-strings";
+import MetabaseSettings from "metabase/lib/settings";
+import type { HelpText } from "metabase-lib/expressions/types";
+import { getHelpDocsUrl } from "metabase-lib/expressions/helper-text-strings";
+import {
+  ArgumentTitle,
+  ArgumentsGrid,
+  BlockSubtitleText,
+  Container,
+  Divider,
+  DocumentationLink,
+  ExampleCode,
+  FunctionHelpCode,
+  FunctionHelpCodeArgument,
+  LearnMoreIcon,
+} from "./ExpressionEditorHelpText.styled";
 
-interface ExpressionEditorHelpTextProps {
-  helpText: HelpText;
-  width: number;
-  target: Element;
+export interface ExpressionEditorHelpTextProps {
+  helpText: HelpText | null | undefined;
+  width: number | undefined;
+  target: React.RefObject<HTMLElement>;
 }
 
 const ExpressionEditorHelpText = ({
@@ -24,7 +32,10 @@ const ExpressionEditorHelpText = ({
     return null;
   }
 
+  const { description, structure, args } = helpText;
+
   return (
+    /* data-ignore-outside-clicks is required until this expression editor is migrated to the mantine's Popover */
     <TippyPopover
       maxWidth={width}
       reference={target}
@@ -33,38 +44,75 @@ const ExpressionEditorHelpText = ({
       content={
         <>
           {/* Prevent stealing focus from input box causing the help text to be closed (metabase#17548) */}
-          <div onMouseDown={e => e.preventDefault()}>
-            <p
-              className="p2 m0 text-monospace text-bold"
-              style={{ background: color("bg-yellow") }}
+          <Container
+            onMouseDown={e => e.preventDefault()}
+            data-testid="expression-helper-popover"
+            data-ignore-outside-clicks
+          >
+            <FunctionHelpCode
+              data-testid="expression-helper-popover-structure"
+              data-ignore-outside-clicks
             >
-              {helpText.structure}
-            </p>
-            <div className="p2 border-top">
-              <p className="mt0 text-bold">{helpText.description}</p>
-              <p className="text-code m0 text-body">{helpText.example}</p>
-            </div>
-            <div className="p2 border-top">
-              {helpText.args.map(({ name, description }, index) => (
-                <div key={index}>
-                  <h4 className="text-medium">{name}</h4>
-                  <p className="mt1 text-bold">{description}</p>
-                </div>
-              ))}
-              <ExternalLink
-                className="link text-bold block my1"
-                target="_blank"
-                href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
+              {structure}
+              {args != null && (
+                <>
+                  (
+                  {args.map(({ name }, index) => (
+                    <span key={name} data-ignore-outside-clicks>
+                      <FunctionHelpCodeArgument data-ignore-outside-clicks>
+                        {name}
+                      </FunctionHelpCodeArgument>
+                      {index + 1 < args.length && ", "}
+                    </span>
+                  ))}
+                  )
+                </>
+              )}
+            </FunctionHelpCode>
+            <Divider data-ignore-outside-clicks />
+
+            <div data-ignore-outside-clicks>{description}</div>
+
+            {args != null && (
+              <ArgumentsGrid
+                data-testid="expression-helper-popover-arguments"
+                data-ignore-outside-clicks
               >
-                <Icon name="reference" size={12} className="mr1" />
-                {t`Learn more`}
-              </ExternalLink>
-            </div>
-          </div>
+                {args.map(({ name, description: argDescription }) => (
+                  <React.Fragment key={name}>
+                    <ArgumentTitle data-ignore-outside-clicks>
+                      {name}
+                    </ArgumentTitle>
+                    <div data-ignore-outside-clicks>{argDescription}</div>
+                  </React.Fragment>
+                ))}
+              </ArgumentsGrid>
+            )}
+
+            <BlockSubtitleText
+              data-ignore-outside-clicks
+            >{t`Example`}</BlockSubtitleText>
+            <ExampleCode data-ignore-outside-clicks>
+              {helpText.example}
+            </ExampleCode>
+            <DocumentationLink
+              href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
+              target="_blank"
+              data-ignore-outside-clicks
+            >
+              <LearnMoreIcon
+                name="reference"
+                size={12}
+                data-ignore-outside-clicks
+              />
+              {t`Learn more`}
+            </DocumentationLink>
+          </Container>
         </>
       }
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ExpressionEditorHelpText;

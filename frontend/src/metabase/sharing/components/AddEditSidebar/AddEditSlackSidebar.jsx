@@ -1,12 +1,11 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/core/components/Icon";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Toggle from "metabase/core/components/Toggle";
 
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
@@ -25,7 +24,6 @@ function _AddEditSlackSidebar({
   channel,
   channelSpec,
   parameters,
-  defaultParametersById,
   dashboard,
   // form callbacks
   handleSave,
@@ -45,12 +43,12 @@ function _AddEditSlackSidebar({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className="pt4 flex align-center px4 mb3">
+      <div className="pt4 flex align-center px4">
         <Icon name="slack" className="mr1" size={21} />
         <Heading>{t`Send this dashboard to Slack`}</Heading>
       </div>
       <CaveatMessage />
-      <div className="pb2 px4">
+      <div className="my2 px4 full-height flex flex-column">
         {channelSpec.fields && (
           <SlackChannelField
             channel={channel}
@@ -94,13 +92,11 @@ function _AddEditSlackSidebar({
             dashboard={dashboard}
             pulse={pulse}
             setPulseParameters={setPulseParameters}
-            defaultParametersById={defaultParametersById}
           />
         ) : (
           <DefaultParametersSection
             className="py3 mt2 border-top"
             parameters={parameters}
-            defaultParametersById={defaultParametersById}
           />
         )}
         <div className="text-bold py2 flex justify-between align-center border-top">
@@ -116,6 +112,9 @@ function _AddEditSlackSidebar({
             handleArchive={handleArchive}
           />
         )}
+        <div className="p2 mt-auto text-small text-medium">
+          {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
+        </div>
       </div>
     </Sidebar>
   );
@@ -128,7 +127,6 @@ _AddEditSlackSidebar.propTypes = {
   channelSpec: PropTypes.object.isRequired,
   users: PropTypes.array,
   parameters: PropTypes.array.isRequired,
-  defaultParametersById: PropTypes.object.isRequired,
   dashboard: PropTypes.object.isRequired,
   handleSave: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

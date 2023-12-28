@@ -1,63 +1,83 @@
-import React from "react";
-import { render as renderRTL, screen } from "@testing-library/react";
-
-import MetabaseSettings from "metabase/lib/settings";
+import {
+  createMockTokenStatus,
+  createMockVersion,
+  createMockVersionInfo,
+  createMockVersionInfoRecord,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen } from "__support__/ui";
 import SettingsUpdatesForm from "./SettingsUpdatesForm";
 
 const elements = [
   {
     key: "key",
-    widget: "widget",
+    widget: "span",
   },
 ];
 
-const render = () => {
-  renderRTL(<SettingsUpdatesForm elements={elements} />);
-};
+function setup({
+  isHosted = false,
+  isPaid = false,
+  currentVersion = "v1.0.0",
+  latestVersion = "v2.0.0",
+} = {}) {
+  const version = currentVersion
+    ? createMockVersion({ tag: currentVersion })
+    : null;
+
+  const versionInfo = currentVersion
+    ? createMockVersionInfo({
+        latest: createMockVersionInfoRecord({ version: latestVersion }),
+      })
+    : null;
+
+  const settings = mockSettings({
+    "is-hosted?": isHosted,
+    version,
+    "version-info": versionInfo,
+    "token-status": createMockTokenStatus({ valid: isPaid }),
+  });
+
+  const state = createMockState({
+    settings,
+  });
+
+  renderWithProviders(<SettingsUpdatesForm elements={elements} />, {
+    storeInitialState: state,
+  });
+}
 
 describe("SettingsUpdatesForm", () => {
   it("shows custom message for Cloud installations", () => {
-    const isHostedSpy = jest.spyOn(MetabaseSettings, "isHosted");
-    isHostedSpy.mockImplementation(() => true);
-
-    render();
-    screen.getByText(/Metabase Cloud keeps your instance up-to-date/);
-
-    isHostedSpy.mockRestore();
+    setup({ isHosted: true });
+    expect(
+      screen.getByText(/Metabase Cloud keeps your instance up-to-date/),
+    ).toBeInTheDocument();
   });
 
   it("shows correct message when latest version is installed", () => {
-    const versionIsLatestSpy = jest.spyOn(MetabaseSettings, "versionIsLatest");
-    versionIsLatestSpy.mockImplementation(() => true);
-
-    render();
-    screen.getByText(/which is the latest and greatest/);
-
-    versionIsLatestSpy.mockRestore();
+    setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
+    expect(
+      screen.getByText(/You're running Metabase 1.0.0/),
+    ).toBeInTheDocument();
   });
 
   it("shows correct message when no version checks have been run", () => {
-    render();
-    screen.getByText("No successful checks yet.");
+    setup({ currentVersion: null, latestVersion: null });
+    expect(screen.getByText("No successful checks yet.")).toBeInTheDocument();
   });
 
   it("shows upgrade call-to-action if not in Enterprise plan", () => {
-    const versionIsLatestSpy = jest.spyOn(MetabaseSettings, "versionIsLatest");
-    versionIsLatestSpy.mockImplementation(() => true);
-
-    render();
-    screen.getByText("Migrate to Metabase Cloud.");
-
-    versionIsLatestSpy.mockRestore();
+    setup({ currentVersion: "v1.0.0", latestVersion: "v1.0.0" });
+    expect(screen.getByText("Migrate to Metabase Cloud.")).toBeInTheDocument();
   });
 
-  it("does not show upgrade call-to-action if in Enterprise plan", () => {
-    const versionIsLatestSpy = jest.spyOn(MetabaseSettings, "versionIsLatest");
-    versionIsLatestSpy.mockImplementation(() => false);
+  it("does not show upgrade call-to-action if is a paid plan", () => {
+    setup({ currentVersion: "v1.0.0", latestVersion: "v2.0.0", isPaid: true });
 
-    render();
-    expect(screen.queryByText("Migrate to Metabase Cloud.")).toBeNull();
-
-    versionIsLatestSpy.mockRestore();
+    expect(
+      screen.queryByText("Migrate to Metabase Cloud."),
+    ).not.toBeInTheDocument();
   });
 });

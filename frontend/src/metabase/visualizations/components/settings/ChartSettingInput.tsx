@@ -1,4 +1,3 @@
-import React from "react";
 import _ from "underscore";
 import InputBlurChange from "metabase/components/InputBlurChange";
 
@@ -21,4 +20,5 @@ const ChartSettingInput = ({
   />
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingInput;

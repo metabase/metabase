@@ -5,7 +5,7 @@
     :as
     qp.cumulative-aggregations]))
 
-(deftest add-values-from-last-row-test
+(deftest ^:parallel add-values-from-last-row-test
   (are [expected indecies] (= expected
                               (#'qp.cumulative-aggregations/add-values-from-last-row indecies [1 2 3] [1 2 3]))
     [1 2 3] #{}
@@ -23,22 +23,22 @@
     (is (= [0] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [nil] [nil])))
     (is (= [1] (#'qp.cumulative-aggregations/add-values-from-last-row #{0} [1] [nil])))))
 
-(deftest diff-indicies-test
+(deftest ^:parallel diff-indicies-test
   (testing "collections are the same"
     (is (= #{}
-           (#'qp.cumulative-aggregations/diff-indecies [:a :b :c] [:a :b :c]))))
+           (#'qp.cumulative-aggregations/diff-indices [:a :b :c] [:a :b :c]))))
   (testing "one index is different"
     (is (= #{1}
-           (#'qp.cumulative-aggregations/diff-indecies [:a :b :c] [:a 100 :c])))))
+           (#'qp.cumulative-aggregations/diff-indices [:a :b :c] [:a 100 :c])))))
 
-(defn- sum-rows [replaced-indecies rows]
-  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
+(defn- sum-rows [replaced-indices rows]
+  (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indices (fn
                                                                                  ([] [])
                                                                                  ([acc] acc)
                                                                                  ([acc row] (conj acc row))))]
     (transduce identity rf rows)))
 
-(deftest transduce-results-test
+(deftest ^:parallel transduce-results-test
   (testing "Transducing result rows"
     (let [rows [[0] [1] [2] [3] [4] [5] [6] [7] [8] [9]]]
       (testing "0/1 indecies"
@@ -58,7 +58,7 @@
       (is (= [[1 1 1] [2 3 2] [3 6 3]]
              (sum-rows #{1} '((1 1 1) (2 2 2) (3 3 3))))))))
 
-(deftest replace-cumulative-ags-test
+(deftest ^:parallel replace-cumulative-ags-test
   (testing "does replacing cumulative ags work correctly?"
     (is (= {:database 1
             :type     :query
@@ -91,7 +91,7 @@
                             [4 4]
                             [5 5]])))
 
-(deftest e2e-test
+(deftest ^:parallel e2e-test
   (testing "make sure we take breakout fields into account"
     (is (= [[1 1] [2 3] [3 6] [4 10] [5 15]]
            (handle-cumulative-aggregations

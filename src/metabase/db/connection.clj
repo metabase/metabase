@@ -4,9 +4,14 @@
   (:require
    [metabase.db.connection-pool-setup :as connection-pool-setup]
    [metabase.db.env :as mdb.env]
-   [potemkin :as p])
+   [methodical.core :as methodical]
+   [potemkin :as p]
+   [toucan2.connection :as t2.conn]
+   [toucan2.jdbc.connection :as t2.jdbc.conn])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
+
+(set! *warn-on-reflection* true)
 
 (defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
   so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be
@@ -129,3 +134,64 @@
                       (apply f args)))]
     (fn [& args]
       (apply f* (unique-identifier) args))))
+
+(methodical/defmethod t2.conn/do-with-connection :default
+  [_connectable f]
+  (t2.conn/do-with-connection *application-db* f))
+
+(def ^:private ^:dynamic *transaction-depth* 0)
+
+(defn- do-transaction [^java.sql.Connection connection f]
+  (letfn [(thunk []
+            (let [savepoint (.setSavepoint connection)]
+              (try
+                (let [result (f connection)]
+                  (when (= *transaction-depth* 1)
+                    ;; top-level transaction, commit
+                    (.commit connection))
+                  result)
+                (catch Throwable e
+                  (.rollback connection savepoint)
+                  (throw e)))))]
+    ;; optimization: don't set and unset autocommit if it's already false
+    (if (.getAutoCommit connection)
+      (try
+        (.setAutoCommit connection false)
+        (thunk)
+        (finally
+          (.setAutoCommit connection true)))
+      (thunk))))
+
+(comment
+ ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
+ ;; since we don't want our implementation to be overwritten, we need to require it here first before defininng ours
+ t2.jdbc.conn/keepme)
+
+(methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
+  "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
+  https://github.com/seancorfield/next-jdbc/issues/244. Use `Savepoint`s because MySQL only supports nested
+  transactions when done this way.
+
+  See also https://metaboat.slack.com/archives/CKZEMT1MJ/p1694103570500929
+
+  Note that these \"nested transactions\" are not the real thing (e.g., as in Oracle):
+    - there is only one commit, meaning that every transaction in a tree of transactions can see the changes
+      other transactions have made,
+    - in the presence of unsynchronized concurrent threads running nested transactions, the effects of rollback
+      are not well defined - a rollback will undo all work done by other transactions in the same tree that
+      started later."
+  [^java.sql.Connection connection {:keys [nested-transaction-rule] :or {nested-transaction-rule :allow} :as options} f]
+  (assert (#{:allow :ignore :prohibit} nested-transaction-rule))
+  (cond
+   (and (pos? *transaction-depth*)
+        (= nested-transaction-rule :ignore))
+   (f connection)
+
+   (and (pos? *transaction-depth*)
+        (= nested-transaction-rule :prohibit))
+   (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
+                   {:options options}))
+
+   :else
+   (binding [*transaction-depth* (inc *transaction-depth*)]
+     (do-transaction connection f))))

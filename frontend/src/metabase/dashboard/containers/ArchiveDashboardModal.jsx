@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -57,7 +57,7 @@ class ArchiveDashboardModal extends Component {
   }
 }
 
-export default _.compose(
+export const ArchiveDashboardModalConnected = _.compose(
   connect(null, mapDispatchToProps),
   Dashboard.load({
     id: (state, props) => Urls.extractCollectionId(props.params.slug),

@@ -1,11 +1,11 @@
-import React from "react";
-
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
+import type { UiParameter } from "metabase-lib/parameters/types";
 import {
-  UiParameter,
-  FieldFilterUiParameter,
-} from "metabase-lib/parameters/types";
+  getFields,
+  hasFields,
+  isFieldFilterUiParameter,
+} from "metabase-lib/parameters/utils/parameter-fields";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 type FormattedParameterValueProps = {
@@ -23,19 +23,18 @@ function FormattedParameterValue({
     return placeholder;
   }
 
-  if (hasFields(parameter) && !isDateParameter(parameter)) {
+  if (
+    isFieldFilterUiParameter(parameter) &&
+    hasFields(parameter) &&
+    !isDateParameter(parameter)
+  ) {
     return (
-      <ParameterFieldWidgetValue fields={parameter.fields} value={value} />
+      <ParameterFieldWidgetValue fields={getFields(parameter)} value={value} />
     );
   }
 
   return <span>{formatParameterValue(value, parameter)}</span>;
 }
 
-function hasFields(
-  parameter: UiParameter,
-): parameter is FieldFilterUiParameter {
-  return !!(parameter as FieldFilterUiParameter).fields;
-}
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormattedParameterValue;

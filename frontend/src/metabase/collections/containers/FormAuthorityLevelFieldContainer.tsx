@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
@@ -12,7 +12,7 @@ import { canManageCollectionAuthorityLevel } from "metabase/collections/utils";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
-type CollectionsMap = Record<Collection["id"], Collection>;
+type CollectionsMap = Partial<Record<Collection["id"], Collection>>;
 
 interface OwnProps {
   collectionParentId: Collection["id"];
@@ -57,6 +57,7 @@ function FormAuthorityLevelFieldContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   // Ensures there's data for the `collectionsMap` prop
   Collections.loadList({ loadingAndErrorWrapper: false }),

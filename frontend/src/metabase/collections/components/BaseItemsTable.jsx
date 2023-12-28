@@ -1,7 +1,7 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import CheckBox from "metabase/core/components/CheckBox";
 import BaseTableItem from "./BaseTableItem";
 import {
   ColumnHeader,
@@ -10,6 +10,7 @@ import {
   SortingControlContainer,
   TBody,
   LastEditedByCol,
+  BulkSelectWrapper,
 } from "./BaseItemsTable.styled";
 
 const sortingOptsShape = PropTypes.shape({
@@ -62,17 +63,21 @@ function SortableColumnHeader({
 BaseItemsTable.Item = BaseTableItem;
 
 BaseItemsTable.propTypes = {
+  databases: PropTypes.arrayOf(PropTypes.object),
   bookmarks: PropTypes.arrayOf(PropTypes.object),
   createBookmark: PropTypes.func,
   deleteBookmark: PropTypes.func,
   items: PropTypes.arrayOf(PropTypes.object),
   collection: PropTypes.object,
   selectedItems: PropTypes.arrayOf(PropTypes.object),
+  hasUnselected: PropTypes.bool,
   isPinned: PropTypes.bool,
   renderItem: PropTypes.func,
   sortingOptions: sortingOptsShape,
   onSortingOptionsChange: PropTypes.func,
   onToggleSelected: PropTypes.func,
+  onSelectAll: PropTypes.func,
+  onSelectNone: PropTypes.func,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
@@ -89,12 +94,14 @@ function defaultItemRenderer({ item, ...props }) {
 }
 
 function BaseItemsTable({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
   items,
   collection = {},
   selectedItems,
+  hasUnselected,
   isPinned,
   renderItem = defaultItemRenderer,
   onCopy,
@@ -103,12 +110,15 @@ function BaseItemsTable({
   sortingOptions,
   onSortingOptionsChange,
   onToggleSelected,
+  onSelectAll,
+  onSelectNone,
   getIsSelected = () => false,
   headless = false,
   ...props
 }) {
   const itemRenderer = item =>
     renderItem({
+      databases,
       bookmarks,
       createBookmark,
       deleteBookmark,
@@ -123,9 +133,12 @@ function BaseItemsTable({
       onToggleSelected,
     });
 
+  const canSelect = collection.can_write || false;
+
   return (
-    <Table {...props}>
+    <Table canSelect={canSelect} {...props}>
       <colgroup>
+        {canSelect && <col style={{ width: "70px" }} />}
         <col style={{ width: "70px" }} />
         <col />
         <LastEditedByCol />
@@ -139,6 +152,20 @@ function BaseItemsTable({
           }
         >
           <tr>
+            {canSelect && (
+              <ColumnHeader>
+                <BulkSelectWrapper>
+                  <CheckBox
+                    checked={selectedItems?.length > 0 || false}
+                    indeterminate={
+                      (selectedItems?.length > 0 && hasUnselected) || false
+                    }
+                    onChange={hasUnselected ? onSelectAll : onSelectNone}
+                    aria-label={t`Select all items`}
+                  />
+                </BulkSelectWrapper>
+              </ColumnHeader>
+            )}
             <SortableColumnHeader
               name="model"
               sortingOptions={sortingOptions}

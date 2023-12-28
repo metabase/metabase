@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
 import FilterWidget from "./FilterWidget";
 
-export default class FilterWidgetList extends React.Component {
+export default class FilterWidgetList extends Component {
   constructor(props) {
     super(props);
     this.state = {

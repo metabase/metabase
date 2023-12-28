@@ -13,8 +13,6 @@
   metabase/googleanalytics    {:local/root "googleanalytics"}
   metabase/mongo              {:local/root "mongo"}
   metabase/oracle             {:local/root "oracle"}
-  metabase/presto             {:local/root "presto"}
-  metabase/presto-common      {:local/root "presto-common"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}
   metabase/redshift           {:local/root "redshift"}
   metabase/snowflake          {:local/root "snowflake"}

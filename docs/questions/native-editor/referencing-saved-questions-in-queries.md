@@ -84,7 +84,7 @@ You can also navigate to the model or question you'd like to reference and find 
 
 ## Limitations and tradeoffs
 
-- You can only reference a model or saved question in a query when working with a SQL database like PostgreSQL, MySQL, or SQL Server.
+- You can only reference a model or saved question in a query when working with a SQL database like PostgreSQL, MySQL, Snowflake or SQL Server.
 - The model or saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
 - You cannot refer to variables in sub-queries. You only have access to the _results_ of the model or saved question, not the model or saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
 

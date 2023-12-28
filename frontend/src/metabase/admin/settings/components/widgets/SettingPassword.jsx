@@ -1,6 +1,4 @@
-import React from "react";
-
-import SettingInput from "./SettingInput";
+import { SettingInput } from "./SettingInput";
 
 const SettingPassword = props => <SettingInput {...props} type="password" />;
 

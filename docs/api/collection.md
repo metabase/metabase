@@ -2,19 +2,17 @@
 title: "Collection"
 summary: |
   `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-    the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-    `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-    To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-    `?namespace=snippet`).
+    the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+    `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+    endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 ---
 
 # Collection
 
 `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-  `?namespace=snippet`).
+  the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+  endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 
 ## `GET /api/collection/`
 
@@ -24,11 +22,16 @@ Fetch a list of all Collections that the current user has read permissions for (
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
+  By default, admin users will see all collections. To hide other user's collections pass in
+  `?exclude-other-user-collections=true`.
+
 ### PARAMS:
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`exclude-other-user-collections`** nullable value must be a valid boolean string ('true' or 'false').
+
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/:id`
 
@@ -36,7 +39,7 @@ Fetch a specific Collection with standard details added.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/collection/:id/items`
 
@@ -50,17 +53,17 @@ Fetch a specific Collection's items with the following options:
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
+*  **`models`** nullable sequence of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card, or enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`pinned_state`** value may be nil, or if non-nil, value must be one of: `all`, `is_not_pinned`, `is_pinned`.
+*  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all
 
-*  **`sort_column`** value may be nil, or if non-nil, value must be one of: `last_edited_at`, `last_edited_by`, `model`, `name`.
+*  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at
 
-*  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
+*  **`sort_direction`** nullable enum of desc, asc
 
 ## `GET /api/collection/:id/timelines`
 
@@ -68,11 +71,11 @@ Fetch a specific Collection's timelines.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`include`** value may be nil, or if non-nil, value must be one of: `events`.
+*  **`include`** nullable must equal events
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable boolean
 
 ## `GET /api/collection/graph`
 
@@ -82,7 +85,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/root`
 
@@ -90,7 +93,7 @@ Return the 'Root' Collection object with standard details added.
 
 ### PARAMS:
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `GET /api/collection/root/items`
 
@@ -110,17 +113,17 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
+*  **`models`** nullable sequence of enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card, or enum of dashboard, dataset, no_models, timeline, snippet, collection, pulse, card
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`pinned_state`** value may be nil, or if non-nil, value must be one of: `all`, `is_not_pinned`, `is_pinned`.
+*  **`pinned_state`** nullable enum of is_not_pinned, is_pinned, all
 
-*  **`sort_column`** value may be nil, or if non-nil, value must be one of: `last_edited_at`, `last_edited_by`, `model`, `name`.
+*  **`sort_column`** nullable enum of model, name, last_edited_by, last_edited_at
 
-*  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
+*  **`sort_direction`** nullable enum of desc, asc
 
 ## `GET /api/collection/root/timelines`
 
@@ -128,9 +131,9 @@ Fetch the root Collection's timelines.
 
 ### PARAMS:
 
-*  **`include`** value may be nil, or if non-nil, value must be one of: `events`.
+*  **`include`** nullable must equal events
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`archived`** nullable boolean
 
 ## `GET /api/collection/tree`
 
@@ -157,9 +160,11 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
 ### PARAMS:
 
-*  **`exclude-archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`exclude-archived`** nullable boolean
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`exclude-other-user-collections`** nullable boolean
+
+*  **`namespace`** nullable value must be a non-blank string.
 
 ## `POST /api/collection/`
 
@@ -169,15 +174,13 @@ Create a new Collection.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`color`** value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`description`** nullable value must be a non-blank string.
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`authority_level`** nullable enum of official
 
 ## `PUT /api/collection/:id`
 
@@ -185,33 +188,32 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`name`** nullable value must be a non-blank string.
 
-*  **`color`** value may be nil, or if non-nil, value must be a string that matches the regex `^#[0-9A-Fa-f]{6}$`.
+*  **`description`** nullable value must be a non-blank string.
 
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+*  **`parent_id`** nullable value must be an integer greater than zero.
 
-*  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
-
-*  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
+*  **`authority_level`** nullable enum of official
 
 *  **`collection-updates`**
 
 ## `PUT /api/collection/graph`
 
 Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
 You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`namespace`** nullable value must be a non-blank string.
 
-*  **`body`** value must be a map.
+*  **`body`** map
 
 ---
 

@@ -1,4 +1,4 @@
-import { Group, GroupsPermissions } from "metabase-types/api";
+import type { Group, GroupsPermissions } from "metabase-types/api";
 import {
   buildDataModelPermission,
   DATA_MODEL_PERMISSION_OPTIONS,
@@ -178,8 +178,7 @@ describe("buildDataModelPermission", () => {
         "schemas",
       );
 
-      const [downgradePermissionConfirmation] =
-        permissionModel.confirmations("all");
+      permissionModel.confirmations("all");
 
       expect(permissionModel.warning).toBe(null);
     });

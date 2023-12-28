@@ -1,16 +1,10 @@
 /* eslint-disable react/prop-types */
-import React, {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useState,
-  useRef,
-} from "react";
+import { useCallback, useLayoutEffect, useMemo, useState, useRef } from "react";
 import { getIn } from "icepick";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 import { isPositiveInteger } from "metabase/lib/number";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
@@ -151,8 +145,8 @@ function TableSimple({
             onClick={onClick}
             isRightAligned={isColumnRightAligned(col)}
           >
-            <SortIcon name={iconName} />
             <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
+            <SortIcon name={iconName} />
           </TableHeaderCellContent>
         </th>
       );
@@ -225,5 +219,5 @@ function TableSimple({
 
 export default ExplicitSize({
   refreshMode: props =>
-    props.isDashboard && !props.isEditing ? "debounce" : "throttle",
+    props.isDashboard && !props.isEditing ? "debounceLeading" : "throttle",
 })(TableSimple);

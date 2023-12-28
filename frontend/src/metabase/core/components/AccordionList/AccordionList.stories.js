@@ -1,5 +1,3 @@
-import React from "react";
-
 import AccordionList from "./AccordionList";
 
 const SECTIONS = [

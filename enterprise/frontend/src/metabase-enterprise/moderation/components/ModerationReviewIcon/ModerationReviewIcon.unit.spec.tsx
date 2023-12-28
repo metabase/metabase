@@ -1,13 +1,11 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   createMockModerationReview,
   createMockUser,
 } from "metabase-types/api/mocks";
-import ModerationReviewIcon, {
-  ModerationReviewIconProps,
-} from "./ModerationReviewIcon";
+import type { ModerationReviewIconProps } from "./ModerationReviewIcon";
+import ModerationReviewIcon from "./ModerationReviewIcon";
 
 describe("ModerationReviewIcon", () => {
   beforeEach(() => {

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
@@ -8,12 +8,12 @@ import * as Urls from "metabase/lib/urls";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import { InputProps } from "metabase/core/components/Input";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { InputProps } from "metabase/core/components/Input";
 import SearchEmptyState from "../SearchEmptyState";
 import EventList from "../EventList";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { MenuItem } from "../../types";
+import type { MenuItem } from "../../types";
 import {
   ModalBody,
   ModalRoot,
@@ -179,4 +179,5 @@ const getMenuItems = (
   return items;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelineDetailsModal;

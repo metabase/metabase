@@ -18,6 +18,10 @@ The simplest and most basic way of running Metabase.
 
 If you prefer to use a Docker container, we've got you covered.
 
+## [Running on Podman](running-metabase-on-podman.md)
+
+Our Docker image is also compatible with Podman.
+
 ## [Metabase Cloud](https://www.metabase.com/pricing)
 
 Our official hosted version, [Metabase Cloud](https://www.metabase.com/pricing). All you need to do is sign up for a free trial, and you're off to the races.
@@ -28,7 +32,6 @@ To run a development branch of Metabase, check out our [developer's guide](../de
 
 ## Other installation options
 
-- [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
 - [Running on Debian as a service](running-metabase-on-debian.md)
 

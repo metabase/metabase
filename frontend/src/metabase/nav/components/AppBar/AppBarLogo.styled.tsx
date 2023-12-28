@@ -1,12 +1,20 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
+import { space } from "metabase/styled-components/theme";
+import { AppBarLeftContainer } from "./AppBarLarge.styled";
 
 export const LogoRoot = styled.div`
   position: relative;
 `;
 
-export const LogoLink = styled(Link)`
+interface LogoLinkProps {
+  isSmallAppBar?: boolean;
+  isNavBarEnabled?: boolean;
+}
+
+export const LogoLink = styled(Link)<LogoLinkProps>`
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -18,11 +26,31 @@ export const LogoLink = styled(Link)`
   &:hover {
     background-color: ${color("bg-light")};
   }
+
+  ${props =>
+    !props.isSmallAppBar &&
+    css`
+      ${AppBarLeftContainer}:hover & {
+        opacity: ${props.isNavBarEnabled ? 0 : 1};
+        pointer-events: ${props.isNavBarEnabled ? "none" : ""};
+      }
+    `}
 `;
 
-export const ToggleContainer = styled.div`
-  position: absolute;
-  top: 0.625rem;
-  left: 0.9375rem;
+interface ToggleContainerProps {
+  isLogoVisible?: boolean;
+}
+
+export const ToggleContainer = styled.div<ToggleContainerProps>`
+  ${props =>
+    props.isLogoVisible
+      ? css`
+          position: absolute;
+          top: 0.625rem;
+          left: 0.9375rem;
+        `
+      : css`
+          padding: ${space(1)} ${space(2)};
+        `}
   transition: opacity 0.3s;
 `;

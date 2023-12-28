@@ -2,23 +2,23 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
-import Ellipsified from "metabase/core/components/Ellipsified";
+import Tooltip from "metabase/core/components/Tooltip";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Markdown from "metabase/core/components/Markdown";
 import {
   ScalarRoot,
   ScalarValueWrapper,
   ScalarTitleContainer,
   ScalarDescriptionContainer,
+  ScalarDescriptionIcon,
   ScalarDescriptionPlaceholder,
   ScalarTitleContent,
 } from "./ScalarValue.styled";
 
 import { findSize, getMaxFontSize } from "./utils";
-
-const HORIZONTAL_PADDING = 32;
 
 export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
@@ -26,6 +26,7 @@ export const ScalarWrapper = ({ children }) => (
 
 const ScalarValue = ({
   value,
+  height,
   width,
   gridSize,
   totalNumGridCols,
@@ -35,26 +36,31 @@ const ScalarValue = ({
     () =>
       findSize({
         text: value,
-        targetWidth: width - HORIZONTAL_PADDING,
+        targetHeight: height,
+        targetWidth: width,
         fontFamily: fontFamily ?? "Lato",
         fontWeight: 900,
         unit: "rem",
         step: 0.2,
-        min: 2.2,
+        min: 1,
         max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
       }),
-    [fontFamily, gridSize, totalNumGridCols, value, width],
+    [fontFamily, gridSize, height, totalNumGridCols, value, width],
   );
 
   return (
-    <ScalarValueWrapper className="ScalarValue" fontSize={fontSize}>
-      {value}
+    <ScalarValueWrapper
+      className="ScalarValue"
+      fontSize={fontSize}
+      data-testid="scalar-value"
+    >
+      {value ?? t`null`}
     </ScalarValueWrapper>
   );
 };
 
-export const ScalarTitle = ({ title, description, onClick }) => (
-  <ScalarTitleContainer>
+export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
+  <ScalarTitleContainer data-testid="scalar-title" lines={lines}>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
@@ -62,17 +68,23 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
     <ScalarTitleContent
       className="fullscreen-normal-text fullscreen-night-text"
-      data-testid="scalar-title"
       onClick={onClick}
     >
-      <Ellipsified tooltip={title} lines={2} placement="bottom">
+      <Ellipsified tooltip={title} lines={lines} placement="bottom">
         {title}
       </Ellipsified>
     </ScalarTitleContent>
     {description && description.length > 0 && (
-      <ScalarDescriptionContainer className="hover-child">
-        <Tooltip tooltip={description} maxWidth="22em">
-          <Icon name="info_outline" />
+      <ScalarDescriptionContainer data-testid="scalar-description">
+        <Tooltip
+          tooltip={
+            <Markdown dark disallowHeading unstyleLinks>
+              {description}
+            </Markdown>
+          }
+          maxWidth="22em"
+        >
+          <ScalarDescriptionIcon name="info_filled" />
         </Tooltip>
       </ScalarDescriptionContainer>
     )}

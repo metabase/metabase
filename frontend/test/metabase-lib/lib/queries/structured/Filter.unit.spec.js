@@ -1,29 +1,137 @@
-import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import { createMockSegment } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+} from "metabase-types/api/mocks/presets";
 import Filter from "metabase-lib/queries/structured/Filter";
 
-const query = ORDERS.query();
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  segments: [createMockSegment({ name: "Expensive Things" })],
+});
+
+const ordersTable = metadata.table(ORDERS_ID);
+
+const query = ordersTable.query();
 
 function filter(mbql) {
   return new Filter(mbql, 0, query);
 }
 
+const dateType = temporalUnit => ({
+  "base-type": "type/DateTime",
+  "temporal-unit": temporalUnit,
+});
+
 describe("Filter", () => {
   describe("displayName", () => {
     it("should return the correct string for an = filter", () => {
       expect(
-        filter(["=", ["field", ORDERS.TOTAL.id, null], 42]).displayName(),
+        filter(["=", ["field", ORDERS.TOTAL, null], 42]).displayName(),
       ).toEqual("Total is equal to 42");
     });
     it("should return the correct string for a segment filter", () => {
       expect(filter(["segment", 1]).displayName()).toEqual("Expensive Things");
     });
+    describe("date labels", () => {
+      it("should display is-week filter as a day range", () => {
+        expect(
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("week")],
+            "2026-10-04",
+          ]).displayName(),
+        ).toEqual("Created At is October 4–10, 2026");
+      });
+      it("should display between dates filter with undefined temporal unit as day range", () => {
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType()],
+            "2026-10-04",
+            "2026-10-11",
+          ]).displayName(),
+        ).toEqual("Created At is October 4–11, 2026");
+      });
+      it("should display between-weeks filter as day range", () => {
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType("week")],
+            "2026-10-04",
+            "2026-10-11",
+          ]).displayName(),
+        ).toEqual("Created At is October 4–17, 2026");
+      });
+      it("should display between-minutes filter", () => {
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType("minute")],
+            "2026-10-04T10:20",
+            "2026-10-04T16:30",
+          ]).displayName(),
+        ).toEqual("Created At is October 4, 2026, 10:20 AM – 4:30 PM");
+        expect(
+          filter([
+            "between",
+            ["field", ORDERS.CREATED_AT, dateType("minute")],
+            "2026-10-04T10:20",
+            "2026-10-11T16:30",
+          ]).displayName(),
+        ).toEqual(
+          "Created At is October 4, 10:20 AM – October 11, 2026, 4:30 PM",
+        );
+      });
+      it("should display slice filters with enough context for understanding them", () => {
+        expect(
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("minute-of-hour")],
+            "2023-07-03T18:31:00",
+          ]).displayName(),
+        ).toEqual("Created At is minute :31");
+        expect(
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("hour-of-day")],
+            "2023-07-03T10:00:00",
+          ]).displayName(),
+        ).toEqual("Created At is 10:00–59 AM");
+        expect(
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("day-of-month")],
+            "2016-01-17",
+          ]).displayName(),
+        ).toEqual("Created At is 17th day of the month");
+        expect(
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("day-of-year")],
+            "2016-07-19",
+          ]).displayName(),
+        ).toEqual("Created At is 201st day of the year");
+        expect(
+          filter([
+            "=",
+            ["field", ORDERS.CREATED_AT, dateType("week-of-year")],
+            "2023-07-02",
+          ]).displayName(),
+        ).toEqual("Created At is 27th week of the year");
+      });
+    });
   });
   describe("isValid", () => {
     describe("with a field filter", () => {
       it("should return true for a field that exists", () => {
-        expect(
-          filter(["=", ["field", ORDERS.TOTAL.id, null], 42]).isValid(),
-        ).toBe(true);
+        expect(filter(["=", ["field", ORDERS.TOTAL, null], 42]).isValid()).toBe(
+          true,
+        );
       });
       it("should return false for a field that doesn't exists", () => {
         expect(filter(["=", ["field", 12341234, null], 42]).isValid()).toBe(
@@ -32,7 +140,7 @@ describe("Filter", () => {
       });
       it("should return false with a null operator", () => {
         expect(
-          filter([null, ["field", ORDERS.TOTAL.id, null], 42]).isValid(),
+          filter([null, ["field", ORDERS.TOTAL, null], 42]).isValid(),
         ).toBe(false);
       });
       it("should return true for a filter with an expression for the field", () => {
@@ -45,51 +153,52 @@ describe("Filter", () => {
   describe("operator", () => {
     it("should return the correct FilterOperator", () => {
       expect(
-        filter(["=", ["field", ORDERS.TOTAL.id, null], 42]).operator().name,
+        filter(["=", ["field", ORDERS.TOTAL, null], 42]).operator().name,
       ).toBe("=");
     });
   });
   describe("setDimension", () => {
     it("should set the dimension for existing filter clause", () => {
       expect(
-        filter(["=", ["field", ORDERS.SUBTOTAL.id, null], 42]).setDimension(
-          ["field", ORDERS.TOTAL.id, null],
+        filter(["=", ["field", ORDERS.SUBTOTAL, null], 42]).setDimension(
+          ["field", ORDERS.TOTAL, null],
           {
             useDefaultOperator: true,
           },
         ),
-      ).toEqual(["=", ["field", ORDERS.TOTAL.id, null], 42]);
+      ).toEqual(["=", ["field", ORDERS.TOTAL, null], 42]);
     });
     it("should set the dimension for new filter clause", () => {
-      expect(filter([]).setDimension(["field", ORDERS.TOTAL.id, null])).toEqual(
-        [null, ["field", ORDERS.TOTAL.id, null]],
-      );
+      expect(filter([]).setDimension(["field", ORDERS.TOTAL, null])).toEqual([
+        null,
+        ["field", ORDERS.TOTAL, null],
+      ]);
     });
     it("should set the dimension and default operator for empty filter clauses", () => {
       expect(
-        filter([]).setDimension(["field", ORDERS.TOTAL.id, null], {
+        filter([]).setDimension(["field", ORDERS.TOTAL, null], {
           useDefaultOperator: true,
         }),
-      ).toEqual(["=", ["field", ORDERS.TOTAL.id, null], undefined]);
+      ).toEqual(["=", ["field", ORDERS.TOTAL, null], undefined]);
     });
     it("should set the dimension correctly when changing from segment", () => {
       expect(
-        filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL.id, null]),
-      ).toEqual([null, ["field", ORDERS.TOTAL.id, null]]);
+        filter(["segment", 1]).setDimension(["field", ORDERS.TOTAL, null]),
+      ).toEqual([null, ["field", ORDERS.TOTAL, null]]);
     });
     it("should set joined-field for new filter clause", () => {
-      const q = ORDERS.query().join({
+      const q = ordersTable.query().join({
         alias: "foo",
-        "source-table": PEOPLE.id,
+        "source-table": PEOPLE_ID,
       });
       const f = new Filter([], 0, q);
       expect(
-        f.setDimension(["field", PEOPLE.EMAIL.id, { "join-alias": "foo" }], {
+        f.setDimension(["field", PEOPLE.EMAIL, { "join-alias": "foo" }], {
           useDefaultOperator: true,
         }),
       ).toEqual([
         "=",
-        ["field", PEOPLE.EMAIL.id, { "join-alias": "foo" }],
+        ["field", PEOPLE.EMAIL, { "join-alias": "foo" }],
         undefined,
       ]);
     });

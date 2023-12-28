@@ -1,4 +1,3 @@
-import React from "react";
 import { t } from "ttag";
 import { TimelineIcon } from "./QuestionTimelineWidget.styled";
 
@@ -35,4 +34,5 @@ QuestionTimelineWidget.shouldRender = ({
   return isTimeseries;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionTimelineWidget;

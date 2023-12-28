@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import { Component } from "react";
 import PropTypes from "prop-types";
 
 import cx from "classnames";
@@ -9,7 +9,7 @@ import * as FieldRef from "metabase-lib/queries/utils/field-ref";
 import FieldList from "./FieldList";
 import Clearable from "./Clearable";
 
-export default class FieldWidget extends React.Component {
+export default class FieldWidget extends Component {
   constructor(props, context) {
     super(props, context);
 

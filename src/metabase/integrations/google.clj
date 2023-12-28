@@ -3,9 +3,10 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
+   [metabase.config :as config]
    [metabase.integrations.google.interface :as google.i]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
@@ -13,11 +14,13 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
+(when config/ee-available?
+  (classloader/require 'metabase-enterprise.enhancements.integrations.google))
 
 (def ^:private non-existant-account-message
   (deferred-tru "You'll need an administrator to create a Metabase account before you can use Google to log in."))
@@ -25,6 +28,7 @@
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Sign-In.")
   :visibility :public
+  :audit      :getter
   :setter     (fn [client-id]
                 (if (seq client-id)
                   (let [trimmed-client-id (str/trim client-id)]
@@ -46,6 +50,7 @@
   (deferred-tru "Is Google Sign-in currently enabled?")
   :visibility :public
   :type       :boolean
+  :audit      :getter
   :getter     (fn []
                 (if-some [value (setting/get-value-of-type :boolean :google-auth-enabled)]
                   value
@@ -62,7 +67,7 @@
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
               (when (and domain (str/includes? domain ","))
-                ;; Multiple comma-separated domains is EE-only feature
+                ;; Multiple comma-separated domains requires the `:sso-google` premium feature flag
                 (throw (ex-info (tru "Invalid domain") {:status-code 400})))
               (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
 
@@ -102,7 +107,7 @@
               {:status-code 401
                :errors  {:_error non-existant-account-message}}))))
 
-(s/defn ^:private google-auth-create-new-user!
+(mu/defn ^:private google-auth-create-new-user!
   [{:keys [email] :as new-user} :- user/NewUser]
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
@@ -110,9 +115,9 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(s/defn ^:private google-auth-fetch-or-create-user! :- metabase.models.user.UserInstance
+(mu/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
   [first-name last-name email]
-  (or (db/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
+  (or (t2/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
       (google-auth-create-new-user! {:first_name first-name
                                      :last_name  last-name
                                      :email      email})))

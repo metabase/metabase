@@ -1,6 +1,4 @@
-import React from "react";
-
-import type Field from "metabase-lib/metadata/Field";
+import type { ConcreteFieldReference } from "metabase-types/api";
 import type Breakout from "metabase-lib/queries/structured/Breakout";
 import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -11,12 +9,12 @@ interface BreakoutPopoverProps {
   className?: string;
   query: StructuredQuery;
   breakout?: Breakout;
-  breakoutOptions: DimensionOptions;
+  breakoutOptions?: DimensionOptions;
   width?: number;
   maxHeight?: number;
   alwaysExpanded?: boolean;
-  onChangeBreakout: (breakout: Field) => void;
-  onClose: () => void;
+  onChangeBreakout: (breakout: ConcreteFieldReference) => void;
+  onClose?: () => void;
 }
 
 const BreakoutPopover = ({
@@ -30,35 +28,30 @@ const BreakoutPopover = ({
   alwaysExpanded,
   width = 400,
 }: BreakoutPopoverProps) => {
-  const table = query.table();
-  // FieldList requires table
-  if (!table) {
-    return null;
-  }
-
   const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
 
   return (
     <BreakoutFieldList
-      className={className}
-      width={width}
       field={breakout}
       query={query}
       metadata={query.metadata()}
       fieldOptions={fieldOptions}
-      onFieldChange={(field: Field) => {
+      onFieldChange={(field: ConcreteFieldReference) => {
         onChangeBreakout(field);
         if (onClose) {
           onClose();
         }
       }}
-      table={table}
-      enableSubDimensions
+      // forward AccordionList props
+      className={className}
       maxHeight={maxHeight}
+      width={width}
       alwaysExpanded={alwaysExpanded}
-      searchable={false}
+      // forward DimensionList props
+      enableSubDimensions
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BreakoutPopover;

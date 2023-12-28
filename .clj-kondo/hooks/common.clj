@@ -41,12 +41,14 @@
 ;;;; Common hook definitions
 
 (defn do*
-  "This is basically the same as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos."
-  [{{[_ & args] :children} :node}]
-  (let [node* (hooks/list-node
-               (list*
-                (hooks/token-node 'do)
-                args))]
+  "This is the same idea as [[clojure.core/do]] but doesn't cause Kondo to complain about redundant dos or unused values."
+  [{{[_ & args] :children, :as node} :node}]
+  (let [node* (-> (hooks/list-node
+                   (list*
+                    (with-meta (hooks/token-node 'do) {:clj-kondo/ignore [:redundant-do]})
+                    (for [arg args]
+                      (vary-meta arg update :clj-kondo/ignore #(conj (vec %) :unused-value)))))
+                  (with-meta (meta node)))]
     {:node node*}))
 
 (defn with-one-binding
@@ -139,6 +141,84 @@
                 body))]
     {:node node*}))
 
+(defn with-five-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-six-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e f]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil, f nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e f] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or f (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
+(defn with-seven-bindings
+  "Helper for macros that have a shape like
+
+    (my-macro [a b c d e f g]
+      ...)
+
+    =>
+
+    (let [a nil, b nil, c nil, d nil, e nil, f nil, g nil]
+      ...)
+
+  All bindings are optional and `_` will be substituted if not supplied."
+  [{{[_ {[a b c d e f g] :children} & body] :children} :node}]
+  (let [node* (hooks/list-node
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node
+                 [(or a (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or b (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or c (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or d (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or e (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or f (hooks/token-node '_)) (hooks/token-node 'nil)
+                  (or g (hooks/token-node '_)) (hooks/token-node 'nil)])
+                body))]
+    {:node node*}))
+
 (defn with-one-top-level-binding
   "Helper for macros that have a shape like
 
@@ -198,6 +278,36 @@
                 body))]
     {:node node*}))
 
+(defn- let-second-inner [body bindings]
+  (let [binding-infos (for [[model {[binding value] :children}] (partition 2 bindings)]
+                        {:model   model
+                         :binding binding
+                         :value   (or value
+                                      (hooks/token-node 'nil))})]
+    (-> (hooks/vector-node
+         [(hooks/vector-node (map :model binding-infos))
+          (-> (hooks/list-node (list* (hooks/token-node `let)
+                                    (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
+                                    body))
+              (with-meta (meta body)))])
+        (with-meta (meta body)))))
+
+(defn let-second
+  "Helper for macros that have a shape like
+
+    (my-macro x [y]
+    ...)
+
+    where the let is for second arg.
+
+    =>
+
+    (let [y nil]
+    ...)"
+  [{:keys [node]}]
+  (let [[_ first-arg-ref binding+opts & body] (:children node)]
+    {:node (let-second-inner body [first-arg-ref binding+opts])}))
+
 (defn let-with-optional-value-for-last-binding
   "This is exactly like [[clojure.core/let]] but the right-hand side of the *last* binding, `value`, is optional.
 
@@ -237,4 +347,25 @@
                (list*
                 (hooks/token-node 'do)
                 body))]
+    {:node node*}))
+
+(defn with-used-first-arg
+  "For macros like
+
+    (with-drivers (filter pred? some-drivers)
+      ...)
+
+    =>
+
+    (let [_1234 (filter pred? some-drivers)]
+      ...)
+
+  where the first arg should be linted and appear to be used."
+  [{{[_ arg & body] :children} :node}]
+  (let [node* (hooks/list-node
+                (list*
+                  (hooks/token-node 'let)
+                  (hooks/vector-node [(hooks/token-node (gensym "_"))
+                                      arg])
+                  body))]
     {:node node*}))

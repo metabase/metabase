@@ -1,8 +1,7 @@
-import React from "react";
-import { CollectionId, User } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
+import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import NewItemButton from "../NewItemButton";
-import ProfileLink from "../ProfileLink";
-import SearchBar from "../SearchBar";
+import { ProfileLink } from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import AppBarLogo from "./AppBarLogo";
@@ -15,10 +14,10 @@ import {
 } from "./AppBarLarge.styled";
 
 export interface AppBarLargeProps {
-  currentUser: User;
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
@@ -29,10 +28,10 @@ export interface AppBarLargeProps {
 }
 
 const AppBarLarge = ({
-  currentUser,
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
+  isLogoVisible,
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
@@ -45,8 +44,12 @@ const AppBarLarge = ({
 
   return (
     <AppBarRoot isNavBarOpen={isNavBarVisible}>
-      <AppBarLeftContainer isNavBarEnabled={isNavBarEnabled}>
+      <AppBarLeftContainer
+        isNavBarEnabled={isNavBarEnabled}
+        isLogoVisible={isLogoVisible}
+      >
         <AppBarLogo
+          isLogoVisible={isLogoVisible}
           isNavBarOpen={isNavBarVisible}
           isNavBarEnabled={isNavBarEnabled}
           onToggleClick={onToggleNavbar}
@@ -67,7 +70,7 @@ const AppBarLarge = ({
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {isProfileLinkVisible && (
             <AppBarProfileLinkContainer>
-              <ProfileLink user={currentUser} onLogout={onLogout} />
+              <ProfileLink onLogout={onLogout} />
             </AppBarProfileLinkContainer>
           )}
         </AppBarRightContainer>
@@ -76,4 +79,5 @@ const AppBarLarge = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarLarge;

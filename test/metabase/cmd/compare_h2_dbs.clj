@@ -3,10 +3,13 @@
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db.jdbc-protocols]
-   [metabase.util :as u]))
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (comment metabase.db.jdbc-protocols/keep-me)
 
@@ -15,7 +18,6 @@
    :subprotocol       "h2"
    :subname           (str "file:" db-file)
    "IFEXISTS"         "TRUE"
-   "ACCESS_MODE_DATA" "r"
    ;; close DB right away when done
    "DB_CLOSE_DELAY"   "0"})
 
@@ -41,11 +43,16 @@
 (defn- table-names
   "Return a sorted collection of all non-system table names."
   [spec]
-  (jdbc/with-db-metadata [metadata spec]
-    (let [result (jdbc/metadata-result
-                  (.getTables metadata nil "PUBLIC" nil
-                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))]
-      (sort (remove ignored-table-names (map :table_name result))))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   :h2
+   spec
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [metadata (.getMetaData conn)
+           result (jdbc/metadata-result
+                   (.getTables metadata nil "PUBLIC" nil
+                               (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))]
+       (sort (remove ignored-table-names (map :table_name result)))))))
 
 (defmulti ^:private normalize-value
   class)
@@ -59,7 +66,7 @@
 
 (defn- normalize-values [row]
   (into {} (for [[k v] row
-                 :when (not (ignored-keys (keyword (str/lower-case (name k)))))]
+                 :when (not (ignored-keys (keyword (u/lower-case-en (name k)))))]
              [k (normalize-value v)])))
 
 (defn- sort-rows [rows]
@@ -112,7 +119,19 @@
 (defn different-contents?
   "Diff contents of 2 DBs. Returns truthy if there is a difference, falsey if not."
   [db-file-1 db-file-2]
-  (jdbc/with-db-connection [conn-1 (jdbc-spec db-file-1)]
-    (jdbc/with-db-connection [conn-2 (jdbc-spec db-file-2)]
-      (or (different-table-names? conn-1 conn-2)
-          (different-rows? conn-1 conn-2)))))
+  (let [spec-1 (jdbc-spec db-file-1)
+        spec-2 (jdbc-spec db-file-2)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver/*driver*
+     spec-1
+     nil
+     (fn [db-1-connection]
+       (let [spec-1 {:connection db-1-connection}]
+         (sql-jdbc.execute/do-with-connection-with-options
+          driver/*driver*
+          spec-2
+          nil
+          (fn [db-2-connection]
+            (let [spec-2 {:connection db-2-connection}]
+              (or (different-table-names? spec-1 spec-2)
+                  (different-rows? spec-1 spec-2))))))))))

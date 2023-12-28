@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import Input from "./Input";
 

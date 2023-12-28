@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import DatabaseHelpCard from "metabase/databases/containers/DatabaseHelpCard";
+import { DatabaseHelpCard } from "metabase/databases/components/DatabaseHelpCard";
 import {
   breakpointMinSmall,
   breakpointMinMedium,

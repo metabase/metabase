@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -9,8 +9,8 @@ import { CardApi } from "metabase/services";
 
 import Databases from "metabase/entities/databases";
 
-import Database from "metabase-lib/metadata/Database";
-import Question from "metabase-lib/Question";
+import type Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/Question";
 
 import { SpinnerContainer } from "./ModelCacheControl.styled";
 
@@ -84,4 +84,5 @@ function ModelCacheControl({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelCacheControl;

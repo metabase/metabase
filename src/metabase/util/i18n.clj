@@ -3,15 +3,17 @@
   (:require
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
    (java.text MessageFormat)
    (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (p/import-vars
  [i18n.impl
@@ -215,7 +217,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (deferred-trun \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   (validate-n format-string format-string-pl)
   `(UserLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
@@ -225,7 +229,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (trun \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   `(str* (deferred-trun ~format-string ~format-string-pl ~n)))
 
@@ -234,7 +240,9 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (deferred-trsn \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   (validate-n format-string format-string-pl)
   `(SiteLocalizedString. ~format-string ~[n] ~{:n n :format-string-pl format-string-pl}))
@@ -244,12 +252,12 @@
 
   The first argument should be the singular form; the second argument should be the plural form, and the third argument
   should be `n`. `n` can be interpolated into the translated string using the `{0}` placeholder syntax, but no
-  additional placeholders are supported."
+  additional placeholders are supported.
+
+    (trsn \"{0} table\" \"{0} tables\" n)"
   [format-string format-string-pl n]
   `(str* (deferred-trsn ~format-string ~format-string-pl ~n)))
 
-;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
-;; `str` by default
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]

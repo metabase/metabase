@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.api.subscription-test
+(ns ^:mb/once metabase-enterprise.advanced-permissions.api.subscription-test
   "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   (:require
    [clojure.test :refer :all]
@@ -12,7 +12,8 @@
    [metabase.pulse-test :as pulse-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
@@ -27,12 +28,10 @@
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
     (with-subscription-disabled-for-all-users
-      (mt/with-user-in-groups
-        [group {:name "New Group"}
-         user  [group]]
-        (mt/with-temp*
-          [Card  [card]
-           Pulse [pulse]]
+      (mt/with-user-in-groups [group {:name "New Group"}
+                               user  [group]]
+        (mt/with-temp [Card  card {}
+                       Pulse pulse {:creator_id (u/the-id user)}]
           (let [pulse-default {:name     "A Pulse"
                                :cards    [{:id          (:id card)
                                            :include_csv true
@@ -80,12 +79,11 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp* [Card [{card-id :id}]]
+        (mt/with-temp [Card {card-id :id} {}]
           (letfn [(add-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card
-                      [the-pulse
-                       {:card    card-id
-                        :channel :email}]
+                    (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
+                                                                :pulse   {:creator_id (u/the-id user)}
+                                                                :channel :email}]
                       (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
                             channel     (api.alert/email-channel the-pulse)
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
@@ -94,15 +92,14 @@
                           (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
                   (remove-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card
-                      [the-pulse
-                       {:card    card-id
-                        :channel :email}]
+                    (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
+                                                                :pulse   {:creator_id (u/the-id user)}
+                                                                :channel :email}]
                       ;; manually add another user as recipient
-                      (mt/with-temp PulseChannelRecipient [_ {:user_id (:id user)
-                                                              :pulse_channel_id
-                                                              (db/select-one-id
-                                                               PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
+                      (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
+                                                                        :pulse_channel_id
+                                                                        (t2/select-one-pk
+                                                                         PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
                         (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
                               channel     (api.alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
@@ -139,9 +136,9 @@
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp*
-          [Card       [card {:creator_id (:id user)}]
-           Collection [_collection]]
+        (mt/with-temp
+          [Card       card        {:creator_id (u/the-id user)}
+           Collection _collection {}]
           (let [alert-default {:card             {:id                (:id card)
                                                   :include_csv       true
                                                   :include_xls       false
@@ -153,58 +150,59 @@
                                                    :schedule_type "daily"
                                                    :schedule_hour 12
                                                    :recipients    []}]}
-                create-alert (fn [status]
-                               (testing "create alert"
-                                 (mt/user-http-request user :post status "alert"
-                                                       alert-default)))
+                create-alert! (fn [status]
+                                (testing "create alert"
+                                  (mt/user-http-request user :post status "alert"
+                                                        alert-default)))
                 user-alert   (premium-features-test/with-premium-features #{:advanced-permissions}
                                (perms/grant-application-permissions! group :subscription)
-                               (u/prog1 (create-alert 200)
-                                        (perms/revoke-application-permissions! group :subscription)))
-                update-alert (fn [status]
-                               (testing "update alert"
-                                 (mt/user-http-request user :put status (format "alert/%d" (:id user-alert))
-                                                       (dissoc (merge alert-default {:alert_condition "goal"})
-                                                               :channels))))]
+                               (u/prog1 (create-alert! 200)
+                                 (perms/revoke-application-permissions! group :subscription)))
+                update-alert! (fn [status]
+                                (testing "update alert"
+                                  (mt/user-http-request user :put status (format "alert/%d" (:id user-alert))
+                                                        (dissoc (merge alert-default {:alert_condition "goal"})
+                                                                :channels))))]
             (testing "user's group has no subscription permissions"
               (perms/revoke-application-permissions! group :subscription)
               (testing "should succeed if `advanced-permissions` is disabled"
                 (premium-features-test/with-premium-features #{}
-                  (create-alert 200)
-                  (update-alert 200)))
+                  (create-alert! 200)
+                  (update-alert! 200)))
 
               (testing "should fail if `advanced-permissions` is enabled"
                 (premium-features-test/with-premium-features #{:advanced-permissions}
-                  (create-alert 403)
-                  (update-alert 403))))
+                  (create-alert! 403)
+                  (update-alert! 403))))
 
             (testing "User's group with subscription permission"
               (perms/grant-application-permissions! group :subscription)
               (premium-features-test/with-premium-features #{:advanced-permissions}
                 (testing "should succeed if `advanced-permissions` is enabled"
-                  (create-alert 200)
-                  (update-alert 200)))))))))
+                  (create-alert! 200)
+                  (update-alert! 200))))))))))
 
+(deftest update-alert-permissions-test
   (testing "PUT /api/alert/:id"
     (with-subscription-disabled-for-all-users
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
-        (mt/with-temp Card [_]
+        (t2.with-temp/with-temp [Card _]
           (letfn [(add-alert-recipient [req-user status]
-                    (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
-                                    PulseCard             [_     (alert-test/pulse-card alert card)]
-                                    PulseChannel          [pc    (alert-test/pulse-channel alert)]]
+                    (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
+                                   Card                  card  {}
+                                   PulseCard             _     (alert-test/pulse-card alert card)
+                                   PulseChannel          pc    (alert-test/pulse-channel alert)]
                       (testing (format "- add alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (alert-test/default-alert-req card pc)))))
 
                   (archive-alert-recipient [req-user status]
-                    (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
-                                    PulseCard             [_     (alert-test/pulse-card alert card)]
-                                    PulseChannel          [pc    (alert-test/pulse-channel alert)]]
+                    (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
+                                   Card                  card  {}
+                                   PulseCard             _     (alert-test/pulse-card alert card)
+                                   PulseChannel          pc    (alert-test/pulse-channel alert)]
                       (testing (format "- archive alert with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (-> (alert-test/default-alert-req card pc)
@@ -212,11 +210,11 @@
                                                   (assoc-in [:channels 0 :recipients] []))))))
 
                   (remove-alert-recipient [req-user status]
-                    (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
-                                    Card                  [card]
-                                    PulseCard             [_     (alert-test/pulse-card alert card)]
-                                    PulseChannel          [pc    (alert-test/pulse-channel alert)]
-                                    PulseChannelRecipient [_     (alert-test/recipient pc :rasta)]]
+                    (mt/with-temp [Pulse                 alert (alert-test/basic-alert)
+                                   Card                  card  {}
+                                   PulseCard             _     (alert-test/pulse-card alert card)
+                                   PulseChannel          pc    (alert-test/pulse-channel alert)
+                                   PulseChannelRecipient _     (alert-test/recipient pc :rasta)]
                       (testing (format "- remove alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (assoc-in (alert-test/default-alert-req card pc) [:channels 0 :recipients] [])))))]
