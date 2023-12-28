@@ -30,6 +30,7 @@ import {
   DASHCARD_HEADER_HEIGHT,
   ICON_MARGIN_RIGHT,
   ICON_SIZE,
+  MAX_COMPARISONS,
   SPACING,
   TOOLTIP_ICON_SIZE,
 } from "./constants";
@@ -301,6 +302,7 @@ Object.assign(SmartScalar, {
       getProps: (series, vizSettings) => {
         const cols = series[0].data.cols;
         return {
+          maxComparisons: MAX_COMPARISONS,
           comparableColumns: getColumnsForComparison(cols, vizSettings),
           options: getComparisonOptions(series, vizSettings),
         };

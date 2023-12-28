@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Menu, Stack, Text } from "metabase/ui";
@@ -19,16 +20,24 @@ type SmartScalarComparisonWidgetProps = {
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];
   value: SmartScalarComparison[];
+  maxComparisons: number;
 };
 
 type Tab = "anotherColumn" | "staticNumber" | null;
 
 export function SmartScalarComparisonWidget({
   value,
+  maxComparisons,
   onChange,
   ...props
 }: SmartScalarComparisonWidgetProps) {
-  const handleChange = useCallback(
+  const canAddComparison = value.length < maxComparisons;
+
+  const handleAddComparison = useCallback(() => {
+    onChange([...value, { type: COMPARISON_TYPES.PREVIOUS_PERIOD }]);
+  }, [value, onChange]);
+
+  const handleChangeComparison = useCallback(
     (index: number, comparison: SmartScalarComparison) => {
       const nextValue = value.map((item, i) =>
         i === index ? comparison : item,
@@ -39,16 +48,25 @@ export function SmartScalarComparisonWidget({
   );
 
   return (
-    <div>
+    <Stack>
       {value.map((comparison, index) => (
         <ComparisonPicker
           {...props}
           key={index}
           value={comparison}
-          onChange={nextComparison => handleChange(index, nextComparison)}
+          onChange={nextComparison =>
+            handleChangeComparison(index, nextComparison)
+          }
         />
       ))}
-    </div>
+      <Button
+        variant="subtle"
+        disabled={!canAddComparison}
+        onClick={handleAddComparison}
+        p="0"
+        style={{ alignSelf: "flex-start" }}
+      >{t`Add comparison`}</Button>
+    </Stack>
   );
 }
 
