@@ -293,6 +293,90 @@ describe("SmartScalar > utils", () => {
         },
       );
 
+      describe("'another column' comparison", () => {
+        const anotherColumn = createMockColumn(
+          NumberColumn({ name: "Average" }),
+        );
+        const multiSeries = series({
+          cols: [...cols, anotherColumn],
+          rows: [
+            ["2019-10-01", 100, 110],
+            ["2019-11-01", 300, 250],
+          ],
+          insights: [],
+        });
+
+        it("should return true when valid", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              label: "Avg",
+              column: "Average",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(true);
+        });
+
+        it("should return false when column is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              label: "Count",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
+
+        it("should return false when label is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              column: "Count",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
+
+        it("should return false when comparison column is the same as primary number", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              column: FIELD_NAME,
+              label: "Count",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
+      });
+
       describe("static number comparison", () => {
         it("should return true when valid", () => {
           const settings = {

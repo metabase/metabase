@@ -208,7 +208,6 @@ export function isComparisonValid(
     },
   ] = series;
 
-  // TODO test
   if (comparisonType === COMPARISON_TYPES.ANOTHER_COLUMN) {
     return (
       !isEmpty(comparison?.column) &&
