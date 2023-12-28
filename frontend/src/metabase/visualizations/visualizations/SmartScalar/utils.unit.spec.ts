@@ -2,6 +2,7 @@ import * as measureText from "metabase/lib/measure-text";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 import type {
+  DatasetColumn,
   Insight,
   RelativeDatetimeUnit,
   RowValues,
@@ -47,12 +48,16 @@ describe("SmartScalar > utils", () => {
       createMockColumn(NumberColumn({ name: "Count" })),
     ];
     const series = ({
+      cols: colsArg = cols,
       rows,
       insights,
     }: {
+      cols?: DatasetColumn[];
       rows: RowValues[];
       insights: Insight[] | undefined;
-    }) => [createMockSingleSeries({}, { data: { cols, rows, insights } })];
+    }) => [
+      createMockSingleSeries({}, { data: { cols: colsArg, rows, insights } }),
+    ];
 
     describe("getDefaultComparison", () => {
       const settings = {
@@ -135,7 +140,47 @@ describe("SmartScalar > utils", () => {
         ]);
       });
 
-      it("should return all options if dateUnit is supplied and dataset ranges more than 1 period in the past", () => {
+      it("should return 'another column' if there is at least one more numeric column", () => {
+        const anotherColumn = createMockColumn(
+          NumberColumn({ name: "Average" }),
+        );
+        const rows = [
+          ["2019-10-01", 100, 110],
+          ["2019-11-01", 300, 250],
+        ];
+        const comparisonOptions = getComparisonOptions(
+          series({
+            cols: [...cols, anotherColumn],
+            rows,
+            insights: [],
+          }),
+          settings,
+        );
+
+        expect(comparisonOptions).toEqual([
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.ANOTHER_COLUMN,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
+        ]);
+      });
+
+      it("should not return 'another column' if there are no other numeric columns", () => {
+        const rows = [
+          ["2019-10-01", 100],
+          ["2019-11-01", 300],
+        ];
+        const comparisonOptions = getComparisonOptions(
+          series({ rows, insights: [] }),
+          settings,
+        );
+
+        expect(comparisonOptions).toEqual([
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
+        ]);
+      });
+
+      it("should return sensible options if dateUnit is supplied and dataset ranges more than 1 period in the past", () => {
         const rows = [
           ["2019-08-01", 80],
           ["2019-09-01", 80],
