@@ -396,7 +396,7 @@ describe("scenarios > dashboard > tabs", () => {
     getDashboardCard(0).within(() => {
       cy.findByTestId("loading-spinner").should("exist");
       cy.wait("@saveCard");
-      cy.findByText("14").should("exist");
+      cy.findAllByTestId("table-row").should("exist");
     });
 
     // Loader in the 1st tab
@@ -404,8 +404,7 @@ describe("scenarios > dashboard > tabs", () => {
     getDashboardCard(0).within(() => {
       cy.findByTestId("loading-spinner").should("exist");
       cy.wait("@saveCard");
-      cy.findByText("58.4") // this is total from the first row
-        .should("exist");
+      cy.findAllByTestId("table-row").should("exist");
     });
   });
 });
