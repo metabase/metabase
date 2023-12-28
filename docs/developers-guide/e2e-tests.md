@@ -13,7 +13,7 @@ Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, 
 ### Standard Development Flow
 1. Run `yarn build-hot` to continuously build the frontend
 
-2. then `yarn test-cypress-open --browser=electron` to open the Cypress application where you can execute tests you are working on
+2. then `yarn test-cypress-open --browser electron` to open the Cypress application where you can execute tests you are working on
 
 
 ### Running Options
