@@ -72,9 +72,10 @@ Try to avoid repeatedly testing pieces of the application incidentally. For exam
 ### `contains` vs `find` vs `get`
 
 Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
-* `contains` is case-sensitive to the text *in the DOM*. If it’s not matching text you’d expect, check that CSS hasn’t updated the case.
-* `contains` matches substrings, so if you see “filter by” and “Add a filter”, `contains(“filter”)` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or pass a selector in addition to the string: `.contains(selector, content)`.
-* `find` will let you search within your previous selection. `get` will search the entire page even if chained.
+- [`contains`](https://docs.cypress.io/api/commands/contains) is (by default) case-sensitive to the text *in the DOM*. If it’s not matching text you’d expect, check that CSS hasn’t updated the case. You can explicitly tell it to ignore the case with the following option `{ matchCase: false }`.
+    - `contains` matches substrings. Given two strings “filter by” and “Add a filter”, `cy.contains(“filter”);` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or scope a string to a specific selector: `cy.contains(selector, content);`.
+- [`find`](https://docs.cypress.io/api/commands/find) will let you search within your previous selection.
+- [`get`](https://docs.cypress.io/api/commands/get) will search the entire page even if chained, unless you explicitly tweak the `withinSubject` option.
 
 ### Increase viewport size to avoid scrolling
 Sometimes Metabase views are a bit large for Cypress’ default 1280x800 viewport. This can require you to scroll for tests to work. For example, virtualized tables will not even render the contents outside of the viewport. To avoid these problems, increase the viewport size for a specific test. Unless you're specifically testing how the application behaves on a window resize, please avoid using the `cy.viewport(width, height);` in the middle of the test. Set the viewport width/height using the optional Cypress test config instead. This config works with both `describe` and `it` blocks.
