@@ -92,7 +92,7 @@ When you edit a Cypress test file, the tests will refresh and run again. However
 One great feature of Cypress is that you can use the Chrome inspector after each step of a test. They also helpfully provide a helper that can test out `contains` and `get` calls. This helper creates new UI that prevents inspecting from targeting the correct elements. If you want to inspect the DOM in Chrome, you should close this helper.
 
 ### Putting the wrong HTML template in the Uberjar
-`yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct Javascript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your Javascript reflected even if you then start `yarn build-hot`.
+`yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct JavaScript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your JavaScript reflected even if you then start `yarn build-hot`.
 
 ### Running Cypress on M1 machines
 
