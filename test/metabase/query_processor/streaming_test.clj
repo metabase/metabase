@@ -158,89 +158,90 @@
 ;; TODO this test doesn't seem to run?
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
-    (mt/test-driver :postgres
-      (let [query     (mt/dataset attempted-murders
-                        (mt/mbql-query attempts
-                          {:fields   [$date $datetime $datetime_ltz $datetime_tz $datetime_tz_id $time $time_ltz $time_tz]
-                           :order-by [[:asc $id]]
-                           :limit    1}))
-            col-names [:date :datetime :datetime-ltz :datetime-tz :datetime-tz-id :time :time-ltz :time-tz]]
-        (doseq [export-format (qp.streaming/export-formats)]
-          (letfn [(test-results [expected]
-                    (testing (u/colorize :yellow export-format)
-                      (is (= expected
-                             (as-> (streaming.test-util/process-query-api-response-streaming export-format query col-names) results
-                               (first-row-map export-format results col-names))))))]
-            (testing "UTC results"
-              (test-results
-               (case export-format
-                 (:csv :json)
-                 ;; With the updates to make exports conform with FE behavior (See #36726) dates and times are now
-                 ;; presented as they are in the FE. This is the eventual design for all exports.
-                 {:date           "November 1, 2019"
-                  :datetime       "November 1, 2019, 12:23 AM"
-                  :datetime-ltz   "November 1, 2019, 7:23 AM"
-                  :datetime-tz    "November 1, 2019, 7:23 AM"
-                  :datetime-tz-id "November 1, 2019, 7:23 AM"
-                  :time           "12:23 AM"
-                  :time-ltz       "7:23 AM"
-                  :time-tz        "7:23 AM"}
+    (mt/with-test-helpers-set-global-values!
+      (mt/test-driver :postgres
+        (let [query     (mt/dataset attempted-murders
+                          (mt/mbql-query attempts
+                                         {:fields   [$date $datetime $datetime_ltz $datetime_tz $datetime_tz_id $time $time_ltz $time_tz]
+                                          :order-by [[:asc $id]]
+                                          :limit    1}))
+              col-names [:date :datetime :datetime-ltz :datetime-tz :datetime-tz-id :time :time-ltz :time-tz]]
+          (doseq [export-format (qp.streaming/export-formats)]
+            (letfn [(test-results [expected]
+                      (testing (u/colorize :yellow export-format)
+                        (is (= expected
+                               (as-> (streaming.test-util/process-query-api-response-streaming export-format query col-names) results
+                                 (first-row-map export-format results col-names))))))]
+              (testing "UTC results"
+                (test-results
+                 (case export-format
+                   (:csv :json)
+                   ;; With the updates to make exports conform with FE behavior (See #36726) dates and times are now
+                   ;; presented as they are in the FE. This is the eventual design for all exports.
+                   {:date           "November 1, 2019"
+                    :datetime       "November 1, 2019, 12:23 AM"
+                    :datetime-ltz   "November 1, 2019, 7:23 AM"
+                    :datetime-tz    "November 1, 2019, 7:23 AM"
+                    :datetime-tz-id "November 1, 2019, 7:23 AM"
+                    :time           "12:23 AM"
+                    :time-ltz       "7:23 AM"
+                    :time-tz        "7:23 AM"}
 
-                 :api
-                 {:date           "2019-11-01T00:00:00Z"
-                  :datetime       "2019-11-01T00:23:18.331Z"
-                  :datetime-ltz   "2019-11-01T07:23:18.331Z"
-                  :datetime-tz    "2019-11-01T07:23:18.331Z"
-                  :datetime-tz-id "2019-11-01T07:23:18.331Z"
-                  :time           "00:23:18.331Z"
-                  :time-ltz       "07:23:18.331Z"
-                  :time-tz        "07:23:18.331Z"}
+                   :api
+                   {:date           "2019-11-01T00:00:00Z"
+                    :datetime       "2019-11-01T00:23:18.331Z"
+                    :datetime-ltz   "2019-11-01T07:23:18.331Z"
+                    :datetime-tz    "2019-11-01T07:23:18.331Z"
+                    :datetime-tz-id "2019-11-01T07:23:18.331Z"
+                    :time           "00:23:18.331Z"
+                    :time-ltz       "07:23:18.331Z"
+                    :time-tz        "07:23:18.331Z"}
 
-                 :xlsx
-                 {:date           #inst "2019-11-01T00:00:00.000-00:00"
-                  :datetime       #inst "2019-11-01T00:23:18.331-00:00"
-                  :datetime-ltz   #inst "2019-11-01T07:23:18.331-00:00"
-                  :datetime-tz    #inst "2019-11-01T07:23:18.331-00:00"
-                  :datetime-tz-id #inst "2019-11-01T07:23:18.331-00:00"
-                  ;; Excel actually displays these without the date info (which is zero), but since Docjure returns
-                  ;; java.util.Dates by default when parsing an XLSX doc, they have the date info here.
-                  :time           #inst "1899-12-31T00:23:18.000-00:00"
-                  :time-ltz       #inst "1899-12-31T07:23:18.000-00:00"
-                  :time-tz        #inst "1899-12-31T07:23:18.000-00:00"})))
-            (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-              (test-results
-               (case export-format
-                 (:csv :json)
-                 ;; With the updates to make exports conform with FE behavior (See #36726) dates and times are now
-                 ;; presented as they are in the FE. This is the eventual design for all exports.
-                 {:date           "November 1, 2019"
-                  :datetime       "November 1, 2019, 12:23 AM"
-                  :datetime-ltz   "November 1, 2019, 12:23 AM"
-                  :datetime-tz    "November 1, 2019, 12:23 AM"
-                  :datetime-tz-id "November 1, 2019, 12:23 AM"
-                  :time           "12:23 AM"
-                  :time-ltz       "11:23 PM"
-                  :time-tz        "11:23 PM"}
+                   :xlsx
+                   {:date           #inst "2019-11-01T00:00:00.000-00:00"
+                    :datetime       #inst "2019-11-01T00:23:18.331-00:00"
+                    :datetime-ltz   #inst "2019-11-01T07:23:18.331-00:00"
+                    :datetime-tz    #inst "2019-11-01T07:23:18.331-00:00"
+                    :datetime-tz-id #inst "2019-11-01T07:23:18.331-00:00"
+                    ;; Excel actually displays these without the date info (which is zero), but since Docjure returns
+                    ;; java.util.Dates by default when parsing an XLSX doc, they have the date info here.
+                    :time           #inst "1899-12-31T00:23:18.000-00:00"
+                    :time-ltz       #inst "1899-12-31T07:23:18.000-00:00"
+                    :time-tz        #inst "1899-12-31T07:23:18.000-00:00"})))
+              (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                (test-results
+                 (case export-format
+                   (:csv :json)
+                   ;; With the updates to make exports conform with FE behavior (See #36726) dates and times are now
+                   ;; presented as they are in the FE. This is the eventual design for all exports.
+                   {:date           "November 1, 2019"
+                    :datetime       "November 1, 2019, 12:23 AM"
+                    :datetime-ltz   "November 1, 2019, 12:23 AM"
+                    :datetime-tz    "November 1, 2019, 12:23 AM"
+                    :datetime-tz-id "November 1, 2019, 12:23 AM"
+                    :time           "12:23 AM"
+                    :time-ltz       "11:23 PM"
+                    :time-tz        "11:23 PM"}
 
-                 :api
-                 {:date           "2019-11-01T00:00:00-07:00"
-                  :datetime       "2019-11-01T00:23:18.331-07:00"
-                  :datetime-ltz   "2019-11-01T00:23:18.331-07:00"
-                  :datetime-tz    "2019-11-01T00:23:18.331-07:00"
-                  :datetime-tz-id "2019-11-01T00:23:18.331-07:00"
-                  :time           "00:23:18.331-08:00"
-                  :time-ltz       "23:23:18.331-08:00"
-                  :time-tz        "23:23:18.331-08:00"}
+                   :api
+                   {:date           "2019-11-01T00:00:00-07:00"
+                    :datetime       "2019-11-01T00:23:18.331-07:00"
+                    :datetime-ltz   "2019-11-01T00:23:18.331-07:00"
+                    :datetime-tz    "2019-11-01T00:23:18.331-07:00"
+                    :datetime-tz-id "2019-11-01T00:23:18.331-07:00"
+                    :time           "00:23:18.331-08:00"
+                    :time-ltz       "23:23:18.331-08:00"
+                    :time-tz        "23:23:18.331-08:00"}
 
-                 :xlsx
-                 {:date           #inst "2019-11-01T00:00:00.000-00:00"
-                  :datetime       #inst "2019-11-01T00:23:18.331-00:00"
-                  :datetime-ltz   #inst "2019-11-01T00:23:18.331-00:00"
-                  :datetime-tz    #inst "2019-11-01T00:23:18.331-00:00"
-                  :datetime-tz-id #inst "2019-11-01T00:23:18.331-00:00"
-                  :time           #inst "1899-12-31T00:23:18.000-00:00"
-                  :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
-                  :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
+                   :xlsx
+                   {:date           #inst "2019-11-01T00:00:00.000-00:00"
+                    :datetime       #inst "2019-11-01T00:23:18.331-00:00"
+                    :datetime-ltz   #inst "2019-11-01T00:23:18.331-00:00"
+                    :datetime-tz    #inst "2019-11-01T00:23:18.331-00:00"
+                    :datetime-tz-id #inst "2019-11-01T00:23:18.331-00:00"
+                    :time           #inst "1899-12-31T00:23:18.000-00:00"
+                    :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
+                    :time-tz        #inst "1899-12-31T23:23:18.000-00:00"}))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
