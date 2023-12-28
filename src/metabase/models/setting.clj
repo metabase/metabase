@@ -446,11 +446,11 @@
   set to true when settings are being written directly via /api/setting endpoints."
   false)
 
-(defn- has-feature?
+(defn- *has-feature?*
   [feature]
   (u/ignore-exceptions
    (classloader/require 'metabase.public-settings.premium-features))
-  (let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
+  (let [has-feature?' (resolve 'metabase.public-settings.premium-features/*has-feature?*)]
     (has-feature?' feature)))
 
 (defn has-advanced-setting-access?
@@ -463,7 +463,7 @@
           (classloader/require 'metabase-enterprise.advanced-permissions.common
                                'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permissions?
-                 (and (has-feature? :advanced-permissions)
+                 (and (*has-feature?* :advanced-permissions)
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
           (current-user-has-application-permissions? :setting)
           false))))
@@ -693,7 +693,7 @@
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
         disable-cache?                                   (or *disable-cache* (not cache?))]
-    (if (or (and feature (not (has-feature? feature)))
+    (if (or (and feature (not (*has-feature?* feature)))
             (and enabled? (not (enabled?))))
       default
       (binding [*disable-cache* disable-cache?]
@@ -922,7 +922,7 @@
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
         name                                                 (setting-name setting)]
-    (when (and feature (not (has-feature? feature)))
+    (when (and feature (not (*has-feature?* feature)))
       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
     (when (and enabled? (not (enabled?)))
       (throw (ex-info (tru "Setting {0} is not enabled" name) setting)))

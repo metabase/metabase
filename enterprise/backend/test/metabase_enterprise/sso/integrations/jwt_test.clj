@@ -22,24 +22,19 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
-(defn- disable-other-sso-types [thunk]
-  (mt/with-temporary-setting-values [ldap-enabled false
-                                     saml-enabled false]
-    (thunk)))
-
-(use-fixtures :each disable-other-sso-types)
-
 (def ^:private default-idp-uri      "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri "/")
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (defmacro with-sso-jwt-token!
   "Stubs the `premium-features/*token-features*` function to simulate a premium token with the `:sso-jwt` feature.
-   This needs to be included to test any of the JWT features."
+  This needs to be included to test any of the JWT features."
   [& body]
   `(mt/with-test-helpers-set-global-values!
-     (premium-features-test/with-additional-premium-features #{:sso-jwt}
-       ~@body)))
+     (mt/with-temporary-setting-values [ldap-enabled false
+                                        saml-enabled false]
+       (premium-features-test/with-additional-premium-features #{:sso-jwt}
+         ~@body))))
 
 (defn- call-with-default-jwt-config [f]
   (let [current-features (premium-features/*token-features*)]
@@ -59,14 +54,12 @@
 (defmacro ^:private with-jwt-default-setup [& body]
   `(mt/with-test-helpers-set-global-values!
      (premium-features-test/with-premium-features #{:audit-app}
-       (disable-other-sso-types
-        (fn []
-          (with-sso-jwt-token!
-            (saml-test/call-with-login-attributes-cleared!
-             (fn []
-               (call-with-default-jwt-config
-                (fn []
-                  ~@body))))))))))
+       (with-sso-jwt-token!
+         (saml-test/call-with-login-attributes-cleared!
+           (fn []
+             (call-with-default-jwt-config
+              (fn []
+                ~@body))))))))
 
 (deftest sso-prereqs-test
   (with-sso-jwt-token!

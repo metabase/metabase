@@ -1166,14 +1166,16 @@
 (deftest ^:parallel double-settings-allow-ints-test
   (mt/with-temporary-setting-values [test-double-setting 0]
     ;; not using `zero?` on purpose here because we don't want to count `0.0`
-    (is (= 0
+    (is (= 0.0
            (setting/get-value-of-type :double :test-double-setting)))))
 
 (deftest ^:parallel fall-back-to-default-for-invalid-values-test
-  (mt/with-temporary-setting-values [test-double-setting :wow]
+  (mt/with-temp [:model/Setting _ {:key "test-double-setting"
+                                   :value "wow"}]
     (is (= 60.0
            (setting/get-value-of-type :double :test-double-setting))))
-  (mt/with-temporary-setting-values [test-double-setting "60.x"]
+  (mt/with-temp [:model/Setting _ {:key "test-double-setting"
+                                   :value "60.x"}]
     (is (= 60.0
            (setting/get-value-of-type :double :test-double-setting)))))
 

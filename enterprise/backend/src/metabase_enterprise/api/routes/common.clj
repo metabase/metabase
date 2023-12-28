@@ -36,6 +36,6 @@
   do this if there's absolutely no other way (which is probably not the case)."
   [feature handler]
   (fn [request respond raise]
-    (if-not (premium-features/has-feature? feature)
+    (if-not (premium-features/*has-feature?* feature)
       (respond nil)
       (handler request respond raise))))

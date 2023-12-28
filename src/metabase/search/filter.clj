@@ -126,7 +126,7 @@
 (defmethod build-optional-filter-query [:verified "card"]
   [_filter model query verified]
   (assert (true? verified) "filter for non-verified cards is not supported")
-  (if (premium-features/has-feature? :content-verification)
+  (if (premium-features/*has-feature?* :content-verification)
     (-> query
         (sql.helpers/join :moderation_review
                           [:= :moderation_review.moderated_item_id

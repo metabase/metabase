@@ -8,6 +8,7 @@
    [metabase.models :refer [Setting]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
@@ -65,7 +66,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [setting/has-feature? (constantly true)]
+              (binding [premium-features/*has-feature?* (constantly true)]
                 (setting/set! setting-k value)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -77,17 +78,17 @@
             (thunk))
           (finally
             (try
-              (if raw-setting?
-                (restore-raw-setting! original-value setting-k)
-                ;; bypass the feature check when reset settings to the original value
-                (with-redefs [setting/has-feature? (constantly true)]
-                  (setting/set! setting-k original-value)))
-              (catch Throwable e
-                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                                {:setting        setting-k
-                                 :location       (symbol (name (:namespace setting)) setting-k)
-                                 :original-value original-value}
-                                e))))))))))
+             (if raw-setting?
+               (restore-raw-setting! original-value setting-k)
+               ;; bypass the feature check when reset settings to the original value
+               (binding [premium-features/*has-feature?* (constantly true)]
+                 (setting/set! setting-k original-value)))
+             (catch Throwable e
+               (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                               {:setting        setting-k
+                                :location       (symbol (name (:namespace setting)) setting-k)
+                                :original-value original-value}
+                               e))))))))))
 
 (defn- do-with-temporary-global-setting-values
   [bindings-map thunk]
@@ -109,12 +110,19 @@
       (setting/resolve-setting k))
     (testing (format "\nwith temporary (thread-local) Setting values\n%s\n" (u/pprint-to-str bindings-map))
       (binding [setting/*thread-local-values* (atom (merge (some-> setting/*thread-local-values* deref)
-                                                           bindings-map))]
+                                                           ;; we don't actually set value here, we just make sure
+                                                           ;; the setting are availabl ein the thread local scope
+                                                           (update-vals bindings-map (constantly true))))]
+
+
         ;; now the key exists in thread local values
         ;; set it explicitly in case the setting have some specical setter
-        (doseq [[k v] bindings-map]
-          (setting/set! k v))
+        ;; we also need to bypass feature flag for setting if they have one
+        (binding [premium-features/*has-feature?* (constantly true)]
+          (doseq [[k v] bindings-map]
+            (setting/set! k v)))
         (thunk)))))
+
 
 (mu/defn do-with-temporary-setting-values
   "Impl for [[with-temporary-setting-values]]."

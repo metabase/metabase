@@ -23,11 +23,11 @@
   :feature :none
   [result]
   (cond-> (scoring/weights-and-scores result)
-    (premium-features/has-feature? :official-collections)
+    (premium-features/*has-feature?* :official-collections)
     (conj {:weight 2
             :score  (official-collection-score result)
             :name   "official collection score"})
-    (premium-features/has-feature? :content-verification)
+    (premium-features/*has-feature?* :content-verification)
     (conj {:weight 2
            :score  (verified-score result)
            :name   "verified"})))

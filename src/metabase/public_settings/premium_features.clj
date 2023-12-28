@@ -244,7 +244,7 @@
   []
   (boolean (seq (*token-features*))))
 
-(defn has-feature?
+(defn ^:dynamic *has-feature?*
   "Does this instance's premium token have `feature`?
 
     (has-feature? :sandboxes)          ; -> true
@@ -266,20 +266,20 @@
   => throws an error with a message using \"Sandboxing\" as the feature name."
   [feature-flag :- keyword?
    feature-name :- [:or string? mu/localized-string-schema]]
-  (when-not (has-feature? feature-flag)
+  (when-not (*has-feature?* feature-flag)
     (throw (ee-feature-error feature-name))))
 
 (mu/defn assert-has-any-features
   "Check if has at least one of feature in `features`. Throw an error if none of the features are available."
   [feature-flag :- [:sequential keyword?]
    feature-name :- [:or string? mu/localized-string-schema]]
-  (when-not (some has-feature? feature-flag)
+  (when-not (some *has-feature?* feature-flag)
     (throw (ee-feature-error feature-name))))
 
 (defn- default-premium-feature-getter [feature]
   (fn []
     (and config/ee-available?
-         (has-feature? feature))))
+         (*has-feature?* feature))))
 
 (def premium-features
   "Set of defined premium feature keywords."
@@ -307,7 +307,7 @@
   :embedding
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
-  :getter #(has-feature? :embedding))
+  :getter #(*has-feature?* :embedding))
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
@@ -447,7 +447,7 @@
 (defn- check-feature
   [feature]
   (or (= feature :none)
-      (has-feature? feature)))
+      (*has-feature?* feature)))
 
 (defn dynamic-ee-oss-fn
   "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the

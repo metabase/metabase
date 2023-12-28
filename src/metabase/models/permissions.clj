@@ -1418,7 +1418,7 @@
       ;; TODO -- should this code be enterprise only?
       :block
       (do
-        (when-not (premium-features/has-feature? :advanced-permissions)
+        (when-not (premium-features/*has-feature?* :advanced-permissions)
           (throw (ee-permissions-exception :block)))
         (revoke-data-perms! group-id db-id)
         (revoke-download-perms! group-id db-id)
@@ -1461,7 +1461,7 @@
   with ID `group-id` to `new-perms`."
   [group-id new-perms]
   (when-not (or (= group-id (:id (perms-group/all-users)))
-                (premium-features/has-feature? :advanced-permissions))
+                (premium-features/*has-feature?* :advanced-permissions))
     (throw (ee-permissions-exception :execute)))
   (delete-related-permissions! group-id "/execute/")
   (when (= new-perms :all)
