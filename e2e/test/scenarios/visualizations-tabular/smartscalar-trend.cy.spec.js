@@ -126,6 +126,29 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByLabelText("Back").should("exist");
       cy.findByLabelText("Label").should("have.value", "My Goal");
       cy.findByLabelText("Value").should("have.value", "42000");
+      cy.button("Back").click();
+    });
+
+    // another column
+    menu().findByText("Value from another column…").click();
+    popover().findByText("Mega Count").click();
+    menu().button("Done").click();
+
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("vs. Mega Count:").should("exist");
+      cy.findByText("3,440,000").should("exist"); // goal
+      cy.findByText("99.11%").should("exist"); // down percentage
+    });
+
+    cy.findByTestId("chartsettings-sidebar").findByText("Mega Count").click();
+    menu().findByLabelText("Column").click();
+    popover().findByText("Count").click();
+    menu().button("Done").click();
+
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("vs. Count:").should("exist");
+      cy.findByText("344").should("exist"); // goal
+      cy.findByText("8,841.71%").should("exist"); // up percentage
     });
   });
 
