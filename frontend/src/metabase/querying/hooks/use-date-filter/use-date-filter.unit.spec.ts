@@ -54,6 +54,33 @@ describe("useDateFilter", () => {
       expect(result.current.value).toEqual(value);
     },
   );
+
+  it("should return available operators and units for the column", () => {
+    const { result } = renderHook(() =>
+      useDateFilter({
+        query: defaultQuery,
+        stageIndex,
+        column,
+      }),
+    );
+
+    const { availableOperators, availableUnits } = result.current;
+    expect(availableOperators).toEqual([
+      "!=",
+      "=",
+      "<",
+      ">",
+      "between",
+      "is-null",
+      "not-null",
+    ]);
+    expect(availableUnits).toEqual([
+      "hour-of-day",
+      "day-of-week",
+      "month-of-year",
+      "quarter-of-year",
+    ]);
+  });
 });
 
 interface TestCase {
