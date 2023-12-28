@@ -15,20 +15,56 @@ import { MenuItemStyled } from "./MenuItem.styled";
 import { AnotherColumnForm } from "./AnotherColumnForm";
 
 type SmartScalarComparisonWidgetProps = {
-  onChange: (setting: SmartScalarComparison) => void;
+  onChange: (setting: SmartScalarComparison[]) => void;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];
-  value: SmartScalarComparison;
+  value: SmartScalarComparison[];
 };
 
 type Tab = "anotherColumn" | "staticNumber" | null;
 
 export function SmartScalarComparisonWidget({
-  onChange: onChange,
+  value,
+  onChange,
+  ...props
+}: SmartScalarComparisonWidgetProps) {
+  const handleChange = useCallback(
+    (index: number, comparison: SmartScalarComparison) => {
+      const nextValue = value.map((item, i) =>
+        i === index ? comparison : item,
+      );
+      onChange(nextValue);
+    },
+    [value, onChange],
+  );
+
+  return (
+    <div>
+      {value.map((comparison, index) => (
+        <ComparisonPicker
+          {...props}
+          key={index}
+          value={comparison}
+          onChange={nextComparison => handleChange(index, nextComparison)}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface ComparisonPickerProps {
+  value: SmartScalarComparison;
+  options: ComparisonMenuOption[];
+  comparableColumns: DatasetColumn[];
+  onChange: (setting: SmartScalarComparison) => void;
+}
+
+function ComparisonPicker({
+  onChange,
   options,
   comparableColumns,
   value: selectedValue,
-}: SmartScalarComparisonWidgetProps) {
+}: ComparisonPickerProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>(
     getTabForComparisonType(selectedValue.type),

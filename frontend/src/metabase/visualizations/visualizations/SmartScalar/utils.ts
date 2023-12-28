@@ -9,6 +9,7 @@ import type {
 } from "metabase-types/api/dataset";
 import type {
   RelativeDatetimeUnit,
+  SmartScalarComparison,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -196,24 +197,18 @@ export function getComparisonOptions(
 }
 
 export function isComparisonValid(
+  comparison: SmartScalarComparison,
   series: RawSeries,
   settings: VisualizationSettings,
 ) {
-  const comparison = settings["scalar.comparisons"];
-  const comparisonType = comparison?.type;
-
   const [
     {
       data: { cols, insights },
     },
   ] = series;
 
-  if (comparisonType === COMPARISON_TYPES.ANOTHER_COLUMN) {
-    if (
-      !comparison ||
-      isEmpty(comparison.column) ||
-      isEmpty(comparison.label)
-    ) {
+  if (comparison.type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    if (isEmpty(comparison.column) || isEmpty(comparison.label)) {
       return false;
     }
 
@@ -226,11 +221,11 @@ export function isComparisonValid(
     return isExistingColumn && isDifferentFromPrimaryColumn;
   }
 
-  if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
+  if (comparison.type === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return true;
   }
 
-  if (comparisonType === COMPARISON_TYPES.STATIC_NUMBER) {
+  if (comparison.type === COMPARISON_TYPES.STATIC_NUMBER) {
     return !isEmpty(comparison?.value) && !isEmpty(comparison?.label);
   }
 

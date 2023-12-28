@@ -6,6 +6,8 @@ import type {
   Insight,
   RelativeDatetimeUnit,
   RowValues,
+  SmartScalarComparisonAnotherColumn,
+  SmartScalarComparisonStaticNumber,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
@@ -212,15 +214,17 @@ describe("SmartScalar > utils", () => {
 
     describe("isComparisonValid", () => {
       it("should always return true if type is previousValue comparison", () => {
+        const comparison = { type: COMPARISON_TYPES.PREVIOUS_VALUE };
         const settings = {
           "scalar.field": FIELD_NAME,
-          "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_VALUE },
+          "scalar.comparisons": [comparison],
         };
         const rows = [
           ["2019-10-01", 100],
           ["2019-11-01", 300],
         ];
         const isValid = isComparisonValid(
+          comparison,
           series({ rows, insights: [] }),
           settings,
         );
@@ -229,7 +233,6 @@ describe("SmartScalar > utils", () => {
       });
 
       it.each([
-        ["missing", undefined],
         [
           COMPARISON_TYPES.PERIODS_AGO,
           { type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
@@ -243,13 +246,14 @@ describe("SmartScalar > utils", () => {
         (_, comparison) => {
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": comparison,
+            "scalar.comparisons": [comparison],
           };
           const rows = [
             ["2019-10-01", 100],
             ["2019-11-01", 300],
           ];
           const isValid = isComparisonValid(
+            comparison,
             series({ rows, insights: [] }),
             settings,
           );
@@ -259,7 +263,6 @@ describe("SmartScalar > utils", () => {
       );
 
       it.each([
-        ["missing", undefined],
         [
           COMPARISON_TYPES.PERIODS_AGO,
           { type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
@@ -277,7 +280,7 @@ describe("SmartScalar > utils", () => {
         (_, comparison) => {
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": comparison,
+            "scalar.comparisons": [comparison],
           };
           const rows = [
             ["2019-10-01", 100],
@@ -285,6 +288,7 @@ describe("SmartScalar > utils", () => {
           ];
           const insights = createInsights("month");
           const isValid = isComparisonValid(
+            comparison,
             series({ rows, insights }),
             settings,
           );
@@ -307,16 +311,18 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return true when valid", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.ANOTHER_COLUMN,
+            label: "Avg",
+            column: "Average",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.ANOTHER_COLUMN,
-              label: "Avg",
-              column: "Average",
-            },
+            "scalar.comparisons": [comparison],
           };
 
           const isValid = isComparisonValid(
+            comparison,
             multiSeries,
             settings as VisualizationSettings,
           );
@@ -325,15 +331,17 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return false when column is missing", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.ANOTHER_COLUMN,
+            label: "Count",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.ANOTHER_COLUMN,
-              label: "Count",
-            },
+            "scalar.comparisons": [comparison],
           };
 
           const isValid = isComparisonValid(
+            comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
             settings as VisualizationSettings,
           );
@@ -342,15 +350,17 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return false when label is missing", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.ANOTHER_COLUMN,
+            column: "Count",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.ANOTHER_COLUMN,
-              column: "Count",
-            },
+            "scalar.comparisons": [comparison],
           };
 
           const isValid = isComparisonValid(
+            comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
             settings as VisualizationSettings,
           );
@@ -359,16 +369,18 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return false when comparison column is the same as primary number", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.ANOTHER_COLUMN,
+            column: FIELD_NAME,
+            label: "Count",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.ANOTHER_COLUMN,
-              column: FIELD_NAME,
-              label: "Count",
-            },
+            "scalar.comparisons": [comparison],
           };
 
           const isValid = isComparisonValid(
+            comparison,
             multiSeries,
             settings as VisualizationSettings,
           );
@@ -377,16 +389,18 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return false when column is missing in the series", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.ANOTHER_COLUMN,
+            label: "Missing",
+            column: "Missing",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.ANOTHER_COLUMN,
-              label: "Missing",
-              column: "Missing",
-            },
+            "scalar.comparisons": [comparison],
           };
 
           const isValid = isComparisonValid(
+            comparison as SmartScalarComparisonAnotherColumn,
             multiSeries,
             settings as VisualizationSettings,
           );
@@ -397,19 +411,21 @@ describe("SmartScalar > utils", () => {
 
       describe("static number comparison", () => {
         it("should return true when valid", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            value: 100,
+            label: "Goal",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.STATIC_NUMBER,
-              value: 100,
-              label: "Goal",
-            },
+            "scalar.comparisons": [comparison],
           };
           const rows = [
             ["2019-10-01", 100],
             ["2019-11-01", 300],
           ];
           const isValid = isComparisonValid(
+            comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
             settings,
           );
@@ -418,12 +434,13 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return false when value is missing", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            label: "Goal",
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.STATIC_NUMBER,
-              label: "Goal",
-            },
+            "scalar.comparisons": [comparison],
           };
           const rows = [
             ["2019-10-01", 100],
@@ -431,6 +448,7 @@ describe("SmartScalar > utils", () => {
           ];
 
           const isValid = isComparisonValid(
+            comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
             settings as VisualizationSettings,
           );
@@ -439,12 +457,13 @@ describe("SmartScalar > utils", () => {
         });
 
         it("should return false when label is missing", () => {
+          const comparison = {
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            value: 100,
+          };
           const settings = {
             "scalar.field": FIELD_NAME,
-            "scalar.comparisons": {
-              type: COMPARISON_TYPES.STATIC_NUMBER,
-              value: 100,
-            },
+            "scalar.comparisons": [comparison],
           };
           const rows = [
             ["2019-10-01", 100],
@@ -452,6 +471,7 @@ describe("SmartScalar > utils", () => {
           ];
 
           const isValid = isComparisonValid(
+            comparison as SmartScalarComparisonStaticNumber,
             series({ rows, insights: [] }),
             settings as VisualizationSettings,
           );

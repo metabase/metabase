@@ -205,7 +205,7 @@ describe("SmartScalar > compute", () => {
         createGetComparisonProperties(comparisonType);
       const settings = createMockVisualizationSettings({
         "scalar.field": "Count",
-        "scalar.comparisons": { type: comparisonType },
+        "scalar.comparisons": [{ type: comparisonType }],
       });
 
       const cols = [
@@ -357,7 +357,7 @@ describe("SmartScalar > compute", () => {
           createGetComparisonProperties(comparisonType);
         const settings = createMockVisualizationSettings({
           "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType },
+          "scalar.comparisons": [{ type: comparisonType }],
         });
 
         const cols = [
@@ -440,7 +440,7 @@ describe("SmartScalar > compute", () => {
           createGetComparisonProperties(comparisonType);
         const settings = createMockVisualizationSettings({
           "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType },
+          "scalar.comparisons": [{ type: comparisonType }],
         });
 
         const cols = [
@@ -637,7 +637,7 @@ describe("SmartScalar > compute", () => {
           const comparisonType = COMPARISON_TYPES.PREVIOUS_PERIOD;
           const settings = createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": { type: comparisonType },
+            "scalar.comparisons": [{ type: comparisonType }],
           });
 
           const cols = [
@@ -674,7 +674,7 @@ describe("SmartScalar > compute", () => {
         const createSettings = value =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": { type: comparisonType, value },
+            "scalar.comparisons": [{ type: comparisonType, value }],
           });
 
         const cols = [
@@ -976,7 +976,7 @@ describe("SmartScalar > compute", () => {
           const createSettings = value =>
             createMockVisualizationSettings({
               "scalar.field": "Count",
-              "scalar.comparisons": { type: comparisonType, value },
+              "scalar.comparisons": [{ type: comparisonType, value }],
             });
 
           const cols = [
@@ -1056,7 +1056,7 @@ describe("SmartScalar > compute", () => {
 
         const createSettings = ({ label, value }) => ({
           "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType, label, value },
+          "scalar.comparisons": [{ type: comparisonType, label, value }],
         });
 
         const createExpectedTrendObject = ({ changeType, label, value }) => ({
@@ -1169,7 +1169,7 @@ describe("SmartScalar > compute", () => {
 
         const createSettings = ({ column = "Average", label = column }) => ({
           "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType, label, column },
+          "scalar.comparisons": [{ type: comparisonType, label, column }],
         });
 
         const insights = [{ unit: "year", col: "Count" }];
@@ -1260,7 +1260,7 @@ describe("SmartScalar > compute", () => {
         const createSettings = type =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": { type },
+            "scalar.comparisons": [{ type }],
           });
 
         const cols = [
@@ -1312,7 +1312,7 @@ describe("SmartScalar > compute", () => {
           createGetComparisonProperties(comparisonType);
         const settings = createMockVisualizationSettings({
           "scalar.field": "Count",
-          "scalar.comparisons": { type: comparisonType },
+          "scalar.comparisons": [{ type: comparisonType }],
         });
 
         const cols = [
@@ -1686,7 +1686,7 @@ describe("SmartScalar > compute", () => {
         const createSettings = value =>
           createMockVisualizationSettings({
             "scalar.field": "Count",
-            "scalar.comparisons": { type: comparisonType, value },
+            "scalar.comparisons": [{ type: comparisonType, value }],
           });
 
         const cols = [
@@ -1975,7 +1975,7 @@ describe("SmartScalar > compute", () => {
       const createSettings = field =>
         createMockVisualizationSettings({
           "scalar.field": field,
-          "scalar.comparisons": { type: comparisonType },
+          "scalar.comparisons": [{ type: comparisonType }],
         });
 
       const COUNT_FIELD = "Count";
@@ -2066,13 +2066,13 @@ describe("SmartScalar > compute", () => {
         createMockVisualizationSettings({
           column: column => ({ column }),
           "scalar.field": "Count",
-          "scalar.comparisons": { type: COMPARISON_TYPES.PREVIOUS_VALUE },
+          "scalar.comparisons": [{ type: COMPARISON_TYPES.PREVIOUS_VALUE }],
           ...settings,
         });
 
       it("should have `compact: false` by default", () => {
         const {
-          comparison: { display: comparisonDisplay },
+          comparisons: [{ display: comparisonDisplay }],
           display,
           formatOptions,
         } = computeTrend(series, insights, createVizSettings());
@@ -2084,7 +2084,7 @@ describe("SmartScalar > compute", () => {
 
       it("should have `compact: true` with `scalar.compact_primary_number` viz setting", () => {
         const {
-          comparison: { display: comparisonDisplay },
+          comparisons: [{ display: comparisonDisplay }],
           display,
           formatOptions,
         } = computeTrend(
@@ -2298,7 +2298,7 @@ function getTrend(trend) {
     return null;
   }
 
-  const { value, display, comparison } = trend;
+  const { value, display, comparisons } = trend;
 
   return {
     value,
@@ -2306,7 +2306,7 @@ function getTrend(trend) {
       value: display.value,
       date: display.date,
     },
-    comparison: getComparison(comparison),
+    comparison: getComparison(comparisons[0]),
   };
 }
 

@@ -171,11 +171,13 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
         display: "smartscalar",
         visualization_settings: {
           "scalar.field": "Count",
-          "scalar.comparisons": {
-            type: "anotherColumn",
-            column: "Mega Count",
-            label: "Mega Count",
-          },
+          "scalar.comparisons": [
+            {
+              type: "anotherColumn",
+              column: "Mega Count",
+              label: "Mega Count",
+            },
+          ],
         },
       },
       { visitQuestion: true },

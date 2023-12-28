@@ -11,27 +11,57 @@ import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
 export function computeTrend(series, insights, settings) {
-  // get current metric data
+  const comparisons = settings["scalar.comparisons"] || [];
   const currentMetricData = getCurrentMetricData({
     series,
     insights,
     settings,
   });
+
   if (isEmpty(currentMetricData)) {
     return null;
   }
+
   const { clicked, date, dateUnitSettings, formatOptions, value } =
     currentMetricData;
 
-  // get comparison data
-  const comparisonData = computeComparison({
-    currentMetricData,
-    series,
-    settings,
-  });
-  const { comparisonDescStr, comparisonValue } = comparisonData ?? {};
+  const displayValue = formatValue(value, formatOptions);
+  const displayDate = formatDateStr({ date, dateUnitSettings });
 
-  // find percent change in values
+  return {
+    value,
+    clicked,
+    formatOptions,
+    display: {
+      value: displayValue,
+      date: displayDate,
+    },
+    comparisons: comparisons.map(comparison =>
+      buildComparisonObject({
+        comparison,
+        currentMetricData,
+        series,
+        settings,
+      }),
+    ),
+  };
+}
+
+function buildComparisonObject({
+  comparison,
+  currentMetricData,
+  series,
+  settings,
+}) {
+  const { formatOptions, value } = currentMetricData;
+
+  const { comparisonDescStr, comparisonValue } =
+    computeComparison({
+      comparison,
+      currentMetricData,
+      series,
+    }) || {};
+
   const percentChange = !isEmpty(comparisonValue)
     ? computeChange(comparisonValue, value)
     : undefined;
@@ -54,39 +84,28 @@ export function computeTrend(series, insights, settings) {
       )
     : undefined;
 
-  const valueStr = formatValue(value, formatOptions);
-  const dateStr = formatDateStr({ date, dateUnitSettings });
   return {
-    value,
-    clicked,
-    formatOptions,
+    changeArrowIconName,
+    changeColor,
+    changeType,
+    comparisonDescStr,
+    comparisonValue,
     display: {
-      value: valueStr,
-      date: dateStr,
+      percentChange: percentChangeStr,
+      comparisonValue: comparisonValueStr,
     },
-    comparison: {
-      changeArrowIconName,
-      changeColor,
-      changeType,
-      comparisonDescStr,
-      comparisonValue,
-      display: {
-        percentChange: percentChangeStr,
-        comparisonValue: comparisonValueStr,
-      },
-      percentChange,
-    },
+    percentChange,
   };
 }
 
-function computeComparison({ currentMetricData, series, settings }) {
-  const { type } = settings["scalar.comparisons"];
+function computeComparison({ comparison, currentMetricData, series }) {
+  const { type } = comparison;
 
   if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
     return computeTrendAnotherColumn({
+      comparison,
       currentMetricData,
       series,
-      settings,
     });
   }
 
@@ -102,14 +121,14 @@ function computeComparison({ currentMetricData, series, settings }) {
     type === COMPARISON_TYPES.PERIODS_AGO
   ) {
     return computeTrendPeriodsAgo({
+      comparison,
       currentMetricData,
       series,
-      settings,
     });
   }
 
   if (type === COMPARISON_TYPES.STATIC_NUMBER) {
-    return computeTrendStaticValue({ settings });
+    return computeTrendStaticValue({ comparison });
   }
 
   throw Error("Invalid comparison type specified");
@@ -190,11 +209,9 @@ function getCurrentMetricData({ series, insights, settings }) {
   };
 }
 
-function computeTrendAnotherColumn({ currentMetricData, series, settings }) {
+function computeTrendAnotherColumn({ comparison, currentMetricData, series }) {
   const { latestRowIndex } = currentMetricData.indexData;
   const { cols, rows } = series[0].data;
-
-  const comparison = settings["scalar.comparisons"];
 
   const columnIndex = cols.findIndex(
     column => column.name === comparison.column,
@@ -220,8 +237,8 @@ function computeTrendAnotherColumn({ currentMetricData, series, settings }) {
   };
 }
 
-function computeTrendStaticValue({ settings }) {
-  const { value, label } = settings["scalar.comparisons"];
+function computeTrendStaticValue({ comparison }) {
+  const { value, label } = comparison;
   return {
     comparisonDescStr: t`vs. ${label.toLowerCase()}`,
     comparisonValue: value,
@@ -285,7 +302,7 @@ function computeComparisonPreviousValue({
   };
 }
 
-function computeTrendPeriodsAgo({ currentMetricData, series, settings }) {
+function computeTrendPeriodsAgo({ comparison, currentMetricData, series }) {
   const [
     {
       data: { rows },
@@ -302,7 +319,7 @@ function computeTrendPeriodsAgo({ currentMetricData, series, settings }) {
     throw Error("No date unit supplied for periods ago comparison");
   }
 
-  const { type, value } = settings["scalar.comparisons"];
+  const { type, value } = comparison;
   if (type === COMPARISON_TYPES.PERIODS_AGO && !Number.isInteger(value)) {
     throw Error("No integer value supplied for periods ago comparison");
   }

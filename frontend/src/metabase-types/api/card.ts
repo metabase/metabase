@@ -137,7 +137,7 @@ export type VisualizationSettings = {
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   // Scalar Settings
-  "scalar.comparisons"?: SmartScalarComparison;
+  "scalar.comparisons"?: SmartScalarComparison[];
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
