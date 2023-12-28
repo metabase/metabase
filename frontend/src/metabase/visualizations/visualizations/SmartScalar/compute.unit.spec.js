@@ -1161,6 +1161,101 @@ describe("SmartScalar > compute", () => {
         });
       });
 
+      describe(`comparison type: ${COMPARISON_TYPES.ANOTHER_COLUMN}`, () => {
+        const comparisonType = COMPARISON_TYPES.ANOTHER_COLUMN;
+
+        const getComparisonProperties =
+          createGetComparisonProperties(comparisonType);
+
+        const createSettings = ({ column = "Average", label = column }) => ({
+          "scalar.field": "Count",
+          "scalar.comparisons": { type: comparisonType, label, column },
+        });
+
+        const insights = [{ unit: "year", col: "Count" }];
+
+        const monthColumn = createMockDateTimeColumn({ name: "Month" });
+        const countColumn = createMockNumberColumn({ name: "Count" });
+        const averageColumn = createMockNumberColumn({ name: "Average" });
+
+        const createExpectedTrendObject = ({
+          changeType,
+          primaryValue,
+          comparisonValue,
+          comparisonColumnLabel,
+        }) => ({
+          value: primaryValue,
+          comparison: {
+            ...getComparisonProperties({
+              changeType,
+              comparisonValue: comparisonValue,
+              metricValue: primaryValue,
+            }),
+            comparisonDescStr: `vs. ${comparisonColumnLabel}`,
+          },
+          ...getMetricProperties({
+            dateStr: "2019",
+            metricValue: primaryValue,
+          }),
+        });
+
+        const testCases = [
+          {
+            description: "should correctly display increase",
+            rows: [["2019-01-01", 200, 150]],
+            cols: [monthColumn, countColumn, averageColumn],
+            expected: createExpectedTrendObject({
+              changeType: "increase",
+              primaryValue: 200,
+              comparisonValue: 150,
+              comparisonColumnLabel: "Average",
+            }),
+          },
+          {
+            description: "should correctly display decrease",
+            rows: [["2019-01-01", 125, 190]],
+            cols: [monthColumn, countColumn, averageColumn],
+            expected: createExpectedTrendObject({
+              changeType: "decrease",
+              primaryValue: 125,
+              comparisonValue: 190,
+              comparisonColumnLabel: "Average",
+            }),
+          },
+          {
+            description: "should correctly display no change",
+            rows: [["2019-01-01", 300, 300]],
+            cols: [monthColumn, countColumn, averageColumn],
+            expected: createExpectedTrendObject({
+              changeType: "no change",
+              primaryValue: 300,
+              comparisonValue: 300,
+              comparisonColumnLabel: "Average",
+            }),
+          },
+          {
+            description: "should handle a missing column",
+            rows: [["2019-01-01", 300]],
+            cols: [monthColumn, countColumn],
+            expected: createExpectedTrendObject({
+              changeType: "missing",
+              primaryValue: 300,
+              comparisonValue: undefined,
+              comparisonColumnLabel: "N/A",
+            }),
+          },
+        ];
+
+        it.each(testCases)("$description", ({ rows, cols, expected }) => {
+          const trend = computeTrend(
+            series({ rows, cols }),
+            insights,
+            createSettings({ column: "Average" }),
+          );
+          expect(getTrend(trend)).toEqual(expected);
+        });
+      });
+
       describe(`invalid comparison type`, () => {
         const createSettings = type =>
           createMockVisualizationSettings({
