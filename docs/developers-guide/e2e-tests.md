@@ -77,7 +77,13 @@ Cypress has a set of similar commands for selecting elements. Here are some tips
 * `find` will let you search within your previous selection. `get` will search the entire page even if chained.
 
 ### Increase viewport size to avoid scrolling
-Sometimes Metabase views are a bit large for Cypress’s default 1000x660 viewport. This can require you to scroll for tests to work. To avoid that, you can increase the viewport size for a specific test by calling `cy.viewport(width, height)`.
+Sometimes Metabase views are a bit large for Cypress’ default 1280x800 viewport. This can require you to scroll for tests to work. For example, virtualized tables will not even render the contents outside of the viewport. To avoid these problems, increase the viewport size for a specific test. Unless you're specifically testing how the application behaves on a window resize, please avoid using the `cy.viewport(width, height);` in the middle of the test. Set the viewport width/height using the optional Cypress test config instead. This config works with both `describe` and `it` blocks.
+
+```js
+describe("foo", { viewportWidth: 1400 }, () => {});
+
+it("bar", { viewportWidth: 1600, viewportHeight: 1200 }, () => {})
+```
 
 ### Code reloading vs test reloading
 When you edit a Cypress test file, the tests will refresh and run again. However, when you edit a code file, Cypress won’t detect that change. If you’re running `yarn build-hot`, the code will rebuild and update within Cypress. You’ll have to manually click rerun after the new code has loaded.
