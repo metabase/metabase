@@ -189,7 +189,7 @@ interface TabListProps {
 
 function TabList({ groupItems }: TabListProps) {
   return (
-    <Tabs.List w="20%" pt="sm" pl="md">
+    <Tabs.List w="25%" pt="sm" pl="md">
       {groupItems.map(groupItem => (
         <Tabs.Tab
           key={groupItem.key}
