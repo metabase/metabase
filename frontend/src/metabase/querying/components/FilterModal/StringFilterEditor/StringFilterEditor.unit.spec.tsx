@@ -223,6 +223,27 @@ describe("StringFilterEditor", () => {
       expect(screen.getByText("abc")).toBeInTheDocument();
       expect(screen.getByText("bcd")).toBeInTheDocument();
     });
+
+    it("should update a filter with one value", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "PRODUCTS",
+        columnName: "CATEGORY",
+        operator: "starts-with",
+        values: ["Ga"],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.clear(screen.getByDisplayValue("Ga"));
+      userEvent.type(screen.getByPlaceholderText("Enter some text"), "Wi");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Category starts with Wi");
+    });
   });
 });
 
