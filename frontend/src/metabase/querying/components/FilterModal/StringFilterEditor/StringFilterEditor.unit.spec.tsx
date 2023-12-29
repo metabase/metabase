@@ -80,30 +80,22 @@ describe("StringFilterEditor", () => {
     });
 
     it("should handle searchable values", async () => {
-      const searchValue = "t";
-      const searchResult = "t@metabase.test";
-      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, searchValue, [
-        [searchResult],
-      ]);
-
       const { getNextFilter, onInput } = setup({
         query: defaultQuery,
         stageIndex,
         column: findColumn("PEOPLE", "EMAIL"),
       });
 
-      userEvent.type(
-        screen.getByPlaceholderText("Search by Email"),
-        searchValue,
-      );
+      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "a", [["a@metabase.test"]]);
+      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       act(() => jest.advanceTimersByTime(1000));
-      userEvent.click(await screen.findByText(searchResult));
+      userEvent.click(await screen.findByText("a@metabase.test"));
 
       const nextFilter = getNextFilter();
       expect(
         Lib.displayInfo(defaultQuery, stageIndex, nextFilter),
       ).toMatchObject({
-        displayName: `Email is ${searchResult}`,
+        displayName: `Email is a@metabase.test`,
       });
       expect(onInput).not.toHaveBeenCalled();
     });
@@ -215,6 +207,40 @@ describe("StringFilterEditor", () => {
       expect(Lib.displayInfo(query, stageIndex, nextFilter)).toMatchObject({
         displayName: "Category is 2 selections",
       });
+    });
+
+    it("should handle searchable values", async () => {
+      const column = findColumn("PEOPLE", "EMAIL");
+      const query = Lib.filter(
+        defaultQuery,
+        stageIndex,
+        Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: ["a@metabase.test"],
+          options: {},
+        }),
+      );
+      const [filter] = Lib.filters(query, stageIndex);
+      const { getNextFilter } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
+
+      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "b", [["b@metabase.test"]]);
+      userEvent.type(screen.getByLabelText("Filter value"), "b");
+      act(() => jest.advanceTimersByTime(1000));
+      userEvent.click(await screen.findByText("b@metabase.test"));
+
+      const nextFilter = getNextFilter();
+      expect(Lib.displayInfo(query, stageIndex, nextFilter)).toMatchObject({
+        displayName: "Email is 2 selections",
+      });
+      expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
+      expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
     });
   });
 });
