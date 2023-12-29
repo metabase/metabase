@@ -577,6 +577,41 @@ describe("scenarios > visualizations > line chart", () => {
       cy.get(".y-axis-label").invoke("text").should("eq", "Average of Price");
     });
   });
+
+  describe("brush filters", () => {
+    it("should apply filters to the series selecting area range", () => {
+      visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
+
+      cy.get(".Visualization")
+        .trigger("mousedown", 120, 200)
+        .trigger("mousemove", 230, 200)
+        .trigger("mouseup", 230, 200);
+
+      cy.findByTestId("filter-pill").should(
+        "have.text",
+        "Created At is May 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
+      );
+
+      cy.get(".Visualization .dot").should("have.length", 6);
+    });
+
+    it("should apply filter to the series after drilling down", () => {
+      visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
+      cy.get(".Visualization .dot").eq(5).click({ force: true });
+
+      popover().findByText("See these Orders").click();
+
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At is Sep 1–30, 2022")
+        .should("exist");
+    });
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {
