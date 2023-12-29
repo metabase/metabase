@@ -580,6 +580,14 @@ describe("scenarios > visualizations > line chart", () => {
 
   describe("brush filters", () => {
     it("should apply filters to the series selecting area range", () => {
+      cy.log(
+        "viewport" +
+          " " +
+          Cypress.config("viewportWidth") +
+          " x " +
+          Cypress.config("viewportHeight"),
+      );
+
       visitQuestionAdhoc({
         dataset_query: testQuery,
         display: "line",
