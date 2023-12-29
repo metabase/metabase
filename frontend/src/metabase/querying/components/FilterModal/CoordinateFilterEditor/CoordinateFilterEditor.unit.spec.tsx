@@ -79,7 +79,7 @@ describe("StringFilterEditor", () => {
       expect(onInput).toHaveBeenCalled();
     });
 
-    it("should add a filter with two values", async () => {
+    it("should add a filter with two values", () => {
       const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
