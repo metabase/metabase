@@ -78,7 +78,9 @@ export const REVIEWS = {
 
 export const ORDERS_QUANTITY_VALUES: FieldValuesResult = {
   field_id: ORDERS.QUANTITY,
-  values: Array.from({ length: 100 }, (_, i) => [i]),
+  values: Array(100)
+    .fill(0)
+    .map((_, i) => [i]),
   has_more_values: false,
 };
 
