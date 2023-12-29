@@ -5130,12 +5130,13 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+
   - changeSet:
       id: v49.00-054
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_dashboardcard.created_at
-        from timestamp without time zone to timestamp with time zone h2
+        from timestamp without time zone to timestamp with time zone for h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5156,7 +5157,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_table.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5177,7 +5178,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_dashboard.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5198,7 +5199,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_field.last_analyzed
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5219,7 +5220,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_field.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5257,7 +5258,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_fieldvalues.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5278,7 +5279,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_database.updated_at
-        from timestamp without time zone to timestamp with time zone h2
+        from timestamp without time zone to timestamp with time zone for h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5299,7 +5300,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of pulse_channel.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5337,7 +5338,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of core_user.last_login
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5358,7 +5359,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of segment.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5379,7 +5380,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of pulse.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5400,7 +5401,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_cardfavorite.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5421,7 +5422,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_dashboard.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5442,7 +5443,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_table.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5480,7 +5481,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_dashboardcard.updated_at
-        from timestamp without time zone to timestamp with time zone h2
+        from timestamp without time zone to timestamp with time zone for h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5501,7 +5502,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metric.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5522,7 +5523,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of activity.timestamp
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5543,7 +5544,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_field.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5564,7 +5565,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of core_user.date_joined
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5585,7 +5586,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metabase_database.created_at
-        from timestamp without time zone to timestamp with time zone h2
+        from timestamp without time zone to timestamp with time zone for h2
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5640,7 +5641,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of pulse_channel.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5661,7 +5662,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_card.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5682,7 +5683,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of dependency.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5703,7 +5704,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of core_session.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5724,7 +5725,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of segment.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5745,7 +5746,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of pulse.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5766,7 +5767,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of metric.updated_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
@@ -5804,7 +5805,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: >-
         Added 0.49.0 - modify type of report_cardfavorite.created_at
-        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
       preConditions:
         - onFail: MARK_RAN
         - dbms:
