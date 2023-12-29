@@ -89,5 +89,50 @@ describe("TimeFilterEditor", () => {
       expect(getNextFilterName()).toBe("Time is before 10:20 AM");
       expect(onInput).toHaveBeenCalled();
     });
+
+    it("should add a filter with two values", async () => {
+      const { getNextFilterName, onInput } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByText("before"));
+      userEvent.click(await screen.findByText("Between"));
+      userEvent.clear(screen.getByPlaceholderText("Min"));
+      userEvent.type(screen.getByPlaceholderText("Min"), "10:15");
+      userEvent.clear(screen.getByPlaceholderText("Max"));
+      userEvent.type(screen.getByPlaceholderText("Max"), "20:40");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Time is 10:15 AM – 8:40 PM");
+      expect(onInput).toHaveBeenCalled();
+    });
+
+    it("should add a filter with no value", async () => {
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByText("before"));
+      userEvent.click(await screen.findByText("Is empty"));
+
+      expect(getNextFilterName()).toBe("Time is empty");
+    });
+
+    it("should not accept an empty string as a value", async () => {
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.clear(screen.getByPlaceholderText("Enter a time"));
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBeNull();
+    });
   });
 });
