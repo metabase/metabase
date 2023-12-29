@@ -5821,6 +5821,61 @@ databaseChangeLog:
             columnName: created_at
             newDataType: ${datetime_type}
 
+  - changeSet:
+      id: v49.00-088
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of core_user.updated_at
+        from timestamp without time zone to timestamp with time zone for h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: core_user
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-089
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of core_user.updated_at
+        from timestamp without time zone to timestamp with time zone for postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            sql: drop view if exists v_users
+        - modifyDataType:
+            tableName: core_user
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v1/postgres-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: drop view if exists v_users
+        - modifyDataType:
+            tableName: core_user
+            columnName: updated_at
+            newDataType: ${datetime_type}
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/users/v1/postgres-users.sql
+            relativeToChangelogFile: true
+
+
  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
