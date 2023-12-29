@@ -55,7 +55,7 @@ describe("useNumberFilter", () => {
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator: newOperator, values: newValues, displayName }) => {
       const { result } = renderHook(() =>
         useNumberFilter({
           query: defaultQuery,
@@ -66,19 +66,16 @@ describe("useNumberFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = getFilterClause(operator, values);
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -96,7 +93,7 @@ describe("useNumberFilter", () => {
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values, displayName }) => {
+    ({ expression, values: newValues, displayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -111,16 +108,15 @@ describe("useNumberFilter", () => {
 
       act(() => {
         const { setValues } = result.current;
-        setValues(values);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
-
-        expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-          displayName,
-        });
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = getFilterClause(operator, values);
+      expect(
+        Lib.displayInfo(query, stageIndex, checkNotNull(newFilter)),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -152,15 +148,13 @@ describe("useNumberFilter", () => {
         }),
       );
 
-      act(() => {
-        const { getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
+      const { getFilterClause } = result.current;
+      const newFilter = getFilterClause(operator, values);
 
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -180,7 +174,7 @@ describe("useNumberFilter", () => {
     },
   ])(
     'should validate values for "$operator" operator',
-    ({ operator, values }) => {
+    ({ operator: newOperator, values: newValues }) => {
       const { result } = renderHook(() =>
         useNumberFilter({
           query: defaultQuery,
@@ -191,15 +185,13 @@ describe("useNumberFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, isValid, getFilterClause } = result.current;
-        expect(isValid).toBeFalsy();
-        expect(getFilterClause(operator, values)).toBeUndefined();
-      });
+      const { operator, values, isValid, getFilterClause } = result.current;
+      expect(isValid).toBeFalsy();
+      expect(getFilterClause(operator, values)).toBeUndefined();
     },
   );
 
@@ -225,15 +217,12 @@ describe("useNumberFilter", () => {
       setValues(getDefaultValues(newOperator, values));
     });
 
-    act(() => {
-      const { operator, values, getFilterClause } = result.current;
-      const newFilter = checkNotNull(getFilterClause(operator, values));
-
-      expect(
-        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-      ).toMatchObject({
-        displayName: "Total is not equal to 10",
-      });
+    const { operator, values, getFilterClause } = result.current;
+    const newFilter = getFilterClause(operator, values);
+    expect(
+      Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+    ).toMatchObject({
+      displayName: "Total is not equal to 10",
     });
   });
 });
