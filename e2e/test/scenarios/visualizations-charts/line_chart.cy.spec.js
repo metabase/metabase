@@ -588,7 +588,7 @@ describe("scenarios > visualizations > line chart", () => {
       });
 
       cy.get(".Visualization")
-        .trigger("mousedown", 120, 200)
+        .trigger("mousedown", 110, 200)
         .trigger("mousemove", 230, 200)
         .trigger("mouseup", 230, 200);
 
