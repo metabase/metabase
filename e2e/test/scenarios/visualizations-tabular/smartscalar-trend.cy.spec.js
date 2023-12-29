@@ -158,6 +158,85 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     });
   });
 
+  it("should handle up to 3 comparisons", () => {
+    cy.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: AGGREGATIONS,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "smartscalar",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("comparison-list").children().should("have.length", 1);
+
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("34.72%").should("exist");
+      cy.findByText("vs. previous month:").should("exist");
+      cy.findByText("527").should("exist");
+    });
+
+    cy.button("Add comparison").click();
+    cy.findByTestId("comparison-list")
+      .children()
+      .should("have.length", 2)
+      .last()
+      .click();
+    menu().findByText("2 months ago").click();
+    cy.findAllByTestId("scalar-previous-value")
+      .children()
+      .should("have.length", 2)
+      .last()
+      .within(() => {
+        cy.findByText("36.65%").should("exist");
+        cy.findByText("vs. Feb:").should("exist");
+        cy.findByText("543").should("exist");
+      });
+
+    cy.button("Add comparison").click();
+    cy.findByTestId("comparison-list")
+      .children()
+      .should("have.length", 3)
+      .last()
+      .click();
+    menu().findByText("Previous value").click();
+    cy.findAllByTestId("scalar-previous-value")
+      .children()
+      .should("have.length", 3)
+      .last()
+      .within(() => {
+        cy.findByText("34.72%").should("exist");
+        cy.findByText("vs. Mar:").should("exist");
+        cy.findByText("527").should("exist");
+      });
+
+    cy.button("Add comparison").should("be.disabled");
+
+    cy.findByTestId("comparison-list")
+      .children()
+      .last()
+      .findByLabelText("Remove")
+      .click();
+    cy.findByTestId("comparison-list").children().should("have.length", 2);
+    cy.findByTestId("comparison-list")
+      .findByText("Previous value")
+      .should("not.exist");
+    cy.findAllByTestId("scalar-previous-value")
+      .children()
+      .should("have.length", 2);
+    cy.findAllByTestId("scalar-previous-value")
+      .findByText("vs. Mar:")
+      .should("not.exist");
+
+    cy.button("Add comparison").should("be.enabled");
+  });
+
   it("should reset 'another column' comparison when it becomes invalid", () => {
     cy.createQuestion(
       {
