@@ -60,7 +60,7 @@ describe("useStringFilter", () => {
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator: newOperator, values: newValues, displayName }) => {
       const { result } = renderHook(() =>
         useStringFilter({
           query: defaultQuery,
@@ -71,21 +71,16 @@ describe("useStringFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, options, getFilterClause } = result.current;
-        const newFilter = checkNotNull(
-          getFilterClause(operator, values, options),
-        );
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { operator, values, options, getFilterClause } = result.current;
+      const newFilter = getFilterClause(operator, values, options);
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -115,7 +110,7 @@ describe("useStringFilter", () => {
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values, displayName }) => {
+    ({ expression, values: newValues, displayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -130,18 +125,15 @@ describe("useStringFilter", () => {
 
       act(() => {
         const { setValues } = result.current;
-        setValues(values);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, options, getFilterClause } = result.current;
-        const newFilter = checkNotNull(
-          getFilterClause(operator, values, options),
-        );
-
-        expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-          displayName,
-        });
+      const { operator, values, options, getFilterClause } = result.current;
+      const newFilter = getFilterClause(operator, values, options);
+      expect(
+        Lib.displayInfo(query, stageIndex, checkNotNull(newFilter)),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -165,7 +157,7 @@ describe("useStringFilter", () => {
     },
   ])(
     'should validate values for "$operator" operator',
-    ({ operator, values }) => {
+    ({ operator: newOperator, values: newValues }) => {
       const { result } = renderHook(() =>
         useStringFilter({
           query: defaultQuery,
@@ -176,16 +168,14 @@ describe("useStringFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, options, isValid, getFilterClause } =
-          result.current;
-        expect(isValid).toBeFalsy();
-        expect(getFilterClause(operator, values, options)).toBeUndefined();
-      });
+      const { operator, values, options, isValid, getFilterClause } =
+        result.current;
+      expect(isValid).toBeFalsy();
+      expect(getFilterClause(operator, values, options)).toBeUndefined();
     },
   );
 
@@ -211,17 +201,12 @@ describe("useStringFilter", () => {
       setValues(getDefaultValues(newOperator, values));
     });
 
-    act(() => {
-      const { operator, values, options, getFilterClause } = result.current;
-      const newFilter = checkNotNull(
-        getFilterClause(operator, values, options),
-      );
-
-      expect(
-        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-      ).toMatchObject({
-        displayName: "Category is not Gadget",
-      });
+    const { operator, values, options, getFilterClause } = result.current;
+    const newFilter = getFilterClause(operator, values, options);
+    expect(
+      Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+    ).toMatchObject({
+      displayName: "Category is not Gadget",
     });
   });
 });
