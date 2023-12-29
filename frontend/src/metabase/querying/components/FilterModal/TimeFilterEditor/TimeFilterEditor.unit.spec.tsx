@@ -135,4 +135,109 @@ describe("TimeFilterEditor", () => {
       expect(getNextFilterName()).toBeNull();
     });
   });
+
+  describe("existing filter", () => {
+    it("should update a filter with one value", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        operator: ">",
+        values: [new Date(2020, 0, 1, 10, 20)],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.clear(screen.getByDisplayValue("10:20"));
+      userEvent.type(screen.getByPlaceholderText("Enter a time"), "11:40");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Time is after 11:40 AM");
+    });
+
+    it("should update a filter with two values", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        operator: "between",
+        values: [new Date(2020, 0, 1, 10, 20), new Date(2020, 0, 1, 12, 40)],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.clear(screen.getByDisplayValue("10:20"));
+      userEvent.type(screen.getByPlaceholderText("Min"), "11:40");
+      userEvent.clear(screen.getByDisplayValue("12:40"));
+      userEvent.type(screen.getByPlaceholderText("Max"), "15:10");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Time is 11:40 AM – 3:10 PM");
+    });
+
+    it("should update a filter with no values", async () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        operator: "is-null",
+        values: [],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.click(screen.getByText("is empty"));
+      userEvent.click(await screen.findByText("Not empty"));
+
+      expect(getNextFilterName()).toBe("Time is not empty");
+    });
+
+    it("should preserve values when switching operators", async () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        operator: "<",
+        values: [new Date(2020, 0, 1, 10, 20)],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.click(screen.getByText("before"));
+      userEvent.click(await screen.findByText("After"));
+
+      expect(getNextFilterName()).toBe("Time is after 10:20 AM");
+    });
+  });
 });
+
+interface QueryWithFilterOpts {
+  operator: Lib.TimeFilterOperatorName;
+  values: Date[];
+}
+
+function createQueryWithFilter({ operator, values }: QueryWithFilterOpts) {
+  const defaultQuery = createQuery({ metadata: METADATA });
+  const stageIndex = 0;
+  const findColumn = columnFinder(
+    defaultQuery,
+    Lib.filterableColumns(defaultQuery, stageIndex),
+  );
+  const column = findColumn("ORDERS", TIME_FIELD.name);
+  const query = Lib.filter(
+    defaultQuery,
+    stageIndex,
+    Lib.timeFilterClause({
+      operator,
+      column,
+      values,
+    }),
+  );
+  const [filter] = Lib.filters(query, stageIndex);
+
+  return { query, stageIndex, column, filter };
+}
