@@ -250,6 +250,29 @@ describe("StringFilterEditor", () => {
       expect(getNextFilterName()).toBe("Total is greater than 20");
     });
 
+    it("should update a filter with two values", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "ORDERS",
+        columnName: "TOTAL",
+        operator: "between",
+        values: [10, 20],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.clear(screen.getByDisplayValue("10"));
+      userEvent.type(screen.getByPlaceholderText("Min"), "15");
+      userEvent.clear(screen.getByDisplayValue("20"));
+      userEvent.type(screen.getByPlaceholderText("Max"), "25");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Total is between 15 and 25");
+    });
+
     it("should update a filter with no value", async () => {
       const { query, stageIndex, column, filter } = createQueryWithFilter({
         tableName: "ORDERS",
