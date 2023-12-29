@@ -82,11 +82,13 @@ describe("BooleanFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByRole("checkbox", { name: "True" }));
+      const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
+      const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
+      userEvent.click(trueCheckbox);
 
       expect(getNextFilterName()).toBe("Is trial is true");
-      expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+      expect(trueCheckbox).toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
       expect(screen.queryByText("is")).not.toBeInTheDocument();
     });
 
@@ -97,11 +99,13 @@ describe("BooleanFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByRole("checkbox", { name: "False" }));
+      const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
+      const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
+      userEvent.click(falseCheckbox);
 
       expect(getNextFilterName()).toBe("Is trial is false");
-      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).toBeChecked();
+      expect(trueCheckbox).not.toBeChecked();
+      expect(falseCheckbox).toBeChecked();
       expect(screen.queryByText("is")).not.toBeInTheDocument();
     });
 
@@ -112,17 +116,27 @@ describe("BooleanFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByRole("checkbox", { name: "True" }));
-      userEvent.click(screen.getByRole("checkbox", { name: "True" }));
-      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
-      expect(getNextFilterName()).toBeNull();
+      const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
+      const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
+      userEvent.click(trueCheckbox);
+      expect(getNextFilterName()).toBe("Is trial is true");
+      expect(trueCheckbox).toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
 
-      userEvent.click(screen.getByRole("checkbox", { name: "False" }));
-      userEvent.click(screen.getByRole("checkbox", { name: "False" }));
-      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+      userEvent.click(trueCheckbox);
       expect(getNextFilterName()).toBeNull();
+      expect(trueCheckbox).not.toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
+
+      userEvent.click(falseCheckbox);
+      expect(getNextFilterName()).toBe("Is trial is false");
+      expect(trueCheckbox).not.toBeChecked();
+      expect(falseCheckbox).toBeChecked();
+
+      userEvent.click(falseCheckbox);
+      expect(getNextFilterName()).toBeNull();
+      expect(trueCheckbox).not.toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
     });
   });
 
@@ -138,13 +152,16 @@ describe("BooleanFilterEditor", () => {
         column,
         filter,
       });
-      expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
 
-      userEvent.click(screen.getByRole("checkbox", { name: "False" }));
+      const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
+      const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
+      expect(trueCheckbox).toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
+
+      userEvent.click(falseCheckbox);
       expect(getNextFilterName()).toBe("Is trial is false");
-      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).toBeChecked();
+      expect(trueCheckbox).not.toBeChecked();
+      expect(falseCheckbox).toBeChecked();
     });
 
     it("should update a filter with no values", async () => {
@@ -158,9 +175,12 @@ describe("BooleanFilterEditor", () => {
         column,
         filter,
       });
+
+      const trueCheckbox = screen.getByRole("checkbox", { name: "True" });
+      const falseCheckbox = screen.getByRole("checkbox", { name: "False" });
       expect(screen.getByText("is empty")).toBeInTheDocument();
-      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+      expect(trueCheckbox).not.toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
 
       userEvent.click(screen.getByText("is empty"));
       userEvent.click(await screen.findByText("Not empty"));
@@ -169,15 +189,15 @@ describe("BooleanFilterEditor", () => {
       expect(
         await screen.findByRole("checkbox", { name: "True" }),
       ).not.toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
 
       userEvent.click(screen.getByText("not empty"));
       userEvent.click(await screen.findByText("Is"));
       userEvent.click(await screen.findByRole("checkbox", { name: "True" }));
       expect(getNextFilterName()).toBe("Is trial is true");
       expect(screen.getByText("is")).toBeInTheDocument();
-      expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+      expect(trueCheckbox).toBeChecked();
+      expect(falseCheckbox).not.toBeChecked();
     });
   });
 });
