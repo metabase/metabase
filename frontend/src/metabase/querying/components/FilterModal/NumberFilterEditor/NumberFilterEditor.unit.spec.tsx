@@ -175,4 +175,71 @@ describe("StringFilterEditor", () => {
       expect(getNextFilterName()).toBeNull();
     });
   });
+
+  describe("existing filter", () => {
+    it("should handle list values", async () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "ORDERS",
+        columnName: "QUANTITY",
+        operator: "=",
+        values: [2],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.QUANTITY,
+          values: [[1], [2], [3]],
+          has_more_values: false,
+        }),
+      });
+      expect(
+        await screen.findByRole("checkbox", { name: "1" }),
+      ).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "2" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "3" })).not.toBeChecked();
+
+      userEvent.click(screen.getByRole("checkbox", { name: "3" }));
+      expect(screen.getByRole("checkbox", { name: "1" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "2" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "3" })).toBeChecked();
+      expect(getNextFilterName()).toBe("Quantity is equal to 2 selections");
+    });
+  });
 });
+
+interface QueryWithFilterOpts {
+  tableName: string;
+  columnName: string;
+  operator: Lib.NumberFilterOperatorName;
+  values: number[];
+}
+
+function createQueryWithFilter({
+  tableName,
+  columnName,
+  operator,
+  values,
+}: QueryWithFilterOpts) {
+  const defaultQuery = createQuery();
+  const stageIndex = 0;
+  const findColumn = columnFinder(
+    defaultQuery,
+    Lib.filterableColumns(defaultQuery, stageIndex),
+  );
+  const column = findColumn(tableName, columnName);
+  const query = Lib.filter(
+    defaultQuery,
+    stageIndex,
+    Lib.numberFilterClause({
+      operator,
+      column,
+      values,
+    }),
+  );
+  const [filter] = Lib.filters(query, stageIndex);
+
+  return { query, stageIndex, column, filter };
+}
