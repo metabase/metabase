@@ -207,6 +207,68 @@ describe("StringFilterEditor", () => {
       expect(screen.getByRole("checkbox", { name: "3" })).toBeChecked();
       expect(getNextFilterName()).toBe("Quantity is equal to 2 selections");
     });
+
+    it("should handle non-searchable values", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "ORDERS",
+        columnName: "TOTAL",
+        operator: "=",
+        values: [10],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(screen.getByDisplayValue("10")).toBeInTheDocument();
+
+      userEvent.type(screen.getByLabelText("Filter value"), "20");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Total is equal to 2 selections");
+    });
+
+    it("should update a filter with one value", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "ORDERS",
+        columnName: "TOTAL",
+        operator: ">",
+        values: [10],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.clear(screen.getByDisplayValue("10"));
+      userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Total is greater than 20");
+    });
+
+    it("should update a filter with no value", async () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "ORDERS",
+        columnName: "TOTAL",
+        operator: "is-null",
+        values: [],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.click(screen.getByText("is empty"));
+      userEvent.click(await screen.findByText("Not empty"));
+
+      expect(getNextFilterName()).toBe("Total is not empty");
+    });
   });
 });
 
