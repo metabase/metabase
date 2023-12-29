@@ -249,9 +249,9 @@ describe("scenarios > visualizations > maps", () => {
       .click();
 
     cy.findByTestId("visualization-root")
-      .trigger("mousedown", 500, 500)
-      .trigger("mousemove", 600, 600)
-      .trigger("mouseup", 600, 600);
+      .trigger("mousedown", 500, 500, { force: true })
+      .trigger("mousemove", 600, 600, { force: true })
+      .trigger("mouseup", 600, 600, { force: true });
 
     cy.wait("@dataset");
 
