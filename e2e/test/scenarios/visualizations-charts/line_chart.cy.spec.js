@@ -590,6 +590,8 @@ describe("scenarios > visualizations > line chart", () => {
         .trigger("mousemove", 230, 200)
         .trigger("mouseup", 230, 200);
 
+      cy.wait("@dataset");
+
       cy.findByTestId("filter-pill").should(
         "have.text",
         "Created At is May 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
