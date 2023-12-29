@@ -15,7 +15,7 @@ import type {
   EmbedType,
 } from "metabase/public/lib/types";
 
-import { DEFAULT_DISPLAY_OPTIONS } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/config";
+import { DEFAULT_DISPLAY_OPTIONS } from "../StaticEmbedSetupPane/config";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 import type { ActivePreviewPane } from "../types";
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
@@ -55,6 +55,7 @@ export const EmbedModalContent = (
     getPublicUrl,
   } = props;
 
+  // TODO: move all this state to StaticEmbedSetupPane component
   const [pane, setPane] = useState<ActivePreviewPane>("code");
 
   const siteUrl = useSelector(state => getSetting(state, "site-url"));
@@ -74,27 +75,21 @@ export const EmbedModalContent = (
     DEFAULT_DISPLAY_OPTIONS,
   );
 
-  const handleSave = async () => {
+  const handleSave = () => {
     try {
-      if (embedType === "application") {
-        if (!resource.enable_embedding) {
-          await onUpdateEnableEmbedding(true);
-        }
-        await onUpdateEmbeddingParams(embeddingParams);
-      } else {
-        if (!resource.public_uuid) {
-          await onCreatePublicLink();
-        }
+      if (!resource.enable_embedding) {
+        onUpdateEnableEmbedding(true);
       }
+      onUpdateEmbeddingParams(embeddingParams);
     } catch (e) {
       console.error(e);
       throw e;
     }
   };
 
-  const handleUnpublish = async () => {
+  const handleUnpublish = () => {
     try {
-      await onUpdateEnableEmbedding(false);
+      onUpdateEnableEmbedding(false);
     } catch (e) {
       console.error(e);
       throw e;
