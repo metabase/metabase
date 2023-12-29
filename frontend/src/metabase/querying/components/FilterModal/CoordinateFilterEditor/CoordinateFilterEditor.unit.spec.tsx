@@ -131,7 +131,7 @@ describe("StringFilterEditor", () => {
       expect(getNextFilterName()).toBeNull();
     });
 
-    it("should coerce invalid filter values", async () => {
+    it("should coerce invalid filter values", () => {
       const { getNextFilterName, onInput } = setup({
         query,
         stageIndex,
