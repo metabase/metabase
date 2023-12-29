@@ -125,4 +125,86 @@ describe("BooleanFilterEditor", () => {
       expect(getNextFilterName()).toBeNull();
     });
   });
+
+  describe("existing filter", () => {
+    it("should update a filter with one value", () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        operator: "=",
+        values: [true],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+
+      userEvent.click(screen.getByRole("checkbox", { name: "False" }));
+      expect(getNextFilterName()).toBe("Is trial is false");
+      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "False" })).toBeChecked();
+    });
+
+    it("should update a filter with no values", async () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        operator: "is-null",
+        values: [],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(screen.getByText("is empty")).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "True" })).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+
+      userEvent.click(screen.getByText("is empty"));
+      userEvent.click(await screen.findByText("Not empty"));
+      expect(getNextFilterName()).toBe("Is trial is not empty");
+      expect(screen.getByText("not empty")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("checkbox", { name: "True" }),
+      ).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+
+      userEvent.click(screen.getByText("not empty"));
+      userEvent.click(await screen.findByText("Is"));
+      userEvent.click(await screen.findByRole("checkbox", { name: "True" }));
+      expect(getNextFilterName()).toBe("Is trial is true");
+      expect(screen.getByText("is")).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "True" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "False" })).not.toBeChecked();
+    });
+  });
 });
+
+interface QueryWithFilterOpts {
+  operator: Lib.BooleanFilterOperatorName;
+  values: boolean[];
+}
+
+function createQueryWithFilter({ operator, values }: QueryWithFilterOpts) {
+  const defaultQuery = createQuery({ metadata: METADATA });
+  const stageIndex = 0;
+  const findColumn = columnFinder(
+    defaultQuery,
+    Lib.filterableColumns(defaultQuery, stageIndex),
+  );
+  const column = findColumn("ORDERS", BOOLEAN_FIELD.name);
+  const query = Lib.filter(
+    defaultQuery,
+    stageIndex,
+    Lib.booleanFilterClause({
+      operator,
+      column,
+      values,
+    }),
+  );
+  const [filter] = Lib.filters(query, stageIndex);
+
+  return { query, stageIndex, column, filter };
+}
