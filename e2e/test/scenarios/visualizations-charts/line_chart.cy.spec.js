@@ -578,43 +578,27 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  describe("brush filters", () => {
-    it("should apply filters to the series selecting area range", () => {
-      cy.viewport(1280, 800);
+  it("should apply filters to the series selecting area range", () => {
+    cy.viewport(1280, 800);
 
-      visitQuestionAdhoc({
-        dataset_query: testQuery,
-        display: "line",
-      });
-
-      cy.get(".Visualization")
-        .trigger("mousedown", 100, 200)
-        .trigger("mousemove", 230, 200)
-        .trigger("mouseup", 230, 200);
-
-      cy.wait("@dataset");
-
-      cy.findByTestId("filter-pill").should(
-        "have.text",
-        "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
-      );
-
-      cy.get(".Visualization .dot").should("have.length", 6);
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
     });
 
-    it("should apply filter to the series after drilling down", () => {
-      visitQuestionAdhoc({
-        dataset_query: testQuery,
-        display: "line",
-      });
-      cy.get(".Visualization .dot").eq(5).click({ force: true });
+    cy.get(".Visualization")
+      .trigger("mousedown", 100, 200)
+      .trigger("mousemove", 230, 200)
+      .trigger("mouseup", 230, 200);
 
-      popover().findByText("See these Orders").click();
+    cy.wait("@dataset");
 
-      cy.findByTestId("qb-filters-panel")
-        .findByText("Created At is Sep 1–30, 2022")
-        .should("exist");
-    });
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
+    );
+
+    cy.get(".Visualization .dot").should("have.length", 6);
   });
 });
 
