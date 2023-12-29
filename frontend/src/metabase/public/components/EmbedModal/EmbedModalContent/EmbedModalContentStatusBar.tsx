@@ -2,7 +2,7 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import { Flex, Paper, Text } from "metabase/ui";
-import type { EmbedResourceType } from "metabase/public/components/EmbedModal";
+import type { EmbedResourceType } from "metabase/public/lib/types";
 
 interface EmbedModalContentStatusBarProps {
   isPublished: boolean;
@@ -59,7 +59,9 @@ export const EmbedModalContentStatusBar = ({
               successText={t`Updated`}
               failedText={t`Failed!`}
             >
-              {hasSettingsChanges ? t`Publish changes` : t`Publish`}
+              {hasSettingsChanges && isPublished
+                ? t`Publish changes`
+                : t`Publish`}
             </ActionButton>
           )}
         </div>
