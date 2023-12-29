@@ -4,11 +4,8 @@ import { getSignedPreviewUrl } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
-
 import { checkNotNull } from "metabase/lib/types";
-import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 import type {
-  ActivePreviewPane,
   EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbeddingParametersValues,
@@ -16,7 +13,11 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
   EmbedType,
-} from "../types";
+} from "metabase/public/lib/types";
+
+import { DEFAULT_DISPLAY_OPTIONS } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/config";
+import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
+import type { ActivePreviewPane } from "../types";
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 
@@ -70,12 +71,7 @@ export const EmbedModalContent = (
   const [parameterValues, setParameterValues] =
     useState<EmbeddingParametersValues>({});
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
-    {
-      font: null,
-      theme: null,
-      bordered: true,
-      titled: true,
-    },
+    DEFAULT_DISPLAY_OPTIONS,
   );
 
   const handleSave = async () => {

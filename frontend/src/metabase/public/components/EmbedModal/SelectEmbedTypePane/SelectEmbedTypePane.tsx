@@ -9,8 +9,12 @@ import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
+import type {
+  EmbedResource,
+  EmbedResourceType,
+  EmbedType,
+} from "metabase/public/lib/types";
 
-import type { EmbedResource, EmbedResourceType, EmbedType } from "../types";
 import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";

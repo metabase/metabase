@@ -2,16 +2,9 @@ import type { ChangeEvent } from "react";
 import Select, { Option } from "metabase/core/components/Select";
 import CopyButton from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
+import type { CodeSampleOption } from "metabase/public/lib/types";
 
 import { CopyButtonContainer } from "./CodeSample.styled";
-
-type CodeSampleOption = {
-  name: string;
-  source: string;
-  parametersDiffSource?: string;
-  mode: string;
-  embedOption?: string;
-};
 
 interface CodeSampleProps {
   selectedOptionName: CodeSampleOption["name"];

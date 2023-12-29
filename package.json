@@ -176,7 +176,7 @@
     "@types/jest": "^29.2.3",
     "@types/js-cookie": "^2.2.7",
     "@types/jsonwebtoken": "^9.0.1",
-    "@types/jsrsasign": "^8.0.13",
+    "@types/jsrsasign": "^10.5.12",
     "@types/leaflet": "^1.7.5",
     "@types/leaflet-draw": "^0.4.14",
     "@types/leaflet.heat": "^0.2.1",

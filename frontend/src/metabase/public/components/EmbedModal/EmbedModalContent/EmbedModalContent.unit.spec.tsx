@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "__support__/ui";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
+import type { EmbedResource } from "metabase/public/lib/types";
 
-import type { EmbedResource } from "../types";
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
 
@@ -146,11 +146,13 @@ describe("EmbedModalContent", () => {
         expect(screen.getByText("My param")).toBeInTheDocument();
         expect(screen.getByLabelText("My param")).toHaveTextContent("Disabled");
 
-        screen.getByLabelText("My param").click();
+        userEvent.click(screen.getByLabelText("My param"));
 
-        screen.getByText("Locked").click();
+        userEvent.click(screen.getByText("Locked"));
 
-        screen.getByRole("button", { name: "Publish changes" }).click();
+        userEvent.click(
+          screen.getByRole("button", { name: "Publish changes" }),
+        );
 
         await waitFor(() =>
           expect(onUpdateEmbeddingParams).toHaveBeenCalledWith({
@@ -177,9 +179,9 @@ describe("EmbedModalContent", () => {
           activeTab: "Parameters",
         });
 
-        screen.getByLabelText("Month and Year").click();
+        userEvent.click(screen.getByLabelText("Month and Year"));
 
-        screen.getByText("Locked").click();
+        userEvent.click(screen.getByText("Locked"));
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
           `var payload = { resource: { dashboard: ${dashboard.id} }, params: { "${dateParameter.slug}": null }, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration };`,
@@ -232,6 +234,31 @@ describe("EmbedModalContent", () => {
         });
 
         expect(screen.getByLabelText("Code")).toBeChecked();
+        expect(
+          screen.getByText(
+            "If there’s any code you need to change, we’ll show you that here.",
+          ),
+        ).toBeVisible();
+      });
+
+      it("should render code diff on settings change", () => {
+        setup({
+          props: {
+            embedType: "application",
+            resource: createMockDashboard(),
+          },
+          activeTab: "Appearance",
+        });
+
+        userEvent.click(screen.getByText("Transparent"));
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#theme=transparent&bordered=true&titled=true";`,
+        );
+
+        userEvent.click(screen.getByText("Dashboard title"));
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#theme=transparent&bordered=true&titled=false";`,
+        );
       });
     });
   });

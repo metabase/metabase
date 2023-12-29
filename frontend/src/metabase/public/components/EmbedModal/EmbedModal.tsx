@@ -5,9 +5,9 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import Modal from "metabase/components/Modal";
 import { Divider } from "metabase/ui";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import type { EmbedType } from "metabase/public/lib/types";
 
 import { EmbedModalHeaderBackIcon } from "./EmbedModal.styled";
-import type { EmbedType } from "./types";
 
 interface EmbedModalProps {
   isOpen?: boolean;

@@ -7,6 +7,7 @@ import {
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
 import { getParameters } from "metabase/dashboard/selectors";
+import type { EmbedResource } from "metabase/public/lib/types";
 
 import {
   createPublicLink,

@@ -3,13 +3,13 @@ import { Text } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-
 import type {
+  EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbedResource,
   EmbedResourceType,
-  EmbeddingDisplayOptions,
-} from "../types";
+} from "metabase/public/lib/types";
+
 import { EmbedCodePane } from "./EmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";

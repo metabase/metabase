@@ -1,16 +1,21 @@
 import querystring from "querystring";
+import { KJUR } from "jsrsasign"; // using jsrsasign because jsonwebtoken doesn't work on the web :-/
 
-// using jsrsasign because jsonwebtoken doesn't work on the web :-/
-import KJUR from "jsrsasign";
+import type {
+  EmbedResourceType,
+  EmbedResource,
+  EmbeddingParameters,
+  EmbeddingDisplayOptions,
+} from "./types";
 
 export function getSignedToken(
-  resourceType,
-  resourceId,
-  params = {},
-  secretKey,
-  previewEmbeddingParams,
+  resourceType: EmbedResourceType,
+  resourceId: EmbedResource["id"],
+  params: EmbeddingParameters = {},
+  secretKey: string,
+  previewEmbeddingParams: EmbeddingParameters,
 ) {
-  const unsignedToken = {
+  const unsignedToken: { [key: string]: any } = {
     resource: { [resourceType]: resourceId },
     params: params,
     iat: Math.round(new Date().getTime() / 1000),
@@ -19,19 +24,19 @@ export function getSignedToken(
   if (previewEmbeddingParams) {
     unsignedToken._embedding_params = previewEmbeddingParams;
   }
-  return KJUR.jws.JWS.sign(null, { alg: "HS256", typ: "JWT" }, unsignedToken, {
+  return KJUR.jws.JWS.sign(null, { alg: "HS256" }, unsignedToken, {
     utf8: secretKey,
   });
 }
 
 export function getSignedPreviewUrl(
-  siteUrl,
-  resourceType,
-  resourceId,
-  params = {},
-  options,
-  secretKey,
-  previewEmbeddingParams,
+  siteUrl: string,
+  resourceType: EmbedResourceType,
+  resourceId: EmbedResource["id"],
+  params: EmbeddingParameters = {},
+  options: EmbeddingDisplayOptions,
+  secretKey: string,
+  previewEmbeddingParams: EmbeddingParameters,
 ) {
   const token = getSignedToken(
     resourceType,
@@ -45,18 +50,7 @@ export function getSignedPreviewUrl(
   )}`;
 }
 
-export function getUnsignedPreviewUrl(
-  siteUrl,
-  resourceType,
-  resourceId,
-  options,
-) {
-  return `${siteUrl}/public/${resourceType}/${resourceId}${optionsToHashParams(
-    options,
-  )}`;
-}
-
-export function optionsToHashParams(options = {}) {
+export function optionsToHashParams(options: { [key: string]: any } = {}) {
   options = { ...options };
   // filter out null, undefined, ""
   for (const name in options) {
