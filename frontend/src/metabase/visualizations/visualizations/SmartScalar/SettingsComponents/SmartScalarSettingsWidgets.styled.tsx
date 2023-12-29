@@ -5,6 +5,12 @@ import { Button } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
 
+export const ComparisonList = styled.ul`
+  li:not(:first-of-type) {
+    margin-top: 8px;
+  }
+`;
+
 type DoneButtonProps = ButtonProps & HTMLAttributes<HTMLButtonElement>;
 
 export const DoneButton = styled(Button)<DoneButtonProps>`

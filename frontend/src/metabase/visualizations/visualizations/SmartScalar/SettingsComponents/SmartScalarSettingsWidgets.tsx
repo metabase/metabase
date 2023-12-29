@@ -15,7 +15,11 @@ import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import { StaticNumberForm } from "./StaticNumberForm";
 import { AnotherColumnForm } from "./AnotherColumnForm";
 import { MenuItemStyled } from "./MenuItem.styled";
-import { ExpandIcon, RemoveIcon } from "./SmartScalarSettingsWidgets.styled";
+import {
+  ComparisonList,
+  ExpandIcon,
+  RemoveIcon,
+} from "./SmartScalarSettingsWidgets.styled";
 
 type SmartScalarComparisonWidgetProps = {
   onChange: (setting: SmartScalarComparison[]) => void;
@@ -60,18 +64,21 @@ export function SmartScalarComparisonWidget({
 
   return (
     <Stack>
-      {value.map((comparison, index) => (
-        <ComparisonPicker
-          {...props}
-          key={index}
-          value={comparison}
-          isRemovable={canRemoveComparison}
-          onChange={nextComparison =>
-            handleChangeComparison(index, nextComparison)
-          }
-          onRemove={() => handleRemoveComparison(index)}
-        />
-      ))}
+      <ComparisonList>
+        {value.map((comparison, index) => (
+          <li key={index}>
+            <ComparisonPicker
+              {...props}
+              value={comparison}
+              isRemovable={canRemoveComparison}
+              onChange={nextComparison =>
+                handleChangeComparison(index, nextComparison)
+              }
+              onRemove={() => handleRemoveComparison(index)}
+            />
+          </li>
+        ))}
+      </ComparisonList>
       <Button
         variant="subtle"
         disabled={!canAddComparison}
