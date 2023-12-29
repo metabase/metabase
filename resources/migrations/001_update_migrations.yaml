@@ -8,6 +8,14 @@ databaseChangeLog:
       value: timestamp(6)
       dbms: mysql,mariadb
   - property:
+      name: datetime_type
+      value: timestamp without time zone
+      dbms: postgresql,h2
+  - property:
+      name: datetime_type
+      value: DATETIME
+      dbms: mysql,mariadb
+  - property:
       name: blob.type
       value: blob
       dbms: mysql,h2,mariadb
@@ -5122,7 +5130,697 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v49.00-054
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_dashboardcard.created_at
+        from timestamp without time zone to timestamp with time zone h2
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2
+      changes:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-055
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_table.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-056
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_dashboard.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-057
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.last_analyzed
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: last_analyzed
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: last_analyzed
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-058
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-059
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of dimension.updated_at
+        from timestamp without time zone to timestamp with time zone
+      changes:
+        - modifyDataType:
+            tableName: dimension
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: dimension
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-060
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_fieldvalues.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-061
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_database.updated_at
+        from timestamp without time zone to timestamp with time zone h2
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-062
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of pulse_channel.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: pulse_channel
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: pulse_channel
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-063
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of application_permissions_revision.created_at
+        from timestamp without time zone to timestamp with time zone
+      changes:
+        - modifyDataType:
+            tableName: application_permissions_revision
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: application_permissions_revision
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-064
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of core_user.last_login
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: last_login
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: core_user
+            columnName: last_login
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-065
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of segment.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: segment
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-066
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of pulse.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: pulse
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: pulse
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-067
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_cardfavorite.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_cardfavorite
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_cardfavorite
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-068
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_dashboard.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboard
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-069
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_table.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-070
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of permissions_revision.created_at
+        from timestamp without time zone to timestamp with time zone
+      changes:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: permissions_revision
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-071
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_dashboardcard.updated_at
+        from timestamp without time zone to timestamp with time zone h2
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2
+      changes:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_dashboardcard
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-072
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metric.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metric
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-073
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of activity.timestamp
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: activity
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: activity
+            columnName: timestamp
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-074
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-075
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of core_user.date_joined
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_user
+            columnName: date_joined
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: core_user
+            columnName: date_joined
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-076
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_database.created_at
+        from timestamp without time zone to timestamp with time zone h2
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2
+      changes:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_database
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-077
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of dimension.created_at
+        from timestamp without time zone to timestamp with time zone
+      changes:
+        - modifyDataType:
+            tableName: dimension
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: dimension
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-078
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of recent_views.timestamp
+        from timestamp without time zone to timestamp with time zone
+      changes:
+        - modifyDataType:
+            tableName: recent_views
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: recent_views
+            columnName: timestamp
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-079
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of pulse_channel.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: pulse_channel
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: pulse_channel
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-080
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_card.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-081
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of dependency.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: dependency
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: dependency
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-082
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of core_session.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: core_session
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: core_session
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-083
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of segment.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: segment
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: segment
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-084
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of pulse.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: pulse
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: pulse
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-085
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metric.updated_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metric
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: metric
+            columnName: updated_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-086
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of collection_permission_graph_revision.created_at
+        from timestamp without time zone to timestamp with time zone
+      changes:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: collection_permission_graph_revision
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+  - changeSet:
+      id: v49.00-087
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of report_cardfavorite.created_at
+        from timestamp without time zone to timestamp with time zone h2,mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: h2,mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: report_cardfavorite
+            columnName: created_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_cardfavorite
+            columnName: created_at
+            newDataType: ${datetime_type}
+
+ # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
 ########################################################################################################################
