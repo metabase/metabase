@@ -98,7 +98,7 @@ describe("StringFilterEditor", () => {
       expect(screen.getByText("is")).toBeInTheDocument();
 
       userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
-      userEvent.click(document.body);
+      userEvent.tab();
       expect(getNextFilterName()).toBe("ID is 15");
     });
 
@@ -111,7 +111,7 @@ describe("StringFilterEditor", () => {
       expect(screen.getByText("is")).toBeInTheDocument();
 
       userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
-      userEvent.click(document.body);
+      userEvent.tab();
       expect(getNextFilterName()).toBe("Product ID is 15");
     });
 
@@ -140,7 +140,7 @@ describe("StringFilterEditor", () => {
 
       userEvent.type(screen.getByPlaceholderText("Min"), "10");
       userEvent.type(screen.getByPlaceholderText("Max"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is between 10 and 20");
       expect(onInput).toHaveBeenCalled();
@@ -183,7 +183,7 @@ describe("StringFilterEditor", () => {
       });
 
       userEvent.type(screen.getByPlaceholderText("Min"), "10");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is greater than or equal to 10");
       expect(onInput).toHaveBeenCalled();
@@ -238,7 +238,7 @@ describe("StringFilterEditor", () => {
       expect(screen.getByDisplayValue("10")).toBeInTheDocument();
 
       userEvent.type(screen.getByLabelText("Filter value"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is equal to 2 selections");
     });
@@ -259,7 +259,7 @@ describe("StringFilterEditor", () => {
 
       userEvent.clear(screen.getByDisplayValue("10"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is greater than 20");
     });
@@ -282,7 +282,7 @@ describe("StringFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Min"), "15");
       userEvent.clear(screen.getByDisplayValue("20"));
       userEvent.type(screen.getByPlaceholderText("Max"), "25");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is between 15 and 25");
     });

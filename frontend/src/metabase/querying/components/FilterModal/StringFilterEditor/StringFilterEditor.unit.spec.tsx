@@ -119,7 +119,7 @@ describe("StringFilterEditor", () => {
       });
 
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Test");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Password is Test");
       expect(onInput).toHaveBeenCalled();
@@ -241,7 +241,7 @@ describe("StringFilterEditor", () => {
       expect(screen.getByText("abc")).toBeInTheDocument();
 
       userEvent.type(screen.getByLabelText("Filter value"), "bcd");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Password is 2 selections");
       expect(screen.getByText("abc")).toBeInTheDocument();
@@ -264,7 +264,7 @@ describe("StringFilterEditor", () => {
 
       userEvent.clear(screen.getByDisplayValue("Ga"));
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Wi");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Category starts with Wi");
     });

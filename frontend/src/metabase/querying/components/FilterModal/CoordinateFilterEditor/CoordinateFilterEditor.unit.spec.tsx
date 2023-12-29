@@ -88,7 +88,7 @@ describe("StringFilterEditor", () => {
 
       userEvent.type(screen.getByPlaceholderText("Min"), "10");
       userEvent.type(screen.getByPlaceholderText("Max"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is between 10 and 20");
       expect(onInput).toHaveBeenCalled();
@@ -139,7 +139,7 @@ describe("StringFilterEditor", () => {
       });
 
       userEvent.type(screen.getByPlaceholderText("Min"), "10");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe(
         "Latitude is greater than or equal to 10",
@@ -163,7 +163,7 @@ describe("StringFilterEditor", () => {
       expect(screen.getByDisplayValue("10")).toBeInTheDocument();
 
       userEvent.type(screen.getByLabelText("Filter value"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is equal to 2 selections");
     });
@@ -182,7 +182,7 @@ describe("StringFilterEditor", () => {
 
       userEvent.clear(screen.getByDisplayValue("10"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is greater than 20");
     });
@@ -203,7 +203,7 @@ describe("StringFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Min"), "15");
       userEvent.clear(screen.getByDisplayValue("20"));
       userEvent.type(screen.getByPlaceholderText("Max"), "25");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is between 15 and 25");
     });
@@ -228,7 +228,7 @@ describe("StringFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Left longitude"), "-33");
       userEvent.clear(screen.getByDisplayValue("40"));
       userEvent.type(screen.getByPlaceholderText("Right longitude"), "44");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe(
         "Latitude is between -11 and 22 and Longitude is between -33 and 44",

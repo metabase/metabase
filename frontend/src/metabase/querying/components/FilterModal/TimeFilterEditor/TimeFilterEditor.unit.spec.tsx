@@ -84,7 +84,7 @@ describe("TimeFilterEditor", () => {
 
       userEvent.clear(screen.getByPlaceholderText("Enter a time"));
       userEvent.type(screen.getByPlaceholderText("Enter a time"), "10:20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is before 10:20 AM");
       expect(onInput).toHaveBeenCalled();
@@ -130,7 +130,7 @@ describe("TimeFilterEditor", () => {
       });
 
       userEvent.clear(screen.getByPlaceholderText("Enter a time"));
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBeNull();
     });
@@ -151,7 +151,7 @@ describe("TimeFilterEditor", () => {
 
       userEvent.clear(screen.getByDisplayValue("10:20"));
       userEvent.type(screen.getByPlaceholderText("Enter a time"), "11:40");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is after 11:40 AM");
     });
@@ -172,7 +172,7 @@ describe("TimeFilterEditor", () => {
       userEvent.type(screen.getByPlaceholderText("Min"), "11:40");
       userEvent.clear(screen.getByDisplayValue("12:40"));
       userEvent.type(screen.getByPlaceholderText("Max"), "15:10");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is 11:40 AM – 3:10 PM");
     });
