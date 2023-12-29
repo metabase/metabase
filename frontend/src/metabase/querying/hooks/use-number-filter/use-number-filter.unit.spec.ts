@@ -71,9 +71,9 @@ describe("useNumberFilter", () => {
       });
 
       const { operator, values, getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values);
+      const newFilter = checkNotNull(getFilterClause(operator, values));
       expect(
-        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
         displayName,
       });
@@ -112,10 +112,8 @@ describe("useNumberFilter", () => {
       });
 
       const { operator, values, getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values);
-      expect(
-        Lib.displayInfo(query, stageIndex, checkNotNull(newFilter)),
-      ).toMatchObject({
+      const newFilter = checkNotNull(getFilterClause(operator, values));
+      expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
         displayName,
       });
     },
@@ -149,10 +147,9 @@ describe("useNumberFilter", () => {
       );
 
       const { getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values);
-
+      const newFilter = checkNotNull(getFilterClause(operator, values));
       expect(
-        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
         displayName,
       });
@@ -218,10 +215,8 @@ describe("useNumberFilter", () => {
     });
 
     const { operator, values, getFilterClause } = result.current;
-    const newFilter = getFilterClause(operator, values);
-    expect(
-      Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
-    ).toMatchObject({
+    const newFilter = checkNotNull(getFilterClause(operator, values));
+    expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
       displayName: "Total is not equal to 10",
     });
   });

@@ -76,9 +76,11 @@ describe("useStringFilter", () => {
       });
 
       const { operator, values, options, getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values, options);
+      const newFilter = checkNotNull(
+        getFilterClause(operator, values, options),
+      );
       expect(
-        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
         displayName,
       });
@@ -129,10 +131,10 @@ describe("useStringFilter", () => {
       });
 
       const { operator, values, options, getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values, options);
-      expect(
-        Lib.displayInfo(query, stageIndex, checkNotNull(newFilter)),
-      ).toMatchObject({
+      const newFilter = checkNotNull(
+        getFilterClause(operator, values, options),
+      );
+      expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
         displayName,
       });
     },
@@ -202,10 +204,8 @@ describe("useStringFilter", () => {
     });
 
     const { operator, values, options, getFilterClause } = result.current;
-    const newFilter = getFilterClause(operator, values, options);
-    expect(
-      Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
-    ).toMatchObject({
+    const newFilter = checkNotNull(getFilterClause(operator, values, options));
+    expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
       displayName: "Category is not Gadget",
     });
   });

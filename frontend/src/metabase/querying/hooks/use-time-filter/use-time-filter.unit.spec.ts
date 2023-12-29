@@ -172,10 +172,8 @@ describe("useTimeFilter", () => {
       });
 
       const { operator, values, getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values);
-      expect(
-        Lib.displayInfo(query, stageIndex, checkNotNull(newFilter)),
-      ).toMatchObject({
+      const newFilter = checkNotNull(getFilterClause(operator, values));
+      expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
         displayName,
       });
     },
@@ -199,9 +197,9 @@ describe("useTimeFilter", () => {
       );
 
       const { getFilterClause } = result.current;
-      const newFilter = getFilterClause(operator, values);
+      const newFilter = checkNotNull(getFilterClause(operator, values));
       expect(
-        Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
       ).toMatchObject({
         displayName,
       });
@@ -267,10 +265,8 @@ describe("useTimeFilter", () => {
     });
 
     const { operator, values, getFilterClause } = result.current;
-    const newFilter = getFilterClause(operator, values);
-    expect(
-      Lib.displayInfo(defaultQuery, stageIndex, checkNotNull(newFilter)),
-    ).toMatchObject({
+    const newFilter = checkNotNull(getFilterClause(operator, values));
+    expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
       displayName: "Time is after 10:20 AM",
     });
   });

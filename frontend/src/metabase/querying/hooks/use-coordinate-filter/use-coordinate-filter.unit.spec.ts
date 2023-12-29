@@ -60,7 +60,7 @@ describe("useCoordinateFilter", () => {
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator: newOperator, values: newValues, displayName }) => {
       const { result } = renderHook(() =>
         useCoordinateFilter({
           query: defaultQuery,
@@ -71,21 +71,18 @@ describe("useCoordinateFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(
-          getFilterClause(operator, longitudeColumn, values),
-        );
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = checkNotNull(
+        getFilterClause(operator, longitudeColumn, values),
+      );
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -104,7 +101,7 @@ describe("useCoordinateFilter", () => {
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values, displayName }) => {
+    ({ expression, values: newValues, displayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -119,18 +116,15 @@ describe("useCoordinateFilter", () => {
 
       act(() => {
         const { setValues } = result.current;
-        setValues(values);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(
-          getFilterClause(operator, longitudeColumn, values),
-        );
-
-        expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-          displayName,
-        });
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = checkNotNull(
+        getFilterClause(operator, longitudeColumn, values),
+      );
+      expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
+        displayName,
       });
     },
   );
@@ -168,17 +162,14 @@ describe("useCoordinateFilter", () => {
         }),
       );
 
-      act(() => {
-        const { getFilterClause } = result.current;
-        const newFilter = checkNotNull(
-          getFilterClause(operator, longitudeColumn, values),
-        );
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { getFilterClause } = result.current;
+      const newFilter = checkNotNull(
+        getFilterClause(operator, longitudeColumn, values),
+      );
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -202,7 +193,7 @@ describe("useCoordinateFilter", () => {
     },
   ])(
     'should validate values for "$operator" operator',
-    ({ operator, values }) => {
+    ({ operator: newOperator, values: newValues }) => {
       const { result } = renderHook(() =>
         useCoordinateFilter({
           query: defaultQuery,
@@ -213,17 +204,15 @@ describe("useCoordinateFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, isValid, getFilterClause } = result.current;
-        expect(isValid).toBeFalsy();
-        expect(
-          getFilterClause(operator, longitudeColumn, values),
-        ).toBeUndefined();
-      });
+      const { operator, values, isValid, getFilterClause } = result.current;
+      expect(isValid).toBeFalsy();
+      expect(
+        getFilterClause(operator, longitudeColumn, values),
+      ).toBeUndefined();
     },
   );
 
@@ -249,17 +238,12 @@ describe("useCoordinateFilter", () => {
       setValues(getDefaultValues(newOperator, values));
     });
 
-    act(() => {
-      const { operator, values, getFilterClause } = result.current;
-      const newFilter = checkNotNull(
-        getFilterClause(operator, longitudeColumn, values),
-      );
-
-      expect(
-        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-      ).toMatchObject({
-        displayName: "Latitude is not equal to 10",
-      });
+    const { operator, values, getFilterClause } = result.current;
+    const newFilter = checkNotNull(
+      getFilterClause(operator, longitudeColumn, values),
+    );
+    expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
+      displayName: "Latitude is not equal to 10",
     });
   });
 });
