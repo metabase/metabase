@@ -83,7 +83,7 @@ describe("useBooleanOptionFilter", () => {
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator: newOperator, values: newValues, displayName }) => {
       const { result } = renderHook(() =>
         useBooleanOperatorFilter({
           query: defaultQuery,
@@ -94,19 +94,16 @@ describe("useBooleanOptionFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = checkNotNull(getFilterClause(operator, values));
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -123,7 +120,7 @@ describe("useBooleanOptionFilter", () => {
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, operator, displayName }) => {
+    ({ expression, operator: newOperator, displayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -138,17 +135,14 @@ describe("useBooleanOptionFilter", () => {
 
       act(() => {
         const { getDefaultValues, setOperator, setValues } = result.current;
-        setOperator(operator);
+        setOperator(newOperator);
         setValues(getDefaultValues());
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
-
-        expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-          displayName,
-        });
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = checkNotNull(getFilterClause(operator, values));
+      expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
+        displayName,
       });
     },
   );
@@ -160,7 +154,7 @@ describe("useBooleanOptionFilter", () => {
     },
   ])(
     'should validate values for "$operator" operator',
-    ({ operator, values }) => {
+    ({ operator: newOperator, values: newValues }) => {
       const { result } = renderHook(() =>
         useBooleanOperatorFilter({
           query: defaultQuery,
@@ -171,14 +165,12 @@ describe("useBooleanOptionFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        expect(getFilterClause(operator, values)).toBeUndefined();
-      });
+      const { operator, values, getFilterClause } = result.current;
+      expect(getFilterClause(operator, values)).toBeUndefined();
     },
   );
 });

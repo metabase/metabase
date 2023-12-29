@@ -75,15 +75,12 @@ describe("useBooleanOptionFilter", () => {
         setOptionType(optionType);
       });
 
-      act(() => {
-        const { getFilterClause } = result.current;
-        const newFilter = getFilterClause();
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { getFilterClause } = result.current;
+      const newFilter = getFilterClause();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -127,15 +124,12 @@ describe("useBooleanOptionFilter", () => {
         setOptionType(optionType);
       });
 
-      act(() => {
-        const { getFilterClause } = result.current;
-        const newFilter = getFilterClause();
-
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      const { getFilterClause } = result.current;
+      const newFilter = getFilterClause();
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
