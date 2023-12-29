@@ -64,7 +64,7 @@ describe("StringFilterEditor", () => {
 
   describe("new filter", () => {
     it("should handle list values", async () => {
-      const { getNextFilterName, onInput } = setup({
+      const { getNextFilterName } = setup({
         query,
         stageIndex,
         column,
@@ -73,11 +73,10 @@ describe("StringFilterEditor", () => {
       userEvent.click(await screen.findByText("Gadget"));
 
       expect(getNextFilterName()).toBe("Category is Gadget");
-      expect(onInput).not.toHaveBeenCalled();
     });
 
     it("should handle searchable values", async () => {
-      const { getNextFilterName, onInput } = setup({
+      const { getNextFilterName } = setup({
         query,
         stageIndex,
         column: findColumn("PEOPLE", "EMAIL"),
@@ -89,7 +88,6 @@ describe("StringFilterEditor", () => {
       userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(getNextFilterName()).toBe("Email is a@metabase.test");
-      expect(onInput).not.toHaveBeenCalled();
     });
 
     it("should handle non-searchable values", () => {

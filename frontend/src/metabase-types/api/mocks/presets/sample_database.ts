@@ -76,6 +76,12 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
+export const ORDERS_QUANTITY_VALUES: FieldValuesResult = {
+  field_id: ORDERS.QUANTITY,
+  values: Array.from({ length: 100 }, (_, i) => [i]),
+  has_more_values: false,
+};
+
 export const PRODUCT_CATEGORY_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.CATEGORY,
   values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
