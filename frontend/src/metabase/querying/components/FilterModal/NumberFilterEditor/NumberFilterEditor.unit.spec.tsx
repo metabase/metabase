@@ -114,5 +114,65 @@ describe("StringFilterEditor", () => {
       userEvent.click(document.body);
       expect(getNextFilterName()).toBe("Product ID is 15");
     });
+
+    it("should add a filter with one value", async () => {
+      const { getNextFilterName, onInput } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByText("between"));
+      userEvent.click(await screen.findByText("Less than"));
+      userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Total is less than 20");
+      expect(onInput).toHaveBeenCalled();
+    });
+
+    it("should add a filter with two values", async () => {
+      const { getNextFilterName, onInput } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Min"), "10");
+      userEvent.type(screen.getByPlaceholderText("Max"), "20");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Total is between 10 and 20");
+      expect(onInput).toHaveBeenCalled();
+    });
+
+    it("should add a filter with no value", async () => {
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByText("between"));
+      userEvent.click(await screen.findByText("Is empty"));
+
+      expect(getNextFilterName()).toBe("Total is empty");
+    });
+
+    it("should not accept an empty string as a value", async () => {
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByText("between"));
+      userEvent.click(await screen.findByText("Greater than"));
+      expect(getNextFilterName()).toBeNull();
+
+      userEvent.type(screen.getByPlaceholderText("Enter a number"), "10");
+      userEvent.clear(screen.getByPlaceholderText("Enter a number"));
+      expect(getNextFilterName()).toBeNull();
+    });
   });
 });
