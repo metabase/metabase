@@ -27,7 +27,7 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should not display disabled parameters", () => {
-      publishChanges(({ request }) => {
+      publishChanges(false, ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {});
       });
 
@@ -62,7 +62,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Add filter").click();
 
-      publishChanges(({ request }) => {
+      publishChanges(true, ({ request }) => {
         const actual = request.body.embedding_params;
 
         const expected = {
@@ -272,7 +272,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
     // Note: ID is disabled
     setParameter("Source", "Locked");
     setParameter("Name", "Editable");
-    publishChanges(({ request }) => {
+    publishChanges(true, ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
@@ -301,10 +301,10 @@ function setParameter(name, filter) {
   popover().contains(filter).click();
 }
 
-function publishChanges(callback) {
+function publishChanges(hasChanges, callback) {
   cy.intercept("PUT", "/api/card/*").as("publishChanges");
 
-  cy.button("Publish changes").click();
+  cy.button(hasChanges ? "Publish changes" : "Publish").click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.

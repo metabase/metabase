@@ -12,7 +12,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { JS_CODE, IFRAME_CODE } from "./shared/embedding-snippets";
+import { JS_CODE, JS_CODE_IFRAME_DIFF } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
@@ -78,14 +78,11 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({
+            JS_CODE_IFRAME_DIFF({
               type: "dashboard",
-              id: ORDERS_DASHBOARD_ID,
               theme: "transparent",
             }),
           );
-
-        cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
       });
     });
 
@@ -118,9 +115,8 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({
+            JS_CODE_IFRAME_DIFF({
               type: "question",
-              id: ORDERS_QUESTION_ID,
               theme: "transparent",
             }),
           );
@@ -136,18 +132,15 @@ features.forEach(feature => {
             .invoke("text")
             .should(
               "match",
-              JS_CODE({
+              JS_CODE_IFRAME_DIFF({
                 type: "question",
-                id: ORDERS_QUESTION_ID,
                 theme: "transparent",
                 hideDownloadButton: true,
               }),
             );
         }
 
-        cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
-
-        cy.findAllByTestId("embed-backend-select-button")
+        cy.findByTestId("embed-backend-select-button")
           .should("contain", "Node.js")
           .click();
       });
@@ -157,16 +150,6 @@ features.forEach(feature => {
         .and("contain", "Ruby")
         .and("contain", "Python")
         .and("contain", "Clojure");
-
-      cy.findAllByTestId("embed-frontend-select-button")
-        .should("contain", "Mustache")
-        .click();
-
-      popover()
-        .should("contain", "Mustache")
-        .and("contain", "Pug / Jade")
-        .and("contain", "ERB")
-        .and("contain", "JSX");
     });
   });
 });

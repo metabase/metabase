@@ -24,6 +24,19 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemePara
   );
 };
 
+export const JS_CODE_IFRAME_DIFF = ({ type, hideDownloadButton, theme }) => {
+  return new RegExp(
+    `var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
+      theme,
+    )}bordered=true&titled=true${getParameter({ hideDownloadButton })}";`
+      .split("\n")
+      .join("")
+      .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+      .replace("KEYKEYKEY", ".*")
+      .replace("PORTPORTPORT", ".*"),
+  );
+};
+
 export const IFRAME_CODE = `<iframe
     src="{{iframeUrl}}"
     frameborder="0"
