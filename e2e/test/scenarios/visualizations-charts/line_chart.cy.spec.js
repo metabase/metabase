@@ -588,7 +588,7 @@ describe("scenarios > visualizations > line chart", () => {
       });
 
       cy.get(".Visualization")
-        .trigger("mousedown", 110, 200)
+        .trigger("mousedown", 100, 200)
         .trigger("mousemove", 230, 200)
         .trigger("mouseup", 230, 200);
 
@@ -596,7 +596,7 @@ describe("scenarios > visualizations > line chart", () => {
 
       cy.findByTestId("filter-pill").should(
         "have.text",
-        "Created At is May 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
+        "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
       );
 
       cy.get(".Visualization .dot").should("have.length", 6);
