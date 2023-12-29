@@ -244,6 +244,27 @@ describe("StringFilterEditor", () => {
 
       expect(getNextFilterName()).toBe("Category starts with Wi");
     });
+
+    it("should preserve values when changing the filter operator", async () => {
+      const { query, stageIndex, column, filter } = createQueryWithFilter({
+        tableName: "PRODUCTS",
+        columnName: "CATEGORY",
+        operator: "starts-with",
+        values: ["Ga"],
+      });
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+
+      userEvent.click(screen.getByText("starts with"));
+      userEvent.click(await screen.findByText("Ends with"));
+
+      expect(getNextFilterName()).toBe("Category ends with Ga");
+      expect(screen.getByDisplayValue("Ga")).toBeInTheDocument();
+    });
   });
 });
 
