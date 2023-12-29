@@ -1,7 +1,8 @@
+import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { Icon } from "metabase/core/components/Icon";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Button, Menu, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
@@ -12,8 +13,9 @@ import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
 import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import { StaticNumberForm } from "./StaticNumberForm";
-import { MenuItemStyled } from "./MenuItem.styled";
 import { AnotherColumnForm } from "./AnotherColumnForm";
+import { MenuItemStyled } from "./MenuItem.styled";
+import { ExpandIcon, RemoveIcon } from "./SmartScalarSettingsWidgets.styled";
 
 type SmartScalarComparisonWidgetProps = {
   onChange: (setting: SmartScalarComparison[]) => void;
@@ -32,6 +34,7 @@ export function SmartScalarComparisonWidget({
   ...props
 }: SmartScalarComparisonWidgetProps) {
   const canAddComparison = value.length < maxComparisons;
+  const canRemoveComparison = value.length > 1;
 
   const handleAddComparison = useCallback(() => {
     onChange([...value, { type: COMPARISON_TYPES.PREVIOUS_PERIOD }]);
@@ -47,6 +50,14 @@ export function SmartScalarComparisonWidget({
     [value, onChange],
   );
 
+  const handleRemoveComparison = useCallback(
+    (index: number) => {
+      const nextValue = value.filter((item, i) => i !== index);
+      onChange(nextValue);
+    },
+    [value, onChange],
+  );
+
   return (
     <Stack>
       {value.map((comparison, index) => (
@@ -54,9 +65,11 @@ export function SmartScalarComparisonWidget({
           {...props}
           key={index}
           value={comparison}
+          isRemovable={canRemoveComparison}
           onChange={nextComparison =>
             handleChangeComparison(index, nextComparison)
           }
+          onRemove={() => handleRemoveComparison(index)}
         />
       ))}
       <Button
@@ -74,12 +87,16 @@ interface ComparisonPickerProps {
   value: SmartScalarComparison;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];
+  isRemovable?: boolean;
   onChange: (setting: SmartScalarComparison) => void;
+  onRemove: () => void;
 }
 
 function ComparisonPicker({
   onChange,
+  onRemove,
   options,
+  isRemovable = true,
   comparableColumns,
   value: selectedValue,
 }: ComparisonPickerProps) {
@@ -93,7 +110,16 @@ function ComparisonPicker({
     ({ type }) => type === selectedValue.type,
   );
 
+  const displayName = getDisplayName(selectedValue, selectedOption);
   const isDisabled = options.length === 1;
+
+  const handleRemoveClick = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      onRemove();
+    },
+    [onRemove],
+  );
 
   const handleEditedValueChange: HandleEditedValueChangeType = useCallback(
     (value: SmartScalarComparison, shouldSubmit = false) => {
@@ -175,13 +201,26 @@ function ComparisonPicker({
       <Menu.Target>
         <Button
           disabled={isDisabled}
-          rightIcon={<Icon name="chevrondown" size="12" />}
+          rightIcon={
+            isRemovable && (
+              <IconButtonWrapper
+                aria-label={t`Remove`}
+                onClick={handleRemoveClick}
+              >
+                <RemoveIcon name="close" />
+              </IconButtonWrapper>
+            )
+          }
           px="1rem"
           fullWidth
           data-testid="comparisons-widget-button"
-          styles={{ inner: { justifyContent: "space-between" } }}
+          styles={{
+            label: { flex: 1 },
+            inner: { justifyContent: "space-between" },
+          }}
         >
-          {getDisplayName(selectedValue, selectedOption)}
+          <span>{displayName}</span>
+          <ExpandIcon name="chevrondown" size={14} />
         </Button>
       </Menu.Target>
 
