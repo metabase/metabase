@@ -13,14 +13,17 @@ const setup = (series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
 const PREVIOUS_PERIOD_COMPARISON = {
+  id: "1",
   type: COMPARISON_TYPES.PREVIOUS_PERIOD,
 };
 
 const PREVIOUS_VALUE_COMPARISON = {
+  id: "1",
   type: COMPARISON_TYPES.PREVIOUS_VALUE,
 };
 
 const getPeriodsAgoComparison = value => ({
+  id: "1",
   type: COMPARISON_TYPES.PERIODS_AGO,
   value,
 });

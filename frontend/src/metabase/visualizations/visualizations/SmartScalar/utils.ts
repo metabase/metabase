@@ -16,6 +16,7 @@ import type {
 import { isEmpty } from "metabase/lib/validate";
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
+import { uuid } from "metabase/lib/utils";
 import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
 
 import {
@@ -119,15 +120,21 @@ export function getDefaultComparison(
   )?.unit;
 
   if (!dateUnit) {
-    return createComparisonMenuOption({
-      type: COMPARISON_TYPES.PREVIOUS_VALUE,
-    });
+    return {
+      id: uuid(),
+      ...createComparisonMenuOption({
+        type: COMPARISON_TYPES.PREVIOUS_VALUE,
+      }),
+    };
   }
 
-  return createComparisonMenuOption({
-    type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-    dateUnit,
-  });
+  return {
+    id: uuid(),
+    ...createComparisonMenuOption({
+      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+      dateUnit,
+    }),
+  };
 }
 
 export function getColumnsForComparison(
@@ -206,6 +213,10 @@ export function isComparisonValid(
       data: { cols, insights },
     },
   ] = series;
+
+  if (!comparison.id) {
+    return false;
+  }
 
   if (comparison.type === COMPARISON_TYPES.ANOTHER_COLUMN) {
     if (isEmpty(comparison.column) || isEmpty(comparison.label)) {

@@ -7,6 +7,7 @@ export type SmartScalarComparisonType =
   | "staticNumber";
 
 interface BaseSmartScalarComparison {
+  id: string; // client-side generated, used for sorting
   type: SmartScalarComparisonType;
 }
 

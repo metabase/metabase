@@ -15,7 +15,7 @@ import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface StaticNumberFormProps {
   value?: SmartScalarComparisonStaticNumber;
-  onChange: (setting: SmartScalarComparisonStaticNumber) => void;
+  onChange: (value: Omit<SmartScalarComparisonStaticNumber, "id">) => void;
   onBack: () => void;
 }
 

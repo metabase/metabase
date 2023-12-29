@@ -2,6 +2,7 @@ import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { uuid } from "metabase/lib/utils";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Button, Menu, Stack, Text } from "metabase/ui";
 import type {
@@ -41,13 +42,14 @@ export function SmartScalarComparisonWidget({
   const canRemoveComparison = value.length > 1;
 
   const handleAddComparison = useCallback(() => {
-    onChange([...value, { type: COMPARISON_TYPES.PREVIOUS_PERIOD }]);
+    const comparison = { id: uuid(), type: COMPARISON_TYPES.PREVIOUS_PERIOD };
+    onChange([...value, comparison]);
   }, [value, onChange]);
 
   const handleChangeComparison = useCallback(
-    (index: number, comparison: SmartScalarComparison) => {
-      const nextValue = value.map((item, i) =>
-        i === index ? comparison : item,
+    (comparison: SmartScalarComparison) => {
+      const nextValue = value.map(item =>
+        item.id === comparison.id ? comparison : item,
       );
       onChange(nextValue);
     },
@@ -55,8 +57,8 @@ export function SmartScalarComparisonWidget({
   );
 
   const handleRemoveComparison = useCallback(
-    (index: number) => {
-      const nextValue = value.filter((item, i) => i !== index);
+    (comparison: SmartScalarComparison) => {
+      const nextValue = value.filter(item => item.id !== comparison.id);
       onChange(nextValue);
     },
     [value, onChange],
@@ -65,16 +67,14 @@ export function SmartScalarComparisonWidget({
   return (
     <Stack>
       <ComparisonList>
-        {value.map((comparison, index) => (
-          <li key={index}>
+        {value.map(comparison => (
+          <li key={comparison.id}>
             <ComparisonPicker
               {...props}
               value={comparison}
               isRemovable={canRemoveComparison}
-              onChange={nextComparison =>
-                handleChangeComparison(index, nextComparison)
-              }
-              onRemove={() => handleRemoveComparison(index)}
+              onChange={handleChangeComparison}
+              onRemove={() => handleRemoveComparison(comparison)}
             />
           </li>
         ))}
@@ -161,7 +161,10 @@ function ComparisonPicker({
           }
           columns={comparableColumns}
           onChange={nextValue => {
-            handleEditedValueChange(nextValue, true);
+            handleEditedValueChange(
+              { id: selectedValue.id, ...nextValue },
+              true,
+            );
           }}
           onBack={() => setTab(null)}
         />
@@ -176,7 +179,10 @@ function ComparisonPicker({
               : undefined
           }
           onChange={nextValue => {
-            handleEditedValueChange(nextValue, true);
+            handleEditedValueChange(
+              { id: selectedValue.id, ...nextValue },
+              true,
+            );
           }}
           onBack={() => setTab(null)}
         />
@@ -264,7 +270,7 @@ function getDisplayName(
   return option?.name;
 }
 
-export type HandleEditedValueChangeType = (
+type HandleEditedValueChangeType = (
   value: SmartScalarComparison,
   shouldSubmit?: boolean,
 ) => void;
@@ -297,7 +303,9 @@ function renderMenuOption({
         aria-selected={isSelected}
         type={type}
         name={name}
-        onChange={onChange}
+        onChange={(nextValue, submit) =>
+          onChange({ id: selectedValue.id, ...nextValue }, submit)
+        }
         maxValue={maxValue}
         editedValue={editedValue.type === type ? editedValue : undefined}
       />
@@ -312,7 +320,7 @@ function renderMenuOption({
       const tab = getTabForComparisonType(type);
       onChangeTab(tab);
     } else {
-      onChange({ type }, true);
+      onChange({ id: selectedValue.id, type }, true);
     }
   };
 

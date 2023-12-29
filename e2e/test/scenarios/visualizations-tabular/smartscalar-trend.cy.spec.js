@@ -173,6 +173,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
           "scalar.field": "Count",
           "scalar.comparisons": [
             {
+              id: "1",
               type: "anotherColumn",
               column: "Mega Count",
               label: "Mega Count",

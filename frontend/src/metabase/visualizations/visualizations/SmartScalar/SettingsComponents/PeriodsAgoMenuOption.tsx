@@ -5,15 +5,17 @@ import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { NumberInputStyled } from "./PeriodsAgoMenuOption.styled";
 import { MenuItemStyled } from "./MenuItem.styled";
-import type { HandleEditedValueChangeType } from "./SmartScalarSettingsWidgets";
 
 type PeriodsAgoMenuOptionProps = {
   "aria-selected": boolean;
   editedValue?: SmartScalarComparisonPeriodsAgo;
   maxValue: number;
   name: string;
-  onChange: HandleEditedValueChangeType;
   type: typeof COMPARISON_TYPES.PERIODS_AGO;
+  onChange: (
+    value: Omit<SmartScalarComparisonPeriodsAgo, "id">,
+    submit?: boolean,
+  ) => void;
 };
 
 const MIN_VALUE = 2;

@@ -6,6 +6,7 @@ import type {
   Insight,
   RelativeDatetimeUnit,
   RowValues,
+  SmartScalarComparison,
   SmartScalarComparisonAnotherColumn,
   SmartScalarComparisonStaticNumber,
   VisualizationSettings,
@@ -75,9 +76,10 @@ describe("SmartScalar > utils", () => {
           settings,
         );
 
-        expect(defaultComparison).toBe(
-          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
-        );
+        expect(defaultComparison).toEqual({
+          id: expect.any(String),
+          ...COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+        });
       });
 
       it("should return previous period as default if there is a dateUnit", () => {
@@ -93,6 +95,7 @@ describe("SmartScalar > utils", () => {
         );
 
         expect(defaultComparison).toEqual({
+          id: expect.any(String),
           type: COMPARISON_TYPES.PREVIOUS_PERIOD,
           name: "Previous month",
         });
@@ -214,7 +217,7 @@ describe("SmartScalar > utils", () => {
 
     describe("isComparisonValid", () => {
       it("should always return true if type is previousValue comparison", () => {
-        const comparison = { type: COMPARISON_TYPES.PREVIOUS_VALUE };
+        const comparison = { id: "1", type: COMPARISON_TYPES.PREVIOUS_VALUE };
         const settings = {
           "scalar.field": FIELD_NAME,
           "scalar.comparisons": [comparison],
@@ -232,14 +235,33 @@ describe("SmartScalar > utils", () => {
         expect(isValid).toBeTruthy();
       });
 
+      it("should always return false if ID is missing", () => {
+        const comparison = { type: COMPARISON_TYPES.PREVIOUS_VALUE };
+        const settings = {
+          "scalar.field": FIELD_NAME,
+          "scalar.comparisons": [comparison],
+        };
+        const rows = [
+          ["2019-10-01", 100],
+          ["2019-11-01", 300],
+        ];
+        const isValid = isComparisonValid(
+          comparison as SmartScalarComparison,
+          series({ rows, insights: [] }),
+          settings as VisualizationSettings,
+        );
+
+        expect(isValid).toBe(false);
+      });
+
       it.each([
         [
           COMPARISON_TYPES.PERIODS_AGO,
-          { type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
+          { id: "1", type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
         ],
         [
           COMPARISON_TYPES.PREVIOUS_PERIOD,
-          { type: COMPARISON_TYPES.PREVIOUS_PERIOD },
+          { id: "1", type: COMPARISON_TYPES.PREVIOUS_PERIOD },
         ],
       ])(
         "should return false for %s comparison when dateUnit is missing",
@@ -265,15 +287,20 @@ describe("SmartScalar > utils", () => {
       it.each([
         [
           COMPARISON_TYPES.PERIODS_AGO,
-          { type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
+          { id: "1", type: COMPARISON_TYPES.PERIODS_AGO, value: 3 },
         ],
         [
           COMPARISON_TYPES.PREVIOUS_PERIOD,
-          { type: COMPARISON_TYPES.PREVIOUS_PERIOD },
+          { id: "1", type: COMPARISON_TYPES.PREVIOUS_PERIOD },
         ],
         [
           COMPARISON_TYPES.STATIC_NUMBER,
-          { type: COMPARISON_TYPES.STATIC_NUMBER, value: 100, label: "Goal" },
+          {
+            id: "1",
+            type: COMPARISON_TYPES.STATIC_NUMBER,
+            value: 100,
+            label: "Goal",
+          },
         ],
       ])(
         "should return true for %s comparison when dateUnit is supplied",
@@ -312,6 +339,7 @@ describe("SmartScalar > utils", () => {
 
         it("should return true when valid", () => {
           const comparison = {
+            id: "1",
             type: COMPARISON_TYPES.ANOTHER_COLUMN,
             label: "Avg",
             column: "Average",
@@ -370,6 +398,7 @@ describe("SmartScalar > utils", () => {
 
         it("should return false when comparison column is the same as primary number", () => {
           const comparison = {
+            id: "1",
             type: COMPARISON_TYPES.ANOTHER_COLUMN,
             column: FIELD_NAME,
             label: "Count",
@@ -412,6 +441,7 @@ describe("SmartScalar > utils", () => {
       describe("static number comparison", () => {
         it("should return true when valid", () => {
           const comparison = {
+            id: "1",
             type: COMPARISON_TYPES.STATIC_NUMBER,
             value: 100,
             label: "Goal",

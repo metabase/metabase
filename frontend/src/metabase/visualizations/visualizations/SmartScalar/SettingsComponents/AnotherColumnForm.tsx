@@ -19,7 +19,7 @@ import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 interface AnotherColumnFormProps {
   value?: SmartScalarComparisonAnotherColumn;
   columns: DatasetColumn[];
-  onChange: (value: SmartScalarComparisonAnotherColumn) => void;
+  onChange: (value: Omit<SmartScalarComparisonAnotherColumn, "id">) => void;
   onBack: () => void;
 }
 
