@@ -8,7 +8,7 @@ export const Container = styled.section`
 export const HeadingContainer = styled.div`
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0 1rem;
   min-height: 42px;
 `;
