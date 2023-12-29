@@ -1254,8 +1254,8 @@
                   :user_id  nil
                   :model   "Setting"
                   :details {:key            "test-setting-audit-raw-value"
-                            :previous-value 99
-                            :new-value      100}}
+                            :previous-value "99"
+                            :new-value      "100"}}
                  (last-audit-event-fn)))))
 
       (testing "Values returned from the setting's getter can be logged with `:audit :getter`"

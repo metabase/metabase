@@ -903,7 +903,7 @@
   (if (should-audit? setting)
     (let [audit-value-fn #(condp = audit
                             :no-value  nil
-                            :raw-value (get-value-of-type (:type setting) setting)
+                            :raw-value (get-value-of-type :string setting)
                             :getter    (getter))
           previous-value (audit-value-fn)]
       (u/prog1 (setter new-value)
