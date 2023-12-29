@@ -174,6 +174,20 @@ describe("StringFilterEditor", () => {
       userEvent.clear(screen.getByPlaceholderText("Enter a number"));
       expect(getNextFilterName()).toBeNull();
     });
+
+    it("should coerce invalid filter values", async () => {
+      const { getNextFilterName, onInput } = setup({
+        query,
+        stageIndex,
+        column,
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Min"), "10");
+      userEvent.click(document.body);
+
+      expect(getNextFilterName()).toBe("Total is greater than or equal to 10");
+      expect(onInput).toHaveBeenCalled();
+    });
   });
 
   describe("existing filter", () => {
