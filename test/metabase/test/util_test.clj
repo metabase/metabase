@@ -145,6 +145,28 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count :model/Card)))))))))
 
+(def ^:private side-effect-atom (atom nil))
+
+(setting/defsetting setting-with-side-effect-on-setter
+  "Setting that will produce side effects when set like report-timezone or humanization-strategy."
+  :visibility :internal
+  :type       :keyword
+  :default    :default
+  :setter     (fn [new-value]
+                (swap! side-effect-atom conj new-value)
+                (setting/set-value-of-type! :keyword :setting-with-side-effect-on-setter new-value)))
+
+(deftest thread-local-with-temp-setting-should-call-setter-and-getter-test
+  ;; set to nil to starts with
+  (reset! side-effect-atom [])
+
+  (mt/with-temporary-setting-values [setting-with-side-effect-on-setter :hello]
+    (testing "setter is called with the desired value"
+      (is (= [:hello] @side-effect-atom))))
+
+  (testing "on exit the setter is called again with the original value"
+    (is (= [:hello :default] @side-effect-atom))))
+
 (deftest with-discard-model-changes-test
   (mt/with-temp
     [:model/Card      {card-id :id :as card} {:name "A Card"}

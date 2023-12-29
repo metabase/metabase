@@ -109,17 +109,23 @@
     (doseq [[k _v] bindings-map]
       (setting/resolve-setting k))
     (testing (format "\nwith temporary (thread-local) Setting values\n%s\n" (u/pprint-to-str bindings-map))
-      (binding [setting/*thread-local-values* (atom (merge (some-> setting/*thread-local-values* deref)
-                                                           ;; we don't actually set value here, we just make sure
-                                                           ;; the setting are availabl ein the thread local scope
-                                                           bindings-map))]
-        ;; now the key exists in thread local values
-        ;; set it explicitly in case the setting have some specical setter
-        ;; we also need to bypass feature flag for setting if they have one
-        (binding [premium-features/*has-feature?* (constantly true)]
-          (doseq [[k v] bindings-map]
-            (setting/set! k v)))
-        (thunk)))))
+      (let [original-values (into [] (map (fn [k] [k (setting/get k)]) (keys bindings-map)))]
+        (binding [setting/*thread-local-values* (atom (merge (some-> setting/*thread-local-values* deref)
+                                                             ;; we don't actually set value here, we just make sure
+                                                             ;; the setting are availabl ein the thread local scope
+                                                             bindings-map))]
+          ;; now the key exists in thread local values
+          ;; set it explicitly in case the setting have some specical setter
+          ;; we also need to bypass feature flag for setting if they have one
+          (binding [premium-features/*has-feature?* (constantly true)]
+            (doseq [[k v] bindings-map]
+              (setting/set! k v)))
+          (try
+           (thunk)
+           (finally
+            (binding [premium-features/*has-feature?* (constantly true)]
+              (doseq [[k v] original-values]
+                (setting/set! k v))))))))))
 
 
 (mu/defn do-with-temporary-setting-values
