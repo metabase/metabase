@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import { ORDERS_QUANTITY_VALUES } from "metabase-types/api/mocks/presets";
+import type { FieldValuesResult } from "metabase-types/api";
+import { createMockFieldValues } from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
@@ -11,13 +13,16 @@ interface SetupOpts {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  fieldValues?: FieldValuesResult;
 }
 
-function setup({ query, stageIndex, column, filter }: SetupOpts) {
+function setup({ query, stageIndex, column, filter, fieldValues }: SetupOpts) {
   const onChange = jest.fn();
   const onInput = jest.fn();
 
-  setupFieldValuesEndpoints(ORDERS_QUANTITY_VALUES);
+  if (fieldValues) {
+    setupFieldValuesEndpoints(fieldValues);
+  }
 
   renderWithProviders(
     <NumberFilterEditor
@@ -54,13 +59,18 @@ describe("StringFilterEditor", () => {
         query,
         stageIndex,
         column: findColumn("ORDERS", "QUANTITY"),
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.QUANTITY,
+          values: [[1], [2], [3]],
+          has_more_values: false,
+        }),
       });
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Equal to"));
-      userEvent.click(await screen.findByText("10"));
+      userEvent.click(await screen.findByText("2"));
 
-      expect(getNextFilterName()).toBe("Quantity is equal to 10");
+      expect(getNextFilterName()).toBe("Quantity is equal to 2");
     });
 
     it("should handle non-searchable values", async () => {
@@ -77,6 +87,32 @@ describe("StringFilterEditor", () => {
 
       expect(getNextFilterName()).toBe("Total is equal to 15");
       expect(onInput).toHaveBeenCalled();
+    });
+
+    it("should handle primary keys", () => {
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "ID"),
+      });
+      expect(screen.getByText("is")).toBeInTheDocument();
+
+      userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
+      userEvent.click(document.body);
+      expect(getNextFilterName()).toBe("ID is 15");
+    });
+
+    it("should handle foreign keys", () => {
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column: findColumn("ORDERS", "PRODUCT_ID"),
+      });
+      expect(screen.getByText("is")).toBeInTheDocument();
+
+      userEvent.type(screen.getByPlaceholderText("Enter an ID"), "15");
+      userEvent.click(document.body);
+      expect(getNextFilterName()).toBe("Product ID is 15");
     });
   });
 });

@@ -1,4 +1,6 @@
 import userEvent from "@testing-library/user-event";
+import type { FieldValuesResult } from "metabase-types/api";
+import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
@@ -17,13 +19,27 @@ interface SetupOpts {
   stageIndex: number;
   column: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
+  fieldValues?: FieldValuesResult;
+  searchValues?: Record<string, FieldValuesResult>;
 }
 
-function setup({ query, stageIndex, column, filter }: SetupOpts) {
+function setup({
+  query,
+  stageIndex,
+  column,
+  filter,
+  fieldValues = PRODUCT_CATEGORY_VALUES,
+  searchValues = {},
+}: SetupOpts) {
   const onChange = jest.fn();
   const onInput = jest.fn();
 
-  setupFieldValuesEndpoints(PRODUCT_CATEGORY_VALUES);
+  if (fieldValues) {
+    setupFieldValuesEndpoints(fieldValues);
+  }
+  Object.entries(searchValues).forEach(([value, result]) => {
+    setupFieldSearchValuesEndpoints(result.field_id, value, result.values);
+  });
 
   renderWithProviders(
     <StringFilterEditor
@@ -80,9 +96,14 @@ describe("StringFilterEditor", () => {
         query,
         stageIndex,
         column: findColumn("PEOPLE", "EMAIL"),
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["a@metabase.test"]],
+          }),
+        },
       });
 
-      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "a", [["a@metabase.test"]]);
       userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
       act(() => jest.advanceTimersByTime(1000));
       userEvent.click(await screen.findByText("a@metabase.test"));
@@ -187,10 +208,15 @@ describe("StringFilterEditor", () => {
         stageIndex,
         column,
         filter,
+        searchValues: {
+          b: createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["b@metabase.test"]],
+          }),
+        },
       });
       expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
 
-      setupFieldSearchValuesEndpoints(PEOPLE.EMAIL, "b", [["b@metabase.test"]]);
       userEvent.type(screen.getByLabelText("Filter value"), "b");
       act(() => jest.advanceTimersByTime(1000));
       userEvent.click(await screen.findByText("b@metabase.test"));
