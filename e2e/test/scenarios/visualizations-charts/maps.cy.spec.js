@@ -226,6 +226,8 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should apply brush filters by dragging map", () => {
+    cy.viewport(1280, 800);
+
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
