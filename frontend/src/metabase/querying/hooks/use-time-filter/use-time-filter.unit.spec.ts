@@ -98,7 +98,7 @@ describe("useTimeFilter", () => {
     },
   ])(
     'should allow to create a filter for "$operator" operator',
-    ({ operator, values, displayName }) => {
+    ({ operator: newOperator, values: newValues, displayName }) => {
       const { result } = renderHook(() =>
         useTimeFilter({
           query: defaultQuery,
@@ -109,19 +109,17 @@ describe("useTimeFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = checkNotNull(getFilterClause(operator, values));
 
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -156,7 +154,7 @@ describe("useTimeFilter", () => {
     },
   ])(
     'should allow to update a filter for "$operator" operator',
-    ({ expression, values, displayName }) => {
+    ({ expression, values: newValues, displayName }) => {
       const query = Lib.filter(defaultQuery, stageIndex, expression);
       const [filter] = Lib.filters(query, stageIndex);
 
@@ -171,16 +169,14 @@ describe("useTimeFilter", () => {
 
       act(() => {
         const { setValues } = result.current;
-        setValues(values);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
+      const { operator, values, getFilterClause } = result.current;
+      const newFilter = checkNotNull(getFilterClause(operator, values));
 
-        expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
-          displayName,
-        });
+      expect(Lib.displayInfo(query, stageIndex, newFilter)).toMatchObject({
+        displayName,
       });
     },
   );
@@ -202,15 +198,13 @@ describe("useTimeFilter", () => {
         }),
       );
 
-      act(() => {
-        const { getFilterClause } = result.current;
-        const newFilter = checkNotNull(getFilterClause(operator, values));
+      const { getFilterClause } = result.current;
+      const newFilter = checkNotNull(getFilterClause(operator, values));
 
-        expect(
-          Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-        ).toMatchObject({
-          displayName,
-        });
+      expect(
+        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
+      ).toMatchObject({
+        displayName,
       });
     },
   );
@@ -230,7 +224,7 @@ describe("useTimeFilter", () => {
     },
   ])(
     'should validate values for "$operator" operator',
-    ({ operator, values }) => {
+    ({ operator: newOperator, values: newValues }) => {
       const { result } = renderHook(() =>
         useTimeFilter({
           query: defaultQuery,
@@ -241,15 +235,13 @@ describe("useTimeFilter", () => {
 
       act(() => {
         const { setOperator, setValues } = result.current;
-        setOperator(operator);
-        setValues(values);
+        setOperator(newOperator);
+        setValues(newValues);
       });
 
-      act(() => {
-        const { operator, values, isValid, getFilterClause } = result.current;
-        expect(isValid).toBeFalsy();
-        expect(getFilterClause(operator, values)).toBeUndefined();
-      });
+      const { operator, values, isValid, getFilterClause } = result.current;
+      expect(isValid).toBeFalsy();
+      expect(getFilterClause(operator, values)).toBeUndefined();
     },
   );
 
@@ -275,15 +267,11 @@ describe("useTimeFilter", () => {
       setValues(getDefaultValues(newOperator, values));
     });
 
-    act(() => {
-      const { operator, values, getFilterClause } = result.current;
-      const newFilter = checkNotNull(getFilterClause(operator, values));
+    const { operator, values, getFilterClause } = result.current;
+    const newFilter = checkNotNull(getFilterClause(operator, values));
 
-      expect(
-        Lib.displayInfo(defaultQuery, stageIndex, newFilter),
-      ).toMatchObject({
-        displayName: "Time is after 10:20 AM",
-      });
+    expect(Lib.displayInfo(defaultQuery, stageIndex, newFilter)).toMatchObject({
+      displayName: "Time is after 10:20 AM",
     });
   });
 });
