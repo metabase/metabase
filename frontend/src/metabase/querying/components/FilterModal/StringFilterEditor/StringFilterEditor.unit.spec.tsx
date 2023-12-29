@@ -5,7 +5,12 @@ import {
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import {
   setupFieldSearchValuesEndpoints,
   setupFieldValuesEndpoints,
@@ -134,8 +139,9 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("is"));
       userEvent.click(await screen.findByText("Starts with"));
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter some text"), "Ga");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Category starts with Ga");
       expect(onInput).toHaveBeenCalled();

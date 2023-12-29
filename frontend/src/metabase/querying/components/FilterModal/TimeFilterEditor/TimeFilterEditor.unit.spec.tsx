@@ -7,7 +7,11 @@ import {
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 import { createMockMetadata } from "__support__/metadata";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { TimeFilterEditor } from "./TimeFilterEditor";
@@ -99,11 +103,10 @@ describe("TimeFilterEditor", () => {
 
       userEvent.click(screen.getByText("before"));
       userEvent.click(await screen.findByText("Between"));
-      userEvent.clear(screen.getByPlaceholderText("Min"));
-      userEvent.type(screen.getByPlaceholderText("Min"), "10:15");
-      userEvent.clear(screen.getByPlaceholderText("Max"));
-      userEvent.type(screen.getByPlaceholderText("Max"), "20:40");
-      userEvent.click(document.body);
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
+      userEvent.type(screen.getByPlaceholderText("Min"), "{selectall}10:15");
+      userEvent.type(screen.getByPlaceholderText("Max"), "{selectall}20:40");
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Time is 10:15 AM – 8:40 PM");
       expect(onInput).toHaveBeenCalled();

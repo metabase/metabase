@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import type { FieldValuesResult } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import { ORDERS } from "metabase-types/api/mocks/presets";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
@@ -82,8 +86,9 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Equal to"));
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "15");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is equal to 15");
       expect(onInput).toHaveBeenCalled();
@@ -124,8 +129,9 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Less than"));
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Total is less than 20");
       expect(onInput).toHaveBeenCalled();

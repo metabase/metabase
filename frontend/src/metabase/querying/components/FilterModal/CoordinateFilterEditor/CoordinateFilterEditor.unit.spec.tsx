@@ -1,5 +1,9 @@
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { CoordinateFilterEditor } from "./CoordinateFilterEditor";
@@ -54,10 +58,11 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Is"));
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByLabelText("Filter value"), "10");
-      userEvent.click(document.body);
+      userEvent.tab();
       userEvent.type(screen.getByLabelText("Filter value"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is equal to 2 selections");
       expect(onInput).toHaveBeenCalled();
@@ -72,8 +77,9 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Greater than"));
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Enter a number"), "20");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe("Latitude is greater than 20");
       expect(onInput).toHaveBeenCalled();
@@ -103,11 +109,12 @@ describe("StringFilterEditor", () => {
 
       userEvent.click(screen.getByText("between"));
       userEvent.click(await screen.findByText("Inside"));
+      await waitForElementToBeRemoved(() => screen.queryByRole("menu"));
       userEvent.type(screen.getByPlaceholderText("Lower latitude"), "-10");
       userEvent.type(screen.getByPlaceholderText("Upper latitude"), "20");
       userEvent.type(screen.getByPlaceholderText("Left longitude"), "-30");
       userEvent.type(screen.getByPlaceholderText("Right longitude"), "40");
-      userEvent.click(document.body);
+      userEvent.tab();
 
       expect(getNextFilterName()).toBe(
         "Latitude is between -10 and 20 and Longitude is between -30 and 40",
