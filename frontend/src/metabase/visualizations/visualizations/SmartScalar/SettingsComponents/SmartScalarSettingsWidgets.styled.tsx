@@ -1,9 +1,11 @@
 import type { HTMLAttributes } from "react";
 import styled from "@emotion/styled";
-import type { ButtonProps } from "metabase/ui";
+import type { ButtonProps as BaseButtonProps } from "metabase/ui";
 import { Button } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { color } from "metabase/lib/colors";
+
+type ButtonProps = BaseButtonProps & HTMLAttributes<HTMLButtonElement>;
 
 export const ComparisonList = styled.ul`
   li:not(:first-of-type) {
@@ -11,9 +13,16 @@ export const ComparisonList = styled.ul`
   }
 `;
 
-type DoneButtonProps = ButtonProps & HTMLAttributes<HTMLButtonElement>;
+export const AddComparisonButton = styled(Button)<ButtonProps>`
+  align-self: flex-start;
+  padding: 0;
+`;
 
-export const DoneButton = styled(Button)<DoneButtonProps>`
+AddComparisonButton.defaultProps = {
+  variant: "subtle",
+};
+
+export const DoneButton = styled(Button)<ButtonProps>`
   align-self: flex-end;
 `;
 
