@@ -5152,6 +5152,70 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: 2024-01-04T13:52:51
+      author: noahmoss
+      comment: >-
+        Permissions v2 schema (proof of concept)
+      changes:
+        - createTable:
+            tableName: permissions_v2
+            remarks: A table to store permissions in a v2 format
+            columns:
+              - column:
+                  remarks: The ID of the permission
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The ID of the associated permission group
+                  name: group_id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_v2_ref_permissions_group
+              - column:
+                  remarks: The type of the permission (e.g. "data", "collection", "download"...)
+                  name: type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: >-
+                    The ID of the object, such as a table or collection, this permission is assocaited with.
+                    The table this ID references is inferred based on the permission type.
+                  name: object_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The value this permission is set to
+                  name: value
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+            uniqueConstraints:
+              - unique:
+                  columnNames: group_id, type, object_id
+                  name: unique_permissions_v2_group_id_type_object_id
+
+  - changeSet:
+      id: 2024-01-04T13:53:29
+      author: noahmoss
+      comment: Add unique constraint to permissions_v2 table on group_id, type, and object_id columns
+      changes:
+        - addUniqueConstraint:
+            tableName: permissions_v2
+            constraintName: unique_permissions_v2_group_id_type_object_id
+            columnNames: group_id, type, object_id
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
