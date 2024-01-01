@@ -15,6 +15,29 @@ import {
 } from "../option/series";
 import { DATASET_DIMENSIONS } from "./constants";
 
+/**
+ * A separate total formatter needed to avoid applying the power scale
+ * transformation, since we show the actual value to the user.
+ */
+export function getTotalFormatter(
+  total: number,
+  seriesModel: SeriesModel,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) {
+  const valueFormatter = (value: unknown) =>
+    renderingContext.formatValue(value, {
+      ...(settings.column?.(seriesModel.column) ?? {}),
+      jsx: false,
+      compact: settings["graph.label_value_formatting"] === "compact",
+    });
+
+  if (total < 0) {
+    return () => `(${valueFormatter(total)})`;
+  }
+  return () => valueFormatter(total);
+}
+
 export function buildEChartsWaterfallSeries(
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
@@ -44,7 +67,12 @@ export function buildEChartsWaterfallSeries(
   const totalLabelOptions = {
     ...increaseLabelOptions,
     position: total >= 0 ? ("top" as const) : ("bottom" as const),
-    formatter: total >= 0 ? baseDataLabelFormatter : negativeDataLabelFormatter,
+    formatter: getTotalFormatter(
+      total,
+      seriesModel,
+      settings,
+      renderingContext,
+    ),
   };
 
   return [

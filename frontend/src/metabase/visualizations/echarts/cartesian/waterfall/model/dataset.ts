@@ -47,12 +47,12 @@ export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
   negativeTranslation: number,
-  total: number,
   settings: ComputedVisualizationSettings,
 ): WaterfallDataset {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
 
+  let total = 0;
   rows.forEach((row, index) => {
     const dimension = String(row[columns.dimension.index]);
     const value = checkNumber(row[columns.metrics[0].index]);
@@ -65,9 +65,15 @@ export function getWaterfallDataset(
       decrease = -value;
     }
 
+    // We calculate the total separately from the value in the chart model,
+    // in order to apply the square root scaling to the bar in the chart,
+    // but not to the data label
     if (settings["graph.y_axis.scale"] === "pow") {
+      total += Math.sqrt(value);
       increase = applySquareRootScale(increase);
       decrease = applySquareRootScale(decrease);
+    } else {
+      total += value;
     }
 
     // Since echarts always stacks from below, we translate the first bar

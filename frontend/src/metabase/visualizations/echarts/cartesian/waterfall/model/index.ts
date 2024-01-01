@@ -119,21 +119,21 @@ function getWaterfallNegativeTranslation(
   return minSum < 0 ? -minSum : 0;
 }
 
+/**
+ * Total is calculated separately here to avoid including the
+ * power scale transformation, since we want to show the actual
+ * value to the user.
+ */
 function getWaterfallTotal(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
-  settings: ComputedVisualizationSettings,
 ) {
   const columns = assertMultiMetricColumns(cardColumns);
 
-  return rows.reduce((sum, row) => {
-    let value = checkNumber(row[columns.metrics[0].index]);
-
-    if (settings["graph.y_axis.scale"] === "pow") {
-      value = Math.sqrt(value);
-    }
-    return sum + value;
-  }, 0);
+  return rows.reduce(
+    (sum, row) => (sum += checkNumber(row[columns.metrics[0].index])),
+    0,
+  );
 }
 
 export function getWaterfallChartModel(
@@ -158,12 +158,11 @@ export function getWaterfallChartModel(
     rows,
     cardColumns,
   );
-  const total = getWaterfallTotal(rows, cardColumns, settings);
+  const total = getWaterfallTotal(rows, cardColumns);
   const waterfallDataset = getWaterfallDataset(
     rows,
     cardColumns,
     negativeTranslation,
-    total,
     settings,
   );
 
