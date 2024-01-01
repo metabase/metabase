@@ -70,6 +70,7 @@ function getYAxisFormatter(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) {
+  // todo power scale
   return (rowValue: RowValue) => {
     const value = checkNumber(rowValue) - negativeTranslation;
 

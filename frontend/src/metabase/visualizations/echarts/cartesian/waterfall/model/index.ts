@@ -100,12 +100,18 @@ function getSortedAggregatedRows(
 function getWaterfallNegativeTranslation(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
+  settings: ComputedVisualizationSettings,
 ) {
   const columns = assertMultiMetricColumns(cardColumns);
 
   const runningSums: number[] = [];
   rows.forEach((row, index) => {
-    const value = checkNumber(row[columns.metrics[0].index]);
+    let value = checkNumber(row[columns.metrics[0].index]);
+    if (settings["graph.y_axis.scale"] === "pow" && value >= 0) {
+      value = Math.sqrt(value);
+    } else if (settings["graph.y_axis.scale"] === "pow" && value < 0) {
+      value = -Math.sqrt(-value);
+    }
 
     if (index === 0) {
       runningSums.push(value);
@@ -157,6 +163,7 @@ export function getWaterfallChartModel(
   const negativeTranslation = getWaterfallNegativeTranslation(
     rows,
     cardColumns,
+    settings,
   );
   const total = getWaterfallTotal(rows, cardColumns);
   const waterfallDataset = getWaterfallDataset(

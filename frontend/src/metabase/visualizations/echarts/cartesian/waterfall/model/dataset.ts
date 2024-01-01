@@ -122,6 +122,7 @@ export function getWaterfallDataset(
     return dataset;
   }
 
+  // "Show total" setting
   const barOffset =
     total >= 0 ? negativeTranslation : negativeTranslation + total;
 
