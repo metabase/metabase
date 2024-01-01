@@ -668,7 +668,7 @@ const TITLE_LOCALES_BN = {
     'en' : 'Unselected',
     'bn' : 'অনির্বাচিত'
   },
-  'tms.session.unselected.application' : {
+  'school.dashboard.teacher.hold.post' : {
     'en' : 'Hold Posts',
     'bn' : 'সংরক্ষিত পদ'
   },
