@@ -19,6 +19,7 @@ import dataLabels from "./data-labels.json";
 import dataLabelsColumnFormatting from "./data-labels-column-formatting.json";
 import dataLabelsTimeseries from "./data-labels-timeseries.json";
 import dataLabelsMixed from "./data-labels-mixed.json";
+import powYAxis from "./pow-y-axis.json";
 
 export const data = {
   timeseriesXScale,
@@ -42,4 +43,5 @@ export const data = {
   dataLabelsColumnFormatting,
   dataLabelsTimeseries,
   dataLabelsMixed,
+  powYAxis,
 };

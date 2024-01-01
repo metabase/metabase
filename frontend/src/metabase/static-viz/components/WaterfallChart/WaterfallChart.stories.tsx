@@ -174,3 +174,10 @@ DataLabelsMixed.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const PowYAxis = Template.bind({});
+PowYAxis.args = {
+  rawSeries: data.powYAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
