@@ -61,7 +61,7 @@
       "query_type": "query",
       "name": "Waterfall Ordinal X Pow Y Scale - User Flow",
       "creator_id": 1,
-      "updated_at": "2023-12-17T23:34:07.740663Z",
+      "updated_at": "2024-01-01T18:14:20.28412Z",
       "made_public_by_id": null,
       "embedding_params": null,
       "cache_ttl": null,
@@ -84,6 +84,8 @@
         "waterfall.show_total": true,
         "graph.dimensions": ["stage"],
         "graph.y_axis.scale": "pow",
+        "graph.show_values": true,
+        "graph.label_value_formatting": "compact",
         "graph.metrics": ["count"]
       },
       "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
@@ -200,6 +202,8 @@
         "waterfall.show_total": true,
         "graph.dimensions": ["stage"],
         "graph.y_axis.scale": "pow",
+        "graph.show_values": true,
+        "graph.label_value_formatting": "compact",
         "graph.metrics": ["count"],
         "metabase.shared.models.visualization-settings/column-settings": {},
         "metabase.shared.models.visualization-settings/global-column-settings": {}
