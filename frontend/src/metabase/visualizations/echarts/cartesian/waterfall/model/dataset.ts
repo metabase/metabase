@@ -14,6 +14,13 @@ import type {
 } from "../types";
 import { DATASET_DIMENSIONS } from "../constants";
 
+function applySquareRootScale(value: number | WaterfallEmptyValue) {
+  if (typeof value === "string") {
+    return value;
+  }
+  return Math.sqrt(value);
+}
+
 function createDatum({
   dimension,
   barOffset,
@@ -56,6 +63,11 @@ export function getWaterfallDataset(
       increase = value;
     } else {
       decrease = -value;
+    }
+
+    if (settings["graph.y_axis.scale"] === "pow") {
+      increase = applySquareRootScale(increase);
+      decrease = applySquareRootScale(decrease);
     }
 
     // Since echarts always stacks from below, we translate the first bar

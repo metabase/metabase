@@ -122,13 +122,18 @@ function getWaterfallNegativeTranslation(
 function getWaterfallTotal(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
+  settings: ComputedVisualizationSettings,
 ) {
   const columns = assertMultiMetricColumns(cardColumns);
 
-  return rows.reduce(
-    (sum, row) => (sum += checkNumber(row[columns.metrics[0].index])),
-    0,
-  );
+  return rows.reduce((sum, row) => {
+    let value = checkNumber(row[columns.metrics[0].index]);
+
+    if (settings["graph.y_axis.scale"] === "pow") {
+      value = Math.sqrt(value);
+    }
+    return sum + value;
+  }, 0);
 }
 
 export function getWaterfallChartModel(
@@ -153,7 +158,7 @@ export function getWaterfallChartModel(
     rows,
     cardColumns,
   );
-  const total = getWaterfallTotal(rows, cardColumns);
+  const total = getWaterfallTotal(rows, cardColumns, settings);
   const waterfallDataset = getWaterfallDataset(
     rows,
     cardColumns,
