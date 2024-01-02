@@ -14,7 +14,7 @@ jobs:
       with:
         sparse-checkout: release
     - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+      run: cd ${{ github.workspace }}/release && yarn --frozen-lockfile && yarn build
     - name: Check release status and post to Slack
       uses: actions/github-script@v6
       env:
