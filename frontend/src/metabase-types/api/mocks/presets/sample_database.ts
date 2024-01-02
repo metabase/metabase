@@ -224,7 +224,6 @@ export const createOrdersIdField = (opts?: Partial<Field>): Field =>
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
-    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -239,7 +238,6 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PEOPLE.ID,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 929,
@@ -258,7 +256,6 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -276,7 +273,6 @@ export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -306,7 +302,6 @@ export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -336,7 +331,6 @@ export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -366,7 +360,6 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Discount",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -397,7 +390,6 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
@@ -453,7 +445,6 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
-    has_field_values: "none",
     ...opts,
   });
 
@@ -587,7 +578,6 @@ export const createPeopleLongitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Longitude",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_COORDINATE_BINNING_OPTION,
     dimension_options: createCoordinateFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -640,6 +630,7 @@ export const createPeopleSourceField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Source",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 5,
@@ -662,7 +653,6 @@ export const createPeopleBirthDateField = (opts?: Partial<Field>): Field =>
     base_type: "type/Date",
     effective_type: "type/Date",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
@@ -711,7 +701,6 @@ export const createPeopleLatitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Latitude",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_COORDINATE_BINNING_OPTION,
     dimension_options: createCoordinateFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -767,7 +756,6 @@ export const createProductsIdField = (opts?: Partial<Field>): Field =>
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
-    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -781,7 +769,6 @@ export const createProductsEanField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -827,6 +814,7 @@ export const createProductsCategoryField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Category",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 4,
@@ -849,7 +837,7 @@ export const createProductsVendorField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Company",
-    has_field_values: "search",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -872,7 +860,6 @@ export const createProductsPriceField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -902,7 +889,6 @@ export const createProductsRatingField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Score",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
     fingerprint: createMockFingerprint({
@@ -932,7 +918,6 @@ export const createProductsCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
-    has_field_values: "none",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),
     fingerprint: createMockFingerprint({
@@ -957,7 +942,6 @@ export const createReviewsIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
-    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -972,7 +956,6 @@ export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
-    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 176,
