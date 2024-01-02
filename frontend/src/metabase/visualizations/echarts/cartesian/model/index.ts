@@ -11,6 +11,7 @@ import {
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import {
+  getBubbleSizeDomain,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
@@ -20,10 +21,7 @@ import {
   getXAxisModel,
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
-import {
-  getScatterPlotDataset,
-  getBubbleSizeDataKey,
-} from "metabase/visualizations/echarts/cartesian/scatter/model";
+import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -37,10 +35,11 @@ export const getCardsColumns = (
     // Using the raw visualization settings for that is safe because we can combine
     // only saved cards that have these settings.
     const shouldUseIndividualCardSettings = rawSeries.length > 1;
-    return getCartesianChartColumns(
-      data.cols,
-      shouldUseIndividualCardSettings ? card.visualization_settings : settings,
-    );
+    const cardSettings = shouldUseIndividualCardSettings
+      ? card.visualization_settings
+      : settings;
+
+    return getCartesianChartColumns(data.cols, cardSettings);
   });
 };
 
@@ -95,6 +94,7 @@ export const getCartesianChartModel = (
     rawSeries[0].card.display === "scatter"
       ? getScatterPlotDataset(rawSeries, cardsColumns)
       : getJoinedCardsDataset(rawSeries, cardsColumns);
+
   const transformedDataset = getTransformedDataset(
     dataset,
     seriesModels,
@@ -123,8 +123,6 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const bubbleSizeDataKey = getBubbleSizeDataKey(rawSeries, settings);
-
   return {
     dataset,
     transformedDataset,
@@ -134,6 +132,6 @@ export const getCartesianChartModel = (
     insights,
     xAxisModel,
     ...yAxesModels,
-    bubbleSizeDataKey,
+    bubbleSizeDomain: getBubbleSizeDomain(seriesModels, transformedDataset),
   };
 };

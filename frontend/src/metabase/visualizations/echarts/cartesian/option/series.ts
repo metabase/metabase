@@ -218,9 +218,9 @@ export const buildEChartsSeries = (
         case "scatter":
           return buildEChartsScatterSeries(
             seriesModel,
+            chartModel.bubbleSizeDomain,
             chartModel.dataset,
             chartModel.dimensionModel.dataKey,
-            chartModel.bubbleSizeDataKey,
             yAxisIndex,
             renderingContext,
           );

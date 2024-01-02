@@ -6,45 +6,48 @@ import type { RenderingContext } from "metabase/visualizations/types";
 import type {
   DataKey,
   Datum,
+  Extent,
   GroupedDataset,
   SeriesModel,
 } from "../model/types";
 
 const BUBBLE_SCALE_FACTOR_MAX = 64;
 
+const MIN_BUBBLE_SIZE = 14;
+
 // TODO: refine the scaling curve when implementing the dynamic scatter plot
 function getBubbleSizeScale(
-  dataset: GroupedDataset,
+  bubbleSizeDomain: Extent | null,
   bubbleSizeDataKey: DataKey | undefined,
 ) {
-  if (!bubbleSizeDataKey) {
-    return 8;
+  if (!bubbleSizeDataKey || !bubbleSizeDomain) {
+    return MIN_BUBBLE_SIZE;
   }
 
-  const bubbleSizeDomainMax = d3.max(
-    dataset
-      .map(datum => Number(datum[bubbleSizeDataKey]))
-      .filter(value => !Number.isNaN(value)),
-  );
   const scale = d3.scale
     .sqrt()
-    .domain([0, bubbleSizeDomainMax * BUBBLE_SCALE_FACTOR_MAX])
-    .range([1, 100]);
+    .domain(bubbleSizeDomain.map(v => v * BUBBLE_SCALE_FACTOR_MAX))
+    .range([MIN_BUBBLE_SIZE, 1024]);
   return (datum: Datum) => scale(Number(datum[bubbleSizeDataKey]));
 }
 
 export function buildEChartsScatterSeries(
   seriesModel: SeriesModel,
+  bubbleSizeDomain: Extent | null,
   dataset: GroupedDataset,
   dimensionDataKey: DataKey,
-  bubbleSizeDataKey: DataKey | undefined,
   yAxisIndex: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["scatter"] {
+  const bubbleSizeDataKey =
+    "bubbleSizeDataKey" in seriesModel
+      ? seriesModel.bubbleSizeDataKey
+      : undefined;
   return {
+    id: seriesModel.dataKey,
     type: "scatter",
     yAxisIndex,
-    symbolSize: getBubbleSizeScale(dataset, bubbleSizeDataKey),
+    symbolSize: getBubbleSizeScale(bubbleSizeDomain, bubbleSizeDataKey),
     encode: {
       y: seriesModel.dataKey,
       x: dimensionDataKey,
