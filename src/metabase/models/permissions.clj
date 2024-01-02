@@ -720,7 +720,7 @@
                                                            [:like :object (h2x/literal "%/db/%")]])
                                 (m/map-vals (fn [paths]
                                               ;; remove v1 paths, implicitly keep v2 paths
-                                              (remove (fn [path] (mc/validate [:re perms.u/DataPath] path))
+                                              (remove (fn [path] (mc/validate perms.u/DataPath path))
                                                       paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
