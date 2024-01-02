@@ -97,34 +97,6 @@ function getSortedAggregatedRows(
   return aggregatedRows;
 }
 
-function getWaterfallNegativeTranslation(
-  rows: RowValues[],
-  cardColumns: CartesianChartColumns,
-  settings: ComputedVisualizationSettings,
-) {
-  const columns = assertMultiMetricColumns(cardColumns);
-
-  const runningSums: number[] = [];
-  rows.forEach((row, index) => {
-    let value = checkNumber(row[columns.metrics[0].index]);
-    if (settings["graph.y_axis.scale"] === "pow" && value >= 0) {
-      value = Math.sqrt(value);
-    } else if (settings["graph.y_axis.scale"] === "pow" && value < 0) {
-      value = -Math.sqrt(-value);
-    }
-
-    if (index === 0) {
-      runningSums.push(value);
-      return;
-    }
-
-    runningSums.push(runningSums[runningSums.length - 1] + value);
-  });
-
-  const minSum = Math.min(...runningSums);
-  return minSum < 0 ? -minSum : 0;
-}
-
 /**
  * Total is calculated separately here to avoid including the
  * power scale transformation, since we want to show the actual
@@ -160,18 +132,9 @@ export function getWaterfallChartModel(
     cardColumns,
     settings,
   );
-  const negativeTranslation = getWaterfallNegativeTranslation(
-    rows,
-    cardColumns,
-    settings,
-  );
   const total = getWaterfallTotal(rows, cardColumns);
-  const waterfallDataset = getWaterfallDataset(
-    rows,
-    cardColumns,
-    negativeTranslation,
-    settings,
-  );
+  const { dataset: waterfallDataset, negativeTranslation } =
+    getWaterfallDataset(rows, cardColumns, settings);
 
   // y-axis
   const yAxisExtents: AxisExtents = [

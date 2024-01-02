@@ -8,71 +8,79 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import type { SeriesModel } from "../model/types";
-import {
-  buildEChartsLabelOptions,
-  getDataLabelFormatter,
-} from "../option/series";
+import type { GroupedDataset, SeriesModel } from "../model/types";
+import { buildEChartsLabelOptions } from "../option/series";
 import { DATASET_DIMENSIONS } from "./constants";
 
 /**
- * A separate total formatter needed to avoid applying the power scale
- * transformation, since we show the actual value to the user.
+ * Returns formatting functions for the series and total data
+ * labels for the waterfall chart. We provide the `dataset`
+ * parameter in order to use the actual data value, rather than the
+ * value of the bar rendered by echarts, because in the power
+ * scale the bar has a different value from the underlying datum.
  */
-export function getTotalFormatter(
+export function getWaterfallLabelFormatters(
   total: number,
   seriesModel: SeriesModel,
+  dataset: GroupedDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) {
-  const valueFormatter = (value: unknown) =>
-    renderingContext.formatValue(value, {
+  const valueFormatter = (value: unknown) => {
+    const formattedValue = renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: settings["graph.label_value_formatting"] === "compact",
     });
+    if (typeof value === "number" && value < 0) {
+      return `(${formattedValue})`;
+    }
+    return formattedValue;
+  };
 
-  if (total < 0) {
-    return () => `(${valueFormatter(total)})`;
-  }
-  return () => valueFormatter(total);
+  const seriesLabelFormatter = (datum: CallbackDataParams) =>
+    valueFormatter(dataset[datum.dataIndex][seriesModel.dataKey]);
+
+  const totalLabelFormatter = () => valueFormatter(total);
+
+  return { seriesLabelFormatter, totalLabelFormatter };
 }
 
 export function buildEChartsWaterfallSeries(
   seriesModel: SeriesModel,
+  dataset: GroupedDataset,
   settings: ComputedVisualizationSettings,
   total: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["bar"][] {
-  // formatters
-  const baseDataLabelFormatter = getDataLabelFormatter(
-    seriesModel,
-    settings,
-    renderingContext,
-  );
-  const negativeDataLabelFormatter = (datum: CallbackDataParams) =>
-    `(${baseDataLabelFormatter(datum)})`;
-
-  // options
-  const increaseLabelOptions = buildEChartsLabelOptions(
-    seriesModel,
-    settings,
-    renderingContext,
-  );
-  const decreaseLabelOptions = {
-    ...increaseLabelOptions,
-    position: "bottom" as const,
-    formatter: negativeDataLabelFormatter,
-  };
-  const totalLabelOptions = {
-    ...increaseLabelOptions,
-    position: total >= 0 ? ("top" as const) : ("bottom" as const),
-    formatter: getTotalFormatter(
+  const { seriesLabelFormatter, totalLabelFormatter } =
+    getWaterfallLabelFormatters(
       total,
       seriesModel,
+      dataset,
       settings,
       renderingContext,
-    ),
+    );
+
+  const baseLabelOptions = buildEChartsLabelOptions(
+    seriesModel,
+    settings,
+    renderingContext,
+  );
+  const increaseLabelOptions = {
+    ...baseLabelOptions,
+    position: "top" as const,
+    formatter: seriesLabelFormatter,
+  };
+  const decreaseLabelOptions = {
+    ...baseLabelOptions,
+    position: "bottom" as const,
+    formatter: seriesLabelFormatter,
+  };
+  const totalLabelOptions = {
+    ...baseLabelOptions,
+    position: total >= 0 ? ("top" as const) : ("bottom" as const),
+    formatter: totalLabelFormatter,
   };
 
   return [

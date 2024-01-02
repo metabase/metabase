@@ -70,7 +70,9 @@ function getYAxisFormatter(
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) {
-  // todo power scale
+  if (settings["graph.y_axis.scale"] === "pow") {
+    negativeTranslation = Math.pow(negativeTranslation, 2);
+  }
   return (rowValue: RowValue) => {
     const value = checkNumber(rowValue) - negativeTranslation;
 
