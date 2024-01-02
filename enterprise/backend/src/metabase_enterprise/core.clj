@@ -1,4 +1,4 @@
-;; Unless otherwise noted, all files © 2023 Metabase, Inc.
+;; Unless otherwise noted, all files © 2024 Metabase, Inc.
 ;;
 ;; Source code in this repository is variously licensed under the GNU Affero General Public License (AGPL), or the
 ;; [Metabase Commercial License](https://www.metabase.com/license/commercial).

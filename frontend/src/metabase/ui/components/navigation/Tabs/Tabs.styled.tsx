@@ -15,6 +15,7 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
       tab: {
         color: theme.colors.text[2],
         padding: TAB_PADDING[orientation],
+        maxWidth: "100%",
         "&:hover": {
           borderColor: theme.colors.bg[1],
           backgroundColor: theme.colors.brand[0],
@@ -32,6 +33,9 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
         fontSize: theme.fontSizes.md,
         fontWeight: "bold",
         lineHeight: theme.lineHeight,
+        whiteSpace: "nowrap",
+        textOverflow: "ellipsis",
+        overflow: "hidden",
       },
       tabIcon: {
         "&:not(:only-child)": {

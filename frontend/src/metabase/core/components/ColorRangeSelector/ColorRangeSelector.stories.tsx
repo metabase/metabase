@@ -1,5 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import { useArgs } from "@storybook/addons";
 import { color } from "metabase/lib/colors";
 import ColorRangeSelector from "./ColorRangeSelector";
 

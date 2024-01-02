@@ -53,7 +53,7 @@
          (testing "Make sure the first line actually matches the shape we're testing against"
            (is (= (str "CREATE TABLE liquibase_test.DATABASECHANGELOGLOCK ("
                        "ID INT NOT NULL, "
-                       "`LOCKED` BIT(1) NOT NULL, "
+                       "`LOCKED` TINYINT NOT NULL, "
                        "LOCKGRANTED datetime NULL, "
                        "LOCKEDBY VARCHAR(255) NULL, "
                        "CONSTRAINT PK_DATABASECHANGELOGLOCK PRIMARY KEY (ID)"

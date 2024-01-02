@@ -63,23 +63,29 @@
 ;;; |                                                      Sync                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- list-datasets
+  "Fetch all datasets given database `details`, applying dataset filters if specified."
+  [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details}]
+  (let [client (database-details->client details)
+        project-id (or project-id (bigquery.common/database-details->credential-project-id details))
+        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+        inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
+        exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
+    (for [^Dataset dataset (.iterateAll datasets)
+          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+          :when (driver.s/include-schema? inclusion-patterns
+                                          exclusion-patterns
+                                          (.getDataset dataset-id))]
+      dataset-id)))
+
 (defn- list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [database-details]
-   (list-tables database-details {:validate-dataset? false}))
-  (^Iterable [{:keys [project-id dataset-filters-type dataset-filters-patterns] :as details} {:keys [validate-dataset?]}]
+  (^Iterable [details]
+   (list-tables details {:validate-dataset? false}))
+  (^Iterable [details {:keys [validate-dataset?]}]
    (let [client (database-details->client details)
-         project-id (or project-id (bigquery.common/database-details->credential-project-id details))
-         datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
-         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)
-         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
-                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                            :when (driver.s/include-schema? inclusion-patterns
-                                                            exclusion-patterns
-                                                            (.getDataset dataset-id))]
-                        dataset-id)]
-     (when (and (not= dataset-filters-type "all")
+         dataset-iter (list-datasets details)]
+     (when (and (not= (:dataset-filters-type details) "all")
                 validate-dataset?
                 (zero? (count dataset-iter)))
        (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
@@ -115,6 +121,12 @@
      (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
      (.getTable client dataset-id table-id empty-table-options))))
 
+(defn- table-is-partitioned?
+  [^StandardTableDefinition tabledef]
+  (when (#{TableDefinition$Type/TABLE TableDefinition$Type/MATERIALIZED_VIEW} (.getType tabledef))
+    (or (.getRangePartitioning tabledef)
+        (.getTimePartitioning tabledef))))
+
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
   (let [tables (list-tables (:details database))]
@@ -133,8 +145,7 @@
                        ;; thus we can't know whether the view require a filter or not.
                        ;; Maybe this is something we can do once we can parse sql
                        (= TableDefinition$Type/TABLE (. tabledef getType))
-                       (when (or (.getRangePartitioning tabledef)
-                                 (.getTimePartitioning tabledef))
+                       (when (table-is-partitioned? tabledef)
                          ;; having to use `get-table` here is inefficient, but calling `(.getRequirePartitionFilter)`
                          ;; on the `table` object from `list-tables` will return `nil` even though the table requires
                          ;; a partition filter.
@@ -179,11 +190,37 @@
 
 (defmethod driver/describe-table :bigquery-cloud-sdk
   [_ database {table-name :name, dataset-id :schema}]
-  {:schema dataset-id
-   :name   table-name
-   :fields (-> (.. (get-table database dataset-id table-name) getDefinition getSchema)
-               table-schema->metabase-field-info
-               set)})
+  (let [table                  (get-table database dataset-id table-name)
+        ^StandardTableDefinition tabledef (.getDefinition table)
+        is-partitioned?        (table-is-partitioned? tabledef)
+        ;; a table can only have one partitioned field
+        partitioned-field-name (when is-partitioned?
+                                 (or (some-> (.getRangePartitioning tabledef) .getField)
+                                     (some-> (.getTimePartitioning tabledef) .getField)))
+        fields                 (set
+                                (map
+                                 #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
+                                 (table-schema->metabase-field-info (. tabledef getSchema))))]
+    {:schema dataset-id
+     :name   table-name
+     :fields (cond-> fields
+               ;; if table has time partition but no field is specified as partitioned
+               ;; meaning this table is partitioned by ingestion time
+               ;; so we manually sync the 2 pseudo-columns _PARTITIONTIME AND _PARTITIONDATE
+               (and is-partitioned?
+                    (some? (.getTimePartitioning tabledef))
+                    (nil? partitioned-field-name))
+               (conj
+                {:name                 "_PARTITIONTIME"
+                 :database-type        "TIMESTAMP"
+                 :base-type            (bigquery-type->base-type nil "TIMESTAMP")
+                 :database-position    (count fields)
+                 :database-partitioned true}
+                {:name                 "_PARTITIONDATE"
+                 :database-type        "DATE"
+                 :base-type            (bigquery-type->base-type nil "DATE")
+                 :database-position    (inc (count fields))
+                 :database-partitioned true}))}))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
@@ -301,8 +338,7 @@
                 @res-fut)))))
       @res-fut)
     (catch java.util.concurrent.CancellationException _e
-      ;; trying to deref the value after the future has been cancelled
-      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters})))
+      (throw (ex-info (tru "Query cancelled") {:sql sql :parameters parameters ::cancelled? true})))
     (catch BigQueryException e
       (if (.isRetryable e)
         (throw (ex-info (tru "BigQueryException executing query")
@@ -373,7 +409,8 @@
       (thunk)
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
-          (if (or (:retryable? e) (not (qp.error-type/client-error? (:type ex-data))))
+          (if (and (not (::cancelled? ex-data))
+                   (or (:retryable? ex-data) (not (qp.error-type/client-error? (:type ex-data)))))
             (thunk)
             (throw e)))))))
 

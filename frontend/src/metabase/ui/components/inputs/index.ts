@@ -1,3 +1,4 @@
+export * from "./Autocomplete";
 export * from "./Calendar";
 export * from "./Checkbox";
 export * from "./DateInput";
@@ -11,5 +12,6 @@ export * from "./Radio";
 export * from "./Select";
 export * from "./Textarea";
 export * from "./Switch";
+export * from "./SegmentedControl";
 export * from "./TextInput";
 export * from "./TimeInput";

@@ -11,6 +11,7 @@ import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavi
 import { trackDashboardSaved } from "../analytics";
 import { getDashboardBeforeEditing } from "../selectors";
 
+import { setEditingDashboard } from "./core";
 import { fetchDashboard, fetchDashboardCardData } from "./data-fetching";
 import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
 
@@ -129,6 +130,8 @@ export const updateDashboardAndCards = createThunkAction(
         dashboard_id: dashboard.id,
         duration_milliseconds,
       });
+
+      dispatch(setEditingDashboard(false));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
       await dispatch(
