@@ -19,8 +19,9 @@ export const SecretKeyModal = ({
     opened
     onClose={onClose}
     title={t`Copy and save the API key`}
+    data-testid="secret-key-modal"
   >
-    <Stack spacing="xl">
+    <Stack spacing="xl" data-testid="secret-key-modal">
       <CopyTextInput
         label={t`The API key`}
         size="sm"
