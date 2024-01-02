@@ -92,6 +92,52 @@ describe("StringFilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["Widget"]);
     });
 
+    it("should allow to search the list of values", async () => {
+      const { onChange } = setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldValues: PRODUCT_CATEGORY_VALUES,
+      });
+
+      userEvent.type(
+        await screen.findByPlaceholderText("Search the list"),
+        "G",
+      );
+      expect(screen.getByText("Gadget")).toBeInTheDocument();
+      expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText("Gadget"));
+      expect(onChange).toHaveBeenCalledWith(["Gadget"]);
+    });
+
+    it("should handle field values remapping", async () => {
+      const { onChange } = setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [
+            ["p", "In-progress"],
+            ["c", "Completed"],
+          ],
+        }),
+      });
+
+      userEvent.type(
+        await screen.findByPlaceholderText("Search the list"),
+        "in",
+      );
+      expect(screen.getByText("In-progress")).toBeInTheDocument();
+      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText("In-progress"));
+      expect(onChange).toHaveBeenCalledWith(["p"]);
+    });
+
     it("should handle empty field values", async () => {
       const { onChange, onFocus, onBlur } = setupStringPicker({
         query,
