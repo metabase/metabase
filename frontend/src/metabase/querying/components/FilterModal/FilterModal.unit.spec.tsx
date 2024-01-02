@@ -17,10 +17,10 @@ import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import { FilterModal } from "./FilterModal";
 
 interface SetupOpts {
-  query: Lib.Query;
+  query?: Lib.Query;
 }
 
-function setup({ query }: SetupOpts) {
+function setup({ query = createQuery() }: SetupOpts = {}) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
@@ -50,9 +50,7 @@ describe("FilterModal", () => {
   });
 
   it("should allow to add filters", async () => {
-    const { getNextQuery } = setup({
-      query: createQuery(),
-    });
+    const { getNextQuery } = setup();
 
     const totalSection = screen.getByTestId("filter-column-Total");
     userEvent.type(within(totalSection).getByPlaceholderText("Min"), "10");
@@ -65,9 +63,7 @@ describe("FilterModal", () => {
   });
 
   it("should allow to add filters for implicitly joined tables", async () => {
-    const { getNextQuery } = setup({
-      query: createQuery(),
-    });
+    const { getNextQuery } = setup();
 
     userEvent.click(screen.getByRole("tab", { name: "Product" }));
     await waitForLoaderToBeRemoved();
@@ -108,9 +104,7 @@ describe("FilterModal", () => {
   });
 
   it("should allow to search for columns and add filters", () => {
-    const { getNextQuery } = setup({
-      query: createQuery(),
-    });
+    const { getNextQuery } = setup();
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
     userEvent.type(searchInput, "created");
@@ -131,5 +125,20 @@ describe("FilterModal", () => {
     const nextQuery = getNextQuery();
     expect(Lib.stageCount(nextQuery)).toBe(1);
     expect(Lib.filters(nextQuery, 0)).toHaveLength(3);
+  });
+
+  it("should order columns by type", () => {
+    setup();
+
+    const columns = screen.getAllByTestId(/filter-column/);
+    expect(within(columns[0]).getByText("Created At")).toBeInTheDocument();
+    expect(within(columns[1]).getByText("Discount")).toBeInTheDocument();
+    expect(within(columns[2]).getByText("Subtotal")).toBeInTheDocument();
+    expect(within(columns[3]).getByText("Tax")).toBeInTheDocument();
+    expect(within(columns[4]).getByText("Total")).toBeInTheDocument();
+    expect(within(columns[5]).getByText("Quantity")).toBeInTheDocument();
+    expect(within(columns[6]).getByText("ID")).toBeInTheDocument();
+    expect(within(columns[7]).getByText("User ID")).toBeInTheDocument();
+    expect(within(columns[8]).getByText("Product ID")).toBeInTheDocument();
   });
 });
