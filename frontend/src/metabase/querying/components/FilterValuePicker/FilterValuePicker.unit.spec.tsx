@@ -6,7 +6,12 @@ import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import {
   setupFieldSearchValuesEndpoints,
   setupFieldValuesEndpoints,
@@ -25,7 +30,7 @@ interface SetupOpts<T> {
   searchValues?: Record<string, FieldValuesResult>;
 }
 
-function setupStringPicker({
+async function setup({
   query,
   stageIndex,
   column,
@@ -58,10 +63,12 @@ function setupStringPicker({
     />,
   );
 
+  await waitForLoaderToBeRemoved();
+
   return { onChange, onFocus, onBlur };
 }
 
-describe("StringFilterValuePicker", () => {
+describe("FilterValuePicker", () => {
   const query = createQuery();
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
@@ -79,7 +86,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
 
     it("should allow to pick a list value", async () => {
-      const { onChange } = setupStringPicker({
+      const { onChange } = await setup({
         query,
         stageIndex,
         column,
@@ -87,13 +94,13 @@ describe("StringFilterValuePicker", () => {
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
-      userEvent.click(await screen.findByText("Widget"));
+      userEvent.click(screen.getByText("Widget"));
 
       expect(onChange).toHaveBeenCalledWith(["Widget"]);
     });
 
     it("should allow to search the list of values", async () => {
-      const { onChange } = setupStringPicker({
+      const { onChange } = await setup({
         query,
         stageIndex,
         column,
@@ -101,45 +108,76 @@ describe("StringFilterValuePicker", () => {
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
 
-      userEvent.type(
-        await screen.findByPlaceholderText("Search the list"),
-        "G",
-      );
+      userEvent.type(screen.getByPlaceholderText("Search the list"), "G");
       expect(screen.getByText("Gadget")).toBeInTheDocument();
-      expect(screen.queryByText("Widget")).not.toBeInTheDocument();
+      expect(screen.queryByText("Doohickey")).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText("Gadget"));
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
     });
 
-    it("should handle field values remapping", async () => {
-      const { onChange } = setupStringPicker({
+    it("should display selected values", async () => {
+      await setup({
         query,
         stageIndex,
         column,
-        values: [],
+        values: ["Gadget"],
+        fieldValues: PRODUCT_CATEGORY_VALUES,
+      });
+
+      expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Widget" }),
+      ).not.toBeChecked();
+    });
+
+    it("should display selected values even if they do not exist in the list", async () => {
+      await setup({
+        query,
+        stageIndex,
+        column,
+        values: ["Test"],
+        fieldValues: PRODUCT_CATEGORY_VALUES,
+      });
+      expect(screen.getByRole("checkbox", { name: "Test" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Gadget" }),
+      ).not.toBeChecked();
+
+      userEvent.type(screen.getByPlaceholderText("Search the list"), "T");
+      expect(screen.getByText("Test")).toBeInTheDocument();
+      expect(screen.getByText("Gadget")).toBeInTheDocument();
+      expect(screen.queryByText("Gizmo")).not.toBeInTheDocument();
+    });
+
+    it("should handle field values remapping", async () => {
+      const { onChange } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: ["t"],
         fieldValues: createMockFieldValues({
           field_id: PRODUCTS.CATEGORY,
           values: [
+            ["t", "To-do"],
             ["p", "In-progress"],
             ["c", "Completed"],
           ],
         }),
       });
+      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
 
-      userEvent.type(
-        await screen.findByPlaceholderText("Search the list"),
-        "in",
-      );
+      userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
       expect(screen.getByText("In-progress")).toBeInTheDocument();
       expect(screen.queryByText("Completed")).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText("In-progress"));
-      expect(onChange).toHaveBeenCalledWith(["p"]);
+      expect(onChange).toHaveBeenCalledWith(["t", "p"]);
     });
 
     it("should handle empty field values", async () => {
-      const { onChange, onFocus, onBlur } = setupStringPicker({
+      const { onChange, onFocus, onBlur } = await setup({
         query,
         stageIndex,
         column,
@@ -150,7 +188,7 @@ describe("StringFilterValuePicker", () => {
         }),
       });
 
-      const input = await screen.findByLabelText("Filter value");
+      const input = screen.getByLabelText("Filter value");
       expect(input).toBeInTheDocument();
       expect(
         screen.queryByPlaceholderText("Search the list"),
@@ -164,7 +202,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle more field values", async () => {
-      const { onChange } = setupStringPicker({
+      const { onChange } = await setup({
         query,
         stageIndex,
         column,
@@ -183,7 +221,7 @@ describe("StringFilterValuePicker", () => {
         },
       });
 
-      const input = await screen.findByPlaceholderText("Search by Category");
+      const input = screen.getByPlaceholderText("Search by Category");
       expect(input).toBeInTheDocument();
       expect(
         screen.queryByPlaceholderText("Search the list"),
@@ -200,7 +238,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "EMAIL");
 
     it("should allow to search for a value", async () => {
-      const { onChange } = setupStringPicker({
+      const { onChange } = await setup({
         query,
         stageIndex,
         column,
@@ -218,6 +256,27 @@ describe("StringFilterValuePicker", () => {
       userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
+    });
+
+    it("should handle field values remapping", async () => {
+      const { onChange } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["a-test", "a@metabase.test"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
+      act(() => jest.advanceTimersByTime(1000));
+      userEvent.click(await screen.findByText("a@metabase.test"));
+
+      expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
     });
   });
 });

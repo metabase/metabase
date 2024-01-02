@@ -58,7 +58,7 @@ function FilterValuePicker({
   if (isLoading) {
     return (
       <Center h="2.5rem">
-        <Loader />
+        <Loader data-testid="loading-spinner" />
       </Center>
     );
   }
