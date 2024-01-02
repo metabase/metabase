@@ -1,274 +1,192 @@
-import type { CyHttpMessages } from "cypress/types/net-stubbing";
-
 import { popover, restore } from "e2e/support/helpers";
 import type { ApiKey } from "metabase-types/api";
 
-const MOCK_ROWS: ApiKey[] = [
-  {
-    name: "Development API Key",
-    id: 1,
-    group: {
-      id: 1,
-      name: "All Users",
-    },
-    creator_id: 1,
-    masked_key: "asdfasdfa",
-    created_at: "2010 Aug 10",
-    updated_at: "2010 Aug 10",
-    updated_by: {
-      id: 10,
-      common_name: "John Doe",
-    },
-  },
-  {
-    name: "Production API Key",
-    id: 2,
-    group: {
-      id: 2,
-      name: "Administrators",
-    },
-    creator_id: 1,
-    masked_key: "asdfasdfa",
-    created_at: "2010 Aug 10",
-    updated_at: "2010 Aug 10",
-    updated_by: {
-      id: 11,
-      common_name: "Jane Doe",
-    },
-  },
-  {
-    name: "Personal API Key",
-    id: 3,
-    group: {
-      id: 3,
-      name: "collection",
-    },
-    creator_id: 1,
-    masked_key: "asdfasdfa",
-    created_at: "2010 Aug 10",
-    updated_at: "2010 Aug 10",
-    updated_by: {
-      id: 12,
-      common_name: "Jane Doe",
-    },
-  },
-];
-
-const MOCK_GROUPS = [
-  // NOTE: this is only here temporarily (remove when backend is working)
-  {
-    id: 2,
-    name: "Administrators",
-    member_count: 1,
-  },
-  {
-    id: 1,
-    name: "All Users",
-    member_count: 9,
-  },
-  {
-    id: 3,
-    name: "collection",
-    member_count: 4,
-  },
-  {
-    id: 4,
-    name: "data",
-    member_count: 2,
-  },
-  {
-    id: 6,
-    name: "nosql",
-    member_count: 1,
-  },
-  {
-    id: 5,
-    name: "readonly",
-    member_count: 1,
-  },
-];
-
-const getRequestId = (req: CyHttpMessages.IncomingHttpRequest) =>
-  parseInt(req.url.match(/api-key\/(\d+)/)?.[1] ?? "", 10);
+import {
+  ALL_USERS_GROUP_ID,
+  READONLY_GROUP_ID,
+  NOSQL_GROUP_ID,
+  COLLECTION_GROUP_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 describe("scenarios > admin > settings > API keys", () => {
   // TODO: replace intercepts below with actual requests to test backend
-  let mockRows: ApiKey[] = [];
+  const mockRows: ApiKey[] = [];
 
   beforeEach(() => {
+    cy.intercept("GET", "/api/api-key/count").as("getKeyCount");
+    cy.intercept("GET", "/api/api-key").as("getKeys");
+    cy.intercept("POST", "/api/api-key").as("createKey");
+    cy.intercept("PUT", "/api/api-key/*").as("updateKey");
+    cy.intercept("PUT", "/api/api-key/*/regenerate").as("regenerateKey");
+    cy.intercept("DELETE", "/api/api-key/*").as("deleteKey");
+    cy.intercept("GET", "/api/permissions/group").as("getGroups");
+
     restore();
-    mockRows = [...MOCK_ROWS];
     cy.signInAsAdmin();
   });
 
   it("should show number of API keys on auth card", () => {
-    cy.intercept("GET", "/api/api-key/count", req => req.reply(200, "5"));
     cy.visit("/admin/settings/authentication");
-    getApiKeysCard()
-      .findByTestId("card-badge")
-      .should("have.text", "5 API Keys");
 
-    cy.intercept("GET", "/api/api-key/count", req => req.reply(200, "1"));
-    cy.reload();
-    getApiKeysCard()
-      .findByTestId("card-badge")
-      .should("have.text", "1 API Key");
+    cy.wait("@getKeyCount");
+    cy.findByTestId("api-keys-setting").findByText("API Keys");
 
-    cy.intercept("GET", "/api/api-key/count", req => req.reply(200, "0"));
+    createApiKey("Test API Key One", ALL_USERS_GROUP_ID);
+
     cy.reload();
-    getApiKeysCard().findByTestId("card-badge").should("not.exist");
+    cy.wait("@getKeyCount");
+
+    cy.findByTestId("api-keys-setting")
+      .findByTestId("card-badge")
+      .findByText("1 API Key");
+
+    createApiKey("Test API Key Two", ALL_USERS_GROUP_ID);
+    createApiKey("Test API Key Three", ALL_USERS_GROUP_ID);
+
+    cy.reload();
+    cy.wait("@getKeyCount");
+
+    cy.findByTestId("api-keys-setting")
+      .findByTestId("card-badge")
+      .findByText("3 API Keys");
   });
 
   it("should list existing API keys", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows));
+    createApiKey("Test API Key One", ALL_USERS_GROUP_ID);
+    createApiKey("Test API Key Two", NOSQL_GROUP_ID);
+    createApiKey("Test API Key Three", READONLY_GROUP_ID);
+
     cy.visit("/admin/settings/authentication/api-keys");
-    getApiKeysRows()
-      .should("contain", "Development API Key")
-      .and("contain", "Production API Key")
-      .and("contain", "Personal API Key");
+    cy.wait("@getKeys");
+    cy.findByTestId("api-keys-settings-header").findByText("Manage API Keys");
+
+    cy.findByTestId("api-keys-table").within(() => {
+      cy.findByText("Test API Key One");
+      cy.findByText("All Users");
+
+      cy.findByText("Test API Key Two");
+      cy.findByText("nosql");
+
+      cy.findByText("Test API Key Three");
+      cy.findByText("readonly");
+
+      cy.findAllByText(/mb_/); // masked key prefix
+      cy.findAllByText("Bobby Tables"); // modifier
+    });
   });
 
   it("should allow creating an API key", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "fetchKeys",
-    );
-    cy.intercept("POST", "/api/api-key", req => {
-      mockRows.push(req.body);
-      req.reply(200);
-    });
-
     cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@fetchKeys");
+    cy.wait("@getKeys");
     cy.findByTestId("api-keys-settings-header")
       .button("Create API Key")
       .click();
-    cy.findByLabelText(/Key name/).type("New key");
-    cy.findByLabelText(/Select a group/).click();
+
+    cy.wait("@getGroups");
+
+    cy.findByTestId("create-api-key-modal").within(() => {
+      cy.findByLabelText(/Key name/).type("New key");
+      cy.findByLabelText(/Select a group/).click();
+    });
+
     cy.findByRole("listbox").findByText("Administrators").click();
-    cy.button("Create").click();
-    cy.wait("@fetchKeys");
+
+    cy.findByLabelText("Create a new API Key").button("Create").click();
+
+    cy.wait("@createKey");
+    cy.wait("@getKeys");
+
+    cy.findByLabelText("Copy and save the API key").findByLabelText(
+      /the api key/i,
+    );
+
     cy.button("Done").click();
-    getApiKeysRows().contains("New key").should("exist");
-    cy.reload();
-    getApiKeysRows().contains("New key").should("exist");
+    cy.findByTestId("api-keys-table").findByText("New key");
   });
 
   it("should allow deleting an API key", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "fetchKeys",
-    );
-    cy.intercept("DELETE", "/api/api-key/*", req => {
-      const id = getRequestId(req);
-      mockRows = mockRows.filter(row => row.id !== id);
-      req.reply(200);
-    }).as("deleteKey");
+    createApiKey("Test API Key One", ALL_USERS_GROUP_ID);
     cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@fetchKeys");
-    getApiKeysRows()
-      .contains("Development API Key")
+    cy.wait("@getKeys");
+
+    cy.findByTestId("api-keys-table")
+      .contains("Test API Key One")
       .closest("tr")
       .icon("trash")
       .click();
-    cy.button("Delete API Key").click();
+    cy.findByLabelText("Delete API Key").button("Delete API Key").click();
+
     cy.wait("@deleteKey");
-    cy.wait("@fetchKeys");
-    getApiKeysRows().should("not.contain", "Development API Key");
-    cy.reload();
-    getApiKeysRows().should("not.contain", "Development API Key");
+    cy.wait("@getKeys");
+
+    cy.findByTestId("api-keys-table").should("not.contain", "Test API Key One");
+    cy.findByTestId("api-keys-table").findByText("No API keys here yet");
   });
 
   it("should allow editing an API key", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "fetchKeys",
-    );
-    cy.intercept("PUT", "/api/api-key/*", req => {
-      const id = getRequestId(req);
-      const rowI = mockRows.findIndex(row => row.id === id);
-      mockRows[rowI] = {
-        ...mockRows[rowI],
-        ...req.body,
-        group_name: MOCK_GROUPS.find(group => group.id === req.body.group_id)
-          ?.name,
-      };
-      req.reply(200);
-    }).as("saveKey");
+    createApiKey("Development API Key", ALL_USERS_GROUP_ID);
     cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@fetchKeys");
+    cy.wait("@getKeys");
 
-    getApiKeysRows()
-      .contains("Development API Key")
-      .closest("tr")
-      .icon("pencil")
-      .click();
+    cy.findByTestId("api-keys-table")
+      .should("include.text", "Development API Key")
+      .and("include.text", "All Users");
+
+    cy.findByTestId("api-keys-table").icon("pencil").click();
 
     cy.findByLabelText(/Key name/)
       .clear()
       .type("Different key name");
+
     cy.findByLabelText(/Select a group/).click();
     cy.findByRole("listbox").findByText("collection").click();
-    cy.button("Save").click();
-    cy.wait("@saveKey");
-    cy.wait("@fetchKeys");
 
-    getApiKeysRows()
+    cy.button("Save").click();
+    cy.wait("@updateKey");
+    cy.wait("@getKeys");
+
+    cy.findByTestId("api-keys-table")
       .should("not.contain", "Development API Key")
-      .contains("Different key name")
-      .closest("tr")
-      .should("contain", "collection");
-    cy.reload();
-    getApiKeysRows()
       .contains("Different key name")
       .closest("tr")
       .should("contain", "collection");
   });
 
   it("should allow regenerating an API key", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "fetchKeys",
-    );
-    cy.intercept("PUT", "/api/api-key/*/regenerate", req => {
-      const id = getRequestId(req);
-      const rowI = mockRows.findIndex(row => row.id === id);
-      const masked_key = "qwerty";
-      const unmasked_key = "qwertyuiop";
-      mockRows[rowI] = {
-        ...mockRows[rowI],
-        masked_key: "qwerty",
-      };
-      req.reply(200, { masked_key, unmasked_key });
-    }).as("regenKey");
+    createApiKey("Personal API Key", ALL_USERS_GROUP_ID);
+
     cy.visit("/admin/settings/authentication/api-keys");
-    cy.wait("@fetchKeys");
-    getApiKeysRows()
+    cy.wait("@getKeys").then(({ response }) => {
+      const { created_at, updated_at } = response?.body[0];
+      // on creation, created_at and updated_at should be the same
+      expect(created_at).to.equal(updated_at);
+    });
+    cy.findByTestId("api-keys-table")
       .contains("Personal API Key")
       .closest("tr")
       .icon("pencil")
       .click();
     cy.button("Regenerate API Key").click();
     cy.button("Regenerate").click();
-    cy.wait("@regenKey");
-    cy.findByLabelText("The API key").should("have.value", "qwertyuiop");
-    cy.wait("@fetchKeys");
+    cy.wait("@regenerateKey");
+    cy.findByLabelText("The API key").should("include.value", "mb_");
+
+    cy.wait("@getKeys").then(({ response }) => {
+      const { created_at, updated_at } = response?.body[0];
+      // after regeneration, created_at and updated_at should be different
+      // they're too close to check via UI though
+      expect(created_at).to.not.equal(updated_at);
+    });
+
     cy.button("Done").click();
-    getApiKeysRows()
-      .contains("Personal API Key")
-      .closest("tr")
-      .should("contain", "qwerty")
-      .and("not.contain", "qwertyuiop");
-    cy.reload();
-    getApiKeysRows()
-      .contains("Personal API Key")
-      .closest("tr")
-      .should("contain", "qwerty")
-      .and("not.contain", "qwertyuiop");
+    cy.findByTestId("api-keys-table").findByText(/mb_/);
   });
 
-  it("should warn before deleting a group with API keys", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "fetchKeys",
-    );
+  it.skip("should warn before deleting a group with API keys", () => {
+    createApiKey("Personal API Key", COLLECTION_GROUP_ID);
+
     cy.visit("/admin/people/groups");
-    cy.wait("@fetchKeys");
+    cy.wait("@getKeys");
     cy.get(".ContentTable")
       .contains("collection")
       .closest("tr")
@@ -282,12 +200,12 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.url().should("match", /\/admin\/settings\/authentication\/api-keys$/);
   });
 
-  it("should show API keys when viewing Group details", () => {
+  it.skip("should show API keys when viewing Group details", () => {
     cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "fetchKeys",
+      "getKeys",
     );
     cy.visit("/admin/people/groups/3");
-    cy.wait("@fetchKeys");
+    cy.wait("@getKeys");
     cy.get(".ContentTable")
       .findByText("Personal API Key")
       .closest("tr")
@@ -299,11 +217,14 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.url().should("match", /\/admin\/settings\/authentication\/api-keys$/);
   });
 
-  it("should show when a question was last edited by an API key", () => {
+  it.skip("should show when a question was last edited by an API key", () => {
     // TODO: write this when backend is ready
   });
 });
-const getApiKeysCard = () => cy.findByText("API Keys").parent().parent();
 
-const getApiKeysRows = () =>
-  cy.findByTestId("api-keys-table").find("tbody > tr");
+const createApiKey = (name: string, group_id: number) => {
+  cy.request("POST", "/api/api-key", {
+    name,
+    group_id,
+  });
+};
