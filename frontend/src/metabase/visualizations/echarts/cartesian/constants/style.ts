@@ -15,7 +15,7 @@ export const CHART_STYLE = {
   axisNameMargin: 12,
   padding: {
     x: 8,
-    y: 8,
+    y: 12,
   },
   timelineEvents: {
     height: 14,

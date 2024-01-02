@@ -19,6 +19,7 @@ export const getCartesianChartOption = (
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
+  isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -68,6 +69,7 @@ export const getCartesianChartOption = (
   ];
 
   return {
+    animation: isAnimated,
     toolbox: {
       show: false,
     },
