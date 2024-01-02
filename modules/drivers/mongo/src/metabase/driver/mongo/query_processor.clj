@@ -106,10 +106,16 @@
   0)
 
 (def ^:dynamic ^:private *next-alias-index*
-  "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to an atom valued 0. Hence every
-   compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
-   are gathered using `(swap *next-alias-index* inc)`, hence first used index is of value 1."
+  "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to `volatile!` valued 0. Hence
+   every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
+   are gathered using [[next-alias-index]], hence first used index is of value 1."
   nil)
+
+(defn- next-alias-index
+  "Increment [[*next-alias-index*]] counter and return new index. Further context can be found in
+   [[*next-alias-index*]] docstring."
+  []
+  (vswap! *next-alias-index* inc))
 
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
@@ -917,7 +923,7 @@
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
                                              ;; aliases should also contain no . characters (#32182).
                                              (str/replace #"~|\." "_")
-                                             (str "__" (swap! *next-alias-index* inc)))]
+                                             (str "__" (next-alias-index)))]
                                {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
@@ -1401,7 +1407,7 @@
   [query]
   (let [query (update query :query preprocess)]
     (binding [*query* query
-              *next-alias-index* (atom 0)]
+              *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
                                 (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id))
                                 (query->collection-name query))
