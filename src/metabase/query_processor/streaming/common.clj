@@ -139,9 +139,8 @@
 
 (defmethod global-type-settings :type/Time [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {})
-    {::mb.viz/time-style "h:mm A"
-     ::mb.viz/date-style ""}))
+    (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
+    {::mb.viz/date-style ""}))
 
 (defmethod global-type-settings :type/DateTime [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (:type/Temporal global-column-settings {}))
