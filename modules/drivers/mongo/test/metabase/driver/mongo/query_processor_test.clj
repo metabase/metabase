@@ -538,7 +538,7 @@
 (deftest uniqe-alias-index-test
   (mt/test-driver
    :mongo
-   (testing "Field aliases have unique indices"
+   (testing "Field aliases have deterministic unique indices"
      (let [query (mt/mbql-query
                   nil
                   {:joins [{:alias "Products"
