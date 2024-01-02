@@ -101,6 +101,8 @@ export const getCardSeriesModels = (
 ): SeriesModel[] => {
   const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
+  // TODO: separate scatter plot and combo charts into separate models
+  const hasBubbleSize = "bubbleSize" in columns;
 
   // Charts without breakout have one series per selected metric column.
   if (!hasBreakout) {
@@ -137,6 +139,10 @@ export const getCardSeriesModels = (
         dataKey: getDatasetKey(metric.column, cardId),
         vizSettingsKey,
         legacySeriesSettingsObjectKey,
+        bubbleSizeDataKey:
+          hasBubbleSize && columns.bubbleSize != null
+            ? getDatasetKey(columns.bubbleSize.column, cardId)
+            : undefined,
       };
     });
   }
@@ -187,6 +193,10 @@ export const getCardSeriesModels = (
       breakoutColumnIndex: breakout.index,
       breakoutColumn: breakout.column,
       breakoutValue,
+      bubbleSizeDataKey:
+        hasBubbleSize && columns.bubbleSize != null
+          ? getDatasetKey(columns.bubbleSize.column, cardId, breakoutValue)
+          : undefined,
     };
   });
 };
