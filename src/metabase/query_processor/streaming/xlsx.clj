@@ -172,7 +172,9 @@
   [format-settings unit format-string]
   (if (or (not unit) (lib.schema.temporal-bucketing/time-bucketing-units unit))
     (if-let [time-format (time-format format-settings)]
-      (str format-string ", " time-format)
+      (cond->> time-format
+               (seq format-string)
+               (str format-string ", "))
       format-string)
     format-string))
 
@@ -208,21 +210,26 @@
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings {semantic-type :semantic_type, effective-type :effective_type, unit :unit}]
-  (u/one-or-many
-   (cond
-     ;; Primary key or foreign key
-     (isa? semantic-type :Relation/*)
-     "0"
+  [format-settings {unit :unit :as col}]
+  (let [col-type (common/col-type col)]
+    (u/one-or-many
+      (cond
+        ;; Primary key or foreign key
+        (isa? col-type :Relation/*)
+        "0"
 
-     (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-              (isa? semantic-type :type/Temporal))
-          (isa? effective-type :type/Temporal))
-     (datetime-format-string format-settings unit)
+        ;(and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+        ;         (isa? semantic-type :type/Temporal))
+        ;     (isa? effective-type :type/Temporal))
+        ;(datetime-format-string format-settings unit)
 
-     (or (some #(contains? number-setting-keys %) (keys format-settings))
-         (isa? semantic-type :type/Currency))
-     (number-format-strings format-settings semantic-type))))
+        ;; Note -- we may have issues relate to date/time/datetime here
+        (isa? col-type :type/Temporal)
+        (datetime-format-string format-settings unit)
+
+        (or (some #(contains? number-setting-keys %) (keys format-settings))
+            (isa? col-type :type/Currency))
+        (number-format-strings format-settings col-type)))))
 
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
@@ -262,19 +269,20 @@
      (.setDataFormat (. data-format getFormat ^String format-string)))))
 
 (defn- column-style-delays
-  [^Workbook workbook data-format col-settings cols]
+  [^Workbook workbook data-format viz-settings cols]
   (into {} (for [col cols]
              (let [settings-key  (if (:id col)
                                    {::mb.viz/field-id (:id col)}
                                    {::mb.viz/column-name (:name col)})
                    id-or-name    (first (vals settings-key))
-                   settings      (get col-settings settings-key)
+                   ;settings      (get col-settings settings-key)
+                   settings      (common/viz-settings-for-col col viz-settings)
                    format-strings (format-settings->format-strings settings col)]
                (when (seq format-strings)
                  {id-or-name
                   (map
-                   #(format-string-delay workbook data-format %)
-                   format-strings)})))))
+                    #(format-string-delay workbook data-format %)
+                    format-strings)})))))
 
 (def ^:private cell-style-delays
   "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
@@ -284,9 +292,9 @@
   Memoized so that it can be called within write-row! without re-running the logic to convert format settings
   to format strings."
   (memoize
-   (fn [^Workbook workbook cols col-settings]
+   (fn [^Workbook workbook cols viz-settings]
      (let [data-format (. workbook createDataFormat)
-           col-styles  (column-style-delays workbook data-format col-settings cols)]
+           col-styles  (column-style-delays workbook data-format viz-settings cols)]
        (into col-styles
              (for [[name-keyword format-string] (seq (default-format-strings))]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
@@ -467,7 +475,7 @@
                                (for [i output-order] (row-v i)))
                              row)
               col-settings (::mb.viz/column-settings viz-settings)
-              cell-styles  (cell-style-delays workbook ordered-cols col-settings)]
+              cell-styles  (cell-style-delays workbook ordered-cols viz-settings)]
           (binding [*cell-styles* cell-styles]
             (add-row! sheet ordered-row ordered-cols col-settings))
           (when (= (inc row-num) *auto-sizing-threshold*)
