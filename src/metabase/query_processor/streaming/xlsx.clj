@@ -38,14 +38,6 @@
     ::mb.viz/prefix
     ::mb.viz/suffix})
 
-(def ^:private datetime-setting-keys
-  "If any of these settings are present, we should format the column as a date and/or time."
-  #{::mb.viz/date-style
-    ::mb.viz/date-separator
-    ::mb.viz/date-abbreviate
-    ::mb.viz/time-enabled
-    ::mb.viz/time-style})
-
 (defn- currency-format-string
   "Adds a currency to the base format string as either a suffix (for pluralized names) or
   prefix (for symbols or codes)."
@@ -84,24 +76,19 @@
   "Returns format strings for a number column corresponding to the given settings.
   The first value in the returned list should be used for integers, or numbers that round to integers.
   The second number should be used for all other values."
-  [format-settings semantic-type]
+  [{::mb.viz/keys [prefix suffix number-style number-separators currency-in-header decimals] :as format-settings}]
   (let [format-strings
-        (let [decimals        (::mb.viz/decimals format-settings 2)
-              is-currency?    (or (isa? semantic-type :type/Currency)
-                                  (= (::mb.viz/number-style format-settings) "currency"))
-              merged-settings (if is-currency?
-                                (common/merge-global-settings format-settings :type/Currency)
-                                format-settings)
-              base-string     (if (= (::mb.viz/number-separators format-settings) ".")
+        (let [base-string     (if (= number-separators ".")
                                 ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
                                 ;; number separator settings, since custom separators are not supported in XLSX.
                                 "###0"
                                 "#,##0")
-              base-strings    (if (default-number-format? merged-settings)
+              decimals        (or decimals 2)
+              base-strings    (if (default-number-format? format-settings)
                                 ;; [int-format, float-format]
                                 [base-string (str base-string ".##")]
                                 (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]
-          (condp = (::mb.viz/number-style merged-settings)
+          (condp = number-style
             "percent"
             (map #(str % "%") base-strings)
 
@@ -111,15 +98,16 @@
             "decimal"
             base-strings
 
-            (if (and is-currency? (false? (::mb.viz/currency-in-header merged-settings)))
-              (map #(currency-format-string % merged-settings) base-strings)
+            (if (and (= number-style "currency")
+                     (false? currency-in-header))
+              (map #(currency-format-string % format-settings) base-strings)
               base-strings)))]
     (map
      (fn [format-string]
       (str
-        (when (::mb.viz/prefix format-settings) (str "\"" (::mb.viz/prefix format-settings) "\""))
+        (when prefix (str "\"" prefix "\""))
         format-string
-        (when (::mb.viz/suffix format-settings) (str "\"" (::mb.viz/suffix format-settings) "\""))))
+        (when suffix (str "\"" suffix "\""))))
      format-strings)))
 
 (defn- abbreviate-date-names
@@ -218,18 +206,13 @@
         (isa? col-type :Relation/*)
         "0"
 
-        ;(and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-        ;         (isa? semantic-type :type/Temporal))
-        ;     (isa? effective-type :type/Temporal))
-        ;(datetime-format-string format-settings unit)
-
         ;; Note -- we may have issues relate to date/time/datetime here
         (isa? col-type :type/Temporal)
         (datetime-format-string format-settings unit)
 
         (or (some #(contains? number-setting-keys %) (keys format-settings))
             (isa? col-type :type/Currency))
-        (number-format-strings format-settings col-type)))))
+        (number-format-strings format-settings)))))
 
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
@@ -301,7 +284,7 @@
 
 (defn- cell-style
   "Get the cell style(s) associated with `id-or-name` by dereffing the delay(s) in `*cell-styles*`."
-  [^org.apache.poi.ss.usermodel.CellStyle id-or-name]
+  [id-or-name]
   (let [cell-style-delays (some->> id-or-name *cell-styles* u/one-or-many (map deref))]
     (if (= (count cell-style-delays) 1)
       (first cell-style-delays)
@@ -314,7 +297,7 @@
     (== (bigint rounded) rounded)))
 
 (defmulti ^:private set-cell!
-  "Sets a cell to the provided value, with an approrpiate style if necessary.
+  "Sets a cell to the provided value, with an appropriate style if necessary.
 
   This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
   (fn [^Cell _cell value _id-or-name] (type value)))

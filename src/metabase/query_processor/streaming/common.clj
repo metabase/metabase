@@ -149,7 +149,7 @@
   (:type/Number global-column-settings {}))
 
 (defmethod global-type-settings :type/Currency [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
-  (:type/Currency global-column-settings {}))
+  (:type/Currency global-column-settings {::mb.viz/number-style "currency"}))
 
 (defmethod global-type-settings :default [_ _viz-settings]
   {})
