@@ -668,6 +668,10 @@ const TITLE_LOCALES_BN = {
     'en' : 'Unselected',
     'bn' : 'অনির্বাচিত'
   },
+  'school.dashboard.teacher.hold.post' : {
+    'en' : 'Hold Posts',
+    'bn' : 'সংরক্ষিত পদ'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
