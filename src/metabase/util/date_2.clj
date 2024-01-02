@@ -11,7 +11,6 @@
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types])
   (:import
    (java.time DayOfWeek Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime)
@@ -20,6 +19,11 @@
    (org.threeten.extra PeriodDuration)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private TemporalInstance
+  [:fn
+   {:error/message "Instance of a java.time.temporal.Temporal"}
+   (partial instance? Temporal)])
 
 (defn- add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
@@ -167,7 +171,7 @@
   "A list of units that can be added to a temporal value."
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
-(mu/defn add :- (ms/InstanceOfClass Temporal)
+(mu/defn add :- TemporalInstance
   "Return a temporal value relative to temporal value `t` by adding (or subtracting) a number of units. Returned value
   will be of same class as `t`.
 
@@ -177,7 +181,7 @@
   ([unit amount]
    (add (t/zoned-date-time) unit amount))
 
-  ([t      :- (ms/InstanceOfClass Temporal)
+  ([t      :- TemporalInstance
     unit   :- (into [:enum] add-units)
     amount :- [:maybe :int]]
    (if (zero? amount)
@@ -244,7 +248,7 @@
   ([unit]
    (extract (t/zoned-date-time) unit))
 
-  ([t    :- (ms/InstanceOfClass Temporal)
+  ([t    :- TemporalInstance
     unit :- (into [:enum] extract-units)]
    (t/as t (case unit
              :second-of-minute :second-of-minute
@@ -317,14 +321,14 @@
   "Valid date trucation units"
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
-(mu/defn truncate :- (ms/InstanceOfClass Temporal)
+(mu/defn truncate :- TemporalInstance
   "Truncate a temporal value `t` to the beginning of `unit`, e.g. `:hour` or `:day`. Not all truncation units are
   supported on all subclasses of `Temporal` — for example, you can't truncate a `LocalTime` to `:month`, for obvious
   reasons."
   ([unit]
    (truncate (t/zoned-date-time) unit))
 
-  ([^Temporal t :- (ms/InstanceOfClass Temporal)
+  ([^Temporal t :- TemporalInstance
     unit        :- (into [:enum] truncate-units)]
    (case unit
      :default     t
@@ -338,7 +342,7 @@
      :quarter     (-> (.with t (adjuster :first-day-of-quarter)) (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)            (t/truncate-to :days)))))
 
-(mu/defn bucket :- [:or :number (ms/InstanceOfClass Temporal)]
+(mu/defn bucket :- [:or :number TemporalInstance]
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
   'date bucketing' in Metabase code and MBQL, e.g. for date/time columns in MBQL `:breakout` (SQL `GROUP BY`)).
 
@@ -349,7 +353,7 @@
   ([unit]
    (bucket (t/zoned-date-time) unit))
 
-  ([t    :- (ms/InstanceOfClass Temporal)
+  ([t    :- TemporalInstance
     unit :- (into [] cat [extract-units truncate-units])]
    (cond
      (= unit :default)     t
@@ -358,8 +362,8 @@
      :else                 (throw (Exception. (tru "Invalid unit: {0}" unit))))))
 
 (mu/defn range :- [:map
-                   [:start (ms/InstanceOfClass Temporal)]
-                   [:end   (ms/InstanceOfClass Temporal)]]
+                   [:start TemporalInstance]
+                   [:end   TemporalInstance]]
   "Get a start (by default, inclusive) and end (by default, exclusive) pair of instants for a `unit` span of time
   containing `t`. e.g.
 
@@ -373,7 +377,7 @@
   ([t unit]
    (range t unit nil))
 
-  ([t    :- (ms/InstanceOfClass Temporal)
+  ([t    :- TemporalInstance
     unit :- (into [:enum] add-units)
     {:keys [start end resolution]
      :or   {start      :inclusive
