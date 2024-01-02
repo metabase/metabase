@@ -361,13 +361,15 @@
                       (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
                                       :from   [[:metabase_field :field]]
                                       :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
-                                      :where  [:and [:in :field.table_id table-ids] [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource"]]]})
+                                      :where  [:and [:in :field.table_id table-ids]
+                                               [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource"]]]})
                            (map #(update % :values (comp set json/parse-string)))
                            (map (juxt :field-name :values))
                            (into {}))))))
 
-           (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME"
-             (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id) :name "partition_by_ingestion_time_not_required")]
+           (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
+             (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                         :name "partition_by_ingestion_time_not_required")]
                (is (=? [{:name           "_PARTITIONTIME"
                          :database_type "TIMESTAMP"
                          :base_type     :type/DateTimeWithLocalTZ
