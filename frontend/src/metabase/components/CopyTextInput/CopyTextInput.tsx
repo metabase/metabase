@@ -5,12 +5,18 @@ import { TextInput } from "metabase/ui";
 import type { TextInputProps } from "metabase/ui";
 import { CopyWidgetButton } from "./CopyTextInput.styled";
 
+const defaultProps = {
+  readOnly: true,
+  value: "copy me",
+};
+
 export const CopyTextInput = forwardRef(function CopyTextInput(
   props: TextInputProps,
   ref: Ref<HTMLInputElement>,
 ) {
   return (
     <TextInput
+      {...defaultProps}
       {...props}
       ref={ref}
       rightSection={<CopyWidgetButton value={props.value} />}
