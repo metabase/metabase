@@ -116,23 +116,25 @@ describe("FilterValuePicker", () => {
       expect(onChange).toHaveBeenCalledWith(["Gadget"]);
     });
 
-    it("should display selected values", async () => {
-      await setup({
+    it("should allow to update selected values", async () => {
+      const { onChange } = await setup({
         query,
         stageIndex,
         column,
         values: ["Gadget"],
         fieldValues: PRODUCT_CATEGORY_VALUES,
       });
-
       expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
       expect(
         screen.getByRole("checkbox", { name: "Widget" }),
       ).not.toBeChecked();
+
+      userEvent.click(screen.getByText("Widget"));
+      expect(onChange).toHaveBeenCalledWith(["Gadget", "Widget"]);
     });
 
-    it("should display selected values even if they do not exist in the list", async () => {
-      await setup({
+    it("should handle values that do not exist in the list", async () => {
+      const { onChange } = await setup({
         query,
         stageIndex,
         column,
@@ -148,6 +150,9 @@ describe("FilterValuePicker", () => {
       expect(screen.getByText("Test")).toBeInTheDocument();
       expect(screen.getByText("Gadget")).toBeInTheDocument();
       expect(screen.queryByText("Gizmo")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText("Gadget"));
+      expect(onChange).toHaveBeenCalledWith(["Test", "Gadget"]);
     });
 
     it("should handle field values remapping", async () => {
@@ -256,6 +261,31 @@ describe("FilterValuePicker", () => {
       userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
+    });
+
+    it("should allow to update selected values", async () => {
+      const { onChange } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: ["b@metabase.test"],
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["a@metabase.test"]],
+          }),
+        },
+      });
+      expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
+
+      userEvent.type(screen.getByLabelText("Filter value"), "a");
+      act(() => jest.advanceTimersByTime(1000));
+      userEvent.click(await screen.findByText("a@metabase.test"));
+
+      expect(onChange).toHaveBeenLastCalledWith([
+        "b@metabase.test",
+        "a@metabase.test",
+      ]);
     });
 
     it("should handle field values remapping", async () => {
