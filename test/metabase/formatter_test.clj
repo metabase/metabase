@@ -25,29 +25,39 @@
       (is (= "2" (format 2 nil))))
     (testing "Currency"
       (testing "defaults to USD and two decimal places and symbol"
-        (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"}))))
+        (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"
+                                  ::mb.viz/currency-in-header false}))))
       (testing "Defaults to currency when there is a currency style"
-        (is (= "$12,345.54" (fmt {::mb.viz/currency-style "symbol"}))))
+        (is (= "$12,345.54" (fmt {::mb.viz/currency-style "symbol"
+                                  ::mb.viz/currency-in-header false}))))
       (testing "Defaults to currency when there is a currency"
-        (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"}))))
+        (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"
+                                  ::mb.viz/currency-in-header false}))))
       (testing "respects the number of decimal places when specified"
         (is (= "$12,345.54320" (fmt {::mb.viz/currency "USD"
-                                     ::mb.viz/decimals 5}))))
+                                     ::mb.viz/decimals 5
+                                     ::mb.viz/currency-in-header false}))))
       (testing "Other currencies"
-        (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"})))
+        (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"
+                                    ::mb.viz/currency-in-header false})))
         (is (= "12,345.54 Cape Verdean escudos"
                (fmt {::mb.viz/currency       "CVE"
-                     ::mb.viz/currency-style "name"})))
+                     ::mb.viz/currency-style "name"
+                     ::mb.viz/currency-in-header false})))
         (testing "which have no 'cents' and thus no decimal places"
-          (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"})))
-          (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"})))
-          (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"})))))
+          (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"
+                                  ::mb.viz/currency-in-header false})))
+          (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"
+                                 ::mb.viz/currency-in-header false})))
+          (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"
+                                  ::mb.viz/currency-in-header false})))))
       (testing "Understands name, code, and symbol"
         (doseq [[style expected] [["name" "12,345.54 Czech Republic korunas"]
                                   ["symbol" "Kč12,345.54"]
                                   ["code" "CZK 12,345.54"]]]
           (is (= expected (fmt {::mb.viz/currency       "CZK"
-                                ::mb.viz/currency-style style}))
+                                ::mb.viz/currency-style style
+                                ::mb.viz/currency-in-header false}))
               style))))
     (testing "scientific notation"
       (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"})))
