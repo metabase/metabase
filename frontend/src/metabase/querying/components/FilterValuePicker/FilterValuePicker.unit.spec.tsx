@@ -68,7 +68,7 @@ async function setup({
   return { onChange, onFocus, onBlur };
 }
 
-describe("FilterValuePicker", () => {
+describe("StringFilterValuePicker", () => {
   const query = createQuery();
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(query, stageIndex);
@@ -276,7 +276,7 @@ describe("FilterValuePicker", () => {
           }),
         },
       });
-      expect(screen.getByText("a@metabase.test")).toBeInTheDocument();
+      expect(screen.getByText("b@metabase.test")).toBeInTheDocument();
 
       userEvent.type(screen.getByLabelText("Filter value"), "a");
       act(() => jest.advanceTimersByTime(1000));
@@ -307,6 +307,55 @@ describe("FilterValuePicker", () => {
       userEvent.click(await screen.findByText("a@metabase.test"));
 
       expect(onChange).toHaveBeenLastCalledWith(["a-test"]);
+    });
+  });
+
+  describe("no values", () => {
+    const column = findColumn("PEOPLE", "PASSWORD");
+
+    it("should allow to add a value", async () => {
+      const { onChange, onFocus, onBlur } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Enter some text"), "abc");
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith(["abc"]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it("should allow to add multiple values", async () => {
+      const { onChange, onFocus, onBlur } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: ["abc"],
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "bce");
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith(["abc", "bce"]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it("should allow to remove a value", async () => {
+      const { onChange } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: ["abc", "bce"],
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "{backspace}");
+
+      expect(onChange).toHaveBeenLastCalledWith(["abc"]);
     });
   });
 });
