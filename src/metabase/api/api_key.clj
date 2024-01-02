@@ -1,7 +1,7 @@
 (ns metabase.api.api-key
   "/api/api-key endpoints for CRUD management of API Keys"
   (:require
-   [compojure.core :refer [POST GET PUT]]
+   [compojure.core :refer [POST GET PUT DELETE]]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.api-key :as api-key]
@@ -85,7 +85,8 @@
   (api/check-superuser)
   (let [api-key-before (-> (t2/select-one :model/ApiKey :id id)
                            ;; hydrate the group_name for audit logging
-                           (t2/hydrate :group_name))]
+                           (t2/hydrate :group_name)
+                           (api/check-404))]
     (t2/with-transaction [_conn]
       (when group_id
         (let [user (-> api-key-before (t2/hydrate :user) :user)]
@@ -107,7 +108,8 @@
   {id ms/PositiveInt}
   (api/check-superuser)
   (let [api-key-before (-> (t2/select-one :model/ApiKey id)
-                           (t2/hydrate :group_name))
+                           (t2/hydrate :group_name)
+                           (api/check-404))
         unhashed-key (key-with-unique-prefix)
         api-key-after (assoc api-key-before
                              :unhashed_key unhashed-key
@@ -128,5 +130,21 @@
   (api/check-superuser)
   (let [api-keys (t2/hydrate (t2/select :model/ApiKey) :group_name :updated_by)]
     (map present-api-key api-keys)))
+
+(api/defendpoint DELETE "/:id"
+  "Delete an ApiKey"
+  [id]
+  {id ms/PositiveInt}
+  (api/check-superuser)
+  (let [api-key (-> (t2/select-one :model/ApiKey id)
+                    (t2/hydrate :group_name)
+                    (api/check-404))]
+    (t2/with-transaction [_tx]
+      (t2/delete! :model/ApiKey id)
+      (t2/update! :model/User (:user_id api-key) {:is_active false}))
+    (events/publish-event! :event/api-key-delete
+                           {:object api-key
+                            :user-id api/*current-user-id*})
+    api/generic-204-no-content))
 
 (api/define-routes)
