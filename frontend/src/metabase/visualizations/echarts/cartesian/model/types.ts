@@ -40,7 +40,14 @@ export type BreakoutSeriesModel = RegularSeriesModel & {
   breakoutValue: RowValue;
 };
 
-export type SeriesModel = RegularSeriesModel | BreakoutSeriesModel;
+export type ScatterSeriesModel = (RegularSeriesModel | BreakoutSeriesModel) & {
+  bubbleSizeDataKey?: DataKey;
+};
+
+export type SeriesModel =
+  | RegularSeriesModel
+  | BreakoutSeriesModel
+  | ScatterSeriesModel;
 
 export type DimensionModel = {
   dataKey: DataKey;
@@ -83,6 +90,5 @@ export type CartesianChartModel = {
 
   insights: Insight[];
 
-  // For scatter plot
-  bubbleSizeDataKey?: DataKey;
+  bubbleSizeDomain: Extent | null;
 };
