@@ -26,22 +26,21 @@ export function FilterPickerBody({
   onBack,
 }: FilterPickerBodyProps) {
   const FilterWidget = getFilterWidget(column);
-
-  if (FilterWidget) {
-    return (
-      <FilterWidget
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        filter={filter}
-        isNew={isNew}
-        onChange={onChange}
-        onBack={onBack}
-      />
-    );
+  if (!FilterWidget) {
+    return null;
   }
 
-  return null;
+  return (
+    <FilterWidget
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      filter={filter}
+      isNew={isNew}
+      onChange={onChange}
+      onBack={onBack}
+    />
+  );
 }
 
 function getFilterWidget(column: Lib.ColumnMetadata) {
@@ -57,11 +56,11 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isCoordinate(column)) {
     return CoordinateFilterPicker;
   }
-  if (Lib.isString(column)) {
-    return StringFilterPicker;
-  }
   if (Lib.isNumeric(column)) {
     return NumberFilterPicker;
+  }
+  if (Lib.isString(column)) {
+    return StringFilterPicker;
   }
   return null;
 }

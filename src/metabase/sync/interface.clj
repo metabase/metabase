@@ -8,10 +8,11 @@
 
 (mr/def ::DatabaseMetadataTable
   [:map
-   [:name   ::lib.schema.common/non-blank-string]
-   [:schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:name           ::lib.schema.common/non-blank-string]
+   [:schema         [:maybe ::lib.schema.common/non-blank-string]]
+   [:require-filter {:optional true} :boolean]
    ;; `:description` in this case should be a column/remark on the Table, if there is one.
-   [:description {:optional true} [:maybe :string]]])
+   [:description    {:optional true} [:maybe :string]]])
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
@@ -43,6 +44,8 @@
    [:nfc-path                   {:optional true} [:any]]
    [:custom                     {:optional true} :map]
    [:database-is-auto-increment {:optional true} :boolean]
+   ;; nullable for databases that don't support field partition
+   [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]])
 
 (def TableMetadataField

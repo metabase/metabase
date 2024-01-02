@@ -16,7 +16,7 @@ export const HideColumnAction: LegacyDrill = ({
     clicked.value !== undefined ||
     !clicked.column ||
     clicked?.extraData?.isRawTable ||
-    !question.query().isEditable()
+    !question.isQueryEditable()
   ) {
     return [];
   }

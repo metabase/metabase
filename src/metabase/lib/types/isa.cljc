@@ -133,6 +133,11 @@
   [column]
   (clojure.core/isa? (:semantic-type column) :type/Name))
 
+(defn ^:export title?
+  "Is `column` a title column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/Title))
+
 (defn ^:export json?
   "Is `column` a serialized JSON column?"
   [column]
@@ -162,6 +167,21 @@
   "Is `column` a date without time?"
   [column]
   (clojure.core/isa? (:effective-type column) :type/Date))
+
+(defn ^:export creation-timestamp?
+  "Is `column` a creation timestamp column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationTimestamp))
+
+(defn ^:export creation-date?
+  "Is `column` a creation date column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationDate))
+
+(defn ^:export creation-time?
+  "Is `column` a creation time column?"
+  [column]
+  (clojure.core/isa? (:semantic-type column) :type/CreationTime))
 
 ;; ZipCode, ID, etc derive from Number but should not be formatted as numbers
 (defn ^:export number?

@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { useState } from "react";
 import { Radio, Stack, Text } from "metabase/ui";
 import type { HelpLinkSetting, SettingKey, Settings } from "metabase-types/api";
-import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput.styled";
+import { SettingInputBlurChange } from "metabase/admin/settings/components/widgets/SettingInput/SettingInput.styled";
 
 interface Props {
   setting: {

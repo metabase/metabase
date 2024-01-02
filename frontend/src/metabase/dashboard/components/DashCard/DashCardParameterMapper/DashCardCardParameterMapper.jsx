@@ -125,7 +125,7 @@ export function DashCardCardParameterMapper({
     }
 
     const question = new Question(card, metadata);
-    return question.query().isEditable();
+    return question.isQueryEditable();
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
