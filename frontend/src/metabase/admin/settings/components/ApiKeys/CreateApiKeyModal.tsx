@@ -48,7 +48,7 @@ export const CreateApiKeyModal = ({
         title={t`Create a new API Key`}
       >
         <FormProvider initialValues={{}} onSubmit={handleSubmit}>
-          <Form>
+          <Form data-testid="create-api-key-modal">
             <Stack spacing="md">
               <FormTextInput
                 name="name"

@@ -51,11 +51,8 @@ function ApiKeysTable({
   error?: Error;
 }) {
   return (
-    <Stack>
-      <table
-        className="ContentTable border-bottom"
-        data-testid="api-keys-table"
-      >
+    <Stack data-testid="api-keys-table">
+      <table className="ContentTable border-bottom">
         <thead>
           <tr>
             <th>{t`Key name`}</th>
