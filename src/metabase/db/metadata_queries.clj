@@ -37,14 +37,18 @@
       :type/DateTime [:> field-form "0001-01-01 00:00:00"])))
 
 (defn- query-with-default-partitioned-field-filter
-  [query table]
-  (let [;; In bigquery, a partition table can have only one partitioned field
+  [query table-id]
+  (let [;; In bigquery, range or datetime partitioned table can have only one partioned field,
+        ;; Ingestion time partitioned table can use either _PARTITIONDATE or _PARTITIONTIME as
+        ;; partitioned field
         partition-field (or (t2/select-one :model/Field
-                                           :table_id (:id table)
+                                           :table_id table-id
                                            :database_partitioned true
-                                           :active true)
-                            (throw (ex-info (format "No partitioned field found for table: %d" (:id table))
-                                            {:table_id (:id table)})))
+                                           :active true
+                                           ;; prefer _PARTITIONDATE over _PARTITIONTIME for ingestion time query
+                                           {:order-by [[:name :asc]]})
+                            (throw (ex-info (format "No partitioned field found for table: %d" table-id)
+                                            {:table_id table-id})))
         filter-form     (partition-field->filter-form partition-field)]
     (update query :filter (fn [existing-filter]
                             (if (some? existing-filter)
@@ -62,7 +66,7 @@
     ;; is required as a filter.
     ;; In the future we probably want this to be dispatched by database engine type
     (:database_require_filter table)
-    (query-with-default-partitioned-field-filter table)))
+    (query-with-default-partitioned-field-filter (:id table))))
 
 (defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
@@ -162,9 +166,11 @@
                                                  [:expression expression-name]
                                                  [:field (u/the-id field) nil])))
                           :limit        limit}
-                   order-by (assoc :order-by order-by)
+                   order-by
+                   (assoc :order-by order-by)
+
                    (:database_require_filter table)
-                   (query-with-default-partitioned-field-filter table))
+                   (query-with-default-partitioned-field-filter (:id table)))
      :middleware {:format-rows?           false
                   :skip-results-metadata? true}}))
 
