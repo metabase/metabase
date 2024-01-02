@@ -1,7 +1,8 @@
 import { forwardRef, useCallback } from "react";
+import { t } from "ttag";
 import type { FocusEvent, Ref } from "react";
 import { useField } from "formik";
-import { Select } from "metabase/ui";
+import { Select, Loader } from "metabase/ui";
 import type { SelectProps } from "metabase/ui";
 
 import type { GroupId } from "metabase-types/api";
@@ -13,6 +14,7 @@ interface FormGroupWidgetProps
   nullable?: boolean;
 }
 
+// single-select widget for selecting a permissions group
 export const FormGroupWidget = forwardRef(function FormGroupWidget(
   { name, nullable, onChange, onBlur, ...props }: FormGroupWidgetProps,
   ref: Ref<HTMLInputElement>,
@@ -39,10 +41,9 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
 
   const { data: groups, isLoading } = useGroupListQuery();
   if (isLoading || !groups) {
-    // TODO: display a disabled Select when loading?
-    // TODO: display error when group list query fails?
-    return null;
+    return <Loader size={16} />;
   }
+
   const groupOptions = groups.map(({ id, name }) => ({
     value: String(id),
     label: name,
@@ -50,6 +51,7 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
 
   return (
     <Select
+      placeholder={t`Select a group`}
       {...props}
       ref={ref}
       name={name}
