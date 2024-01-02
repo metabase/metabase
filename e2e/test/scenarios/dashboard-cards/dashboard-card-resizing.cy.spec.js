@@ -102,6 +102,10 @@ const VISUALIZATION_SIZES = {
     min: { width: 1, height: 1 },
     default: { width: 6, height: 3 },
   },
+  indicateView: {
+    min: { width: 1, height: 1 },
+    default: { width: 6, height: 3 },
+  },
 };
 
 const getMinSize = visualizationType =>

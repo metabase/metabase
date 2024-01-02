@@ -601,6 +601,7 @@
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
   ;;
   ;; endpoint instead. Or error in that situtation? We're not even validating that you have access to this Dashboard.
+  (log/info "guoqy: query card fjheiss")
   (qp.card/run-query-for-card-async
    card-id :api
    :parameters   parameters

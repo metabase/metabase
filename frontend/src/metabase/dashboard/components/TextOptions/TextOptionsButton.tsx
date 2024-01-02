@@ -10,11 +10,13 @@ import { IconContainer } from "./TextOptionsButton.styled";
 interface TextOptionsButtonProps {
   onAddMarkdown: () => void;
   onAddHeading: () => void;
+  onAddIndicateBtn: () => void;
 }
 
 export function TextOptionsButton({
   onAddMarkdown,
   onAddHeading,
+  onAddIndicateBtn,
 }: TextOptionsButtonProps) {
   const TEXT_OPTIONS = [
     {
@@ -26,6 +28,11 @@ export function TextOptionsButton({
       title: t`Text`,
       action: onAddMarkdown,
       event: "Dashboard; Add Markdown Box",
+    },
+    {
+      title: t`Indicate`,
+      action: onAddIndicateBtn,
+      event: "Dashboard; Add Markdown Bo",
     },
   ];
 

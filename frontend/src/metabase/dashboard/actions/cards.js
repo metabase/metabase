@@ -36,6 +36,9 @@ function generateTemporaryDashcardId() {
 export const addCardToDashboard =
   ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
+    debugger
+    console.log(`dashId: ${dashId}`);
+    console.log(`cardId: ${cardId}`);
     await dispatch(Questions.actions.fetch({ id: cardId }));
     const card = Questions.selectors
       .getObject(getState(), { entityId: cardId })
@@ -109,6 +112,9 @@ export const addDashCardToDashboard = function ({
   tabId,
 }) {
   return function (dispatch, getState) {
+    console.log(`tabid: ${tabId} jdike`);
+    console.log(`dashcard overrides: jdike`);
+    console.log(dashcardOverrides);
     const visualization = getVisualizationRaw([dashcardOverrides]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
@@ -134,6 +140,8 @@ export const addDashCardToDashboard = function ({
       parameter_mappings: [],
       visualization_settings: {},
     };
+    console.log("dashcard: iekd");
+    console.log(dashcard);
     _.extend(dashcard, dashcardOverrides);
     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
   };
@@ -175,6 +183,28 @@ export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
     visualization_settings: {
       virtual_card: virtualTextCard,
       "dashcard.background": false,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+    tabId,
+  });
+};
+
+export const addIndicateDashCardToDashboard = function ({ dashId, tabId }) {
+  trackCardCreated("indicateView", dashId);
+
+  const virtualTextCard = {
+    ...createCard(),
+    display: "indicateView",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualTextCard,
+    visualization_settings: {
+      virtual_card: virtualTextCard,
     },
   };
   return addDashCardToDashboard({
