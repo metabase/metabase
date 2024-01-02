@@ -48,6 +48,7 @@ export const ComboChart = ({
     null,
     [],
     computedVisualizationSettings,
+    false,
     renderingContext,
   );
 
