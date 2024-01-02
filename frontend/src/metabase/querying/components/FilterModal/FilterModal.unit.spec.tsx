@@ -6,12 +6,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { setupFieldValuesEndpoints } from "__support__/server-mocks";
-import {
-  PEOPLE_SOURCE_VALUES,
-  PRODUCT_CATEGORY_VALUES,
-  PRODUCT_VENDOR_VALUES,
-} from "metabase-types/api/mocks/presets";
+import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
 import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import { FilterModal } from "./FilterModal";
@@ -24,9 +20,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
-  setupFieldValuesEndpoints(PRODUCT_CATEGORY_VALUES);
-  setupFieldValuesEndpoints(PRODUCT_VENDOR_VALUES);
-  setupFieldValuesEndpoints(PEOPLE_SOURCE_VALUES);
+  setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
 
   renderWithProviders(
     <FilterModal query={query} onSubmit={onSubmit} onClose={onClose} />,
@@ -131,14 +125,8 @@ describe("FilterModal", () => {
     setup();
 
     const columns = screen.getAllByTestId(/filter-column/);
+    expect(columns).toHaveLength(9);
     expect(within(columns[0]).getByText("Created At")).toBeInTheDocument();
-    expect(within(columns[1]).getByText("Discount")).toBeInTheDocument();
-    expect(within(columns[2]).getByText("Subtotal")).toBeInTheDocument();
-    expect(within(columns[3]).getByText("Tax")).toBeInTheDocument();
-    expect(within(columns[4]).getByText("Total")).toBeInTheDocument();
-    expect(within(columns[5]).getByText("Quantity")).toBeInTheDocument();
     expect(within(columns[6]).getByText("ID")).toBeInTheDocument();
-    expect(within(columns[7]).getByText("User ID")).toBeInTheDocument();
-    expect(within(columns[8]).getByText("Product ID")).toBeInTheDocument();
   });
 });

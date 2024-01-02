@@ -76,6 +76,61 @@ export const REVIEWS = {
 // Field values are not included in the field object in the API response
 // Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
 
+export const ORDER_QUANTITY_VALUES: FieldValuesResult = {
+  field_id: ORDERS.QUANTITY,
+  values: Array.from({ length: 101 }, (_, i) => [i]),
+  has_more_values: false,
+};
+
+export const PRODUCT_TITLE_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.TITLE,
+  values: [
+    ["Aerodynamic Bronze Hat"],
+    ["Aerodynamic Concrete Bench"],
+    ["Aerodynamic Concrete Lamp"],
+    ["Aerodynamic Copper Knife"],
+    ["Aerodynamic Cotton Bottle"],
+    ["Aerodynamic Cotton Lamp"],
+    ["Aerodynamic Granite Bench"],
+    ["Aerodynamic Granite Bottle"],
+    ["Aerodynamic Leather Computer"],
+    ["Aerodynamic Leather Toucan"],
+    ["Aerodynamic Linen Coat"],
+    ["Aerodynamic Paper Coat"],
+    ["Aerodynamic Paper Computer"],
+    ["Aerodynamic Rubber Bench"],
+    ["Awesome Aluminum Keyboard"],
+    ["Awesome Aluminum Table"],
+    ["Awesome Bronze Plate"],
+    ["Awesome Concrete Shoes"],
+    ["Awesome Cotton Shoes"],
+    ["Awesome Granite Car"],
+  ],
+  has_more_values: false,
+};
+
+export const PRODUCT_EAT_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.EAN,
+  values: [
+    ["0001664425970"],
+    ["0006590063715"],
+    ["0010465925138"],
+    ["0038948983000"],
+    ["0095774502751"],
+    ["0096051986448"],
+    ["0157967025871"],
+    ["0212722801067"],
+    ["0225815844582"],
+    ["0236197465609"],
+    ["0255973714120"],
+    ["0272643267465"],
+    ["0335243754848"],
+    ["0399569209871"],
+    ["0498395047364"],
+  ],
+  has_more_values: false,
+};
+
 export const PRODUCT_CATEGORY_VALUES: FieldValuesResult = {
   field_id: PRODUCTS.CATEGORY,
   values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
@@ -88,11 +143,84 @@ export const PRODUCT_VENDOR_VALUES: FieldValuesResult = {
   has_more_values: true,
 };
 
+export const PRODUCT_RATING_VALUES: FieldValuesResult = {
+  field_id: PRODUCTS.RATING,
+  values: [[1], [2], [3], [4], [5]],
+  has_more_values: false,
+};
+
 export const PEOPLE_SOURCE_VALUES: FieldValuesResult = {
   field_id: PEOPLE.SOURCE,
   values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
   has_more_values: false,
 };
+
+export const PEOPLE_STATE_VALUES: FieldValuesResult = {
+  field_id: PEOPLE.STATE,
+  values: [
+    ["AK"],
+    ["AL"],
+    ["AR"],
+    ["AZ"],
+    ["CA"],
+    ["CO"],
+    ["CT"],
+    ["DE"],
+    ["FL"],
+    ["GA"],
+    ["IA"],
+    ["ID"],
+    ["IL"],
+    ["IN"],
+    ["KS"],
+    ["KY"],
+    ["LA"],
+    ["MA"],
+    ["MD"],
+    ["ME"],
+    ["MI"],
+    ["MN"],
+    ["MO"],
+    ["MS"],
+    ["MT"],
+    ["NC"],
+    ["ND"],
+    ["NE"],
+    ["NH"],
+    ["NJ"],
+    ["NM"],
+    ["NV"],
+    ["NY"],
+    ["OH"],
+    ["OK"],
+    ["OR"],
+    ["PA"],
+    ["RI"],
+    ["SC"],
+    ["SD"],
+    ["TN"],
+    ["TX"],
+    ["UT"],
+    ["VA"],
+    ["VT"],
+    ["WA"],
+    ["WI"],
+    ["WV"],
+    ["WY"],
+  ],
+  has_more_values: false,
+};
+
+export const SAMPLE_DB_FIELD_VALUES = [
+  ORDER_QUANTITY_VALUES,
+  PRODUCT_TITLE_VALUES,
+  PRODUCT_EAT_VALUES,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_VENDOR_VALUES,
+  PRODUCT_RATING_VALUES,
+  PEOPLE_SOURCE_VALUES,
+  PEOPLE_STATE_VALUES,
+];
 
 const DEFAULT_NUMERIC_BINNING_OPTION: FieldDimensionOption = {
   name: "Auto bin",
@@ -417,6 +545,7 @@ export const createOrdersQuantityField = (opts?: Partial<Field>): Field =>
     semantic_type: "type/Quantity",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 62,
@@ -607,6 +736,7 @@ export const createPeopleStateField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/State",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 49,
@@ -769,6 +899,7 @@ export const createProductsEanField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -791,6 +922,7 @@ export const createProductsTitleField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Title",
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 199,
@@ -891,6 +1023,7 @@ export const createProductsRatingField = (opts?: Partial<Field>): Field =>
     semantic_type: "type/Score",
     default_dimension_option: DEFAULT_NUMERIC_BINNING_OPTION,
     dimension_options: createNumericFieldBinningOptions(),
+    has_field_values: "list",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 23,
