@@ -10,7 +10,9 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.match :refer [match]]
+   [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -24,6 +26,7 @@
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute])
   (:import
+   (java.util Locale)
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
@@ -81,6 +84,14 @@
   [name & migration-body]
   `(define-reversible-migration ~name (do ~@migration-body) (no-op ~(str name))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    HELPERS                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; metabase.util/upper-case-en
+(defn- upper-case-en
+  [s]
+  (.toUpperCase (str s) (Locale/US)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  MIGRATIONS                                                    |
@@ -889,3 +900,121 @@
 
 (define-migration MigrateRemoveAdminFromGroupMappingIfNeeded
   (migrate-remove-admin-from-group-mapping-if-needed))
+
+(defn- db-type->updated-columns
+  [db-type]
+  (case db-type
+    :h2      [[:activity :timestamp]
+              [:application_permissions_revision :created_at]
+              [:collection_permission_graph_revision :created_at]
+              [:core_session :created_at]
+              [:core_user :date_joined]
+              [:core_user :last_login]
+              [:core_user :updated_at]
+              [:dependency :created_at]
+              [:dimension :created_at]
+              [:dimension :updated_at]
+              [:metabase_database :created_at]
+              [:metabase_database :updated_at]
+              [:metabase_field :created_at]
+              [:metabase_field :updated_at]
+              [:metabase_field :last_analyzed]
+              [:metabase_fieldvalues :created_at]
+              [:metabase_table :created_at]
+              [:metabase_table :updated_at]
+              [:metric :created_at]
+              [:metric :updated_at]
+              [:permissions_revision :created_at]
+              [:pulse :created_at]
+              [:pulse :updated_at]
+              [:pulse_channel :created_at]
+              [:pulse_channel :updated_at]
+              #_[:recent_views :timestamp]
+              [:report_card :created_at]
+              [:report_cardfavorite :created_at]
+              [:report_cardfavorite :updated_at]
+              [:report_dashboard :created_at]
+              [:report_dashboard :updated_at]
+              [:report_dashboardcard :created_at]
+              [:report_dashboardcard :updated_at]
+              [:segment :created_at]
+              [:segment :updated_at]]
+    :mysql   [[:activity :timestamp]
+              [:application_permissions_revision :created_at]
+              [:collection_permission_graph_revision :created_at]
+              [:core_session :created_at]
+              [:core_user :date_joined]
+              [:core_user :last_login]
+              [:core_user :updated_at]
+              [:dependency :created_at]
+              [:dimension :created_at]
+              [:dimension :updated_at]
+              [:metabase_field :created_at]
+              [:metabase_field :updated_at]
+              [:metabase_field :last_analyzed]
+              [:metabase_fieldvalues :created_at]
+              [:metabase_table :created_at]
+              [:metabase_table :updated_at]
+              [:metric :created_at]
+              [:metric :updated_at]
+              [:permissions_revision :created_at]
+              [:pulse :created_at]
+              [:pulse :updated_at]
+              [:pulse_channel :created_at]
+              [:pulse_channel :updated_at]
+              [:recent_views :timestamp]
+              [:report_card :created_at]
+              [:report_cardfavorite :created_at]
+              [:report_cardfavorite :updated_at]
+              [:report_dashboard :created_at]
+              [:report_dashboard :updated_at]
+              [:segment :created_at]
+              [:segment :updated_at]]
+   :postgres [[:application_permissions_revision :created_at]
+              [:collection_permission_graph_revision :created_at]
+              [:core_user :updated_at]
+              [:dimension :updated_at]
+              [:dimension :created_at]
+              [:permissions_revision :created_at]
+              [:recent_views :timestamp]]))
+
+(defn- alter-table-column-type-sql
+  [db-type table column ttype]
+  (let [ttype (name ttype)]
+    (case db-type
+      :postgres
+      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s)" table column ttype column ttype)
+
+      :mysql
+      (format "ALTER TABLE `%s` MODIFY `%s` %s" table column ttype)
+
+      :h2
+      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" %s" (upper-case-en table) (upper-case-en column) ttype))))
+
+(defn- unify-time-column-type!
+  [direction]
+  (let [db-type        (mdb.connection/db-type)
+        columns        (db-type->updated-columns db-type)
+        timestamp-type (case db-type
+                         (:postgres :h2) "TIMESTAMP WITH TIME ZONE"
+                         :mysql          "TIMESTAMP(6)")
+        datetime-type (case db-type
+                        (:postgres :h2) "TIMESTAMP WITHOUT TIME ZONE"
+                        :mysql          "DATETIME")
+        target-type    (case direction
+                         :up timestamp-type
+                         :down datetime-type)]
+    (doseq [[table column] columns]
+      (when (= [db-type table column]
+               [:postgres :core_user :updated_at])
+        (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
+      (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type)])
+      (when (= [db-type table column]
+               [:postgres :core_user :updated_at])
+        (t2/query [(-> (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql")
+                       slurp
+                       (str/replace #"\n" " "))])))))
+
+(define-reversible-migration UnifyTimeColumnsType
+  (unify-time-column-type! :up)
+  (unify-time-column-type! :down))
