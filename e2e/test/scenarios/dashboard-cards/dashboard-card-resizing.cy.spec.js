@@ -386,13 +386,9 @@ const createLinkDashboard = () => {
 };
 
 const assertLinkCardOverflow = (card1, card2) => {
-  // Added new borders in https://github.com/metabase/metabase/pull/36991
-  const stackedBordersHeight = 2;
   card1.then(linkElem => {
     card2.then(dashCardElem => {
-      expect(linkElem[0].scrollHeight + stackedBordersHeight).to.eq(
-        dashCardElem[0].scrollHeight,
-      );
+      expect(linkElem[0].scrollHeight).to.eq(dashCardElem[0].scrollHeight);
     });
   });
 };
