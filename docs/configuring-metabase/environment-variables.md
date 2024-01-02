@@ -57,6 +57,13 @@ Default: `null`
 
 The email address users should be referred to if they encounter a problem.
 
+### `MB_AGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 10000
+
+Maximum number of rows to return for aggregated queries via the API. Must less than 1048575. See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 Type: boolean<br>
@@ -882,20 +889,6 @@ Default: `"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
-### `MB_MAX_AGGREGATED_QUERY_ROW_LIMIT`
-
-Type: integer<br>
-Default: 10000
-
-Maximum number of rows to return for aggregated queries via the API. Must less than 1048575.
-
-### `MB_MAX_UNAGGREGATED_QUERY_ROW_LIMIT`
-
-Type: integer<br>
-Default: 2000
-
-Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575.
-
 ### `MB_NATIVE_QUERY_AUTOCOMPLETE_MATCH_STYLE`
 
 Type: string (`"substring"`, `"prefix"`, `"off"`)<br>
@@ -1364,3 +1357,10 @@ Default: `null`<br>
 Since: v41.0
 
 Allowed email address domain(s) for new Subscriptions and Alerts. Specify multiple domain comma-separated. When not defined, all domains are allowed.
+
+### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 2000
+
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575. See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).
