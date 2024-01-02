@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { FieldValuesResult } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
+  ORDERS,
   PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
@@ -18,7 +19,10 @@ import {
 } from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import { StringFilterValuePicker } from "./FilterValuePicker";
+import {
+  NumberFilterValuePicker,
+  StringFilterValuePicker,
+} from "./FilterValuePicker";
 
 interface SetupOpts<T> {
   query: Lib.Query;
@@ -30,7 +34,7 @@ interface SetupOpts<T> {
   searchValues?: Record<string, FieldValuesResult>;
 }
 
-async function setup({
+async function setupStringPicker({
   query,
   stageIndex,
   column,
@@ -68,6 +72,40 @@ async function setup({
   return { onChange, onFocus, onBlur };
 }
 
+async function setupNumberPicker({
+  query,
+  stageIndex,
+  column,
+  values,
+  compact,
+  fieldValues,
+}: SetupOpts<number>) {
+  const onChange = jest.fn();
+  const onFocus = jest.fn();
+  const onBlur = jest.fn();
+
+  if (fieldValues) {
+    setupFieldValuesEndpoints(fieldValues);
+  }
+
+  renderWithProviders(
+    <NumberFilterValuePicker
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      values={values}
+      compact={compact}
+      onChange={onChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
+    />,
+  );
+
+  await waitForLoaderToBeRemoved();
+
+  return { onChange, onFocus, onBlur };
+}
+
 describe("StringFilterValuePicker", () => {
   const query = createQuery();
   const stageIndex = 0;
@@ -86,7 +124,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PRODUCTS", "CATEGORY");
 
     it("should allow to pick a list value", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -100,7 +138,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to search the list of values", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -117,7 +155,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to update selected values", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -134,7 +172,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle values that do not exist in the list", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -156,7 +194,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle field values remapping", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -182,7 +220,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle empty field values", async () => {
-      const { onChange, onFocus, onBlur } = await setup({
+      const { onChange, onFocus, onBlur } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -207,7 +245,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle more field values", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -243,7 +281,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "EMAIL");
 
     it("should allow to search for a value", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -264,7 +302,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to update selected values", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -289,7 +327,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should handle field values remapping", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -314,7 +352,7 @@ describe("StringFilterValuePicker", () => {
     const column = findColumn("PEOPLE", "PASSWORD");
 
     it("should allow to add a value", async () => {
-      const { onChange, onFocus, onBlur } = await setup({
+      const { onChange, onFocus, onBlur } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -330,7 +368,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to add multiple values", async () => {
-      const { onChange, onFocus, onBlur } = await setup({
+      const { onChange, onFocus, onBlur } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -346,7 +384,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should not allow to add empty values", async () => {
-      const { onChange, onFocus, onBlur } = await setup({
+      const { onChange, onFocus, onBlur } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -364,7 +402,7 @@ describe("StringFilterValuePicker", () => {
     });
 
     it("should allow to remove a value", async () => {
-      const { onChange } = await setup({
+      const { onChange } = await setupStringPicker({
         query,
         stageIndex,
         column,
@@ -374,6 +412,124 @@ describe("StringFilterValuePicker", () => {
       userEvent.type(screen.getByLabelText("Filter value"), "{backspace}");
 
       expect(onChange).toHaveBeenLastCalledWith(["abc"]);
+    });
+  });
+});
+
+describe("NumberFilterValuePicker", () => {
+  const query = createQuery();
+  const stageIndex = 0;
+  const availableColumns = Lib.filterableColumns(query, stageIndex);
+  const findColumn = columnFinder(query, availableColumns);
+
+  beforeAll(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
+  describe("list values", () => {
+    const column = findColumn("ORDERS", "QUANTITY");
+
+    it("should allow to pick a list value", async () => {
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.QUANTITY,
+          values: [[10], [20], [30]],
+        }),
+      });
+
+      userEvent.click(screen.getByText("20"));
+
+      expect(onChange).toHaveBeenCalledWith([20]);
+    });
+
+    it("should handle field values remapping", async () => {
+      const { onChange } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [10],
+        fieldValues: createMockFieldValues({
+          field_id: ORDERS.QUANTITY,
+          values: [
+            [10, "To-do"],
+            [20, "In-progress"],
+            [30, "Completed"],
+          ],
+        }),
+      });
+      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+
+      userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
+      expect(screen.getByText("In-progress")).toBeInTheDocument();
+      expect(screen.queryByText("Completed")).not.toBeInTheDocument();
+
+      userEvent.click(screen.getByText("In-progress"));
+      expect(onChange).toHaveBeenCalledWith([10, 20]);
+    });
+  });
+
+  describe("no values", () => {
+    const column = findColumn("PEOPLE", "PASSWORD");
+
+    it("should allow to add a value", async () => {
+      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const input = screen.getByPlaceholderText("Enter a number");
+      userEvent.type(input, "123");
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith([123]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it("should not allow to add empty values", async () => {
+      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const input = screen.getByPlaceholderText("Enter a number");
+      userEvent.type(input, "123");
+      userEvent.clear(input);
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith([]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it("should not allow to add invalid values", async () => {
+      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const input = screen.getByPlaceholderText("Enter a number");
+      userEvent.type(input, "abc");
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith([]);
+      expect(onBlur).toHaveBeenCalled();
     });
   });
 });
