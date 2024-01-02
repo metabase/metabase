@@ -19,7 +19,7 @@ import PieChart from "./visualizations/PieChart";
 import { AreaChart } from "./visualizations/AreaChart";
 import { ComboChart } from "./visualizations/ComboChart";
 import MapViz from "./visualizations/Map";
-import ScatterPlot from "./visualizations/ScatterPlot";
+import { ScatterPlot } from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
