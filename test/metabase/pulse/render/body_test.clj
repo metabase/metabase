@@ -159,16 +159,16 @@
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "2014-04-01T08:30:00" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "2014-12-05T15:15:00" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "2014-08-01T12:45:00" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
-  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) (number "34.1" 34.0996) "2014-04-01T08:30:00" "Stout Burgers & Beers"]}
-          {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "2014-12-05T15:15:00" "The Apple Pan"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "2014-08-01T12:45:00" "The Gorbals"]}]
+  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
                  {:bar-column second, :min-value 0, :max-value 40})))))
 
@@ -209,9 +209,9 @@
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1" 1) (number "34.1" 34.0996) "Bad" "2014-04-01T08:30:00" "Stout Burgers & Beers"]
-          [(number "2" 2) (number "34.04" 34.0406) "Ok" "2014-12-05T15:15:00" "The Apple Pan"]
-          [(number "3" 3) (number "34.05" 34.0474) "Good" "2014-08-01T12:45:00" "The Gorbals"]]
+  (is (= [[(number "1" 1) (number "34.1" 34.0996) "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]
+          [(number "2" 2) (number "34.04" 34.0406) "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan"]
+          [(number "3" 3) (number "34.05" 34.0474) "Good" "August 1, 2014, 12:45 PM" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                            {}
                            {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -233,9 +233,9 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "2014-04-01T08:30:00" "Stout Burgers & Beers"]}
-          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "2014-12-05T15:15:00" "The Apple Pan"]}
-          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "2014-08-01T12:45:00" "The Gorbals"]}]
+  (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                  {}
                  {:cols test-columns-with-date-semantic-type :rows test-data})))))
@@ -276,7 +276,7 @@
                                          :semantic_type nil}]
                                  :rows [["foo"]]}))))
   (testing "renders date"
-    (is (= "2014-04-01T08:30:00"
+    (is (= "April 1, 2014, 8:30 AM"
            (render-scalar-value {:cols [{:name         "date",
                                          :display_name "DATE",
                                          :base_type    :type/DateTime
@@ -715,8 +715,8 @@
             no-viz-render     (renderfn {})
             viz-a-render      (renderfn {:graph.y_axis.max 14
                                          :graph.y_axis.min -14})
-            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-text no-viz-render %))) to-find)
-            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-text viz-a-render %))) to-find)]
+            nodes-without-viz (mapv #(last (last (render.tu/nodes-with-exact-text no-viz-render %))) to-find)
+            nodes-with-viz    (mapv #(last (last (render.tu/nodes-with-exact-text viz-a-render %))) to-find)]
         ;; we only see 14/-14 in the render where min and max are explicitly set.
         ;; this is because the data's min and max values are only -3 and 6, and the viz will minimize the axis range
         ;; without cutting off the chart's actual values
@@ -728,5 +728,5 @@
       (let [viz-b-render   (renderfn {:graph.y_axis.max 1
                                       :graph.y_axis.min -1})
             to-find        ["14" "2" "-2" "-14"]
-            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-text viz-b-render %))) to-find)]
+            nodes-with-viz (mapv #(last (last (render.tu/nodes-with-exact-text viz-b-render %))) to-find)]
         (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))

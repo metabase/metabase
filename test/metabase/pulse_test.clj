@@ -248,17 +248,16 @@
             (is (= [nil]
                    (pulse.test-util/output @#'body/attached-results-text))))))}}
 
-    "11 results results in a CSV being attached and a table being sent"
+    "11 rows in the results no longer causes a CSV attachment per issue #36441."
     {:card (pulse.test-util/checkins-query-card {:aggregation nil, :limit 11})
 
      :assert
      {:email
       (fn [_ _]
         (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
-                                           "More results have been included" true
+                                           "More results have been included" false
                                            "ID</th>"                         true}
-                                          pulse.test-util/png-attachment
-                                          pulse.test-util/csv-attachment]})
+                                          pulse.test-util/png-attachment]})
                (mt/summarize-multipart-email
                 #"Pulse Name"
                 #"More results have been included" #"ID</th>"))))}}))
@@ -279,7 +278,7 @@
                                    pulse.test-util/csv-attachment])
                (mt/summarize-multipart-email test-card-regex))))}}
 
-    "With a \"rows\" type of pulse (table visualization) we should include the CSV by default"
+    "With a \"rows\" type of pulse (table visualization) we should not include the CSV by default, per issue #36441"
     {:card {:display :table :dataset_query (mt/mbql-query checkins)}
 
      :assert
@@ -287,8 +286,7 @@
       (fn [_ _]
         (is (= (-> (rasta-pulse-email)
                    ;; There's no PNG with a table visualization, so only assert on one png (the dashboard icon)
-                   (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} pulse.test-util/png-attachment])
-                   (add-rasta-attachment pulse.test-util/csv-attachment))
+                   (assoc-in ["rasta@metabase.com" 0 :body] [{"Pulse Name" true} pulse.test-util/png-attachment]))
                (mt/summarize-multipart-email #"Pulse Name"))))}}))
 
 (deftest xls-test
@@ -345,7 +343,7 @@
         (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results           10000
                                                                             :max-results-bare-rows 30})]
           (thunk)))
-
+      :pulse-card {:include_csv true}
       :assert
       {:email
        (fn [_ _]
@@ -482,10 +480,9 @@
         (fn [_ _]
           (is (= (rasta-alert-email "Alert: Test card has results"
                                     [(merge test-card-result
-                                            {"More results have been included" true
+                                            {"More results have been included" false
                                              "ID</th>"                         true})
-                                     pulse.test-util/png-attachment
-                                     pulse.test-util/csv-attachment])
+                                     pulse.test-util/png-attachment])
                  (mt/summarize-multipart-email test-card-regex
                                                #"More results have been included"
                                                #"ID</th>"))))}}
@@ -833,7 +830,7 @@
                     (map (comp some? :content :rendered-info) (rest (:attachments slack-data)))))
              (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
-             (is (= 3
+             (is (= 2
                     (count (:message email-data))))
              (is (email-body? (first (:message email-data))))
              (is (attachment? (second (:message email-data)))))))))))

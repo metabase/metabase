@@ -264,7 +264,7 @@
 
 (deftest ^:parallel results-metadata-should-have-field-refs-test
   (testing "QP results metadata should include Field refs"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (letfn [(do-test [num-expected-columns]
                 (let [results-metadata (get-in (mt/run-mbql-query orders {:limit 10})
                                                [:data :results_metadata :columns])
@@ -289,7 +289,7 @@
 
 (deftest ^:parallel field-refs-should-be-correct-fk-forms-test
   (testing "Field refs included in results metadata should be wrapped correctly e.g. in `fk->` form"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (doseq [[description query]
               {"simple query"
                (mt/mbql-query orders
@@ -322,7 +322,7 @@
 
 (deftest ^:parallel result-metadata-preservation-test
   (testing "result_metadata is preserved in the query processor if passed into the context"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp [Card {base-card-id :id} {:dataset_query {:database (mt/id)
                                                               :type     :query
                                                               :query    {:source-table (mt/id :orders)

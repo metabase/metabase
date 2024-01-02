@@ -271,20 +271,6 @@
   :visibility :authenticated
   :audit      :getter)
 
-(defsetting enable-embedding
-  (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
-  :type       :boolean
-  :default    false
-  :visibility :authenticated
-  :audit      :getter)
-
-(defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full {0} application"
-                (application-name-for-setting-descriptions))
-  :feature    :embedding
-  :visibility :public
-  :audit      :getter)
-
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
@@ -767,3 +753,15 @@
   :visibility :authenticated
   :type       :string
   :audit      :getter)
+
+(defsetting attachment-table-row-limit
+  (deferred-tru "Maximum number of rows to render in an alert or subscription image.")
+  :visibility :internal
+  :type       :positive-integer
+  :default    20
+  :audit      :getter
+  :getter     (fn []
+                (let [value (setting/get-value-of-type :positive-integer :attachment-table-row-limit)]
+                  (if-not (pos-int? value)
+                    20
+                    value))))

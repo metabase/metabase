@@ -195,8 +195,8 @@
 (defmulti create-index-sql
   "Return a `CREATE INDEX` statement.
   `options` is a map. The supported keys are: unique?, method and condition"
-  {:arglists '([driver tabledef fielddef]
-               [driver tabledef fielddef options])}
+  {:arglists '([driver table-name field-names]
+               [driver table-name field-names options])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -211,7 +211,7 @@
   ([driver table-name field-names {:keys [unique? method condition]}]
    (format "CREATE %sINDEX %s ON %s%s (%s)%s;"
            (if unique? "UNIQUE " "")
-           (str "idx_" table-name "_" (str/join "_" field-names))
+           (format-and-quote-field-name driver (str "idx_" table-name "_" (str/join "_" field-names)))
            (qualify-and-quote driver table-name)
            (if method (str "USING " method) "")
            (str/join ", " (map #(format-and-quote-field-name driver %) field-names))

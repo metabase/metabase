@@ -3,6 +3,7 @@ import {
   visitQuestion,
   describeEE,
   setTokenFeatures,
+  openStaticEmbeddingModal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -37,9 +38,7 @@ describeEE("issue 30535", () => {
   });
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");

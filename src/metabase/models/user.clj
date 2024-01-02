@@ -41,9 +41,10 @@
   :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)
@@ -52,7 +53,11 @@
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
    :settings         mi/transform-encrypted-json
-   :sso_source       mi/transform-keyword})
+   :sso_source       mi/transform-keyword
+   :type             mi/transform-keyword})
+
+(def ^:private allowed-user-types
+  #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -86,6 +91,9 @@
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
+  (when-let [user-type (:type user)]
+    (assert
+     (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
@@ -319,7 +327,8 @@
    [:email                             ms/Email]
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
-   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
@@ -327,7 +336,7 @@
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
-(mu/defn ^:private insert-new-user!
+(mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))

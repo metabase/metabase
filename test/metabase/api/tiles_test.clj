@@ -85,7 +85,7 @@
 
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (with-redefs [api.tiles/create-tile (fn [_ points] points)
                     api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request

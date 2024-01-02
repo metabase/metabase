@@ -136,6 +136,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
       <JoinStep
         step={step}
         query={step.query}
+        stageIndex={step.stageIndex}
         topLevelQuery={query}
         color="brand"
         isLastOpened={false}

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
 import * as Lib from "metabase-lib";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { AddAggregationButton } from "./AddAggregationButton";
 import { AggregationItem } from "./AggregationItem";
@@ -21,7 +20,6 @@ const STAGE_INDEX = -1;
 interface SummarizeSidebarProps {
   className?: string;
   query: Lib.Query;
-  legacyQuery: StructuredQuery;
   onQueryChange: (query: Lib.Query) => void;
   onClose: () => void;
 }
@@ -29,7 +27,6 @@ interface SummarizeSidebarProps {
 export function SummarizeSidebar({
   className,
   query: initialQuery,
-  legacyQuery: initialLegacyQuery,
   onQueryChange,
   onClose,
 }: SummarizeSidebarProps) {
@@ -43,13 +40,6 @@ export function SummarizeSidebar({
 
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
   const hasAggregations = aggregations.length > 0;
-
-  const legacyQuery = useMemo(() => {
-    const question = initialLegacyQuery.question();
-    return question
-      .setDatasetQuery(Lib.toLegacyQuery(query))
-      .query() as StructuredQuery;
-  }, [query, initialLegacyQuery]);
 
   const handleAddAggregation = useCallback(
     (aggregation: Lib.Aggregable) => {
@@ -141,7 +131,6 @@ export function SummarizeSidebar({
             }
             query={query}
             aggregation={aggregation}
-            legacyQuery={legacyQuery}
             onUpdate={nextAggregation =>
               handleUpdateAggregation(aggregation, nextAggregation)
             }
@@ -150,7 +139,6 @@ export function SummarizeSidebar({
         ))}
         <AddAggregationButton
           query={query}
-          legacyQuery={legacyQuery}
           onAddAggregation={handleAddAggregation}
         />
       </AggregationsContainer>

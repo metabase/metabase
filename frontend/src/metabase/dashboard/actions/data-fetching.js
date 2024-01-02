@@ -33,6 +33,7 @@ import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/paramete
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
+  getDashCardBeforeEditing,
   getParameterValues,
   getLoadingDashCards,
   getCanShowAutoApplyFiltersToast,
@@ -324,9 +325,9 @@ export const fetchCardData = createThunkAction(
         dashcard && dashcard.parameter_mappings,
       );
 
+      const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
       if (!reload) {
         // if reload not set, check to see if the last result has the same query dict and return that
-        const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
         if (
           lastResult &&
           equals(
@@ -344,7 +345,16 @@ export const fetchCardData = createThunkAction(
 
       cancelFetchCardData(card.id, dashcard.id);
 
-      if (clearCache) {
+      // When dashcard parameters change, we need to clean previous (stale)
+      // state so that the loader spinner shows as expected (#33767)
+      const hasParametersChanged =
+        !lastResult ||
+        !equals(
+          getDatasetQueryParams(lastResult.json_query).parameters,
+          getDatasetQueryParams(datasetQuery).parameters,
+        );
+
+      if (clearCache || hasParametersChanged) {
         // clears the card data to indicate the card is reloading
         dispatch(clearCardData(card.id, dashcard.id));
       }
@@ -420,9 +430,20 @@ export const fetchCardData = createThunkAction(
           ),
         );
       } else {
+        const dashcardBeforeEditing = getDashCardBeforeEditing(
+          getState(),
+          dashcard.id,
+        );
+        const hasReplacedCard =
+          dashcard.card_id != null &&
+          dashcardBeforeEditing &&
+          dashcardBeforeEditing.card_id !== dashcard.card_id;
+
         // new dashcards and new additional series cards aren't yet saved to the dashboard, so they need to be run using the card query endpoint
         const endpoint =
-          isNewDashcard(dashcard) || isNewAdditionalSeriesCard(card, dashcard)
+          isNewDashcard(dashcard) ||
+          isNewAdditionalSeriesCard(card, dashcard) ||
+          hasReplacedCard
             ? CardApi.query
             : DashboardApi.cardQuery;
 

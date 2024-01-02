@@ -329,32 +329,32 @@
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
-    (let [test-data-db-id      (mt/id)
-          sample-dataset-db-id (mt/dataset sample-dataset (mt/id))
-          card-data            (fn [database-id]
-                                 {:database_id   database-id
-                                  :dataset_query {:database database-id
-                                                  :type     :native
-                                                  :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
-                                                             :template-tags {"FILTER" {:id           "_FILTER_"
-                                                                                       :name         "FILTER"
-                                                                                       :display-name "Filter"
-                                                                                       :type         :dimension
-                                                                                       :dimension    [:field (mt/id :venues :name) nil]
-                                                                                       :widget-type  :string/=
-                                                                                       :default      nil}}}}})
-          good-card-data       (card-data test-data-db-id)
-          bad-card-data        (card-data sample-dataset-db-id)]
+    (let [test-data-db-id   (mt/id)
+          bird-counts-db-id (mt/dataset daily-bird-counts (mt/id))
+          card-data         (fn [database-id]
+                              {:database_id   database-id
+                               :dataset_query {:database database-id
+                                               :type     :native
+                                               :native   {:query         "SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}"
+                                                          :template-tags {"FILTER" {:id           "_FILTER_"
+                                                                                    :name         "FILTER"
+                                                                                    :display-name "Filter"
+                                                                                    :type         :dimension
+                                                                                    :dimension    [:field (mt/id :venues :name) nil]
+                                                                                    :widget-type  :string/=
+                                                                                    :default      nil}}}}})
+          good-card-data  (card-data test-data-db-id)
+          bad-card-data   (card-data bird-counts-db-id)]
       (testing "Should not be able to create new Card with a filter with the wrong Database ID"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
+             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
              (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
         (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
+               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
                (t2/update! :model/Card card-id bad-card-data))))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
@@ -488,7 +488,7 @@
                (t2/select 'ParameterCard :card_id source-card-id)))))))
 
 (deftest cleanup-parameter-on-card-changes-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-temp
       [:model/Card {source-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                                 (mt/mbql-query products {:fields [(mt/$ids $products.title)

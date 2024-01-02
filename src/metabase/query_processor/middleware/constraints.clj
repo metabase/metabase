@@ -21,20 +21,20 @@
 ;;
 ;; If we turned the below `const`s into `:default`s on the settings themselves, we would use the default values for
 ;; all queries, whether or not the middleware was applied.
-(def ^:private ^:const default-max-unaggregated-query-row-limit 2000)
-(def ^:private ^:const default-max-aggregated-query-row-limit 10000)
+(def ^:private ^:const default-unaggregated-query-row-limit 2000)
+(def ^:private ^:const default-aggregated-query-row-limit 10000)
 
-;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-max-unaggregated-query-row-limit]])
+;; NOTE: this was changed from a hardcoded var with value of 2000 (now moved to [[default-unaggregated-query-row-limit]])
 ;; to a setting in 0.43 the setting, which allows for DB local value, can still be nil, so any places below that used
 ;; to reference the former constant value have to expect it could return nil instead
-(setting/defsetting max-unaggregated-query-row-limit
+(setting/defsetting unaggregated-query-row-limit
   (deferred-tru "Maximum number of rows to return specifically on :rows type queries via the API.")
   :visibility     :authenticated
   :type           :integer
   :database-local :allowed
   :audit          :getter)
 
-(setting/defsetting max-aggregated-query-row-limit
+(setting/defsetting aggregated-query-row-limit
   (deferred-tru "Maximum number of rows to return for aggregated queries via the API.")
   :visibility     :authenticated
   :type           :integer
@@ -43,18 +43,18 @@
 
 (defn query->max-rows
   "Given a query, returns the max rows that should be returned *as defined by settings*. In other words,
-  return `(max-aggregated-query-row-limit)` or `(max-unaggregated-query-row-limit)` depending on whether the query is
+  return `(aggregated-query-row-limit)` or `(unaggregated-query-row-limit)` depending on whether the query is
   aggregated or not."
   [{{aggregations :aggregation} :query}]
   (if-not aggregations
-    (max-unaggregated-query-row-limit)
-    (max-aggregated-query-row-limit)))
+    (unaggregated-query-row-limit)
+    (aggregated-query-row-limit)))
 
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   []
-  {:max-results           (or (max-aggregated-query-row-limit) default-max-aggregated-query-row-limit)
-   :max-results-bare-rows (or (max-unaggregated-query-row-limit) default-max-unaggregated-query-row-limit)})
+  {:max-results           (or (aggregated-query-row-limit) default-aggregated-query-row-limit)
+   :max-results-bare-rows (or (unaggregated-query-row-limit) default-unaggregated-query-row-limit)})
 
 (defn- ensure-valid-constraints
   "Clamps the value of `max-results-bare-rows` to be less than or equal to the value of `max-results`."

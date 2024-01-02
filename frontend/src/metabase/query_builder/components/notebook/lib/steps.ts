@@ -128,7 +128,7 @@ const STEPS: NotebookStepDef[] = [
       return Lib.orderBys(query, stageIndex).length > 0;
     },
     revert: (query, stageIndex) => {
-      return Lib.clearOrderBys(query, stageIndex);
+      return Lib.removeOrderBys(query, stageIndex);
     },
   },
   {

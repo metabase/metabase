@@ -110,7 +110,7 @@ const ChartTypeSidebar = ({
         }
 
         updateQuestion(newQuestion, {
-          shouldUpdateUrl: question.query().isEditable(),
+          shouldUpdateUrl: question.isQueryEditable(),
         });
         setUIControls({ isShowingRawTable: false });
       }

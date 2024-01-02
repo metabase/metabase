@@ -10,7 +10,7 @@
 
 (deftest include-card-parameters-test
   (testing "Expanding a Card reference in a native query should include its parameters (#12236)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query orders
                                                            {:filter      [:between $total 30 60]
                                                             :aggregation [[:aggregation-options

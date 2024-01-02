@@ -125,7 +125,7 @@ export function DashCardCardParameterMapper({
     }
 
     const question = new Question(card, metadata);
-    return question.query().isEditable();
+    return question.isQueryEditable();
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
@@ -151,6 +151,8 @@ export function DashCardCardParameterMapper({
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
+              role="button"
+              aria-label={t`Disconnect`}
               onClick={e => {
                 handleChangeTarget(null);
                 e.stopPropagation();

@@ -202,7 +202,7 @@
 
 (deftest ^:parallel error-handling-test
   (testing "A ConnectException will cause sync to stop"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data-with-time
       (let [expected           (java.io.IOException.
                                 "outer"
                                 (java.net.ConnectException.
@@ -258,7 +258,7 @@
           (is (= {:log-summary-fn nil} (dissoc result :start-time :end-time))))))))
 
 (deftest initial-sync-status-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If `initial-sync-status` on a DB is `incomplete`, it is marked as `complete` when sync-metadata has finished"
       (let [_  (t2/update! Database (:id (mt/db)) {:initial_sync_status "incomplete"})
             db (t2/select-one Database :id (:id (mt/db)))]
@@ -309,7 +309,7 @@
 (deftest initial-sync-status-table-only-test
   ;; Test that if a database is already completed sync'ing, then the sync is started again, it should initially be marked as
   ;; incomplete, but then marked as complete after the sync is finished.
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If `initial-sync-status` on a DB is already `complete`"
       (let [[active-table inactive-table] (t2/select Table :db_id (mt/id))
             get-active-table #(t2/select-one Table :id (:id active-table))

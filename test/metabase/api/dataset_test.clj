@@ -363,7 +363,7 @@
 
 (deftest pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/pivot-query))
@@ -413,7 +413,7 @@
 
 (deftest pivot-filter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/filters-query))
@@ -430,7 +430,7 @@
 
 (deftest pivot-parameter-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
           (let [result (mt/user-http-request :rasta :post 202 "dataset/pivot" (api.pivots/parameters-query))
@@ -446,7 +446,7 @@
             (is (= [nil nil 3 2009] (last rows)))))))))
 
 (deftest parameter-values-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "static-list"
       (let [parameter {:values_query_type "list",
                        :values_source_type "static-list",

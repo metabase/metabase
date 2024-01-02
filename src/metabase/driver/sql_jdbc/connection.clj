@@ -215,13 +215,6 @@
   [database]
   (set-pool! (u/the-id database) nil nil))
 
-(defn notify-database-updated
-  "Default implementation of [[driver/notify-database-updated]] for JDBC SQL drivers. We are being informed that a
-  `database` has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
-  connection details have changed."
-  [database]
-  (invalidate-pool-for-db! database))
-
 (defn- log-ssh-tunnel-reconnect-msg! [db-id]
   (log/warn (u/format-color 'red (trs "ssh tunnel for database {0} looks closed; marking pool invalid to reopen it"
                                       db-id)))

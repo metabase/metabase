@@ -26,6 +26,7 @@
    [metabase.api.dataset :as api.dataset]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.params :as params]
@@ -35,7 +36,9 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n
+    :as i18n
+    :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -304,6 +307,15 @@
         (remove-locked-and-disabled-params embedding-params)
         (remove-linked-filters-param-values))))
 
+(defn- get-embed-dashboard-context
+  "If a certain export-format is given, return the correct embedded dashboard context."
+  [export-format]
+  (case export-format
+    "csv"  :embedded-csv-download
+    "xlsx" :embedded-xlsx-download
+    "json" :embedded-json-download
+    :embedded-dashboard))
+
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
   {:style/indent 0}
@@ -322,7 +334,7 @@
      :export-format export-format
      :parameters    parameters
      :qp-runner     qp-runner
-     :context       :embedded-dashboard
+     :context       (get-embed-dashboard-context export-format)
      :constraints   constraints
      :middleware    middleware)))
 
@@ -333,7 +345,7 @@
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
    (api/check (pos-int? id)
-              [400 (tru "Dashboard id should be a positive integer.")])
+     [400 (tru "{0} id should be a positive integer." (name entity))])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]
@@ -419,7 +431,9 @@
   [token]
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-dashboard (embed/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
-    (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (u/prog1 (dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
+      (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                    :object <>}))))
 
 (defn- dashcard-results-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the

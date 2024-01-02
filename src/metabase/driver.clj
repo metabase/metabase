@@ -317,7 +317,9 @@
   :hierarchy #'hierarchy)
 
 (defmulti describe-table-indexes
-  "Returns a set of field names that are either indexed or are the first columns in a composite index."
+  "Returns a set of map containing information about the indexes of a table.
+  Currently we only sync single column indexes or the first column of a composite index.
+  Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
   {:added "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -885,6 +887,10 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:dynamic *insert-chunk-rows*
+  "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
+  nil)
+
 (defmulti table-name-length-limit
   "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
@@ -905,8 +911,23 @@
 
 (defmulti insert-into!
   "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
-   `column-names`."
+   `column-names`.
+
+  The types in `values` may include:
+  - java.lang.String
+  - java.lang.Double
+  - java.math.BigInteger
+  - java.lang.Boolean
+  - java.time.LocalDate
+  - java.time.LocalDateTime
+  - java.time.OffsetDateTime"
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti add-columns!
+  "Add columns given by `col->type` to a table named `table-name`. If the table doesn't exist it will throw an error."
+  {:added "0.49.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

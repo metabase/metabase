@@ -87,7 +87,6 @@ export function FilterHeader({
   onQueryChange,
 }: FilterHeaderProps) {
   const query = question._getMLv2Query();
-  const legacyQuery = question.query() as LegacyQuery;
 
   const stageCount = Lib.stageCount(query);
   const lastStageIndex = stageCount - 1;
@@ -118,7 +117,6 @@ export function FilterHeader({
               query={query}
               stageIndex={stageIndex}
               filter={filter}
-              legacyQuery={legacyQuery}
               onQueryChange={handleQueryChange}
             />
           );
@@ -132,7 +130,6 @@ interface FilterHeaderPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
-  legacyQuery: LegacyQuery;
   onQueryChange: (query: Lib.Query) => void;
 }
 
@@ -140,7 +137,6 @@ function FilterHeaderPopover({
   query,
   stageIndex,
   filter,
-  legacyQuery,
   onQueryChange,
 }: FilterHeaderPopoverProps) {
   const [isOpen, { turnOff: handleClose, toggle: handleToggle }] =
@@ -180,7 +176,6 @@ function FilterHeaderPopover({
           query={query}
           stageIndex={stageIndex}
           filter={filter}
-          legacyQuery={legacyQuery}
           onSelect={handleChange}
           onClose={handleClose}
         />
@@ -202,7 +197,7 @@ const shouldRender = ({
 }: RenderCheckOpts) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
-  question.query().isEditable() &&
+  question.isQueryEditable() &&
   (question.query() as LegacyQuery).topLevelFilters().length > 0 &&
   !isObjectDetail;
 

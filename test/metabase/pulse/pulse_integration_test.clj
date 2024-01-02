@@ -11,7 +11,8 @@
    [metabase.email :as email]
    [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.pulse]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defmacro with-metadata-data-cards
   "Provide a fixture that includes:
@@ -19,7 +20,7 @@
   - A model with curated metadata (override on the Tax Rate type)
   - A question based on the above model"
   [[base-card-id model-card-id question-card-id] & body]
-  `(mt/dataset ~'sample-dataset
+  `(mt/dataset ~'test-data
      (mt/with-temp [Card {~base-card-id :id} {:name          "Base question - no special metadata"
                                               :dataset_query {:database (mt/id)
                                                               :type     :query
@@ -258,3 +259,303 @@
                                                 :user_id          (mt/user->id :rasta)}]
           (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- sql-time-query
+  "Generate a SQL query that produces N identical rows of data, each row containing a variety of different presentations
+  of the input date string. The intent is to provide a wide variety for testing of different row data formats. The
+  reason for the duplication of rows is that some logic (e.g. pulses) may not trigger if N is under a certain threshold
+  (e.g. no attachments if less than 10 rows for an email)."
+  [date-str n]
+  (format
+    "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
+          SAMPLE AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
+                            T.example_timestamp AT TIME ZONE 'US/Pacific'         AS full_datetime_pacific,
+                            CAST(T.example_timestamp AS TIMESTAMP)                AS example_timestamp,
+                            CAST(T.example_timestamp AS TIMESTAMP WITH TIME ZONE) AS example_timestamp_with_time_zone,
+                            CAST(T.example_timestamp AS DATE)                     AS example_date,
+                            CAST(T.example_timestamp AS TIME)                     AS example_time,
+                            EXTRACT(YEAR FROM T.example_timestamp)                AS example_year,
+                            EXTRACT(MONTH FROM T.example_timestamp)               AS example_month,
+                            EXTRACT(DAY FROM T.example_timestamp)                 AS example_day,
+                            EXTRACT(HOUR FROM T.example_timestamp)                AS example_hour,
+                            EXTRACT(MINUTE FROM T.example_timestamp)              AS example_minute,
+                            EXTRACT(SECOND FROM T.example_timestamp)              AS example_second
+                     FROM T)
+     SELECT *
+     FROM SAMPLE
+              CROSS JOIN
+          generate_series(1, %s);"
+    date-str n))
+
+(defn- model-query [base-card-id]
+  {:fields       [[:field "FULL_DATETIME_UTC" {:base-type :type/DateTimeWithLocalTZ}]
+                  [:field "FULL_DATETIME_PACIFIC" {:base-type :type/DateTimeWithLocalTZ}]
+                  [:field "EXAMPLE_TIMESTAMP" {:base-type :type/DateTime}]
+                  [:field "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" {:base-type :type/DateTimeWithLocalTZ}]
+                  [:field "EXAMPLE_DATE" {:base-type :type/Date}]
+                  [:field "EXAMPLE_TIME" {:base-type :type/Time}]
+                  [:field "EXAMPLE_YEAR" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_MONTH" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_DAY" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_HOUR" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_MINUTE" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
+   :source-table (format "card__%s" base-card-id)})
+
+(deftest consistent-date-formatting-test
+  (mt/with-temporary-setting-values [custom-formatting nil]
+    (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]
+      (t2.with-temp/with-temp [Card {native-card-id :id} {:name          "NATIVE"
+                                                          :dataset_query {:database (mt/id)
+                                                                          :type     :native
+                                                                          :native   {:query q}}}
+                               Card {model-card-id  :id
+                                     model-metadata :result_metadata} {:name          "MODEL"
+                                                                       :dataset       true
+                                                                       :dataset_query {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    (model-query native-card-id)}}
+                               Card {meta-model-card-id :id} {:name                   "METAMODEL"
+                                                              :dataset                true
+                                                              :dataset_query          {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    {:source-table
+                                                                                                  (format "card__%s" model-card-id)}}
+                                                              :result_metadata        (mapv
+                                                                                        (fn [{column-name :name :as col}]
+                                                                                          (cond-> col
+                                                                                            (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                            (assoc :settings {:date_separator "-"
+                                                                                                              :date_style "YYYY/M/D"
+                                                                                                              :time_style "HH:mm"})
+                                                                                            (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                            (assoc :settings {:time_enabled "seconds"})))
+                                                                                        model-metadata)
+                                                              :visualization_settings {:column_settings    {"[\"name\",\"FULL_DATETIME_UTC\"]"
+                                                                                                            {:date_abbreviate true
+                                                                                                             :time_enabled    "milliseconds"
+                                                                                                             :time_style      "HH:mm"}
+                                                                                                            "[\"name\",\"EXAMPLE_TIMESTAMP\"]"
+                                                                                                            {:time_enabled    "milliseconds"}
+                                                                                                            "[\"name\",\"EXAMPLE_TIME\"]"
+                                                                                                            {:time_enabled    nil}
+                                                                                                            "[\"name\",\"FULL_DATETIME_PACIFIC\"]"
+                                                                                                            {:time_enabled    nil}}}}
+                               Dashboard {dash-id :id} {:name "The Dashboard"}
+                               DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                                      :card_id      native-card-id}
+                               DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                                       :card_id      model-card-id}
+                               DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
+                                                                           :card_id      meta-model-card-id}
+                               Pulse {pulse-id :id
+                                      :as      pulse} {:name "Consistent Time Formatting Pulse"}
+                               PulseCard _ {:pulse_id          pulse-id
+                                            :card_id           native-card-id
+                                            :dashboard_card_id base-dash-card-id
+                                            :include_csv       true}
+                               PulseCard _ {:pulse_id          pulse-id
+                                            :card_id           model-card-id
+                                            :dashboard_card_id model-dash-card-id
+                                            :include_csv       true}
+                               PulseCard _ {:pulse_id          pulse-id
+                                            :card_id           meta-model-card-id
+                                            :dashboard_card_id metamodel-dash-card-id
+                                            :include_csv       true}
+                               PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                    :pulse_id     pulse-id
+                                                                    :enabled      true}
+                               PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                        :user_id          (mt/user->id :rasta)}]
+        (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
+              get-res           #(-> attached-data (get %)
+                                     (update-vals first)
+                                     (dissoc "X"))
+              native-results    (get-res "NATIVE.csv")
+              model-results     (get-res "MODEL.csv")
+              metamodel-results (get-res "METAMODEL.csv")]
+          ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
+          (testing "The default export formats conform to the default UI formats"
+            (is (= {"FULL_DATETIME_UTC"                "December 11, 2023, 3:30 PM"
+                    "FULL_DATETIME_PACIFIC"            "December 11, 2023, 3:30 PM"
+                    "EXAMPLE_TIMESTAMP"                "December 11, 2023, 3:30 PM"
+                    "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" "December 11, 2023, 3:30 PM"
+                    "EXAMPLE_DATE"                     "December 11, 2023"
+                    "EXAMPLE_TIME"                     "3:30 PM"
+                    ;; NOTE -- We don't have a type in our type system for year so this is just an integer.
+                    ;; It might be worth looking into fixing this so that it displays without a comma
+                    "EXAMPLE_YEAR"                     "2,023"
+                    "EXAMPLE_MONTH"                    "12"
+                    "EXAMPLE_DAY"                      "11"
+                    "EXAMPLE_HOUR"                     "15"
+                    "EXAMPLE_MINUTE"                   "30"
+                    "EXAMPLE_SECOND"                   "45"}
+                   native-results)))
+          (testing "An exported model retains the base format, but does use display names for column names."
+            (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
+                    "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
+                    "Example Timestamp"                "December 11, 2023, 3:30 PM"
+                    "Example Timestamp With Time Zone" "December 11, 2023, 3:30 PM"
+                    "Example Date"                     "December 11, 2023"
+                    "Example Time"                     "3:30 PM"
+                    "Example Year"                     "2,023"
+                    "Example Month"                    "12"
+                    "Example Day"                      "11"
+                    "Example Hour"                     "15"
+                    "Example Minute"                   "30"
+                    "Example Second"                   "45"}
+                   model-results)))
+          (testing "Visualization settings are applied"
+            (is (= "Dec 11, 2023, 15:30:45.123"
+                   (metamodel-results "Full Datetime Utc"))))
+          (testing "Custom column metadata settings are applied"
+            (is (= "2023-12-11, 15:30"
+                   (metamodel-results "Example Timestamp With Time Zone"))))
+          (testing "Custom column settings metadata takes precedence over visualization settings"
+            (is (= "December 11, 2023, 3:30:45 PM"
+                   (metamodel-results "Example Timestamp"))))
+          (testing "Setting time-enabled to nil for a date time column results in only showing the date"
+            (is (= "December 11, 2023"
+                   (metamodel-results "Full Datetime Pacific"))))
+          (testing "Setting time-enabled to nil for a time column just returns an empty string"
+            (is (= ""
+                   (metamodel-results "Example Time")))))))))
+
+(deftest renamed-column-names-are-applied-test
+  (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
+    (mt/with-temporary-setting-values [custom-formatting nil]
+      (let [query        {:source-table (mt/id :orders)
+                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
+                                         [:expression "Tax Rate"]],
+                          :expressions  {"Tax Rate" [:/
+                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                          :limit        10}
+            viz-settings {:table.cell_column "TAX",
+                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
+                                              {:column_title "THE_ID"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :tax))
+                                              {:column_title "ORDER TAX"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :total))
+                                              {:column_title "Total Amount"},
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :discount))
+                                              {:column_title "Discount Applied"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                      (mt/id :orders :quantity))
+                                              {:column_title "Amount Ordered"}
+                                              "[\"ref\",[\"expression\",\"Tax Rate\"]]"
+                                              {:column_title "Effective Tax Rate"}}}]
+        (t2.with-temp/with-temp [Card {base-card-name :name
+                                       base-card-id   :id} {:name                   "RENAMED"
+                                                            :dataset_query          {:database (mt/id)
+                                                                                     :type     :query
+                                                                                     :query    query}
+                                                            :visualization_settings viz-settings}
+                                 Card {model-card-name :name
+                                       model-card-id   :id
+                                       model-metadata  :result_metadata} {:name          "MODEL"
+                                                                          :dataset       true
+                                                                          :dataset_query {:database (mt/id)
+                                                                                          :type     :query
+                                                                                          :query    {:source-table
+                                                                                                     (format "card__%s" base-card-id)}}}
+                                 Card {meta-model-card-name :name
+                                       meta-model-card-id   :id} {:name            "MODEL_WITH_META"
+                                                                  :dataset         true
+                                                                  :dataset_query   {:database (mt/id)
+                                                                                    :type     :query
+                                                                                    :query    {:source-table
+                                                                                               (format "card__%s" model-card-id)}}
+                                                                  :result_metadata (mapv
+                                                                                     (fn [{column-name :name :as col}]
+                                                                                       (cond-> col
+                                                                                         (= "DISCOUNT" column-name)
+                                                                                         (assoc :display_name "Amount of Discount")
+                                                                                         (= "TOTAL" column-name)
+                                                                                         (assoc :display_name "Grand Total")
+                                                                                         (= "QUANTITY" column-name)
+                                                                                         (assoc :display_name "N")))
+                                                                                     model-metadata)}
+                                 Card {question-card-name :name
+                                       question-card-id   :id} {:name                   "FINAL_QUESTION"
+                                                                :dataset_query          {:database (mt/id)
+                                                                                         :type     :query
+                                                                                         :query    {:source-table
+                                                                                                    (format "card__%s" meta-model-card-id)}}
+                                                                :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                         :table.cell_column  "TAX",
+                                                                                         :column_settings    {(format
+                                                                                                                "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                                (mt/id :orders :quantity))
+                                                                                                              {:column_title "Count"}
+                                                                                                              (format
+                                                                                                                "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                                (mt/id :orders :id))
+                                                                                                              {:column_title "IDENTIFIER"}}}}
+                                 Dashboard {dash-id :id} {:name "The Dashboard"}
+                                 DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                                        :card_id      base-card-id}
+                                 DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                                         :card_id      model-card-id}
+                                 DashboardCard {meta-model-dash-card-id :id} {:dashboard_id dash-id
+                                                                              :card_id      meta-model-card-id}
+                                 DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
+                                                                            :card_id      question-card-id}
+                                 Pulse {pulse-id :id
+                                        :as      pulse} {:name "Consistent Column Names"}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           base-card-id
+                                              :dashboard_card_id base-dash-card-id
+                                              :include_csv       true}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           model-card-id
+                                              :dashboard_card_id model-dash-card-id
+                                              :include_csv       true}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           meta-model-card-id
+                                              :dashboard_card_id meta-model-dash-card-id
+                                              :include_csv       true}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           question-card-id
+                                              :dashboard_card_id question-dash-card-id
+                                              :include_csv       true}
+                                 PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                      :pulse_id     pulse-id
+                                                                      :enabled      true}
+                                 PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                          :user_id          (mt/user->id :rasta)}]
+          (let [attachment-name->cols (mt/with-fake-inbox
+                                        (with-redefs [email/bcc-enabled? (constantly false)]
+                                          (mt/with-test-user nil
+                                            (metabase.pulse/send-pulse! pulse)))
+                                        (->>
+                                          (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+                                          (keep
+                                            (fn [{:keys [type content-type file-name content]}]
+                                              (when (and
+                                                      (= :attachment type)
+                                                      (= "text/csv" content-type))
+                                                [file-name
+                                                 (first (csv/read-csv (slurp content)))])))
+                                          (into {})))]
+            (testing "Renaming columns via viz settings is correctly applied to the CSV export"
+              (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" base-card-name)))))
+            (testing "A question derived from another question does not bring forward any renames"
+              (is (= ["ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" model-card-name)))))
+            (testing "A model with custom metadata shows the renamed metadata columns"
+              (is (= ["ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" meta-model-card-name)))))
+            (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
+              (is (= ["IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" question-card-name)))))))))))
