@@ -2943,11 +2943,12 @@
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id (mt/id)
                                            uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]          (let [{:keys [status body]} (upload-example-csv-via-api!)]
-                                                                                   (is (= 200
-                                                                                          status))
-                                                                                   (is (= body
-                                                                                          (t2/select-one-pk :model/Card :database_id (mt/id)))))))
+                                           uploads-schema-name "PUBLIC"]
+          (let [{:keys [status body]} (upload-example-csv-via-api!)]
+           (is (= 200
+                  status))
+           (is (= body
+                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id nil
