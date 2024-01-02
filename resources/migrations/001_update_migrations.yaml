@@ -8,14 +8,6 @@ databaseChangeLog:
       value: timestamp(6)
       dbms: mysql,mariadb
   - property:
-      name: datetime_type
-      value: timestamp without time zone
-      dbms: postgresql,h2
-  - property:
-      name: datetime_type
-      value: DATETIME
-      dbms: mysql,mariadb
-  - property:
       name: blob.type
       value: blob
       dbms: mysql,h2,mariadb
@@ -5131,12 +5123,12 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: v49.00-054
+      id: v49.00-059
       author: qnkhuat
       comment: Added 0.49.0 - unify type of time columns
       changes:
         - customChange:
-              class: "metabase.db.custom_migrations.UnifyTimeColumnsType"
+            class: "metabase.db.custom_migrations.UnifyTimeColumnsType"
 
  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
