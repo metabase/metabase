@@ -55,13 +55,24 @@ export type MultipleMetricsChartColumns = {
   metrics: ColumnDescriptor[];
 };
 
+export type ScatterPlotColumns = (
+  | BreakoutChartColumns
+  | MultipleMetricsChartColumns
+) & {
+  bubbleSize?: ColumnDescriptor;
+};
+
 export type CartesianChartColumns =
   | BreakoutChartColumns
-  | MultipleMetricsChartColumns;
+  | MultipleMetricsChartColumns
+  | ScatterPlotColumns;
 
 export const getCartesianChartColumns = (
   columns: RemappingHydratedDatasetColumn[],
-  settings: Pick<VisualizationSettings, "graph.dimensions" | "graph.metrics">,
+  settings: Pick<
+    VisualizationSettings,
+    "graph.dimensions" | "graph.metrics" | "scatter.bubble"
+  >,
 ): CartesianChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
     (settings["graph.dimensions"] ?? []).filter(isNotNull),
@@ -73,16 +84,23 @@ export const getCartesianChartColumns = (
     columns,
   );
 
+  const bubbleSize = getColumnDescriptors(
+    [settings["scatter.bubble"]].filter(isNotNull),
+    columns,
+  )[0];
+
   if (breakout) {
     return {
       dimension,
       breakout,
       metric: metrics[0],
+      bubbleSize,
     };
   }
 
   return {
     dimension,
     metrics,
+    bubbleSize,
   };
 };
