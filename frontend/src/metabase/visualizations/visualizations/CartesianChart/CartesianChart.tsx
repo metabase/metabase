@@ -107,6 +107,7 @@ export function CartesianChart({
         timelineEventsModel,
         selectedTimelineEventIds,
         settings,
+        true,
         renderingContext,
       ),
     [
