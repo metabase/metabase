@@ -193,7 +193,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.regex :as u.regex]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -721,11 +720,7 @@
                                                            [:like :object (h2x/literal "%/db/%")]])
                                 (m/map-vals (fn [paths]
                                               ;; remove v1 paths, implicitly keep v2 paths
-                                              (remove (fn [path] (mc/validate [:re (u.regex/rx
-                                                                                    "^/"
-                                                                                    perms.u/v1-data-permissions-rx
-                                                                                    "$")]
-                                                                  path))
+                                              (remove (fn [path] (mc/validate [:re perms.u/DataPath] path))
                                                       paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
