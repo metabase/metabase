@@ -9,14 +9,18 @@ import {
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  createQueryWithClauses,
+} from "metabase-lib/test-helpers";
 import { FilterModal } from "./FilterModal";
 
 interface SetupOpts {
-  query?: Lib.Query;
+  query: Lib.Query;
 }
 
-function setup({ query = createQuery() }: SetupOpts = {}) {
+function setup({ query }: SetupOpts) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
@@ -35,6 +39,13 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
 }
 
 describe("FilterModal", () => {
+  const query = createQuery();
+  const stageIndex = 0;
+  const findColumn = columnFinder(
+    query,
+    Lib.filterableColumns(query, stageIndex),
+  );
+
   beforeAll(() => {
     jest.useFakeTimers({ advanceTimers: true });
   });
@@ -44,7 +55,7 @@ describe("FilterModal", () => {
   });
 
   it("should allow to add filters", async () => {
-    const { getNextQuery } = setup();
+    const { getNextQuery } = setup({ query });
 
     const totalSection = screen.getByTestId("filter-column-Total");
     userEvent.type(within(totalSection).getByPlaceholderText("Min"), "10");
@@ -57,7 +68,7 @@ describe("FilterModal", () => {
   });
 
   it("should allow to add filters for implicitly joined tables", async () => {
-    const { getNextQuery } = setup();
+    const { getNextQuery } = setup({ query });
 
     userEvent.click(screen.getByRole("tab", { name: "Product" }));
     await waitForLoaderToBeRemoved();
@@ -98,7 +109,7 @@ describe("FilterModal", () => {
   });
 
   it("should allow to search for columns and add filters", () => {
-    const { getNextQuery } = setup();
+    const { getNextQuery } = setup({ query });
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
     userEvent.type(searchInput, "created");
@@ -121,8 +132,58 @@ describe("FilterModal", () => {
     expect(Lib.filters(nextQuery, 0)).toHaveLength(3);
   });
 
+  it("should update existing filters", async () => {
+    const { getNextQuery } = setup({
+      query: Lib.filter(
+        query,
+        stageIndex,
+        Lib.stringFilterClause({
+          operator: "=",
+          column: findColumn("PRODUCTS", "CATEGORY"),
+          values: ["Gadget"],
+          options: {},
+        }),
+      ),
+    });
+
+    userEvent.click(screen.getByRole("tab", { name: "Product" }));
+    await waitForLoaderToBeRemoved();
+    expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
+
+    userEvent.click(screen.getByRole("checkbox", { name: "Widget" }));
+    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    const nextQuery = getNextQuery();
+    expect(Lib.stageCount(nextQuery)).toBe(1);
+    expect(Lib.filters(nextQuery, 0)).toHaveLength(1);
+  });
+
+  it("should remove existing filters", async () => {
+    const { getNextQuery } = setup({
+      query: Lib.filter(
+        query,
+        stageIndex,
+        Lib.stringFilterClause({
+          operator: "=",
+          column: findColumn("PRODUCTS", "CATEGORY"),
+          values: ["Gadget"],
+          options: {},
+        }),
+      ),
+    });
+
+    userEvent.click(screen.getByRole("tab", { name: "Product" }));
+    await waitForLoaderToBeRemoved();
+    expect(screen.getByRole("checkbox", { name: "Gadget" })).toBeChecked();
+
+    userEvent.click(screen.getByRole("checkbox", { name: "Gadget" }));
+    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    const nextQuery = getNextQuery();
+    expect(Lib.stageCount(nextQuery)).toBe(1);
+    expect(Lib.filters(nextQuery, 0)).toHaveLength(0);
+  });
+
   it("should order columns by type", () => {
-    setup();
+    setup({ query });
 
     const columns = screen.getAllByTestId(/filter-column/);
     expect(columns).toHaveLength(9);
