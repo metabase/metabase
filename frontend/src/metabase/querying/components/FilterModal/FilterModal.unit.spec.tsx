@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import {
+  act,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -40,6 +41,14 @@ function setup({ query }: SetupOpts) {
 }
 
 describe("FilterModal", () => {
+  beforeAll(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   it("should allow to add filters", async () => {
     const { getNextQuery } = setup({
       query: createQuery(),
@@ -96,5 +105,31 @@ describe("FilterModal", () => {
     expect(Lib.stageCount(nextQuery)).toBe(2);
     expect(Lib.filters(nextQuery, 0)).toHaveLength(0);
     expect(Lib.filters(nextQuery, 1)).toHaveLength(1);
+  });
+
+  it("should allow to search for columns and add filters", () => {
+    const { getNextQuery } = setup({
+      query: createQuery(),
+    });
+
+    const searchInput = screen.getByPlaceholderText("Search for a column…");
+    userEvent.type(searchInput, "created");
+    act(() => jest.advanceTimersByTime(1000));
+    const sections = screen.getAllByTestId("filter-column-Created At");
+    expect(sections).toHaveLength(3);
+
+    const [ordersSection, productSection, peopleSection] = sections;
+    expect(within(ordersSection).getByText("Orders")).toBeInTheDocument();
+    expect(within(productSection).getByText("Products")).toBeInTheDocument();
+    expect(within(peopleSection).getByText("People")).toBeInTheDocument();
+
+    userEvent.click(within(ordersSection).getByText("Today"));
+    userEvent.click(within(productSection).getByText("Yesterday"));
+    userEvent.click(within(peopleSection).getByText("Last month"));
+    userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    const nextQuery = getNextQuery();
+    expect(Lib.stageCount(nextQuery)).toBe(1);
+    expect(Lib.filters(nextQuery, 0)).toHaveLength(3);
   });
 });
