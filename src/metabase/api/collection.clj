@@ -123,10 +123,32 @@
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
 (defn- location-from-collection-id-clause
+  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
+   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
+   then restrict to that collection's parents and children."
   [collection-id]
   (if collection-id
-    [:like :location (tru "%/{0}/%" collection-id)]
+    [:and
+     [:like :location (str "%/" collection-id "/%")]
+     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
     [:not [:like :location "/%/%/"]]))
+
+(defn- select-collections
+  "Select collections based off certain parameters. If shallow is true, we select only within the
+   tree and its children. This is to pass less data from SQL to metabase."
+  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
+  (cond->>
+   (t2/select Collection
+              {:where [:and
+                       (when exclude-archived
+                         [:= :archived false])
+                       (when shallow
+                         (location-from-collection-id-clause collection-id))
+                       (perms/audit-namespace-clause :namespace namespace)
+                       (collection/visible-collection-ids->honeysql-filter-clause
+                        :id
+                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+    exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*)))
 
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
@@ -155,29 +177,18 @@
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
-    (let [colls (cond->>
-                 (t2/select Collection
-                            {:where [:and
-                                     (when exclude-archived
-                                       [:= :archived false])
-                                     (when shallow
-                                       (location-from-collection-id-clause collection-id))
-                                     (perms/audit-namespace-clause :namespace namespace)
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      :id
-                                      (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-                  exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*))]
+  (let [collections (select-collections exclude-archived exclude-other-user-collections namespace shallow collection-id)]
     (if shallow
-      (shallow-tree-from-collection-id colls)
-      (let [coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                    (update acc (if dataset :dataset :card) conj collection_id))
-                                  {:dataset #{}
-                                   :card    #{}}
-                                  (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                              :from            [:report_card]
-                                                              :where           [:= :archived false]}))
-            colls-with-details (map collection/personal-collection-with-ui-details colls)]
-        (collection/collections->tree coll-type-ids colls-with-details)))))
+      (shallow-tree-from-collection-id collections)
+      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                          (update acc (if dataset :dataset :card) conj collection_id))
+                                        {:dataset #{}
+                                         :card    #{}}
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+            collections-with-details (map collection/personal-collection-with-ui-details collections)]
+        (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 

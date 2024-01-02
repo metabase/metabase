@@ -57,8 +57,8 @@
   {:style/indent 2}
   [user collection & body]
   `(do-with-french-user-and-personal-collection
-     (fn [~user ~collection]
-       ~@body)))
+    (fn [~user ~collection]
+      ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                GET /collection                                                 |
@@ -270,6 +270,40 @@
                    (->> response
                         (filter (fn [coll] (contains? ids (:id coll))))
                         (map #(select-keys % [:name :children])))))))))))
+
+(deftest select-collections-shallow-test
+  (testing "Selecing collections based off collection-id equaling nil works."
+    (with-collection-hierarchy [a b c d e f g]
+      (let [personal-collection (collection/user->personal-collection (mt/user->id :crowberto))
+            ids      (set (map :id (cons personal-collection [a b c d e f g])))]
+        (mt/with-test-user :crowberto
+          (testing "Make sure we get the expected collections when collection-id is nil"
+            (let [collections (#'api.collection/select-collections nil nil nil true nil)]
+              (is (= #{{:name "A"}
+                       {:name "B"}
+                       {:name "C"}
+                       {:name "Crowberto Corv's Personal Collection"}}
+                     (->> collections
+                          (filter (fn [coll] (contains? ids (:id coll))))
+                          (map #(select-keys % [:name]))
+                          (into #{}))))))
+          (testing "Make sure we get the expected collections when collection-id is an integer"
+            (let [collections (#'api.collection/select-collections nil nil nil true (:id a))]
+              ;; E & G are too deep to show up
+              (is (= #{{:name "C"}
+                       {:name "B"}
+                       {:name "D"}
+                       {:name "F"}}
+                     (->> collections
+                          (filter (fn [coll] (contains? ids (:id coll))))
+                          (map #(select-keys % [:name]))
+                          (into #{})))))
+            (let [collections (#'api.collection/select-collections nil nil nil true (:id b))]
+              (is (= #{}
+                     (->> collections
+                          (filter (fn [coll] (contains? ids (:id coll))))
+                          (map #(select-keys % [:name]))
+                          (into #{})))))))))))
 
 (deftest collection-tree-exclude-archived-collections-test
   (testing "GET /api/collection/tree"
@@ -507,14 +541,14 @@
 (defn- collection-item [collection-name & {:as extra-keypairs}]
   (let [personal-collection (str/ends-with? collection-name "Personal Collection")]
     (merge (cond->
-            {:id              true
-             :description     nil
-             :can_write       personal-collection
-             :model           "collection"
-             :authority_level nil
-             :entity_id       true
-             :name            collection-name}
-            personal-collection (assoc :personal_owner_id personal-collection))
+             {:id              true
+              :description     nil
+              :can_write       personal-collection
+              :model           "collection"
+              :authority_level nil
+              :entity_id       true
+              :name            collection-name}
+             personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
 (deftest collection-items-return-cards-test
@@ -529,20 +563,20 @@
                                                                         :moderator_id        user-id
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
-                 [{:id                  card-id
-                   :name                (:name card)
-                   :collection_position nil
-                   :collection_preview  true
-                   :database_id         nil
-                   :display             "table"
-                   :description         nil
-                   :entity_id           (:entity_id card)
-                   :moderated_status    "verified"
-                   :model               "card"
-                   :fully_parametrized  true}])
+                [{:id                  card-id
+                  :name                (:name card)
+                  :collection_position nil
+                  :collection_preview  true
+                  :database_id         nil
+                  :display             "table"
+                  :description         nil
+                  :entity_id           (:entity_id card)
+                  :moderated_status    "verified"
+                  :model               "card"
+                  :fully_parametrized  true}])
                (mt/obj->json->obj
-                 (:data (mt/user-http-request :crowberto :get 200
-                                              (str "collection/" (u/the-id collection) "/items"))))))))))
+                (:data (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items"))))))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -875,16 +909,15 @@
 
         (testing "Snippets in nested collections should be returned as a flat list on OSS"
           (premium-features-test/with-premium-features #{}
-             (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
-                                                                         :name      "Nested Snippet Collection"
-                                                                         :location  (collection/location-path collection)}
-                                      :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
-                                                                             :name          "Nested Snippet"}]
-               (is (=?
-                    [{:id (:id snippet), :name "My Snippet"}
-                     {:id (:id sub-snippet), :name "Nested Snippet"}]
-                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
-
+            (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
+                                                                        :name      "Nested Snippet Collection"
+                                                                        :location  (collection/location-path collection)}
+                                     :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
+                                                                            :name          "Nested Snippet"}]
+              (is (=?
+                   [{:id (:id snippet), :name "My Snippet"}
+                    {:id (:id sub-snippet), :name "Nested Snippet"}]
+                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
@@ -951,7 +984,6 @@
       (is (partial= lucky-personal-subcollection-item
                     (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
 
-
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
 
 (defn- format-ancestors
@@ -973,8 +1005,8 @@
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
   (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta
-                                         :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
-                                         additional-get-params))))
+                                               :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
+                                               additional-get-params))))
 
 ;;; for the tests below, create hierarchy like
 ;;;
@@ -1415,7 +1447,6 @@
             (is (= ["My Snippet", "My Snippet 2"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
                                                                       "collection/root/items?namespace=snippets&model=snippet")))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              POST /api/collection                                              |
