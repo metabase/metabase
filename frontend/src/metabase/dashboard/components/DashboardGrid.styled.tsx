@@ -32,7 +32,7 @@ export const DashboardCard = styled.div<DashboardCardProps>`
     bottom: 0;
     right: 0;
     border-radius: 8px;
-    border: 1px solid ${color("border")};
+    box-shadow: 0 0 0 1px ${color("border")};
   }
 
   ${props =>
