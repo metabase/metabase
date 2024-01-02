@@ -46,7 +46,7 @@
                                                                           :query    {:source-table (mt/id :incidents)}}}]
         (is (= [[1 4 "2015-06-06T10:40:00Z"]
                 [2 0 "2015-06-10T19:51:00Z"]]
-               (mt/rows (qp/process-query{:database (mt/id)
+               (mt/rows (qp/process-query {:database (mt/id)
                                            :type     :query
                                            :query    {:source-table (str "card__" card-id)}}))))))))
 
