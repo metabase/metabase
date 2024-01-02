@@ -9,3 +9,7 @@ export const getObjectKeys = <K extends string>(
 ): K[] => {
   return Object.keys(obj) as K[];
 };
+
+export const getObjectValues = <V>(obj: Record<string, V>): V[] => {
+  return Object.values(obj) as V[];
+};
