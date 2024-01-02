@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import d3 from "d3";
 import type {
   DatasetColumn,
   RawSeries,
@@ -530,10 +531,12 @@ export const getBubbleSizeDomain = (
     return null;
   }
 
-  const bubbleSizeMaxValues = getObjectValues(
+  const bubbleSizeExtents = getObjectValues(
     getDatasetExtents(bubbleSizeDataKeys, dataset),
-  ).map(extent => extent[1]);
-  const bubbleSizeDomainMax = Math.max(...bubbleSizeMaxValues);
+  ).flat();
 
-  return [0, bubbleSizeDomainMax];
+  return d3.extent(bubbleSizeExtents).map(value => Math.abs(value ?? 0)) as [
+    number,
+    number,
+  ];
 };

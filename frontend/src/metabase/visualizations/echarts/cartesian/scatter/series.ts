@@ -11,11 +11,9 @@ import type {
   SeriesModel,
 } from "../model/types";
 
-const BUBBLE_SCALE_FACTOR_MAX = 64;
-
 const MIN_BUBBLE_SIZE = 14;
+const MAX_BUBBLE_SIZE = 64;
 
-// TODO: refine the scaling curve when implementing the dynamic scatter plot
 function getBubbleSizeScale(
   bubbleSizeDomain: Extent | null,
   bubbleSizeDataKey: DataKey | undefined,
@@ -26,9 +24,9 @@ function getBubbleSizeScale(
 
   const scale = d3.scale
     .sqrt()
-    .domain(bubbleSizeDomain.map(v => v * BUBBLE_SCALE_FACTOR_MAX))
-    .range([MIN_BUBBLE_SIZE, 1024]);
-  return (datum: Datum) => scale(Number(datum[bubbleSizeDataKey]));
+    .domain(bubbleSizeDomain)
+    .range([MIN_BUBBLE_SIZE, MAX_BUBBLE_SIZE]);
+  return (datum: Datum) => scale(Math.abs(Number(datum[bubbleSizeDataKey])));
 }
 
 export function buildEChartsScatterSeries(
