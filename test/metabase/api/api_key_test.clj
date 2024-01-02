@@ -17,16 +17,16 @@
             resp (mt/user-http-request :crowberto :post 200 "api-key"
                                        {:group_id group-id
                                         :name     name})]
-        (is (= #{:name :group_name :unmasked_key :masked_key :id :created_at :updated_at :updated_by}
+        (is (= #{:name :group :unmasked_key :masked_key :id :created_at :updated_at :updated_by}
                (-> resp keys set)))
         (is (= (select-keys (mt/fetch-user :crowberto) [:id :common_name])
                (:updated_by resp)))
-        (is (= "Cool Friends" (:group_name resp)))
+        (is (= {:name "Cool Friends" :id group-id} (:group resp)))
         (is (= name (:name resp)))))
     (testing "Trying to create another API key with the same name fails"
       (let [key-name (str (random-uuid))]
         ;; works once...
-        (is (= #{:unmasked_key :masked_key :group_name :name :id :created_at :updated_at :updated_by}
+        (is (= #{:unmasked_key :masked_key :group :name :id :created_at :updated_at :updated_by}
                (set (keys (mt/user-http-request :crowberto :post 200 "api-key"
                                                 {:group_id group-id
                                                  :name     key-name})))))
@@ -80,9 +80,10 @@
                                 {:group_id (:id (perms-group/all-users))
                                  :name     (str (random-uuid))}))
       (is (= "All Users"
-             (:group_name (mt/user-http-request :crowberto :post 200 "api-key"
-                                                {:group_id (:id (perms-group/all-users))
-                                                 :name (str (random-uuid))})))))
+             (get-in (mt/user-http-request :crowberto :post 200 "api-key"
+                                           {:group_id (:id (perms-group/all-users))
+                                            :name (str (random-uuid))})
+                     [:group :name]))))
     (testing "A non-empty name is required"
       (is (= {:errors          {:name "value must be a non-blank string."}
               :specific-errors {:name ["should be at least 1 characters, received: \"\"" "non-blank string, received: \"\""]}}
@@ -136,7 +137,7 @@
                                 :post 200 "api-key"
                                 {:group_id group-id-1
                                  :name     (str (random-uuid))})
-          _                (is (= "Cool Friends" (:group_name create-resp)))
+          _                (is (= "Cool Friends" (-> create-resp :group :name)))
           api-user-id      (:id (:user (t2/hydrate (t2/select-one :model/ApiKey :id id) :user)))
           member-of-group? (fn [group-id]
                              (t2/exists? :model/PermissionsGroupMembership
@@ -146,7 +147,9 @@
       (is (not (member-of-group? group-id-2)))
       (testing "You can change the group of an API key"
         (is (= "Uncool Friends"
-               (:group_name (mt/user-http-request :crowberto :put 200 (format "api-key/%s" id) {:group_id group-id-2}))))
+               (-> (mt/user-http-request :crowberto :put 200 (format "api-key/%s" id) {:group_id group-id-2})
+                   :group
+                   :name)))
         (is (not (member-of-group? group-id-1)))
         (is (member-of-group? group-id-2))))
     (testing "You can change the name of an API key"
@@ -165,7 +168,7 @@
                                 {:name name-2})
           (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))
         (testing "the shape of the response is correct"
-          (is (= #{:created_at :updated_at :updated_by :id :group_name :name :masked_key}
+          (is (= #{:created_at :updated_at :updated_by :id :group :name :masked_key}
                  (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                                   {:name name-1}))))))))
     (testing "A nonexistent API Key can't be updated"
@@ -184,7 +187,7 @@
             {:as resp new-key :unmasked_key}
             (mt/user-http-request :crowberto
                                   :put 200 (format "api-key/%s/regenerate" id))]
-        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group_name :updated_by}
+        (is (= #{:created_at :updated_at :id :name :unmasked_key :masked_key :group :updated_by}
                (set (keys resp))))
         (is (client/client :get 401 "user/current" {:request-options {:headers {"x-api-key" old-key}}}))
         (is (client/client :get 200 "user/current" {:request-options {:headers {"x-api-key" new-key}}})))))
@@ -202,9 +205,10 @@
                             {:group_id group-id
                              :name     "My First API Key"})
       (is (= [{:name       "My First API Key"
-               :group_name "Cool Friends"
+               :group {:name "Cool Friends"
+                       :id group-id}
                :updated_by (select-keys (mt/fetch-user :crowberto) [:common_name :id])}]
-             (map #(select-keys % [:name :group_name :updated_by])
+             (map #(select-keys % [:name :group :updated_by])
                   (mt/user-http-request :crowberto :get 200 "api-key"))))
 
       (mt/user-http-request :crowberto
@@ -213,10 +217,12 @@
                              :name "My Second API Key"})
 
       (is (= [{:name "My First API Key"
-               :group_name "Cool Friends"}
+               :group {:name "Cool Friends"
+                       :id group-id}}
               {:name "My Second API Key"
-               :group_name "All Users"}]
-             (map #(select-keys % [:name :group_name])
+               :group {:name "All Users"
+                       :id (:id (perms-group/all-users))}}]
+             (map #(select-keys % [:name :group])
                   (mt/user-http-request :crowberto :get 200 "api-key")))))))
 
 (deftest api-keys-can-be-deleted
@@ -250,13 +256,13 @@
               url                          (fn [url] (format url id))]
           (testing "Creation was audit logged"
             (is (=? {:details  {:name       "My API Key"
-                                :group_name "Cool Friends"
+                                :group      {:name  "Cool Friends"}
                                 :user_id    (t2/select-one-fn :user_id :model/ApiKey id)}
                      :model    "ApiKey"
                      :model_id id
                      :user_id  (mt/user->id :crowberto)}
                     (mt/latest-audit-log-entry :api-key-create id)))
-            (is (= #{:name :group_name :key_prefix :user_id}
+            (is (= #{:name :group :key_prefix :user_id}
                    (-> (mt/latest-audit-log-entry :api-key-create id) :details keys set))))
           (testing "Update is audit logged"
             (mt/user-http-request :crowberto
@@ -264,9 +270,9 @@
                                   {:group_id group-id-2
                                    :name     "A New Name"})
             (is (=? {:details  {:previous {:name       "My API Key"
-                                           :group_name "Cool Friends"}
+                                           :group {:name "Cool Friends"}}
                                 :new      {:name       "A New Name"
-                                           :group_name "Less Cool Friends"}}
+                                           :group {:name "Less Cool Friends"}}}
                      :model    "ApiKey"
                      :model_id id
                      :user_id  (mt/user->id :crowberto)}
@@ -286,7 +292,7 @@
             (mt/user-http-request :crowberto
                                   :delete 204 (url "api-key/%s"))
             (is (=? {:details  {:name       "A New Name"
-                                :group_name "Less Cool Friends"}
+                                :group {:name "Less Cool Friends"}}
                      :model    "ApiKey"
                      :model_id id
                      :user_id  (mt/user->id :crowberto)}
