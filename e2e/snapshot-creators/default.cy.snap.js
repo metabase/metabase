@@ -307,6 +307,10 @@ function getDefaultInstanceData() {
     instanceData.databases = databases;
   });
 
+  cy.request("/api/permissions/group").then(({ body: groups }) => {
+    instanceData.groups = groups;
+  });
+
   cy.request("/api/collection").then(({ body: collections }) => {
     instanceData.collections = collections;
 
