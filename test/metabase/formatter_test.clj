@@ -75,8 +75,12 @@
       (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
       (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
       (is (= "0%" (format 0.000000 {::mb.viz/number-style "percent"})))
-      ;; This is not zero, so should show decimal places
-      (is (= "0.00%" (format 0.0000001 {::mb.viz/number-style "percent"})))
+      ;; With default formatting (2 digits) and zero trimming, we get 0%
+      (is (= "0%" (format 0.0000001 {::mb.viz/number-style "percent"})))
+      ;; Requiring 2 digits adds zeros
+      (is (= "0.00%" (format 0.0000001 {::mb.viz/number-style "percent"
+                                        ::mb.viz/decimals     2})))
+      ;; You need at least 5 digits (not the scale by 100 for percents) to show the low value
       (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"
                                            ::mb.viz/decimals          5}))))
     (testing "Match UI 'natural formatting' behavior for decimal values with no column formatting present"
