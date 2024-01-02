@@ -57,7 +57,7 @@
                  ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
                  ;; is from a different thread and is invalid by the time we get to use it
                  (let [result (binding [t2.conn/*current-connectable* nil]
-                                (t2/count :core_user :is_active true))]
+                                (t2/count :model/User :is_active true :type :personal))]
                    (log/debug (u/colorize :green "=>") result)
                    result))
       memoized (memoize/ttl

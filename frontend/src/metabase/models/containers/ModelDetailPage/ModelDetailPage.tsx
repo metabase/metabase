@@ -91,7 +91,7 @@ function ModelDetailPage({
   );
 
   const database = model.database();
-  const hasDataPermissions = model.query().isEditable();
+  const hasDataPermissions = model.isQueryEditable();
   const hasActions = actions.length > 0;
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const hasActionsTab = hasActions || hasActionsEnabled;

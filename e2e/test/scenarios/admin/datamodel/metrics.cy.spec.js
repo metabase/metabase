@@ -168,7 +168,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       filter();
       filterField("Total", {
-        placeholder: "min",
+        placeholder: "Min",
         value: "50",
       });
 

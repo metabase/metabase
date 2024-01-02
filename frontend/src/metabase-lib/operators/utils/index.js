@@ -110,10 +110,6 @@ export function getAggregationOperators(database, fields) {
     );
 }
 
-export function getAggregationOperator(short) {
-  return _.findWhere(AGGREGATION_OPERATORS, { short: short });
-}
-
 export function isCompatibleAggregationOperatorForField(
   aggregationOperator,
   field,

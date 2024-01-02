@@ -4,6 +4,8 @@ import {
   visitPublicDashboard,
   filterWidget,
   popover,
+  openNewPublicLinkDropdown,
+  createPublicDashboardLink,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -95,29 +97,38 @@ describe("scenarios > public > dashboard", () => {
       visitDashboard(id);
     });
 
-    cy.icon("share").click();
-
-    cy.findByRole("heading", { name: "Enable sharing" })
-      .parent()
-      .findByRole("switch")
-      .check();
+    openNewPublicLinkDropdown("dashboard");
 
     cy.wait("@publicLink").then(({ response }) => {
       expect(response.body.uuid).not.to.be.null;
 
-      cy.findByRole("heading", { name: "Public link" })
-        // This click doesn't have any meaning in the context of the correctness of this test!
-        // It's simply here to prevent test flakiness, which happens because the Modal overlay
-        // is animating (disappearing) and we need to wait for it to stop the transition.
-        // Cypress will retry clicking this text until the DOM element is "actionable", or in
-        // our case - until there's no element on top of it blocking it. That's also when we
-        // expect this input field to be populated with the actual value.
-        .click()
-        .parent()
-        .findByDisplayValue(/^http/)
-        .then($input => {
-          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
-        });
+      cy.findByTestId("public-link-input").should("be.visible");
+      cy.findByTestId("public-link-input").then($input => {
+        expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX);
+      });
+    });
+  });
+
+  it("should only allow non-admin users to see a public link if one has already been created", () => {
+    cy.get("@dashboardId").then(id => {
+      createPublicDashboardLink(id);
+      cy.signOut();
+    });
+
+    cy.signInAsNormalUser().then(() => {
+      cy.get("@dashboardId").then(id => {
+        visitDashboard(id);
+      });
+
+      cy.icon("share").click();
+
+      cy.findByTestId("public-link-popover-content").within(() => {
+        cy.findByText("Public link").should("be.visible");
+        cy.findByTestId("public-link-input").then($input =>
+          expect($input.val()).to.match(PUBLIC_DASHBOARD_REGEX),
+        );
+        cy.findByText("Remove public URL").should("not.exist");
+      });
     });
   });
 
