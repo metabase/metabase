@@ -901,7 +901,7 @@
 (define-migration MigrateRemoveAdminFromGroupMappingIfNeeded
   (migrate-remove-admin-from-group-mapping-if-needed))
 
-(defn- db-type->updated-columns
+(defn- db-type->to-unified-columns
   [db-type]
   (case db-type
     :h2      [[:activity :timestamp]
@@ -929,7 +929,7 @@
               [:pulse :updated_at]
               [:pulse_channel :created_at]
               [:pulse_channel :updated_at]
-              #_[:recent_views :timestamp]
+              [:recent_views :timestamp]
               [:report_card :created_at]
               [:report_cardfavorite :created_at]
               [:report_cardfavorite :updated_at]
@@ -994,7 +994,7 @@
 (defn- unify-time-column-type!
   [direction]
   (let [db-type        (mdb.connection/db-type)
-        columns        (db-type->updated-columns db-type)
+        columns        (db-type->to-unified-columns db-type)
         timestamp-type (case db-type
                          (:postgres :h2) "TIMESTAMP WITH TIME ZONE"
                          :mysql          "TIMESTAMP(6)")
@@ -1005,6 +1005,8 @@
                          :up timestamp-type
                          :down datetime-type)]
     (doseq [[table column] columns]
+      ;; this is a specical case beacuse core_user.updated_at is referenced in a view in postgres,
+      ;; so we need to drop the view before changing the type, then re-create it again
       (when (= [db-type table column]
                [:postgres :core_user :updated_at])
         (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))

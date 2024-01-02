@@ -5130,7 +5130,6 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-
   - changeSet:
       id: v49.00-054
       author: qnkhuat

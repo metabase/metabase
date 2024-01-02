@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.math :as math]
    [clojure.math.combinatorics :as math.combo]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -11,8 +12,10 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [medley.core :as m]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.driver :as driver]
    [metabase.models :refer [Database User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -1454,3 +1457,44 @@
       (migrate! :down 47)
       ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
       (is (= 34 (t2/count :data_migrations))))))
+
+(defn- table-and-column-of-type
+  [ttype]
+  (->> (t2/query
+        [(case (mdb.connection/db-type)
+           :postgres
+           (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
+                   ttype)
+           :mysql
+           (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
+                   ttype (.getSchema (.getConnection (mdb.connection/data-source))))
+           :h2
+           (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s';"
+                   ttype))])
+       (map (fn [{:keys [table_name column_name]}]
+              [(keyword (u/lower-case-en table_name)) (keyword (u/lower-case-en column_name))]))
+       set))
+
+(deftest unify-type-of-time-columns-test
+  (impl/test-migrations ["v49.00-054"] [migrate!]
+    (when-not (= driver/*driver* :mysql)
+      (let [db-type       (mdb.connection/db-type)
+            datetime-type (case db-type
+                            :postgres "timestamp without time zone"
+                            :h2       "TIMESTAMP"
+                            :mysql    "datetime")]
+        (testing "Sanity check"
+          (is (true? (set/subset?
+                      (set (#'custom-migrations/db-type->to-unified-columns db-type))
+                      (table-and-column-of-type datetime-type)))))
+
+        (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
+          (migrate!)
+          (is (= #{[:databasechangelog :dateexecuted] [:databasechangeloglock :lockgranted]}
+                 (set (table-and-column-of-type datetime-type)))))
+
+        (testing "downgrade should revert all converted columns to its original type"
+          (migrate! :down 48)
+          (is (true? (set/subset?
+                      (set (#'custom-migrations/db-type->to-unified-columns db-type))
+                      (table-and-column-of-type datetime-type)))))))))
