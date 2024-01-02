@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { FieldValuesResult } from "metabase-types/api";
 import { createMockFieldValues } from "metabase-types/api/mocks";
 import {
+  PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
 } from "metabase-types/api/mocks/presets";
@@ -146,6 +147,31 @@ describe("StringFilterValuePicker", () => {
       act(() => jest.advanceTimersByTime(1000));
       userEvent.click(await screen.findByText("Gizmo"));
       expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
+    });
+  });
+
+  describe("search values", () => {
+    const column = findColumn("PEOPLE", "EMAIL");
+
+    it("should allow to search for a value", async () => {
+      const { onChange } = setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        searchValues: {
+          a: createMockFieldValues({
+            field_id: PEOPLE.EMAIL,
+            values: [["a@metabase.test"]],
+          }),
+        },
+      });
+
+      userEvent.type(screen.getByPlaceholderText("Search by Email"), "a");
+      act(() => jest.advanceTimersByTime(1000));
+      userEvent.click(await screen.findByText("a@metabase.test"));
+
+      expect(onChange).toHaveBeenLastCalledWith(["a@metabase.test"]);
     });
   });
 });
