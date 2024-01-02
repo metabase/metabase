@@ -562,6 +562,7 @@
         (doseq [view-name new-view-names]
           (testing (str "View " view-name " should be created")
             (is (= [] (t2/query (str "SELECT 1 FROM " view-name))))))
+        (migrate! :down 47)
         (testing "Views should be removed when downgrading"
           (doseq [view-name new-view-names]
             (is (thrown?
