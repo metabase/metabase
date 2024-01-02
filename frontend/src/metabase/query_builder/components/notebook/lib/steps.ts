@@ -155,7 +155,7 @@ const STEPS: NotebookStepDef[] = [
 ];
 
 const hasData = (query: Lib.Query): boolean => {
-  const databaseId = Lib.databaseID(query) !== null;
+  const databaseId = Lib.databaseID(query);
   return databaseId !== null;
 };
 
