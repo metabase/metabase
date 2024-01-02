@@ -214,16 +214,6 @@
             (isa? col-type :type/Currency))
         (number-format-strings format-settings)))))
 
-(defn- default-format-strings
-  "Default strings to use for datetime and number fields if custom format settings are not set."
-  []
-  {:datetime (datetime-format-string (common/merge-global-settings {} :type/Temporal))
-   :date     (datetime-format-string (common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
-   ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
-   :time     "h:mm am/pm"
-   :integer  "#,##0"
-   :float    "#,##0.##"})
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             XLSX export logic                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -239,56 +229,21 @@
                                                               (or filename-prefix "query_result")
                                                               (u.date/format (t/zoned-date-time)))}}))
 
-(def ^:dynamic *cell-styles*
-  "Holds the CellStyle values used within a spreadsheet so that they can be reused. Excel has a limit
-  of 64,000 cell styles in a single workbook, so we only want to call .createCellStyle once per column,
-  not once per cell."
-  nil)
-
-(defn- format-string-delay
+(defn- cell-string-format-style
   [^Workbook workbook ^DataFormat data-format format-string]
-  (delay
-   (doto (.createCellStyle workbook)
-     (.setDataFormat (. data-format getFormat ^String format-string)))))
+  (doto (.createCellStyle workbook)
+    (.setDataFormat (. data-format getFormat ^String format-string))))
 
-(defn- column-style-delays
-  [^Workbook workbook data-format viz-settings cols]
-  (into {} (for [col cols]
-             (let [settings-key  (if (:id col)
-                                   {::mb.viz/field-id (:id col)}
-                                   {::mb.viz/column-name (:name col)})
-                   id-or-name    (first (vals settings-key))
-                   ;settings      (get col-settings settings-key)
-                   settings      (common/viz-settings-for-col col viz-settings)
-                   format-strings (format-settings->format-strings settings col)]
-               (when (seq format-strings)
-                 {id-or-name
-                  (map
-                    #(format-string-delay workbook data-format %)
-                    format-strings)})))))
-
-(def ^:private cell-style-delays
-  "Creates a map of column name or id -> delay, or keyword representing default -> delay. This is bound to
-  `*cell-styles*` by `streaming-results-writer`. Dereffing the delay will create the style and add it to
-  the workbook if needed.
-
-  Memoized so that it can be called within write-row! without re-running the logic to convert format settings
-  to format strings."
-  (memoize
-   (fn [^Workbook workbook cols viz-settings]
-     (let [data-format (. workbook createDataFormat)
-           col-styles  (column-style-delays workbook data-format viz-settings cols)]
-       (into col-styles
-             (for [[name-keyword format-string] (seq (default-format-strings))]
-               {name-keyword (format-string-delay workbook data-format format-string)}))))))
-
-(defn- cell-style
-  "Get the cell style(s) associated with `id-or-name` by dereffing the delay(s) in `*cell-styles*`."
-  [id-or-name]
-  (let [cell-style-delays (some->> id-or-name *cell-styles* u/one-or-many (map deref))]
-    (if (= (count cell-style-delays) 1)
-      (first cell-style-delays)
-      cell-style-delays)))
+(defn- compute-cell-styles
+  [^Workbook workbook viz-settings cols]
+  (for [col cols]
+    (let [data-format (. workbook createDataFormat)
+          settings       (common/viz-settings-for-col col viz-settings)
+          format-strings (format-settings->format-strings settings col)]
+      (when (seq format-strings)
+        (map
+          (partial cell-string-format-style workbook data-format)
+          format-strings)))))
 
 (defn- rounds-to-int?
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
@@ -300,23 +255,24 @@
   "Sets a cell to the provided value, with an appropriate style if necessary.
 
   This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
-  (fn [^Cell _cell value _id-or-name] (type value)))
+  (fn [^Cell _cell value _styles]
+    (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
 
 (defmethod set-cell! LocalDate
-  [^Cell cell ^LocalDate t id-or-name]
+  [^Cell cell ^LocalDate t styles]
   (.setCellValue cell t)
-  (.setCellStyle cell (or (cell-style id-or-name) (cell-style :date))))
+  (.setCellStyle cell (first styles)))
 
 (defmethod set-cell! LocalDateTime
-  [^Cell cell ^LocalDateTime t id-or-name]
+  [^Cell cell ^LocalDateTime t styles]
   (.setCellValue cell t)
-  (.setCellStyle cell (or (cell-style id-or-name) (cell-style :datetime))))
+  (.setCellStyle cell (first styles)))
 
 (defmethod set-cell! LocalTime
-  [^Cell cell t id-or-name]
+  [^Cell cell t styles]
   ;; there's no `.setCellValue` for a `LocalTime` -- but all the built-in impls for `LocalDate` and `LocalDateTime` do
   ;; anyway is convert the date(time) to an Excel datetime floating-point number and then set that.
   ;;
@@ -325,43 +281,42 @@
   ;;
   ;; See https://poi.apache.org/apidocs/4.1/org/apache/poi/ss/usermodel/DateUtil.html#convertTime-java.lang.String-
   (.setCellValue cell (DateUtil/convertTime (u.date/format "HH:mm:ss" t)))
-  (.setCellStyle cell (or (cell-style id-or-name) (cell-style :time))))
+  (.setCellStyle cell (first styles)))
 
 (defmethod set-cell! OffsetTime
-  [^Cell cell t id-or-name]
-  (set-cell! cell (t/local-time (common/in-result-time-zone t)) id-or-name))
+  [^Cell cell t styles]
+  (set-cell! cell (t/local-time (common/in-result-time-zone t)) styles))
 
 (defmethod set-cell! OffsetDateTime
-  [^Cell cell t id-or-name]
-  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) id-or-name))
+  [^Cell cell t styles]
+  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) styles))
 
 (defmethod set-cell! ZonedDateTime
-  [^Cell cell t id-or-name]
-  (set-cell! cell (t/offset-date-time t) id-or-name))
+  [^Cell cell t styles]
+  (set-cell! cell (t/offset-date-time t) styles))
 
 (defmethod set-cell! String
-  [^Cell cell value _]
+  [^Cell cell value _styles]
   (.setCellValue cell ^String value))
 
 (defmethod set-cell! Number
-  [^Cell cell value id-or-name]
+  [^Cell cell value styles]
   (let [v (double value)]
     (.setCellValue cell v)
-    (when (u/real-number? v)
-      (let [styles (u/one-or-many (cell-style id-or-name))]
-        (if (rounds-to-int? v)
-          (.setCellStyle cell (or (first styles) (cell-style :integer)))
-          (.setCellStyle cell (or (second styles) (cell-style :float))))))))
+    (let [[int-style float-style] styles]
+      (if (rounds-to-int? v)
+        (.setCellStyle cell int-style)
+        (.setCellStyle cell float-style)))))
 
 (defmethod set-cell! Boolean
-  [^Cell cell value _]
+  [^Cell cell value _styles]
   (.setCellValue cell ^Boolean value))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
 ;; `metabase.server.middleware`.
 (defmethod set-cell! Object
-  [^Cell cell value _]
+  [^Cell cell value _styles]
   ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
   ;; use the resulting value as the cell's new String value.  There might be some more efficient way of doing this but
   ;; I'm not sure what it is.
@@ -369,7 +324,7 @@
                                (json/parse-string keyword)
                                :v))))
 
-(defmethod set-cell! nil [^Cell cell _ _]
+(defmethod set-cell! nil [^Cell cell _value _styles]
   (.setBlank cell))
 
 (def ^:dynamic *parse-temporal-string-values*
@@ -390,12 +345,12 @@
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
   This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
-  [^SXSSFSheet sheet values cols col-settings]
+  [^SXSSFSheet sheet values cols col-settings cell-styles]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
-        row (.createRow sheet row-num)]
-    (doseq [[value col index] (map vector values cols (range (count values)))]
+        row     (.createRow sheet row-num)]
+    (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
       (let [id-or-name   (or (:id col) (:name col))
             settings     (or (get col-settings {::mb.viz/field-id id-or-name})
                              (get col-settings {::mb.viz/column-name id-or-name}))
@@ -405,9 +360,9 @@
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
             parsed-value (or
-                          (maybe-parse-temporal-value value col)
-                          scaled-val)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value id-or-name)))
+                           (maybe-parse-temporal-value value col)
+                           scaled-val)]
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles)))
     row))
 
 (def ^:dynamic *auto-sizing-threshold*
@@ -443,10 +398,12 @@
 
 (defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook            (SXSSFWorkbook.)
-        sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
+  (let [workbook    (SXSSFWorkbook.)
+        sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))
+        cell-styles (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
+      (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings :as viz-settings}]
+        (vreset! cell-styles (compute-cell-styles workbook viz-settings ordered-cols))
         (doseq [i (range (count ordered-cols))]
           (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
         (setup-header-row! sheet (count ordered-cols))
@@ -457,10 +414,8 @@
                              (let [row-v (into [] row)]
                                (for [i output-order] (row-v i)))
                              row)
-              col-settings (::mb.viz/column-settings viz-settings)
-              cell-styles  (cell-style-delays workbook ordered-cols viz-settings)]
-          (binding [*cell-styles* cell-styles]
-            (add-row! sheet ordered-row ordered-cols col-settings))
+              col-settings (::mb.viz/column-settings viz-settings)]
+          (add-row! sheet ordered-row ordered-cols col-settings @cell-styles)
           (when (= (inc row-num) *auto-sizing-threshold*)
             (autosize-columns! sheet))))
 
