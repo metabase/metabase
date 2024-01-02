@@ -105,6 +105,12 @@
   That is required eg. in `->lvalue :aggregation` call."
   0)
 
+(def ^:dynamic ^:private *next-alias-index*
+  "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to an atom valued 0. Hence every
+   compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
+   are gathered using `(swap *next-alias-index* inc)`, hence first used index is of value 1."
+  nil)
+
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
@@ -908,12 +914,11 @@
                      [:field _ (_ :guard #(not= (:join-alias %) alias))])
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
-                                            ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
-                                            ;; aliases should also contain no . characters (#32182).
-                                            (str/replace #"~|\." "_")
-                                            gensym
-                                            name)]
-                              {:field f, :rvalue (->rvalue f), :alias alias}))
+                                             ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
+                                             ;; aliases should also contain no . characters (#32182).
+                                             (str/replace #"~|\." "_")
+                                             (str "__" (swap! *next-alias-index* inc)))]
+                               {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
@@ -1395,7 +1400,8 @@
   "Compile an MBQL query."
   [query]
   (let [query (update query :query preprocess)]
-    (binding [*query* query]
+    (binding [*query* query
+              *next-alias-index* (atom 0)]
       (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
                                 (:name (lib.metadata/table (qp.store/metadata-provider) source-table-id))
                                 (query->collection-name query))
