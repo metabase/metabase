@@ -1966,33 +1966,33 @@
 (deftest xlsx-full-formatting-test
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
     (let [excel-data-query
-          "with t1 as (
-         select *
-         FROM (
-          VALUES
-            (1234.05, 1234.05, 2345.05, 4321.05, 7180.643352291768, 1234.00, 0.053010935820623994, 0.1920, TIMESTAMP '2023-01-01 12:34:56'),
-            (2345.30, 2345.30, 3456.30, 2931.30, 17180.643352291768, 0.00, 8.01623207863001, 0.00, TIMESTAMP '2023-01-01 12:34:56'),
-            (3456.00, 3456.00, 2300.00, 2250.00, 127180.643352291768, 122.00, 95.40200874663908, 0.1158, TIMESTAMP '2023-01-01 12:34:56')
-          )
-        ),
-        t2 as (
-        select
-            c1 as default_currency,
-            c2 as currency1,
-            c3 as currency2,
-            c4 as currency3,
-            c5 as scientific,
-            c6 as hide_me,
-            c7 as percent1,
-            c8 as percent2,
-            c9 as og_creation_timestamp,
-            c9 as creation_timestamp,
-            c9 as creation_timestamp_dup,
-            CAST(c9 AS DATE) as creation_date,
-            CAST(c9 AS TIME) as creation_time,
-            from t1
-        )
-        select * from t2"
+                       "with t1 as (
+                      select *
+                      FROM (
+                       VALUES
+                         (1234.05, 1234.05, 2345.05, 4321.05, 7180.643352291768, 1234.00, 0.053010935820623994, 0.1920, TIMESTAMP '2023-01-01 12:34:56'),
+                         (2345.30, 2345.30, 3456.30, 2931.30, 17180.643352291768, 0.00, 8.01623207863001, 0.00, TIMESTAMP '2023-01-01 12:34:56'),
+                         (3456.00, 3456.00, 2300.00, 2250.00, 127180.643352291768, 122.00, 95.40200874663908, 0.1158, TIMESTAMP '2023-01-01 12:34:56')
+                       )
+                     ),
+                     t2 as (
+                     select
+                         c1 as default_currency,
+                         c2 as currency1,
+                         c3 as currency2,
+                         c4 as currency3,
+                         c5 as scientific,
+                         c6 as hide_me,
+                         c7 as percent1,
+                         c8 as percent2,
+                         c9 as og_creation_timestamp,
+                         c9 as creation_timestamp,
+                         c9 as creation_timestamp_dup,
+                         CAST(c9 AS DATE) as creation_date,
+                         CAST(c9 AS TIME) as creation_time,
+                         from t1
+                     )
+                     select * from t2"
           viz-settings {:table.pivot_column "SCIENTIFIC"
                         :table.cell_column  "CURRENCY1"
                         :table.columns      [{:name     "OG_CREATION_TIMESTAMP"
@@ -2070,34 +2070,35 @@
                                              "[\"name\",\"CREATION_DATE\"]"          {:column_title "Date"}
                                              "[\"name\",\"DEFAULT_CURRENCY\"]"       {:number_style "currency"
                                                                                       :column_title "Plain Currency"}}}]
-      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
-                                                                   :type     :native
-                                                                   :native   {:query excel-data-query}}
-                                          :display                :table
-                                          :visualization_settings viz-settings}]
-        ;; The following formatting has been applied:
-        ;; - All columns renamed
-        ;; - Column reordering
-        ;; - Column hiding (See "HIDE_ME") above
-        ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
-        ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
-        ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
-        ;; - "Date" shows simple date formatting
-        ;; - "Time" shows simple time formatting
-        ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
-        ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
-        ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
-        ;; - "DOL Col" has trailing US dollars
-        ;; - "EXPO" has exponentiated values
-        ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
-        ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
-        (testing "All formatting is applied correctly in a complex situation."
-          (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
-                  ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
-                  ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
-                  ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
-                 (parse-xlsx-results-to-strings
-                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
+        (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                     :type     :native
+                                                                     :native   {:query excel-data-query}}
+                                            :display                :table
+                                            :visualization_settings viz-settings}]
+          ;; The following formatting has been applied:
+          ;; - All columns renamed
+          ;; - Column reordering
+          ;; - Column hiding (See "HIDE_ME") above
+          ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
+          ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
+          ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
+          ;; - "Date" shows simple date formatting
+          ;; - "Time" shows simple time formatting
+          ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
+          ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
+          ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
+          ;; - "DOL Col" has trailing US dollars
+          ;; - "EXPO" has exponentiated values
+          ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
+          ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
+          (testing "All formatting is applied correctly in a complex situation."
+            (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
+                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
+                   (parse-xlsx-results-to-strings
+                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
