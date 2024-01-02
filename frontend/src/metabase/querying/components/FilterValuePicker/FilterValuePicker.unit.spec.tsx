@@ -345,6 +345,24 @@ describe("StringFilterValuePicker", () => {
       expect(onBlur).toHaveBeenCalled();
     });
 
+    it("should not allow to add empty values", async () => {
+      const { onChange, onFocus, onBlur } = await setup({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const input = screen.getByPlaceholderText("Enter some text");
+      userEvent.type(input, "abc");
+      userEvent.clear(input);
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith([]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
     it("should allow to remove a value", async () => {
       const { onChange } = await setup({
         query,
