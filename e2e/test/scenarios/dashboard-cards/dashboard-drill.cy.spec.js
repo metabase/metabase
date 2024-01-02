@@ -790,14 +790,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.get(".Table-ID")
       .first()
       // Mid-point check that this cell actually contains ID = 1
-      .contains("3")
+      .contains("1")
       .click();
 
     cy.wait("@dataset").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
-    cy.findByTestId("object-detail");
-    cy.findAllByText("37.65");
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("Subtotal");
+      cy.findByText("37.65");
+    });
   });
 
   it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
