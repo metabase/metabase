@@ -13,6 +13,9 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   description: string | null;
   dataset: boolean;
   public_uuid: string | null;
+
+  /* Indicates whether static embedding for this card has been published */
+  enable_embedding: boolean;
   can_write: boolean;
 
   database_id?: DatabaseId;

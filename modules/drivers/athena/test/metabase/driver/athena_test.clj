@@ -6,7 +6,10 @@
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
@@ -156,3 +159,54 @@
                                          {:page {:page  3
                                                  :items 5}}))
                (update 0 #(str/split-lines (driver/prettify-native-form :athena %))))))))
+
+(defn- query->native [query]
+  (let [check-sql-fn (fn [_ _ sql & _] (throw (ex-info "DONE" {:sql sql})))]
+    (with-redefs [sql-jdbc.execute/statement-or-prepared-statement check-sql-fn]
+      (try (qp/process-query query)
+           (catch Throwable t (-> t ex-data :sql))))))
+
+;; TODO: If we are extending remove remark functionality to other drivers, we should consider making this
+;;       test (1) general, so other drivers can use it and (2) parallel. That would require making
+;;       `sql-jdbc.execute/statement-or-prepared-statement` dynamic so it can be temporarily modified using `binding`
+;;       instead of `with-redefs` in [[query->native]].
+;; TODO: If that is the case, also the solution should be generalized, taking into account existing functionality
+;;       for removing remark in other drivers, eg. bigquery. Generalization could be accomplished with help
+;;       of [[metabase.driver.sql-jdbc.execute/inject-remark]].
+(deftest remove-remark-test
+  (mt/test-driver
+   :athena
+   (let [mock-provider
+         (fn [should-include-hash?]
+           (let [db (merge meta/database
+                           {:id      1
+                            :engine  :athena
+                            :details (merge (:details (mt/db))
+                                            {:include-user-id-and-hash should-include-hash?})})]
+             (lib.tu/mock-metadata-provider
+              {:database db
+               :tables   [(merge (meta/table-metadata :venues)
+                                 {:name   "venues"
+                                  :id     1
+                                  :db-id  1
+                                  :schema (get-in db [:details :dataset-filters-patterns])})]
+               :fields   [(merge (meta/field-metadata :venues :id)
+                                 {:table-id  1
+                                  :name      "id"
+                                  :base-type :type/Integer})
+                          (merge (meta/field-metadata :venues :name)
+                                 {:table-id  1
+                                  :name      "name"
+                                  :base_type :type/Text})]})))
+         query {:database 1
+                :type     :query
+                :query    {:source-table 1
+                           :limit        1}
+                :info     {:executed-by 1000
+                           :query-hash  (byte-array [1 2 3 4])}}]
+     (testing "Baseline: Query strarts with remark"
+       (mt/with-metadata-provider (mock-provider true)
+         (is (str/starts-with? (query->native query) "-- Metabase::"))))
+     (testing "Query starts with select instead of a remark"
+       (mt/with-metadata-provider (mock-provider false)
+         (is (str/starts-with? (query->native query) "SELECT")))))))

@@ -7,6 +7,7 @@ import {
   visitIframe,
   getDashboardCard,
   addOrUpdateDashboardCard,
+  openStaticEmbeddingModal,
   downloadAndAssert,
   assertSheetRowsCount,
 } from "e2e/support/helpers";
@@ -52,8 +53,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      cy.icon("share").click();
-      cy.get(".Modal--full").findByText("Embed in your application").click();
+      openStaticEmbeddingModal();
 
       cy.findByRole("heading", { name: "Parameters" })
         .parent()
@@ -134,8 +134,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      cy.icon("share").click();
-      cy.get(".Modal--full").findByText("Embed in your application").click();
+      openStaticEmbeddingModal();
 
       cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();
@@ -400,9 +399,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
+    openStaticEmbeddingModal();
     // ID param is disabled by default
     setParameter("Name", "Editable");
     setParameter("Source", "Locked");

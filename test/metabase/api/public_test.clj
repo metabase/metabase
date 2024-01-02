@@ -206,7 +206,7 @@
                  (mt/rows (client/client :get 202 (str "public/card/" uuid "/query"))))))
 
         (testing ":json download response format"
-          (is (= [{:Count 100}]
+          (is (= [{:Count "100"}]
                  (client/client :get 200 (str "public/card/" uuid "/query/json")))))
 
         (testing ":csv download response format"

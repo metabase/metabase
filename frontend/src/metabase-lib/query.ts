@@ -56,6 +56,10 @@ export function dropStage(query: Query, stageIndex: number): Query {
   return ML.drop_stage(query, stageIndex);
 }
 
+export function dropStageIfEmpty(query: Query, stageIndex: number): Query {
+  return ML.drop_stage_if_empty(query, stageIndex);
+}
+
 export function removeClause(
   query: Query,
   stageIndex: number,

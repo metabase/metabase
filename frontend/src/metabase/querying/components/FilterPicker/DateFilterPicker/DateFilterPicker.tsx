@@ -1,15 +1,10 @@
 import { useMemo } from "react";
-import { DatePicker } from "metabase/querying/components/DatePicker";
+import { PopoverBackButton } from "metabase/ui";
 import type { DatePickerValue } from "metabase/querying/components/DatePicker";
+import { DatePicker } from "metabase/querying/components/DatePicker";
+import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
 import * as Lib from "metabase-lib";
-import { BackButton } from "../BackButton";
 import type { FilterPickerWidgetProps } from "../types";
-import {
-  getFilterClause,
-  getPickerOperators,
-  getPickerUnits,
-  getPickerValue,
-} from "./utils";
 
 export function DateFilterPicker({
   query,
@@ -24,20 +19,16 @@ export function DateFilterPicker({
     return Lib.displayInfo(query, stageIndex, column);
   }, [query, stageIndex, column]);
 
-  const value = useMemo(() => {
-    return filter && getPickerValue(query, stageIndex, filter);
-  }, [query, stageIndex, filter]);
-
-  const availableOperators = useMemo(() => {
-    return getPickerOperators(query, stageIndex, column);
-  }, [query, stageIndex, column]);
-
-  const availableUnits = useMemo(() => {
-    return getPickerUnits(query, stageIndex, column);
-  }, [query, stageIndex, column]);
+  const { value, availableOperators, availableUnits, getFilterClause } =
+    useDateFilter({
+      query,
+      stageIndex,
+      column,
+      filter,
+    });
 
   const handleChange = (value: DatePickerValue) => {
-    onChange(getFilterClause(query, stageIndex, column, value));
+    onChange(getFilterClause(value));
   };
 
   return (
@@ -48,9 +39,9 @@ export function DateFilterPicker({
         availableUnits={availableUnits}
         backButton={
           onBack && (
-            <BackButton pl="sm" onClick={onBack}>
+            <PopoverBackButton p="sm" onClick={onBack}>
               {columnInfo.longDisplayName}
-            </BackButton>
+            </PopoverBackButton>
           )
         }
         canUseRelativeOffsets

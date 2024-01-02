@@ -18,6 +18,18 @@ require("cy-verify-downloads").addCustomCommand();
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
+Cypress.on("test:before:run", () => {
+  // Check wether FE is running in dev mode
+  const feHealthcheck = Cypress.env().feHealthcheck;
+  if (feHealthcheck?.enabled) {
+    fetch(feHealthcheck.url).catch(() =>
+      alert(
+        `⛔️ ${feHealthcheck.url} is not available.\n\nIs dev server running?`,
+      ),
+    );
+  }
+});
+
 Cypress.on("test:after:run", (test, runnable) => {
   if (test.state === "failed") {
     const titleToFileName = title => title.replace(/[>]/g, "");

@@ -23,7 +23,6 @@ import { sortObject } from "metabase-lib/utils";
 
 import type {
   Card as CardObject,
-  Collection,
   CollectionId,
   DatabaseId,
   DatasetQuery,
@@ -45,7 +44,7 @@ import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
+import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   aggregate,
@@ -201,14 +200,6 @@ class Question {
 
   isStructured(): boolean {
     return this.query() instanceof StructuredQuery;
-  }
-
-  setEnableEmbedding(enabled: boolean): Question {
-    return this.setCard(assoc(this._card, "enable_embedding", enabled));
-  }
-
-  setEmbeddingParams(params: Record<string, any> | null): Question {
-    return this.setCard(assoc(this._card, "embedding_params", params));
   }
 
   /**
@@ -504,6 +495,11 @@ class Question {
     return (db && db.auto_run_queries) || false;
   }
 
+  isQueryEditable(): boolean {
+    const query = this.query();
+    return query ? query.isEditable() : false;
+  }
+
   /**
    * Returns the type of alert that current question supports
    *
@@ -771,10 +767,6 @@ class Question {
     return this._card && this._card.collection_id;
   }
 
-  collectionType(): Pick<Collection, "type"> {
-    return this._card?.collection?.type;
-  }
-
   setCollectionId(collectionId: number | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
@@ -829,10 +821,6 @@ class Question {
 
   publicUUID(): string {
     return this._card && this._card.public_uuid;
-  }
-
-  setPublicUUID(public_uuid: string | null): Question {
-    return this.setCard({ ...this._card, public_uuid });
   }
 
   database(): Database | null | undefined {
@@ -1038,24 +1026,23 @@ class Question {
       return this;
     }
 
-    const mbqlFilters = this.parameters()
-      .map(parameter => {
-        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
-      })
+    const query = this._getMLv2Query();
+    const stageIndex = -1;
+    const filters = this.parameters()
+      .map(parameter =>
+        fieldFilterParameterToFilter(query, stageIndex, parameter),
+      )
       .filter(mbqlFilter => mbqlFilter != null);
 
-    const query = mbqlFilters.reduce((query, mbqlFilter) => {
-      return query.filter(mbqlFilter);
-    }, this.query());
-
-    const hasQueryBeenAltered = mbqlFilters.length > 0;
-
-    const question = query
-      .question()
+    const newQuery = filters.reduce((query, filter) => {
+      return ML.filter(query, stageIndex, filter);
+    }, query);
+    const newQuestion = this._setMLv2Query(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return hasQueryBeenAltered ? question.markDirty() : question;
+    const hasQueryBeenAltered = filters.length > 0;
+    return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
   _getMLv2Query(metadata = this._metadata): Query {
@@ -1117,7 +1104,7 @@ class Question {
       this.isSaved() &&
       this.parameters().length === 0 &&
       this.query().canNest() &&
-      !this.query().readOnly() // originally "canRunAdhocQuery"
+      this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }
 

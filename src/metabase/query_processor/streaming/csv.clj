@@ -5,6 +5,7 @@
    [metabase.formatter :as formatter]
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -26,15 +27,15 @@
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
-        ordered-formatters (atom {})]
+        ordered-formatters (volatile! {})]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
-        (swap! ordered-formatters (constantly
-                                    (mapv (fn [col]
-                                            (formatter/create-formatter results_timezone col viz-settings))
-                                          ordered-cols)))
-        (csv/write-csv writer [(map (some-fn :display_name :name) ordered-cols)])
-        (.flush writer))
+        (let [col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings))]
+          (vreset! ordered-formatters (mapv (fn [col]
+                                              (formatter/create-formatter results_timezone col viz-settings))
+                                            ordered-cols))
+          (csv/write-csv writer [col-names])
+          (.flush writer)))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
         (let [ordered-row (if output-order
