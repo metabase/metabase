@@ -134,8 +134,9 @@
     [:not [:like :location "/%/%/"]]))
 
 (defn- select-collections
-  "Select collections based off certain parameters. If shallow is true, we select only within the
-   tree and its children. This is to pass less data from SQL to metabase."
+  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
+  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
+  is not necessary."
   [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   (cond->>
    (t2/select Collection
