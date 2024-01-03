@@ -45,7 +45,7 @@ describe("DateFilterEditor", () => {
   const column = findColumn("ORDERS", "CREATED_AT");
 
   describe("new filter", () => {
-    it("should add a relative filter from a shortcut", () => {
+    it("should add a relative date filter from a shortcut", () => {
       const { getNextFilterName } = setup({
         query: defaultQuery,
         stageIndex,
@@ -57,7 +57,7 @@ describe("DateFilterEditor", () => {
       expect(getNextFilterName()).toBe("Created At is in the previous month");
     });
 
-    it("should remove a relative filter from a shortcut", () => {
+    it("should remove a relative date filter from a shortcut", () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
         Lib.relativeDateFilterClause({
@@ -83,7 +83,7 @@ describe("DateFilterEditor", () => {
       expect(getNextFilterName()).toBeNull();
     });
 
-    it("should add a relative filter not from a shortcut", async () => {
+    it("should add a relative date filter", async () => {
       const { getNextFilterName } = setup({
         query: defaultQuery,
         stageIndex,
@@ -96,7 +96,7 @@ describe("DateFilterEditor", () => {
       expect(getNextFilterName()).toBe("Created At is in the previous 30 days");
     });
 
-    it("should remove a relative filter not from a shortcut", async () => {
+    it("should remove a relative date filter", async () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
         Lib.relativeDateFilterClause({
@@ -120,7 +120,45 @@ describe("DateFilterEditor", () => {
       expect(getNextFilterName()).toBe(null);
     });
 
-    it("should add an exclude filter", async () => {
+    it("should add a specific date filter", async () => {
+      const { getNextFilterName } = setup({
+        query: defaultQuery,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByLabelText("More options"));
+      userEvent.click(await screen.findByText("Specific dates…"));
+      userEvent.click(screen.getByText("After"));
+      userEvent.clear(screen.getByLabelText("Date"));
+      userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
+      userEvent.click(screen.getByText("Add filter"));
+
+      expect(getNextFilterName()).toBe("Created At is after Feb 15, 2020");
+    });
+
+    it("should remove a specific date filter", async () => {
+      const { query, filter } = createQueryWithFilter(
+        defaultQuery,
+        Lib.specificDateFilterClause(defaultQuery, stageIndex, {
+          operator: "=",
+          column,
+          values: [new Date(2020, 1, 15)],
+        }),
+      );
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(screen.getByText("Feb 15, 2020")).toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Clear"));
+      expect(getNextFilterName()).toBe(null);
+    });
+
+    it("should add an exclude date filter", async () => {
       const { getNextFilterName } = setup({
         query: defaultQuery,
         stageIndex,
@@ -136,7 +174,7 @@ describe("DateFilterEditor", () => {
       expect(getNextFilterName()).toBe("Created At excludes the hour of 5 PM");
     });
 
-    it("should remove an exclude filter", async () => {
+    it("should remove an exclude date filter", async () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
         Lib.excludeDateFilterClause(defaultQuery, stageIndex, {
