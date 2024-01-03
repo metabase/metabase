@@ -8,6 +8,10 @@
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
 ![Docker Pulls](https://img.shields.io/docker/pulls/metabase/metabase)
 
+## Get started
+
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
+
 ## Features
 
 - [Set up in five minutes](https://www.metabase.com/docs/latest/setting-up-metabase.html) (we're not kidding).
@@ -29,7 +33,7 @@ Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of
 
 ## Installation
 
-Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase.html).
+Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase).
 
 ## Contributing
 
@@ -54,7 +58,7 @@ $ yarn build
 To build and run with hot-reload:
 
 ```
-$ yarn build-hot 
+$ yarn build-hot
 ```
 
 ### Backend  quick setup

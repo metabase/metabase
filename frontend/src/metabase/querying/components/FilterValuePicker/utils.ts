@@ -1,31 +1,26 @@
+import type { SelectItem } from "metabase/ui";
 import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { FieldValue, FieldValuesResult } from "metabase-types/api";
-import { MAX_INLINE_OPTIONS } from "./constants";
-import type { Option } from "./types";
 
 export function canLoadFieldValues({
   fieldId,
   hasFieldValues,
-}: FieldValuesSearchInfo) {
+}: FieldValuesSearchInfo): boolean {
   return fieldId != null && hasFieldValues === "list";
 }
 
-export function canListFieldValues(
-  { values, has_more_values }: FieldValuesResult,
-  isCompact: boolean,
-) {
-  return (
-    values.length > 0 &&
-    (values.length <= MAX_INLINE_OPTIONS || !isCompact) &&
-    !has_more_values
-  );
+export function canListFieldValues({
+  values,
+  has_more_values,
+}: FieldValuesResult): boolean {
+  return values.length > 0 && !has_more_values;
 }
 
 export function canSearchFieldValues(
   { fieldId, searchFieldId, hasFieldValues }: FieldValuesSearchInfo,
   fieldData: FieldValuesResult | undefined,
-) {
+): boolean {
   return (
     fieldId != null &&
     searchFieldId != null &&
@@ -34,39 +29,35 @@ export function canSearchFieldValues(
   );
 }
 
-export function getFieldOptions(fieldValues: FieldValue[]): Option[] {
+function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
   return fieldValues.map(([value, label = value]) => ({
     value: String(value),
     label: String(label),
   }));
 }
 
-function getSelectedOptions(selectedValues: string[]): Option[] {
+function getSelectedOptions(selectedValues: string[]): SelectItem[] {
   return selectedValues.map(value => ({
     value,
     label: value,
   }));
 }
 
-export function getMergedOptions(
+export function getEffectiveOptions(
   fieldValues: FieldValue[],
   selectedValues: string[],
-): Option[] {
+): SelectItem[] {
   const options = [
     ...getFieldOptions(fieldValues),
     ...getSelectedOptions(selectedValues),
   ];
 
   const mapping = options.reduce((map: Record<string, string>, option) => {
-    map[option.value] ??= option.label;
+    map[option.value] ??= option.label ?? option.value;
     return map;
   }, {});
 
   return Object.entries(mapping).map(([value, label]) => ({ value, label }));
-}
-
-export function hasDuplicateOption(options: Option[], query: string) {
-  return options.some(option => option.value === query);
 }
 
 export function isKeyColumn(column: Lib.ColumnMetadata) {
