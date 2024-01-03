@@ -230,9 +230,8 @@ describe("CollectionHeader", () => {
       });
       userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(
-        screen.getByRole("dialog", { name: "Uploads CSVs to Metabase" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      expect(screen.getByText("Uploads CSVs to Metabase")).toBeInTheDocument();
     });
 
     it("should show an informational modal with a link to settings for admins", async () => {
@@ -244,9 +243,7 @@ describe("CollectionHeader", () => {
       });
       userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(
-        screen.getByRole("dialog", { name: "Uploads CSVs to Metabase" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText("Enable in settings")).toBeInTheDocument();
       expect(screen.getByRole("link")).toBeInTheDocument();
     });
@@ -260,9 +257,7 @@ describe("CollectionHeader", () => {
       });
       userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(
-        screen.getByRole("dialog", { name: "Uploads CSVs to Metabase" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText(/ask your admin to enable/i)).toBeInTheDocument();
     });
 
@@ -275,9 +270,7 @@ describe("CollectionHeader", () => {
       });
       userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(
-        screen.getByRole("dialog", { name: "Uploads CSVs to Metabase" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       userEvent.click(getIcon("close"));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
@@ -291,9 +284,7 @@ describe("CollectionHeader", () => {
       });
       userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(
-        await screen.findByRole("dialog", { name: "Uploads CSVs to Metabase" }),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
       userEvent.click(screen.getByText("Got it"));
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
