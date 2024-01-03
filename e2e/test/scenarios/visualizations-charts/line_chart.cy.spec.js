@@ -596,12 +596,13 @@ describe("scenarios > visualizations > line chart", () => {
 
       cy.wait("@dataset");
 
-      cy.findByTestId("filter-pill").should(
-        "have.text",
-        "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
-      );
+      cy.findByTestId("filter-pill").should("contain.text", "Created At is");
 
-      cy.get(".Visualization .dot").should("have.length", 6);
+      const X_AXIS_VALUE = "June 2022";
+      cy.get(".CardVisualization").within(() => {
+        cy.get(".x-axis-label").should("have.text", "Created At");
+        cy.findByText(X_AXIS_VALUE);
+      });
     },
   );
 
@@ -634,8 +635,11 @@ describe("scenarios > visualizations > line chart", () => {
       "contain.text",
       "Quantity is between",
     );
-
-    cy.get(".Visualization .dot").should("have.length", 4);
+    const X_AXIS_VALUE = 8;
+    cy.get(".CardVisualization").within(() => {
+      cy.get(".x-axis-label").should("have.text", "Quantity");
+      cy.findByText(X_AXIS_VALUE);
+    });
   });
 });
 

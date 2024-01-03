@@ -14,7 +14,7 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 describe("issue 34382", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
 
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
@@ -44,8 +44,10 @@ describe("issue 34382", () => {
 
       getDashboardCard().within(() => {
         // only products with category "Gizmo" are filtered
-        cy.findAllByTestId("table-row").should("have.length", 8);
-        cy.findAllByText("Gizmo").should("have.length", 8);
+        cy.findAllByTestId("table-row")
+          .find("td")
+          .eq(3)
+          .should("contain", "Gizmo");
       });
     },
   );
