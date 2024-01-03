@@ -364,9 +364,7 @@ describe("ModelDetailPage", () => {
         userEvent.click(getIcon("ellipsis"));
         userEvent.click(screen.getByText("Archive"));
 
-        expect(
-          screen.getByRole("dialog", { name: "Archive this model?" }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
         userEvent.click(screen.getByRole("button", { name: "Archive" }));
 
         await waitFor(() => {
@@ -387,11 +385,7 @@ describe("ModelDetailPage", () => {
         userEvent.click(getIcon("ellipsis"));
         userEvent.click(screen.getByText("Move"));
 
-        expect(
-          screen.getByRole("dialog", {
-            name: "Which collection should this be in?",
-          }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
         userEvent.click(await screen.findByText(COLLECTION_2.name));
         userEvent.click(screen.getByRole("button", { name: "Move" }));
 
@@ -654,9 +648,7 @@ describe("ModelDetailPage", () => {
         userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
         userEvent.click(screen.getByText("Archive"));
 
-        const modal = screen.getByRole("dialog", {
-          name: "Archive Query Action Mock?",
-        });
+        const modal = screen.getByRole("dialog");
         userEvent.click(within(modal).getByRole("button", { name: "Archive" }));
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

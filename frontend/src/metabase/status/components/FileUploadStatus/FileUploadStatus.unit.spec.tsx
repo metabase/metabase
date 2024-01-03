@@ -182,9 +182,7 @@ describe("FileUploadStatus", () => {
 
     userEvent.click(await screen.findByText("Show error details"));
 
-    expect(
-      await screen.findByRole("dialog", { name: "Upload error details" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
   });

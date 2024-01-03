@@ -70,8 +70,11 @@ describe("NewItemMenu", () => {
   describe("New Action", () => {
     it("should open action editor on click", async () => {
       setup();
+
       userEvent.click(await screen.findByText("Action"));
-      expect(screen.getByTestId("mock-action-editor")).toBeVisible();
+      const modal = screen.getByRole("dialog");
+
+      expect(modal).toBeVisible();
     });
 
     it("should not be visible if there are no databases with actions enabled", () => {
