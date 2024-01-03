@@ -205,7 +205,10 @@
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings {semantic-type :semantic_type effective-type :effective_type unit :unit :as col}]
+  [format-settings {semantic-type  :semantic_type
+                    effective-type :effective_type
+                    base-type      :base_type
+                    unit           :unit :as col}]
   (let [col-type (common/col-type col)]
     (u/one-or-many
       (cond
@@ -213,9 +216,12 @@
         (isa? col-type :Relation/*)
         "0"
 
+        ;; This logic is a guard against someone setting the semantic type of a non-temporal value like 1.0 to temporal.
+        ;; It will not apply formatting to the value in this case.
         (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
                  (isa? semantic-type :type/Temporal))
-             (isa? effective-type :type/Temporal))
+             (or (isa? effective-type :type/Temporal)
+                 (isa? base-type :type/Temporal)))
         (datetime-format-string format-settings unit)
 
         (or (some #(contains? number-setting-keys %) (keys format-settings))

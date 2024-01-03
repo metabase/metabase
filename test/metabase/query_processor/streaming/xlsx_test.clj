@@ -4,7 +4,10 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.shared.models.visualization-settings :as mb.viz]
@@ -24,7 +27,12 @@
    (format-string format-settings nil))
 
   ([format-settings col]
-   (let [format-strings (@#'qp.xlsx/format-settings->format-strings format-settings col)]
+   (let [viz-settings (common/viz-settings-for-col
+                        (assoc col :field_ref [:field 1])
+                        {::mb.viz/column-settings {{::mb.viz/field-id 1} format-settings}
+                         ::mb.viz/global-column-settings (m/map-vals mb.viz/db->norm-column-settings-entries
+                                                                     (public-settings/custom-formatting))})
+         format-strings (@#'qp.xlsx/format-settings->format-strings viz-settings col)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond

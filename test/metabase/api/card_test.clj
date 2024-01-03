@@ -1963,6 +1963,56 @@
                (parse-xlsx-results-to-strings
                  (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
 
+(deftest xlsx-default-currency-formatting-test
+  (testing "The default currency is USD"
+    (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query "SELECT 123.45 AS MONEY"}}
+                                        :display                :table
+                                        :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                   {:number_style       "currency"
+                                                                                    :currency_in_header false}}}}]
+      (is (= [["MONEY"]
+              ["[$$]123.45"]]
+             (parse-xlsx-results-to-strings
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))
+  (testing "Default localization settings take effect"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                          :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query "SELECT 123.45 AS MONEY"}}
+                                          :display                :table
+                                          :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                     {:number_style       "currency"
+                                                                                      :currency_in_header false}}}}]
+        (is (= [["MONEY"]
+                ["[$€]123.45"]]
+               (parse-xlsx-results-to-strings
+                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-currency-formatting-test
+  (testing "Currencies are applied correctly in Excel files"
+    (let [currencies ["USD" "CAD" "EUR" "JPY"]
+          q (format "SELECT %s" (str/join "," (map (partial format "123.45 as %s") currencies)))
+          settings (reduce (fn [acc currency]
+                             (assoc acc (format "[\"name\",\"%s\"]" currency)
+                                        {:number_style       "currency"
+                                         :currency           currency
+                                         :currency_in_header false}))
+                           {}
+                           currencies)]
+      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query q}}
+                                          :display                :table
+                                          :visualization_settings {:column_settings settings}}]
+        (testing "Removing the time portion of the timestamp should only show the date"
+          (is (= [currencies
+                  ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
+                 (parse-xlsx-results-to-strings
+                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+
 (deftest xlsx-full-formatting-test
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
     (let [excel-data-query

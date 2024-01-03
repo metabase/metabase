@@ -149,28 +149,45 @@
   (:type/Number global-column-settings {}))
 
 (defmethod global-type-settings :type/Currency [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
-  (:type/Currency global-column-settings {::mb.viz/number-style "currency"}))
+  (merge
+    {::mb.viz/number-style "currency"}
+    (:type/Currency global-column-settings)))
 
 (defmethod global-type-settings :default [_ _viz-settings]
   {})
 
+(defn- column-setting-defaults
+  "Look up the setting defaults based on any information in the column-settings. This is the case when a column has no
+  special type (e.g. a number) but the user has specified that the type is currency. We prefer the currency defaults to
+  the number defaults."
+  [global-column-settings column-settings]
+  (case (::mb.viz/number-style column-settings)
+    "currency" (:type/Currency global-column-settings)
+    {}))
+
 (defn viz-settings-for-col
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."
-  [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
+  [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col}
+   {::mb.viz/keys [global-column-settings] :as viz-settings}]
   (let [[_ field-id-or-name] field_ref
         all-cols-settings (-> viz-settings
                               ::mb.viz/column-settings
                               ;; update the keys so that they will have only the :field-id or :column-name
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
-                              (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
+                              (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+        column-settings (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
+                            (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)}))]
     (merge
+      ;; The default global settings based on the type of the column
       (global-type-settings col viz-settings)
+      ;; Generally, we want to look up the default global settings based on semantic or effective type. However, if
+      ;; a user has specified other settings, we should look up the base type of those settings and combine them.
+      (column-setting-defaults global-column-settings column-settings)
       ;; User defined metadata -- Note that this transformation should probably go in
       ;; `metabase.query-processor.middleware.results-metadata/merge-final-column-metadata
       ;; to prevent repetition
       (mb.viz/db->norm-column-settings-entries metadata-column-settings)
       ;; Column settings coming from the user settings in the ui
       ;; (E.g. Click the ⚙️on the column)
-      (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
-          (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)})))))
+      column-settings)))
