@@ -237,7 +237,7 @@
   (testing "GET /api/collection/tree?shallow=true"
     (with-collection-hierarchy [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))
-            ids      (set (map :id (cons personal-collection [a b c d e f g])))]
+            ids                 (set (map :id (cons personal-collection [a b c d e f g])))]
         (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true")]
           (testing "Make sure overall tree shape of the response is as is expected"
             (is (= [{:name     "A"
@@ -272,13 +272,13 @@
                         (map #(select-keys % [:name :children])))))))))))
 
 (deftest select-collections-shallow-test
-  (testing "Selecing collections based off collection-id equaling nil works."
+  (testing "Selecting collections based off collection-id equaling nil works."
     (with-collection-hierarchy [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :crowberto))
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
           (testing "Make sure we get the expected collections when collection-id is nil"
-            (let [collections (#'api.collection/select-collections nil nil nil true nil)]
+            (let [collections (#'api.collection/select-collections false false nil true nil)]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -288,7 +288,7 @@
                           (map #(select-keys % [:name]))
                           (into #{}))))))
           (testing "Make sure we get the expected collections when collection-id is an integer"
-            (let [collections (#'api.collection/select-collections nil nil nil true (:id a))]
+            (let [collections (#'api.collection/select-collections false false nil true (:id a))]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -298,7 +298,7 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))
-            (let [collections (#'api.collection/select-collections nil nil nil true (:id b))]
+            (let [collections (#'api.collection/select-collections false false nil true (:id b))]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
@@ -983,6 +983,7 @@
     (testing "sub-Collections of other's Personal Collections should show up for admins as well"
       (is (partial= lucky-personal-subcollection-item
                     (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
+
 
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
 
