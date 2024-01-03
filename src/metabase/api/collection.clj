@@ -79,8 +79,7 @@
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       (when exclude-archived
-                         [:= :archived false])
+                       [:!= :archived exclude-archived]
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (perms/audit-namespace-clause :namespace namespace)
