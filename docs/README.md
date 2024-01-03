@@ -158,6 +158,7 @@ Metabase's reference documentation.
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
 - [Interactive embedding](./embedding/interactive-embedding.md)
+- [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
 - [Static embedding](./embedding/static-embedding.md)
 - [Parameters for static embeds](./embedding/static-embedding-parameters.md)
 

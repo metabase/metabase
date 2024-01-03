@@ -4391,6 +4391,21 @@ databaseChangeLog:
                   remarks: 'If true, the table requires a filter to be able to query it'
 
   - changeSet:
+      id: v49.00-012
+      author: qnkhuat
+      comment: Add metabase_field.database_partitioned
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_partitioned
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'Whether the table is partitioned by this field'
+
+  - changeSet:
       id: v49.00-013
       author: johnswanson
       comment: Add `api_key.updated_by_id`
@@ -5101,6 +5116,28 @@ databaseChangeLog:
         - modifyDataType:
             tableName: metabase_table
             columnName: database_require_filter
+            newDataType: boolean
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb
+
+  - changeSet:
+      id: v49.00-060
+      author: qnkhuat
+      comment: >-
+        Added 0.49.0 - modify type of metabase_field.database_partitioned
+        from boolean to ${boolean.type} on mysql,mariadb
+      dbms: mysql,mariadb
+      changes:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_partitioned
+            newDataType: ${boolean.type}
+      rollback:
+        - modifyDataType:
+            tableName: metabase_field
+            columnName: database_partitioned
             newDataType: boolean
       preConditions:
         - onFail: MARK_RAN

@@ -36,7 +36,9 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n
+    :as i18n
+    :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]

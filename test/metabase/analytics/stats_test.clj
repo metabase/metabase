@@ -74,21 +74,25 @@
                 slack/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Test"
                                        startup-time-millis 1234.0
-                                       google-auth-enabled false]
-      (let [stats (anonymous-usage-stats)]
-        (is (partial= {:running_on          :unknown
-                       :check_for_updates   true
-                       :startup_time_millis 1234.0
-                       :site_name           true
-                       :friendly_names      false
-                       :email_configured    false
-                       :slack_configured    false
-                       :sso_configured      false
-                       :has_sample_data     false
-                       :help_link           :metabase}
-                      stats))
-        (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
-                    (-> stats :stats :database :dbms_versions)))))))
+                                       google-auth-enabled false
+                                       enable-embedding    false]
+      (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+        (let [stats (anonymous-usage-stats)]
+          (is (partial= {:running_on               :unknown
+                         :check_for_updates        true
+                         :startup_time_millis      1234.0
+                         :site_name                true
+                         :friendly_names           false
+                         :email_configured         false
+                         :slack_configured         false
+                         :sso_configured           false
+                         :has_sample_data          true
+                         :help_link                :metabase
+                         :enable_embedding         false
+                         :embedding_app_origin_set false}
+                        stats))
+          (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+                      (-> stats :stats :database :dbms_versions))))))))
 
 (deftest ^:parallel conversion-test
   (is (= #{true}

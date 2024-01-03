@@ -197,7 +197,7 @@ const QuestionActions = ({
     }
   }
 
-  if (!question.query().readOnly()) {
+  if (question.isQueryEditable()) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "clone",

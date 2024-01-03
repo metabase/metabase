@@ -4,6 +4,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -31,6 +32,7 @@
 
 (declare remove-local-references)
 (declare remove-stage-references)
+(declare normalize-fields-clauses)
 
 (defn- find-matching-order-by-index
   [query stage-number [target-op {:keys [temporal-unit binning]} target-ref-id]]
@@ -175,7 +177,9 @@
                   :else
                   query)]
       (if location
-        (remove-replace-location query stage-number query location target-clause remove-replace-fn)
+        (-> query
+            (remove-replace-location stage-number query location target-clause remove-replace-fn)
+            normalize-fields-clauses)
         query))))
 
 (declare remove-join)
@@ -366,7 +370,9 @@
                                :joins
                                (fn [joins]
                                  (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
-         (remove-invalidated-refs query-after query stage-number)))
+         (-> query-after
+             (remove-invalidated-refs query stage-number)
+             normalize-fields-clauses)))
      query)))
 
 (defn- has-field-from-join? [form join-alias]
@@ -424,3 +430,40 @@
                                                            new-join
                                                            %)
                                                         joins))))))
+
+(defn- specifies-default-fields? [query stage-number]
+  (let [fields (:fields (lib.util/query-stage query stage-number))]
+    (and fields
+         ;; Quick first check: if there are any implicitly-joined fields, it's not the default list.
+         (not (some (comp :source-field lib.options/options) fields))
+         (lib.equality/matching-column-sets? query stage-number fields
+                                             (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
+
+(defn- normalize-fields-for-join [query stage-number join]
+  (if (#{:none :all} (:fields join))
+    ;; Nothing to do if it's already a keyword.
+    join
+    (cond-> join
+      (lib.equality/matching-column-sets?
+        query stage-number (:fields join)
+        (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+      (assoc :fields :all))))
+
+(defn- normalize-fields-for-stage [query stage-number]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (cond-> query
+      (specifies-default-fields? query stage-number)
+      (lib.util/update-query-stage stage-number dissoc :fields)
+
+      (:joins stage)
+      (lib.util/update-query-stage stage-number update :joins
+                                   (partial mapv #(normalize-fields-for-join query stage-number %))))))
+
+(mu/defn normalize-fields-clauses :- :metabase.lib.schema/query
+  "Check all the `:fields` clauses in the query - on the stages and any joins - and drops them if they are equal to the
+  defaults.
+  - For stages, if the `:fields` list is identical to the default fields for this stage.
+  - For joins, replace it with `:all` if it's all the fields that are in the join by default.
+  - For joins, remove it if the list is empty (the default for joins is no fields)."
+  [query :- :metabase.lib.schema/query]
+  (reduce normalize-fields-for-stage query (range (count (:stages query)))))

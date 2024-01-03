@@ -33,6 +33,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
@@ -973,8 +974,8 @@
             (is (malli= [:map
                          [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                          [:query          [:= {} (mt/obj->json->obj query)]]
-                         [:required-perms [:sequential perms/PathSchema]]
-                         [:actual-perms   [:sequential perms/PathSchema]]
+                         [:required-perms [:sequential perms.u/PathSchema]]
+                         [:actual-perms   [:sequential perms.u/PathSchema]]
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
@@ -1503,8 +1504,8 @@
                 (is (malli= [:map
                              [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                              [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
-                             [:required-perms [:sequential perms/PathSchema]]
-                             [:actual-perms   [:sequential perms/PathSchema]]
+                             [:required-perms [:sequential perms.u/PathSchema]]
+                             [:actual-perms   [:sequential perms.u/PathSchema]]
                              [:trace          [:sequential :any]]]
                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
@@ -2943,11 +2944,12 @@
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id (mt/id)
                                            uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]          (let [{:keys [status body]} (upload-example-csv-via-api!)]
-            (is (= 200
-                   status))
-            (is (= body
-                   (t2/select-one-pk :model/Card :database_id (mt/id)))))))
+                                           uploads-schema-name "PUBLIC"]
+          (let [{:keys [status body]} (upload-example-csv-via-api!)]
+           (is (= 200
+                  status))
+           (is (= body
+                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id nil
