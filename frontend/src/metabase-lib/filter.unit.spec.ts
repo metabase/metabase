@@ -936,7 +936,7 @@ describe("filter", () => {
     it.each([
       ["yyyy-MM-DDTHH:mm:ssZ", "2020-01-05T10:20:00+04:00"],
       ["yyyy-MM-DDTHH:mm:ss", "2020-01-05T10:20:00"],
-    ])("should support %s datetime format", (format, arg) => {
+    ])("should support %s datetime format", (_, arg) => {
       const { filterParts } = addSpecificDateFilter(
         query,
         Lib.expressionClause("=", [column, arg]),
@@ -1406,11 +1406,11 @@ describe("filter", () => {
     });
 
     it.each([
-      ["HH:mm:ss.sss[Z]", "11:08:13.1313Z"],
-      ["HH:mm:SS.sss", "11:08:13.1313"],
-      ["HH:mm:SS", "11:08:13"],
+      ["HH:mm:ss.SSS[Z]", "11:08:13.123Z"],
+      ["HH:mm:ss.SSS", "11:08:13.123"],
+      ["HH:mm:ss", "11:08:13"],
       ["HH:mm", "11:08"],
-    ])("should support %s time format", (format, arg) => {
+    ])("should support %s time format", (_, arg) => {
       const { filterParts } = addTimeFilter(
         query,
         Lib.expressionClause(">", [column, arg]),
