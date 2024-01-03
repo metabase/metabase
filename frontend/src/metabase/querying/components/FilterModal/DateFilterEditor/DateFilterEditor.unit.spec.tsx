@@ -60,6 +60,7 @@ describe("DateFilterEditor", () => {
     it("should remove a relative date filter from a shortcut", () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
+        stageIndex,
         Lib.relativeDateFilterClause({
           column,
           value: "current",
@@ -99,6 +100,7 @@ describe("DateFilterEditor", () => {
     it("should remove a relative date filter", async () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
+        stageIndex,
         Lib.relativeDateFilterClause({
           column,
           value: -30,
@@ -140,6 +142,7 @@ describe("DateFilterEditor", () => {
     it("should remove a specific date filter", async () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
+        stageIndex,
         Lib.specificDateFilterClause(defaultQuery, stageIndex, {
           operator: "=",
           column,
@@ -177,6 +180,7 @@ describe("DateFilterEditor", () => {
     it("should remove an exclude date filter", async () => {
       const { query, filter } = createQueryWithFilter(
         defaultQuery,
+        stageIndex,
         Lib.excludeDateFilterClause(defaultQuery, stageIndex, {
           operator: "!=",
           column,
@@ -202,10 +206,10 @@ describe("DateFilterEditor", () => {
 
 function createQueryWithFilter(
   initialQuery: Lib.Query,
+  stageIndex: number,
   clause: Lib.ExpressionClause | Lib.SegmentMetadata,
 ) {
-  const query = Lib.filter(initialQuery, 0, clause);
-  const [filter] = Lib.filters(query, 0);
-  const column = Lib.filterParts(query, 0, filter)?.column;
-  return { query, filter, column };
+  const query = Lib.filter(initialQuery, stageIndex, clause);
+  const [filter] = Lib.filters(query, stageIndex);
+  return { query, filter };
 }
