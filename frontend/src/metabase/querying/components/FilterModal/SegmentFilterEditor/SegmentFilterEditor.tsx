@@ -47,6 +47,8 @@ export function SegmentFilterEditor({
           data={data}
           value={value}
           placeholder={t`Filter segments`}
+          nothingFound={t`No matching segment found.`}
+          searchable
           onChange={handleChange}
         />
       </Grid.Col>
