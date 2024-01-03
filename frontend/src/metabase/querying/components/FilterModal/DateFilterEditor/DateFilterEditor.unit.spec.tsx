@@ -52,7 +52,7 @@ describe("DateFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Last month" }));
+      userEvent.click(screen.getByText("Last month"));
 
       expect(getNextFilterName()).toBe("Created At is in the previous month");
     });
@@ -90,10 +90,8 @@ describe("DateFilterEditor", () => {
         column,
       });
 
-      userEvent.click(screen.getByRole("button", { name: "More options" }));
-      userEvent.click(
-        await screen.findByRole("button", { name: "Last 30 days" }),
-      );
+      userEvent.click(screen.getByLabelText("More options"));
+      userEvent.click(await screen.findByText("Last 30 days"));
 
       expect(getNextFilterName()).toBe("Created At is in the previous 30 days");
     });
@@ -117,9 +115,25 @@ describe("DateFilterEditor", () => {
         filter,
       });
 
-      userEvent.click(screen.getByRole("button", { name: "Clear" }));
+      userEvent.click(screen.getByLabelText("Clear"));
 
       expect(getNextFilterName()).toBe(null);
+    });
+
+    it("should add an exclude filter", async () => {
+      const { getNextFilterName } = setup({
+        query: defaultQuery,
+        stageIndex,
+        column,
+      });
+
+      userEvent.click(screen.getByLabelText("More options"));
+      userEvent.click(await screen.findByText("Exclude…"));
+      userEvent.click(screen.getByText("Hours of the day…"));
+      userEvent.click(screen.getByText("5 PM"));
+      userEvent.click(screen.getByText("Add filter"));
+
+      expect(getNextFilterName()).toBe("Created At excludes the hour of 5 PM");
     });
   });
 });
