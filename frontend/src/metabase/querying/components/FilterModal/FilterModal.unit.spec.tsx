@@ -117,13 +117,13 @@ describe("FilterModal", () => {
     const sections = screen.getAllByTestId("filter-column-Created At");
     expect(sections).toHaveLength(3);
 
-    const [ordersSection, productSection, peopleSection] = sections;
+    const [ordersSection, productsSection, peopleSection] = sections;
     expect(within(ordersSection).getByText("Orders")).toBeInTheDocument();
-    expect(within(productSection).getByText("Products")).toBeInTheDocument();
+    expect(within(productsSection).getByText("Products")).toBeInTheDocument();
     expect(within(peopleSection).getByText("People")).toBeInTheDocument();
 
     userEvent.click(within(ordersSection).getByText("Today"));
-    userEvent.click(within(productSection).getByText("Yesterday"));
+    userEvent.click(within(productsSection).getByText("Yesterday"));
     userEvent.click(within(peopleSection).getByText("Last month"));
     userEvent.click(screen.getByRole("button", { name: "Apply filters" }));
 
@@ -185,9 +185,24 @@ describe("FilterModal", () => {
   it("should order columns by type", () => {
     setup({ query });
 
-    const columns = screen.getAllByTestId(/filter-column/);
-    expect(columns).toHaveLength(9);
-    expect(within(columns[0]).getByText("Created At")).toBeInTheDocument();
-    expect(within(columns[6]).getByText("ID")).toBeInTheDocument();
+    const sections = screen.getAllByTestId(/filter-column/);
+    const columns = [
+      "Created At",
+      "Discount",
+      "Quantity",
+      "Subtotal",
+      "Tax",
+      "Total",
+      "ID",
+      "Product ID",
+      "User ID",
+    ];
+
+    expect(sections).toHaveLength(columns.length);
+    sections.forEach((section, sectionIndex) => {
+      expect(
+        within(section).getByText(columns[sectionIndex]),
+      ).toBeInTheDocument();
+    });
   });
 });
