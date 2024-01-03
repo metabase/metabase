@@ -64,10 +64,19 @@
          (remove-existing-filters-against-column stage-number numeric-column)
          (lib.filter/filter stage-number (lib.filter/between numeric-column start end))))))
 
-(def ^:private temporal-filter-min-num-rows
-  "Minimum number of rows an updated query should return; if it will return less than this, switch to
+;;; points in this case correspond to the number of rows returned by a query if there are no gaps. E.g. if we have a
+;;; query like
+;;;
+;;;    orders, count aggregation, broken out by month(created_at) between 2024-01 and 2024-03 (inclusive)
+;;;
+;;; we would have at most 3 rows returned -- the value for 2024-01, the value for 2024-02, and the value for 2024-03.
+;;; If no rows have a created_at in that month, then those rows may not get returned. However, the FE should
+;;; interpolate the missing values and still include points with values of zero; that's what we mean when we
+;;; say "points" below.
+(def ^:private temporal-filter-min-num-points
+  "Minimum number of points an updated query should return; if it will return less than this, switch to
   the [[unit->next-unit]]. E.g. if we zoom in on a query using unit is `:day` and the zoomed in query would
-  only return 2 rows, switch the unit to `:minute`."
+  only return 2 points, switch the unit to `:minute`."
   4)
 
 (def ^:private unit->next-unit
@@ -76,15 +85,15 @@
     (zipmap units (cons nil units))))
 
 (mu/defn ^:private temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
-  "If the current breakout `unit` will not return at least [[temporal-filter-min-num-rows]], find the largest unit
+  "If the current breakout `unit` will not return at least [[temporal-filter-min-num-points]], find the largest unit
   that will."
   [unit  :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
    start :- ::lib.schema.literal/temporal
    end   :- ::lib.schema.literal/temporal]
   (loop [unit unit]
-    (let [num-rows      (shared.ut/unit-diff unit start end)
-          too-few-rows? (< num-rows temporal-filter-min-num-rows)]
-      (if-let [next-largest-unit (when too-few-rows?
+    (let [num-points      (shared.ut/unit-diff unit start end)
+          too-few-points? (< num-points temporal-filter-min-num-points)]
+      (if-let [next-largest-unit (when too-few-points?
                                    (unit->next-unit unit))]
         (recur next-largest-unit)
         unit))))
