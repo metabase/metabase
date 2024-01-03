@@ -34,6 +34,9 @@
 (def local-date-patterns
   "patterns used to generate the local date formatter. Excludes ISO_LOCAL_DATE (uuuu-MM-dd) because there's
   already a built-in DateTimeFormatter for that: [[DateTimeFormatter/ISO_LOCAL_DATE]]"
+  ;; uuuu is like yyyy but is required for strict parsing and also supports negative years for BC dates
+  ;; see https://stackoverflow.com/questions/41103603/issue-with-datetimeparseexception-when-using-strict-resolver-style
+  ;; uuuu is faster than using yyyy and setting a default era
   ["MMM dd uuuu"        ; Jan 30 2000
    "MMM dd, uuuu"       ; Jan 30, 2000
    "dd MMM uuuu"        ; 30 Jan 2000
