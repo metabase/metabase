@@ -1,4 +1,9 @@
-import { popover, restore } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  visitQuestion,
+} from "e2e/support/helpers";
 import type { ApiKey } from "metabase-types/api";
 
 import {
@@ -6,7 +11,14 @@ import {
   READONLY_GROUP_ID,
   NOSQL_GROUP_ID,
   COLLECTION_GROUP_ID,
+  ADMINISTRATORS_GROUP_ID,
+  ORDERS_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > settings > API keys", () => {
   // TODO: replace intercepts below with actual requests to test backend
@@ -86,7 +98,7 @@ describe("scenarios > admin > settings > API keys", () => {
 
     cy.findByTestId("create-api-key-modal").within(() => {
       cy.findByLabelText(/Key name/).type("New key");
-      cy.findByLabelText(/Select a group/).click();
+      cy.findByLabelText(/group/).click();
     });
 
     cy.findByRole("listbox").findByText("Administrators").click();
@@ -217,14 +229,188 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.url().should("match", /\/admin\/settings\/authentication\/api-keys$/);
   });
 
-  it.skip("should show when a question was last edited by an API key", () => {
-    // TODO: write this when backend is ready
+  describe("api key actions", () => {
+    it("should allow creating questions and dashboards with an API key", () => {
+      createApiKey("Test API Key One", ADMINISTRATORS_GROUP_ID).then(
+        ({ body }) => {
+          console.log(body);
+          const apiKey = body.unmasked_key;
+          createQuestionForApiKey(apiKey).then(({ body }) => {
+            const questionId = body.id;
+
+            cy.signInAsAdmin();
+            visitQuestion(questionId);
+            cy.findByTestId("qb-header").findByText("Test Question");
+            cy.findByTestId("view-footer").findByText("Showing 22 rows");
+
+            cy.findByTestId("qb-header-info-button").click();
+            cy.findByTestId("sidebar-right").findByText(
+              "Test API Key One created this.",
+            );
+          });
+
+          createDashboardForApiKey(apiKey).then(({ body }) => {
+            const dashboardId = body.id;
+
+            cy.signInAsAdmin();
+            visitDashboard(dashboardId);
+            cy.findByTestId("dashboard-header").findByText("Test Dashboard");
+            cy.findByTestId("dashboard-header").icon("info").click();
+            cy.findByTestId("sidebar-right").findByText(
+              "Test API Key One created this.",
+            );
+          });
+        },
+      );
+    });
+
+    it("should allow editing questions and dashboards with an api key", () => {
+      createApiKey("Test API Key One", ADMINISTRATORS_GROUP_ID).then(
+        ({ body }) => {
+          const apiKey = body.unmasked_key;
+
+          editQuestionForApiKey(
+            apiKey,
+            ORDERS_QUESTION_ID,
+            "Edited Question Name",
+          ).then(() => {
+            cy.signInAsAdmin();
+            visitQuestion(ORDERS_QUESTION_ID);
+            cy.findByTestId("qb-header").findByText("Edited Question Name");
+            cy.findByTestId("qb-header-info-button").click();
+            cy.findByTestId("sidebar-right").within(() => {
+              cy.findByText("You created this.");
+              cy.findByText(
+                'Test API Key One renamed this Card from "Orders" to "Edited Question Name".',
+              );
+            });
+          });
+
+          editDashboardForApiKey(
+            apiKey,
+            ORDERS_DASHBOARD_ID,
+            "Edited Dashboard Name",
+          ).then(() => {
+            cy.signInAsAdmin();
+            visitDashboard(ORDERS_QUESTION_ID);
+            cy.findByTestId("dashboard-header").findByText(
+              "Edited Dashboard Name",
+            );
+            cy.findByTestId("dashboard-header").icon("info").click();
+            cy.findByTestId("sidebar-right").within(() => {
+              cy.findByText("You created this.");
+              cy.findByText(
+                'Test API Key One renamed this Dashboard from "Orders in a dashboard" to "Edited Dashboard Name".',
+              );
+            });
+          });
+        },
+      );
+    });
   });
 });
 
 const createApiKey = (name: string, group_id: number) => {
-  cy.request("POST", "/api/api-key", {
+  return cy.request("POST", "/api/api-key", {
     name,
     group_id,
   });
+};
+
+const createQuestionForApiKey = (apiKey: string) => {
+  cy.signOut();
+
+  return cy.request({
+    method: "POST",
+    url: "/api/card",
+    headers: {
+      "X-Api-Key": apiKey,
+    },
+    body: {
+      name: "Test Question",
+      display: "table",
+      visualization_settings: {},
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          limit: 22,
+        },
+      },
+    },
+  });
+};
+
+const createDashboardForApiKey = (apiKey: string) => {
+  cy.signOut();
+
+  return cy.request({
+    method: "POST",
+    url: "/api/dashboard",
+    headers: {
+      "X-Api-Key": apiKey,
+    },
+    body: {
+      name: "Test Dashboard",
+    },
+  });
+};
+
+const editQuestionForApiKey = (
+  apiKey: string,
+  questionId: number,
+  newQuestionName: string,
+) => {
+  cy.signOut();
+  return cy
+    .request({
+      method: "GET",
+      url: `/api/card/${questionId}`,
+      headers: {
+        "X-Api-Key": apiKey,
+      },
+    })
+    .then(({ body: previousBody }) => {
+      return cy.request({
+        method: "PUT",
+        url: `/api/card/${questionId}`,
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+        body: {
+          ...previousBody,
+          name: newQuestionName,
+        },
+      });
+    });
+};
+
+const editDashboardForApiKey = (
+  apiKey: string,
+  dashboardId: number,
+  newDashboardName: string,
+) => {
+  cy.signOut();
+  return cy
+    .request({
+      method: "GET",
+      url: `/api/dashboard/${dashboardId}`,
+      headers: {
+        "X-Api-Key": apiKey,
+      },
+    })
+    .then(({ body: previousBody }) => {
+      return cy.request({
+        method: "PUT",
+        url: `/api/dashboard/${dashboardId}`,
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+        body: {
+          ...previousBody,
+          name: newDashboardName,
+        },
+      });
+    });
 };
