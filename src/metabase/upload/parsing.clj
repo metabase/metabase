@@ -6,7 +6,7 @@
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.time LocalDate)
-   (java.time.format DateTimeFormatter DateTimeFormatterBuilder)
+   (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
    (java.text NumberFormat)
    (java.util Locale)))
 
@@ -53,7 +53,7 @@
     (doseq [pattern local-date-patterns]
       (.appendOptional builder (DateTimeFormatter/ofPattern pattern)))
     (.appendOptional builder DateTimeFormatter/ISO_LOCAL_DATE) ; yyyy-MM-dd
-    (.toFormatter builder)))
+    (.withResolverStyle (.toFormatter builder) ResolverStyle/STRICT)))
 
 (defn parse-local-date
   "Parses a local date string.
