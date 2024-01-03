@@ -58,7 +58,7 @@ export const CreateApiKeyModal = ({
               />
               <FormGroupWidget
                 name="group_id"
-                label={t`Select a group to inherit its permissions`}
+                label={t`Which group should this key belong to? The key will have the same permissions granted to that group.`}
                 size="sm"
                 required
               />
