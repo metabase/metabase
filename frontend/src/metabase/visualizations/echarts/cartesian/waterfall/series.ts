@@ -8,6 +8,7 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 
+import { checkNumber } from "metabase/lib/types";
 import type { GroupedDataset, SeriesModel } from "../model/types";
 import { buildEChartsLabelOptions } from "../option/series";
 import { DATASET_DIMENSIONS } from "./constants";
@@ -27,11 +28,14 @@ export function getWaterfallLabelFormatters(
   renderingContext: RenderingContext,
 ) {
   const valueFormatter = (value: unknown) => {
-    const formattedValue = renderingContext.formatValue(value, {
-      ...(settings.column?.(seriesModel.column) ?? {}),
-      jsx: false,
-      compact: settings["graph.label_value_formatting"] === "compact",
-    });
+    const formattedValue = renderingContext.formatValue(
+      Math.abs(checkNumber(value)),
+      {
+        ...(settings.column?.(seriesModel.column) ?? {}),
+        jsx: false,
+        compact: settings["graph.label_value_formatting"] === "compact",
+      },
+    );
     if (typeof value === "number" && value < 0) {
       return `(${formattedValue})`;
     }
