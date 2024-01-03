@@ -73,7 +73,10 @@ export class WindowModal extends Component<WindowModalProps> {
         closeOnClickOutside={this.props.closeOnClickOutside}
       >
         <FocusTrap active={this.props.trapFocus}>
-          <div className={cx(className, "relative bg-white rounded")}>
+          <div
+            className={cx(className, "relative bg-white rounded")}
+            role="dialog"
+          >
             {getModalContent({
               ...this.props,
               fullPageModal: false,
