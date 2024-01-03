@@ -94,7 +94,7 @@
       "entity_id": "8DbBRlKlW8JapS0iZKJZj",
       "collection_preview": true,
       "visualization_settings": {
-        "waterfall.show_total": false,
+        "waterfall.show_total": true,
         "graph.show_values": true,
         "graph.dimensions": ["date"],
         "graph.y_axis.scale": "pow",
@@ -231,7 +231,7 @@
         }
       ],
       "viz-settings": {
-        "waterfall.show_total": false,
+        "waterfall.show_total": true,
         "graph.show_values": true,
         "graph.dimensions": ["date"],
         "graph.y_axis.scale": "pow",

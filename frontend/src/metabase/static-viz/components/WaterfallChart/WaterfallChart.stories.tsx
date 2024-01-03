@@ -188,3 +188,10 @@ PowYScaleNegativeOnly.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const PowYScaleMixed = Template.bind({});
+PowYScaleMixed.args = {
+  rawSeries: data.powYScaleMixed as any,
+  dashcardSettings: {},
+  renderingContext,
+};
