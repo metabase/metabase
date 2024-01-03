@@ -160,5 +160,11 @@ export const getSelectItemsOverrides = (
         display: "none",
       },
     },
+    nothingFound: {
+      color: theme.colors.text[0],
+      fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
+      lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
+      padding: theme.spacing.sm,
+    },
   };
 };

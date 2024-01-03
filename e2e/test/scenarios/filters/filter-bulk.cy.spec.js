@@ -8,6 +8,7 @@ import {
   filter,
   filterField,
   filterFieldPopover,
+  filterSelectField,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -499,9 +500,9 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     it("adds multiple is text filters", () => {
-      filterField("City", {
+      filterSelectField("City", {
         operator: "is",
-        value: ["Indianeown", "Indian Valley"],
+        value: ["Indiantown", "Indian Valley"],
       });
 
       applyFilters();
@@ -509,7 +510,7 @@ describe("scenarios > filters > bulk filtering", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("City is 2 selections").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Showing 1 row").should("be.visible");
+      cy.findByText("Showing 3 rows").should("be.visible");
     });
   });
 
