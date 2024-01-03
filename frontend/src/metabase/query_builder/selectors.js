@@ -350,7 +350,7 @@ export const getQuestion = createSelector(
 );
 
 function isQuestionEditable(question) {
-  return !question?.query().readOnly();
+  return question ? question.isQueryEditable() : false;
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
@@ -582,7 +582,7 @@ export const getIsRunnable = createSelector(
       return false;
     }
     if (!question.isSaved() || isDirty) {
-      return question.canRun() && !question.query().readOnly();
+      return question.canRun() && question.isQueryEditable();
     }
     return question.canRun();
   },

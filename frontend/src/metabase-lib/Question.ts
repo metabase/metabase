@@ -44,7 +44,7 @@ import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
+import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   aggregate,
@@ -493,6 +493,11 @@ class Question {
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
+  }
+
+  isQueryEditable(): boolean {
+    const query = this.query();
+    return query ? query.isEditable() : false;
   }
 
   /**
@@ -979,13 +984,10 @@ class Question {
   _serializeForUrl({
     includeOriginalCardId = true,
     clean = true,
-    cleanFilters = false,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean
-      ? this.query().clean({ skipFilters: !cleanFilters })
-      : this.query();
+    const query = clean ? this.query().clean() : this.query();
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
@@ -1024,24 +1026,23 @@ class Question {
       return this;
     }
 
-    const mbqlFilters = this.parameters()
-      .map(parameter => {
-        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
-      })
+    const query = this._getMLv2Query();
+    const stageIndex = -1;
+    const filters = this.parameters()
+      .map(parameter =>
+        fieldFilterParameterToFilter(query, stageIndex, parameter),
+      )
       .filter(mbqlFilter => mbqlFilter != null);
 
-    const query = mbqlFilters.reduce((query, mbqlFilter) => {
-      return query.filter(mbqlFilter);
-    }, this.query());
-
-    const hasQueryBeenAltered = mbqlFilters.length > 0;
-
-    const question = query
-      .question()
+    const newQuery = filters.reduce((query, filter) => {
+      return ML.filter(query, stageIndex, filter);
+    }, query);
+    const newQuestion = this._setMLv2Query(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return hasQueryBeenAltered ? question.markDirty() : question;
+    const hasQueryBeenAltered = filters.length > 0;
+    return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
   _getMLv2Query(metadata = this._metadata): Query {
@@ -1103,7 +1104,7 @@ class Question {
       this.isSaved() &&
       this.parameters().length === 0 &&
       this.query().canNest() &&
-      !this.query().readOnly() // originally "canRunAdhocQuery"
+      this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }
 
