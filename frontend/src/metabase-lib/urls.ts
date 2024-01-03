@@ -14,7 +14,6 @@ type UrlBuilderOpts = {
   includeDisplayIsLocked?: boolean;
   creationType?: string;
   clean?: boolean;
-  cleanFilters?: boolean;
 };
 
 export function getUrl(
@@ -22,7 +21,6 @@ export function getUrl(
   {
     originalQuestion,
     clean = true,
-    cleanFilters = false,
     query,
     includeDisplayIsLocked,
     creationType,
@@ -37,7 +35,6 @@ export function getUrl(
     return Urls.question(null, {
       hash: question._serializeForUrl({
         clean,
-        cleanFilters,
         includeDisplayIsLocked,
         creationType,
       }),
@@ -59,14 +56,13 @@ export function getUrlWithParameters(
   if (question.isStructured()) {
     let questionWithParameters = question.setParameters(parameters);
 
-    if (question.query().isEditable()) {
+    if (question.isQueryEditable()) {
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
 
       return getUrl(questionWithParameters, {
         clean,
-        cleanFilters: true,
         originalQuestion: question,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },

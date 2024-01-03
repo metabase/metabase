@@ -199,13 +199,6 @@ class StructuredQuery extends AtomicQuery {
     return database && database.engine;
   }
 
-  /**
-   * Opposite of isEditable
-   */
-  readOnly(): boolean {
-    return !this.isEditable();
-  }
-
   /* Methods unique to this query type */
 
   /**
@@ -373,13 +366,7 @@ class StructuredQuery extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
     }
 
-    query = query.cleanJoins().cleanExpressions().cleanFields();
-
-    if (!skipFilters) {
-      query = query.cleanFilters();
-    }
-
-    return query.cleanEmpty();
+    return query.cleanJoins().cleanExpressions().cleanFields().cleanEmpty();
   }
 
   /**

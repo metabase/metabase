@@ -1,6 +1,5 @@
 (ns metabase.models.api-key
   (:require [crypto.random :as crypto-random]
-            [metabase.api.common :as api]
             [metabase.models.audit-log :as audit-log]
             [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
@@ -17,9 +16,9 @@
 
 (methodical/defmethod t2/table-name :model/ApiKey [_model] :api_key)
 
-(mi/define-batched-hydration-method add-group-name
-  :group_name
-  "Add to each ApiKey a single group_name. Assume that each ApiKey is a member of either zero or one groups other than
+(mi/define-batched-hydration-method add-group
+  :group
+  "Add to each ApiKey a single group. Assume that each ApiKey is a member of either zero or one groups other than
   the 'All Users' group."
   [api-keys]
   (when (seq api-keys)
@@ -28,19 +27,20 @@
                     (t2/query {:select [[:pg.name :group-name]
                                         [:pg.id :group-id]
                                         [:api_key.id :api-key-id]]
-                               :from [[:permissions_group :pg]]
-                               :join [[:permissions_group_membership :pgm]
+                               :from   [[:permissions_group :pg]]
+                               :join   [[:permissions_group_membership :pgm]
                                       [:= :pgm.group_id :pg.id]
                                       :api_key [:= :api_key.user_id :pgm.user_id]]
-                               :where [:in :api_key.id (map u/the-id api-keys)]}))
-          api-key-id->group-name
+                               :where  [:in :api_key.id (map u/the-id api-keys)]}))
+          api-key-id->group
           (fn [api-key-id]
-            (->> (api-key-id->permissions-groups api-key-id)
-                 (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
-                 first
-                 :group-name))]
+            (let [{name :group-name
+                   id   :group-id} (->> (api-key-id->permissions-groups api-key-id)
+                                      (sort-by #(= (:group-id %) (u/the-id (perms-group/all-users))))
+                                      first)]
+              {:name name :id id}))]
       (for [api-key api-keys]
-        (assoc api-key :group_name (api-key-id->group-name (u/the-id api-key)))))))
+        (assoc api-key :group (api-key-id->group (u/the-id api-key)))))))
 
 (doto :model/ApiKey
   (derive :metabase/model)
@@ -53,7 +53,8 @@
 
 (defn- add-prefix [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
-    unhashed_key (assoc :key_prefix (prefix unhashed_key))))
+    (contains? api-key :unhashed_key)
+    (assoc :key_prefix (some-> unhashed_key prefix))))
 
 (defn generate-key
   "Generates a new API key - a random base64 string prefixed with `mb_`"
@@ -73,29 +74,22 @@
   "Adds the `key` based on the `unhashed_key` passed in."
   [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
-    unhashed_key (assoc :key (u.password/hash-bcrypt unhashed_key))
+    (contains? api-key :unhashed_key)
+    (assoc :key (some-> unhashed_key u.password/hash-bcrypt))
+
     true (dissoc :unhashed_key)))
-
-(defn- add-updated-by-id [api-key]
-  (update api-key :updated_by_id #(or % api/*current-user-id*)))
-
-(defn- add-created-by-id [api-key]
-  (update api-key :creator_id #(or % api/*current-user-id*)))
 
 (t2/define-before-insert :model/ApiKey
   [api-key]
   (-> api-key
       add-prefix
-      add-key
-      add-updated-by-id
-      add-created-by-id))
+      add-key))
 
 (t2/define-before-update :model/ApiKey
   [api-key]
   (-> api-key
       add-prefix
-      add-key
-      add-updated-by-id))
+      add-key))
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -109,4 +103,4 @@
 
 (defmethod audit-log/model-details :model/ApiKey
   [entity _event-type]
-  (select-keys entity [:name :group_name :key_prefix]))
+  (select-keys entity [:name :group :key_prefix :user_id]))

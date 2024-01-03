@@ -4391,6 +4391,21 @@ databaseChangeLog:
                   remarks: 'If true, the table requires a filter to be able to query it'
 
   - changeSet:
+      id: v49.00-012
+      author: qnkhuat
+      comment: Add metabase_field.database_partitioned
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_partitioned
+                  type: boolean
+                  constraints:
+                    nullable: true
+                  remarks: 'Whether the table is partitioned by this field'
+
+  - changeSet:
       id: v49.00-013
       author: johnswanson
       comment: Add `api_key.updated_by_id`
