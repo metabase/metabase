@@ -29,7 +29,10 @@ export function WaterfallChart({
   );
   const option = getCartesianChartOption(
     chartModel,
+    null,
+    [],
     computedVisualizationSettings,
+    false,
     renderingContext,
   );
 
