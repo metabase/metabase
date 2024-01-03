@@ -761,7 +761,7 @@
 (deftest no-tiny-int-columns
   (mt/test-driver :mysql
     (testing "All boolean columns in mysql, mariadb should be bit(1)"
-      (is (= [{:table_name "databasechangeloglock" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
+      (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
              (t2/query
               (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
                       (-> (mdb.connection/data-source) .getConnection .getCatalog))))))))

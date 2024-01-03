@@ -5131,13 +5131,13 @@ databaseChangeLog:
       dbms: mysql,mariadb
       changes:
         - modifyDataType:
-            tableName: metabase_table
-            columnName: database_require_filter
+            tableName: metabase_field
+            columnName: database_partitioned
             newDataType: ${boolean.type}
       rollback:
         - modifyDataType:
-            tableName: metabase_table
-            columnName: database_require_filter
+            tableName: metabase_field
+            columnName: database_partitioned
             newDataType: boolean
       preConditions:
         - onFail: MARK_RAN
