@@ -60,16 +60,12 @@
 (defn- remove-other-users-personal-collections
   [user-id collections]
   (let [personal-ids (t2/select-fn-set :id :model/Collection
-                                       {:where [:not [:or
-                                                      [:= :personal_owner_id nil]
-                                                      [:= :personal_owner_id user-id]]]})
-        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
-        personal?    (fn [{^String location :location id :id}]
-                       (or (personal-ids id)
-                           (prefixes (re-find #"^/\d+/" location))))]
-    (if (seq prefixes)
-      (remove personal? collections)
-      collections)))
+                                       :personal_owner_id [:and [:!= nil] [:!= user-id]])
+        personal-descendant (comp personal-ids
+                                  first
+                                  collection/location-path->ids
+                                  :location)]
+    (remove personal-descendant collections)))
 
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
