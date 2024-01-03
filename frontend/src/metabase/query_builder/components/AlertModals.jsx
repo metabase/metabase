@@ -317,7 +317,7 @@ class UpdateAlertModalContentInner extends Component {
 
     // TODO: Remove PulseEdit css hack
     return (
-      <ModalContent onClose={onCancel} title={title}>
+      <ModalContent onClose={onCancel} data-testid="alert-edit">
         <div
           className="PulseEdit ml-auto mr-auto mb4"
           style={{ maxWidth: "550px" }}

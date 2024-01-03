@@ -99,7 +99,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     cy.log("Change the frequency of the alert to weekly");
 
-    cy.findByRole("dialog", { name: "Edit your alert" })
+    cy.findByTestId("alert-edit")
       .findByText("How often should we check for results?")
       .parent()
       .parent()
