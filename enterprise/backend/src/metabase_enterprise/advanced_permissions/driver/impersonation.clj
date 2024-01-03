@@ -9,7 +9,7 @@
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group-membership
     :refer [PermissionsGroupMembership]]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -41,12 +41,12 @@
     (filter (partial enforce-impersonation? group-id->perms-set)
             impersonations)))
 
-(defenterprise impersonation-enabled-for-db?
+(defn- impersonation-enabled-for-db?
   "Is impersonation enabled for the given database, for any groups?"
-  :feature :advanced-permissions
   [db-or-id]
-  (when db-or-id
-    (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id))))
+  (boolean
+   (when (and db-or-id (premium-features/enable-advanced-permissions?))
+     (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
 
 (defn connection-impersonation-role
   "Fetches the database role that should be used for the current user, if connection impersonation is in effect.
