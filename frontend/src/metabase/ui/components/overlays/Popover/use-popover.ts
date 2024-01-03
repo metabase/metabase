@@ -81,7 +81,8 @@ export function usePopover(options: UsePopoverOptions) {
       size({
         apply({ rects, availableHeight, availableWidth }) {
           Object.assign(floating.refs.floating.current?.style ?? {}, {
-            width: options.width === "auto" ? `${rects.reference.width}px` : "",
+            width:
+              options.width === "target" ? `${rects.reference.width}px` : "",
             maxHeight: `${availableHeight}px`,
             maxWidth: `${availableWidth}px`,
           });
