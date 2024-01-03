@@ -4,17 +4,17 @@ import type { RowChartTheme } from "metabase/visualizations/shared/components/Ro
 export const getChartTheme = (fontFamily: string = "Lato"): RowChartTheme => {
   return {
     axis: {
-      color: color("text-light"),
+      color: color("border"),
       ticks: {
         size: 12,
-        weight: 900,
+        weight: 700,
         color: color("text-medium"),
         family: fontFamily,
       },
       label: {
-        size: 14,
-        weight: 900,
-        color: color("text-medium"),
+        size: 12,
+        weight: 700,
+        color: color("text-dark"),
         family: fontFamily,
       },
     },
@@ -28,7 +28,7 @@ export const getChartTheme = (fontFamily: string = "Lato"): RowChartTheme => {
       },
     },
     dataLabels: {
-      weight: 900,
+      weight: 700,
       color: color("text-dark"),
       size: 12,
       family: fontFamily,
