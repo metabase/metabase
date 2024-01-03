@@ -82,9 +82,6 @@ export default class ModalContent extends Component<ModalContentProps> {
           // add bottom padding if this is a standard "form modal" with no footer
           { pb4: formModal && !footer },
         )}
-        role="dialog"
-        aria-label={title}
-        aria-modal="true"
         data-testid={dataTestId}
       >
         {title && (
