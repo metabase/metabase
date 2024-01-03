@@ -13,27 +13,50 @@
     :as premium-features
     :refer [defenterprise defenterprise-schema]]
    [metabase.test :as mt]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn do-with-premium-features [features f]
+(defn do-with-premium-features [features thunk]
   (let [features (set (map name features))]
     (testing (format "\nWith premium token features = %s" (pr-str features))
-      (with-redefs [premium-features/token-features (constantly features)]
-        (f)))))
+      ;; non-thread-local usages need to do both [[binding]] AND [[with-redefs]], because if a thread-local usage
+      ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
+      ;; See [[with-premium-features-test]] below.
+      (let [thunk (^:once fn* []
+                   (binding [premium-features/*token-features* (constantly features)]
+                     (thunk)))]
+        (if tu.thread-local/*thread-local*
+          (thunk)
+          (with-redefs [premium-features/*token-features* (constantly features)]
+            (thunk)))))))
 
 ;; TODO -- move this to a shared `metabase-enterprise.test` namespace. Consider adding logic that will alias stuff in
 ;; `metabase-enterprise.test` in `metabase.test` as well *if* EE code is available
 (defmacro with-premium-features
-  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use testing
-  feature-flagging.
+  "Execute `body` with the allowed premium features for the Premium-Features token set to `features`. Intended for use
+  testing feature-flagging.
 
     (with-premium-features #{:audit-app}
       ;; audit app will be enabled for body, but no other premium features
-      ...)"
+      ...)
+
+  Normally, this will only change the premium features for the current thread, but if used
+  inside [[metabase.test/test-helpers-set-global-values!]], it will affect premium features globally (i.e., it will
+  use [[with-redefs]] instead of [[binding]])."
   {:style/indent 1}
   [features & body]
-  `(do-with-premium-features ~features (fn [] ~@body)))
+  `(do-with-premium-features ~features (^:once fn* [] ~@body)))
+
+(deftest with-premium-features-test
+  (testing "Make sure with-premium-features global nested inside local works correctly"
+    (with-premium-features #{}
+      (is (= #{}
+             (premium-features/*token-features*)))
+      (mt/test-helpers-set-global-values!
+        (with-premium-features #{:audit-app}
+          (is (= #{"audit-app"}
+                 (premium-features/*token-features*))))))))
 
 (defmacro with-additional-premium-features
   "Execute `body` with the allowed premium features for the Premium-Features token set to the union of `features` and
@@ -42,11 +65,15 @@
 
     (with-additional-premium-features #{:audit-app}
       ;; audit app will be enabled for body, as well as any that are already enabled
-      ...)"
+      ...)
+
+  Normally, this will only change the premium features for the current thread, but if used
+  inside [[metabase.test/test-helpers-set-global-values!]], it will affect premium features globally (i.e., it will
+  use [[with-redefs]] instead of [[binding]])."
   {:style/indent 1}
   [features & body]
-  `(do-with-premium-features (set/union (premium-features/token-features) ~features)
-                             (fn [] ~@body)))
+  `(do-with-premium-features (set/union (premium-features/*token-features*) ~features)
+                             (^:once fn* [] ~@body)))
 
 (defn- token-status-response
   [token premium-features-response]
@@ -105,7 +132,7 @@
                 (is (= token
                        (premium-features/premium-embedding-token)))
                 (is (= #{}
-                       (#'premium-features/token-features))))
+                       (premium-features/*token-features*))))
               (doseq [has-feature? [#'premium-features/hide-embed-branding?
                                     #'premium-features/enable-whitelabeling?
                                     #'premium-features/enable-audit-app?
