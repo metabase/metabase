@@ -535,28 +535,29 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
+;; Following test has different data in release-x.48.x and master.
 (deftest uniqe-alias-index-test
   (mt/test-driver
    :mongo
    (testing "Field aliases have deterministic unique indices"
      (let [query (mt/mbql-query
                   nil
-                  {:joins [{:alias "Products"
-                            :source-table $$products
-                            :condition [:= &Products.products.id $orders.product_id]
+                  {:joins [{:alias "Checkins"
+                            :source-table $$checkins
+                            :condition [:= &Checkins.checkins.venue_id $venues.id]
                             :fields :all}
-                           {:alias "People"
-                            :source-table $$people
-                            :condition [:= &People.people.id $orders.user_id]
+                           {:alias "Users"
+                            :source-table $$users
+                            :condition [:= &Users.users.id &Checkins.checkins.user_id]
                             :fields :all}]
-                   :source-query {:source-table $$orders
-                                  :joins [{:alias "Products"
-                                           :source-table $$products
-                                           :condition [:= &Products.products.id $orders.product_id]
+                   :source-query {:source-table $$venues
+                                  :joins [{:alias "Checkins"
+                                           :source-table $$checkins
+                                           :condition [:= &Checkins.checkins.venue_id $venues.id]
                                            :fields :all}
-                                          {:alias "People"
-                                           :source-table $$people
-                                           :condition [:= &People.people.id $orders.user_id]
+                                          {:alias "Users"
+                                           :source-table $$users
+                                           :condition [:= &Users.users.id &Checkins.checkins.user_id]
                                            :fields :all}]}})
            compiled (qp/compile query)
            indices (reduce (fn [acc lookup-stage]
