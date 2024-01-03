@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -165,11 +166,22 @@
     "currency" (:type/Currency global-column-settings)
     {}))
 
+(defn- ensure-global-viz-settings
+  "The ::mb.viz/global-column-settings comes from (public-settings/custom-formatting) and is provided by the query
+  processor in the `metabase.query-processor.middleware.visualization-settings` middleware _if_ `process-viz-settings?`
+  is truthy. This function checks to see if those settings have been provided and adds them if they are not present."
+  [{::mb.viz/keys [global-column-settings] :as viz-settings}]
+  (cond-> viz-settings
+    (nil? global-column-settings)
+    (assoc ::mb.viz/global-column-settings
+           (m/map-vals mb.viz/db->norm-column-settings-entries
+                       (public-settings/custom-formatting)))))
+
 (defn viz-settings-for-col
   "Get the unified viz settings for a column based on the column's metadata (if any) and user settings (⚙)."
-  [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col}
-   {::mb.viz/keys [global-column-settings] :as viz-settings}]
-  (let [[_ field-id-or-name] field_ref
+  [{column-name :name metadata-column-settings :settings :keys [field_ref] :as col} viz-settings]
+  (let [{::mb.viz/keys [global-column-settings] :as viz-settings} (ensure-global-viz-settings viz-settings)
+        [_ field-id-or-name] field_ref
         all-cols-settings (-> viz-settings
                               ::mb.viz/column-settings
                               ;; update the keys so that they will have only the :field-id or :column-name
