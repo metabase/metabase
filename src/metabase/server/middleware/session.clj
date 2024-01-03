@@ -306,6 +306,7 @@
                 :from      :api_key
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
+                            [:= :user.is_active true]
                             [:= :api_key.key_prefix [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
