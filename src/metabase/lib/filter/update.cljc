@@ -65,13 +65,13 @@
          (lib.filter/filter stage-number (lib.filter/between numeric-column start end))))))
 
 (def ^:private temporal-filter-min-num-rows
-  "Minimum number of rows an updated query should return before; if it will return less than this, switch to
-  the [[unit->next-largest-unit]]. E.g. if we zoom in on a query using unit is `:day` and the zoomed in query would
+  "Minimum number of rows an updated query should return; if it will return less than this, switch to
+  the [[unit->next-unit]]. E.g. if we zoom in on a query using unit is `:day` and the zoomed in query would
   only return 2 rows, switch the unit to `:minute`."
   4)
 
-(def ^:private unit->next-largest-unit
-  "E.g. the next largest unit after `:hour` is `:minute`."
+(def ^:private unit->next-unit
+  "E.g. the next unit after `:hour` is `:minute`."
   (let [units [:minute :hour :day :week :month :quarter :year]]
     (zipmap units (cons nil units))))
 
@@ -81,12 +81,13 @@
   [unit  :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
    start :- ::lib.schema.literal/temporal
    end   :- ::lib.schema.literal/temporal]
-  (or
-   (let [num-points (shared.ut/unit-diff unit start end)]
-     (when (< num-points temporal-filter-min-num-rows)
-       (when-let [next-largest-unit (unit->next-largest-unit unit)]
-         (temporal-filter-find-best-breakout-unit next-largest-unit start end))))
-   unit))
+  (loop [unit unit]
+    (let [num-rows      (shared.ut/unit-diff unit start end)
+          too-few-rows? (< num-rows temporal-filter-min-num-rows)]
+      (if-let [next-largest-unit (when too-few-rows?
+                                   (unit->next-unit unit))]
+        (recur next-largest-unit)
+        unit))))
 
 (mu/defn ^:private temporal-filter-update-breakouts :- ::lib.schema/query
   "Update the first breakout against `column` so it uses `new-unit` rather than the original unit (if any); remove all
@@ -98,8 +99,6 @@
   (transduce
    identity
    (fn
-     ([]
-      {:query query, :has-seen-column? false})
      ([{:keys [query]}]
       query)
      ([{:keys [query has-seen-column?], :as m} breakout]
@@ -114,6 +113,7 @@
           {:query query', :has-seen-column? true})
         ;; not a breakout against `column`: ignore it
         m)))
+   {:query query, :has-seen-column? false}
    (lib.breakout/breakouts query stage-number)))
 
 (mu/defn update-temporal-filter :- ::lib.schema/query
@@ -138,7 +138,7 @@
        (lib.filter/filter query stage-number (lib.filter/between temporal-column start end))
        ;; temporal-column IS bucketed: need to update the breakout(s) against this column.
        (let [;; clamp range to unit to ensure we select exactly what's represented by the dots/bars. E.g. if I draw my
-             ;; filter from at `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
+             ;; filter from `2024-01-02` to `2024-03-05` and the unit is `:month`, we should only show the months
              ;; between those two values, i.e. only `2024-02` and `2024-03`.
              start         (shared.ut/truncate (shared.ut/add start unit 1) unit)
              end           (shared.ut/truncate end unit)

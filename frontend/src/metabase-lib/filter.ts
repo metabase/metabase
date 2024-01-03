@@ -929,7 +929,6 @@ export function updateTemporalFilter(
     query,
     stageIndex,
     temporalColumn,
-    longitudeColumn,
     start,
     end,
   );
