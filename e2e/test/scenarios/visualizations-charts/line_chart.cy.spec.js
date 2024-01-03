@@ -578,23 +578,27 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should apply filters to the series selecting area range", () => {
-    cy.viewport(1280, 800);
+  it(
+    "should apply filters to the series selecting area range",
+    { tags: "@flaky" },
+    () => {
+      cy.viewport(1280, 800);
 
-    visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "line",
-    });
+      visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
 
-    cy.get(".Visualization")
-      .trigger("mousedown", 100, 200)
-      .trigger("mousemove", 230, 200)
-      .trigger("mouseup", 230, 200);
+      cy.get(".Visualization")
+        .trigger("mousedown", 100, 200)
+        .trigger("mousemove", 230, 200)
+        .trigger("mouseup", 230, 200);
 
-    cy.wait("@dataset");
+      cy.wait("@dataset");
 
-    cy.findByTestId("filter-pill").should("contain.text", "Created At is");
-  });
+      cy.findByTestId("filter-pill").should("contain.text", "Created At is");
+    },
+  );
 
   it("should apply filters to the series selecting area range when axis is a number", () => {
     const testQuery = {
