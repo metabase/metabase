@@ -12,6 +12,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
+  getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -143,4 +144,5 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
+  PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
 }
