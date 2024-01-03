@@ -167,8 +167,10 @@
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
            ;; Date-related
            [" 2022-01-01 "                    #t "2022-01-01"             date-type]
+           [" 2022-02-30 "                    " 2022-02-30 "              vchar-type]
            [" Jan 30 2018"                    #t "2018-01-30"             date-type]
            [" Jan 30, 2018"                   #t "2018-01-30"             date-type]
+           [" Feb 30, 2018"                   " Feb 30, 2018"             vchar-type]
            [" 30 Jan 2018"                    #t "2018-01-30"             date-type]
            [" 30 Jan, 2018"                   #t "2018-01-30"             date-type]
            [" January 30 2018"                #t "2018-01-30"             date-type]

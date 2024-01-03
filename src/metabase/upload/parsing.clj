@@ -32,28 +32,30 @@
                                                  (tru "''{0}'' is not a recognizable boolean" s)))))
 
 (def local-date-patterns
-  "patterns used to generate the local date formatter. Excludes ISO_LOCAL_DATE (yyyy-MM-dd) because there's
+  "patterns used to generate the local date formatter. Excludes ISO_LOCAL_DATE (uuuu-MM-dd) because there's
   already a built-in DateTimeFormatter for that: [[DateTimeFormatter/ISO_LOCAL_DATE]]"
-  ["MMM dd yyyy"        ; Jan 30 2000
-   "MMM dd, yyyy"       ; Jan 30, 2000
-   "dd MMM yyyy"        ; 30 Jan 2000
-   "dd MMM, yyyy"       ; 30 Jan, 2000
-   "MMMM d yyyy"        ; January 30 2000
-   "MMMM d, yyyy"       ; January 30, 2000
-   "d MMMM yyyy"        ; 30 January 2000
-   "d MMMM, yyyy"       ; 30 January, 2000
-   "EEEE, MMMM d yyyy"  ; Sunday, January 30 2000
-   "EEEE, MMMM d, yyyy" ; Sunday, January 30, 2000
+  ["MMM dd uuuu"        ; Jan 30 2000
+   "MMM dd, uuuu"       ; Jan 30, 2000
+   "dd MMM uuuu"        ; 30 Jan 2000
+   "dd MMM, uuuu"       ; 30 Jan, 2000
+   "MMMM d uuuu"        ; January 30 2000
+   "MMMM d, uuuu"       ; January 30, 2000
+   "d MMMM uuuu"        ; 30 January 2000
+   "d MMMM, uuuu"       ; 30 January, 2000
+   "EEEE, MMMM d uuuu"  ; Sunday, January 30 2000
+   "EEEE, MMMM d, uuuu" ; Sunday, January 30, 2000
    ])
 
 (def local-date-formatter
   "DateTimeFormatter that runs through a set of patterns to parse a variety of local date formats."
-  (let [builder (DateTimeFormatterBuilder.)]
-    (.parseCaseInsensitive builder)
+  (let [builder (-> (DateTimeFormatterBuilder.)
+                    (.parseCaseInsensitive))]
     (doseq [pattern local-date-patterns]
       (.appendOptional builder (DateTimeFormatter/ofPattern pattern)))
-    (.appendOptional builder DateTimeFormatter/ISO_LOCAL_DATE) ; yyyy-MM-dd
-    (.withResolverStyle (.toFormatter builder) ResolverStyle/STRICT)))
+    (-> builder
+        (.appendOptional DateTimeFormatter/ISO_LOCAL_DATE)
+        (.toFormatter)
+        (.withResolverStyle ResolverStyle/STRICT))))
 
 (defn parse-local-date
   "Parses a local date string.
