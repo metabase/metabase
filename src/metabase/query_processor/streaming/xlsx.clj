@@ -38,6 +38,14 @@
     ::mb.viz/prefix
     ::mb.viz/suffix})
 
+(def ^:private datetime-setting-keys
+  "If any of these settings are present, we should format the column as a date and/or time."
+  #{::mb.viz/date-style
+    ::mb.viz/date-separator
+    ::mb.viz/date-abbreviate
+    ::mb.viz/time-enabled
+    ::mb.viz/time-style})
+
 (defn- currency-format-string
   "Adds a currency to the base format string as either a suffix (for pluralized names) or
   prefix (for symbols or codes)."
@@ -191,14 +199,13 @@
    (datetime-format-string format-settings nil))
 
   ([format-settings unit]
-   (let [merged-settings (common/merge-global-settings format-settings :type/Temporal)]
-     (->> (date-format merged-settings unit)
-          (add-time-format merged-settings unit)))))
+   (->> (date-format format-settings unit)
+        (add-time-format format-settings unit))))
 
 (defn- format-settings->format-strings
   "Returns a vector of format strings for a datetime column or number column, corresponding
   to the provided format settings."
-  [format-settings {unit :unit :as col}]
+  [format-settings {semantic-type :semantic_type effective-type :effective_type unit :unit :as col}]
   (let [col-type (common/col-type col)]
     (u/one-or-many
       (cond
@@ -206,8 +213,9 @@
         (isa? col-type :Relation/*)
         "0"
 
-        ;; Note -- we may have issues relate to date/time/datetime here
-        (isa? col-type :type/Temporal)
+        (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+                 (isa? semantic-type :type/Temporal))
+             (isa? effective-type :type/Temporal))
         (datetime-format-string format-settings unit)
 
         (or (some #(contains? number-setting-keys %) (keys format-settings))
@@ -234,16 +242,34 @@
   (doto (.createCellStyle workbook)
     (.setDataFormat (. data-format getFormat ^String format-string))))
 
-(defn- compute-cell-styles
-  [^Workbook workbook viz-settings cols]
+(defn- compute-column-cell-styles
+  "Compute a sequence of cell styles for each column"
+  [^Workbook workbook ^DataFormat data-format viz-settings cols]
   (for [col cols]
-    (let [data-format (. workbook createDataFormat)
-          settings       (common/viz-settings-for-col col viz-settings)
+    (let [settings       (common/viz-settings-for-col col viz-settings)
           format-strings (format-settings->format-strings settings col)]
       (when (seq format-strings)
         (map
           (partial cell-string-format-style workbook data-format)
           format-strings)))))
+
+(defn- default-format-strings
+  "Default strings to use for datetime and number fields if custom format settings are not set."
+  []
+  {:datetime (datetime-format-string (common/merge-global-settings {} :type/Temporal))
+   :date     (datetime-format-string (common/merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+   ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
+   :time     "h:mm am/pm"
+   :integer  "#,##0"
+   :float    "#,##0.##"})
+
+(defn- compute-typed-cell-styles
+  "Compute default cell styles based on column types"
+  ;; These are tested, but does this happen IRL?
+  [^Workbook workbook ^DataFormat data-format]
+  (update-vals
+    (default-format-strings)
+    (partial cell-string-format-style workbook data-format)))
 
 (defn- rounds-to-int?
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
@@ -255,24 +281,24 @@
   "Sets a cell to the provided value, with an appropriate style if necessary.
 
   This is based on the equivalent multimethod in Docjure, but adapted to support Metabase viz settings."
-  (fn [^Cell _cell value _styles]
+  (fn [^Cell _cell value _styles _typed-styles]
     (type value)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them
 
 (defmethod set-cell! LocalDate
-  [^Cell cell ^LocalDate t styles]
+  [^Cell cell ^LocalDate t styles typed-styles]
   (.setCellValue cell t)
-  (.setCellStyle cell (first styles)))
+  (.setCellStyle cell (or (first styles) (typed-styles :date))))
 
 (defmethod set-cell! LocalDateTime
-  [^Cell cell ^LocalDateTime t styles]
+  [^Cell cell ^LocalDateTime t styles typed-styles]
   (.setCellValue cell t)
-  (.setCellStyle cell (first styles)))
+  (.setCellStyle cell (or (first styles) (typed-styles :datetime))))
 
 (defmethod set-cell! LocalTime
-  [^Cell cell t styles]
+  [^Cell cell t styles typed-styles]
   ;; there's no `.setCellValue` for a `LocalTime` -- but all the built-in impls for `LocalDate` and `LocalDateTime` do
   ;; anyway is convert the date(time) to an Excel datetime floating-point number and then set that.
   ;;
@@ -281,42 +307,44 @@
   ;;
   ;; See https://poi.apache.org/apidocs/4.1/org/apache/poi/ss/usermodel/DateUtil.html#convertTime-java.lang.String-
   (.setCellValue cell (DateUtil/convertTime (u.date/format "HH:mm:ss" t)))
-  (.setCellStyle cell (first styles)))
+  (.setCellStyle cell (or (first styles) (typed-styles :time))))
 
 (defmethod set-cell! OffsetTime
-  [^Cell cell t styles]
-  (set-cell! cell (t/local-time (common/in-result-time-zone t)) styles))
+  [^Cell cell t styles typed-styles]
+  (set-cell! cell (t/local-time (common/in-result-time-zone t)) styles typed-styles))
 
 (defmethod set-cell! OffsetDateTime
-  [^Cell cell t styles]
-  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) styles))
+  [^Cell cell t styles typed-styles]
+  (set-cell! cell (t/local-date-time (common/in-result-time-zone t)) styles typed-styles))
 
 (defmethod set-cell! ZonedDateTime
-  [^Cell cell t styles]
-  (set-cell! cell (t/offset-date-time t) styles))
+  [^Cell cell t styles typed-styles]
+  (set-cell! cell (t/offset-date-time t) styles typed-styles))
 
 (defmethod set-cell! String
-  [^Cell cell value _styles]
+  [^Cell cell value _styles _typed-styles]
   (.setCellValue cell ^String value))
 
 (defmethod set-cell! Number
-  [^Cell cell value styles]
+  [^Cell cell value styles typed-styles]
   (let [v (double value)]
     (.setCellValue cell v)
-    (let [[int-style float-style] styles]
-      (if (rounds-to-int? v)
-        (.setCellStyle cell int-style)
-        (.setCellStyle cell float-style)))))
+    ;; Do not set formatting for ##NaN, ##Inf, or ##-Inf
+    (when (u/real-number? v)
+      (let [[int-style float-style] styles]
+        (if (rounds-to-int? v)
+          (.setCellStyle cell (or int-style (typed-styles :integer)))
+          (.setCellStyle cell (or float-style (typed-styles :float))))))))
 
 (defmethod set-cell! Boolean
-  [^Cell cell value _styles]
+  [^Cell cell value _styles _typed-styles]
   (.setCellValue cell ^Boolean value))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
 ;; `metabase.server.middleware`.
 (defmethod set-cell! Object
-  [^Cell cell value _styles]
+  [^Cell cell value _styles _typed-styles]
   ;; stick the object in a JSON map and encode it, which will force conversion to a string. Then unparse that JSON and
   ;; use the resulting value as the cell's new String value.  There might be some more efficient way of doing this but
   ;; I'm not sure what it is.
@@ -324,7 +352,7 @@
                                (json/parse-string keyword)
                                :v))))
 
-(defmethod set-cell! nil [^Cell cell _value _styles]
+(defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]
   (.setBlank cell))
 
 (def ^:dynamic *parse-temporal-string-values*
@@ -345,7 +373,7 @@
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
   This is based on the equivalent function in Docjure, but adapted to support Metabase viz settings."
-  [^SXSSFSheet sheet values cols col-settings cell-styles]
+  [^SXSSFSheet sheet values cols col-settings cell-styles typed-cell-styles]
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
@@ -362,7 +390,7 @@
             parsed-value (or
                            (maybe-parse-temporal-value value col)
                            scaled-val)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles)))
+        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
     row))
 
 (def ^:dynamic *auto-sizing-threshold*
@@ -400,10 +428,13 @@
   [_ ^OutputStream os]
   (let [workbook    (SXSSFWorkbook.)
         sheet       (spreadsheet/add-sheet! workbook (tru "Query result"))
-        cell-styles (volatile! nil)]
+        data-format (. workbook createDataFormat)
+        cell-styles (volatile! nil)
+        typed-cell-styles (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (vreset! cell-styles (compute-cell-styles workbook viz-settings ordered-cols))
+        (vreset! cell-styles (compute-column-cell-styles workbook data-format viz-settings ordered-cols))
+        (vreset! typed-cell-styles (compute-typed-cell-styles workbook data-format))
         (doseq [i (range (count ordered-cols))]
           (.trackColumnForAutoSizing ^SXSSFSheet sheet i))
         (setup-header-row! sheet (count ordered-cols))
@@ -415,7 +446,7 @@
                                (for [i output-order] (row-v i)))
                              row)
               col-settings (::mb.viz/column-settings viz-settings)]
-          (add-row! sheet ordered-row ordered-cols col-settings @cell-styles)
+          (add-row! sheet ordered-row ordered-cols col-settings @cell-styles @typed-cell-styles)
           (when (= (inc row-num) *auto-sizing-threshold*)
             (autosize-columns! sheet))))
 
