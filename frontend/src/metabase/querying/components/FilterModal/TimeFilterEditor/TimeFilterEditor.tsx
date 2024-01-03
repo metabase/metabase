@@ -64,7 +64,7 @@ export function TimeFilterEditor({
   };
 
   return (
-    <Grid grow>
+    <Grid mih="4.5rem" grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />
@@ -114,6 +114,8 @@ function TimeValueInput({
     return (
       <TimeInput
         value={value}
+        placeholder={t`Enter a time`}
+        aria-label={t`Filter value`}
         clearable
         onChange={newValue => onChange([newValue])}
         onFocus={onFocus}
@@ -128,6 +130,7 @@ function TimeValueInput({
       <Flex align="center">
         <TimeInput
           value={value1}
+          placeholder={t`Min`}
           clearable
           onChange={newValue1 => onChange([newValue1, value2])}
           onFocus={onFocus}
@@ -136,6 +139,7 @@ function TimeValueInput({
         <Text mx="sm">{t`and`}</Text>
         <TimeInput
           value={value2}
+          placeholder={t`Max`}
           clearable
           onChange={newValue2 => onChange([value1, newValue2])}
           onFocus={onFocus}
