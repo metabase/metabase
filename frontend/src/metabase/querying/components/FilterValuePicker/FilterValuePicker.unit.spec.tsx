@@ -209,7 +209,9 @@ describe("StringFilterValuePicker", () => {
         }),
       });
       expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "In-progress" }),
+      ).not.toBeChecked();
 
       userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
       expect(screen.getByText("In-progress")).toBeInTheDocument();
@@ -401,7 +403,24 @@ describe("StringFilterValuePicker", () => {
       expect(onBlur).toHaveBeenCalled();
     });
 
-    it("should allow to remove a value", async () => {
+    it("should not allow to add whitespace", async () => {
+      const { onChange, onFocus, onBlur } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const input = screen.getByPlaceholderText("Enter some text");
+      userEvent.type(input, " ");
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith([]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it("should allow to remove a value when there are multiple values", async () => {
       const { onChange } = await setupStringPicker({
         query,
         stageIndex,
@@ -412,6 +431,19 @@ describe("StringFilterValuePicker", () => {
       userEvent.type(screen.getByLabelText("Filter value"), "{backspace}");
 
       expect(onChange).toHaveBeenLastCalledWith(["abc"]);
+    });
+
+    it("should allow to remove the last value", async () => {
+      const { onChange } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["abc"],
+      });
+
+      userEvent.type(screen.getByLabelText("Filter value"), "{backspace}");
+
+      expect(onChange).toHaveBeenLastCalledWith([]);
     });
   });
 });
@@ -466,7 +498,9 @@ describe("NumberFilterValuePicker", () => {
         }),
       });
       expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
-      expect(screen.getByRole("checkbox", { name: "To-do" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "In-progress" }),
+      ).not.toBeChecked();
 
       userEvent.type(screen.getByPlaceholderText("Search the list"), "in");
       expect(screen.getByText("In-progress")).toBeInTheDocument();
@@ -525,6 +559,23 @@ describe("NumberFilterValuePicker", () => {
 
       const input = screen.getByPlaceholderText("Enter a number");
       userEvent.type(input, "abc");
+      userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith([]);
+      expect(onBlur).toHaveBeenCalled();
+    });
+
+    it("should not allow to add whitespace", async () => {
+      const { onChange, onFocus, onBlur } = await setupNumberPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+      });
+
+      const input = screen.getByPlaceholderText("Enter a number");
+      userEvent.type(input, " ");
       userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();

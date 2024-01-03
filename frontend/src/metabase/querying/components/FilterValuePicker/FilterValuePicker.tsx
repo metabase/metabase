@@ -112,7 +112,7 @@ export function StringFilterValuePicker({
   ...props
 }: FilterValuePickerProps<string>) {
   const shouldCreate = (query: string) => {
-    return query.length > 0 && !values.includes(query);
+    return query.trim().length > 0 && !values.includes(query);
   };
 
   return (
