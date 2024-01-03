@@ -114,9 +114,9 @@ describe("DateFilterEditor", () => {
         column,
         filter,
       });
+      expect(screen.getByText("Previous 30 Days")).toBeInTheDocument();
 
       userEvent.click(screen.getByLabelText("Clear"));
-
       expect(getNextFilterName()).toBe(null);
     });
 
