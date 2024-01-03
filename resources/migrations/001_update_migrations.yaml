@@ -5174,7 +5174,6 @@ databaseChangeLog:
                   remarks: The ID of the associated permission group
                   name: group_id
                   type: int
-                  autoIncrement: true
                   constraints:
                     nullable: false
                     referencedTableName: permissions_group
@@ -5187,8 +5186,32 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  remarks: A database ID, for DB and table-level permissions
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_v2_ref_db_id
+              - column:
+                  remarks: A schema name, for table-level permissions
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: A table ID
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_v2_ref_table_id
+              - column:
                   remarks: >-
-                    The ID of the object, such as a table or collection, this permission is assocaited with.
+                    The ID of the object this permission is assocaited with, for non-DB and Table permissions.
                     The table this ID references is inferred based on the permission type.
                   name: object_id
                   type: int
