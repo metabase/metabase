@@ -51,7 +51,7 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       );
 
       let question = new Question(cardAfterClick, metadata);
-      if (question.query().isEditable()) {
+      if (question.isQueryEditable()) {
         question = question
           .setDisplay(cardAfterClick.display || previousCard.display)
           .setSettings(dashcard.card.visualization_settings)

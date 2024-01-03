@@ -83,13 +83,6 @@ class Query {
   }
 
   /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly(): boolean {
-    return true;
-  }
-
-  /**
    * Dimensions exposed by this query
    * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
    */

@@ -1209,35 +1209,36 @@
 
 (deftest can-append-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Happy path"
-      (is (= {:row-count 2}
-             (append-csv-with-defaults!))))
-    (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
-      (mt/with-temporary-setting-values [uploads-database-id nil
-                                         uploads-schema-name nil
-                                         uploads-table-prefix nil]
-        (is (some? (append-csv-with-defaults!)))))
-    (testing "Uploads must be enabled"
-      (is (= {:message "Uploads are not enabled."
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
-    (testing "The table must exist"
-      (is (= {:message "Not found."
-              :data    {:status-code 404}}
-             (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
-    (testing "The table must be an uploaded table"
-      (is (= {:message "The table must be an uploaded table."
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
-    (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
-    (testing "Uploads must be supported"
-      (with-redefs [driver/database-supports? (constantly false)]
-        (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+    (mt/with-empty-db
+      (testing "Happy path"
+        (is (= {:row-count 2}
+               (append-csv-with-defaults!))))
+      (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
+        (mt/with-temporary-setting-values [uploads-database-id nil
+                                           uploads-schema-name nil
+                                           uploads-table-prefix nil]
+          (is (some? (append-csv-with-defaults!)))))
+      (testing "Uploads must be enabled"
+        (is (= {:message "Uploads are not enabled."
                 :data    {:status-code 422}}
-               (catch-ex-info (append-csv-with-defaults!))))))))
+               (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
+      (testing "The table must exist"
+        (is (= {:message "Not found."
+                :data    {:status-code 404}}
+               (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
+      (testing "The table must be an uploaded table"
+        (is (= {:message "The table must be an uploaded table."
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
+      (testing "The CSV file must not be empty"
+        (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
+      (testing "Uploads must be supported"
+        (with-redefs [driver/database-supports? (constantly false)]
+          (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+                  :data    {:status-code 422}}
+                 (catch-ex-info (append-csv-with-defaults!)))))))))
 
 (defn do-with-uploads-allowed
   "Set uploads-enabled to true, and uses an admin user, run the thunk"
