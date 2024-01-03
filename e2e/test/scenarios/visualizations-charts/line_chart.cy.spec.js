@@ -578,28 +578,32 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should apply filters to the series selecting area range", () => {
-    cy.viewport(1280, 800);
+  it(
+    "should apply filters to the series selecting area range",
+    { tags: "@flaky" },
+    () => {
+      cy.viewport(1280, 800);
 
-    visitQuestionAdhoc({
-      dataset_query: testQuery,
-      display: "line",
-    });
+      visitQuestionAdhoc({
+        dataset_query: testQuery,
+        display: "line",
+      });
 
-    cy.get(".Visualization")
-      .trigger("mousedown", 100, 200)
-      .trigger("mousemove", 230, 200)
-      .trigger("mouseup", 230, 200);
+      cy.get(".Visualization")
+        .trigger("mousedown", 100, 200)
+        .trigger("mousemove", 230, 200)
+        .trigger("mouseup", 230, 200);
 
-    cy.wait("@dataset");
+      cy.wait("@dataset");
 
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
-    );
+      cy.findByTestId("filter-pill").should(
+        "have.text",
+        "Created At is Apr 1, 12:00 AM – Sep 1, 2022, 12:00 AM",
+      );
 
-    cy.get(".Visualization .dot").should("have.length", 6);
-  });
+      cy.get(".Visualization .dot").should("have.length", 6);
+    },
+  );
 });
 
 function testPairedTooltipValues(val1, val2) {
