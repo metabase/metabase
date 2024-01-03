@@ -135,6 +135,30 @@ describe("DateFilterEditor", () => {
 
       expect(getNextFilterName()).toBe("Created At excludes the hour of 5 PM");
     });
+
+    it("should remove an exclude filter", async () => {
+      const { query, filter } = createQueryWithFilter(
+        defaultQuery,
+        Lib.excludeDateFilterClause(defaultQuery, stageIndex, {
+          operator: "!=",
+          column,
+          values: [17],
+          bucket: "hour-of-day",
+        }),
+      );
+      const { getNextFilterName } = setup({
+        query,
+        stageIndex,
+        column,
+        filter,
+      });
+      expect(
+        screen.getByText("Created At excludes the hour of 5 PM"),
+      ).toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Clear"));
+      expect(getNextFilterName()).toBe(null);
+    });
   });
 });
 
