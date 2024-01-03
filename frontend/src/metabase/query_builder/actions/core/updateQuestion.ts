@@ -32,7 +32,7 @@ import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 function hasNewColumns(question: Question, queryResult: Dataset) {
   // NOTE: this assume column names will change
   // technically this is wrong because you could add and remove two columns with the same name
-  const query = question.query();
+  const query = question.legacyQuery();
   const previousColumns =
     (queryResult && queryResult.data.cols.map(col => col.name)) || [];
   const nextColumns =
@@ -86,10 +86,10 @@ function shouldTemplateTagEditorBeVisible({
     return isVisible;
   }
   const previousTags = currentQuestion?.isNative()
-    ? (currentQuestion.query() as NativeQuery).variableTemplateTags()
+    ? (currentQuestion.legacyQuery() as NativeQuery).variableTemplateTags()
     : [];
   const nextTags = newQuestion.isNative()
-    ? (newQuestion.query() as NativeQuery).variableTemplateTags()
+    ? (newQuestion.legacyQuery() as NativeQuery).variableTemplateTags()
     : [];
   if (nextTags.length > previousTags.length) {
     return true;
@@ -166,7 +166,7 @@ export const updateQuestion = (
     if (wasPivot || isPivot) {
       const hasBreakouts =
         newQuestion.isStructured() &&
-        (newQuestion.query() as StructuredQuery).hasBreakouts();
+        (newQuestion.legacyQuery() as StructuredQuery).hasBreakouts();
 
       // compute the pivot setting now so we can query the appropriate data
       if (isPivot && hasBreakouts) {
@@ -232,12 +232,12 @@ export const updateQuestion = (
     const currentDependencies = currentQuestion
       ? [
           ...currentQuestion.dependentMetadata(),
-          ...currentQuestion.query().dependentMetadata(),
+          ...currentQuestion.legacyQuery().dependentMetadata(),
         ]
       : [];
     const nextDependencies = [
       ...newQuestion.dependentMetadata(),
-      ...newQuestion.query().dependentMetadata(),
+      ...newQuestion.legacyQuery().dependentMetadata(),
     ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
