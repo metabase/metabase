@@ -680,12 +680,17 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
-const TIME_FORMATS = ["HH:mm:ss.sss[Z]", "HH:mm:SS.sss", "HH:mm:SS", "HH:mm"];
-const TIME_FORMAT_MS = "HH:mm:SS.sss";
+const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
+const TIME_FORMAT_MS = "HH:mm:ss.SSS";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
 function hasTimeParts(date: Date): boolean {
-  return date.getHours() !== 0 || date.getMinutes() !== 0;
+  return (
+    date.getHours() !== 0 ||
+    date.getMinutes() !== 0 ||
+    date.getSeconds() !== 0 ||
+    date.getMilliseconds() !== 0
+  );
 }
 
 function serializeDate(date: Date): string {
