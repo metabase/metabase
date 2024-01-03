@@ -327,7 +327,7 @@
     value-type))
 
 (defmethod moment+type->iso-8601 :offset-date-time
-  [[t _value-type]]
+  [[^moment/Moment t _value-type]]
   (let [format-string (cond
                         (pos? (.milliseconds t)) "yyyy-MM-DDTHH:mm:ss.SSS[Z]"
                         (pos? (.seconds t))      "yyyy-MM-DDTHH:mm:ss[Z]"
@@ -335,7 +335,7 @@
     (.format t format-string)))
 
 (defmethod moment+type->iso-8601 :local-date-time
-  [[t _value-type]]
+  [[^moment/Moment t _value-type]]
   (let [format-string (cond
                         (pos? (.milliseconds t)) "yyyy-MM-DDTHH:mm:ss.SSS"
                         (pos? (.seconds t))      "yyyy-MM-DDTHH:mm:ss"
@@ -343,11 +343,11 @@
     (.format t format-string)))
 
 (defmethod moment+type->iso-8601 :local-date
-  [[t _value-type]]
+  [[^moment/Moment t _value-type]]
   (.format t "yyyy-MM-DD"))
 
 (defmethod moment+type->iso-8601 :offset-time
-  [[t _value-type]]
+  [[^moment/Moment t _value-type]]
   (let [format-string (cond
                         (pos? (.milliseconds t)) "HH:mm:ss.SSS[Z]"
                         (pos? (.seconds t))      "HH:mm:ss[Z]"
@@ -355,7 +355,7 @@
     (.format t format-string)))
 
 (defmethod moment+type->iso-8601 :local-time
-  [[t _value-type]]
+  [[^moment/Moment t _value-type]]
   (let [format-string (cond
                         (pos? (.milliseconds t)) "HH:mm:ss.SSS"
                         (pos? (.seconds t))      "HH:mm:ss"
@@ -366,12 +366,12 @@
   "Return the number of `unit`s between two temporal values `before` and `after`, e.g. maybe there are 32 `:day`s
   between Jan 1st and Feb 2nd."
   [unit before after]
-  (let [before (if (string? before)
-                 (first (iso-8601->moment+type before))
-                 before)
-        after  (if (string? after)
-                 (first (iso-8601->moment+type after))
-                 after)]
+  (let [^moment/Moment before (if (string? before)
+                                (first (iso-8601->moment+type before))
+                                before)
+        ^moment/Moment after  (if (string? after)
+                                (first (iso-8601->moment+type after))
+                                after)]
     (.diff after before (name unit))))
 
 (defn truncate

@@ -342,7 +342,7 @@
      :quarter     (-> (.with t (adjuster :first-day-of-quarter)) (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)            (t/truncate-to :days)))))
 
-(mu/defn bucket :- [:or :number TemporalInstance]
+(mu/defn bucket :- [:or number? TemporalInstance]
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
   'date bucketing' in Metabase code and MBQL, e.g. for date/time columns in MBQL `:breakout` (SQL `GROUP BY`)).
 
@@ -354,7 +354,7 @@
    (bucket (t/zoned-date-time) unit))
 
   ([t    :- TemporalInstance
-    unit :- (into [] cat [extract-units truncate-units])]
+    unit :- (into [:enum] cat [extract-units truncate-units])]
    (cond
      (= unit :default)     t
      (extract-units unit)  (extract t unit)
