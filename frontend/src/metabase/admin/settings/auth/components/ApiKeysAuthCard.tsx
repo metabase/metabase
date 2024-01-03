@@ -29,7 +29,7 @@ export const ApiKeysAuthCard = () => {
           </CardBadge>
         )}
       </CardHeader>
-      <CardDescription>{t`Allow users to use the API keys to authenticate their API calls.`}</CardDescription>
+      <CardDescription>{t`Create keys to authenticate API calls.`}</CardDescription>
       <Button as={Link} to={`/admin/settings/authentication/api-keys`}>
         {isConfigured ? t`Manage` : t`Set up`}
       </Button>

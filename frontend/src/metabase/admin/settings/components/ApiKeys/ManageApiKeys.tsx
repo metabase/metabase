@@ -25,14 +25,9 @@ function formatMaskedKey(maskedKey: string) {
 
 function EmptyTableWarning() {
   return (
-    <Stack
-      h="40rem" // TODO: how to make this fill only available window height?
-      align="center"
-      justify="center"
-      spacing="sm"
-    >
+    <Stack mt="xl" align="center" justify="center" spacing="sm">
       <Title>{t`No API keys here yet`}</Title>
-      <Text color="text.1">{t`Create API keys to programmatically authenticate their API calls.`}</Text>
+      <Text color="text.1">{t`You can create an API key to make API calls programatically.`}</Text>
     </Stack>
   );
 }
@@ -51,7 +46,7 @@ function ApiKeysTable({
   error?: Error;
 }) {
   return (
-    <Stack data-testid="api-keys-table">
+    <Stack data-testid="api-keys-table" pb="lg">
       <table className="ContentTable border-bottom">
         <thead>
           <tr>
