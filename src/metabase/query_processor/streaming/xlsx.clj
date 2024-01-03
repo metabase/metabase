@@ -64,13 +64,14 @@
       "name"
       (str base-string "\" " currency-identifier "\""))))
 
-(defn- default-number-format?
+(defn- unformatted-number?
   "Use default formatting for decimal number types that have no other format settings defined
   aside from prefix, suffix or scale."
   [format-settings]
   (and
-   ;; This is a decimal number (not a currency, percentage or scientific notation)
+   ;; This is a decimal or currency number (not a percentage or scientific notation)
    (or (= (::mb.viz/number-style format-settings) "decimal")
+       (= (::mb.viz/number-style format-settings) "currency")
        (not (::mb.viz/number-style format-settings)))
    ;; Custom number formatting options are not set
    (not (seq (dissoc format-settings
@@ -92,7 +93,7 @@
                                 "###0"
                                 "#,##0")
               decimals        (or decimals 2)
-              base-strings    (if (default-number-format? format-settings)
+              base-strings    (if (unformatted-number? format-settings)
                                 ;; [int-format, float-format]
                                 [base-string (str base-string ".##")]
                                 (repeat 2 (apply str base-string (when (> decimals 0) (apply str "." (repeat decimals "0"))))))]

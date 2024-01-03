@@ -2120,35 +2120,53 @@
                                              "[\"name\",\"CREATION_DATE\"]"          {:column_title "Date"}
                                              "[\"name\",\"DEFAULT_CURRENCY\"]"       {:number_style "currency"
                                                                                       :column_title "Plain Currency"}}}]
-      (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
-        (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
-                                                                     :type     :native
-                                                                     :native   {:query excel-data-query}}
-                                            :display                :table
-                                            :visualization_settings viz-settings}]
-          ;; The following formatting has been applied:
-          ;; - All columns renamed
-          ;; - Column reordering
-          ;; - Column hiding (See "HIDE_ME") above
-          ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
-          ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
-          ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
-          ;; - "Date" shows simple date formatting
-          ;; - "Time" shows simple time formatting
-          ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
-          ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
-          ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
-          ;; - "DOL Col" has trailing US dollars
-          ;; - "EXPO" has exponentiated values
-          ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
-          ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
-          (testing "All formatting is applied correctly in a complex situation."
-            (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
-                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
-                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
-                    ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
-                   (parse-xlsx-results-to-strings
-                     (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))))
+      (testing "The default settings (USD) are applied correctly"
+        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
+          (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query excel-data-query}}
+                                              :display                :table
+                                              :visualization_settings viz-settings}]
+            ;; The following formatting has been applied:
+            ;; - All columns renamed
+            ;; - Column reordering
+            ;; - Column hiding (See "HIDE_ME") above
+            ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
+            ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
+            ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
+            ;; - "Date" shows simple date formatting
+            ;; - "Time" shows simple time formatting
+            ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
+            ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
+            ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
+            ;; - "DOL Col" has trailing US dollars
+            ;; - "EXPO" has exponentiated values
+            ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
+            ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
+            (testing "All formatting is applied correctly in a complex situation."
+              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
+                     (parse-xlsx-results-to-strings
+                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+      (testing "Global currency settings are applied correctly"
+        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                              :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+          (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query excel-data-query}}
+                                              :display                :table
+                                              :visualization_settings viz-settings}]
+            (testing "All formatting is applied correctly in a complex situation."
+              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency (€)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$€]1,234.05" "[$EUR] 2345.05" "4,321.05 euros" "7180.64E+0" "0.05%" "19.200%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
+                     (parse-xlsx-results-to-strings
+                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
+            (parse-xlsx-results-to-strings
+              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

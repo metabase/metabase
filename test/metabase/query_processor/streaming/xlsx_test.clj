@@ -431,30 +431,31 @@
          row)))
 
 (deftest export-format-test
-  (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
-    (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
-           (rest (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                              {}
-                              [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
-                              parse-format-strings)))))
+  (mt/with-temporary-setting-values [custom-formatting {}]
+    (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
+      (is (= [["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"] ["#,##0"] ["#,##0.##"]]
+             (rest (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
+                                {}
+                                [[1] [1.23] [1.004] [1.005] [10000000000] [10000000000.123]]
+                                parse-format-strings)))))
 
-  (testing "Misc format strings are included correctly in exports"
-    (is (= ["[$€]#,##0.00"]
-           (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
-                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                           {::mb.viz/currency "EUR"
-                                                            ::mb.viz/currency-in-header false}}}
-                                [[1.23]]
-                                parse-format-strings))))
-    (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-           (second (xlsx-export [{:field_ref [:field 0] :name "Col" :effective_type :type/Temporal}]
-                                {::mb.viz/column-settings {{::mb.viz/field-id 0}
-                                                           {::mb.viz/date-style "YYYY/M/D",
-                                                            ::mb.viz/date-separator ".",
-                                                            ::mb.viz/time-style "h:mm A",
-                                                            ::mb.viz/time-enabled "seconds"}}}
-                                [[#t "2020-03-28T10:12:06.681"]]
-                                parse-format-strings))))))
+    (testing "Misc format strings are included correctly in exports"
+      (is (= ["[$€]#,##0.00"]
+             (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
+                                  {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                             {::mb.viz/currency           "EUR"
+                                                              ::mb.viz/currency-in-header false}}}
+                                  [[1.23]]
+                                  parse-format-strings))))
+      (is (= ["yyyy.m.d, h:mm:ss am/pm"]
+             (second (xlsx-export [{:field_ref [:field 0] :name "Col" :effective_type :type/Temporal}]
+                                  {::mb.viz/column-settings {{::mb.viz/field-id 0}
+                                                             {::mb.viz/date-style     "YYYY/M/D",
+                                                              ::mb.viz/date-separator ".",
+                                                              ::mb.viz/time-style     "h:mm A",
+                                                              ::mb.viz/time-enabled   "seconds"}}}
+                                  [[#t "2020-03-28T10:12:06.681"]]
+                                  parse-format-strings)))))))
 
 (deftest column-order-test
   (testing "Column titles are ordered correctly in the output"
