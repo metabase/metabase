@@ -53,6 +53,7 @@
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
+
 (mu/defn migrate!
   "Migrate the application database specified by `data-source`.
 
@@ -117,6 +118,21 @@
                      (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
                 (u/emoji "✅")))))
 
+(mu/defn ^:private error-if-downgrade-required!
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (log/info (u/format-color 'cyan (trs "Checking if a database downgrade is required...")))
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+    (liquibase/with-liquibase [liquibase conn]
+      (let [latest-available (liquibase/latest-available-major-version liquibase)
+            latest-applied (liquibase/latest-applied-major-version conn)]
+        ;; `latest-applied` will be `nil` for fresh installs
+        (when (and latest-applied (< latest-available latest-applied))
+          (log/info (u/format-color 'red (trs "Latest applied version: {0}" latest-applied)))
+          (log/info (u/format-color 'red (trs "Latest known version: {0}" latest-available)))
+          (throw (ex-info (trs "Downgrade detected. Please run `migrate down` from version {0}."
+                            latest-applied)
+                          {})))))))
+
 (mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [db-type       :- :keyword
@@ -140,6 +156,7 @@
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
          (verify-db-connection db-type data-source)
+         (error-if-downgrade-required! data-source)
          (run-schema-migrations! db-type data-source auto-migrate?))))
   :done)
 
