@@ -15,7 +15,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.driver :as driver]
    [metabase.models :refer [Database User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
@@ -1467,7 +1466,7 @@
                    ttype)
            :mysql
            (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
-                   ttype (.getSchema (.getConnection (mdb.connection/data-source))))
+                   ttype (-> (mdb.connection/data-source) .getConnection .getCatalog))
            :h2
            (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s';"
                    ttype))])
@@ -1477,12 +1476,11 @@
 
 (deftest unify-type-of-time-columns-test
   (impl/test-migrations ["v49.00-054"] [migrate!]
-    (when-not (= driver/*driver* :mysql)
-      (let [db-type       (mdb.connection/db-type)
-            datetime-type (case db-type
-                            :postgres "timestamp without time zone"
-                            :h2       "TIMESTAMP"
-                            :mysql    "datetime")]
+    (let [db-type       (mdb.connection/db-type)
+          datetime-type (case db-type
+                          :postgres "timestamp without time zone"
+                          :h2       "TIMESTAMP"
+                          :mysql    "datetime")]
         (testing "Sanity check"
           (is (true? (set/subset?
                       (set (#'custom-migrations/db-type->to-unified-columns db-type))
@@ -1497,4 +1495,4 @@
           (migrate! :down 48)
           (is (true? (set/subset?
                       (set (#'custom-migrations/db-type->to-unified-columns db-type))
-                      (table-and-column-of-type datetime-type)))))))))
+                      (table-and-column-of-type datetime-type))))))))
