@@ -70,12 +70,15 @@
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
-  is not necessary."
-  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
+  is not necessary.
+
+  For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
+  [archived exclude-other-user-collections namespace shallow collection-id]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
-                       [:!= :archived exclude-archived]
+                       (when (some? archived)
+                         [:= :archived archived])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
                        (perms/audit-namespace-clause :namespace namespace)
@@ -101,7 +104,7 @@
    exclude-other-user-collections [:maybe ms/BooleanValue]
    namespace                      [:maybe ms/NonBlankString]}
   (as->
-   (select-collections (not archived) exclude-other-user-collections namespace false nil) collections
+   (select-collections archived exclude-other-user-collections namespace false nil) collections
     ;; include Root Collection at beginning or results if archived isn't `true`
     (if archived
       collections
@@ -164,7 +167,8 @@
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
-  (let [collections (select-collections exclude-archived exclude-other-user-collections namespace shallow collection-id)]
+  (let [archived    (if exclude-archived false nil)
+        collections (select-collections archived exclude-other-user-collections namespace shallow collection-id)]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
