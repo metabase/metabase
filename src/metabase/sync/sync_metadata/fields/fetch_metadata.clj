@@ -7,7 +7,6 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.models.field :as field :refer [Field]]
    [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
@@ -37,6 +36,7 @@
           :database-is-auto-increment (:database_is_auto_increment field)
           :position                  (:position field)
           :database-position         (:database_position field)
+          :database-partitioned      (:database_partitioned field)
           :database-required         (:database_required field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
@@ -70,12 +70,12 @@
 (mu/defn ^:private table->fields :- [:maybe [:sequential i/FieldInstance]]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
- (t2/select [Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
-             :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required
-              :json_unfolding :position]
-     :table_id  (u/the-id table)
-     :active    true
-     {:order-by table/field-order-rule}))
+  (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
+              :parent_id :id :description :database_position :nfc_path :database_is_auto_increment :database_required
+              :database_partitioned :json_unfolding :position]
+             :table_id  (u/the-id table)
+             :active    true
+             {:order-by table/field-order-rule}))
 
 (mu/defn our-metadata :- [:set common/TableMetadataFieldWithID]
   "Return information we have about Fields for a `table` in the application database in (almost) exactly the same

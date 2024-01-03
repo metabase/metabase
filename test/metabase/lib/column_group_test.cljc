@@ -412,3 +412,25 @@
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__LATITUDE_2", :fk-join-alias "Mock orders card"}
                {:lib/desired-column-alias "PEOPLE__via__USER_ID__CREATED_AT_2", :fk-join-alias "Mock orders card"}]
               (::lib.column-group/columns product-2))))))
+
+(deftest ^:parallel string-fk-id-test
+  (testing "models sometimes result in a string FK ID - those should be correctly looked up (#37067)"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          columns (filter #(= (:table-id %) (meta/id :products)) (lib/visible-columns query))
+          group   {:lib/type                     :metadata/column-group
+                   ::lib.column-group/group-type :group-type/join.implicit
+                   ::lib.column-group/columns    columns
+                   :fk-field-id                  "PRODUCT_ID"}]
+      (is (=? {:display-name           "Product ID"
+               :name                   "PRODUCT_ID"
+               :long-display-name      "Product ID"
+               :fk-reference-name      "Product"
+               :is-from-join           false
+               :is-implicitly-joinable true
+               :semantic-type          :type/FK
+               :effective-type         :type/Integer
+               :table                  {:display-name      "Orders"
+                                        :long-display-name "Orders"
+                                        :is-source-table   true
+                                        :name              "ORDERS"}}
+              (lib/display-info query 0 group))))))

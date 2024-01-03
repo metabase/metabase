@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Database } from "metabase-types/api";
-import { createMockCard, createMockNativeCard } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockNativeCard,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -41,6 +45,7 @@ function setup({ card, databases = [createSampleDatabase()] }: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({
       databases,
+      tables: [createMockTable({ id: `card__${card.id}` })],
       questions: [card],
     }),
   });

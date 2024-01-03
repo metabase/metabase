@@ -10,6 +10,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.permissions.util :as perms.u]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -82,7 +83,7 @@
             table-ids)
       (t2/select-pk->fn :schema :model/Table :id [:in table-ids]))))
 
-(mu/defn tables->permissions-path-set :- [:set perms/PathSchema]
+(mu/defn tables->permissions-path-set :- [:set perms.u/PathSchema]
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
   `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
 
@@ -122,7 +123,7 @@
         (t2/select-one [:model/Card :collection_id] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn ^:private source-card-read-perms :- [:set perms/PathSchema]
+(mu/defn ^:private source-card-read-perms :- [:set perms.u/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]
@@ -135,7 +136,7 @@
   (binding [api/*current-user-id* nil]
     ((resolve 'metabase.query-processor/preprocess) query)))
 
-(mu/defn ^:private mbql-permissions-path-set :- [:set perms/PathSchema]
+(mu/defn ^:private mbql-permissions-path-set :- [:set perms.u/PathSchema]
   "Return the set of required permissions needed to run an adhoc `query`.
 
   Also optionally specify `throw-exceptions?` -- normally this function avoids throwing Exceptions to avoid breaking
@@ -163,9 +164,9 @@
         (when throw-exceptions?
           (throw e))
         (log/error e))
-      #{"/db/0/"})))                    ; DB 0 will never exist
+      #{"/db/0/"}))) ; DB 0 will never exist
 
-(mu/defn ^:private perms-set* :- [:set perms/PathSchema]
+(mu/defn ^:private perms-set* :- [:set perms.u/PathSchema]
   "Does the heavy lifting of creating the perms set. `opts` will indicate whether exceptions should be thrown and
   whether full or segmented table permissions should be returned."
   [{query-type :type, database :database, :as query} perms-opts :- PermsOptions]
