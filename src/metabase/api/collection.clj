@@ -57,22 +57,19 @@
      [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
     [:not [:like :location "/%/%/"]]))
 
-(defn- exclude-other-user-collections-clause
-  [user-id]
-  [:or [:= user-id :personal_owner_id] [:= nil :personal_owner_id]])
-
-(defn- remove-orphaned-collections
-  "Removes collections without it's root parent, used mainly for filtering out other user's
-   subcollections."
-  [collections]
-  (let [prefixes      (into #{}
-                            (map
-                             (fn [{:keys [id]}] (format "/%d/" id))
-                             collections))
-        parent-exists (fn [{:keys [location]}]
-                        (or (= "/" location)
-                            (prefixes (re-find #"^/\d+/" location))))]
-    (filter parent-exists collections)))
+(defn- remove-other-users-personal-collections
+  [user-id collections]
+  (let [personal-ids (t2/select-fn-set :id :model/Collection
+                                       {:where [:not [:or
+                                                      [:= :personal_owner_id nil]
+                                                      [:= :personal_owner_id user-id]]]})
+        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
+        personal?    (fn [{^String location :location id :id}]
+                       (or (personal-ids id)
+                           (prefixes (re-find #"^/\d+/" location))))]
+    (if (seq prefixes)
+      (remove personal? collections)
+      collections)))
 
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
@@ -80,14 +77,12 @@
   is not necessary."
   [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   (cond->>
-   (t2/select Collection
+   (t2/select :model/Collection
               {:where [:and
                        (when exclude-archived
                          [:= :archived false])
                        (when shallow
                          (location-from-collection-id-clause collection-id))
-                       (when exclude-other-user-collections
-                         (exclude-other-user-collections-clause api/*current-user-id*))
                        (perms/audit-namespace-clause :namespace namespace)
                        (collection/visible-collection-ids->honeysql-filter-clause
                         :id
@@ -95,7 +90,7 @@
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-orphaned-collections)))
+    exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
