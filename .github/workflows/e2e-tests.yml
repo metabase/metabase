@@ -256,6 +256,6 @@ jobs:
         uses: ./.github/actions/prepare-cypress
 
       - name: Percy Test
-        run: yarn run test-visual-run --browser 'replay-chromium'
+        run: yarn run test-visual-run
         env:
           PERCY_TOKEN: ${{ github.ref == 'refs/heads/master' && secrets.PERCY_TOKEN || ''}}
