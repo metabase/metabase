@@ -54,9 +54,13 @@
   (let [unhashed-key (key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (u/slugify name))]
     (t2/with-transaction [_conn]
-      (let [user (user/insert-new-user! {:email      email
-                                         :first_name name
-                                         :type       :api-key})]
+      (let [user (first
+                  (t2/insert-returning-instances! :model/User
+                                                  {:email      email
+                                                   :first_name name
+                                                   :last_name  ""
+                                                   :type       :api-key
+                                                   :password (str (random-uuid))}))]
         (user/set-permissions-groups! user [(perms-group/all-users) group_id])
         (let [api-key (-> (t2/insert-returning-instance! :model/ApiKey
                                                          (-> {:user_id       (u/the-id user)
@@ -93,7 +97,8 @@
           (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])))
       (when name
         ;; A bit of a pain to keep these in sync, but oh well.
-        (t2/update! :model/User (:user_id api-key-before) {:first_name name})
+        (t2/update! :model/User (:user_id api-key-before) {:first_name name
+                                                           :last_name ""})
         (t2/update! :model/ApiKey id (with-updated-by {:name name}))))
     (let [updated-api-key (-> (t2/select-one :model/ApiKey :id id)
                               (t2/hydrate :group :updated_by))]
