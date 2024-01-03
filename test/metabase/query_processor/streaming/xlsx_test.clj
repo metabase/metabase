@@ -440,14 +440,14 @@
 
   (testing "Misc format strings are included correctly in exports"
     (is (= ["[$€]#,##0.00"]
-           (second (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
+           (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                            {::mb.viz/currency "EUR"
                                                             ::mb.viz/currency-in-header false}}}
                                 [[1.23]]
                                 parse-format-strings))))
     (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-           (second (xlsx-export [{:id 0, :name "Col", :effective_type :type/Temporal}]
+           (second (xlsx-export [{:field_ref [:field 0] :name "Col" :effective_type :type/Temporal}]
                                 {::mb.viz/column-settings {{::mb.viz/field-id 0}
                                                            {::mb.viz/date-style "YYYY/M/D",
                                                             ::mb.viz/date-separator ".",
