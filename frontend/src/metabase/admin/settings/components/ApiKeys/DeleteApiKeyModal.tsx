@@ -39,7 +39,7 @@ export const DeleteApiKeyModal = ({
       <FormProvider initialValues={{}} onSubmit={handleDelete}>
         <Form>
           <Stack spacing="lg">
-            <Text>{t`Deleted API keys can’t be recovered`}</Text>
+            <Text>{t`You won't be able to recover a deleted API key. You'll have to create a new key.`}</Text>
             <FormErrorMessage />
             <Group position="right">
               <Button

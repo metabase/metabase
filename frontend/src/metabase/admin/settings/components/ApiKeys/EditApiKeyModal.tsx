@@ -69,7 +69,7 @@ const RegenerateKeyModal = ({
                 {apiKey.group.name}
               </Text>
             </Stack>
-            <Text>{t`The existing API key will be deleted and cannot be recovered. It will be replaced with a new key.`}</Text>
+            <Text>{t`Metabase will replace the existing API key with a new key. You won't be able to recover the old key.`}</Text>
             <FormErrorMessage />
             <Group position="right">
               <Button
