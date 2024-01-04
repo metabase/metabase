@@ -5160,24 +5160,18 @@ databaseChangeLog:
 #       automatically and the migrations linter will check for the presence of rollback where required as
 #       much as possible.
 #
-# 2) Please post a message in the Metabase Slack #migrations channel to let others know you are creating a new
-#    migration so someone else doesn't steal your ID number
+# 2) Migration IDs should follow the format
 #
-# 3) Migrations IDs should follow the format
+#    vMM.TIMESTAMP
 #
-#    vMM.mm-NNN
+#    Where
 #
-#    where
+#    M         = major version
+#    TIMESTAMP = the current timestamp with format `yyyy-MM-dd'T'HH:mm:ss`
+#                To get this timestamp, evaluate this in your REPL: `(dev/migration-timestamp)`
 #
-#    M = major version
-#    m = minor version
-#    N = migration number relative to that major+minor version
-#
-#   e.g. the first migration added to 0.42.0 should be numbered v42.00-000 and the second migration should be numbered
-#   v42.00-001. The first migration for 0.42.1 should be numbered v42.01-000, and so forth.
-#
-#   This numbering scheme was adopted beginning with version 0.42.0 so that we could go back and add migrations to patch
-#   releases without the ID sequence getting wildly out of order. See PR #18821 for more information.
+#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023 (UTC),
+#    your migration id should be: `v49.2023-04-01T10:30:00`.
 #
 # PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
 #
