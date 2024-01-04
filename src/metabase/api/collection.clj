@@ -143,35 +143,6 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
-(defn- location-from-collection-id-clause
-  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
-   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
-   then restrict to that collection's parents and children."
-  [collection-id]
-  (if collection-id
-    [:and
-     [:like :location (str "%/" collection-id "/%")]
-     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
-    [:not [:like :location "/%/%/"]]))
-
-(defn- select-collections
-  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
-  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
-  is not necessary."
-  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
-  (cond->>
-   (t2/select Collection
-              {:where [:and
-                       (when exclude-archived
-                         [:= :archived false])
-                       (when shallow
-                         (location-from-collection-id-clause collection-id))
-                       (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        :id
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-    exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*)))
-
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
