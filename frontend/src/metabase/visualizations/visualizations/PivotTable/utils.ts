@@ -189,6 +189,10 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
 }
 
 function databaseSupportsPivotTables(query: StructuredQuery) {
+  if (!query) {
+    return true;
+  }
+
   const question = query.question();
   const database = question.database();
 
