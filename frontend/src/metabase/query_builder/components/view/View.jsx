@@ -316,6 +316,7 @@ class View extends Component {
     }
 
     const isStructured = legacyQuery instanceof StructuredQuery;
+    const query = question._getMLv2Query();
 
     const isNewQuestion =
       isStructured &&
@@ -326,6 +327,7 @@ class View extends Component {
       return (
         <NewQuestionView
           legacyQuery={legacyQuery}
+          query={query}
           updateQuestion={updateQuestion}
           className="full-height"
         />

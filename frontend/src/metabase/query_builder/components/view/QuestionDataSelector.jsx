@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import * as Lib from "metabase-lib";
 
 export default function QuestionDataSelector({
   legacyQuery,
+  query,
   updateQuestion,
   triggerElement,
 }) {
@@ -11,7 +13,7 @@ export default function QuestionDataSelector({
       containerClassName="DataPopoverContainer"
       hasTableSearch
       databaseQuery={{ saved: true }}
-      selectedDatabaseId={legacyQuery.databaseId()}
+      selectedDatabaseId={Lib.databaseID(query)}
       selectedTableId={legacyQuery.tableId()}
       setSourceTableFn={tableId =>
         updateQuestion(
