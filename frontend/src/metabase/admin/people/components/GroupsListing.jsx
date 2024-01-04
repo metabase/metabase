@@ -64,33 +64,39 @@ function DeleteGroupModal({
   onConfirm = () => {},
   onClose = () => {},
 }) {
-  const numApiKeys = apiKeys.length;
-  const hasApiKeys = numApiKeys > 0;
+  const apiKeysCount = apiKeys.length;
+  const hasApiKeys = apiKeys.length > 0;
+
+  const modalTitle =
+    apiKeysCount === 0
+      ? t`Remove this group?`
+      : apiKeysCount === 1
+      ? t`Are you sure you want remove this group and its API key?`
+      : t`Are you sure you want remove this group and its API keys?`;
+
+  const confirmButtonText =
+    apiKeysCount === 0
+      ? t`Remove group`
+      : apiKeysCount === 1
+      ? t`Remove group and API key`
+      : t`Remove group and API keys`;
+
   return (
-    <ModalContent
-      title={
-        numApiKeys === 0
-          ? t`Remove this group?`
-          : numApiKeys === 1
-          ? t`Are you sure you want remove this group and its API Key?`
-          : t`Are you sure you want remove this group and its API Keys?`
-      }
-      onClose={onClose}
-    >
+    <ModalContent title={modalTitle} onClose={onClose}>
       <Stack spacing="xl">
         <Text>
           {hasApiKeys
-            ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API Keys will be deleted. You can ${(
+            ? jt`All members of this group will lose any permissions settings they have based on this group, and its related API keys will be deleted. You can ${(
                 <Link
                   to="/admin/settings/authentication/api-keys"
                   variant="brand"
-                >{t`move the API Keys to another group`}</Link>
+                >{t`move the API keys to another group`}</Link>
               )}.`
             : t`Are you sure? All members of this group will lose any permissions settings they have based on this group.
                 This can't be undone.`}
         </Text>
         <Group spacing="md" position="right">
-          <Button onClick={onClose}>{hasApiKeys ? t`Cancel` : t`No`}</Button>
+          <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
             color="error.0"
@@ -99,7 +105,7 @@ function DeleteGroupModal({
               onConfirm(group);
             }}
           >
-            {hasApiKeys ? t`Remove group and API Key` : t`Yes`}
+            {confirmButtonText}
           </Button>
         </Group>
       </Stack>
@@ -220,13 +226,7 @@ function GroupRow({
       </td>
       <td>
         {group.member_count || 0}
-        <span className="text-light">
-          {apiKeys.length === 1
-            ? t` (Includes 1 API Key)`
-            : apiKeys.length > 1
-            ? t` (Includes ${apiKeys.length} API Keys)`
-            : null}
-        </span>
+        <ApiKeyCount apiKeys={apiKeys} />
       </td>
       <td className="text-right">
         {showActionsButton ? (
@@ -241,6 +241,19 @@ function GroupRow({
     </tr>
   );
 }
+
+const ApiKeyCount = ({ apiKeys }) => {
+  if (!apiKeys?.length) {
+    return null;
+  }
+  return (
+    <span className="text-light">
+      {apiKeys.length === 1
+        ? t` (includes 1 API key)`
+        : t` (includes ${apiKeys.length} API keys)`}
+    </span>
+  );
+};
 
 const getGroupRowColors = () => [
   color("error"),
@@ -286,7 +299,7 @@ function GroupsTable({
             key={group.id}
             group={group}
             index={index}
-            apiKeys={apiKeys.filter(apiKey => apiKey.group_id === group.id)}
+            apiKeys={apiKeys.filter(apiKey => apiKey.group.id === group.id)}
             groupBeingEdited={groupBeingEdited}
             onEditGroupClicked={onEditGroupClicked}
             onDeleteGroupClicked={onDeleteGroupClicked}

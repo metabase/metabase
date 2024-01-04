@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Tooltip } from "metabase/ui";
+import { Tooltip, Text } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
 import { Icon } from "metabase/core/components/Icon";
@@ -223,14 +223,16 @@ function getName(user: IUser): string {
 const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
   return (
     <tr>
-      <td className="text-bold">{apiKey.name}</td>
-      <td></td>
+      <td>
+        <Text weight="bold">{apiKey.name}</Text>
+      </td>
+      <td>
+        <Text weight="bold" color="text.1">{t`API Key`}</Text>
+      </td>
+      <td>{/* api keys don't have emails */}</td>
       <td className="text-right">
         <Link to="/admin/settings/authentication/api-keys">
-          <Tooltip
-            label={t`Manage API keys on Settings \\ Authentication page`}
-            position="left"
-          >
+          <Tooltip label={t`Manage API keys`} position="left">
             <Icon name="link" size={16} />
           </Tooltip>
         </Link>

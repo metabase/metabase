@@ -1,4 +1,11 @@
-import { restore, visitDashboard, visitQuestion } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  visitQuestion,
+  createApiKey,
+} from "e2e/support/helpers";
+import type { ApiKey } from "metabase-types/api";
 
 import {
   ALL_USERS_GROUP_ID,
@@ -263,13 +270,6 @@ describe("scenarios > admin > settings > API keys", () => {
     });
   });
 });
-
-const createApiKey = (name: string, group_id: number) => {
-  return cy.request("POST", "/api/api-key", {
-    name,
-    group_id,
-  });
-};
 
 const createQuestionForApiKey = (apiKey: string) => {
   cy.signOut();
