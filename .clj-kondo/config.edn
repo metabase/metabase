@@ -405,9 +405,10 @@
     toucan.db                                                       db
     toucan.models                                                   models}}
 
-  :metabase/validate-deftest                                           {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/check-second-date-arities                                  {:level :warning}
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
+  :metabase/validate-deftest                                           {:level :warning}
   :metabase/warn-about-schema=                                         {:level :warning}}
 
  :lint-as
@@ -567,7 +568,9 @@
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp!                                                                                                  hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
-   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values}
+   metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   second-date.core/extract                                                                                                  hooks.second-date.core/extract
+   second-date.core/truncate                                                                                                 hooks.second-date.core/truncate}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job

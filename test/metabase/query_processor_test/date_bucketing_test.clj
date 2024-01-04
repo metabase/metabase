@@ -24,6 +24,7 @@
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -1072,7 +1073,10 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+                  :filter      [:=
+                                [:field $timestamp nil]
+                                (t/format "yyyy-MM-dd"
+                                          (u.date/truncate :day {:first-day-of-week (public-settings/start-of-week)}))]})))))))
 
 (deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
@@ -1109,8 +1113,11 @@
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
                  {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
-                                                                "T14:16:00Z")]}))))))))
+                  :filter      [:=
+                                [:field $timestamp nil]
+                                (str (t/format "yyyy-MM-dd"
+                                               (u.date/truncate :day {:first-day-of-week (public-settings/start-of-week)}))
+                                     "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals
   [[3   :day             "2014-03-03"]

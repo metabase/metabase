@@ -431,7 +431,7 @@
                      java.time.OffsetDateTime (t/offset-date-time t report-zone)
                      java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
-              (u.date/extract t unit))
+              (u.date/extract t unit {:first-day-of-week (public-settings/start-of-week)}))
             (bucket [unit]
               ($date-from-string (u.date/bucket t unit)))]
       (case (or unit :default)

@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -30,10 +31,13 @@
     (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name))
     id-or-name))
 
+(defn- truncate [t unit]
+  (u.date/truncate t unit {:first-day-of-week (public-settings/start-of-week)}))
+
 ;; TODO - I think these next two methods are no longer used, since `->date-range` handles these clauses
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
-  (t/format "yyyy-MM-dd" (u.date/truncate t unit)))
+  (t/format "yyyy-MM-dd" (truncate t unit)))
 
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
@@ -45,7 +49,7 @@
     :else
     (t/format
      "yyyy-MM-dd"
-     (u.date/truncate (u.date/add unit amount) unit))))
+     (truncate (u.date/add unit amount) unit))))
 
 (defmethod ->rvalue :value
   [[_ value _]]
@@ -252,7 +256,7 @@
   (or (when (= relative-datetime-unit :day)
         (day-date-range comparison-type n))
       (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
-            t   (u.date/truncate now relative-datetime-unit)
+            t   (truncate now relative-datetime-unit)
             t   (u.date/add t relative-datetime-unit n)]
         (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))))
 

@@ -218,6 +218,9 @@
 
 ;;; ------------------------------------------------ arithmetic ------------------------------------------------------
 
+(defn- extract [t unit]
+  (u.date/extract t unit {:first-day-of-week (public-settings/start-of-week)}))
+
 (defn unit-diff
   "Return the number of `unit`s between two temporal values `before` and `after`, e.g. maybe there are 32 `:day`s
   between Jan 1st and Feb 2nd."
@@ -243,18 +246,18 @@
       (long (/ (unit-diff :day before after) 7))
 
       :month
-      (let [diff-months (- (u.date/extract after :month-of-year)
-                           (u.date/extract before :month-of-year))
-            diff-years  (- (u.date/extract after :year)
-                          (u.date/extract before :year))]
+      (let [diff-months (- (extract after :month-of-year)
+                           (extract before :month-of-year))
+            diff-years  (- (extract after :year)
+                          (extract before :year))]
         (+ diff-months (* diff-years 12)))
 
       :quarter
       (long (/ (unit-diff :month before after) 3))
 
       :year
-      (- (u.date/extract after :year)
-         (u.date/extract before :year)))))
+      (- (extract after :year)
+         (extract before :year)))))
 
 (defn day-diff
   "Returns the time elapsed between `before` and `after` in days (an integer)."
@@ -385,7 +388,7 @@
   [t unit]
   (if (string? t)
     (str (truncate (u.date/parse t) unit))
-    (u.date/truncate t unit)))
+    (u.date/truncate t unit {:first-day-of-week (public-settings/start-of-week)})))
 
 (defn add
   "Clojure implementation of [[metabase.shared.util.time/add]]; basically the same as [[u.date/add]] but also handles

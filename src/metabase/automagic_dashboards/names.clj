@@ -5,6 +5,7 @@
    [metabase.automagic-dashboards.util :as magic.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [second-date.core :as u.date]
@@ -131,6 +132,9 @@
     3 (tru "{0}rd" x)
     (tru "{0}th" x)))
 
+(defn- extract [t unit]
+  (u.date/extract t unit {:first-day-of-week (public-settings/start-of-week)}))
+
 (defn humanize-datetime
   "Convert a time data type into a human friendly string."
   [t-str unit]
@@ -141,21 +145,21 @@
       :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
-                            (pluralize (u.date/extract dt :week-of-year))
-                            (str (u.date/extract dt :year)))
+                            (pluralize (extract dt :week-of-year))
+                            (str (extract dt :year)))
       :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
-                            (u.date/extract dt :quarter-of-year)
-                            (str (u.date/extract dt :year)))
+                            (extract dt :quarter-of-year)
+                            (str (extract dt :year)))
       :year            (t/format "YYYY" dt)
       :day-of-week     (t/format "EEEE" dt)
       :hour-of-day     (tru "at {0}" (t/format "h a" dt))
       :month-of-year   (t/format "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
+      :quarter-of-year (tru "Q{0}" (extract dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month
        :day-of-year
-       :week-of-year)  (u.date/extract dt unit))))
+       :week-of-year)  (extract dt unit))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]

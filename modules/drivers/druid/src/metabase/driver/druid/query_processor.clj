@@ -8,6 +8,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.middleware.annotate :as annotate]
@@ -97,21 +98,24 @@
     (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name))
     id-or-name))
 
+(defn- truncate [t unit]
+  (u.date/truncate t unit {:first-day-of-week (public-settings/start-of-week)}))
+
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
   (u.date/format
    (if (= unit :default)
      t
-     (u.date/truncate t unit))))
+     (truncate t unit))))
 
 ;; TODO - not 100% sure how to handle times here, just treating it exactly like a date will have to do for now
 (defmethod ->rvalue :time
   [[_ t unit]]
-  (u.date/format (u.date/truncate t unit)))
+  (u.date/format (truncate t unit)))
 
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
-  (u.date/format (u.date/truncate (u.date/add unit amount) unit)))
+  (u.date/format (truncate (u.date/add unit amount) unit)))
 
 (defmethod ->rvalue :value
   [[_ value]]
@@ -347,10 +351,10 @@
     t
 
     [:absolute-datetime t unit]
-    (u.date/truncate t unit)
+    (truncate t unit)
 
     [:relative-datetime amount unit]
-    (u.date/truncate (u.date/add unit amount) unit)
+    (truncate (u.date/add unit amount) unit)
 
     _
     nil))

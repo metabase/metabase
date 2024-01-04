@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.public-settings :as public-settings]
    [metabase.test.data.interface :as tx]
    [second-date.core :as u.date])
   (:import
@@ -75,8 +76,8 @@
       LocalTime      (throw (Exception. "Cannot convert a time to a date"))
       OffsetTime     (throw (Exception. "Cannot convert a time to a date"))
       ;; since there is no `OffsetDate` class use `OffsetDateTime`, but truncated to day
-      OffsetDateTime (u.date/truncate :day)
-      ZonedDateTime  (u.date/truncate :day))))
+      OffsetDateTime (u.date/truncate t :day {:first-day-of-week (public-settings/start-of-week)})
+      ZonedDateTime  (u.date/truncate t :day {:first-day-of-week (public-settings/start-of-week)}))))
 
 (defn- time-only
   "Convert time or datetime temporal value to `t` to an appropriate time type, discarding date information."

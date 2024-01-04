@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Field Table]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -40,6 +41,9 @@
   "Drivers that support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
   []
   (conj (set-timezone-drivers) :h2 :bigquery-cloud-sdk :sqlserver))
+
+(defn- truncate [t unit]
+  (u.date/truncate t unit {:first-day-of-week (public-settings/start-of-week)}))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
@@ -258,11 +262,13 @@
                                                 in-tz (u.date/with-time-zone-same-instant expected-datetime timezone)]]
                                       (concat
                                         (for [extract-unit extract-units]
-                                          [extract-unit (u.date/extract in-tz extract-unit)])
+                                          [extract-unit (u.date/extract in-tz
+                                                                        extract-unit
+                                                                        {:first-day-of-week (public-settings/start-of-week)})])
                                         (for [trunc-unit trunc-units]
                                           [trunc-unit
                                            (-> in-tz
-                                               (u.date/truncate trunc-unit)
+                                               (truncate trunc-unit)
                                                u.date/format-sql
                                                (str/replace #" " "T"))])
                                         [[:dt_tz
@@ -302,7 +308,7 @@
 (deftest filter-datetime-by-date-in-timezone-relative-to-current-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
-      (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
+      (let [expected-datetime (truncate (t/zoned-date-time) :second)]
         (mt/with-temp-test-data ["relative_filter"
                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                  [[expected-datetime]]]
@@ -326,7 +332,7 @@
 (deftest filter-datetime-by-date-in-timezone-relative-to-days-since-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
-      (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
+      (let [expected-datetime (truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
         (mt/with-temp-test-data ["relative_filter"
                                  [{:field-name "created", :base-type :type/DateTimeWithTZ}]
                                  [[expected-datetime]]]

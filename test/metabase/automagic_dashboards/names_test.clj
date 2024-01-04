@@ -5,11 +5,15 @@
    [metabase.automagic-dashboards.core :as magic]
    [metabase.automagic-dashboards.names :as names]
    [metabase.models.query :as query]
+   [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
    [metabase.util.i18n :refer [tru]]
    [second-date.core :as u.date]))
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
+
+(defn- extract [t unit]
+  (u.date/extract t unit {:first-day-of-week (public-settings/start-of-week)}))
 
 (deftest ^:parallel temporal-humanization-test
   (let [dt    #t "1990-09-09T12:30"
@@ -17,17 +21,17 @@
     (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
                              :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
                              :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
-                             :week            (tru "in {0} week - {1}" (#'names/pluralize (u.date/extract dt :week-of-year)) (str (u.date/extract dt :year)))
+                             :week            (tru "in {0} week - {1}" (#'names/pluralize (extract dt :week-of-year)) (str (extract dt :year)))
                              :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
-                             :quarter         (tru "in Q{0} - {1}" (u.date/extract dt :quarter-of-year) (str (u.date/extract dt :year)))
+                             :quarter         (tru "in Q{0} - {1}" (extract dt :quarter-of-year) (str (extract dt :year)))
                              :year            (t/format "YYYY" dt)
                              :day-of-week     (t/format "EEEE" dt)
                              :hour-of-day     (tru "at {0}" (t/format "h a" dt))
                              :month-of-year   (t/format "MMMM" dt)
-                             :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
-                             :minute-of-hour  (u.date/extract dt :minute-of-hour)
-                             :day-of-month    (u.date/extract dt :day-of-month)
-                             :week-of-year    (u.date/extract dt :week-of-year)}]
+                             :quarter-of-year (tru "Q{0}" (extract dt :quarter-of-year))
+                             :minute-of-hour  (extract dt :minute-of-hour)
+                             :day-of-month    (extract dt :day-of-month)
+                             :week-of-year    (extract dt :week-of-year)}]
       (testing (format "unit = %s" unit)
         (is (= (str expected)
                (str (names/humanize-datetime t-str unit))))))))

@@ -85,7 +85,7 @@
     (let [parsed (.parse year-week-formatter s)
           year   (.getLong parsed (u.date.common/temporal-field :week-fields/week-based-year))
           week   (.getLong parsed (u.date.common/temporal-field :week-fields/week-of-week-based-year))]
-      (t/adjust (t/local-date year 1 1) (u.date/adjuster :week-of-year week)))))
+      (t/adjust (t/local-date year 1 1) (u.date/adjuster :week-of-year {:week-of-year week})))))
 
 (def ^:private ^DateTimeFormatter year-month-formatter
   (u.date.builder/formatter

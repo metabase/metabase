@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.models :refer [Card]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -93,7 +94,7 @@
 
 (defn- extract
   [x op]
-  (u.date/extract x (temporal-extraction-op->unit op)))
+  (u.date/extract x (temporal-extraction-op->unit op) {:first-day-of-week (public-settings/start-of-week)}))
 
 (def ^:private extraction-test-cases
   [{:expected-fn (fn [op]          [(extract #t "2004-03-19 09:19:09" op) (extract #t "2008-06-20 10:20:10" op)
