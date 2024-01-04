@@ -1,11 +1,9 @@
 import {
-  popover,
   restore,
   visitDashboard,
   visitQuestion,
   createApiKey,
 } from "e2e/support/helpers";
-import type { ApiKey } from "metabase-types/api";
 
 import {
   ALL_USERS_GROUP_ID,
