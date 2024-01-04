@@ -1,6 +1,12 @@
 import Color from "color";
 import { colors } from "metabase/lib/colors";
-import { menu, popover, restore } from "e2e/support/helpers";
+import {
+  menu,
+  popover,
+  restore,
+  rightSidebar,
+  summarize,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -126,7 +132,104 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByLabelText("Back").should("exist");
       cy.findByLabelText("Label").should("have.value", "My Goal");
       cy.findByLabelText("Value").should("have.value", "42000");
+      cy.button("Back").click();
     });
+
+    // another column
+    menu().findByText("Value from another column…").click();
+    popover().findByText("Mega Count").click();
+    menu().button("Done").click();
+
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("vs. Mega Count:").should("exist");
+      cy.findByText("3,440,000").should("exist"); // goal
+      cy.findByText("99.11%").should("exist"); // down percentage
+    });
+
+    cy.findByTestId("chartsettings-sidebar").findByText("Mega Count").click();
+    menu().findByLabelText("Column").click();
+    popover().findByText("Count").click();
+    menu().button("Done").click();
+
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("vs. Count:").should("exist");
+      cy.findByText("344").should("exist"); // goal
+      cy.findByText("8,841.71%").should("exist"); // up percentage
+    });
+  });
+
+  it("should reset 'another column' comparison when it becomes invalid", () => {
+    cy.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: AGGREGATIONS,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "smartscalar",
+        visualization_settings: {
+          "scalar.field": "Count",
+          "scalar.comparisons": {
+            type: "anotherColumn",
+            column: "Mega Count",
+            label: "Mega Count",
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Selecting the main column ("Mega Count") to be the comparison column
+    // The comparison should be reset to "previous period"
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findByText("Mega Count").should("exist");
+      cy.findByText("Count").click();
+    });
+    popover().findByText("Mega Count").click();
+
+    cy.findByTestId("scalar-value").should("have.text", "3,440,000");
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("Sum of Total").should("not.exist");
+      cy.findByText("vs. previous month:").should("exist");
+      cy.findByText("5,270,000").should("exist");
+    });
+
+    cy.findByTestId("chartsettings-sidebar")
+      .findByText("Previous month")
+      .click();
+    menu().findByText("Value from another column…").click();
+    popover().findByText("Sum of Total").click();
+    popover().button("Done").click();
+
+    // Removing the comparison column ("Sum of Total") from the query
+    // The comparison should be reset to "previous period"
+    summarize();
+    rightSidebar().findByLabelText("Sum of Total").icon("close").click();
+
+    cy.findByTestId("scalar-value").should("have.text", "3,440,000");
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("Sum of Total").should("not.exist");
+      cy.findByText("vs. previous month:").should("exist");
+      cy.findByText("5,270,000").should("exist");
+    });
+
+    // Removing the remaining numeric column, so only Count is left
+    // to ensure we no longer offer the "Value from another column…" option
+    rightSidebar().within(() => {
+      cy.findByLabelText("Count").icon("close").click();
+      cy.button("Done").click();
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    cy.findByTestId("chartsettings-sidebar").within(() => {
+      cy.findByText("Sum of Total").should("not.exist");
+      cy.findByText("Previous month").should("exist").click();
+    });
+    menu().findByText("Value from another column…").should("not.exist");
   });
 
   it("should allow display settings to be changed and display should reflect changes", () => {

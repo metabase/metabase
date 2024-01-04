@@ -82,6 +82,14 @@ export function computeTrend(series, insights, settings) {
 function computeComparison({ currentMetricData, series, settings }) {
   const { type } = settings["scalar.comparisons"];
 
+  if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    return computeTrendAnotherColumn({
+      currentMetricData,
+      series,
+      settings,
+    });
+  }
+
   if (type === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return computeTrendPreviousValue({
       currentMetricData,
@@ -179,6 +187,36 @@ function getCurrentMetricData({ series, insights, settings }) {
       latestRowIndex,
     },
     value,
+  };
+}
+
+function computeTrendAnotherColumn({ currentMetricData, series, settings }) {
+  const { latestRowIndex } = currentMetricData.indexData;
+  const { cols, rows } = series[0].data;
+
+  const comparison = settings["scalar.comparisons"];
+
+  const columnIndex = cols.findIndex(
+    column => column.name === comparison.column,
+  );
+
+  if (columnIndex === -1) {
+    return {
+      comparisonValueStr: t`(No data)`,
+      comparisonDescStr: t`vs. N/A`,
+    };
+  }
+
+  const column = cols[columnIndex];
+
+  const lastRow = rows[latestRowIndex];
+  const comparisonValue = lastRow[columnIndex];
+
+  const displayName = comparison.label || column.display_name;
+
+  return {
+    comparisonDescStr: t`vs. ${displayName}`,
+    comparisonValue,
   };
 }
 

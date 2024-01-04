@@ -1,5 +1,9 @@
 import type { COMPARISON_TYPES } from "./constants";
 
+type AnotherColumnMenuOption = {
+  type: typeof COMPARISON_TYPES.ANOTHER_COLUMN;
+  name: string;
+};
 type PreviousValueMenuOption = {
   type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
   name: string;
@@ -18,6 +22,7 @@ type StaticNumberMenuOption = {
   name: string;
 };
 export type ComparisonMenuOption =
+  | AnotherColumnMenuOption
   | PreviousValueMenuOption
   | PreviousPeriodMenuOption
   | PeriodsAgoMenuOption

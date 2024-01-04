@@ -15,7 +15,7 @@ import type {
 import { isEmpty } from "metabase/lib/validate";
 import { formatNumber } from "metabase/lib/formatting";
 import { measureText } from "metabase/lib/measure-text";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
 
 import {
   COMPARISON_TYPES,
@@ -83,6 +83,10 @@ export const getChangeWidth = (width: number): number => {
 };
 
 export const COMPARISON_SELECTOR_OPTIONS = {
+  ANOTHER_COLUMN: {
+    type: COMPARISON_TYPES.ANOTHER_COLUMN,
+    name: t`Value from another column…`,
+  },
   PREVIOUS_PERIOD: {
     type: COMPARISON_TYPES.PREVIOUS_PERIOD,
   },
@@ -125,22 +129,41 @@ export function getDefaultComparison(
   });
 }
 
+export function getColumnsForComparison(
+  columns: DatasetColumn[],
+  settings: VisualizationSettings,
+) {
+  return columns.filter(
+    column => isNumeric(column) && column.name !== settings["scalar.field"],
+  );
+}
+
 export function getComparisonOptions(
   series: RawSeries,
   settings: VisualizationSettings,
 ) {
   const [
     {
-      data: { cols, insights, rows },
+      data: { cols, insights = [], rows },
     },
   ] = series;
 
   const options: ComparisonMenuOption[] = [
     createComparisonMenuOption({ type: COMPARISON_TYPES.PREVIOUS_VALUE }),
-    createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
   ];
 
-  const dateUnit = insights?.find(
+  const comparableColumns = getColumnsForComparison(cols, settings);
+  if (comparableColumns.length > 0) {
+    options.push(
+      createComparisonMenuOption({ type: COMPARISON_TYPES.ANOTHER_COLUMN }),
+    );
+  }
+
+  options.push(
+    createComparisonMenuOption({ type: COMPARISON_TYPES.STATIC_NUMBER }),
+  );
+
+  const dateUnit = insights.find(
     insight => insight.col === settings["scalar.field"],
   )?.unit;
 
@@ -181,9 +204,27 @@ export function isComparisonValid(
 
   const [
     {
-      data: { insights },
+      data: { cols, insights },
     },
   ] = series;
+
+  if (comparisonType === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    if (
+      !comparison ||
+      isEmpty(comparison.column) ||
+      isEmpty(comparison.label)
+    ) {
+      return false;
+    }
+
+    const isExistingColumn =
+      cols.find(col => col.name === comparison?.column) != null;
+
+    const isDifferentFromPrimaryColumn =
+      comparison.column !== settings["scalar.field"];
+
+    return isExistingColumn && isDifferentFromPrimaryColumn;
+  }
 
   if (comparisonType === COMPARISON_TYPES.PREVIOUS_VALUE) {
     return true;
@@ -245,6 +286,9 @@ function getMaxPeriodsAgo({
 
 type GetComparisonMenuOptionParameters =
   | {
+      type: typeof COMPARISON_TYPES.ANOTHER_COLUMN;
+    }
+  | {
       type: typeof COMPARISON_TYPES.PREVIOUS_VALUE;
     }
   | {
@@ -264,6 +308,10 @@ function createComparisonMenuOption(
   comparisonParameters: GetComparisonMenuOptionParameters,
 ): ComparisonMenuOption {
   const { type } = comparisonParameters;
+
+  if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    return COMPARISON_SELECTOR_OPTIONS.ANOTHER_COLUMN;
+  }
 
   if (type === COMPARISON_TYPES.PREVIOUS_PERIOD) {
     const { dateUnit } = comparisonParameters;

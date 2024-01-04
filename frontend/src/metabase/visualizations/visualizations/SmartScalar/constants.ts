@@ -15,6 +15,7 @@ export const PERIOD_HIDE_HEIGHT_THRESHOLD = 70; // determined empirically
 export const DASHCARD_HEADER_HEIGHT = 33;
 
 export const COMPARISON_TYPES = {
+  ANOTHER_COLUMN: "anotherColumn",
   PREVIOUS_VALUE: "previousValue",
   PREVIOUS_PERIOD: "previousPeriod",
   PERIODS_AGO: "periodsAgo",

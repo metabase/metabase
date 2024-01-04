@@ -47,6 +47,7 @@ import {
 } from "./SmartScalar.styled";
 import {
   getDefaultComparison,
+  getColumnsForComparison,
   getComparisonOptions,
   formatChangeAutoPrecision,
   getChangeWidth,
@@ -286,9 +287,14 @@ Object.assign(SmartScalar, {
       isValid: (series, vizSettings) => isComparisonValid(series, vizSettings),
       getDefault: (series, vizSettings) =>
         getDefaultComparison(series, vizSettings),
-      getProps: (series, vizSettings) => ({
-        options: getComparisonOptions(series, vizSettings),
-      }),
+      getProps: (series, vizSettings) => {
+        const cols = series[0].data.cols;
+        return {
+          comparableColumns: getColumnsForComparison(cols, vizSettings),
+          options: getComparisonOptions(series, vizSettings),
+        };
+      },
+      readDependencies: ["scalar.field"],
     },
     "scalar.switch_positive_negative": {
       section: t`Display`,

@@ -2,28 +2,37 @@ import { useCallback, useState } from "react";
 import _ from "underscore";
 import { Icon } from "metabase/core/components/Icon";
 import { Button, Menu, Stack, Text } from "metabase/ui";
-import type { SmartScalarComparison } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  SmartScalarComparison,
+  SmartScalarComparisonType,
+} from "metabase-types/api";
 import { COMPARISON_TYPES } from "../constants";
 import type { ComparisonMenuOption } from "../types";
 import { PeriodsAgoMenuOption } from "./PeriodsAgoMenuOption";
 import { StaticNumberForm } from "./StaticNumberForm";
 import { MenuItemStyled } from "./MenuItem.styled";
+import { AnotherColumnForm } from "./AnotherColumnForm";
 
 type SmartScalarComparisonWidgetProps = {
   onChange: (setting: SmartScalarComparison) => void;
   options: ComparisonMenuOption[];
+  comparableColumns: DatasetColumn[];
   value: SmartScalarComparison;
 };
 
-type Tab = "staticNumber" | null;
+type Tab = "anotherColumn" | "staticNumber" | null;
 
 export function SmartScalarComparisonWidget({
   onChange: onChange,
   options,
+  comparableColumns,
   value: selectedValue,
 }: SmartScalarComparisonWidgetProps) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>(getTabForValue(selectedValue));
+  const [tab, setTab] = useState<Tab>(
+    getTabForComparisonType(selectedValue.type),
+  );
   const [editedValue, setEditedValue] = useState(selectedValue);
 
   const selectedOption = options.find(
@@ -47,11 +56,58 @@ export function SmartScalarComparisonWidget({
   const handleMenuStateChange = (isOpen: boolean) => {
     if (isOpen) {
       setEditedValue(selectedValue);
-      setTab(getTabForValue(selectedValue));
+      setTab(getTabForComparisonType(selectedValue.type));
     } else if (!_.isEqual(selectedValue, editedValue)) {
       onChange(editedValue);
     }
     setOpen(isOpen);
+  };
+
+  const renderMenuDropdownContent = () => {
+    if (tab === "anotherColumn") {
+      return (
+        <AnotherColumnForm
+          value={
+            selectedValue.type === COMPARISON_TYPES.ANOTHER_COLUMN
+              ? selectedValue
+              : undefined
+          }
+          columns={comparableColumns}
+          onChange={nextValue => {
+            handleEditedValueChange(nextValue, true);
+          }}
+          onBack={() => setTab(null)}
+        />
+      );
+    }
+    if (tab === "staticNumber") {
+      return (
+        <StaticNumberForm
+          value={
+            selectedValue.type === COMPARISON_TYPES.STATIC_NUMBER
+              ? selectedValue
+              : undefined
+          }
+          onChange={nextValue => {
+            handleEditedValueChange(nextValue, true);
+          }}
+          onBack={() => setTab(null)}
+        />
+      );
+    }
+    return (
+      <Stack spacing="sm">
+        {options.map(optionArgs =>
+          renderMenuOption({
+            editedValue,
+            selectedValue,
+            optionArgs,
+            onChange: handleEditedValueChange,
+            onChangeTab: setTab,
+          }),
+        )}
+      </Stack>
+    );
   };
 
   return (
@@ -76,38 +132,17 @@ export function SmartScalarComparisonWidget({
       </Menu.Target>
 
       <Menu.Dropdown miw="18.25rem">
-        {tab === "staticNumber" ? (
-          <StaticNumberForm
-            value={
-              selectedValue.type === COMPARISON_TYPES.STATIC_NUMBER
-                ? selectedValue
-                : undefined
-            }
-            onChange={nextValue => {
-              handleEditedValueChange(nextValue, true);
-            }}
-            onBack={() => setTab(null)}
-          />
-        ) : (
-          <Stack spacing="sm">
-            {options.map(optionArgs =>
-              renderMenuOption({
-                editedValue,
-                selectedValue,
-                optionArgs,
-                onChange: handleEditedValueChange,
-                onChangeTab: setTab,
-              }),
-            )}
-          </Stack>
-        )}
+        {renderMenuDropdownContent()}
       </Menu.Dropdown>
     </Menu>
   );
 }
 
-function getTabForValue(value: SmartScalarComparison): Tab {
-  if (value.type === COMPARISON_TYPES.STATIC_NUMBER) {
+function getTabForComparisonType(type: SmartScalarComparisonType): Tab {
+  if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    return "anotherColumn";
+  }
+  if (type === COMPARISON_TYPES.STATIC_NUMBER) {
     return "staticNumber";
   }
   return null;
@@ -120,7 +155,10 @@ function getDisplayName(
   if (value.type === COMPARISON_TYPES.PERIODS_AGO) {
     return `${value.value} ${option?.name}`;
   }
-  if (value.type === COMPARISON_TYPES.STATIC_NUMBER) {
+  if (
+    value.type === COMPARISON_TYPES.ANOTHER_COLUMN ||
+    value.type === COMPARISON_TYPES.STATIC_NUMBER
+  ) {
     return value.label;
   }
   return option?.name;
@@ -167,8 +205,12 @@ function renderMenuOption({
   }
 
   const handleClick = () => {
-    if (type === COMPARISON_TYPES.STATIC_NUMBER) {
-      onChangeTab("staticNumber");
+    if (
+      type === COMPARISON_TYPES.ANOTHER_COLUMN ||
+      type === COMPARISON_TYPES.STATIC_NUMBER
+    ) {
+      const tab = getTabForComparisonType(type);
+      onChangeTab(tab);
     } else {
       onChange({ type }, true);
     }

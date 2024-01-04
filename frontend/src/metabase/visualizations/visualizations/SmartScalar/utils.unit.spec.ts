@@ -2,6 +2,7 @@ import * as measureText from "metabase/lib/measure-text";
 import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 import type {
+  DatasetColumn,
   Insight,
   RelativeDatetimeUnit,
   RowValues,
@@ -47,12 +48,16 @@ describe("SmartScalar > utils", () => {
       createMockColumn(NumberColumn({ name: "Count" })),
     ];
     const series = ({
+      cols: colsArg = cols,
       rows,
       insights,
     }: {
+      cols?: DatasetColumn[];
       rows: RowValues[];
       insights: Insight[] | undefined;
-    }) => [createMockSingleSeries({}, { data: { cols, rows, insights } })];
+    }) => [
+      createMockSingleSeries({}, { data: { cols: colsArg, rows, insights } }),
+    ];
 
     describe("getDefaultComparison", () => {
       const settings = {
@@ -135,7 +140,47 @@ describe("SmartScalar > utils", () => {
         ]);
       });
 
-      it("should return all options if dateUnit is supplied and dataset ranges more than 1 period in the past", () => {
+      it("should return 'another column' if there is at least one more numeric column", () => {
+        const anotherColumn = createMockColumn(
+          NumberColumn({ name: "Average" }),
+        );
+        const rows = [
+          ["2019-10-01", 100, 110],
+          ["2019-11-01", 300, 250],
+        ];
+        const comparisonOptions = getComparisonOptions(
+          series({
+            cols: [...cols, anotherColumn],
+            rows,
+            insights: [],
+          }),
+          settings,
+        );
+
+        expect(comparisonOptions).toEqual([
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.ANOTHER_COLUMN,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
+        ]);
+      });
+
+      it("should not return 'another column' if there are no other numeric columns", () => {
+        const rows = [
+          ["2019-10-01", 100],
+          ["2019-11-01", 300],
+        ];
+        const comparisonOptions = getComparisonOptions(
+          series({ rows, insights: [] }),
+          settings,
+        );
+
+        expect(comparisonOptions).toEqual([
+          COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          COMPARISON_SELECTOR_OPTIONS.STATIC_NUMBER,
+        ]);
+      });
+
+      it("should return sensible options if dateUnit is supplied and dataset ranges more than 1 period in the past", () => {
         const rows = [
           ["2019-08-01", 80],
           ["2019-09-01", 80],
@@ -248,67 +293,171 @@ describe("SmartScalar > utils", () => {
         },
       );
 
-      it("should return true for staticNumber comparison when dateUnit is missing", () => {
-        const settings = {
-          "scalar.field": FIELD_NAME,
-          "scalar.comparisons": {
-            type: COMPARISON_TYPES.STATIC_NUMBER,
-            value: 100,
-            label: "Goal",
-          },
-        };
-        const rows = [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ];
-        const isValid = isComparisonValid(
-          series({ rows, insights: [] }),
-          settings,
+      describe("'another column' comparison", () => {
+        const anotherColumn = createMockColumn(
+          NumberColumn({ name: "Average" }),
         );
+        const multiSeries = series({
+          cols: [...cols, anotherColumn],
+          rows: [
+            ["2019-10-01", 100, 110],
+            ["2019-11-01", 300, 250],
+          ],
+          insights: [],
+        });
 
-        expect(isValid).toBeTruthy();
+        it("should return true when valid", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              label: "Avg",
+              column: "Average",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(true);
+        });
+
+        it("should return false when column is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              label: "Count",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
+
+        it("should return false when label is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              column: "Count",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
+
+        it("should return false when comparison column is the same as primary number", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              column: FIELD_NAME,
+              label: "Count",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
+
+        it("should return false when column is missing in the series", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.ANOTHER_COLUMN,
+              label: "Missing",
+              column: "Missing",
+            },
+          };
+
+          const isValid = isComparisonValid(
+            multiSeries,
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBe(false);
+        });
       });
 
-      it("should return false for staticNumber comparison when value is missing", () => {
-        const settings = {
-          "scalar.field": FIELD_NAME,
-          "scalar.comparisons": {
-            type: COMPARISON_TYPES.STATIC_NUMBER,
-            label: "Goal",
-          },
-        };
-        const rows = [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ];
+      describe("static number comparison", () => {
+        it("should return true when valid", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.STATIC_NUMBER,
+              value: 100,
+              label: "Goal",
+            },
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings,
+          );
 
-        const isValid = isComparisonValid(
-          series({ rows, insights: [] }),
-          settings as VisualizationSettings,
-        );
+          expect(isValid).toBeTruthy();
+        });
 
-        expect(isValid).toBeFalsy();
-      });
+        it("should return false when value is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.STATIC_NUMBER,
+              label: "Goal",
+            },
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
 
-      it("should return false for staticNumber comparison when label is missing", () => {
-        const settings = {
-          "scalar.field": FIELD_NAME,
-          "scalar.comparisons": {
-            type: COMPARISON_TYPES.STATIC_NUMBER,
-            value: 100,
-          },
-        };
-        const rows = [
-          ["2019-10-01", 100],
-          ["2019-11-01", 300],
-        ];
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings as VisualizationSettings,
+          );
 
-        const isValid = isComparisonValid(
-          series({ rows, insights: [] }),
-          settings as VisualizationSettings,
-        );
+          expect(isValid).toBeFalsy();
+        });
 
-        expect(isValid).toBeFalsy();
+        it("should return false when label is missing", () => {
+          const settings = {
+            "scalar.field": FIELD_NAME,
+            "scalar.comparisons": {
+              type: COMPARISON_TYPES.STATIC_NUMBER,
+              value: 100,
+            },
+          };
+          const rows = [
+            ["2019-10-01", 100],
+            ["2019-11-01", 300],
+          ];
+
+          const isValid = isComparisonValid(
+            series({ rows, insights: [] }),
+            settings as VisualizationSettings,
+          );
+
+          expect(isValid).toBeFalsy();
+        });
       });
     });
   });
