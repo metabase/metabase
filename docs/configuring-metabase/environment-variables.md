@@ -185,6 +185,14 @@ Since: v35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#mb_jetty_maxthreads) will be used, otherwise it will use the default.
 
+### `MB_ATTACHMENT_TABLE_ROW_LIMIT`
+
+Type: integer<br>
+Default: `20`<br>
+Since: v48.0
+
+Adds the ability to control the row limit for rendered tables in alerts and subscriptions.
+
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
 Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.<br>
