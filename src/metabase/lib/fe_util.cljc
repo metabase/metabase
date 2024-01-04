@@ -86,7 +86,7 @@
       (lib.temporal-bucket/describe-temporal-pair x y)
 
       [:!= _ (x :guard temporal?) (y :guard (some-fn int? string?))]
-      (lib.temporal-bucket/describe-temporal-pair x y)
+      (i18n/tru "Excludes {0}" (lib.temporal-bucket/describe-temporal-pair x y))
 
       [:< _ (x :guard temporal?) (y :guard string?)]
       (i18n/tru "Before {0}" (->temporal-name y))
