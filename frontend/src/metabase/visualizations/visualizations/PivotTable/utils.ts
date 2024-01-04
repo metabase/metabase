@@ -189,11 +189,15 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
 }
 
 function databaseSupportsPivotTables(query: StructuredQuery) {
-  if (query && query.database && query.database() != null) {
+  const question = query.question();
+  const database = question.database();
+
+  if (!database) {
     // if we don't have metadata, we can't check this
-    return query.database()?.supportsPivots();
+    return true;
   }
-  return true;
+
+  return database.supportsPivots();
 }
 
 export function isSensible(
