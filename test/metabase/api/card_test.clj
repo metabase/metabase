@@ -33,6 +33,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
@@ -972,8 +973,8 @@
             (is (malli= [:map
                          [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                          [:query          [:= {} (mt/obj->json->obj query)]]
-                         [:required-perms [:sequential perms/PathSchema]]
-                         [:actual-perms   [:sequential perms/PathSchema]]
+                         [:required-perms [:sequential perms.u/PathSchema]]
+                         [:actual-perms   [:sequential perms.u/PathSchema]]
                          [:trace          [:sequential :any]]]
                         (create-card! :rasta 403)))))))))
 
@@ -1502,8 +1503,8 @@
                 (is (malli= [:map
                              [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
                              [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
-                             [:required-perms [:sequential perms/PathSchema]]
-                             [:actual-perms   [:sequential perms/PathSchema]]
+                             [:required-perms [:sequential perms.u/PathSchema]]
+                             [:actual-perms   [:sequential perms.u/PathSchema]]
                              [:trace          [:sequential :any]]]
                             (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
               (testing "make sure query hasn't changed in the DB"
@@ -1587,38 +1588,39 @@
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                      [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
-   (testing message
-     (mt/with-temp!
-       [:model/Card           card  card
-        Pulse                 pulse {:alert_condition  "rows"
-                                     :alert_first_only false
-                                     :creator_id       (mt/user->id :rasta)
-                                     :name             "Original Alert Name"}
+    (testing message
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card           card  card
+           Pulse                 pulse {:alert_condition  "rows"
+                                        :alert_first_only false
+                                        :creator_id       (mt/user->id :rasta)
+                                        :name             "Original Alert Name"}
 
-        PulseCard             _     {:pulse_id (u/the-id pulse)
-                                     :card_id  (u/the-id card)
-                                     :position 0}
-        PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-        PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                     :pulse_channel_id (u/the-id pc)}
-        PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                     :pulse_channel_id (u/the-id pc)}]
-       (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-         (with-cards-in-writeable-collection card
-           (mt/with-fake-inbox
-             (when deleted?
-               (u/with-timeout 5000
-                 (mt/with-expected-messages 2
-                   (f {:card card}))
-                 (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
-                               (rasta-alert-not-working     {(str expected-email-re) true}))
-                        (mt/regex-email-bodies expected-email-re))
-                     (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
-             (if deleted?
-               (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                   "Alert should have been deleted")
-               (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                   "Alert should not have been deleted")))))))))
+           PulseCard             _     {:pulse_id (u/the-id pulse)
+                                        :card_id  (u/the-id card)
+                                        :position 0}
+           PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
+                                        :pulse_channel_id (u/the-id pc)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
+                                        :pulse_channel_id (u/the-id pc)}]
+          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+            (with-cards-in-writeable-collection card
+              (mt/with-fake-inbox
+                (when deleted?
+                  (u/with-timeout 5000
+                    (mt/with-expected-messages 2
+                      (f {:card card}))
+                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
+                                  (rasta-alert-not-working     {(str expected-email-re) true}))
+                           (mt/regex-email-bodies expected-email-re))
+                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
+                (if deleted?
+                  (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should have been deleted")
+                  (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should not have been deleted"))))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
@@ -2942,11 +2944,12 @@
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id (mt/id)
                                            uploads-table-prefix nil
-                                           uploads-schema-name "PUBLIC"]          (let [{:keys [status body]} (upload-example-csv-via-api!)]
-            (is (= 200
-                   status))
-            (is (= body
-                   (t2/select-one-pk :model/Card :database_id (mt/id)))))))
+                                           uploads-schema-name "PUBLIC"]
+          (let [{:keys [status body]} (upload-example-csv-via-api!)]
+           (is (= 200
+                  status))
+           (is (= body
+                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id nil

@@ -680,12 +680,17 @@ function isExcludeDateBucket(
 
 const DATE_FORMAT = "yyyy-MM-DD";
 const TIME_FORMAT = "HH:mm:ss";
-const TIME_FORMATS = ["HH:mm:ss.sss[Z]", "HH:mm:SS.sss", "HH:mm:SS", "HH:mm"];
-const TIME_FORMAT_MS = "HH:mm:SS.sss";
+const TIME_FORMATS = ["HH:mm:ss.SSS[Z]", "HH:mm:ss.SSS", "HH:mm:ss", "HH:mm"];
+const TIME_FORMAT_MS = "HH:mm:ss.SSS";
 const DATE_TIME_FORMAT = `${DATE_FORMAT}T${TIME_FORMAT}`;
 
 function hasTimeParts(date: Date): boolean {
-  return date.getHours() !== 0 || date.getMinutes() !== 0;
+  return (
+    date.getHours() !== 0 ||
+    date.getMinutes() !== 0 ||
+    date.getSeconds() !== 0 ||
+    date.getMilliseconds() !== 0
+  );
 }
 
 function serializeDate(date: Date): string {
@@ -867,4 +872,64 @@ function deserializeExcludeDatePart(
     default:
       return null;
   }
+}
+
+type UpdateLatLonFilterBounds = {
+  north: number;
+  west: number;
+  east: number;
+  south: number;
+};
+
+/**
+ * Add or update a filter against latitude and longitude columns. Used to power the 'brush filter' for map
+   visualizations.
+ */
+export function updateLatLonFilter(
+  query: Query,
+  stageIndex: number,
+  latitudeColumn: ColumnMetadata,
+  longitudeColumn: ColumnMetadata,
+  bounds: UpdateLatLonFilterBounds,
+): Query {
+  return ML.update_lat_lon_filter(
+    query,
+    stageIndex,
+    latitudeColumn,
+    longitudeColumn,
+    bounds,
+  );
+}
+
+/**
+ * Add or update a filter against a numeric column. Used to power the 'brush filter'.
+ */
+export function updateNumericFilter(
+  query: Query,
+  stageIndex: number,
+  numericColumn: ColumnMetadata,
+  start: number,
+  end: number,
+): Query {
+  return ML.update_numeric_filter(query, stageIndex, numericColumn, start, end);
+}
+
+/**
+ * Add or update a filter against a temporal column. Used to power the 'brush filter' for a timeseries visualization.
+ * `start` and `end` should be ISO-8601 formatted strings.
+ */
+export function updateTemporalFilter(
+  query: Query,
+  stageIndex: number,
+  temporalColumn: ColumnMetadata,
+  start: string,
+  end: string,
+): Query {
+  return ML.update_temporal_filter(
+    query,
+    stageIndex,
+    temporalColumn,
+    start,
+    end,
+  );
 }
