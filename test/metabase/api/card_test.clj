@@ -51,8 +51,9 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (java.io ByteArrayInputStream)
-   (org.quartz.impl StdSchedulerFactory)))
+    (java.io ByteArrayInputStream)
+    (org.apache.poi.ss.usermodel DataFormatter)
+    (org.quartz.impl StdSchedulerFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -1588,38 +1589,39 @@
                                                        {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
                                                                                  [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
                                                                                                      [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
-   (testing message
-     (mt/with-temp!
-       [:model/Card           card  card
-        Pulse                 pulse {:alert_condition  "rows"
-                                     :alert_first_only false
-                                     :creator_id       (mt/user->id :rasta)
-                                     :name             "Original Alert Name"}
+    (testing message
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp
+          [:model/Card           card  card
+           Pulse                 pulse {:alert_condition  "rows"
+                                        :alert_first_only false
+                                        :creator_id       (mt/user->id :rasta)
+                                        :name             "Original Alert Name"}
 
-        PulseCard             _     {:pulse_id (u/the-id pulse)
-                                     :card_id  (u/the-id card)
-                                     :position 0}
-        PulseChannel          pc    {:pulse_id (u/the-id pulse)}
-        PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
-                                     :pulse_channel_id (u/the-id pc)}
-        PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
-                                     :pulse_channel_id (u/the-id pc)}]
-       (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-         (with-cards-in-writeable-collection card
-           (mt/with-fake-inbox
-             (when deleted?
-               (u/with-timeout 5000
-                 (mt/with-expected-messages 2
-                   (f {:card card}))
-                 (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
-                               (rasta-alert-not-working     {(str expected-email-re) true}))
-                        (mt/regex-email-bodies expected-email-re))
-                     (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
-             (if deleted?
-               (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                   "Alert should have been deleted")
-               (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
-                   "Alert should not have been deleted")))))))))
+           PulseCard             _     {:pulse_id (u/the-id pulse)
+                                        :card_id  (u/the-id card)
+                                        :position 0}
+           PulseChannel          pc    {:pulse_id (u/the-id pulse)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :crowberto)
+                                        :pulse_channel_id (u/the-id pc)}
+           PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
+                                        :pulse_channel_id (u/the-id pc)}]
+          (mt/with-temporary-setting-values [site-url "https://metabase.com"]
+            (with-cards-in-writeable-collection card
+              (mt/with-fake-inbox
+                (when deleted?
+                  (u/with-timeout 5000
+                    (mt/with-expected-messages 2
+                      (f {:card card}))
+                    (is (= (merge (crowberto-alert-not-working {(str expected-email-re) true})
+                                  (rasta-alert-not-working     {(str expected-email-re) true}))
+                           (mt/regex-email-bodies expected-email-re))
+                        (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email-re)))))
+                (if deleted?
+                  (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should have been deleted")
+                  (is (not= nil (t2/select-one Pulse :id (u/the-id pulse)))
+                      "Alert should not have been deleted"))))))))))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (is (= {:emails-1 {}
@@ -1934,6 +1936,240 @@
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
                                       :parameters encoded-params))))))))
+
+(defn- parse-xlsx-results-to-strings
+  "Parse an excel response into a 2-D array of formatted values"
+  [results]
+  (let [df (DataFormatter.)]
+    (->> results
+         ByteArrayInputStream.
+         spreadsheet/load-workbook
+         (spreadsheet/select-sheet "Query result")
+         spreadsheet/row-seq
+         (mapv (fn [row]
+                 (mapv (fn [cell] (.formatCellValue df cell)) (spreadsheet/cell-seq row)))))))
+
+(deftest xlsx-timestamp-formatting-test
+  (testing "A timestamp should format correctly in an excel export (#14393)"
+    (t2.with-temp/with-temp [Card card {:dataset_query {:database (mt/id)
+                                                        :type     :native
+                                                        :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}
+                                        :display :table
+                                        :visualization_settings {:table.pivot_column "T",
+                                                                 :column_settings {"[\"name\",\"T\"]" {:date_style "YYYY/M/D",
+                                                                                                       :date_separator "-",
+                                                                                                       :time_enabled nil}}}}]
+      (testing "Removing the time portion of the timestamp should only show the date"
+        (is (= [["T"] ["2023-1-1"]]
+               (parse-xlsx-results-to-strings
+                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-default-currency-formatting-test
+  (testing "The default currency is USD"
+    (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                 :type     :native
+                                                                 :native   {:query "SELECT 123.45 AS MONEY"}}
+                                        :display                :table
+                                        :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                   {:number_style       "currency"
+                                                                                    :currency_in_header false}}}}]
+      (is (= [["MONEY"]
+              ["[$$]123.45"]]
+             (parse-xlsx-results-to-strings
+               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))
+  (testing "Default localization settings take effect"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                          :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query "SELECT 123.45 AS MONEY"}}
+                                          :display                :table
+                                          :visualization_settings {:column_settings {"[\"name\",\"MONEY\"]"
+                                                                                     {:number_style       "currency"
+                                                                                      :currency_in_header false}}}}]
+        (is (= [["MONEY"]
+                ["[$€]123.45"]]
+               (parse-xlsx-results-to-strings
+                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+(deftest xlsx-currency-formatting-test
+  (testing "Currencies are applied correctly in Excel files"
+    (let [currencies ["USD" "CAD" "EUR" "JPY"]
+          q (format "SELECT %s" (str/join "," (map (partial format "123.45 as %s") currencies)))
+          settings (reduce (fn [acc currency]
+                             (assoc acc (format "[\"name\",\"%s\"]" currency)
+                                        {:number_style       "currency"
+                                         :currency           currency
+                                         :currency_in_header false}))
+                           {}
+                           currencies)]
+      (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                   :type     :native
+                                                                   :native   {:query q}}
+                                          :display                :table
+                                          :visualization_settings {:column_settings settings}}]
+        (testing "Removing the time portion of the timestamp should only show the date"
+          (is (= [currencies
+                  ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
+                 (parse-xlsx-results-to-strings
+                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+
+(deftest xlsx-full-formatting-test
+  (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
+    (let [excel-data-query
+                       "with t1 as (
+                      select *
+                      FROM (
+                       VALUES
+                         (1234.05, 1234.05, 2345.05, 4321.05, 7180.643352291768, 1234.00, 0.053010935820623994, 0.1920, TIMESTAMP '2023-01-01 12:34:56'),
+                         (2345.30, 2345.30, 3456.30, 2931.30, 17180.643352291768, 0.00, 8.01623207863001, 0.00, TIMESTAMP '2023-01-01 12:34:56'),
+                         (3456.00, 3456.00, 2300.00, 2250.00, 127180.643352291768, 122.00, 95.40200874663908, 0.1158, TIMESTAMP '2023-01-01 12:34:56')
+                       )
+                     ),
+                     t2 as (
+                     select
+                         c1 as default_currency,
+                         c2 as currency1,
+                         c3 as currency2,
+                         c4 as currency3,
+                         c5 as scientific,
+                         c6 as hide_me,
+                         c7 as percent1,
+                         c8 as percent2,
+                         c9 as og_creation_timestamp,
+                         c9 as creation_timestamp,
+                         c9 as creation_timestamp_dup,
+                         CAST(c9 AS DATE) as creation_date,
+                         CAST(c9 AS TIME) as creation_time,
+                         from t1
+                     )
+                     select * from t2"
+          viz-settings {:table.pivot_column "SCIENTIFIC"
+                        :table.cell_column  "CURRENCY1"
+                        :table.columns      [{:name     "OG_CREATION_TIMESTAMP"
+                                              :fieldRef [:field "OG_CREATION_TIMESTAMP" {:base-type :type/DateTime}]
+                                              :enabled  true}
+                                             {:name     "CREATION_TIMESTAMP"
+                                              :fieldRef [:field "CREATION_TIMESTAMP" {:base-type :type/DateTime}]
+                                              :enabled  true}
+                                             {:name     "CREATION_TIMESTAMP_DUP"
+                                              :fieldRef [:field "CREATION_TIMESTAMP_DUP" {:base-type :type/DateTime}]
+                                              :enabled  true}
+                                             {:name     "CREATION_DATE"
+                                              :fieldRef [:field "CREATION_DATE" {:base-type :type/Date}]
+                                              :enabled  true}
+                                             {:name     "CREATION_TIME"
+                                              :fieldRef [:field "CREATION_TIME" {:base-type :type/Time}]
+                                              :enabled  true}
+                                             {:name     "DEFAULT_CURRENCY"
+                                              :fieldRef [:field "DEFAULT_CURRENCY" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "CURRENCY1"
+                                              :fieldRef [:field "CURRENCY1" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "CURRENCY2"
+                                              :fieldRef [:field "CURRENCY2" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "CURRENCY3"
+                                              :fieldRef [:field "CURRENCY3" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "SCIENTIFIC"
+                                              :fieldRef [:field "SCIENTIFIC" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "HIDE_ME"
+                                              :fieldRef [:field "HIDE_ME" {:base-type :type/Decimal}]
+                                              :enabled  false}
+                                             {:name     "PERCENT1"
+                                              :fieldRef [:field "PERCENT1" {:base-type :type/Decimal}]
+                                              :enabled  true}
+                                             {:name     "PERCENT2"
+                                              :fieldRef [:field "PERCENT2" {:base-type :type/Decimal}]
+                                              :enabled  true}]
+                        :column_settings    {"[\"name\",\"OG_CREATION_TIMESTAMP\"]"  {:column_title "No Formatting TS"}
+                                             "[\"name\",\"SCIENTIFIC\"]"             {:number_style "scientific"
+                                                                                      :column_title "EXPO"}
+                                             "[\"name\",\"CREATION_TIME\"]"          {:column_title "Time"}
+                                             "[\"name\",\"CURRENCY3\"]"              {:number_style       "currency"
+                                                                                      :currency_style     "name"
+                                                                                      :number_separators  ".’"
+                                                                                      :column_title       "DOL Col"
+                                                                                      :currency_in_header false}
+                                             "[\"name\",\"PERCENT2\"]"               {:number_style "percent"
+                                                                                      :column_title "3D PCT"
+                                                                                      :decimals     3}
+                                             "[\"name\",\"CURRENCY1\"]"              {:number_style       "currency"
+                                                                                      :currency_in_header false
+                                                                                      :column_title       "Col $"}
+                                             "[\"name\",\"CREATION_TIMESTAMP\"]"     {:time_enabled   nil
+                                                                                      :time_style     "HH:mm"
+                                                                                      :date_style     "YYYY/M/D"
+                                                                                      :date_separator "-"
+                                                                                      :column_title   "DATE-ONLY TS"}
+                                             "[\"name\",\"CREATION_TIMESTAMP_DUP\"]" {:time_enabled   "milliseconds",
+                                                                                      :time_style     "HH:mm",
+                                                                                      :date_style     "D/M/YYYY",
+                                                                                      :date_separator "-",
+                                                                                      :column_title   "TS W/FORMATTING"}
+                                             "[\"name\",\"PERCENT1\"]"               {:number_style "percent"
+                                                                                      :scale        0.01
+                                                                                      :column_title "Scaled PCT"}
+                                             "[\"name\",\"CURRENCY2\"]"              {:number_style       "currency"
+                                                                                      :currency_style     "code"
+                                                                                      :currency_in_header false
+                                                                                      :number_separators  "."
+                                                                                      :column_title       "USD Col"}
+                                             "[\"name\",\"CREATION_DATE\"]"          {:column_title "Date"}
+                                             "[\"name\",\"DEFAULT_CURRENCY\"]"       {:number_style "currency"
+                                                                                      :column_title "Plain Currency"}}}]
+      (testing "The default settings (USD) are applied correctly"
+        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}}]
+          (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query excel-data-query}}
+                                              :display                :table
+                                              :visualization_settings viz-settings}]
+            ;; The following formatting has been applied:
+            ;; - All columns renamed
+            ;; - Column reordering
+            ;; - Column hiding (See "HIDE_ME") above
+            ;; - Base formatting ("No Formatting TS") conforms to standard datetime format
+            ;; - "DATE-ONLY TS" shows only a date-formatted timestamp
+            ;; - "TS W/FORMATTING" shows a timestamp with custom date and time formatting
+            ;; - "Date" shows simple date formatting
+            ;; - "Time" shows simple time formatting
+            ;; - "Plain Currency ($)" formats numbers as regular numbers with no dollar sign in the number column
+            ;; - "Col $" formats currency with leading $. Note that the strings as presented aren't as you'd see in Excel. Excel properly just adds a leading $.
+            ;; - "USD Col" has a leading USD. Again, the formatting of this output is an artifact of POI rendering. It is correct in Excel as "USD 1.23"
+            ;; - "DOL Col" has trailing US dollars
+            ;; - "EXPO" has exponentiated values
+            ;; - "Scaled PCT" multiplies values by 0.01 and presents as percentages
+            ;; - "3D PCT" is a standard percentage with a customization of 3 significant digits
+            (testing "All formatting is applied correctly in a complex situation."
+              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency ($)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$$]1,234.05" "[$USD] 2345.05" "4,321.05 US dollars" "7180.64E+0" "0.05%" "19.200%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
+                     (parse-xlsx-results-to-strings
+                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+      (testing "Global currency settings are applied correctly"
+        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
+                                                              :type/Currency {:currency "EUR", :currency_style "symbol"}}]
+          (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
+                                                                       :type     :native
+                                                                       :native   {:query excel-data-query}}
+                                              :display                :table
+                                              :visualization_settings viz-settings}]
+            (testing "All formatting is applied correctly in a complex situation."
+              (is (= [["No Formatting TS" "DATE-ONLY TS" "TS W/FORMATTING" "Date" "Time" "Plain Currency (€)" "Col $" "USD Col" "DOL Col" "EXPO" "Scaled PCT" "3D PCT"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "1,234.05" "[$€]1,234.05" "[$EUR] 2345.05" "4,321.05 euros" "7180.64E+0" "0.05%" "19.200%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
+                      ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
+                     (parse-xlsx-results-to-strings
+                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
+            (parse-xlsx-results-to-strings
+              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest download-default-constraints-test
   (t2.with-temp/with-temp [:model/Card card {:dataset_query {:database   (mt/id)

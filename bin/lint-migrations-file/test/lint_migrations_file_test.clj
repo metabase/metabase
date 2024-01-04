@@ -8,9 +8,9 @@
   [& keyvals]
   {:changeSet
    (merge
-    {:id      "v45.00-001"
+    {:id      "v49.2024-01-01T10:30:00"
      :author  "camsaul"
-     :comment "Added x.45.0"
+     :comment "Added x.49.0"
      :changes [{:whatever {}}]
      :rollback []}
     (apply array-map keyvals))})
@@ -44,8 +44,8 @@
          clojure.lang.ExceptionInfo
          #"distinct-change-set-ids"
          (validate
-          (mock-change-set :id "v45.00-001")
-          (mock-change-set :id "v45.00-001"))))))
+          (mock-change-set :id "v49.2024-01-01T10:30:00")
+          (mock-change-set :id "v49.2024-01-01T10:30:00"))))))
 
 (deftest require-migrations-in-order-test
   (testing "Migrations must be in order"
@@ -54,7 +54,14 @@
          #"change-set-ids-in-order"
          (validate
           (mock-change-set :id "v45.00-002")
-          (mock-change-set :id "v45.00-001"))))))
+          (mock-change-set :id "v45.00-001"))))
+
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"change-set-ids-in-order"
+         (validate
+          (mock-change-set :id "v49.2023-12-14T08:54:54")
+          (mock-change-set :id "v49.2023-12-14T08:54:53"))))))
 
 (deftest only-one-column-per-add-column-test
   (testing "we should only allow one column per addColumn change"
@@ -88,7 +95,7 @@
          #"Validation failed:"
          (validate (update (mock-change-set) :changeSet dissoc :comment))))
     (is (= :ok
-           (validate (mock-change-set :id "v45.00-001", :comment "Added x.45.0"))))))
+           (validate (mock-change-set :id "v49.2024-01-01T10:30:00", :comment "Added x.45.0"))))))
 
 (deftest no-on-delete-in-constraints-test
   (testing "Make sure we don't use onDelete in constraints"
@@ -150,31 +157,32 @@
 (deftest validate-id-test
   (letfn [(validate-id [id]
             (validate (mock-change-set :id id)))]
-    (testing "Valid new-style ID"
+    (testing "Valid old-style ID"
       (is (= :ok
              (validate-id "v42.00-000"))))
-    (testing "ID that's missing a zero should fail"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Validation failed"
-           (validate-id "v42.01-01"))))
-    (testing "ID with an extra zero should fail"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Validation failed"
-           (validate-id "v42.01-0001"))))
-    (testing "Has to start with v"
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Validation failed"
-           (validate-id "42.01-001"))))))
+    (testing "Valid new-style ID"
+      (is (= :ok
+             (validate-id "v49.2024-01-01T10:30:00"))))
+
+    (testing "invalid date components should throw an error"
+      (are [msg id]
+        (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate-id "v49.2024-30-01T10:30:00")
+         msg)
+        "invalid month"  "v49.2024-13-01T10:30:00"
+        "invalid day"    "v49.2024-01-32T10:30:00"
+        "invalid hour"   "v49.2024-01-01T25:30:00"
+        "invalid minute" "v49.2024-01-01T10:60:00"
+        "invalid second" "v49.2024-01-01T10:30:60"))))
 
 (deftest prevent-text-types-test
   (testing "should allow \"${text.type}\" columns from being added"
     (is (= :ok
           (validate
            (mock-change-set
-             :id "v42.00-001"
+             :id "v49.2024-01-01T10:30:00"
              :changes [(mock-add-column-changes :columns [(mock-column :type "${text.type}")])]))))
     (doseq [problem-type ["blob" "text"]]
       (testing (format "should prevent \"%s\" columns from being added after ID 320" problem-type)
@@ -183,7 +191,7 @@
               #"(?s)^.*no-bare-blob-or-text-types\\?.*$"
               (validate
                 (mock-change-set
-                  :id "v42.00-001"
+                  :id "v49.2024-01-01T10:30:00"
                   :changes [(mock-add-column-changes :columns [(mock-column :type problem-type)])]))))))))
 
 (deftest prevent-bare-boolean-type-test
@@ -208,25 +216,25 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"rollback-present-when-required"
-           (validate (update (mock-change-set :id "v45.12-345" :changes [{:sql {:sql "select 1"}}])
+           (validate (update (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [{:sql {:sql "select 1"}}])
                              :changeSet dissoc :rollback)))))
     (testing "nil rollback is allowed"
-      (is (= :ok (validate (mock-change-set :id "v45.12-345"
+      (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00"
                                             :changes [{:sql {:sql "select 1"}}]
                                             :rollback nil)))))
     (testing "rollback values are allowed"
-      (is (= :ok (validate (mock-change-set :id "v45.12-345"
+      (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00"
                                             :changes [{:sql {:sql "select 1"}}]
                                             :rollback {:sql {:sql "select 1"}}))))))
   (testing "change types with automatic rollback support are allowed"
-    (is (= :ok (validate (mock-change-set :id "v45.12-345" :changes [(mock-add-column-changes)]))))))
+    (is (= :ok (validate (mock-change-set :id "v49.2024-01-01T10:30:00" :changes [(mock-add-column-changes)]))))))
 
 (deftest disallow-deletecascade-in-addcolumn-test
   (testing "addColumn with deleteCascade fails"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"disallow-delete-cascade"
-         (validate (mock-change-set :id "v45.12-345"
+         (validate (mock-change-set :id "v49.2024-01-01T10:30:00"
                                     :changes [(mock-add-column-changes
                                                :columns [(mock-column :constraints {:deleteCascade true})])]))))))
 
