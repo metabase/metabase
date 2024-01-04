@@ -17,14 +17,16 @@ export function FilterBarButton({
   isExpanded,
   onClick,
 }: FilterBarButtonProps) {
+  const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => getFilterItems(query), [query]);
 
   return (
-    <Tooltip label={isExpanded ? t`Hide filters` : t`Show filters`}>
+    <Tooltip label={label}>
       <FilterButton
         leftIcon={<Icon name="filter" />}
         radius="xl"
         isExpanded={isExpanded}
+        aria-label={label}
         data-testid="filters-visibility-control"
         onClick={onClick}
       >
