@@ -74,7 +74,7 @@ describe("ManageApiKeys", () => {
     userEvent.click(screen.getByText("Create API Key"));
     expect(await screen.findByText("Create a new API Key")).toBeInTheDocument();
     userEvent.type(screen.getByLabelText(/Key name/), "New key");
-    userEvent.click(await screen.findByLabelText(/Select a group/));
+    userEvent.click(await screen.findByLabelText(/which group/i));
     userEvent.click(await screen.findByText("flamingos"));
     userEvent.click(screen.getByRole("button", { name: "Create" }));
 
@@ -134,9 +134,7 @@ describe("ManageApiKeys", () => {
     );
     await screen.findByText("Edit API Key");
 
-    const group = await screen.findByLabelText(
-      "Select a group to inherit its permissions",
-    );
+    const group = await screen.findByLabelText(/which group/i);
     userEvent.click(group);
     userEvent.click(await screen.findByText("flamingos"));
 
