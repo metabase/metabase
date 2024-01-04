@@ -54,8 +54,8 @@ import {
   getChangeWidth,
   getValueHeight,
   getValueWidth,
-  isComparisonValid,
   isPeriodVisible,
+  validateComparisons,
 } from "./utils";
 import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
 
@@ -289,16 +289,10 @@ Object.assign(SmartScalar, {
       section: t`Data`,
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
-      isValid: (series, vizSettings) => {
-        const comparisons = vizSettings["scalar.comparisons"];
-        return comparisons.every(comparison =>
-          isComparisonValid(comparison, series, vizSettings),
-        );
-      },
-      getDefault: (series, vizSettings) => {
-        const comparison = getDefaultComparison(series, vizSettings);
-        return [comparison];
-      },
+      isValid: (series, vizSettings) =>
+        validateComparisons(series, vizSettings),
+      getDefault: (series, vizSettings) =>
+        getDefaultComparison(series, vizSettings),
       getProps: (series, vizSettings) => {
         const cols = series[0].data.cols;
         return {

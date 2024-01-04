@@ -120,21 +120,25 @@ export function getDefaultComparison(
   )?.unit;
 
   if (!dateUnit) {
-    return {
-      id: uuid(),
-      ...createComparisonMenuOption({
-        type: COMPARISON_TYPES.PREVIOUS_VALUE,
-      }),
-    };
+    return [
+      {
+        id: uuid(),
+        ...createComparisonMenuOption({
+          type: COMPARISON_TYPES.PREVIOUS_VALUE,
+        }),
+      },
+    ];
   }
 
-  return {
-    id: uuid(),
-    ...createComparisonMenuOption({
-      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-      dateUnit,
-    }),
-  };
+  return [
+    {
+      id: uuid(),
+      ...createComparisonMenuOption({
+        type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+        dateUnit,
+      }),
+    },
+  ];
 }
 
 export function getColumnsForComparison(
@@ -249,6 +253,16 @@ export function isComparisonValid(
   }
 
   return true;
+}
+
+export function validateComparisons(
+  series: RawSeries,
+  settings: VisualizationSettings,
+) {
+  const comparisons = settings["scalar.comparisons"] || [];
+  return comparisons.every(comparison =>
+    isComparisonValid(comparison, series, settings),
+  );
 }
 
 type getMaxPeriodsAgoParameters = {

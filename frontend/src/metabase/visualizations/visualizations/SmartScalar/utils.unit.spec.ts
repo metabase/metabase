@@ -76,10 +76,12 @@ describe("SmartScalar > utils", () => {
           settings,
         );
 
-        expect(defaultComparison).toEqual({
-          id: expect.any(String),
-          ...COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
-        });
+        expect(defaultComparison).toEqual([
+          {
+            id: expect.any(String),
+            ...COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+          },
+        ]);
       });
 
       it("should return previous period as default if there is a dateUnit", () => {
@@ -94,11 +96,13 @@ describe("SmartScalar > utils", () => {
           settings,
         );
 
-        expect(defaultComparison).toEqual({
-          id: expect.any(String),
-          type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-          name: "Previous month",
-        });
+        expect(defaultComparison).toEqual([
+          {
+            id: expect.any(String),
+            type: COMPARISON_TYPES.PREVIOUS_PERIOD,
+            name: "Previous month",
+          },
+        ]);
       });
     });
 
