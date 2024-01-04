@@ -1,6 +1,7 @@
 import {
   getApplicationName,
   getIsWhiteLabeling,
+  getShowMetabaseLinks,
   getWhiteLabeledLoadingMessage,
 } from "..";
 import type { SetupOpts } from "./setup";
@@ -55,5 +56,19 @@ describe("getApplicationName (EE without token)", () => {
     const { getState } = setup({ applicationName: "something else" });
 
     expect(getApplicationName(getState())).toBe("Metabase");
+  });
+});
+
+describe("getShowMetabaseLinks (EE without token)", () => {
+  it("should return true when show-metabase-links is true", () => {
+    const { getState } = setup({ showMetabaseLinks: true });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
+  });
+
+  it("should return true when show-metabase-links is false", () => {
+    const { getState } = setup({ showMetabaseLinks: false });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
   });
 });
