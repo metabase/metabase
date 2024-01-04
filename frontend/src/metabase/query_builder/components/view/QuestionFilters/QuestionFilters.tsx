@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { Tooltip } from "metabase/ui";
-import { FilterBar } from "metabase/querying/components/FilterBar";
+import { FilterBar } from "metabase/querying";
 
 import type { QueryBuilderMode } from "metabase-types/store";
 
