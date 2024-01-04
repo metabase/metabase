@@ -413,8 +413,8 @@
           (testing "Custom column metadata settings are applied"
             (is (= "2023-12-11, 15:30"
                    (metamodel-results "Example Timestamp With Time Zone"))))
-          (testing "Custom column settings metadata takes precedence over visualization settings"
-            (is (= "December 11, 2023, 3:30:45 PM"
+          (testing "Visualization settings overwrite custom metadata column settings"
+            (is (= "December 11, 2023, 3:30:45.123 PM"
                    (metamodel-results "Example Timestamp"))))
           (testing "Setting time-enabled to nil for a date time column results in only showing the date"
             (is (= "December 11, 2023"
