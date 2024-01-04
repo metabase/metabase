@@ -225,7 +225,7 @@ describe("scenarios > visualizations > maps", () => {
     );
   });
 
-  it("should apply brush filters by dragging map", () => {
+  it("should apply brush filters by dragging map", { tags: "@flaky" }, () => {
     cy.viewport(1280, 800);
 
     visitQuestionAdhoc({

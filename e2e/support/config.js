@@ -34,6 +34,15 @@ const defaultConfig = {
      **                        PREPROCESSOR                            **
      ********************************************************************/
 
+    if (runWithReplay) {
+      on = replay.wrapOn(on);
+      replay.default(on, config, {
+        upload: true,
+        apiKey: process.env.REPLAY_API_KEY,
+        filter: r => r.metadata.test?.result === "failed",
+      });
+    }
+
     on(
       "file:preprocessor",
       createBundler({ plugins: [NodeModulesPolyfillPlugin()] }),
@@ -94,13 +103,6 @@ const defaultConfig = {
     config.env.TARGET_VERSION = targetVersion;
 
     require("@cypress/grep/src/plugin")(config);
-
-    if (runWithReplay) {
-      replay.default(on, config, {
-        upload: true,
-        apiKey: process.env.REPLAY_API_KEY,
-      });
-    }
 
     return config;
   },
