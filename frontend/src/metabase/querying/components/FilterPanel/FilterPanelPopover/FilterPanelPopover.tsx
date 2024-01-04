@@ -4,19 +4,19 @@ import { Popover } from "metabase/ui";
 import { FilterPicker } from "../../FilterPicker";
 import { FilterPill } from "../FilterPill";
 
-interface FilterPillPopoverProps {
+interface FilterPanelPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause;
   onChange: (query: Lib.Query) => void;
 }
 
-export function FilterPillPopover({
+export function FilterPanelPopover({
   query,
   stageIndex,
   filter,
   onChange,
-}: FilterPillPopoverProps) {
+}: FilterPanelPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
 
   const filterInfo = useMemo(

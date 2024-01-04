@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type * as Lib from "metabase-lib";
-import { FilterPillPopover } from "./FilterPillPopover";
+import { FilterPanelPopover } from "./FilterPanelPopover";
 import { getFilterItems } from "./utils";
 import { FilterPanelRoot } from "./FilterPanel.styled";
 
@@ -22,7 +22,7 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
       data-testid="qb-filters-panel"
     >
       {items.map(({ filter, stageIndex }, itemIndex) => (
-        <FilterPillPopover
+        <FilterPanelPopover
           key={itemIndex}
           query={query}
           stageIndex={stageIndex}
