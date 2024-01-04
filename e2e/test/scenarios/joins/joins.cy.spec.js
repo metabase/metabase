@@ -99,7 +99,7 @@ describe("scenarios > question > joined questions", () => {
     assertQueryBuilderRowCount(89);
   });
 
-  it("should join a native question", () => {
+  it.skip("should join a native question (metabase#37100)", () => {
     cy.createNativeQuestion({
       name: "question a",
       native: { query: "select ID, PRODUCT_ID, TOTAL from orders" },

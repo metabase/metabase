@@ -9,7 +9,7 @@ export interface FormSelectProps extends Omit<SelectProps, "value" | "error"> {
   nullable?: boolean;
 }
 
-export const FormSelect = forwardRef(function FormNumberInput(
+export const FormSelect = forwardRef(function FormSelect(
   { name, nullable, onChange, onBlur, ...props }: FormSelectProps,
   ref: Ref<HTMLInputElement>,
 ) {

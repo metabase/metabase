@@ -25,29 +25,39 @@
       (is (= "2" (format 2 nil))))
     (testing "Currency"
       (testing "defaults to USD and two decimal places and symbol"
-        (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"}))))
+        (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"
+                                  ::mb.viz/currency-in-header false}))))
       (testing "Defaults to currency when there is a currency style"
-        (is (= "$12,345.54" (fmt {::mb.viz/currency-style "symbol"}))))
+        (is (= "$12,345.54" (fmt {::mb.viz/currency-style "symbol"
+                                  ::mb.viz/currency-in-header false}))))
       (testing "Defaults to currency when there is a currency"
-        (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"}))))
+        (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"
+                                  ::mb.viz/currency-in-header false}))))
       (testing "respects the number of decimal places when specified"
         (is (= "$12,345.54320" (fmt {::mb.viz/currency "USD"
-                                     ::mb.viz/decimals 5}))))
+                                     ::mb.viz/decimals 5
+                                     ::mb.viz/currency-in-header false}))))
       (testing "Other currencies"
-        (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"})))
+        (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"
+                                    ::mb.viz/currency-in-header false})))
         (is (= "12,345.54 Cape Verdean escudos"
                (fmt {::mb.viz/currency       "CVE"
-                     ::mb.viz/currency-style "name"})))
+                     ::mb.viz/currency-style "name"
+                     ::mb.viz/currency-in-header false})))
         (testing "which have no 'cents' and thus no decimal places"
-          (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"})))
-          (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"})))
-          (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"})))))
+          (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"
+                                  ::mb.viz/currency-in-header false})))
+          (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"
+                                 ::mb.viz/currency-in-header false})))
+          (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"
+                                  ::mb.viz/currency-in-header false})))))
       (testing "Understands name, code, and symbol"
         (doseq [[style expected] [["name" "12,345.54 Czech Republic korunas"]
                                   ["symbol" "Kč12,345.54"]
                                   ["code" "CZK 12,345.54"]]]
           (is (= expected (fmt {::mb.viz/currency       "CZK"
-                                ::mb.viz/currency-style style}))
+                                ::mb.viz/currency-style style
+                                ::mb.viz/currency-in-header false}))
               style))))
     (testing "scientific notation"
       (is (= "1.23E4" (fmt {::mb.viz/number-style "scientific"})))
@@ -65,8 +75,12 @@
       (is (= "10%" (format 0.1 {::mb.viz/number-style "percent"})))
       (is (= "1%" (format 0.01 {::mb.viz/number-style "percent"})))
       (is (= "0%" (format 0.000000 {::mb.viz/number-style "percent"})))
-      ;; This is not zero, so should show decimal places
-      (is (= "0.00%" (format 0.0000001 {::mb.viz/number-style "percent"})))
+      ;; With default formatting (2 digits) and zero trimming, we get 0%
+      (is (= "0%" (format 0.0000001 {::mb.viz/number-style "percent"})))
+      ;; Requiring 2 digits adds zeros
+      (is (= "0.00%" (format 0.0000001 {::mb.viz/number-style "percent"
+                                        ::mb.viz/decimals     2})))
+      ;; You need at least 5 digits (not the scale by 100 for percents) to show the low value
       (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"
                                            ::mb.viz/decimals          5}))))
     (testing "Match UI 'natural formatting' behavior for decimal values with no column formatting present"
