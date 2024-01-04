@@ -316,7 +316,6 @@ class View extends Component {
     }
 
     const isStructured = legacyQuery instanceof StructuredQuery;
-    const query = question._getMLv2Query();
 
     const isNewQuestion =
       isStructured &&
@@ -324,6 +323,8 @@ class View extends Component {
       !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
+      const query = question._getMLv2Query();
+
       return (
         <NewQuestionView
           legacyQuery={legacyQuery}
