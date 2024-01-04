@@ -140,7 +140,7 @@ describe("scenarios > admin > settings > API keys", () => {
       .clear()
       .type("Different key name");
 
-    cy.findByLabelText(/Select a group/).click();
+    cy.findByLabelText(/group/).click();
     cy.findByRole("listbox").findByText("collection").click();
 
     cy.button("Save").click();
@@ -247,7 +247,7 @@ describe("scenarios > admin > settings > API keys", () => {
             "Edited Dashboard Name",
           ).then(() => {
             cy.signInAsAdmin();
-            visitDashboard(ORDERS_QUESTION_ID);
+            visitDashboard(ORDERS_DASHBOARD_ID);
             cy.findByTestId("dashboard-header").findByText(
               "Edited Dashboard Name",
             );
