@@ -183,8 +183,8 @@ function getRowCountMessage(result: Dataset): string {
   return t`Showing ${formatRowCount(result.row_count)}`;
 }
 
-function getDatabaseId(state: State, { question }: OwnProps & StateProps) {
-  return question.query().databaseId();
+function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
+  return question.databaseId();
 }
 
 const ConnectedQuestionRowCount = _.compose(
