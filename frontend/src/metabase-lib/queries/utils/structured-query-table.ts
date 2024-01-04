@@ -63,10 +63,11 @@ function getSourceQueryTable(query: StructuredQuery): Table {
   const sourceQuery = query.sourceQuery() as StructuredQuery;
   const fields = getFieldsForSourceQueryTable(query, sourceQuery);
   const sourceTableId = sourceQuery.sourceTableId() as Table["id"];
+  const question = sourceQuery.question();
 
   return createVirtualTable({
     id: sourceTableId,
-    db: sourceQuery.database() ?? undefined,
+    db: question.database() ?? undefined,
     fields,
     metadata: sourceQuery.metadata(),
     // intentionally set these to "" so that we fallback to a title of "Previous results" in join steps
