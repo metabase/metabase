@@ -710,8 +710,8 @@ export class NativeQueryEditor extends Component<
   };
 
   isPromptInputVisible = () => {
-    const { canUsePromptInput, isNativeEditorOpen } = this.props;
-    const database = this.props.query.database();
+    const { canUsePromptInput, isNativeEditorOpen, question } = this.props;
+    const database = question.database();
     const isSupported =
       database != null && canGenerateQueriesForDatabase(database);
 
