@@ -11,6 +11,9 @@ interface FilterBarProps {
 
 export function FilterBar({ query, onChange }: FilterBarProps) {
   const items = useMemo(() => getFilterItems(query), [query]);
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
     <FilterBarRoot align="center" wrap="wrap" gap="sm" px="xl" py="sm">
