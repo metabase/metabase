@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 import { Popover } from "metabase/ui";
-import { FilterPicker } from "metabase/querying";
+import { FilterPicker } from "../../FilterPicker";
 import { FilterPill } from "../FilterPill";
 
 interface FilterPillPopoverProps {
