@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type * as Lib from "metabase-lib";
-import { FilterPopover } from "./FilterPopover";
+import { FilterPillPopover } from "./FilterPillPopover";
 import { getFilterItems } from "./utils";
 import { FilterBarRoot } from "./FilterBar.styled";
 
@@ -15,7 +15,7 @@ export function FilterBar({ query, onChange }: FilterBarProps) {
   return (
     <FilterBarRoot align="center" wrap="wrap" gap="sm" px="xl" py="sm">
       {items.map(({ filter, stageIndex }, itemIndex) => (
-        <FilterPopover
+        <FilterPillPopover
           key={itemIndex}
           query={query}
           stageIndex={stageIndex}
