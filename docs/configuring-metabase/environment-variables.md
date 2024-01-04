@@ -191,7 +191,7 @@ Type: integer<br>
 Default: `20`<br>
 Since: v48.0
 
-Adds the ability to control the row limit for rendered tables in alerts and subscriptions.
+Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts.
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
