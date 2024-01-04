@@ -30,7 +30,7 @@ describe("metabase/util/dataset", () => {
   describe("syncColumnsAndSettings", () => {
     it("should automatically add new metrics when a new aggregrate column is added", () => {
       const prevQuestion = productsTable
-        .query({
+        .legacyQuery({
           aggregation: [["count"]],
           breakout: [["field", PRODUCTS.CATEGORY, null]],
         })
@@ -40,7 +40,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .query()
+        .legacyQuery()
         .aggregate(["sum", ["field", PRODUCTS.PRICE, null]])
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -53,7 +53,7 @@ describe("metabase/util/dataset", () => {
 
     it("should automatically remove metrics from settings when an aggregrate column is removed", () => {
       const prevQuestion = productsTable
-        .query({
+        .legacyQuery({
           aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
           breakout: [["field", PRODUCTS.CATEGORY, null]],
         })
@@ -63,7 +63,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .query()
+        .legacyQuery()
         .removeAggregation(1)
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -73,7 +73,7 @@ describe("metabase/util/dataset", () => {
 
     it("Adding a breakout should not affect graph.metrics", () => {
       const prevQuestion = productsTable
-        .query({
+        .legacyQuery({
           aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
           breakout: [["field", PRODUCTS.CATEGORY, null]],
         })
@@ -83,7 +83,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .query()
+        .legacyQuery()
         .breakout(["field", PRODUCTS.VENDOR, null])
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -92,12 +92,12 @@ describe("metabase/util/dataset", () => {
         "count",
         "sum",
       ]);
-      expect(newQuestion.query().columns()).toHaveLength(4);
+      expect(newQuestion.legacyQuery().columns()).toHaveLength(4);
     });
 
     it("removes columns from table.columns when a column is removed from a query", () => {
       const prevQuestion = productsTable
-        .query({
+        .legacyQuery({
           fields: [
             ["field", PRODUCTS.ID, null],
             ["field", PRODUCTS.CATEGORY, null],
@@ -126,7 +126,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .query()
+        .legacyQuery()
         .removeField(2)
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -139,7 +139,7 @@ describe("metabase/util/dataset", () => {
 
     it("adds columns to table.columns when a column is added to a query", () => {
       const prevQuestion = productsTable
-        .query({
+        .legacyQuery({
           fields: [
             ["field", PRODUCTS.ID, null],
             ["field", PRODUCTS.CATEGORY, null],
@@ -162,7 +162,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .query()
+        .legacyQuery()
         .addField(["field", PRODUCTS.VENDOR, null])
         .question()
         .syncColumnsAndSettings(prevQuestion);

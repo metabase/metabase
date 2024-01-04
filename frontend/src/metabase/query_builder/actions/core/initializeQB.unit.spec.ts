@@ -644,7 +644,7 @@ describe("QB Actions > initializeQB", () => {
             },
           });
           const formattedQuestion = new Question(result.card, metadata);
-          const query = formattedQuestion.query() as NativeQuery;
+          const query = formattedQuestion.legacyQuery() as NativeQuery;
 
           expect(query.queryText().toLowerCase()).toBe(
             "select * from orders {{snippet: bar}}",
@@ -706,7 +706,7 @@ describe("QB Actions > initializeQB", () => {
       });
 
       const question = new Question(result.card, metadata);
-      const query = question.query() as StructuredQuery;
+      const query = question.legacyQuery() as StructuredQuery;
 
       return {
         question,
@@ -724,7 +724,7 @@ describe("QB Actions > initializeQB", () => {
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });
       const question = new Question(result.card, metadata);
-      const query = question.query() as StructuredQuery;
+      const query = question.legacyQuery() as StructuredQuery;
 
       expect(result.card).toEqual(expectedCard);
       expect(query.sourceTableId()).toBe(null);

@@ -133,7 +133,7 @@ interface QueryDownloadWidgetOpts {
 const canEditQuestion = (question: Question) => {
   return (
     question.canWrite() &&
-    question.query() != null &&
+    question.legacyQuery() != null &&
     question.isQueryEditable()
   );
 };
@@ -154,7 +154,7 @@ DashCardMenu.shouldRender = ({
   isPublic,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
-  const isInternalQuery = question.query() instanceof InternalQuery;
+  const isInternalQuery = question.legacyQuery() instanceof InternalQuery;
   if (isEmbed) {
     return isEmbed;
   }
