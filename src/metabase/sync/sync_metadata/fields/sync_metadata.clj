@@ -89,6 +89,7 @@
             ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
             :fingerprint_version 0
             :fingerprint         nil
+            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
             :semantic_type       nil})
          (when new-semantic-type?
            (log/infof "Semantic type of {0} has changed from ''%s'' to ''%s''."
