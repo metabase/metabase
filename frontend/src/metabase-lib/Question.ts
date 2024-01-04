@@ -5,6 +5,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import * as Lib from "metabase-lib";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -830,9 +831,10 @@ class Question {
       : null;
   }
 
-  databaseId(): DatabaseId | null | undefined {
-    const db = this.database();
-    return db ? db.id : null;
+  databaseId(): DatabaseId | null {
+    const query = this._getMLv2Query();
+    const databaseId = Lib.databaseID(query);
+    return databaseId;
   }
 
   table(): Table | null | undefined {
