@@ -4,21 +4,21 @@ import { Tooltip } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import type * as Lib from "metabase-lib";
 import { getFilterItems } from "../utils";
-import { FilterButton } from "./FilterBarButton.styled";
+import { FilterButton } from "./FilterPanelButton.styled";
 
-interface FilterBarButtonProps {
+interface FilterPanelButtonProps {
   query: Lib.Query;
   isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
 }
 
-export function FilterBarButton({
+export function FilterPanelButton({
   query,
   isExpanded,
   onExpand,
   onCollapse,
-}: FilterBarButtonProps) {
+}: FilterPanelButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => getFilterItems(query), [query]);
 

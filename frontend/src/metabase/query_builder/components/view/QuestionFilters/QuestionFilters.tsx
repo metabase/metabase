@@ -1,4 +1,4 @@
-import { FilterBar, FilterBarButton } from "metabase/querying";
+import { FilterPanel, FilterPanelButton } from "metabase/querying";
 
 import type { QueryBuilderMode } from "metabase-types/store";
 
@@ -23,7 +23,7 @@ export function FilterHeaderToggle({
 }: FilterHeaderToggleProps) {
   return (
     <div className={className}>
-      <FilterBarButton
+      <FilterPanelButton
         query={query}
         isExpanded={isExpanded}
         onExpand={onExpand}
@@ -54,7 +54,7 @@ export function FilterHeader({
     return null;
   }
 
-  return <FilterBar query={query} onChange={handleChange} />;
+  return <FilterPanel query={query} onChange={handleChange} />;
 }
 
 type RenderCheckOpts = {

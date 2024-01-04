@@ -2,18 +2,25 @@ import { useMemo } from "react";
 import type * as Lib from "metabase-lib";
 import { FilterPillPopover } from "./FilterPillPopover";
 import { getFilterItems } from "./utils";
-import { FilterBarRoot } from "./FilterBar.styled";
+import { FilterPanelRoot } from "./FilterPanel.styled";
 
-interface FilterBarProps {
+interface FilterPanelProps {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
 }
 
-export function FilterBar({ query, onChange }: FilterBarProps) {
+export function FilterPanel({ query, onChange }: FilterPanelProps) {
   const items = useMemo(() => getFilterItems(query), [query]);
 
   return (
-    <FilterBarRoot align="center" wrap="wrap" gap="sm" px="xl" py="sm">
+    <FilterPanelRoot
+      align="center"
+      wrap="wrap"
+      gap="sm"
+      px="xl"
+      py="sm"
+      data-testid="qb-filters-panel"
+    >
       {items.map(({ filter, stageIndex }, itemIndex) => (
         <FilterPillPopover
           key={itemIndex}
@@ -23,6 +30,6 @@ export function FilterBar({ query, onChange }: FilterBarProps) {
           onChange={onChange}
         />
       ))}
-    </FilterBarRoot>
+    </FilterPanelRoot>
   );
 }
