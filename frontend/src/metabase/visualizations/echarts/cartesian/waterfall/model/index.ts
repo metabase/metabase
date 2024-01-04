@@ -100,7 +100,7 @@ function getSortedAggregatedRows(
 /**
  * Total is calculated separately here to avoid including the
  * power scale transformation, since we want to show the actual
- * value to the user.
+ * value to the user in the data label.
  */
 function getWaterfallTotal(
   rows: RowValues[],
