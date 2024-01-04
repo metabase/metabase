@@ -7,7 +7,11 @@ import {
 import { checkNumber } from "metabase/lib/types";
 
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { WaterfallDataset } from "../types";
+import {
+  WATERFALL_EMPTY_VALUE,
+  type WaterfallDataset,
+  type WaterfallEmptyValue,
+} from "../types";
 
 export function getWaterfallDataset(
   rows: RowValues[],
@@ -47,8 +51,8 @@ export function getWaterfallDataset(
     const dimension = String(rows[i][columns.dimension.index]);
 
     let barOffset = negativeTranslation;
-    let increase: number | "-" = "-";
-    let decrease: number | "-" = "-";
+    let increase: number | WaterfallEmptyValue = WATERFALL_EMPTY_VALUE;
+    let decrease: number | WaterfallEmptyValue = WATERFALL_EMPTY_VALUE;
 
     const prevSum = i !== 0 ? runningSums[i - 1] : 0;
     const currSum = runningSums[i];
@@ -61,7 +65,13 @@ export function getWaterfallDataset(
       decrease = Math.abs(prevSum - currSum);
     }
 
-    dataset.push({ dimension, barOffset, increase, decrease, total: "-" });
+    dataset.push({
+      dimension,
+      barOffset,
+      increase,
+      decrease,
+      total: WATERFALL_EMPTY_VALUE,
+    });
   }
 
   if (!settings["waterfall.show_total"]) {
@@ -94,8 +104,8 @@ export function getWaterfallDataset(
   dataset.push({
     dimension,
     barOffset,
-    increase: "-",
-    decrease: "-",
+    increase: WATERFALL_EMPTY_VALUE,
+    decrease: WATERFALL_EMPTY_VALUE,
     total: Math.abs(total),
   });
 
