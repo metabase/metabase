@@ -59,9 +59,9 @@
 
 (defn- remove-other-users-personal-collections
   [user-id collections]
-  (let [personal-ids (t2/select-fn-set :id :model/Collection
-                                       {:where
-                                        [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]})
+  (let [personal-ids        (t2/select-fn-set :id :model/Collection
+                                              {:where
+                                               [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]})
         personal-descendant (comp personal-ids
                                   first
                                   collection/location-path->ids
