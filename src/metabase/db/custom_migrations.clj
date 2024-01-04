@@ -902,94 +902,98 @@
   (migrate-remove-admin-from-group-mapping-if-needed))
 
 (defn- db-type->to-unified-columns
+  "Each unified column is 3 items sequence [table-name, column-name, is-nullable?]"
   [db-type]
   (case db-type
-    :h2      [[:activity :timestamp]
-              [:application_permissions_revision :created_at]
-              [:collection_permission_graph_revision :created_at]
-              [:core_session :created_at]
-              [:core_user :date_joined]
-              [:core_user :last_login]
-              [:core_user :updated_at]
-              [:dependency :created_at]
-              [:dimension :created_at]
-              [:dimension :updated_at]
-              [:metabase_database :created_at]
-              [:metabase_database :updated_at]
-              [:metabase_field :created_at]
-              [:metabase_field :updated_at]
-              [:metabase_field :last_analyzed]
-              [:metabase_fieldvalues :created_at]
-              [:metabase_table :created_at]
-              [:metabase_table :updated_at]
-              [:metric :created_at]
-              [:metric :updated_at]
-              [:permissions_revision :created_at]
-              [:pulse :created_at]
-              [:pulse :updated_at]
-              [:pulse_channel :created_at]
-              [:pulse_channel :updated_at]
-              [:recent_views :timestamp]
-              [:report_card :created_at]
-              [:report_cardfavorite :created_at]
-              [:report_cardfavorite :updated_at]
-              [:report_dashboard :created_at]
-              [:report_dashboard :updated_at]
-              [:report_dashboardcard :created_at]
-              [:report_dashboardcard :updated_at]
-              [:segment :created_at]
-              [:segment :updated_at]]
-    :mysql   [[:activity :timestamp]
-              [:application_permissions_revision :created_at]
-              [:collection_permission_graph_revision :created_at]
-              [:core_session :created_at]
-              [:core_user :date_joined]
-              [:core_user :last_login]
-              [:core_user :updated_at]
-              [:dependency :created_at]
-              [:dimension :created_at]
-              [:dimension :updated_at]
-              [:metabase_field :created_at]
-              [:metabase_field :updated_at]
-              [:metabase_field :last_analyzed]
-              [:metabase_fieldvalues :created_at]
-              [:metabase_table :created_at]
-              [:metabase_table :updated_at]
-              [:metric :created_at]
-              [:metric :updated_at]
-              [:permissions_revision :created_at]
-              [:pulse :created_at]
-              [:pulse :updated_at]
-              [:pulse_channel :created_at]
-              [:pulse_channel :updated_at]
-              [:recent_views :timestamp]
-              [:report_card :created_at]
-              [:report_cardfavorite :created_at]
-              [:report_cardfavorite :updated_at]
-              [:report_dashboard :created_at]
-              [:report_dashboard :updated_at]
-              [:segment :created_at]
-              [:segment :updated_at]]
-   :postgres [[:application_permissions_revision :created_at]
-              [:collection_permission_graph_revision :created_at]
-              [:core_user :updated_at]
-              [:dimension :updated_at]
-              [:dimension :created_at]
-              [:permissions_revision :created_at]
-              [:recent_views :timestamp]]))
+    :h2      [[:activity :timestamp false]
+              [:application_permissions_revision :created_at false]
+              [:collection_permission_graph_revision :created_at false]
+              [:core_session :created_at false]
+              [:core_user :date_joined false]
+              [:core_user :last_login true]
+              [:core_user :updated_at true]
+              [:dependency :created_at false]
+              [:dimension :created_at false]
+              [:dimension :updated_at false]
+              [:metabase_database :created_at false]
+              [:metabase_database :updated_at false]
+              [:metabase_field :created_at false]
+              [:metabase_field :updated_at false]
+              [:metabase_field :last_analyzed true]
+              [:metabase_fieldvalues :created_at false]
+              [:metabase_table :created_at false]
+              [:metabase_table :updated_at false]
+              [:metric :created_at false]
+              [:metric :updated_at false]
+              [:permissions_revision :created_at false]
+              [:pulse :created_at false]
+              [:pulse :updated_at false]
+              [:pulse_channel :created_at false]
+              [:pulse_channel :updated_at false]
+              [:recent_views :timestamp false]
+              [:report_card :created_at false]
+              [:report_cardfavorite :created_at false]
+              [:report_cardfavorite :updated_at false]
+              [:report_dashboard :created_at false]
+              [:report_dashboard :updated_at false]
+              [:report_dashboardcard :created_at false]
+              [:report_dashboardcard :updated_at false]
+              [:segment :created_at false]
+              [:segment :updated_at false]]
+    :mysql   [[:activity :timestamp false]
+              [:application_permissions_revision :created_at false]
+              [:collection_permission_graph_revision :created_at false]
+              [:core_session :created_at false]
+              [:core_user :date_joined false]
+              [:core_user :last_login true]
+              [:core_user :updated_at true]
+              [:dependency :created_at false]
+              [:dimension :created_at false]
+              [:dimension :updated_at false]
+              [:metabase_field :created_at false]
+              [:metabase_field :last_analyzed true]
+              [:metabase_field :updated_at false]
+              [:metabase_fieldvalues :created_at false]
+              [:metabase_table :created_at false]
+              [:metabase_table :updated_at false]
+              [:metric :created_at false]
+              [:metric :updated_at false]
+              [:permissions_revision :created_at false]
+              [:pulse :created_at false]
+              [:pulse :updated_at false]
+              [:pulse_channel :created_at false]
+              [:pulse_channel :updated_at false]
+              [:recent_views :timestamp false]
+              [:report_card :created_at false]
+              [:report_cardfavorite :created_at false]
+              [:report_cardfavorite :updated_at false]
+              [:report_dashboard :created_at false]
+              [:report_dashboard :updated_at false]
+              [:segment :created_at false]
+              [:segment :updated_at false]]
+   :postgres [[:application_permissions_revision :created_at false]
+              [:collection_permission_graph_revision :created_at false]
+              [:core_user :updated_at true]
+              [:dimension :updated_at false]
+              [:dimension :created_at false]
+              [:permissions_revision :created_at false]
+              [:recent_views :timestamp false]]))
 
 (defn- alter-table-column-type-sql
-  [db-type table column ttype]
+  [db-type table column ttype nullable?]
   (let [ttype (name ttype)]
     (case db-type
       :postgres
-      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s)" table column ttype column ttype)
+      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
+              table column ttype column ttype column (if nullable? "DROP NOT NULL" "SET NOT NULL"))
 
       :mysql
-      (format "ALTER TABLE `%s` MODIFY `%s` %s" table column ttype)
+      (format "ALTER TABLE `%s` MODIFY `%s` %s %s"
+              table column ttype (if nullable? "NULL" "NOT NULL"))
 
       :h2
-      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" %s" (upper-case-en table) (upper-case-en column) ttype))))
+      (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" %s %s"
+              (upper-case-en table) (upper-case-en column) ttype (if nullable? "NULL" "NOT NULL")))))
 
 (defn- unify-time-column-type!
   [direction]
@@ -1004,13 +1008,13 @@
         target-type    (case direction
                          :up timestamp-type
                          :down datetime-type)]
-    (doseq [[table column] columns]
+    (doseq [[table column nullable?] columns]
       ;; this is a specical case beacuse core_user.updated_at is referenced in a view in postgres,
       ;; so we need to drop the view before changing the type, then re-create it again
       (when (= [db-type table column]
                [:postgres :core_user :updated_at])
         (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
-      (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type)])
+      (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
       (when (= [db-type table column]
                [:postgres :core_user :updated_at])
         (t2/query [(-> (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql")
