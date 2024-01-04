@@ -1,16 +1,9 @@
-import {
-  popover,
-  restore,
-  visitDashboard,
-  visitQuestion,
-} from "e2e/support/helpers";
-import type { ApiKey } from "metabase-types/api";
+import { restore, visitDashboard, visitQuestion } from "e2e/support/helpers";
 
 import {
   ALL_USERS_GROUP_ID,
   READONLY_GROUP_ID,
   NOSQL_GROUP_ID,
-  COLLECTION_GROUP_ID,
   ADMINISTRATORS_GROUP_ID,
   ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
@@ -21,9 +14,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > settings > API keys", () => {
-  // TODO: replace intercepts below with actual requests to test backend
-  const mockRows: ApiKey[] = [];
-
   beforeEach(() => {
     cy.intercept("GET", "/api/api-key/count").as("getKeyCount");
     cy.intercept("GET", "/api/api-key").as("getKeys");
@@ -192,41 +182,6 @@ describe("scenarios > admin > settings > API keys", () => {
 
     cy.button("Done").click();
     cy.findByTestId("api-keys-table").findByText(/mb_/);
-  });
-
-  it.skip("should warn before deleting a group with API keys", () => {
-    createApiKey("Personal API Key", COLLECTION_GROUP_ID);
-
-    cy.visit("/admin/people/groups");
-    cy.wait("@getKeys");
-    cy.get(".ContentTable")
-      .contains("collection")
-      .closest("tr")
-      .should("contain", "(Includes 1 API Key")
-      .icon("ellipsis")
-      .click();
-    popover().findByText("Remove Group").click();
-    cy.get(".Modal")
-      .findByText(/move the API Keys/)
-      .click();
-    cy.url().should("match", /\/admin\/settings\/authentication\/api-keys$/);
-  });
-
-  it.skip("should show API keys when viewing Group details", () => {
-    cy.intercept("GET", "/api/api-key", req => req.reply(200, mockRows)).as(
-      "getKeys",
-    );
-    cy.visit("/admin/people/groups/3");
-    cy.wait("@getKeys");
-    cy.get(".ContentTable")
-      .findByText("Personal API Key")
-      .closest("tr")
-      .icon("link")
-      .as("apiKeysLink")
-      .realHover();
-    cy.findByRole("tooltip").should("contain", "Manage API keys");
-    cy.get("@apiKeysLink").click();
-    cy.url().should("match", /\/admin\/settings\/authentication\/api-keys$/);
   });
 
   describe("api key actions", () => {
