@@ -127,7 +127,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("42,000").should("exist"); // goal
       cy.findByText("26.76%").should("exist"); // down percentage
     });
-    cy.findByTestId("chartsettings-sidebar").findByText("My Goal").click();
+    cy.findByTestId("chartsettings-sidebar").findByText("(My Goal)").click();
     menu().within(() => {
       cy.findByLabelText("Back").should("exist");
       cy.findByLabelText("Label").should("have.value", "My Goal");
@@ -146,7 +146,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByText("99.11%").should("exist"); // down percentage
     });
 
-    cy.findByTestId("chartsettings-sidebar").findByText("Mega Count").click();
+    cy.findByTestId("chartsettings-sidebar").findByText("(Mega Count)").click();
     menu().findByLabelText("Column").click();
     popover().findByText("Count").click();
     menu().button("Done").click();
@@ -268,7 +268,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // Selecting the main column ("Mega Count") to be the comparison column
     // The comparison should be reset to "previous period"
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      cy.findByText("Mega Count").should("exist");
+      cy.findByText("(Mega Count)").should("exist");
       cy.findByText("Count").click();
     });
     popover().findByText("Mega Count").click();

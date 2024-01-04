@@ -1,9 +1,9 @@
 import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Button, Menu, Stack, Text } from "metabase/ui";
+import { Menu, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
   SmartScalarComparison,
@@ -16,6 +16,8 @@ import { StaticNumberForm } from "./StaticNumberForm";
 import { AnotherColumnForm } from "./AnotherColumnForm";
 import { MenuItemStyled } from "./MenuItem.styled";
 import {
+  ComparisonPickerButton,
+  ComparisonPickerSecondaryText,
   DragHandleIcon,
   ExpandIcon,
   RemoveIcon,
@@ -46,11 +48,8 @@ export function ComparisonPicker({
   );
   const [editedValue, setEditedValue] = useState(selectedValue);
 
-  const selectedOption = options.find(
-    ({ type }) => type === selectedValue.type,
-  );
+  const selectedOption = options.find(({ type }) => type === editedValue.type);
 
-  const displayName = getDisplayName(selectedValue, selectedOption);
   const isDisabled = options.length === 1;
 
   const handleRemoveClick = useCallback(
@@ -145,7 +144,7 @@ export function ComparisonPicker({
       closeOnItemClick={false}
     >
       <Menu.Target>
-        <Button
+        <ComparisonPickerButton
           disabled={isDisabled}
           leftIcon={<DragHandleIcon name="grabber" />}
           rightIcon={
@@ -166,9 +165,9 @@ export function ComparisonPicker({
             inner: { justifyContent: "space-between" },
           }}
         >
-          <span>{displayName}</span>
+          <DisplayName value={editedValue} option={selectedOption} />
           <ExpandIcon name="chevrondown" size={14} />
-        </Button>
+        </ComparisonPickerButton>
       </Menu.Target>
 
       <Menu.Dropdown miw="18.25rem">
@@ -186,22 +185,6 @@ function getTabForComparisonType(type: SmartScalarComparisonType): Tab {
     return "staticNumber";
   }
   return null;
-}
-
-function getDisplayName(
-  value: SmartScalarComparison,
-  option?: ComparisonMenuOption,
-) {
-  if (value.type === COMPARISON_TYPES.PERIODS_AGO) {
-    return `${value.value} ${option?.name}`;
-  }
-  if (
-    value.type === COMPARISON_TYPES.ANOTHER_COLUMN ||
-    value.type === COMPARISON_TYPES.STATIC_NUMBER
-  ) {
-    return value.label;
-  }
-  return option?.name;
 }
 
 type HandleEditedValueChangeType = (
@@ -265,4 +248,32 @@ function renderMenuOption({
       </Text>
     </MenuItemStyled>
   );
+}
+
+function DisplayName({
+  value,
+  option,
+}: {
+  value: SmartScalarComparison;
+  option?: ComparisonMenuOption;
+}) {
+  if (value.type === COMPARISON_TYPES.PERIODS_AGO) {
+    return <span>{`${value.value} ${option?.name}`}</span>;
+  }
+
+  if (value.type === COMPARISON_TYPES.ANOTHER_COLUMN) {
+    const columnName = (
+      <ComparisonPickerSecondaryText key="column-name">{`(${value.label})`}</ComparisonPickerSecondaryText>
+    );
+    return <span>{jt`Column ${columnName}`}</span>;
+  }
+
+  if (value.type === COMPARISON_TYPES.STATIC_NUMBER) {
+    const label = (
+      <ComparisonPickerSecondaryText key="label">{`(${value.label})`}</ComparisonPickerSecondaryText>
+    );
+    return <span>{jt`Custom value ${label}`}</span>;
+  }
+
+  return <span>{option?.name}</span>;
 }
