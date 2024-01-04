@@ -37,6 +37,8 @@ ComparisonPickerSecondaryText.defaultProps = {
 };
 
 export const ComparisonPickerButton = styled(Button)<ButtonProps>`
+  height: 40px;
+
   &:hover {
     ${ComparisonPickerSecondaryText} {
       color: ${color("brand")};
