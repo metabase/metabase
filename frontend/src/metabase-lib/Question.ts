@@ -824,11 +824,11 @@ class Question {
     return this._card && this._card.public_uuid;
   }
 
-  database(): Database | null | undefined {
-    const query = this.query();
-    return query && typeof query.database === "function"
-      ? query.database()
-      : null;
+  database(): Database | null {
+    const metadata = this.metadata();
+    const databaseId = this.databaseId();
+    const database = metadata.database(databaseId);
+    return database;
   }
 
   databaseId(): DatabaseId | null {
