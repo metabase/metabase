@@ -84,6 +84,7 @@ export function FilterPopover({
   );
 
   const previousQuery = usePrevious(legacyQuery);
+  const question = legacyQuery.question();
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
@@ -175,7 +176,7 @@ export function FilterPopover({
     const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
       <ExpressionWidget
-        query={legacyQuery.question()._getMLv2Query()}
+        query={question._getMLv2Query()}
         stageIndex={-1}
         expression={expression}
         startRule="boolean"
@@ -248,7 +249,7 @@ export function FilterPopover({
   };
 
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
-  const supportsExpressions = legacyQuery.database()?.supportsExpressions();
+  const supportsExpressions = question.database()?.supportsExpressions();
 
   const filterOperator = filter.operator();
   const hasPicker = filterOperator && filterOperator.fields.length > 0;
