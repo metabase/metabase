@@ -873,9 +873,11 @@
              :src   (:image-src image-bundle)}]]}))
 
 (defn- get-col-by-name
-    [cols name]
-    (let [cm (into {} (map-indexed (fn [idx m] [(:name m) [idx m]]) cols))]
-      (get cm name)))
+    [cols col-name]
+    (->> (map-indexed (fn [idx m] [idx m]) cols)
+         (some (fn [[idx col]]
+                 (when (= col-name (:name col))
+                   [idx col])))))
 
 (s/defmethod render :scalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]

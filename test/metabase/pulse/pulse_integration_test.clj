@@ -583,14 +583,14 @@
 (deftest number-viz-shows-correct-value
   (testing "Static Viz. Render of 'Number' Visualization shows the correct column's first value #32362."
     (mt/dataset test-data
-      (let [ ;; test card 1 'narrows' the query to a single column (the 'tax' field)
+      (let [ ;; test card 1 'narrows' the query to a single column (the "TAX" field)
             test-card1 {:visualization_settings {:scalar.field "TAX"}
                         :display                :scalar
                         :dataset_query          {:database (mt/id)
                                                  :type     :query
                                                  :query    {:source-table (mt/id :orders)
                                                             :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]]}}}
-            ;; test card 2's query returns all cols/rows of the table, but still has 'Number' viz settings (scalar.field "TAX")
+            ;; test card 2's query returns all cols/rows of the table, but still has 'Number' viz settings `{:scalar.field "TAX"}`
             test-card2 {:visualization_settings {:scalar.field "TAX"}
                         :display                :scalar
                         :dataset_query          {:database (mt/id)
@@ -616,5 +616,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
+          ;; First value is the scalar returned from card1 (specified "TAX" field directly in the query)
+          ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
           (is (= ["2.07" "2.07"]
                  (run-pulse-and-return-scalars pulse))))))))
