@@ -8,7 +8,7 @@
    [metabase.query-processor.middleware.optimize-temporal-filters
     :as optimize-temporal-filters]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [second-date.core :as u.date]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 

@@ -6,7 +6,7 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util.date-2 :as u.date])
+   [second-date.core :as u.date])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))

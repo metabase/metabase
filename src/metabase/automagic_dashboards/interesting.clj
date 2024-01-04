@@ -40,24 +40,25 @@
    A field can only bind to one dimension.
    "
   (:require
-    [clojure.math.combinatorics :as math.combo]
-    [clojure.string :as str]
-    [clojure.walk :as walk]
-    [java-time :as t]
-    [medley.core :as m]
-    [metabase.automagic-dashboards.dashboard-templates :as dashboard-templates]
-    [metabase.automagic-dashboards.schema :as ads]
-    [metabase.automagic-dashboards.util :as magic.util]
-    [metabase.mbql.normalize :as mbql.normalize]
-    [metabase.mbql.util :as mbql.u]
-    [metabase.models.field :as field :refer [Field]]
-    [metabase.models.interface :as mi]
-    [metabase.models.metric :refer [Metric]]
-    [metabase.models.table :refer [Table]]
-    [metabase.util :as u]
-    [metabase.util.date-2 :as u.date]
-    [metabase.util.malli :as mu]
-    [toucan2.core :as t2]))
+   [clojure.math.combinatorics :as math.combo]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.automagic-dashboards.dashboard-templates
+    :as dashboard-templates]
+   [metabase.automagic-dashboards.schema :as ads]
+   [metabase.automagic-dashboards.util :as magic.util]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :as field :refer [Field]]
+   [metabase.models.interface :as mi]
+   [metabase.models.metric :refer [Metric]]
+   [metabase.models.table :refer [Table]]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [second-date.core :as u.date]
+   [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities

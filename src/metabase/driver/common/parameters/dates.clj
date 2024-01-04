@@ -8,10 +8,10 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.params :as params]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [second-date.core :as u.date])
   (:import
    (java.time.temporal Temporal)))
 

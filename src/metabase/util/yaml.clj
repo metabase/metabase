@@ -7,10 +7,10 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [second-date.core :as u.date])
   (:import
    (java.nio.file Files Path)
    (java.time.temporal Temporal)))

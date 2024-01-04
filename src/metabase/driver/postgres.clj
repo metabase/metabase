@@ -32,11 +32,11 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.upload :as upload]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [second-date.core :as u.date])
   (:import
    (java.io StringReader)
    (java.sql Connection ResultSet ResultSetMetaData Time Types)

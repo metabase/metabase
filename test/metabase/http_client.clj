@@ -17,15 +17,15 @@
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec])
+   [ring.util.codec :as codec]
+   [second-date.core :as u.date])
   (:import
-   (metabase.async.streaming_response StreamingResponse)
-   (java.io InputStream)))
+   (java.io InputStream)
+   (metabase.async.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 

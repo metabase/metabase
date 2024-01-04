@@ -10,7 +10,7 @@
    [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel basic-test

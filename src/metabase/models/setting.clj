@@ -89,11 +89,11 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.server.middleware.json]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [schema.core :as s]
+   [second-date.core :as u.date]
    [toucan2.core :as t2])
   (:import
    (clojure.lang Keyword Symbol)

@@ -7,11 +7,11 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.date-2.common :as u.date.common]
-   [metabase.util.date-2.parse :as u.date.parse]
-   [metabase.util.date-2.parse.builder :as u.date.builder]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [second-date.common :as u.date.common]
+   [second-date.core :as u.date]
+   [second-date.parse :as u.date.parse]
+   [second-date.parse.builder :as u.date.builder])
   (:import
    (com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders)
    (java.time DayOfWeek)

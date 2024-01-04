@@ -6,8 +6,8 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications

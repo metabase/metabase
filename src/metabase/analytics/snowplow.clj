@@ -8,10 +8,10 @@
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [second-date.core :as u.date])
   (:import
    (com.snowplowanalytics.snowplow.tracker Snowplow Subject Tracker)
    (com.snowplowanalytics.snowplow.tracker.configuration EmitterConfiguration NetworkConfiguration SubjectConfiguration TrackerConfiguration)

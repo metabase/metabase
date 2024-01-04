@@ -31,12 +31,12 @@
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.urls :as urls]
+   [second-date.core :as u.date]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
    [toucan2.core :as t2])

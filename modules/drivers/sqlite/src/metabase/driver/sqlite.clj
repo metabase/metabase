@@ -15,10 +15,10 @@
     :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [second-date.core :as u.date])
   (:import
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)

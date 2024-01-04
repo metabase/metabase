@@ -9,8 +9,8 @@
    [metabase.server.request.util :as request.u]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
+   [second-date.core :as u.date]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)

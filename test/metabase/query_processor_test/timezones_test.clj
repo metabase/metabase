@@ -10,8 +10,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 ;; TIMEZONE FIXME

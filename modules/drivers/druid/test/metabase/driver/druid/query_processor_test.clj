@@ -14,7 +14,7 @@
    [metabase.test :as mt]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

@@ -4,10 +4,10 @@
   (:require
    [java-time.api :as t]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [potemkin.types :as p.types])
+   [potemkin.types :as p.types]
+   [second-date.core :as u.date])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId)))
 

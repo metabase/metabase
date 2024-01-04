@@ -32,10 +32,10 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.user :as user :refer [User]]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

@@ -11,8 +11,8 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [second-date.core :as u.date])
   (:import
    (java.io OutputStream)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)

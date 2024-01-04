@@ -5,9 +5,9 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.query-cache :refer [QueryCache]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [second-date.core :as u.date]
    [toucan2.connection :as t2.connection]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])

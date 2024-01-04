@@ -5,7 +5,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.util.date-2 :as u.date])
+   [second-date.core :as u.date])
   (:import
    (java.time OffsetDateTime)))
 

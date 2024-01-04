@@ -17,12 +17,11 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.util :as search.util]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [second-date.core :as u.date])
   (:import
    (java.time LocalDate)))
-
 
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])

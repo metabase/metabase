@@ -5,11 +5,11 @@
    [clojure.walk :as walk]
    [metabase.mbql.util :as mbql.u]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [second-date.core :as u.date]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})

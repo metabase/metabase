@@ -6,9 +6,9 @@
    [metabase.public-settings :as public-settings]
    [metabase.shared.formatting.constants :as constants]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [second-date.core :as u.date])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
    (java.util Locale)))

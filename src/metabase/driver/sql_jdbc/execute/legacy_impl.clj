@@ -6,8 +6,8 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [second-date.core :as u.date])
   (:import
    (java.sql PreparedStatement ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)

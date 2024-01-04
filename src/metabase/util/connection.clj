@@ -1,6 +1,7 @@
 (ns metabase.util.connection
-  (:require [metabase.util :as u]
-            [toucan2.core :as t2])
+  (:require
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
 

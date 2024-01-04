@@ -4,10 +4,10 @@
    [cheshire.core :as json]
    [cheshire.factory]
    [cheshire.generate :as json.generate]
-   [metabase.util.date-2 :as u.date]
    [ring.middleware.json :as ring.json]
    [ring.util.io :as rui]
-   [ring.util.response :as response])
+   [ring.util.response :as response]
+   [second-date.core :as u.date])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)

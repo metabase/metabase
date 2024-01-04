@@ -28,7 +28,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.public-settings :as public-settings]
-   [metabase.util.date-2 :as u.date]))
+   [second-date.core :as u.date]))
 
 (defn- utc-date
   "`LocalDate` in UTC time."

@@ -22,12 +22,12 @@
    [metabase.query-processor :as qp]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

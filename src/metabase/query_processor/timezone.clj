@@ -19,7 +19,7 @@
 
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
-;; TODO - consider making this `metabase.util.date-2/the-timezone-id`
+;; TODO - consider making this `second-date.core/the-timezone-id`
 (defn- valid-timezone-id [timezone-id]
   (when (and (string? timezone-id)
              (seq timezone-id))

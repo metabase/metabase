@@ -9,7 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
+   [second-date.core :as u.date]
    [toucan2.core :as t2])
   (:import
    (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)

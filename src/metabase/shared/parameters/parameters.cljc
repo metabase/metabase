@@ -7,9 +7,9 @@
       [clojure.string :as str]
       [metabase.mbql.normalize :as mbql.normalize]
       [metabase.shared.util.i18n :refer [trs trsn]]
-      [metabase.util.date-2 :as u.date]
-      [metabase.util.date-2.parse.builder :as b]
-      [metabase.util.i18n.impl :as i18n.impl])
+      [metabase.util.i18n.impl :as i18n.impl]
+      [second-date.core :as u.date]
+      [second-date.parse.builder :as b])
      (:import
       (java.time.format DateTimeFormatter))]
     :cljs

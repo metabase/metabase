@@ -9,7 +9,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date])
+   [second-date.core :as u.date])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 

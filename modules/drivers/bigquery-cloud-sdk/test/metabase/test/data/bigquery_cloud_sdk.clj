@@ -14,9 +14,9 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [second-date.core :as u.date])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
                               BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field

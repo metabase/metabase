@@ -5,7 +5,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :as field :refer [Field]]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (defn- temporal?

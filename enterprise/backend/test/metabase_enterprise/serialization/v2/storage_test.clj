@@ -12,8 +12,8 @@
                             Table]]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

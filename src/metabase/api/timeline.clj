@@ -10,8 +10,8 @@
     :as timeline-event
     :refer [TimelineEvent]]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

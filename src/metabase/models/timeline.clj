@@ -5,8 +5,8 @@
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.timeline-event :as timeline-event]
-   [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (def Timeline

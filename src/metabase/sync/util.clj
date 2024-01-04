@@ -15,11 +15,11 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [second-date.core :as u.date]
    [toucan2.core :as t2])
   (:import
    (java.time.temporal Temporal)))

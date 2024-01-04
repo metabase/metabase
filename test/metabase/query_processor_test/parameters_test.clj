@@ -12,7 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
+   [second-date.core :as u.date]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- run-count-query [query]

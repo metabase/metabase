@@ -12,8 +12,8 @@
    [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [redux.core :as redux])
+   [redux.core :as redux]
+   [second-date.core :as u.date])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 

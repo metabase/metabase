@@ -13,8 +13,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [second-date.core :as u.date])
   (:import
    (java.sql ResultSet Types)
    (java.time LocalDate OffsetDateTime ZonedDateTime)))

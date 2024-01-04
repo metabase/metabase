@@ -9,11 +9,11 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (def DashboardCard

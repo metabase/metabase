@@ -7,7 +7,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
-   [metabase.util.date-2 :as u.date])
+   [second-date.core :as u.date])
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))

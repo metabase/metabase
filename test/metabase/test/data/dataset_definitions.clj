@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.test.data.interface :as tx]
-   [metabase.util.date-2 :as u.date])
+   [second-date.core :as u.date])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
 

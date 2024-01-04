@@ -5,8 +5,8 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 ;;; Possible values for Dimension.type :

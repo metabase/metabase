@@ -374,9 +374,6 @@
     metabase.transforms.materialize                                 tf.materialize
     metabase.transforms.specs                                       tf.specs
     metabase.util.cron                                              u.cron
-    metabase.util.date-2                                            u.date
-    metabase.util.date-2.common                                     u.date.common
-    metabase.util.date-2.parse                                      u.date.parse
     metabase.util.embed                                             embed
     metabase.util.encryption                                        encryption
     metabase.util.encryption-test                                   encryption-test
@@ -402,6 +399,9 @@
     ring.util.response                                              response
     ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
+    second-date.core                                                u.date
+    second-date.common                                              u.date.common
+    second-date.parse                                               u.date.parse
     toucan.db                                                       db
     toucan.models                                                   models}}
 

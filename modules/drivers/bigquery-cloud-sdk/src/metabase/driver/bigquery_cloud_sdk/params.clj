@@ -1,8 +1,8 @@
 (ns metabase.driver.bigquery-cloud-sdk.params
   (:require
    [java-time.api :as t]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [second-date.core :as u.date])
   (:import
    (com.google.cloud.bigquery QueryJobConfiguration$Builder QueryParameterValue StandardSQLTypeName)))
 

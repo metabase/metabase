@@ -31,11 +31,11 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (def ^Long category-cardinality-threshold

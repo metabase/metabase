@@ -6,8 +6,8 @@
    [metabase.automagic-dashboards.names :as names]
    [metabase.models.query :as query]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [second-date.core :as u.date]))
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 

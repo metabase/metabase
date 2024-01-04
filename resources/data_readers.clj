@@ -1,2 +1,2 @@
-{t      metabase.util.date-2/parse
+{t      second-date.core/parse
  locale metabase.util.i18n.impl/locale}

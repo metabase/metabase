@@ -9,8 +9,8 @@
    [metabase.sync.analyze.classifiers.name :as classifiers.name]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [redux.core :as redux])
+   [redux.core :as redux]
+   [second-date.core :as u.date])
   (:import
    (com.bigml.histogram Histogram)
    (com.clearspring.analytics.stream.cardinality HyperLogLogPlus)

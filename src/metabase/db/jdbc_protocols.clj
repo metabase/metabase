@@ -8,10 +8,10 @@
    [java-time.api :as t]
    [metabase.db.connection :as mdb.connection]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [next.jdbc.prepare]
+   [second-date.core :as u.date]
    [toucan2.jdbc.read :as t2.jdbc.read])
   (:import
    (java.io BufferedReader)

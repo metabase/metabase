@@ -10,10 +10,10 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [second-date.core :as u.date]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date   "today")

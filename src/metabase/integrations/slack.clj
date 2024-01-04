@@ -9,12 +9,12 @@
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.string :as u.str]))
+   [metabase.util.string :as u.str]
+   [second-date.core :as u.date]))
 
 (set! *warn-on-reflection* true)
 

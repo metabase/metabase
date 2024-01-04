@@ -17,10 +17,10 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [second-date.core :as u.date])
   (:import
    (java.sql Connection DatabaseMetaData)
    (java.time OffsetDateTime ZonedDateTime)))

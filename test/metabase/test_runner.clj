@@ -12,9 +12,9 @@
    [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test-runner.assert-exprs]
    [metabase.test.data.env :as tx.env]
-   [metabase.util.date-2]
    [metabase.util.i18n.impl]
-   [pjstadig.humane-test-output :as humane-test-output]))
+   [pjstadig.humane-test-output :as humane-test-output]
+   [second-date.core]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,7 +29,7 @@
   qp-test.mlv2/keep-me
 
   ;; these are necessary so data_readers.clj functions can function
-  metabase.util.date-2/keep-me
+  second-date.core/keep-me
   metabase.util.i18n.impl/keep-me)
 
 ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests

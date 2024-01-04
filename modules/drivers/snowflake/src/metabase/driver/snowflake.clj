@@ -33,11 +33,11 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [ring.util.codec :as codec])
+   [ring.util.codec :as codec]
+   [second-date.core :as u.date])
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)

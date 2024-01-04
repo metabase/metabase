@@ -23,7 +23,8 @@
               [metabase.util.jvm :as u.jvm]
               [metabase.util.string :as u.str]
               [potemkin :as p]
-              [ring.util.codec :as codec])))
+              [ring.util.codec :as codec]
+              [second-date.core :as u.date])))
   #?(:clj (:import
            (java.text Normalizer Normalizer$Form)
            (java.util Locale)
@@ -54,6 +55,9 @@
                         with-us-locale]
                        [u.str
                         build-sentence]))
+
+#?(:clj
+   (u.date/install-print-methods! 't))
 
 (defmacro or-with
   "Like or, but determines truthiness with `pred`."

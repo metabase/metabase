@@ -11,10 +11,10 @@
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.password :as u.password]))
+   [metabase.util.password :as u.password]
+   [second-date.core :as u.date]))
 
 (set! *warn-on-reflection* true)
 

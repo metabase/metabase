@@ -11,8 +11,8 @@
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.task :as task]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

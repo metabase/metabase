@@ -21,7 +21,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -30,7 +29,8 @@
                              $dayOfMonth $dayOfWeek $dayOfYear $divide $eq $expr
                              $group $gt $gte $hour $limit $literal $lookup $lt $lte $match $max $min $minute
                              $mod $month $multiply $ne $not $or $project $regexMatch $second $size $skip $sort
-                             $strcasecmp $subtract $sum $toLower $unwind $year]])
+                             $strcasecmp $subtract $sum $toLower $unwind $year]]
+   [second-date.core :as u.date])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))

@@ -3,7 +3,7 @@
    [java-time.api :as t]
    [metabase.public-settings :as public-settings]
    [metabase.shared.util.internal.time-common :as common]
-   [metabase.util.date-2 :as u.date])
+   [second-date.core :as u.date])
   (:import
    java.util.Locale))
 

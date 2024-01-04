@@ -5,10 +5,10 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
+   [second-date.core :as u.date]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 

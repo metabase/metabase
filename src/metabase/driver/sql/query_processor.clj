@@ -291,7 +291,7 @@
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
-  `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
+  `unit` is one of the units listed in [[second-date.core/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
 
