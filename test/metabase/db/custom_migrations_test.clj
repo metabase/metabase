@@ -1462,16 +1462,16 @@
   (->> (t2/query
         [(case (mdb.connection/db-type)
            :postgres
-           (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
+           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = 'public';"
                    ttype)
            :mysql
-           (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
+           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s' AND table_schema = '%s';"
                    ttype (-> (mdb.connection/data-source) .getConnection .getCatalog))
            :h2
-           (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type = '%s';"
+           (format "SELECT table_name, column_name, is_nullable FROM information_schema.columns WHERE data_type = '%s';"
                    ttype))])
-       (map (fn [{:keys [table_name column_name]}]
-              [(keyword (u/lower-case-en table_name)) (keyword (u/lower-case-en column_name))]))
+       (map (fn [{:keys [table_name column_name is_nullable]}]
+              [(keyword (u/lower-case-en table_name)) (keyword (u/lower-case-en column_name)) (= is_nullable "YES")]))
        set))
 
 (deftest unify-type-of-time-columns-test
@@ -1488,7 +1488,7 @@
 
         (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
           (migrate!)
-          (is (= #{[:databasechangelog :dateexecuted] [:databasechangeloglock :lockgranted]}
+          (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
                  (set (table-and-column-of-type datetime-type)))))
 
         (testing "downgrade should revert all converted columns to its original type"
