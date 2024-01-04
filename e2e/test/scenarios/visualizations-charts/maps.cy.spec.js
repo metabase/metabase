@@ -226,8 +226,6 @@ describe("scenarios > visualizations > maps", () => {
   });
 
   it("should apply brush filters by dragging map", () => {
-    cy.viewport(1280, 800);
-
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",
@@ -258,6 +256,9 @@ describe("scenarios > visualizations > maps", () => {
     cy.wait("@dataset");
 
     // selecting area at the map provides different filter values, so the simplified assertion is used
-    cy.findByTestId("filter-pill").should("have.length", 1);
+    cy.findByTestId("filter-pill")
+      .should("contain", "Latitude is between")
+      .should("contain", "Longitude is between");
+    cy.get(".leaflet-marker-icon").should("have.length.greaterThan", 0);
   });
 });

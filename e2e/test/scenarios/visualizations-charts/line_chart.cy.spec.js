@@ -582,8 +582,6 @@ describe("scenarios > visualizations > line chart", () => {
     "should apply filters to the series selecting area range",
     { tags: "@flaky" },
     () => {
-      cy.viewport(1280, 800);
-
       visitQuestionAdhoc({
         dataset_query: testQuery,
         display: "line",
@@ -616,8 +614,6 @@ describe("scenarios > visualizations > line chart", () => {
       },
       database: SAMPLE_DB_ID,
     };
-
-    cy.viewport(1280, 800);
 
     visitQuestionAdhoc({
       dataset_query: testQuery,
