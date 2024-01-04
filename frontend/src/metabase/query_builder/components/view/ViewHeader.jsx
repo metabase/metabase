@@ -446,7 +446,7 @@ function ViewTitleHeaderRightSide(props) {
         <FilterHeaderToggle
           className="ml2 mr1"
           query={question._getMLv2Query()}
-          expanded={areFiltersExpanded}
+          isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
         />

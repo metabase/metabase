@@ -1,4 +1,4 @@
-export { FilterBar } from "./components/FilterBar";
+export { FilterBar, FilterBarButton } from "./components/FilterBar";
 export { FilterModal } from "./components/FilterModal";
 export { FilterPicker, FilterPickerBody } from "./components/FilterPicker";
 export { TimeseriesChrome } from "./components/TimeseriesChrome";

@@ -1,19 +1,15 @@
-import { t } from "ttag";
-
-import { Tooltip } from "metabase/ui";
-import { FilterBar } from "metabase/querying";
+import { FilterBar, FilterBarButton } from "metabase/querying";
 
 import type { QueryBuilderMode } from "metabase-types/store";
 
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
-import { FilterHeaderButton } from "./QuestionFilters.styled";
 
 interface FilterHeaderToggleProps {
   className?: string;
   query: Lib.Query;
-  expanded: boolean;
+  isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
 }
@@ -21,36 +17,17 @@ interface FilterHeaderToggleProps {
 export function FilterHeaderToggle({
   className,
   query,
-  expanded,
+  isExpanded,
   onExpand,
   onCollapse,
 }: FilterHeaderToggleProps) {
-  const stageCount = Lib.stageCount(query);
-  const lastStageIndex = stageCount - 1;
-
-  const lastStageFilters = Lib.filters(query, lastStageIndex);
-  const previousStageFilters =
-    stageCount > 1 ? Lib.filters(query, lastStageIndex - 1) : [];
-  const filters = [...previousStageFilters, ...lastStageFilters];
-
   return (
     <div className={className}>
-      <Tooltip label={expanded ? t`Hide filters` : t`Show filters`}>
-        <FilterHeaderButton
-          small
-          icon="filter"
-          onClick={expanded ? onCollapse : onExpand}
-          active={expanded}
-          data-metabase-event={
-            expanded
-              ? `View Mode; Header Filters Collapse Click`
-              : `View Mode; Header Filters Expand Click`
-          }
-          data-testid="filters-visibility-control"
-        >
-          <span>{filters.length}</span>
-        </FilterHeaderButton>
-      </Tooltip>
+      <FilterBarButton
+        query={query}
+        isExpanded={isExpanded}
+        onClick={isExpanded ? onCollapse : onExpand}
+      />
     </div>
   );
 }
