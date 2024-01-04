@@ -23,8 +23,10 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log])
   (:import
+   (java.time OffsetDateTime)
    (liquibase LabelExpression)
    (liquibase.changelog  ChangeLogHistoryServiceFactory)
    (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult)))
@@ -87,7 +89,7 @@
   `(do-with-temp-empty-app-db ~db-type (fn [~(vary-meta conn-binding assoc :tag 'java.sql.Connection)] ~@body)))
 
 (def ^:private timestamp-migration-id-re
-  #"^v(\d{2,})\.(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$")
+  #"^v(\d{2,})\.(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})$")
 
 (defn- migration->number [id]
   (if (integer? id)
@@ -99,10 +101,11 @@
                 1000.0)))
         (when (re-matches #"^\d+$" id)
           (Integer/parseUnsignedInt id))
-        (when-let [[_ & components ] (re-matches timestamp-migration-id-re id)]
-          (let [[major-version year month date hour minute second] (map #(Integer/parseUnsignedInt %) components)
-                unix-timestamp (-> (t/zoned-date-time year month date hour minute second 0 (t/zone-id "UTC")) .toInstant .getEpochSecond)]
-            (parse-double (format "%d.%d" (* major-version 100) unix-timestamp))))
+        (when-let [[_ major-version timestamp] (re-matches timestamp-migration-id-re id)]
+          (let [unix-timestamp (-> (u.date/parse timestamp)
+                                   ^OffsetDateTime (u.date/with-time-zone-same-instant (t/zone-id "UTC"))
+                                   .toInstant .getEpochSecond)]
+            (parse-double (format "%d.%d" (* (parse-long major-version) 100) unix-timestamp))))
         (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
 (deftest migration->number-test
