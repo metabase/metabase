@@ -192,36 +192,38 @@
 (deftest user-full-name-test
   (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
     (mt/with-test-user :crowberto
-      (premium-features-test/with-premium-features #{:audit-app}
-        (mt/with-temp! [User a {:first_name "a" :last_name nil :email "a@metabase.com"}
-                        User b {:first_name nil :last_name "b" :email "b@metabase.com"}
-                        User c {:first_name nil :last_name nil :email "c@metabase.com"}]
-          (is (= #{"a" "b" "c@metabase.com"}
-                 (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
-                                                    {:type :internal
-                                                     :fn   "metabase-enterprise.audit-app.pages.users/table"})
-                              [:data :rows])
-                      (filter #((set (map u/the-id [a b c])) (first %)))
-                      (map second)
-                      set))))))))
+      (mt/test-helpers-set-global-values!
+        (premium-features-test/with-premium-features #{:audit-app}
+          (mt/with-temp [User a {:first_name "a" :last_name nil :email "a@metabase.com"}
+                         User b {:first_name nil :last_name "b" :email "b@metabase.com"}
+                         User c {:first_name nil :last_name nil :email "c@metabase.com"}]
+            (is (= #{"a" "b" "c@metabase.com"}
+                   (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                      {:type :internal
+                                                       :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                                [:data :rows])
+                        (filter #((set (map u/the-id [a b c])) (first %)))
+                        (map second)
+                        set)))))))))
 
 (deftest user-login-method-test
   (testing "User login method takes into account both the google_auth and sso_source columns"
     (mt/with-test-user :crowberto
-      (premium-features-test/with-premium-features #{:audit-app}
-        (mt/with-temp! [User a {:email "a@metabase.com" :sso_source nil}
-                        User b {:email "b@metabase.com" :sso_source :google}
-                        User c {:email "c@metabase.com" :sso_source :saml}
-                        User d {:email "d@metabase.com" :sso_source :jwt}
-                        User e {:email "e@metabase.com" :sso_source :ldap}]
-          (is (= ["Email" "Google Sign-In" "SAML" "JWT" "LDAP"]
-                 (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
-                                                    {:type :internal
-                                                     :fn   "metabase-enterprise.audit-app.pages.users/table"})
-                              [:data :rows])
-                      (sort-by first)
-                      (filter #((set (map u/the-id [a b c d e])) (first %)))
-                      (map #(nth % 6))))))))))
+      (mt/test-helpers-set-global-values!
+        (premium-features-test/with-premium-features #{:audit-app}
+          (mt/with-temp [User a {:email "a@metabase.com" :sso_source nil}
+                         User b {:email "b@metabase.com" :sso_source :google}
+                         User c {:email "c@metabase.com" :sso_source :saml}
+                         User d {:email "d@metabase.com" :sso_source :jwt}
+                         User e {:email "e@metabase.com" :sso_source :ldap}]
+            (is (= ["Email" "Google Sign-In" "SAML" "JWT" "LDAP"]
+                   (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                      {:type :internal
+                                                       :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                                [:data :rows])
+                        (sort-by first)
+                        (filter #((set (map u/the-id [a b c d e])) (first %)))
+                        (map #(nth % 6)))))))))))
 
 (deftest active-and-new-by-time-test
   (testing "The active-and-new-by-time audit query correctly returns results (#32244)"

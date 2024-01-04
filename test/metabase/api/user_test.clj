@@ -609,15 +609,16 @@
     (testing (str "If you forget the All Users group it should fail, because you cannot have a User that's not in the "
                   "All Users group. The whole API call should fail and no user should be created, even though the "
                   "permissions groups get set after the User is created")
-      (mt/with-temp! [PermissionsGroup group {:name "Group"}]
-        (with-temp-user-email [email]
-          (mt/user-http-request :crowberto :post 400 "user"
-                                {:first_name             "Cam"
-                                 :last_name              "Era"
-                                 :email                  email
-                                 :user_group_memberships (group-or-ids->user-group-memberships [group])})
-          (is (= false
-                 (t2/exists? User :%lower.email (u/lower-case-en email)))))))))
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp [PermissionsGroup group {:name "Group"}]
+          (with-temp-user-email [email]
+            (mt/user-http-request :crowberto :post 400 "user"
+                                  {:first_name             "Cam"
+                                   :last_name              "Era"
+                                   :email                  email
+                                   :user_group_memberships (group-or-ids->user-group-memberships [group])})
+            (is (= false
+                   (t2/exists? User :%lower.email (u/lower-case-en email))))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
@@ -942,7 +943,7 @@
     (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
       ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
-        (mt/with-ensure-with-temp-no-transaction!
+        (mt/test-helpers-set-global-values!
           (with-preserved-rasta-personal-collection-name
             (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
               (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
@@ -979,23 +980,25 @@
 
     (testing (str "if we try to create a new user with is_superuser FALSE but user_group_memberships that includes the Admin group "
                   "ID, the entire call should fail")
-      (mt/with-temp! [User {:keys [email id]} {:first_name "Old First Name"}]
-        (mt/user-http-request :crowberto :put 400 (str "user/" id)
-                              {:is_superuser           false
-                               :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])
-                               :first_name             "Cool New First Name"})
-        (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
-               (assoc (superuser-and-admin-pgm-info email)
-                      :first-name (t2/select-one-fn :first_name User :id id))))))
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp [User {:keys [email id]} {:first_name "Old First Name"}]
+          (mt/user-http-request :crowberto :put 400 (str "user/" id)
+                                {:is_superuser           false
+                                 :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])
+                                 :first_name             "Cool New First Name"})
+          (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
+                 (assoc (superuser-and-admin-pgm-info email)
+                        :first-name (t2/select-one-fn :first_name User :id id)))))))
 
     (testing (str "if we try to create a new user with is_superuser TRUE but user_group_memberships that does not include the Admin "
                   "group ID, things should fail")
-      (mt/with-temp! [User {:keys [email id]}]
-        (mt/user-http-request :crowberto :put 400 (str "user/" id)
-                              {:is_superuser           true
-                               :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])})
-        (is (= {:is-superuser? false, :pgm-exists? false}
-               (superuser-and-admin-pgm-info email)))))
+      (mt/test-helpers-set-global-values!
+        (mt/with-temp [User {:keys [email id]}]
+          (mt/user-http-request :crowberto :put 400 (str "user/" id)
+                                {:is_superuser           true
+                                 :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])})
+          (is (= {:is-superuser? false, :pgm-exists? false}
+                 (superuser-and-admin-pgm-info email))))))
 
     (testing "if we PUT a user with is_superuser TRUE but don't specify user_group_memberships, we should be ok"
       (t2.with-temp/with-temp [User {:keys [email id]}]
