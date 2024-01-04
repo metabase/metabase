@@ -89,12 +89,12 @@ export function getParameterMappingOptions(
   }
 
   const question = new Question(card, metadata);
-  const query = question.query();
+  const query = question.legacyQuery();
   const options = [];
   if (question.isDataset()) {
     // treat the dataset/model question like it is already composed so that we can apply
     // dataset/model-specific metadata to the underlying dimension options
-    const composedDatasetQuery = question.composeDataset().query();
+    const composedDatasetQuery = question.composeDataset().legacyQuery();
     options.push(
       ...composedDatasetQuery
         .dimensionOptions(

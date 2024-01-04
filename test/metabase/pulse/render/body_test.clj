@@ -5,8 +5,12 @@
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
    [metabase.formatter :as formatter]
+   [metabase.models :refer [Card]]
    [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.test-util :as render.tu]))
+   [metabase.pulse.render.test-util :as render.tu]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -38,7 +42,7 @@
     :semantic_type   nil
     :visibility_type :normal}])
 
-(def ^:private test-data
+(def ^:private example-test-data
   [[1 34.0996 "2014-04-01T08:30:00.0000" "Stout Burgers & Beers"]
    [2 34.0406 "2014-12-05T15:15:00.0000" "The Apple Pan"]
    [3 34.0474 "2014-08-01T12:45:00.0000" "The Gorbals"]])
@@ -88,29 +92,29 @@
 ;; Testing the format of headers
 (deftest header-result
   (is (= default-header-result
-         (prep-for-html-rendering' test-columns test-data nil nil nil))))
+         (prep-for-html-rendering' test-columns example-test-data nil nil nil))))
 
 (deftest header-result-2
   (let [cols-with-desc (conj test-columns description-col)
-        data-with-desc (mapv #(conj % "Desc") test-data)]
+        data-with-desc (mapv #(conj % "Desc") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-desc data-with-desc nil nil nil)))))
 
 (deftest header-result-3
   (let [cols-with-details (conj test-columns detail-col)
-        data-with-details (mapv #(conj % "Details") test-data)]
+        data-with-details (mapv #(conj % "Details") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-details data-with-details nil nil nil)))))
 
 (deftest header-result-4
   (let [cols-with-sensitive (conj test-columns sensitive-col)
-        data-with-sensitive (mapv #(conj % "Sensitive") test-data)]
+        data-with-sensitive (mapv #(conj % "Sensitive") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil nil)))))
 
 (deftest header-result-5
   (let [columns-with-retired (conj test-columns retired-col)
-        data-with-retired    (mapv #(conj % "Retired") test-data)]
+        data-with-retired    (mapv #(conj % "Retired") example-test-data)]
     (is (= default-header-result
            (prep-for-html-rendering' columns-with-retired data-with-retired nil nil nil)))))
 
@@ -148,28 +152,28 @@
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
   (is (= (assoc-in default-header-result [0 :bar-width] 99)
-         (prep-for-html-rendering' test-columns test-data second 0 40.0))))
+         (prep-for-html-rendering' test-columns example-test-data second 0 40.0))))
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
   (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]
            :bar-width 99}
           #{2}]
-         (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 0 40.0))))
+         (prep-for-html-rendering' (subvec test-columns 0 2) example-test-data second 0 40.0))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
   (is (= [{:bar-width nil, :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
   (is (= [{:bar-width (float 85.249), :row [(number "1" 1) (number "34.1" 34.0996) "April 1, 2014, 8:30 AM" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2" 2) (number "34.04" 34.0406) "December 5, 2014, 3:15 PM" "The Apple Pan"]}
           {:bar-width (float 85.1185), :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
                  {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
@@ -196,7 +200,7 @@
 
 (def ^:private test-data-with-remapping
   (mapv add-rating
-        test-data
+        example-test-data
         [1 2 3]
         ["Bad" "Ok" "Good"]))
 
@@ -238,7 +242,7 @@
           {:bar-width nil, :row [(number "3" 3) (number "34.05" 34.0474) "August 1, 2014, 12:45 PM" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                  {}
-                 {:cols test-columns-with-date-semantic-type :rows test-data})))))
+                 {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
 
 (deftest error-test
   (testing "renders error"
@@ -730,3 +734,28 @@
             to-find        ["14" "2" "-2" "-14"]
             nodes-with-viz (mapv #(last (last (render.tu/nodes-with-exact-text viz-b-render %))) to-find)]
         (is (= ["2" "-2"] (remove nil? nodes-with-viz)))))))
+
+(deftest invalid-graph-dim-render-test
+  (testing "A card with an invalid graph.dimension (or metric) will still render (#37266)"
+    (mt/dataset test-data
+      (mt/with-temp [Card {card-id :id}
+                     {:dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (mt/id :orders)
+                                                          :aggregation  [[:count]]
+                                                          :filter       [:between [:field (mt/id :orders :created_at) nil] "2019-05-16" "2019-08-16"]
+                                                          :breakout     [:field (mt/id :orders :created_at) {:temporal-unit :week}]}}
+                      :display                :line
+                      ;; While not part of the original issue, this fix also handles bad metrics.
+                      :visualization_settings {:graph.metrics    ["frooby"]
+                                               ;; This dimension does not exist and used to break the render
+                                               ;; This test verifies that it now works.
+                                               :graph.dimensions ["_sdc_extracted_at"]}}]
+        (let [{:keys [dataset_query result_metadata dataset] :as card} (t2/select-one :model/Card :id card-id)
+              query-results (qp/process-query
+                              (cond-> dataset_query
+                                dataset
+                                (assoc-in [:info :metadata/dataset-metadata] result_metadata)))
+              {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
+          (testing "Content is generated (rather than an exception being thrown)"
+            (is (= :div (first content)))))))))

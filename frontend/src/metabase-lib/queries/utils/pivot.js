@@ -4,7 +4,7 @@ import { FieldDimension } from "metabase-lib/Dimension";
 export function getPivotColumnSplit(question) {
   const setting = question.setting("pivot_table.column_split");
   const breakout =
-    (question.isStructured() && question.query().breakouts()) || [];
+    (question.isStructured() && question.legacyQuery().breakouts()) || [];
   const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
     setting,
     fieldRefs =>
