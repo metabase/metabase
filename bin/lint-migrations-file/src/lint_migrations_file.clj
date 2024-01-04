@@ -92,7 +92,7 @@
     (doseq [{{id :id} :changeSet :as change-set} change-log
             :when                                (and id
                                                       (string? id)
-                                                      (pos? (compare-ids id "v49.00-032")))]
+                                                      (pos? (compare id "v49.00-032")))]
       (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
     (empty? @problem-cols)))
 
@@ -106,7 +106,7 @@
     (doseq [{{id :id} :changeSet :as change-set} change-log
             :when                                (and id
                                                       (string? id)
-                                                      (pos? (compare-ids id "v49.00-000")))]
+                                                      (pos? (compare id "v49.00-000")))]
       (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
     (empty? @problem-cols)))
 
