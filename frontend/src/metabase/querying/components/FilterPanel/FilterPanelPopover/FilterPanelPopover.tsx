@@ -46,7 +46,7 @@ export function FilterPanelPopover({
           onClick={() => setIsOpened(!isOpened)}
           onRemoveClick={handleRemove}
         >
-          {filterInfo.displayName}
+          {filterInfo.longDisplayName}
         </FilterPill>
       </Popover.Target>
       <Popover.Dropdown>
