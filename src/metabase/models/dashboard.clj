@@ -609,7 +609,7 @@
   [dash]
   (-> dash
       serdes/load-xform-basics
-      ;; Deliberately not doing anything to :dashcards - they get handled by load-insert! and load-update! below.
+      ;; Deliberately not doing anything to :dashcards - they get handled by load-one! below.
       (update :collection_id     serdes/*import-fk* Collection)
       (update :parameters        serdes/import-parameters)
       (update :creator_id        serdes/*import-user*)

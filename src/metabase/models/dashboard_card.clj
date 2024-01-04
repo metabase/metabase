@@ -367,6 +367,7 @@
 (defmethod serdes/load-xform "DashboardCard"
   [dashcard]
   (-> dashcard
+      ;; Deliberately not doing anything to :series, they get handled by load-one! below
       (dissoc :serdes/meta)
       (update :card_id                serdes/*import-fk* :model/Card)
       (update :action_id              serdes/*import-fk* :model/Action)
@@ -375,3 +376,16 @@
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))
+
+(defn- series-for [series dashcard]
+  (assoc series
+         :dashboardcard_id (:entity_id dashcard)
+         :serdes/meta  (conj [(:serdes/meta dashcard)
+                              {:model "DashboardCardSeries" :id (:entity_id series)}])))
+
+(defmethod serdes/load-one! "DashboardCard" [ingested maybe-local]
+  (let [dashcard ((get-method serdes/load-one! :default) (dissoc ingested :series) maybe-local)]
+    ;; TODO: drop dashboard series that differ from the ingested ones
+    (doseq [tab (:series ingested)]
+      (serdes/load-one! (series-for series dashcard)
+                        (t2/select-one :model/DashboardCardSeries :entity_id (:entity_id tab))))))
