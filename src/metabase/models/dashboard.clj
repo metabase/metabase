@@ -661,17 +661,20 @@
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings :visualization_settings]
+  (let [dashcards (t2/select ['DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
       ;; here. So their actions, and their cards both direct and mentioned in their parameters or viz settings.
      (set (for [{:keys [card_id parameter_mappings]} dashcards
-                 ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+                ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
                 card-id (cond-> (set (keep :card_id parameter_mappings))
                           card_id (conj card_id))]
             ["Card" card-id]))
+     (when (not-empty dashcards)
+       (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries :dashboardcard_id [:in (map :id dashcards)])]
+              ["Card" card-id])))
      (set (for [{:keys [action_id]} dashcards
                 :when action_id]
             ["Action" action_id]))
