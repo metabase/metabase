@@ -32,17 +32,9 @@
     ;; can't apply distinct? with so many IDs
     (= (count ids) (count (set ids)))))
 
-(defn- compare-ids
-  "If `x` and `y` are integers, compare numerical values. Otherwise do String comparison."
-  [x y]
-  ;; Clojure gets confused if you try to compare a String and a Number.
-  (if (= (class x) (class y))
-    (compare x y)
-    (compare (str x) (str y))))
-
 (defn- change-set-ids-in-order? [change-log]
   (let [ids (change-set-ids change-log)]
-    (= ids (sort-by identity compare-ids ids))))
+    (= ids (sort-by identity compare ids))))
 
 (defn- assert-no-types-in-change-set
   "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-types` (a set of strings).
@@ -105,7 +97,7 @@
     (doseq [{{id :id} :changeSet :as change-set} change-log
             :when                                (and id
                                                       (string? id)
-                                                      (pos? (compare-ids id "v49.00-032")))]
+                                                      (pos? (compare id "v49.00-032")))]
       (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
 

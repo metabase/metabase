@@ -43,8 +43,9 @@ export function findColumnIndexForColumnSetting(columns, columnSetting) {
   const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
   if (fieldRef != null) {
+    const dimension = Dimension.parseMBQL(fieldRef);
     const index = _.findIndex(columns, col =>
-      _.isEqual(fieldRef, normalizeFieldRef(fieldRefForColumn(col))),
+      dimension.isSameBaseDimension(fieldRefForColumn(col)),
     );
     if (index >= 0) {
       return index;

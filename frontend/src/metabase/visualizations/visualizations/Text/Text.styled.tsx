@@ -178,7 +178,6 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown h1 {
-    font-weight: 900;
     font-size: 1.831em;
   }
   .text-card-markdown h2 {

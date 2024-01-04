@@ -1,13 +1,17 @@
 (ns metabase.lib.remove-replace
   (:require
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.types :as types]
@@ -31,6 +35,7 @@
 
 (declare remove-local-references)
 (declare remove-stage-references)
+(declare normalize-fields-clauses)
 
 (defn- find-matching-order-by-index
   [query stage-number [target-op {:keys [temporal-unit binning]} target-ref-id]]
@@ -175,7 +180,9 @@
                   :else
                   query)]
       (if location
-        (remove-replace-location query stage-number query location target-clause remove-replace-fn)
+        (-> query
+            (remove-replace-location stage-number query location target-clause remove-replace-fn)
+            normalize-fields-clauses)
         query))))
 
 (declare remove-join)
@@ -193,48 +200,98 @@
      (remove-join query stage-number target-clause)
      (remove-replace* query stage-number target-clause :remove nil))))
 
-(defn- expression-role
-  [an-expression]
-  (if (-> an-expression lib.options/options :lib/expression-name)
-    :custom-column
-    :custom-aggregation))
+(defn- fresh-ref
+  [reference]
+  (lib.options/update-options reference assoc :lib/uuid (str (random-uuid))))
+
+(defn- local-replace-expression-references [stage target-ref-id replacement-ref]
+  (let [replace-embedded-refs (fn replace-refs [stage]
+                                (mbql.match/replace stage
+                                  [:expression _ target-ref-id] (fresh-ref replacement-ref)))]
+    (replace-embedded-refs stage)))
+
+(defn- local-replace-expression
+  [stage target replacement]
+  (let [replacement-name (or (lib.util/expression-name replacement)
+                             (-> replacement lib.options/options :name))
+        top-level-replacement (-> replacement
+                                  (lib.util/top-level-expression-clause replacement-name)
+                                  fresh-ref)
+        replaced (update stage :expressions (fn [exprs] (mapv #(if (= % target) top-level-replacement %) exprs)))
+        target-name (lib.util/expression-name target)
+        replacement-type (-> replacement lib.options/options :effective-type)
+        replacement-ref [:expression {:effective-type replacement-type} replacement-name]]
+    (local-replace-expression-references replaced target-name replacement-ref)))
+
+(defn- local-replace
+  [stage target replacement]
+  (if (lib.util/expression-name target)
+    (local-replace-expression stage target replacement)
+    (walk/postwalk #(if (= % target) replacement %) stage)))
+
+(defn- returned-columns-at-stage
+  [query stage-number]
+  (->> (lib.util/query-stage query stage-number)
+       (lib.metadata.calculation/returned-columns query stage-number)))
+
+(defn- replaced-columns
+  [query stage-number replaced]
+  (let [cols (returned-columns-at-stage query stage-number)
+        replaced-cols (returned-columns-at-stage replaced stage-number)]
+    (->> (map vector cols replaced-cols)
+         (filter #(not= (first %) (second %))))))
+
+(defn- next-stage-replacement
+  [query next-stage-number [col replaced-col]]
+  (let [target-ref-id (:lib/desired-column-alias col)
+        replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
+    (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+         (mbql.match/match (lib.util/query-stage query next-stage-number)
+           [:field _ target-ref-id] &match))))
+
+(defn- typed-expression
+  [query stage-number expression]
+  (if (or (-> expression lib.options/options :effective-type)
+          (not (lib.expression/expression-clause? expression)))
+    expression
+    (let [t (lib.metadata.calculation/type-of query stage-number expression)]
+      (lib.options/update-options expression assoc :effective-type t))))
 
 (def ^:private expression-validator (mc/validator :metabase.lib.schema.expression/expression))
 
 (defn- tweak?
   "Returns if replacing `an-expression` with `new-expression` in `query` at stage `stage-number` is a tweak.
-  A tweak changes a top level expression or an aggregation while preserving its name and type."
+  A tweak changes a top level expression or an aggregation while preserving its type."
   [query stage-number an-expression new-expression]
   (and (expression-validator an-expression)
        (expression-validator new-expression)
-       (= (lib.metadata.calculation/display-name query stage-number new-expression)
-          (lib.metadata.calculation/display-name query stage-number an-expression))
        (types/assignable? (lib.metadata.calculation/type-of query stage-number new-expression)
                           (lib.metadata.calculation/type-of query stage-number an-expression))))
 
 (mu/defn tweak-expression :- :metabase.lib.schema/query
-  "Return `query` with `an-exprssion` replaced by `new-expression` at stage `stage-number`.
-  If `an-expression` and `new-expressions` are of different type of have different names or roles,
+  "Return `query` with `target` replaced by `replacement` at stage `stage-number`.
+  If `target` and `replacement` are of different type of have different names or roles,
   an exception is thrown.
 
   This function exists to make trival edits in the FE possible without losing parts of the query
-  depending on `an-expression`."
-  [query          :- :metabase.lib.schema/query
-   stage-number   :- :int
-   an-expression  :- :metabase.lib.schema.expression/expression
-   new-expression :- :metabase.lib.schema.expression/expression]
-  (let [role (expression-role an-expression)
-        path (if (= role :custom-column)
-               [:expressions]
-               [:aggregation])
-        expr-name (lib.metadata.calculation/display-name query stage-number an-expression)
-        new-expression (if (= role :custom-column)
-                         (lib.options/update-options new-expression dissoc :display-name)
-                         (lib.options/update-options new-expression #(-> %
-                                                                         (dissoc :lib/expression-name)
-                                                                         (assoc :name expr-name
-                                                                                :display-name expr-name))))]
-    (lib.util/update-query-stage query stage-number lib.util/replace-clause path an-expression new-expression)))
+  depending on `target`."
+  [query        :- :metabase.lib.schema/query
+   stage-number :- :int
+   target       :- :metabase.lib.schema.expression/expression
+   replacement  :- :metabase.lib.schema.expression/expression]
+  (let [unmodified-query query
+        replacement (typed-expression query stage-number replacement)]
+    (loop [query (lib.util/update-query-stage query stage-number local-replace target replacement)
+           stage-number stage-number]
+      (if-let [next-stage-number (lib.util/next-stage-number query stage-number)]
+        (let [next-replacements (->> (replaced-columns unmodified-query stage-number query)
+                                     (mapcat #(next-stage-replacement query next-stage-number %)))]
+          (recur (reduce (fn [query [target replacement]]
+                           (lib.util/update-query-stage query next-stage-number local-replace target replacement))
+                         query
+                         next-replacements)
+                 next-stage-number))
+        query))))
 
 (declare replace-join)
 
@@ -366,7 +423,9 @@
                                :joins
                                (fn [joins]
                                  (mapv #(lib.join/add-default-alias $q stage-number %) joins))))))]
-         (remove-invalidated-refs query-after query stage-number)))
+         (-> query-after
+             (remove-invalidated-refs query stage-number)
+             normalize-fields-clauses)))
      query)))
 
 (defn- has-field-from-join? [form join-alias]
@@ -424,3 +483,40 @@
                                                            new-join
                                                            %)
                                                         joins))))))
+
+(defn- specifies-default-fields? [query stage-number]
+  (let [fields (:fields (lib.util/query-stage query stage-number))]
+    (and fields
+         ;; Quick first check: if there are any implicitly-joined fields, it's not the default list.
+         (not (some (comp :source-field lib.options/options) fields))
+         (lib.equality/matching-column-sets? query stage-number fields
+                                             (lib.metadata.calculation/default-columns-for-stage query stage-number)))))
+
+(defn- normalize-fields-for-join [query stage-number join]
+  (if (#{:none :all} (:fields join))
+    ;; Nothing to do if it's already a keyword.
+    join
+    (cond-> join
+      (lib.equality/matching-column-sets?
+        query stage-number (:fields join)
+        (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+      (assoc :fields :all))))
+
+(defn- normalize-fields-for-stage [query stage-number]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (cond-> query
+      (specifies-default-fields? query stage-number)
+      (lib.util/update-query-stage stage-number dissoc :fields)
+
+      (:joins stage)
+      (lib.util/update-query-stage stage-number update :joins
+                                   (partial mapv #(normalize-fields-for-join query stage-number %))))))
+
+(mu/defn normalize-fields-clauses :- :metabase.lib.schema/query
+  "Check all the `:fields` clauses in the query - on the stages and any joins - and drops them if they are equal to the
+  defaults.
+  - For stages, if the `:fields` list is identical to the default fields for this stage.
+  - For joins, replace it with `:all` if it's all the fields that are in the join by default.
+  - For joins, remove it if the list is empty (the default for joins is no fields)."
+  [query :- :metabase.lib.schema/query]
+  (reduce normalize-fields-for-stage query (range (count (:stages query)))))
