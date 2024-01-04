@@ -1048,13 +1048,14 @@ class Question {
   }
 
   _getMLv2Query(metadata = this._metadata): Query {
+    const query = this.query();
+    const database = query?.database() ?? null;
+    const databaseId = database?.id ?? null;
+
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = ML.metadataProvider(
-          this.databaseId(),
-          metadata,
-        );
+        this.__mlv2MetadataProvider = ML.metadataProvider(databaseId, metadata);
       }
       metadata = this.__mlv2MetadataProvider;
     }
@@ -1067,7 +1068,7 @@ class Question {
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
       this.__mlv2Query = ML.fromLegacyQuery(
-        this.databaseId(),
+        databaseId,
         metadata,
         this.datasetQuery(),
       );
