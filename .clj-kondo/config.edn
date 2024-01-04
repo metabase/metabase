@@ -569,6 +569,7 @@
    metabase.test/with-temp!                                                                                                  hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
+   second-date.core/bucket                                                                                                   hooks.second-date.core/bucket
    second-date.core/extract                                                                                                  hooks.second-date.core/extract
    second-date.core/truncate                                                                                                 hooks.second-date.core/truncate}
 

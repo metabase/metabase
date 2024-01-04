@@ -433,7 +433,7 @@
     (letfn [(extract [unit]
               (u.date/extract t unit {:first-day-of-week (public-settings/start-of-week)}))
             (bucket [unit]
-              ($date-from-string (u.date/bucket t unit)))]
+              ($date-from-string (u.date/bucket t unit {:first-day-of-week (public-settings/start-of-week)})))]
       (case (or unit :default)
         :default         ($date-from-string t)
         :minute          (bucket :minute)
@@ -463,7 +463,7 @@
         t
         (-> t
             (u.date/add unit amount)
-            (u.date/bucket unit)))))))
+            (u.date/bucket unit {:first-day-of-week (public-settings/start-of-week)})))))))
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 

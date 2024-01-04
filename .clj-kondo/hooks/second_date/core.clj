@@ -16,6 +16,10 @@
                     :message "Options is missing :first-day-of-week e.g. {:first-day-of-week (public-settings/start-of-week)}"
                     :type    :metabase/check-second-date-arities))))))))
 
+(defn bucket [{:keys [node], :as x}]
+  (check-for-first-day-of-week-option node)
+  x)
+
 (defn extract [{:keys [node], :as x}]
   (check-for-first-day-of-week-option node)
   x)
