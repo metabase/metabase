@@ -201,7 +201,7 @@ class Join extends MBQLObjectClause {
    */
   isValid() {
     // MLv2 should ensure there's a valid condition, etc.
-    const parentTable = this.query?.().table?.();
+    const parentTable = this.legacyQuery?.().table?.();
     return !!parentTable && !!this.joinedTable();
   }
 }
