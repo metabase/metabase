@@ -33,8 +33,4 @@ export default class AtomicQuery extends Query {
   sourceTable(): Table | null | undefined {
     return null;
   }
-
-  canNest(): boolean {
-    return Boolean(this.database()?.hasFeature("nested-queries"));
-  }
 }

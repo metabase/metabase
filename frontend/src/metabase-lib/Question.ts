@@ -1101,11 +1101,13 @@ class Question {
    * and satisfies other conditionals below.
    */
   canExploreResults() {
+    const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
+
     return (
       this.isNative() &&
       this.isSaved() &&
       this.parameters().length === 0 &&
-      this.query().canNest() &&
+      canNest &&
       this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }

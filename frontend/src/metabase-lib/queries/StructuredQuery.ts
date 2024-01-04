@@ -768,6 +768,10 @@ class StructuredQuery extends AtomicQuery {
     return this.breakoutOptions().count > 0;
   }
 
+  canNest(): boolean {
+    return Boolean(this.database()?.hasFeature("nested-queries"));
+  }
+
   /**
    * @returns whether the current query has a valid breakout
    */
