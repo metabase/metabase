@@ -188,7 +188,7 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-export function databaseSupportsPivotTables(query: StructuredQuery) {
+function databaseSupportsPivotTables(query: StructuredQuery) {
   if (query && query.database && query.database() != null) {
     // if we don't have metadata, we can't check this
     return query.database()?.supportsPivots();
