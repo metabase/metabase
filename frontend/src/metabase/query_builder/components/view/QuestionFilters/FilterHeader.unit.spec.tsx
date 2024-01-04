@@ -13,7 +13,6 @@ import {
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { FilterHeader } from "./QuestionFilters";
 
 const metadata = createMockMetadata({
@@ -40,8 +39,8 @@ function setup({
       dataset_query: Lib.toLegacyQuery(query),
     });
 
-    const handleQueryChange = (nextLegacyQuery: StructuredQuery) => {
-      const nextQuery = nextLegacyQuery.question()._getMLv2Query();
+    const handleQueryChange = (question: Question) => {
+      const nextQuery = question._getMLv2Query();
       setQuery(nextQuery);
       onChange(nextQuery);
     };
@@ -51,7 +50,7 @@ function setup({
         <FilterHeader
           question={question}
           expanded={isExpanded}
-          onQueryChange={handleQueryChange}
+          updateQuestion={handleQueryChange}
         />
       </div>
     );

@@ -19,7 +19,14 @@ export const FilterPill = forwardRef(function FilterPill(
   };
 
   return (
-    <FilterPillRoot {...props} ref={ref} align="center" gap="sm" px="sm">
+    <FilterPillRoot
+      {...props}
+      ref={ref}
+      align="center"
+      gap="sm"
+      px="sm"
+      data-testid="filter-pill"
+    >
       <Text color="inherit" weight="bold">
         {children}
       </Text>
