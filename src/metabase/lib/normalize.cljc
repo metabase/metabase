@@ -83,3 +83,51 @@
     (mbql-clause-type x) (default-normalize-mbql-clause x)
     (map-type x)         (normalize-map x)
     :else                x))
+
+(defn- maybe-normalize-token
+  [expression k]
+  (cond-> expression
+    (string? (get expression k)) (update k keyword)))
+
+(defmethod normalize :time-interval
+  [[_ _ _ amount _unit :as expression]]
+  (cond-> (default-normalize-mbql-clause expression)
+    (= "current" amount) (update 3 keyword)
+    :always (maybe-normalize-token 4)))
+
+(defmethod normalize :relative-datetime
+  [[_ _ amount _unit :as expression]]
+  (cond-> (default-normalize-mbql-clause expression)
+    (= "current" amount) (update 2 keyword)
+    :always (maybe-normalize-token 3)))
+
+(defmethod normalize :interval
+  [expression]
+  (-> (default-normalize-mbql-clause expression)
+      (maybe-normalize-token 3)))
+
+(defmethod normalize :datetime-add
+  [expression]
+  (-> (default-normalize-mbql-clause expression)
+      (maybe-normalize-token 4)))
+
+(defmethod normalize :datetime-subtract
+  [expression]
+  (-> (default-normalize-mbql-clause expression)
+      (maybe-normalize-token 4)))
+
+(defmethod normalize :get-week
+  [expression]
+  (-> (default-normalize-mbql-clause expression)
+      (maybe-normalize-token 3)))
+
+(defmethod normalize :temporal-extract
+  [expression]
+  (-> (default-normalize-mbql-clause expression)
+      (maybe-normalize-token 3)
+      (maybe-normalize-token 4)))
+
+(defmethod normalize :datetime-diff
+  [expression]
+  (-> (default-normalize-mbql-clause expression)
+      (maybe-normalize-token 4)))

@@ -36,12 +36,12 @@ const defaultConfig = {
      **                        PREPROCESSOR                            **
      ********************************************************************/
 
-
     if (runWithReplay) {
       on = replay.wrapOn(on);
       replay.default(on, config, {
         upload: true,
         apiKey: process.env.REPLAY_API_KEY,
+        filter: r => r.metadata.test?.result === "failed",
       });
     }
 
@@ -112,7 +112,6 @@ const defaultConfig = {
     };
 
     require("@cypress/grep/src/plugin")(config);
-
 
     return config;
   },
