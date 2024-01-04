@@ -167,7 +167,9 @@
 (defn- add-time-format
   "Adds the appropriate time setting to a date format string if necessary, producing a datetime format string."
   [format-settings unit format-string]
-  (if (or (not unit) (lib.schema.temporal-bucketing/time-bucketing-units unit))
+  (if (or (not unit)
+          (lib.schema.temporal-bucketing/time-bucketing-units unit)
+          (= :default unit))
     (if-let [time-format (time-format format-settings)]
       (cond->> time-format
                (seq format-string)
