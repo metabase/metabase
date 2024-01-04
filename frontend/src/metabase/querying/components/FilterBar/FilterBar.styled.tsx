@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
+import { Flex } from "metabase/ui";
+import type { FlexProps } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
-export const FilterBarRoot = styled.div`
+export const FilterBarRoot = styled(Flex)<FlexProps>`
   border-bottom: 1px solid ${color("border")};
 `;
