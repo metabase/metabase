@@ -30,7 +30,7 @@ ${openIssues.map(issue => `  • <${issue.html_url}|#${issue.number} - ${issue.t
 			"type": "header",
 			"text": {
 				"type": "plain_text",
-				"text": `:rocket:  ${version} Release Status`,
+				"text": `:rocket:  Upcoming ${version} Release Status`,
 				"emoji": true
 			}
 		},
