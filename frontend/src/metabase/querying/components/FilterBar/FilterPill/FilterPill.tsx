@@ -1,26 +1,24 @@
+import type { HTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
-import type { MouseEvent, Ref, ReactNode } from "react";
 import { t } from "ttag";
 import { Icon } from "metabase/core/components/Icon";
 import { FilterPillRoot } from "./FilterPill.styled";
 
-interface FilterPillProps {
-  children?: ReactNode;
-  onClick?: () => void;
-  onRemoveClick: () => void;
+interface FilterPillProps extends HTMLAttributes<HTMLDivElement> {
+  onRemoveClick?: () => void;
 }
 
 export const FilterPill = forwardRef(function FilterPill(
-  { children, onClick, onRemoveClick }: FilterPillProps,
+  { children, onRemoveClick, ...props }: FilterPillProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const handleRemoveClick = (event: MouseEvent) => {
     event.stopPropagation();
-    onRemoveClick();
+    onRemoveClick?.();
   };
 
   return (
-    <FilterPillRoot ref={ref} onClick={onClick}>
+    <FilterPillRoot ref={ref} {...props}>
       {children}
       <Icon
         name="close"

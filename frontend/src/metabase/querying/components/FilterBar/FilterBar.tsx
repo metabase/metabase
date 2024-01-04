@@ -15,7 +15,7 @@ export function FilterBar({ query, onChange }: FilterBarProps) {
 
   return (
     <FilterBarRoot>
-      <Flex align="center" wrap="wrap" gap="sm" pb="sm">
+      <Flex align="center" wrap="wrap" gap="sm" px="xl" py="sm">
         {items.map(({ filter, stageIndex }, itemIndex) => (
           <FilterPopover
             key={itemIndex}

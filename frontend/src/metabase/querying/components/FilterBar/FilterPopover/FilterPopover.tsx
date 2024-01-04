@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 import { Popover } from "metabase/ui";
 import { FilterPicker } from "metabase/querying";
@@ -17,6 +17,8 @@ export function FilterPopover({
   filter,
   onChange,
 }: FilterPopoverProps) {
+  const [isOpened, setIsOpened] = useState(false);
+
   const filterInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, filter),
     [query, stageIndex, filter],
@@ -24,16 +26,26 @@ export function FilterPopover({
 
   const handleChange = (newFilter: Lib.Clause | Lib.SegmentMetadata) => {
     onChange(Lib.replaceClause(query, stageIndex, filter, newFilter));
+    setIsOpened(false);
   };
 
   const handleRemove = () => {
     onChange(Lib.removeClause(query, stageIndex, filter));
+    setIsOpened(false);
   };
 
   return (
-    <Popover>
+    <Popover
+      opened={isOpened}
+      position="bottom-start"
+      trapFocus
+      onChange={setIsOpened}
+    >
       <Popover.Target>
-        <FilterPill onRemoveClick={handleRemove}>
+        <FilterPill
+          onClick={() => setIsOpened(!isOpened)}
+          onRemoveClick={handleRemove}
+        >
           {filterInfo.displayName}
         </FilterPill>
       </Popover.Target>
