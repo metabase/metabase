@@ -35,12 +35,7 @@ export function FilterPopover({
   };
 
   return (
-    <Popover
-      opened={isOpened}
-      position="bottom-start"
-      trapFocus
-      onChange={setIsOpened}
-    >
+    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
       <Popover.Target>
         <FilterPill
           onClick={() => setIsOpened(!isOpened)}

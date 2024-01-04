@@ -7,6 +7,7 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
       shadow: "md",
       withinPortal: true,
       middlewares: { shift: true, flip: true, size: true },
+      transitionProps: { duration: 0 },
     },
     styles: () => ({
       dropdown: {
