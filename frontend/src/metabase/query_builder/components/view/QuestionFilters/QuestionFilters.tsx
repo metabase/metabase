@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Flex, Popover, Tooltip } from "metabase/ui";
+import { Popover, Tooltip } from "metabase/ui";
 import { FilterPicker } from "metabase/querying";
 
 import { color } from "metabase/lib/colors";
@@ -12,12 +12,10 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
-import ViewPill from "../ViewPill";
 import type { ViewPillProps } from "../ViewPill";
-import {
-  FilterHeaderContainer,
-  FilterHeaderButton,
-} from "./QuestionFilters.styled";
+import ViewPill from "../ViewPill";
+import { FilterHeaderButton } from "./QuestionFilters.styled";
+import { FilterBar } from "metabase/querying/components/FilterBar";
 
 const NO_TRANSITION = { duration: 0 };
 
@@ -87,43 +85,11 @@ export function FilterHeader({
   onQueryChange,
 }: FilterHeaderProps) {
   const query = question._getMLv2Query();
-
-  const stageCount = Lib.stageCount(query);
-  const lastStageIndex = stageCount - 1;
-
-  const lastStageFilters = Lib.filters(query, lastStageIndex);
-  const previousStageFilters =
-    stageCount > 1 ? Lib.filters(query, lastStageIndex - 1) : [];
-  const filters = [...previousStageFilters, ...lastStageFilters];
-
-  const handleQueryChange = (nextQuery: Lib.Query) => {
-    const nextQuestion = question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
-    onQueryChange(nextQuestion.query() as LegacyQuery);
-  };
-
-  if (filters.length === 0 || !expanded) {
+  if (!expanded) {
     return null;
   }
 
-  return (
-    <FilterHeaderContainer data-testid="qb-filters-panel">
-      <Flex align="center" wrap="wrap" gap="sm" pb="sm">
-        {filters.map((filter, index) => {
-          const isLastStage = index >= previousStageFilters.length;
-          const stageIndex = isLastStage ? lastStageIndex : lastStageIndex - 1;
-          return (
-            <FilterHeaderPopover
-              key={index}
-              query={query}
-              stageIndex={stageIndex}
-              filter={filter}
-              onQueryChange={handleQueryChange}
-            />
-          );
-        })}
-      </Flex>
-    </FilterHeaderContainer>
-  );
+  return <FilterBar query={query} onChange={() => 1} />;
 }
 
 interface FilterHeaderPopoverProps {
