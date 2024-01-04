@@ -5,8 +5,7 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,8 +52,7 @@
   TODO: add and conform to a spec instead?"
   [target-types found-cols x]
   {:pre [(set? target-types) (instance? clojure.lang.Atom found-cols)]}
-  (if
-    (map? x)
+  (if (map? x)
     (cond
       ;; a createTable or addColumn change; see if it adds a target-type col
       (or (:createTable x) (:addColumn x))
@@ -69,9 +67,10 @@
 
       ;; a modifyDataType change; see if it changes a column to target-type
       (:modifyDataType x)
-      (if (= target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
-        (do (swap! found-cols conj x)
-            x)
+      (if (contains? target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
+        (do
+         (swap! found-cols conj x)
+         x)
         x)
 
       ;; some other kind of change; continue walking
@@ -85,15 +84,11 @@
   [change-log]
   (let [problem-cols (atom [])
         walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
-    (doseq [{{id :id} :changeSet, :as change-set} change-log
-            :when                                 (and id
-                                                       (string? id))]
-      [id change-set])
     (doseq [{{id :id} :changeSet :as change-set} change-log
             :when                                (and id
                                                       (string? id)
                                                       (str/starts-with? id "v"))]
-      (walk/postwalk walk-fn change-set))
+      (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
     (empty? @problem-cols)))
 
 (defn no-bare-boolean-types?
@@ -106,7 +101,21 @@
             :when                                (and id
                                                       (string? id)
                                                       (pos? (compare-ids id "v49.00-032")))]
-      (walk/postwalk walk-fn change-set))
+      (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
+    (empty? @problem-cols)))
+
+(defn no-datetime-type?
+  "Ensures that no \"datetime\" or \"timestamp without time zone\".
+  From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columsn are tz-aware."
+  [change-log]
+  (let [problem-cols (atom [])
+        walk-fn      (fn [x]
+                       (assert-no-types-in-change-set #{"datetime" "timestamp" "timestamp without time zone"} problem-cols x))]
+    (doseq [{{id :id} :changeSet :as change-set} change-log
+            :when                                (and id
+                                                      (string? id)
+                                                      (pos? (compare-ids id "v49.00-000")))]
+      (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
     (empty? @problem-cols)))
 
 (s/def ::changeSet
@@ -117,6 +126,7 @@
          change-set-ids-in-order?
          no-bare-blob-or-text-types?
          no-bare-boolean-types?
+         no-datetime-type?
          (s/+ (s/alt :property              (s/keys :req-un [::property])
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))
