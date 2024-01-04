@@ -4,18 +4,14 @@
   (:require
    [mb.hawk.parallel]
    [metabase.plugins.classloader :as classloader]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [methodical.core :as methodical]
    [toucan2.connection :as t2.connection]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^{:dynamic true
-       :private true
-       :doc     "Used to detect whether we're in a nested [[with-temp]]. Default is false."}
-  *in-tx* false)
-
-(def ^{:dynamic true
-       :doc     "Used to control whether [[with-temp]] will run in a transaction. Default is true."}
-  *with-temp-use-transaction* true)
+(def ^:dynamic ^:private *in-tx*
+  "Used to detect whether we're in a nested [[with-temp]]. Default is false."
+  false)
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :default
   "Initialize the DB before doing the other with-temp stuff.
@@ -26,28 +22,13 @@
   ((resolve 'metabase.test.initialize/initialize-if-needed!) :db)
   ;; so with-temp-defaults are loaded
   (classloader/require 'metabase.test.util)
-
   ;; run `f` in a transaction if it's the top-level with-temp
-  (if (and *with-temp-use-transaction* (not *in-tx*))
+  (if (and tu.thread-local/*thread-local*
+           (not *in-tx*))
     (binding [*in-tx* true]
       (t2.connection/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
         (next-method model attributes f)))
     (next-method model attributes f)))
-
-(defmacro with-temp!
-  "Like [[mt/with-temp]] but does not run body in a transaction that will rollback at the end.
-  Can be used for cases where we test stuffs that can't be on the same thread.
-
-  An example is tests that make real http call with [[mt/user-real-request]]."
-  [& args]
-  `(binding [*with-temp-use-transaction* false]
-     (t2.with-temp/with-temp ~@args)))
-
-(defmacro with-ensure-with-temp-no-transaction!
-  "Run body with [[*with-temp-use-transaction*]] bound to false, ensuring all nested [[mt/with-temp]] will not run in a transaction."
-  [& body]
-  `(binding [*with-temp-use-transaction* false]
-     ~@body))
 
 ;;; wrap `with-redefs-fn` (used by `with-redefs`) so it calls `assert-test-is-not-parallel`
 

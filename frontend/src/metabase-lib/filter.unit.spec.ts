@@ -934,9 +934,15 @@ describe("filter", () => {
     });
 
     it.each([
-      ["yyyy-MM-DDTHH:mm:ssZ", "2020-01-05T10:20:00+04:00"],
-      ["yyyy-MM-DDTHH:mm:ss", "2020-01-05T10:20:00"],
-    ])("should support %s datetime format", (format, arg) => {
+      ["2020-01-05T00:00:00.000", new Date(2020, 0, 5, 0, 0, 0, 0)],
+      ["2020-01-05T00:00:00.001", new Date(2020, 0, 5, 0, 0, 0, 1)],
+      ["2020-01-05T00:00:00", new Date(2020, 0, 5, 0, 0, 0)],
+      ["2020-01-05T00:00:01", new Date(2020, 0, 5, 0, 0, 1)],
+      ["2020-01-05T00:01:00", new Date(2020, 0, 5, 0, 1, 0)],
+      ["2020-01-05T01:00:00", new Date(2020, 0, 5, 1, 0, 0)],
+      ["2020-01-05T10:20:30", new Date(2020, 0, 5, 10, 20, 30)],
+      ["2020-01-05T10:20:30+04:00", new Date(2020, 0, 5, 10, 20, 30)],
+    ])("should support %s datetime format", (arg, date) => {
       const { filterParts } = addSpecificDateFilter(
         query,
         Lib.expressionClause("=", [column, arg]),
@@ -948,11 +954,11 @@ describe("filter", () => {
       });
 
       const value = filterParts?.values[0];
-      expect(value?.getFullYear()).toBe(2020);
-      expect(value?.getMonth()).toBe(0);
-      expect(value?.getDate()).toBe(5);
-      expect(value?.getHours()).toBe(10);
-      expect(value?.getMinutes()).toBe(20);
+      expect(value?.getFullYear()).toBe(date.getFullYear());
+      expect(value?.getMonth()).toBe(date.getMonth());
+      expect(value?.getDate()).toBe(date.getDate());
+      expect(value?.getHours()).toBe(date.getHours());
+      expect(value?.getMinutes()).toBe(date.getMinutes());
     });
 
     it("should ignore expressions with not supported operators", () => {
@@ -1406,11 +1412,11 @@ describe("filter", () => {
     });
 
     it.each([
-      ["HH:mm:ss.sss[Z]", "11:08:13.1313Z"],
-      ["HH:mm:SS.sss", "11:08:13.1313"],
-      ["HH:mm:SS", "11:08:13"],
-      ["HH:mm", "11:08"],
-    ])("should support %s time format", (format, arg) => {
+      ["11:08", new Date(1970, 0, 1, 11, 8)],
+      ["11:08:13", new Date(1970, 0, 1, 11, 8, 13)],
+      ["11:08:13.123", new Date(1970, 0, 1, 11, 8, 13, 123)],
+      ["11:08:13.123Z", new Date(1970, 0, 1, 11, 8, 13, 123)],
+    ])("should support %s time format", (arg, date) => {
       const { filterParts } = addTimeFilter(
         query,
         Lib.expressionClause(">", [column, arg]),
@@ -1422,8 +1428,10 @@ describe("filter", () => {
       });
 
       const value = filterParts?.values[0];
-      expect(value?.getHours()).toBe(11);
-      expect(value?.getMinutes()).toBe(8);
+      expect(value?.getHours()).toBe(date.getHours());
+      expect(value?.getMinutes()).toBe(date.getMinutes());
+      expect(value?.getSeconds()).toBe(date.getSeconds());
+      expect(value?.getMilliseconds()).toBe(date.getMilliseconds());
     });
 
     it("should ignore expressions with not supported operators", () => {

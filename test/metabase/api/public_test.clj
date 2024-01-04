@@ -375,17 +375,18 @@
 
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp! [Card {uuid :public_uuid} (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "public/question/" uuid ".csv")
-                                :parameters (json/encode [{:id     "_DATE_"
-                                                           :type   :date/quarter-year
-                                                           :target [:dimension [:template-tag :date]]
-                                                           :value  "Q1-2014"}])))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "public/question/" uuid ".csv")
+                                       :parameters (json/encode [{:id     "_DATE_"
+                                                                  :type   :date/quarter-year
+                                                                  :target [:dimension [:template-tag :date]]
+                                                                  :value  "Q1-2014"}]))))))))))
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
