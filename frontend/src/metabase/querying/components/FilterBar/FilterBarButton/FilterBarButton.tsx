@@ -9,13 +9,15 @@ import { FilterButton } from "./FilterBarButton.styled";
 interface FilterBarButtonProps {
   query: Lib.Query;
   isExpanded: boolean;
-  onClick: () => void;
+  onExpand: () => void;
+  onCollapse: () => void;
 }
 
 export function FilterBarButton({
   query,
   isExpanded,
-  onClick,
+  onExpand,
+  onCollapse,
 }: FilterBarButtonProps) {
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => getFilterItems(query), [query]);
@@ -28,7 +30,7 @@ export function FilterBarButton({
         isExpanded={isExpanded}
         aria-label={label}
         data-testid="filters-visibility-control"
-        onClick={onClick}
+        onClick={isExpanded ? onCollapse : onExpand}
       >
         {items.length}
       </FilterButton>

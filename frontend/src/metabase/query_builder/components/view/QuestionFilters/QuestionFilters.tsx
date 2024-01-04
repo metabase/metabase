@@ -26,7 +26,8 @@ export function FilterHeaderToggle({
       <FilterBarButton
         query={query}
         isExpanded={isExpanded}
-        onClick={isExpanded ? onCollapse : onExpand}
+        onExpand={onExpand}
+        onCollapse={onCollapse}
       />
     </div>
   );
