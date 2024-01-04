@@ -2,7 +2,7 @@
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
 export default function QuestionDataSelector({
-  query,
+  legacyQuery,
   updateQuestion,
   triggerElement,
 }) {
@@ -11,12 +11,15 @@ export default function QuestionDataSelector({
       containerClassName="DataPopoverContainer"
       hasTableSearch
       databaseQuery={{ saved: true }}
-      selectedDatabaseId={query.databaseId()}
-      selectedTableId={query.tableId()}
+      selectedDatabaseId={legacyQuery.databaseId()}
+      selectedTableId={legacyQuery.tableId()}
       setSourceTableFn={tableId =>
-        updateQuestion(query.setTableId(tableId).setDefaultQuery().question(), {
-          run: true,
-        })
+        updateQuestion(
+          legacyQuery.setTableId(tableId).setDefaultQuery().question(),
+          {
+            run: true,
+          },
+        )
       }
       triggerElement={triggerElement}
       isOpen
