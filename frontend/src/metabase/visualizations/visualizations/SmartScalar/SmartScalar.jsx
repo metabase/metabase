@@ -30,6 +30,7 @@ import {
   DASHCARD_HEADER_HEIGHT,
   ICON_MARGIN_RIGHT,
   ICON_SIZE,
+  MAX_COMPARISONS,
   SPACING,
   TOOLTIP_ICON_SIZE,
 } from "./constants";
@@ -81,7 +82,7 @@ export function SmartScalar({
   if (trend == null) {
     return null;
   }
-  const { value, clicked, comparison, display, formatOptions } = trend;
+  const { value, clicked, comparisons, display, formatOptions } = trend;
 
   const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
 
@@ -126,12 +127,16 @@ export function SmartScalar({
       {isPeriodVisible(innerHeight) && (
         <ScalarPeriod lines={1} period={display.date} />
       )}
-
-      <PreviousValueWrapper data-testid="scalar-previous-value">
-        <PreviousValueComparison
-          {...{ comparison, width, fontFamily, formatOptions }}
-        />
-      </PreviousValueWrapper>
+      {comparisons.map((comparison, index) => (
+        <PreviousValueWrapper key={index} data-testid="scalar-previous-value">
+          <PreviousValueComparison
+            comparison={comparison}
+            fontFamily={fontFamily}
+            formatOptions={formatOptions}
+            width={width}
+          />
+        </PreviousValueWrapper>
+      ))}
     </ScalarWrapper>
   );
 }
@@ -213,7 +218,7 @@ function PreviousValueComparison({
     }
 
     return jt`${comparisonDescStr}: ${(
-      <PreviousValueNumber>{valueStr}</PreviousValueNumber>
+      <PreviousValueNumber key="value-str">{valueStr}</PreviousValueNumber>
     )}`;
   });
   const fullDetailDisplay = detailCandidates[0];
@@ -284,12 +289,20 @@ Object.assign(SmartScalar, {
       section: t`Data`,
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
-      isValid: (series, vizSettings) => isComparisonValid(series, vizSettings),
-      getDefault: (series, vizSettings) =>
-        getDefaultComparison(series, vizSettings),
+      isValid: (series, vizSettings) => {
+        const comparisons = vizSettings["scalar.comparisons"];
+        return comparisons.every(comparison =>
+          isComparisonValid(comparison, series, vizSettings),
+        );
+      },
+      getDefault: (series, vizSettings) => {
+        const comparison = getDefaultComparison(series, vizSettings);
+        return [comparison];
+      },
       getProps: (series, vizSettings) => {
         const cols = series[0].data.cols;
         return {
+          maxComparisons: MAX_COMPARISONS,
           comparableColumns: getColumnsForComparison(cols, vizSettings),
           options: getComparisonOptions(series, vizSettings),
         };

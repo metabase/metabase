@@ -13,23 +13,27 @@ const setup = (series, width = 800) =>
   renderWithProviders(<Visualization rawSeries={series} width={width} />);
 
 const PREVIOUS_PERIOD_COMPARISON = {
+  id: "1",
   type: COMPARISON_TYPES.PREVIOUS_PERIOD,
 };
 
 const PREVIOUS_VALUE_COMPARISON = {
+  id: "1",
   type: COMPARISON_TYPES.PREVIOUS_VALUE,
 };
 
 const getPeriodsAgoComparison = value => ({
+  id: "1",
   type: COMPARISON_TYPES.PERIODS_AGO,
   value,
 });
 
-const series = (
-  { rows, insights, field, comparisonType } = {
-    comparisonType: PREVIOUS_PERIOD_COMPARISON,
-  },
-) => {
+const series = ({
+  rows,
+  insights,
+  field,
+  comparisonType = PREVIOUS_PERIOD_COMPARISON,
+} = {}) => {
   const cols = [
     DateTimeColumn({ name: "Month" }),
     NumberColumn({ name: "Count" }),
@@ -41,7 +45,7 @@ const series = (
         display: "smartscalar",
         visualization_settings: {
           "scalar.field": field,
-          "scalar.comparisons": comparisonType,
+          "scalar.comparisons": [comparisonType],
         },
       },
       data: { cols, rows, insights },
