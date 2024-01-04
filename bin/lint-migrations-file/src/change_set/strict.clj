@@ -25,9 +25,9 @@
                     (s/and #(re-matches id-timestamp-format-re %))
                     :id-with-old-verion-format ;; e.g: v49.00-008
                     (s/and #(re-matches id-number-format-re %)
-                           ;; the cut off id for this old format is v49.00-054
+                           ;; the cut off id for this old format is v49.00-060
                            ;; see #36787 for context
-                           #(neg? (compare % "v49.00-054"))))))
+                           #(neg? (compare % "v49.00-061"))))))
 
 (s/def ::author string?)
 

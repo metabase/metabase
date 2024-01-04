@@ -5122,15 +5122,6 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
-  - changeSet:
-      id: v49.2023-12-14T08:54:54
-      author: qnkhuat
-      comment: No op, testing the new migration id format
-      changes:
-        - sql: select 1
-      rollback:
-        - sql: select 1
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 
