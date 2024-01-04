@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
-   [metabase.models.permissions :as perms]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -98,7 +98,7 @@
    [:map {:closed true}
     [:search-string                                        [:maybe ms/NonBlankString]]
     [:archived?                                            :boolean]
-    [:current-user-perms                                   [:set perms/PathSchema]]
+    [:current-user-perms                                   [:set perms.u/PathSchema]]
     [:models                                               [:set SearchableModel]]
     [:filter-items-in-personal-collection {:optional true} [:enum "only" "exclude"]]
     [:created-at                          {:optional true} ms/NonBlankString]

@@ -607,39 +607,40 @@
         (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
 (deftest db-operations-test
-  (mt/with-temp! [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
-                  Table       {table-id :id}  {:db_id db-id}
-                  Field       {field-id :id}  {:table_id table-id}
-                  FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
-    (with-redefs [api.database/*rescan-values-async* false]
-      (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
-        (with-all-users-data-perms! {db-id {:details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temp [Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
+                   Table       {table-id :id}  {:db_id db-id}
+                   Field       {field-id :id}  {:table_id table-id}
+                   FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
+      (with-redefs [api.database/*rescan-values-async* false]
+        (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
+          (with-all-users-data-perms! {db-id {:details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
 
-      (testing "A non-admin can discard saved field values if they have DB details permissions"
-        (with-all-users-data-perms! {db-id {:details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
+        (testing "A non-admin can discard saved field values if they have DB details permissions"
+          (with-all-users-data-perms! {db-id {:details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
 
-      (testing "A non-admin with no data access can discard field values if they have DB details perms"
-        (t2/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
-        (with-all-users-data-perms! {db-id {:data    {:schemas :block :native :none}
-                                            :details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
-        (is (= nil (t2/select-one-fn :values FieldValues, :field_id field-id)))
-        (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
-
-      ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
-      (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
-        (with-all-users-data-perms! {(mt/id) {:details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
-
-      (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
-        (t2/delete! FieldValues :field_id (mt/id :venues :price))
-        (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
-        (with-all-users-data-perms! {(mt/id) {:data   {:schemas :block :native :none}
+        (testing "A non-admin with no data access can discard field values if they have DB details perms"
+          (t2/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
+          (with-all-users-data-perms! {db-id {:data    {:schemas :block :native :none}
                                               :details :yes}}
-          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
-        (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))))))
+            (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id field-id)))
+          (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
+
+        ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
+        (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
+          (with-all-users-data-perms! {(mt/id) {:details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
+
+        (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
+          (t2/delete! FieldValues :field_id (mt/id :venues :price))
+          (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price))))
+          (with-all-users-data-perms! {(mt/id) {:data    {:schemas :block :native :none}
+                                                :details :yes}}
+            (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
+          (is (= [1 2 3 4] (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price)))))))))
 
 (deftest fetch-db-test
   (t2.with-temp/with-temp [Database {db-id :id}]
@@ -801,7 +802,7 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-empty-db
         (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
-          (jdbc/execute! conn-spec "CREATE SCHEMA \"not_public\"; CREATE TABLE \"not_public\".\"table_name\" (id INTEGER)"))
+          (jdbc/execute! conn-spec "CREATE SCHEMA IF NOT EXISTS \"not_public\"; CREATE TABLE IF NOT EXISTS \"not_public\".\"table_name\" (id INTEGER);"))
         (sync/sync-database! (mt/db))
         (let [db-id     (u/the-id (mt/db))
               table-id (t2/select-one-pk :model/Table :db_id db-id)]
