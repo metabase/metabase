@@ -194,7 +194,7 @@ describe("DateFilterEditor", () => {
         column,
         filter,
       });
-      expect(screen.getByText("5 PM")).toBeInTheDocument();
+      expect(screen.getByText("Excludes 5 PM")).toBeInTheDocument();
 
       userEvent.click(screen.getByLabelText("Clear"));
       expect(getNextFilterName()).toBe(null);
