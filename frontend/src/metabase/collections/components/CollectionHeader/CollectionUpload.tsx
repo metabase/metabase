@@ -27,7 +27,13 @@ export function CollectionUpload({
   collection: Collection;
   uploadsEnabled: boolean;
   isAdmin: boolean;
-  onUpload: (file: File, collectionId: CollectionId) => void;
+  onUpload: ({
+    file,
+    collectionId,
+  }: {
+    file: File;
+    collectionId: CollectionId;
+  }) => void;
 }) {
   const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -55,7 +61,7 @@ export function CollectionUpload({
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file !== undefined) {
-      onUpload(file, collection.id);
+      onUpload({ file, collectionId: collection.id });
     }
   };
 

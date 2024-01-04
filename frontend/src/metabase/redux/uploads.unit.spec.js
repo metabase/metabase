@@ -47,7 +47,7 @@ describe("csv uploads", () => {
     it("should handle file upload success", async () => {
       mockUploadCSV();
 
-      await uploadFile(file, "root")(dispatch);
+      await uploadFile({ file, collectionId: "root" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -78,7 +78,7 @@ describe("csv uploads", () => {
     it("should handle file upload error", async () => {
       mockUploadCSV(false);
 
-      await uploadFile(file, "root")(dispatch);
+      await uploadFile({ file, collectionId: "root" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
@@ -103,7 +103,7 @@ describe("csv uploads", () => {
     it("Error on oversized files", async () => {
       const bigFile = new File([""], "test.csv");
       Object.defineProperty(bigFile, "size", { value: 200 * 1024 * 1024 + 1 });
-      await uploadFile(bigFile, "root")(dispatch);
+      await uploadFile({ file: bigFile, collectionId: "root" })(dispatch);
       jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
