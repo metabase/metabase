@@ -131,7 +131,6 @@
                             :unmasked_key unhashed-key
                             :masked_key (api-key/mask unhashed-key)))))
 
-
 (api/defendpoint GET "/"
   "Get a list of API keys. Non-paginated."
   []

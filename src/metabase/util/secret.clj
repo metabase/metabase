@@ -1,4 +1,6 @@
 (ns metabase.util.secret
+  (:require
+   [metabase.util.i18n :refer [trs]])
   (:import (java.io Writer)))
 
 (set! *warn-on-reflection* true)
@@ -11,7 +13,7 @@
   ISecret
   (expose [_this] (value-fn))
   Object
-  (toString [_this] "<< REDACTED SECRET >>"))
+  (toString [_this] (trs "<< REDACTED SECRET >>")))
 
 (defmethod print-method Secret
   [^Secret secret ^Writer writer]
