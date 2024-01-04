@@ -102,6 +102,55 @@
           (dissoc ::collection.root/is-root?)
           collection/personal-collection-with-ui-details))))
 
+(defn- shallow-tree-from-collection-id
+  "Returns only a shallow Collection in the provided collection-id, e.g.
+
+  location: /1/
+  ```
+  [{:name     \"A\"
+    :location \"/1/\"
+    :children 1}
+    ...
+    {:name     \"H\"
+     :location \"/1/\"}]
+
+  If the collection-id is nil, then we default to the root collection.
+  ```"
+  [colls]
+  (->> colls
+       (map collection/personal-collection-with-ui-details)
+       (collection/collections->tree nil)
+       (map (fn [coll] (update coll :children #(boolean (seq %)))))))
+
+(defn- location-from-collection-id-clause
+  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
+   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
+   then restrict to that collection's parents and children."
+  [collection-id]
+  (if collection-id
+    [:and
+     [:like :location (str "%/" collection-id "/%")]
+     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
+    [:not [:like :location "/%/%/"]]))
+
+(defn- select-collections
+  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
+  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
+  is not necessary."
+  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
+  (cond->>
+   (t2/select Collection
+              {:where [:and
+                       (when exclude-archived
+                         [:= :archived false])
+                       (when shallow
+                         (location-from-collection-id-clause collection-id))
+                       (perms/audit-namespace-clause :namespace namespace)
+                       (collection/visible-collection-ids->honeysql-filter-clause
+                        :id
+                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+    exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*)))
+
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -123,33 +172,24 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived exclude-other-user-collections namespace]
+  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
-   namespace                      [:maybe ms/NonBlankString]}
-  (let [exclude-archived? exclude-archived
-        exclude-other-user-collections? exclude-other-user-collections
-        coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                (update acc (if dataset :dataset :card) conj collection_id))
-                              {:dataset #{}
-                               :card    #{}}
-                              (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                          :from            [:report_card]
-                                                          :where           [:= :archived false]}))
-        colls (cond->>
-                (t2/select Collection
-                  {:where [:and
-                           (when exclude-archived?
-                             [:= :archived false])
-                           (perms/audit-namespace-clause :namespace namespace)
-                           (collection/visible-collection-ids->honeysql-filter-clause
-                            :id
-                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-                exclude-other-user-collections?
-                (remove-other-users-personal-collections api/*current-user-id*))
-        colls-with-details (map collection/personal-collection-with-ui-details colls)]
-    (collection/collections->tree coll-type-ids colls-with-details)))
-
+   namespace                      [:maybe ms/NonBlankString]
+   shallow                        [:maybe :boolean]
+   collection-id                  [:maybe ms/PositiveInt]}
+  (let [collections (select-collections exclude-archived exclude-other-user-collections namespace shallow collection-id)]
+    (if shallow
+      (shallow-tree-from-collection-id collections)
+      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                          (update acc (if dataset :dataset :card) conj collection_id))
+                                        {:dataset #{}
+                                         :card    #{}}
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+            collections-with-details (map collection/personal-collection-with-ui-details collections)]
+        (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
