@@ -10,3 +10,7 @@ export function getFilterItems(query: Lib.Query): FilterItem[] {
     return filters.map(filter => ({ filter, stageIndex }));
   });
 }
+
+export function dropStageIfEmpty(query: Lib.Query): Lib.Query {
+  return Lib.dropStageIfEmpty(query, -1);
+}
