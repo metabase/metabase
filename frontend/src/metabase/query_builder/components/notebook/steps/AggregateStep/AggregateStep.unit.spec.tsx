@@ -30,7 +30,6 @@ function setup(step = createMockNotebookStep()) {
   renderWithProviders(
     <AggregateStep
       step={step}
-      query={step.query}
       stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       color="summarize"

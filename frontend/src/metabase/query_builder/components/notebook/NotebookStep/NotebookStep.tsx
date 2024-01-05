@@ -139,7 +139,6 @@ function NotebookStep({
                 color={color}
                 step={step}
                 topLevelQuery={step.topLevelQuery}
-                query={step.query}
                 stageIndex={step.stageIndex}
                 sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}

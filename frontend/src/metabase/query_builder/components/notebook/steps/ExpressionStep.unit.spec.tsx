@@ -29,7 +29,6 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
     <ExpressionStep
       step={step}
       color="#93A1AB"
-      query={step.query}
       stageIndex={step.stageIndex}
       topLevelQuery={step.topLevelQuery}
       updateQuery={updateQuery}

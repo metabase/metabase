@@ -26,7 +26,7 @@ export function fromLegacyQuery(
    Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
  */
 export function queryFromTableOrCardMetadata(
-  metadataProvider: MetadataProvider,
+  metadataProvider: Query | MetadataProvider,
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
   return ML.query(metadataProvider, tableOrCardMetadata);

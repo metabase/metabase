@@ -15,7 +15,6 @@ import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({
   topLevelQuery,
-  query,
   step,
   readOnly,
   color,
@@ -23,12 +22,9 @@ export const DataStep = ({
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
 
-  const question = query.question();
-  const metadata = question.metadata();
-  const collectionId = question.collectionId();
-  const tableId = query.sourceTableId();
-
+  const collectionId = 0;
   const databaseId = Lib.databaseID(topLevelQuery);
+  const tableId = Lib.sourceTableOrCardId(topLevelQuery);
   const table = tableId
     ? Lib.tableOrCardMetadata(topLevelQuery, tableId)
     : null;
@@ -47,17 +43,8 @@ export const DataStep = ({
   const canSelectTableColumns = table && isRaw && !readOnly;
 
   const handleCreateQuery = (tableId: TableId) => {
-    const databaseId = metadata.table(tableId)?.db_id;
-    if (databaseId) {
-      const nextQuery = Lib.fromLegacyQuery(databaseId, metadata, {
-        type: "query",
-        database: databaseId,
-        query: {
-          "source-table": tableId,
-        },
-      });
-      updateQuery(nextQuery);
-    }
+    const nextTable = Lib.tableOrCardMetadata(topLevelQuery, tableId);
+    updateQuery(Lib.queryFromTableOrCardMetadata(topLevelQuery, nextTable));
   };
 
   const handleChangeTable = (nextTableId: TableId) => {
