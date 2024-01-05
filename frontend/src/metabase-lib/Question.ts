@@ -1028,7 +1028,7 @@ class Question {
       return this;
     }
 
-    const query = this._getMLv2Query();
+    const query = this.query();
     const stageIndex = -1;
     const filters = this.parameters()
       .map(parameter =>
@@ -1047,7 +1047,7 @@ class Question {
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
-  _getMLv2Query(metadata = this._metadata): Query {
+  query(metadata = this._metadata): Query {
     const databaseId = this.legacyQuery()?.database()?.id ?? null;
 
     // cache the metadata provider we create for our metadata.
@@ -1086,7 +1086,7 @@ class Question {
   }
 
   generateQueryDescription() {
-    const query = this._getMLv2Query();
+    const query = this.query();
     return ML.suggestedName(query);
   }
 

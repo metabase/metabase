@@ -180,7 +180,7 @@ export function FilterPopover({
     const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
       <ExpressionWidget
-        query={question._getMLv2Query()}
+        query={question.query()}
         stageIndex={-1}
         expression={expression}
         startRule="boolean"

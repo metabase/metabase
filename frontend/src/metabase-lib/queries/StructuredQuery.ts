@@ -127,7 +127,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   private getMLv2Query(): Query {
-    return this.question()._getMLv2Query();
+    return this.question().query();
   }
 
   private updateWithMLv2(nextQuery: Query) {

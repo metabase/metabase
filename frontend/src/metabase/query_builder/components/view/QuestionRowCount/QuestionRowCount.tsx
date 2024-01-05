@@ -89,9 +89,7 @@ function QuestionRowCount({
 
   const canChangeLimit = question.isStructured() && question.isQueryEditable();
 
-  const limit = canChangeLimit
-    ? Lib.currentLimit(question._getMLv2Query(), -1)
-    : null;
+  const limit = canChangeLimit ? Lib.currentLimit(question.query(), -1) : null;
 
   if (loading) {
     return null;
@@ -153,7 +151,7 @@ const formatRowCount = (count: number) => {
 };
 
 function getLimitMessage(question: Question, result: Dataset): string {
-  const limit = Lib.currentLimit(question._getMLv2Query(), -1);
+  const limit = Lib.currentLimit(question.query(), -1);
   const isValidLimit =
     typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
 
