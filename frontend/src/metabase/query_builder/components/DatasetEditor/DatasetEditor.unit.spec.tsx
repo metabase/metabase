@@ -36,7 +36,7 @@ const mockUnsavedCard = createMockUnsavedCard();
 
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
 
-const setup = async ({ card }: { card: Card | UnsavedCard } ) => {
+const setup = ({ card }: { card: Card | UnsavedCard } ) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
@@ -81,24 +81,24 @@ const setup = async ({ card }: { card: Card | UnsavedCard } ) => {
 };
 
 describe("DatasetEditor", () => {
+  beforeEach(() => {
+    fetchMock.get("path:/api/search", () => ({ body: { data: [] } }));
+    fetchMock.get("path:/api/model-index", () => ({ body: { data: [] } }));
+  });
   afterEach(() => {
     jest.restoreAllMocks();
   });
-  it("tries to load a model index when a model_id is specified", async () => {
-    fetchMock.get(
-      "path:/api/model-index",
-      (_: any, __: any, request: Request) => {
-        const params = new URL(request.url).searchParams;
-        expect(params.get("model_id")).toBe(`${mockSavedCard.id}`);
-        return { body: { data: [] } };
-      },
-    );
-    await setup({ card: mockSavedCard });
+  it("tries to load a model index when card is already saved", async () => {
+    setup({ card: mockSavedCard });
+    const calls = fetchMock.calls("path:/api/model-index");
+    expect(calls).toHaveLength(1);
+    expect(
+      new URL(calls[0]?.request?.url ?? "").searchParams.get("model_id"),
+    ).toBe(`${mockSavedCard.id}`);
   });
-  it("does not try to load a model index when model_id is absent", async () => {
-    //fetchMock.get("*", () => ({ body: { data: [] } }));
-    fetchMock.get("/api/search", () => ({ body: { data: [] } }));
-    await setup({ card: mockUnsavedCard });
-    expect(fetchMock.calls("path:/api/model-index")).toHaveLength(0);
+  it("does not try to load a model index when card is unsaved", async () => {
+    setup({ card: mockUnsavedCard });
+    const calls = fetchMock.calls("path:/api/model-index");
+    expect(calls).toHaveLength(0);
   });
-});
+})

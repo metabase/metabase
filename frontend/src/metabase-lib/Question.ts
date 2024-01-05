@@ -32,6 +32,7 @@ import type {
   Parameter as ParameterObject,
   ParameterValues,
   ParameterId,
+  UnsavedCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
