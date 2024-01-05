@@ -1126,7 +1126,7 @@
              dashcard1s    (ts/create! :model/DashboardCard :card_id (:id card1s) :dashboard_id (:id dash1s) :dashboard_tab_id (:id tab1s))
              series1s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card1s) :position 0)
              series2s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card2s) :position 1)
-             series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 1)
+             series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
              extract1      (into [] (serdes.extract/extract {}))]
          (ts/with-dest-db
            (serdes.load/load-metabase! (ingestion-in-memory extract1))
