@@ -1131,7 +1131,7 @@
          (ts/with-dest-db
            (serdes.load/load-metabase! (ingestion-in-memory extract1))
            (ts/with-source-db
-            ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
+             ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
              (t2/delete! :model/DashboardCardSeries (:id series1s))
              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})

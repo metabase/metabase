@@ -660,7 +660,7 @@
        (concat (serdes/visualization-settings-deps visualization_settings))
        (concat (when card_id   #{[{:model "Card"   :id card_id}]}))
        (concat (when action_id #{[{:model "Action" :id action_id}]}))
-       (concat (when (seq series) (for [s series] [{:model "Card" :id (:card_id s)}])))
+       (concat (for [s series] [{:model "Card" :id (:card_id s)}]))
        set))
 
 (defmethod serdes/dependencies "Dashboard"
