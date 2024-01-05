@@ -408,12 +408,17 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
         const nextQuery = Lib.updateNumericFilter(
           query,
           stageIndex,
-          column,
+          columns[index],
           start,
           end,
         );
         const updatedQuestion = question._setMLv2Query(nextQuery);
         const nextCard = updatedQuestion.card();
+
+        // TODO: updateNumericFilter should accept field id as a string
+        nextCard.dataset_query.query.filter[1][1] = Number(
+          nextCard.dataset_query.query.filter[1][1],
+        );
 
         onChangeCardAndRun({
           nextCard,
