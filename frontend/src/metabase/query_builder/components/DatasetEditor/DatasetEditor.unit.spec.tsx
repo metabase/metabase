@@ -43,7 +43,7 @@ const setup = async ({ card }: { card: Card | UnsavedCard } ) => {
 
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+      databases: [TEST_DB],
       questions: 'id' in card ? [card] : [],
     }),
   });
@@ -96,7 +96,8 @@ describe("DatasetEditor", () => {
     await setup({ card: mockSavedCard });
   });
   it("does not try to load a model index when model_id is absent", async () => {
-    fetchMock.get("*", () => ({ body: { data: [] } }));
+    //fetchMock.get("*", () => ({ body: { data: [] } }));
+    fetchMock.get("/api/search", () => ({ body: { data: [] } }));
     await setup({ card: mockUnsavedCard });
     expect(fetchMock.calls("path:/api/model-index")).toHaveLength(0);
   });
