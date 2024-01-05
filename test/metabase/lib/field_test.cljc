@@ -1485,35 +1485,6 @@
                    :selected? true}
                   (get-state (mark-selected joined)))))))))
 
-(deftest ^:parallel legacycard-or-table-id-test
-  (testing "card query"
-    (let [card (:venues lib.tu/mock-cards)
-          query (lib/query lib.tu/metadata-provider-with-mock-cards card)]
-      (testing "simple"
-        (is (= (str "card__" (:id card))
-               (lib/legacy-card-or-table-id (first (lib/returned-columns query))))))
-      (testing "two stage"
-        (is (= (str "card__" (:id card))
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
-      (testing "breakout"
-        (is (= (str "card__" (:id card))
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
-                                                                             (lib/breakout (first (lib/returned-columns query)))
-                                                                             lib/append-stage)))))))))
-  (testing "table query"
-    (let [query lib.tu/venues-query]
-      (testing "simple"
-        (is (= (meta/id :venues)
-               (lib/legacy-card-or-table-id (first (lib/returned-columns query))))))
-      (testing "two stage"
-        (is (= (meta/id :venues)
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (lib/append-stage query)))))))
-      (testing "breakout"
-        (is (= (meta/id :venues)
-               (lib/legacy-card-or-table-id (first (lib/returned-columns (-> query
-                                                                             (lib/breakout (first (lib/returned-columns query)))
-                                                                             lib/append-stage))))))))))
-
 (deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
   (testing (str "column metadata with :expression-name should generate :expression refs regardless of :lib/source. "
                 "Prefer :expression-name over :name (#34957)")
