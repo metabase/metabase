@@ -20,7 +20,7 @@ export interface NotebookStep {
   stageIndex: number;
   itemIndex: number | null;
   question: Question;
-  topLevelQuery: Query;
+  query: Query;
   valid: boolean;
   active: boolean;
   visible: boolean;
@@ -39,7 +39,7 @@ export interface NotebookStepAction {
 
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
-  topLevelQuery: Query;
+  query: Query;
   stageIndex: number;
   sourceQuestion?: Question;
   color: string;

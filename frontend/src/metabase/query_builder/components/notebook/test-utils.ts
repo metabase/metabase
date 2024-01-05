@@ -30,7 +30,7 @@ export function createMockNotebookStep({
     itemIndex,
     testID: `step-${type}-${stageIndex}-${itemIndex}`,
     question: DEFAULT_QUESTION,
-    topLevelQuery: DEFAULT_QUERY,
+    query: DEFAULT_QUERY,
     valid: true,
     active: true,
     visible: true,

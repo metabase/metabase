@@ -14,7 +14,7 @@ import { FieldsPickerIcon, FIELDS_PICKER_STYLES } from "../../FieldsPickerIcon";
 import { DataStepCell } from "./DataStep.styled";
 
 export const DataStep = ({
-  topLevelQuery,
+  query,
   step,
   readOnly,
   color,
@@ -23,32 +23,30 @@ export const DataStep = ({
   const { stageIndex } = step;
 
   const collectionId = step.question.collectionId();
-  const databaseId = Lib.databaseID(topLevelQuery);
-  const tableId = Lib.sourceTableOrCardId(topLevelQuery);
-  const table = tableId
-    ? Lib.tableOrCardMetadata(topLevelQuery, tableId)
-    : null;
+  const databaseId = Lib.databaseID(query);
+  const tableId = Lib.sourceTableOrCardId(query);
+  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
 
   const pickerLabel = table
-    ? Lib.displayInfo(topLevelQuery, stageIndex, table).displayName
+    ? Lib.displayInfo(query, stageIndex, table).displayName
     : t`Pick your starting data`;
 
   const isRaw = useMemo(() => {
     return (
-      Lib.aggregations(topLevelQuery, stageIndex).length === 0 &&
-      Lib.breakouts(topLevelQuery, stageIndex).length === 0
+      Lib.aggregations(query, stageIndex).length === 0 &&
+      Lib.breakouts(query, stageIndex).length === 0
     );
-  }, [topLevelQuery, stageIndex]);
+  }, [query, stageIndex]);
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
   const handleCreateQuery = (tableId: TableId) => {
-    const nextTable = Lib.tableOrCardMetadata(topLevelQuery, tableId);
-    updateQuery(Lib.queryFromTableOrCardMetadata(topLevelQuery, nextTable));
+    const nextTable = Lib.tableOrCardMetadata(query, tableId);
+    updateQuery(Lib.queryFromTableOrCardMetadata(query, nextTable));
   };
 
   const handleChangeTable = (nextTableId: TableId) => {
-    const nextQuery = Lib.withDifferentTable(topLevelQuery, nextTableId);
+    const nextQuery = Lib.withDifferentTable(query, nextTableId);
     updateQuery(nextQuery);
   };
 
@@ -69,7 +67,7 @@ export const DataStep = ({
         right={
           canSelectTableColumns && (
             <DataFieldsPicker
-              query={topLevelQuery}
+              query={query}
               stageIndex={stageIndex}
               updateQuery={updateQuery}
             />

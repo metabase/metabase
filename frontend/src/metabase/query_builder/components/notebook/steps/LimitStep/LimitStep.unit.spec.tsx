@@ -14,7 +14,7 @@ function setup(step = createMockNotebookStep()) {
   render(
     <LimitStep
       step={step}
-      topLevelQuery={step.topLevelQuery}
+      query={step.query}
       color="brand"
       stageIndex={step.stageIndex}
       isLastOpened={false}
@@ -38,7 +38,7 @@ describe("LimitStep", () => {
   });
 
   it("should render correctly with limit set", () => {
-    const step = createMockNotebookStep({ topLevelQuery: QUERY_WITH_LIMIT });
+    const step = createMockNotebookStep({ query: QUERY_WITH_LIMIT });
     setup(step);
 
     expect(screen.getByDisplayValue(String(DEFAULT_LIMIT))).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe("LimitStep", () => {
   });
 
   it("should update the limit", () => {
-    const step = createMockNotebookStep({ topLevelQuery: QUERY_WITH_LIMIT });
+    const step = createMockNotebookStep({ query: QUERY_WITH_LIMIT });
     const { getNextQuery } = setup(step);
 
     const limitInput = screen.getByPlaceholderText("Enter a limit");
@@ -64,7 +64,7 @@ describe("LimitStep", () => {
   });
 
   it("shouldn't update the limit if zero provided", () => {
-    const step = createMockNotebookStep({ topLevelQuery: QUERY_WITH_LIMIT });
+    const step = createMockNotebookStep({ query: QUERY_WITH_LIMIT });
     const { updateQuery } = setup(step);
 
     const limitInput = screen.getByPlaceholderText("Enter a limit");
@@ -74,7 +74,7 @@ describe("LimitStep", () => {
   });
 
   it("shouldn't update the limit if its negative", () => {
-    const step = createMockNotebookStep({ topLevelQuery: QUERY_WITH_LIMIT });
+    const step = createMockNotebookStep({ query: QUERY_WITH_LIMIT });
     const { updateQuery } = setup(step);
 
     const limitInput = screen.getByPlaceholderText("Enter a limit");

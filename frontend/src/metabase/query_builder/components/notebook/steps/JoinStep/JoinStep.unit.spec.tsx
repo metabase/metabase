@@ -121,7 +121,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
   setupSearchEndpoints([createMockCollectionItem(MODEL)]);
 
   function Wrapper() {
-    const [query, setQuery] = useState(step.topLevelQuery);
+    const [query, setQuery] = useState(step.query);
 
     const onChange = async (nextQuery: Lib.Query) => {
       setQuery(nextQuery);
@@ -132,7 +132,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
       <JoinStep
         step={step}
         stageIndex={step.stageIndex}
-        topLevelQuery={query}
+        query={query}
         color="brand"
         isLastOpened={false}
         readOnly={readOnly}
@@ -185,7 +185,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 
 describe("Notebook Editor > Join Step", () => {
   it("should display a join correctly", () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+    setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     expect(screen.getByLabelText("Left table")).toHaveTextContent("Orders");
     expect(screen.getByLabelText("Right table")).toHaveTextContent("Products");
@@ -248,7 +248,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("shouldn't let changing the RHS table", () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+    setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     const rhsTablePicker = screen.getByLabelText("Right table");
     const pickerButton = within(rhsTablePicker).getByText("Products");
@@ -257,7 +257,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("should highlight selected LHS column", async () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+    setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     userEvent.click(screen.getByLabelText("Left column"));
     const popover = await screen.findByLabelText("grid");
@@ -273,7 +273,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("should highlight selected RHS column", async () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+    setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     userEvent.click(screen.getByLabelText("Right column"));
     const popover = await screen.findByLabelText("grid");
@@ -323,9 +323,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("should change LHS column", async () => {
     const query = getJoinedQuery();
-    const { getRecentJoin } = setup(
-      createMockNotebookStep({ topLevelQuery: query }),
-    );
+    const { getRecentJoin } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByLabelText("Left column"));
     const popover = await screen.findByLabelText("grid");
@@ -338,9 +336,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("should change RHS column", async () => {
     const query = getJoinedQuery();
-    const { getRecentJoin } = setup(
-      createMockNotebookStep({ topLevelQuery: query }),
-    );
+    const { getRecentJoin } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByLabelText("Right column"));
     const popover = await screen.findByLabelText("grid");
@@ -362,7 +358,7 @@ describe("Notebook Editor > Join Step", () => {
   });
 
   it("should display temporal unit for date-time columns", async () => {
-    setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+    setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
     userEvent.click(screen.getByLabelText("Left column"));
     const popover = await screen.findByLabelText("grid");
@@ -379,7 +375,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("should handle join strategy", async () => {
     const { getRecentJoin } = setup(
-      createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+      createMockNotebookStep({ query: getJoinedQuery() }),
     );
 
     userEvent.click(screen.getByLabelText("Change join type"));
@@ -409,7 +405,7 @@ describe("Notebook Editor > Join Step", () => {
 
   it("should handle join operator", async () => {
     const { getRecentJoin } = setup(
-      createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+      createMockNotebookStep({ query: getJoinedQuery() }),
     );
 
     userEvent.click(screen.getByLabelText("Change operator"));
@@ -529,7 +525,7 @@ describe("Notebook Editor > Join Step", () => {
 
     it("should select a few columns for an existing join", async () => {
       const { getRecentJoin } = setup(
-        createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+        createMockNotebookStep({ query: getJoinedQuery() }),
       );
 
       userEvent.click(screen.getByLabelText("Pick columns"));
@@ -562,7 +558,7 @@ describe("Notebook Editor > Join Step", () => {
 
     it("should be able to select no columns for an existing join", async () => {
       const { getRecentJoin } = setup(
-        createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+        createMockNotebookStep({ query: getJoinedQuery() }),
       );
 
       userEvent.click(screen.getByLabelText("Pick columns"));
@@ -578,7 +574,7 @@ describe("Notebook Editor > Join Step", () => {
     it("should display a join correctly", () => {
       setup(
         createMockNotebookStep({
-          topLevelQuery: getJoinedQueryWithMultipleConditions(),
+          query: getJoinedQueryWithMultipleConditions(),
         }),
       );
 
@@ -641,7 +637,7 @@ describe("Notebook Editor > Join Step", () => {
 
     it("should add a new condition", async () => {
       const { getRecentJoin } = setup(
-        createMockNotebookStep({ topLevelQuery: getJoinedQuery() }),
+        createMockNotebookStep({ query: getJoinedQuery() }),
       );
 
       userEvent.click(screen.getByLabelText("Add condition"));
@@ -673,7 +669,7 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     it("should remove an incomplete condition", async () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+      setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
       userEvent.click(screen.getByLabelText("Add condition"));
       let conditionContainer = screen.getByTestId("new-join-condition");
@@ -708,7 +704,7 @@ describe("Notebook Editor > Join Step", () => {
     it("should remove a complete condition", async () => {
       const { getRecentJoin } = setup(
         createMockNotebookStep({
-          topLevelQuery: getJoinedQueryWithMultipleConditions(),
+          query: getJoinedQueryWithMultipleConditions(),
         }),
       );
 
@@ -742,7 +738,7 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     it("shouldn't allow removing a single complete condition", async () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }));
+      setup(createMockNotebookStep({ query: getJoinedQuery() }));
 
       expect(
         screen.queryByLabelText("Remove condition"),
@@ -759,7 +755,7 @@ describe("Notebook Editor > Join Step", () => {
 
   describe("read-only", () => {
     it("shouldn't allow changing the join type", () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+      setup(createMockNotebookStep({ query: getJoinedQuery() }), {
         readOnly: true,
       });
 
@@ -767,7 +763,7 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     it("shouldn't allow changing the operator", () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+      setup(createMockNotebookStep({ query: getJoinedQuery() }), {
         readOnly: true,
       });
 
@@ -775,7 +771,7 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     it("shouldn't allow changing the join fields", () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+      setup(createMockNotebookStep({ query: getJoinedQuery() }), {
         readOnly: true,
       });
 
@@ -783,7 +779,7 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     it("shouldn't allow changing columns", () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+      setup(createMockNotebookStep({ query: getJoinedQuery() }), {
         readOnly: true,
       });
 
@@ -792,7 +788,7 @@ describe("Notebook Editor > Join Step", () => {
     });
 
     it("shouldn't allow adding a new condition", () => {
-      setup(createMockNotebookStep({ topLevelQuery: getJoinedQuery() }), {
+      setup(createMockNotebookStep({ query: getJoinedQuery() }), {
         readOnly: true,
       });
 
@@ -801,7 +797,7 @@ describe("Notebook Editor > Join Step", () => {
 
     it("shouldn't allow removing a condition", async () => {
       const query = getJoinedQueryWithMultipleConditions();
-      setup(createMockNotebookStep({ topLevelQuery: query }), {
+      setup(createMockNotebookStep({ query }), {
         readOnly: true,
       });
 

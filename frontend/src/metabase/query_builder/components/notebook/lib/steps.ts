@@ -260,7 +260,7 @@ function getStageSteps(
       stageIndex: stageIndex,
       itemIndex: itemIndex,
       question,
-      topLevelQuery: query,
+      query,
       valid: STEP.valid(query, stageIndex, metadata),
       active,
       visible:

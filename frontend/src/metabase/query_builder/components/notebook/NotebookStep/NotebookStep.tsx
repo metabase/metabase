@@ -91,7 +91,7 @@ function NotebookStep({
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
       const reverted = step.revert(
-        step.topLevelQuery,
+        step.query,
         step.stageIndex,
         step.itemIndex ?? undefined,
       );
@@ -138,7 +138,7 @@ function NotebookStep({
               <NotebookStepComponent
                 color={color}
                 step={step}
-                topLevelQuery={step.topLevelQuery}
+                query={step.query}
                 stageIndex={step.stageIndex}
                 sourceQuestion={sourceQuestion}
                 updateQuery={updateQuery}

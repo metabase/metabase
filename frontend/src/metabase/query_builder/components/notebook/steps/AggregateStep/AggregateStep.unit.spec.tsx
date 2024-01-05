@@ -31,7 +31,7 @@ function setup(step = createMockNotebookStep()) {
     <AggregateStep
       step={step}
       stageIndex={step.stageIndex}
-      topLevelQuery={step.topLevelQuery}
+      query={step.query}
       color="summarize"
       isLastOpened={false}
       reportTimezone="UTC"
@@ -66,14 +66,14 @@ describe("AggregateStep", () => {
   });
 
   it("should render correctly with an aggregation", () => {
-    setup(createMockNotebookStep({ topLevelQuery: createAggregatedQuery() }));
+    setup(createMockNotebookStep({ query: createAggregatedQuery() }));
     expect(screen.getByText("Average of Quantity")).toBeInTheDocument();
   });
 
   it("should use foreign key name for foreign table columns", () => {
     setup(
       createMockNotebookStep({
-        topLevelQuery: createAggregatedQuery({
+        query: createAggregatedQuery({
           table: "PRODUCTS",
           column: "RATING",
         }),
@@ -100,7 +100,7 @@ describe("AggregateStep", () => {
 
   it("should change an aggregation operator", () => {
     const { getNextQuery, getRecentAggregationClause } = setup(
-      createMockNotebookStep({ topLevelQuery: createAggregatedQuery() }),
+      createMockNotebookStep({ query: createAggregatedQuery() }),
     );
 
     userEvent.click(screen.getByText("Average of Quantity"));
@@ -120,7 +120,7 @@ describe("AggregateStep", () => {
 
   it("should change an aggregation column", () => {
     const { getNextQuery, getRecentAggregationClause } = setup(
-      createMockNotebookStep({ topLevelQuery: createAggregatedQuery() }),
+      createMockNotebookStep({ query: createAggregatedQuery() }),
     );
 
     userEvent.click(screen.getByText("Average of Quantity"));
@@ -139,7 +139,7 @@ describe("AggregateStep", () => {
 
   it("should remove an aggregation", () => {
     const { getNextQuery } = setup(
-      createMockNotebookStep({ topLevelQuery: createAggregatedQuery() }),
+      createMockNotebookStep({ query: createAggregatedQuery() }),
     );
 
     userEvent.click(getIcon("close"));

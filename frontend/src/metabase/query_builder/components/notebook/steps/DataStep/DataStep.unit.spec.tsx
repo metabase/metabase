@@ -51,7 +51,7 @@ const setup = async (
   renderWithProviders(
     <DataStep
       step={step}
-      topLevelQuery={step.topLevelQuery}
+      query={step.query}
       stageIndex={step.stageIndex}
       readOnly={readOnly}
       color="brand"
@@ -88,7 +88,7 @@ const setup = async (
 const setupEmptyQuery = () => {
   const question = Question.create({ databaseId: SAMPLE_DB_ID });
   const query = question.query();
-  return setup(createMockNotebookStep({ topLevelQuery: query }));
+  return setup(createMockNotebookStep({ query }));
 };
 
 describe("DataStep", () => {
@@ -140,7 +140,7 @@ describe("DataStep", () => {
 
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
-      await setup(createMockNotebookStep({ topLevelQuery: query }));
+      await setup(createMockNotebookStep({ query }));
       userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -152,7 +152,7 @@ describe("DataStep", () => {
 
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
-      await setup(createMockNotebookStep({ topLevelQuery: query }));
+      await setup(createMockNotebookStep({ query }));
       userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -166,7 +166,7 @@ describe("DataStep", () => {
 
     it("should allow selecting a column", async () => {
       const query = createQueryWithFields(["ID"]);
-      const step = createMockNotebookStep({ topLevelQuery: query });
+      const step = createMockNotebookStep({ query });
       const { getNextColumn } = await setup(step);
 
       userEvent.click(screen.getByLabelText("Pick columns"));
@@ -190,7 +190,7 @@ describe("DataStep", () => {
 
     it("should allow selecting all columns", async () => {
       const query = createQueryWithFields(["ID"]);
-      const step = createMockNotebookStep({ topLevelQuery: query });
+      const step = createMockNotebookStep({ query });
       const { getNextColumn } = await setup(step);
 
       userEvent.click(screen.getByLabelText("Pick columns"));
@@ -222,16 +222,16 @@ describe("DataStep", () => {
     });
 
     it("should not display fields picker if a query has aggregations", () => {
-      const topLevelQuery = createQueryWithAggregation();
-      const step = createMockNotebookStep({ topLevelQuery });
+      const query = createQueryWithAggregation();
+      const step = createMockNotebookStep({ query });
       setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
     it("should not display fields picker if a query has breakouts", () => {
-      const topLevelQuery = createQueryWithBreakout();
-      const step = createMockNotebookStep({ topLevelQuery });
+      const query = createQueryWithBreakout();
+      const step = createMockNotebookStep({ query });
       setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();

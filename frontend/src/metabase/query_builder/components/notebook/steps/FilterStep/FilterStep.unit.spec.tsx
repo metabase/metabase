@@ -22,7 +22,7 @@ function setup(step = createMockNotebookStep()) {
     <FilterStep
       step={step}
       stageIndex={step.stageIndex}
-      topLevelQuery={step.topLevelQuery}
+      query={step.query}
       color="filter"
       isLastOpened={false}
       reportTimezone="UTC"
@@ -41,7 +41,7 @@ describe("FilterStep", () => {
 
   it("should render filters", () => {
     const { query } = createQueryWithFilter();
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    setup(createMockNotebookStep({ query }));
     expect(screen.getByText("Total is greater than 20")).toBeInTheDocument();
   });
 });
