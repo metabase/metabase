@@ -100,13 +100,13 @@
                                                              ::add/desired-alias "double_id"
                                                              ::add/position      0}]
                                         [:field %date {:temporal-unit            :day
-                                                       ::nest-query/outer-select true
+                                                       :qp/ignore-coercion       true
                                                        ::add/source-table        ::add/source
                                                        ::add/source-alias        "DATE"
                                                        ::add/desired-alias       "DATE"
                                                        ::add/position            1}]
                                         [:field %date {:temporal-unit            :month
-                                                       ::nest-query/outer-select true
+                                                       :qp/ignore-coercion       true
                                                        ::add/source-table        ::add/source
                                                        ::add/source-alias        "DATE"
                                                        ::add/desired-alias       "DATE_2"
@@ -544,7 +544,7 @@
                                                        [:expression "test" {::add/desired-alias "test"
                                                                             ::add/position      1}]]}
                          :fields       [[:field %price {:temporal-unit            :default
-                                                        ::nest-query/outer-select true
+                                                        :qp/ignore-coercion       true
                                                         ::add/source-table        ::add/source
                                                         ::add/source-alias        "PRICE"
                                                         ::add/desired-alias       "PRICE"
@@ -608,7 +608,7 @@
                                                                                      ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
                                                                                      ::add/position      0}]
                                        created-at        [:field %created-at {:temporal-unit            :year
-                                                                              ::nest-query/outer-select true
+                                                                              :qp/ignore-coercion       true
                                                                               ::add/source-table        ::add/source
                                                                               ::add/source-alias        "CREATED_AT"
                                                                               ::add/desired-alias       "CREATED_AT"
