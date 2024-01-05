@@ -86,7 +86,7 @@ export function FilterHeader({
   expanded,
   onQueryChange,
 }: FilterHeaderProps) {
-  const query = question._getMLv2Query();
+  const query = question.query();
 
   const stageCount = Lib.stageCount(query);
   const lastStageIndex = stageCount - 1;
