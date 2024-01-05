@@ -27,12 +27,6 @@ import type {
   State,
 } from "metabase-types/store";
 
-import {
-  getDashboardId,
-  getDashCardById,
-  getDashcards,
-} from "./selectors-typed";
-
 type SidebarState = State["dashboard"]["sidebar"];
 
 function isClickBehaviorSidebar(
@@ -47,7 +41,12 @@ function isEditParameterSidebar(
   return sidebar.name === SIDEBAR_NAME.editParameter;
 }
 
-export const getIsEditing = (state: State) => !!state.dashboard.isEditing;
+export const getDashboardBeforeEditing = (state: State) =>
+  state.dashboard.isEditing;
+
+export const getIsEditing = (state: State) =>
+  Boolean(getDashboardBeforeEditing(state));
+
 export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
   return isClickBehaviorSidebar(sidebar)
@@ -104,11 +103,25 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
+export const getDashboardId = (state: State) => state.dashboard.dashboardId;
+
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
   (dashboardId, dashboards) =>
     typeof dashboardId === "number" ? dashboards[dashboardId] : undefined,
 );
+
+export const getDashcards = (state: State) => state.dashboard.dashcards;
+
+export const getDashCardById = (state: State, dashcardId: DashCardId) => {
+  const dashcards = getDashcards(state);
+  return dashcards[dashcardId];
+};
+
+export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
+  const dashboard = getDashboardBeforeEditing(state);
+  return dashboard?.dashcards?.find?.(dashcard => dashcard.id === dashcardId);
+}
 
 export const getLoadingDashCards = (state: State) =>
   state.dashboard.loadingDashCards;
@@ -324,3 +337,14 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+export const getTabs = createSelector([getDashboard], dashboard => {
+  if (!dashboard) {
+    return [];
+  }
+  return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
+});
+
+export function getSelectedTabId(state: State) {
+  return state.dashboard.selectedTabId;
+}
