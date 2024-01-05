@@ -102,3 +102,64 @@
               (is (every? #(str/ends-with? % "%") model-data-row)))
             (testing "The data from the last question (based on the above model) is percent formatted"
               (is (every? #(str/ends-with? % "%") question-data-row)))))))))
+
+(defn- run-pulse-and-return-scalars
+  "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
+  [pulse]
+  (mt/with-fake-inbox
+    (with-redefs [email/bcc-enabled? (constantly false)]
+      (mt/with-test-user nil
+        (metabase.pulse/send-pulse! pulse)))
+    (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
+          doc         (-> html-body hik/parse hik/as-hickory)
+          data-tables (hik.s/select
+                       (hik.s/class "pulse-body")
+                       doc)]
+      (mapcat
+       (fn [data-table]
+         (->> (hik.s/select
+               hik.s/first-child
+               data-table)
+              (map (comp first :content))))
+       data-tables))))
+
+(deftest number-viz-shows-correct-value
+  (testing "Static Viz. Render of 'Number' Visualization shows the correct column's first value #32362."
+    (mt/dataset sample-dataset
+      (let [ ;; test card 1 'narrows' the query to a single column (the "TAX" field)
+            test-card1 {:visualization_settings {:scalar.field "TAX"}
+                        :display                :scalar
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table (mt/id :orders)
+                                                            :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]]}}}
+            ;; test card 2's query returns all cols/rows of the table, but still has 'Number' viz settings `{:scalar.field "TAX"}`
+            test-card2 {:visualization_settings {:scalar.field "TAX"}
+                        :display                :scalar
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table (mt/id :orders)}}}]
+        (mt/with-temp [Card          {card-id1 :id} test-card1
+                       Card          {card-id2 :id} test-card2
+                       Dashboard     {dash-id :id} {:name "just dash"}
+                       DashboardCard {dash-card-id1 :id} {:dashboard_id dash-id
+                                                          :card_id      card-id1}
+                       DashboardCard {dash-card-id2 :id} {:dashboard_id dash-id
+                                                          :card_id      card-id2}
+                       Pulse         {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                               :dashboard_id dash-id}
+                       PulseCard             _             {:pulse_id          pulse-id
+                                                            :card_id           card-id1
+                                                            :dashboard_card_id dash-card-id1}
+                       PulseCard             _             {:pulse_id          pulse-id
+                                                            :card_id           card-id2
+                                                            :dashboard_card_id dash-card-id2}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          ;; First value is the scalar returned from card1 (specified "TAX" field directly in the query)
+          ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
+          (is (= ["2.07" "2.07"]
+                 (run-pulse-and-return-scalars pulse))))))))
