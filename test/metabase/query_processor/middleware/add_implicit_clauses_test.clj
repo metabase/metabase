@@ -145,7 +145,7 @@
            (mt/mbql-query checkins
              {:aggregation [[:count]]
               :breakout    [!month.$date]}))]
-      (is (=? {:fields [[:field (mt/id :checkins :date) {}]
+      (is (=? {:fields [[:field (mt/id :checkins :date) nil]
                         [:field "count" {:base-type :type/BigInteger}]]}
               (add-implicit-fields
                (:query (lib.tu.macros/mbql-query checkins
