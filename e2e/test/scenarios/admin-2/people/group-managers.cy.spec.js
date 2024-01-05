@@ -192,5 +192,5 @@ function confirmLosingAbilityToManageGroup() {
 function removeFirstGroup() {
   cy.icon("ellipsis").eq(0).click();
   cy.findByText("Remove Group").click();
-  cy.button("Yes").click();
+  cy.button("Remove group").click();
 }
