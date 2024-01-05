@@ -78,7 +78,7 @@ describe("DatasetEditor", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
-  it("tries to load a model index when card is already saved", async () => {
+  it("tries to load a model index when card is already saved", () => {
     renderDatasetEditor(mockSavedCard);
     const calls = fetchMock.calls("path:/api/model-index");
     expect(calls).toHaveLength(1);
@@ -86,7 +86,7 @@ describe("DatasetEditor", () => {
       new URL(calls[0]?.request?.url ?? "").searchParams.get("model_id"),
     ).toBe(`${mockSavedCard.id}`);
   });
-  it("does not try to load a model index when card is unsaved", async () => {
+  it("does not try to load a model index when card is unsaved", () => {
     renderDatasetEditor(mockUnsavedCard);
     const calls = fetchMock.calls("path:/api/model-index");
     expect(calls).toHaveLength(0);
