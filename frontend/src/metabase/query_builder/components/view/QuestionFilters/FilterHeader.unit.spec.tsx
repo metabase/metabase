@@ -40,7 +40,7 @@ function setup({
     });
 
     const handleQueryChange = (question: Question) => {
-      const nextQuery = question._getMLv2Query();
+      const nextQuery = question.query();
       setQuery(nextQuery);
       onChange(nextQuery);
     };
