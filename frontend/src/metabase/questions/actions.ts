@@ -15,9 +15,9 @@ export const loadMetadataForCard =
   (dispatch: Dispatch, getState: GetState) => {
     const metadata = getMetadata(getState());
     const question = new Question(card, metadata);
-    const queries = [question.query()];
+    const queries = [question.legacyQuery()];
     if (question.isDataset()) {
-      queries.push(question.composeDataset().query());
+      queries.push(question.composeDataset().legacyQuery());
     }
     return dispatch(
       loadMetadataForQueries(queries, question.dependentMetadata(), options),

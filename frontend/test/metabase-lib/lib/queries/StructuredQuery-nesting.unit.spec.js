@@ -27,21 +27,21 @@ describe("StructuredQuery nesting", () => {
   describe("nest", () => {
     it("should nest correctly", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query();
-      expect(q.query()).toEqual({ "source-table": ORDERS_ID });
-      expect(q.nest().query()).toEqual({
+      const q = ordersTable.legacyQuery();
+      expect(q.legacyQuery()).toEqual({ "source-table": ORDERS_ID });
+      expect(q.nest().legacyQuery()).toEqual({
         "source-query": { "source-table": ORDERS_ID },
       });
     });
 
     it("should be able to modify the outer question", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query();
+      const q = ordersTable.legacyQuery();
       expect(
         q
           .nest()
           .filter(["=", ["field", ORDERS.TOTAL, null], 42])
-          .query(),
+          .legacyQuery(),
       ).toEqual({
         "source-query": { "source-table": ORDERS_ID },
         filter: ["=", ["field", ORDERS.TOTAL, null], 42],
@@ -50,14 +50,14 @@ describe("StructuredQuery nesting", () => {
 
     it("should be able to modify the source question", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query();
+      const q = ordersTable.legacyQuery();
       expect(
         q
           .nest()
           .sourceQuery()
           .filter(["=", ["field", ORDERS.TOTAL, null], 42])
           .parentQuery()
-          .query(),
+          .legacyQuery(),
       ).toEqual({
         "source-query": {
           "source-table": ORDERS_ID,
@@ -69,7 +69,7 @@ describe("StructuredQuery nesting", () => {
     it("should return a table with correct dimensions", () => {
       const { ordersTable } = setup();
       const q = ordersTable
-        .query()
+        .legacyQuery()
         .aggregate(["count"])
         .breakout(["field", ORDERS.PRODUCT_ID, null]);
       expect(
@@ -88,7 +88,7 @@ describe("StructuredQuery nesting", () => {
     it("should return filters for the last two stages", () => {
       const { ordersTable } = setup();
       const q = ordersTable
-        .query()
+        .legacyQuery()
         .aggregate(["count"])
         .filter(["=", ["field", ORDERS.PRODUCT_ID, null], 1])
         .nest()
@@ -107,30 +107,30 @@ describe("StructuredQuery nesting", () => {
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query();
-      expect(q.topLevelQuery().query()).toEqual({
+      const q = ordersTable.legacyQuery();
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
       });
     });
     it("should return the query if it's not summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query().aggregate(["count"]);
-      expect(q.topLevelQuery().query()).toEqual({
+      const q = ordersTable.legacyQuery().aggregate(["count"]);
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
     });
     it("should return last stage if none are summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query().nest();
-      expect(q.topLevelQuery().query()).toEqual({
+      const q = ordersTable.legacyQuery().nest();
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-query": { "source-table": ORDERS_ID },
       });
     });
     it("should return last summarized stage if any is summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query().aggregate(["count"]).nest();
-      expect(q.topLevelQuery().query()).toEqual({
+      const q = ordersTable.legacyQuery().aggregate(["count"]).nest();
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
@@ -140,7 +140,7 @@ describe("StructuredQuery nesting", () => {
   describe("topLevelDimension", () => {
     it("should return same dimension if not nested", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.query();
+      const q = ordersTable.legacyQuery();
       const d = q.topLevelDimension(
         q.parseFieldReference(["field", ORDERS.TOTAL, null]),
       );
@@ -149,7 +149,7 @@ describe("StructuredQuery nesting", () => {
     it("should return underlying dimension for a nested query", () => {
       const { ordersTable } = setup();
       const q = ordersTable
-        .query()
+        .legacyQuery()
         .aggregate(["count"])
         .breakout(["field", ORDERS.TOTAL, null])
         .nest();
@@ -185,7 +185,7 @@ describe("StructuredQuery nesting", () => {
       const metadata = ordersTable.metadata;
       const question = ordersTable.question();
       const dataset = question.setId(1).setDataset(true);
-      const nestedDatasetQuery = dataset.composeDataset().query();
+      const nestedDatasetQuery = dataset.composeDataset().legacyQuery();
       expect(
         // get a list of all dimension options for the nested query
         nestedDatasetQuery

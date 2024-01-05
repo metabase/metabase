@@ -77,7 +77,7 @@ function NotebookSteps({
       } else {
         const updatedLegacyQuery = Lib.toLegacyQuery(query);
         const updatedQuestion = question.setDatasetQuery(updatedLegacyQuery);
-        const updatedQuery = updatedQuestion.query() as StructuredQuery;
+        const updatedQuery = updatedQuestion.legacyQuery() as StructuredQuery;
         const cleanQuestion = updatedQuery.cleanNesting().question();
         await updateQuestion(cleanQuestion);
       }

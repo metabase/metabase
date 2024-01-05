@@ -90,7 +90,7 @@ const QuestionActions = ({
     canWrite &&
     isSaved &&
     isDataset &&
-    checkDatabaseCanPersistDatasets(question.query().database());
+    checkDatabaseCanPersistDatasets(question.legacyQuery().database());
 
   const handleEditQuery = useCallback(() => {
     setQueryBuilderMode("dataset", {

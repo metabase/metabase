@@ -27,7 +27,7 @@ QuestionDataSource.propTypes = {
 };
 
 function isMaybeBasedOnDataset(question) {
-  const tableId = question.query().sourceTableId();
+  const tableId = question.legacyQuery().sourceTableId();
   return isVirtualCardId(tableId);
 }
 
@@ -44,7 +44,7 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
     );
   }
 
-  const sourceTable = question.query().sourceTableId();
+  const sourceTable = question.legacyQuery().sourceTableId();
   const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
 
   if (originalQuestion?.id() === sourceQuestionId) {
@@ -162,8 +162,8 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   const isStructuredQuery = question.isStructured();
   const query = isStructuredQuery
-    ? question.query().rootQuery()
-    : question.query();
+    ? question.legacyQuery().rootQuery()
+    : question.legacyQuery();
 
   const hasDataPermission = question.isQueryEditable();
   if (!hasDataPermission) {
