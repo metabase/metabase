@@ -10,7 +10,13 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
+
+(defn- maybe-expose-key [api-key]
+  (if (contains? api-key :unmasked_key)
+    (update api-key :unmasked_key u.secret/expose)
+    api-key))
 
 (defn- present-api-key
   "Takes an ApiKey and hydrates/selects keys as necessary to put it into a standard form for responses"
@@ -25,12 +31,13 @@
                     :unmasked_key
                     :name
                     :masked_key])
+      (maybe-expose-key)
       (update :updated_by #(select-keys % [:common_name :id]))))
 
 (defn- key-with-unique-prefix []
   (u/auto-retry 5
    (let [api-key (api-key/generate-key)
-         prefix (api-key/prefix api-key)]
+         prefix (api-key/prefix (u.secret/expose api-key))]
      ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
      ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
@@ -54,9 +61,13 @@
   (let [unhashed-key (key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (u/slugify name))]
     (t2/with-transaction [_conn]
-      (let [user (user/insert-new-user! {:email      email
-                                         :first_name name
-                                         :type       :api-key})]
+      (let [user (first
+                  (t2/insert-returning-instances! :model/User
+                                                  {:email      email
+                                                   :first_name name
+                                                   :last_name  ""
+                                                   :type       :api-key
+                                                   :password (str (random-uuid))}))]
         (user/set-permissions-groups! user [(perms-group/all-users) group_id])
         (let [api-key (-> (t2/insert-returning-instance! :model/ApiKey
                                                          (-> {:user_id       (u/the-id user)
@@ -93,7 +104,8 @@
           (user/set-permissions-groups! user [(perms-group/all-users) {:id group_id}])))
       (when name
         ;; A bit of a pain to keep these in sync, but oh well.
-        (t2/update! :model/User (:user_id api-key-before) {:first_name name})
+        (t2/update! :model/User (:user_id api-key-before) {:first_name name
+                                                           :last_name ""})
         (t2/update! :model/ApiKey id (with-updated-by {:name name}))))
     (let [updated-api-key (-> (t2/select-one :model/ApiKey :id id)
                               (t2/hydrate :group :updated_by))]
@@ -113,7 +125,7 @@
         unhashed-key (key-with-unique-prefix)
         api-key-after (assoc api-key-before
                              :unhashed_key unhashed-key
-                             :key_prefix (api-key/prefix unhashed-key))]
+                             :key_prefix (api-key/prefix (u.secret/expose unhashed-key)))]
     (t2/update! :model/ApiKey :id id (with-updated-by
                                        (select-keys api-key-after [:unhashed_key])))
     (events/publish-event! :event/api-key-regenerate

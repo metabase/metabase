@@ -93,7 +93,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 };
 
 function getSourceQuestionId(question: Question) {
-  const query = question.query();
+  const query = question.legacyQuery();
   if (query instanceof StructuredQuery) {
     const sourceTableId = query.sourceTableId();
     if (isVirtualCardId(sourceTableId)) {

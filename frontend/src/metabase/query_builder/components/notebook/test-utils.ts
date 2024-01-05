@@ -15,7 +15,8 @@ export const metadata = createMockMetadata({
 });
 
 export const DEFAULT_QUESTION = checkNotNull(metadata.question(1));
-export const DEFAULT_LEGACY_QUERY = DEFAULT_QUESTION.query() as StructuredQuery;
+export const DEFAULT_LEGACY_QUERY =
+  DEFAULT_QUESTION.legacyQuery() as StructuredQuery;
 export const DEFAULT_QUERY = DEFAULT_QUESTION._getMLv2Query();
 
 export function createMockNotebookStep({

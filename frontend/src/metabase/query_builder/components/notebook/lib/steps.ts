@@ -191,7 +191,7 @@ export function getQuestionSteps(
 ) {
   const allSteps: NotebookStep[] = [];
 
-  let legacyQuery = question.query() as StructuredQuery;
+  let legacyQuery = question.legacyQuery() as StructuredQuery;
   let query = question._getMLv2Query();
 
   // strip empty source queries
