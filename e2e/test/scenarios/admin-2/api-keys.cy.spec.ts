@@ -188,7 +188,6 @@ describe("scenarios > admin > settings > API keys", () => {
     it("should allow creating questions and dashboards with an API key", () => {
       createApiKey("Test API Key One", ADMINISTRATORS_GROUP_ID).then(
         ({ body }) => {
-          console.log(body);
           const apiKey = body.unmasked_key;
           createQuestionForApiKey(apiKey).then(({ body }) => {
             const questionId = body.id;
