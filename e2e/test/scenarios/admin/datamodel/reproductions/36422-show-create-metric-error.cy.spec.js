@@ -10,15 +10,12 @@ describe("issue 36422", () => {
     cy.visit("/admin/datamodel/metrics");
     cy.button("New metric").click();
     selectTable("Orders");
-    cy.get('[name="name"]').type("x");
-    cy.get('[name="description"]').type("x");
+    cy.findByLabelText("Name Your Metric").type("x");
+    cy.findByLabelText("Describe Your Metric").type("x");
 
     cy.intercept("POST", "/api/metric", req => req.reply(400));
     cy.button("Save changes").click();
-    cy.button("Failed")
-      .parent()
-      .parent()
-      .should("contain", "An error occurred");
+    cy.findByRole("alert", { name: "An error occurred" }).should("be.visible");
   });
 });
 
