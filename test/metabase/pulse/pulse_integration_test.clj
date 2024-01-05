@@ -15,7 +15,7 @@
 
 (deftest result-metadata-preservation-in-html-static-viz-test
   (testing "Results metadata applied to a model or query based on a model should be used in the HTML rendering of the pulse email."
-    (mt/dataset test-data
+    (mt/dataset sample-dataset
       (mt/with-temp [Card {base-card-id :id} {:name          "Base question - no special metadata"
                                               :dataset_query {:database (mt/id)
                                                               :type     :query
@@ -125,7 +125,7 @@
 
 (deftest number-viz-shows-correct-value
   (testing "Static Viz. Render of 'Number' Visualization shows the correct column's first value #32362."
-    (mt/dataset test-data
+    (mt/dataset sample-dataset
       (let [ ;; test card 1 'narrows' the query to a single column (the "TAX" field)
             test-card1 {:visualization_settings {:scalar.field "TAX"}
                         :display                :scalar
