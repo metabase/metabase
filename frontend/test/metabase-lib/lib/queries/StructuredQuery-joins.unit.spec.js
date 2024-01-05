@@ -14,7 +14,7 @@ const productsTable = metadata.table(PRODUCTS_ID);
 describe("StructuredQuery nesting", () => {
   describe("dimensionOptions", () => {
     it("should include joined table's fields", () => {
-      const q = productsTable.query().join({
+      const q = productsTable.legacyQuery().join({
         alias: "join0",
         "source-table": ORDERS_ID,
       });

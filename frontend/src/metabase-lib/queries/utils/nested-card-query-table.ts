@@ -38,7 +38,7 @@ export function getDatasetTable(
   const question = query.question();
   const composedDatasetQuestion = question.composeDataset();
   const composedQuestionQuery =
-    composedDatasetQuestion.query() as StructuredQuery;
+    composedDatasetQuestion.legacyQuery() as StructuredQuery;
   return getNestedCardTable(composedQuestionQuery);
 }
 
@@ -46,7 +46,7 @@ function createVirtualTableUsingQuestionMetadata(question: Question): Table {
   const metadata = question.metadata();
   const questionResultMetadata = question.getResultMetadata();
   const questionDisplayName = question.displayName() as string;
-  const query = question.query() as StructuredQuery | NativeQuery;
+  const query = question.legacyQuery() as StructuredQuery | NativeQuery;
   const fields = questionResultMetadata.map((fieldMetadata: any) => {
     const field = metadata.field(fieldMetadata.id);
     const virtualField = field

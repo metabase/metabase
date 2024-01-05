@@ -131,7 +131,7 @@ function notRelativeDateOrRange({ type }: Parameter) {
 }
 
 export function getTargetsForQuestion(question: Question): Target[] {
-  const query = question.query();
+  const query = question.legacyQuery();
   return [...query.dimensionOptions().all(), ...query.variables()].map(o => {
     let id, target: ClickBehaviorTarget;
     if (o instanceof TemplateTagVariable || o instanceof TemplateTagDimension) {

@@ -51,7 +51,9 @@ const dashboardDetails = {
   parameters: [filterDetails],
 };
 
-describe("issue 19745", () => {
+// TODO: unskip both tests when metabase#36574 is resolved
+// @see https://metaboat.slack.com/archives/C04CYTEL9N2/p1702063378269379
+describe.skip("issue 19745", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

@@ -6,7 +6,7 @@
 
 Examples:
 
-- `question().query().aggregation()[0].setDimension(dimension)`
+- `question().legacyQuery().aggregation()[0].setDimension(dimension)`
 
 Exceptions:
 
