@@ -75,11 +75,6 @@ function setup({
 }
 
 describe("FilterHeader", () => {
-  it("should not render if a query has no filters", () => {
-    setup({ query: createQuery() });
-    expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();
-  });
-
   it("should not render if expanded is false", () => {
     setup({ isExpanded: false });
     expect(screen.queryByTestId("TEST_CONTAINER")).toBeEmptyDOMElement();

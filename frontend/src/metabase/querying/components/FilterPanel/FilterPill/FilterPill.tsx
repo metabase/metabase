@@ -1,7 +1,6 @@
 import type { HTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
-import { Text } from "metabase/ui";
 import { Icon } from "metabase/core/components/Icon";
 import { FilterPillRoot } from "./FilterPill.styled";
 
@@ -25,11 +24,11 @@ export const FilterPill = forwardRef(function FilterPill(
       align="center"
       gap="sm"
       px="sm"
+      lh="1.5rem"
+      fw="bold"
       data-testid="filter-pill"
     >
-      <Text color="inherit" weight="bold">
-        {children}
-      </Text>
+      {children}
       <Icon
         name="close"
         size={12}
