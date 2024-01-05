@@ -137,6 +137,16 @@ const QuestionActions = ({
 
   const extraButtons = [];
 
+  if (canAppend) {
+    extraButtons.push({
+      title: t`Upload data to this model`,
+      icon: "upload",
+      action: () => {
+        document.getElementById("append-file-input")?.click();
+      },
+    });
+  }
+
   if (
     isMetabotEnabled &&
     isDataset &&
@@ -235,16 +245,6 @@ const QuestionActions = ({
       icon: "archive",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
-    });
-  }
-
-  if (canAppend) {
-    extraButtons.push({
-      title: t`Append data`,
-      icon: "add",
-      action: () => {
-        document.getElementById("append-file-input")?.click();
-      },
     });
   }
 

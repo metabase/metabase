@@ -16,14 +16,10 @@ import {
 } from "metabase/lib/redux";
 
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
-export const UPLOAD_FILE_TO_COLLECTION_START =
-  "metabase/collection/UPLOAD_FILE_START";
-export const UPLOAD_FILE_TO_COLLECTION_END =
-  "metabase/collection/UPLOAD_FILE_END";
-export const UPLOAD_FILE_TO_COLLECTION_ERROR =
-  "metabase/collection/UPLOAD_FILE_ERROR";
-export const UPLOAD_FILE_TO_COLLECTION_CLEAR =
-  "metabase/collection/UPLOAD_FILE_CLEAR";
+export const UPLOAD_FILE_START = "metabase/collection/UPLOAD_FILE_START";
+export const UPLOAD_FILE_END = "metabase/collection/UPLOAD_FILE_END";
+export const UPLOAD_FILE_ERROR = "metabase/collection/UPLOAD_FILE_ERROR";
+export const UPLOAD_FILE_CLEAR = "metabase/collection/UPLOAD_FILE_CLEAR";
 export const UPLOAD_FILE_CLEAR_ALL =
   "metabase/collection/UPLOAD_FILE_CLEAR_ALL";
 
@@ -32,10 +28,10 @@ export const MAX_UPLOAD_STRING = "50";
 
 const CLEAR_AFTER_MS = 8000;
 
-const uploadStart = createAction(UPLOAD_FILE_TO_COLLECTION_START);
-const uploadEnd = createAction(UPLOAD_FILE_TO_COLLECTION_END);
-const uploadError = createAction(UPLOAD_FILE_TO_COLLECTION_ERROR);
-const clearUpload = createAction(UPLOAD_FILE_TO_COLLECTION_CLEAR);
+const uploadStart = createAction(UPLOAD_FILE_START);
+const uploadEnd = createAction(UPLOAD_FILE_END);
+const uploadError = createAction(UPLOAD_FILE_ERROR);
+const clearUpload = createAction(UPLOAD_FILE_CLEAR);
 export const clearAllUploads = createAction(UPLOAD_FILE_CLEAR_ALL);
 
 export const getAllUploads = (state: State) => Object.values(state.upload);
@@ -133,14 +129,14 @@ const upload = handleActions<
   UploadStartPayload | UploadEndPayload
 >(
   {
-    [UPLOAD_FILE_TO_COLLECTION_START]: {
+    [UPLOAD_FILE_START]: {
       next: (state, { payload }) =>
         assocIn(state, [payload.id], {
           ...payload,
           status: "in-progress",
         }),
     },
-    [UPLOAD_FILE_TO_COLLECTION_END]: {
+    [UPLOAD_FILE_END]: {
       next: (state, { payload }) =>
         updateIn(state, [payload.id], val => ({
           ...val,
@@ -148,7 +144,7 @@ const upload = handleActions<
           status: "complete",
         })),
     },
-    [UPLOAD_FILE_TO_COLLECTION_ERROR]: {
+    [UPLOAD_FILE_ERROR]: {
       next: (state, { payload }) =>
         updateIn(state, [payload.id], val => ({
           ...val,
@@ -156,7 +152,7 @@ const upload = handleActions<
           status: "error",
         })),
     },
-    [UPLOAD_FILE_TO_COLLECTION_CLEAR]: {
+    [UPLOAD_FILE_CLEAR]: {
       next: (state, { payload: { id } }) => dissocIn(state, [id]),
     },
     [UPLOAD_FILE_CLEAR_ALL]: {

@@ -127,7 +127,7 @@ const Description = ({
   upload: FileUpload;
   setErrorMessage: (msg?: string) => void;
 }) => {
-  if (upload.status === "complete") {
+  if (upload.status === "complete" && upload.modelId) {
     return <Link to={`/model/${upload.modelId}`}>Start exploring</Link>;
   }
 

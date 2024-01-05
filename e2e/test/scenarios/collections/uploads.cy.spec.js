@@ -334,7 +334,7 @@ function uploadFile(testFile, valid = true) {
 function appendFile(testFile, valid = true) {
   // assumes we're already looking at an uploadable model page
   cy.findByTestId("qb-header").icon("ellipsis").click();
-  popover().findByText("Append data").click();
+  popover().findByText("Upload data to this model").click();
 
   cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
     cy.get("#append-file-input").selectFile(
