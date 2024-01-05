@@ -53,8 +53,12 @@
      ;; bucketed in the source query; don't need to apply bucketing again in the parent query. Mark the field as
      ;; `qp/ignore-coercion` here so that it doesn't happen again in the parent query.
      (or (some-> (mbql.u/match-one field-ref :field)
-                 (mbql.u/update-field-options dissoc :binning :temporal-unit)
-                 (mbql.u/assoc-field-options :qp/ignore-coercion true))
+                 (mbql.u/update-field-options (fn [opts]
+                                                (if (or (:binning opts) (:temporal-unit opts))
+                                                  (-> opts
+                                                      (dissoc :binning :temporal-unit)
+                                                      (assoc :qp/ignore-coercion true))
+                                                  opts))))
          ;; otherwise construct a field reference that can be used to refer to this Field.
          ;; Force string id field if expression contains just field. See issue #28451.
          (if (and (not= ref-type :expression)
