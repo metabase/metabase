@@ -35,6 +35,7 @@
 
 (declare remove-local-references)
 (declare remove-stage-references)
+(declare remove-join)
 (declare normalize-fields-clauses)
 
 (defn- find-matching-order-by-index
@@ -121,12 +122,24 @@
                                        (_ :guard #(or (empty? target-opts)
                                                       (set/subset? (set target-opts) (set %))))
                                        target-ref-id] [location clause]))))))
-                   (stage-paths query stage-number))]
-    (reduce
-     (fn [query [location target-clause]]
-       (remove-replace-location query stage-number unmodified-query-for-stage location target-clause #(lib.util/remove-clause %1 %2 %3 stage-number)))
-     query
-     to-remove)))
+                   (stage-paths query stage-number))
+        dead-joins (volatile! (transient []))]
+    (as-> query q
+      (reduce
+        (fn [query [location target-clause]]
+          (remove-replace-location
+            query stage-number unmodified-query-for-stage location target-clause
+            #(try (lib.util/remove-clause %1 %2 %3 stage-number)
+                  (catch #?(:clj Exception :cljs js/Error) e
+                    (let [{:keys [error join]} (ex-data e)]
+                      (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+                        ;; Return the stage unchanged, but keep track of the dead joins.
+                        (do (vswap! dead-joins conj! join)
+                            %1)
+                        (throw e)))))))
+        q
+        to-remove)
+      (reduce #(remove-join %1 stage-number %2) q (persistent! @dead-joins)))))
 
 (defn- remove-stage-references
   [query previous-stage-number unmodified-query-for-stage target-uuid]
@@ -184,8 +197,6 @@
             (remove-replace-location stage-number query location target-clause remove-replace-fn)
             normalize-fields-clauses)
         query))))
-
-(declare remove-join)
 
 (mu/defn remove-clause :- :metabase.lib.schema/query
   "Removes the `target-clause` from the stage specified by `stage-number` of `query`.

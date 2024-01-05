@@ -383,7 +383,7 @@ export default class Dimension {
     return null;
   }
 
-  query(): StructuredQuery | null | undefined {
+  legacyQuery(): StructuredQuery | null | undefined {
     return this._query;
   }
 
@@ -1213,7 +1213,7 @@ export class ExpressionDimension extends Dimension {
 
     if (!baseTypeOption) {
       if (query) {
-        const datasetQuery = query.query();
+        const datasetQuery = query.legacyQuery();
         const expressions = datasetQuery?.expressions ?? {};
         const expr = expressions[this.name()];
 

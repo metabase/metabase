@@ -49,7 +49,7 @@ const getQuestionStepsForMBQLQuery = query =>
     metadata
       .database(SAMPLE_DB_ID)
       .question()
-      .query()
+      .legacyQuery()
       .setQuery(query)
       .question(),
   );
@@ -87,21 +87,21 @@ describe("filtered and summarized query", () => {
   });
   describe("query", () => {
     it("should be the full query for data step", () => {
-      expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
+      expect(steps[0].query.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
     it("should be the full query for filter step", () => {
-      expect(steps[1].query.query()).toEqual(filteredAndSummarizedQuery);
+      expect(steps[1].query.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
     it("should be the full query for summarize step", () => {
-      expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
+      expect(steps[2].query.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
   });
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize for data step", () => {
-      expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
+      expect(steps[0].previewQuery.legacyQuery()).toEqual(rawDataQuery);
     });
     it("shouldn't include summarize for filter step", () => {
-      expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
+      expect(steps[1].previewQuery.legacyQuery()).toEqual(filteredQuery);
     });
   });
   describe("update", () => {
@@ -109,19 +109,19 @@ describe("filtered and summarized query", () => {
       const newQuery = steps[0].update(
         steps[0].query.setTableId(PRODUCTS_ID).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS_ID });
+      expect(newQuery.legacyQuery()).toEqual({ "source-table": PRODUCTS_ID });
     });
     it("shouldn't remove summarize when removing filter", () => {
       const newQuery = steps[1].update(
         steps[1].revert(steps[1].query).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual(summarizedQuery);
+      expect(newQuery.legacyQuery()).toEqual(summarizedQuery);
     });
     it("shouldn't remove filter when removing summarize", () => {
       const newQuery = steps[2].update(
         steps[2].revert(steps[2].query).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual(filteredQuery);
+      expect(newQuery.legacyQuery()).toEqual(filteredQuery);
     });
   });
 });
@@ -140,27 +140,29 @@ describe("filtered and summarized query with post-aggregation filter", () => {
   });
   describe("query", () => {
     it("should be the source-query for data step", () => {
-      expect(steps[0].query.query()).toEqual(filteredAndSummarizedQuery);
+      expect(steps[0].query.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
     it("should be the source-query for filter step", () => {
-      expect(steps[1].query.query()).toEqual(filteredAndSummarizedQuery);
+      expect(steps[1].query.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
     it("should be the source-query for summarize step", () => {
-      expect(steps[2].query.query()).toEqual(filteredAndSummarizedQuery);
+      expect(steps[2].query.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
     it("should be the original query for post-aggregation filter step", () => {
-      expect(steps[3].query.query()).toEqual(postAggregationFilterQuery);
+      expect(steps[3].query.legacyQuery()).toEqual(postAggregationFilterQuery);
     });
   });
   describe("previewQuery", () => {
     it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
-      expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
+      expect(steps[0].previewQuery.legacyQuery()).toEqual(rawDataQuery);
     });
     it("shouldn't include summarize or post-aggregation filter filter step", () => {
-      expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
+      expect(steps[1].previewQuery.legacyQuery()).toEqual(filteredQuery);
     });
     it("should be the original query for post-aggregation filter step", () => {
-      expect(steps[3].previewQuery.query()).toEqual(postAggregationFilterQuery);
+      expect(steps[3].previewQuery.legacyQuery()).toEqual(
+        postAggregationFilterQuery,
+      );
     });
   });
   describe("update", () => {
@@ -168,13 +170,13 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       const newQuery = steps[0].update(
         steps[0].query.setTableId(PRODUCTS_ID).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual({ "source-table": PRODUCTS_ID });
+      expect(newQuery.legacyQuery()).toEqual({ "source-table": PRODUCTS_ID });
     });
     it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
       const newQuery = steps[1].update(
         steps[1].revert(steps[1].query).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual({
+      expect(newQuery.legacyQuery()).toEqual({
         ...postAggregationFilterQuery,
         "source-query": summarizedQuery,
       });
@@ -183,13 +185,13 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       const newQuery = steps[2].update(
         steps[2].revert(steps[2].query).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual(filteredQuery);
+      expect(newQuery.legacyQuery()).toEqual(filteredQuery);
     });
     it("should remove empty layer of nesting but not remove filter or summarize when removing post-aggregation filter", () => {
       const newQuery = steps[3].update(
         steps[3].revert(steps[3].query).datasetQuery(),
       );
-      expect(newQuery.query()).toEqual(filteredAndSummarizedQuery);
+      expect(newQuery.legacyQuery()).toEqual(filteredAndSummarizedQuery);
     });
   });
 });

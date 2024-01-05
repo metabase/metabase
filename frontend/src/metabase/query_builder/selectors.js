@@ -572,7 +572,7 @@ export const getIsSavedQuestionChanged = createSelector(
 
 export const getQuery = createSelector(
   [getQuestion],
-  question => question && question.query(),
+  question => question && question.legacyQuery(),
 );
 
 export const getIsRunnable = createSelector(
@@ -715,7 +715,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && question.query() instanceof NativeQuery,
+  question => question && question.legacyQuery() instanceof NativeQuery,
 );
 
 /**

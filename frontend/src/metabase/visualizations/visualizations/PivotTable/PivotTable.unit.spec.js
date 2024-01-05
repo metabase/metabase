@@ -63,7 +63,7 @@ const setup = () => {
               // Need to add missing sources so that the setting displays
               cols: [
                 ...question
-                  .query()
+                  .legacyQuery()
                   .columns()
                   .map(c => ({ ...c, source: c.source || "breakout" })),
                 {

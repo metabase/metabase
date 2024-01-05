@@ -16,7 +16,7 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
 
   const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
-  const query = productsTable.newQuestion().query() as StructuredQuery;
+  const query = productsTable.newQuestion().legacyQuery() as StructuredQuery;
   const field = createVirtualField({
     id: 123,
     metadata,
@@ -40,7 +40,7 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
   });
 
   describe("createVirtualTable", () => {
-    const query = productsTable.newQuestion().query() as StructuredQuery;
+    const query = productsTable.newQuestion().legacyQuery() as StructuredQuery;
     const field1 = createVirtualField({
       id: 1,
       metadata,

@@ -365,7 +365,7 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      const query = new Question(card).query();
+      const query = new Question(card).legacyQuery();
       const [start, end] = range;
       if (isDimensionTimeseries(series)) {
         onChangeCardAndRun({

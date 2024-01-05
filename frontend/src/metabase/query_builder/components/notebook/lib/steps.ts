@@ -146,7 +146,7 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
   const allSteps: NotebookStep[] = [];
 
   if (question.isStructured()) {
-    let query = question.query() as StructuredQuery;
+    let query = question.legacyQuery() as StructuredQuery;
 
     let topLevelQuery = query.rootQuery().question()._getMLv2Query();
 
@@ -245,7 +245,7 @@ function getStageSteps(
             current.previous &&
             current.previous.stageIndex < current.stageIndex
           ) {
-            newQuery = current.query.setSourceQuery(newQuery.query());
+            newQuery = current.query.setSourceQuery(newQuery.legacyQuery());
           }
           newQuery = current.clean(
             newQuery,

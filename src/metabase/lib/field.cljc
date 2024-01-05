@@ -784,8 +784,11 @@
   widget in the QB filter modals."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  {:field-id         (:id column)
-   :search-field-id  (:id (search-field metadata-providerable column))
-   :has-field-values (if column
-                       (infer-has-field-values column)
-                       :none)})
+  (when column
+    (let [column-field-id (:id column)
+          search-field-id (:id (search-field metadata-providerable column))]
+      {:field-id (when (int? column-field-id) column-field-id)
+       :search-field-id (when (int? search-field-id) search-field-id)
+       :has-field-values (if column
+                           (infer-has-field-values column)
+                           :none)})))

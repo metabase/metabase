@@ -14,7 +14,7 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-const query = ordersTable.query();
+const query = ordersTable.legacyQuery();
 
 const filter = new Filter(
   [null, ["field", ORDERS.CREATED_AT, null]],

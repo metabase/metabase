@@ -94,7 +94,7 @@ class View extends Component {
 
     if (isShowingSummarySidebar) {
       const query = question._getMLv2Query();
-      const legacyQuery = question.query();
+      const legacyQuery = question.legacyQuery();
       return (
         <SummarizeSidebar
           query={query}
