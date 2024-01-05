@@ -5,7 +5,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -695,19 +694,6 @@
                     lib.metadata.calculation/visible-columns)
                   query stage-number stage)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
-
-;; TODO: Refactor this away - handle legacy refs in lib.js and using `lib.equality` directly from there.
-(mu/defn find-visible-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
-  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
-  only meant for use with `:field` clauses."
-  ([query legacy-ref]
-   (find-visible-column-for-legacy-ref query -1 legacy-ref))
-
-  ([query       :- ::lib.schema/query
-    stage-index :- :int
-    legacy-ref  :- some?]
-   (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
-     (find-visible-column-for-ref query stage-index a-ref))))
 
 (defn json-field?
   "Return true if field is a JSON field, false if not."

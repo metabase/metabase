@@ -170,7 +170,6 @@
   add-field
   fieldable-columns
   fields
-  find-visible-column-for-legacy-ref
   find-visible-column-for-ref
   remove-field
   with-fields]
