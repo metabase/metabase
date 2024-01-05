@@ -5,19 +5,15 @@ import {
   setupDatabasesEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { Card, UnsavedCard} from "metabase-types/api";
+import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockNativeDatasetQuery,
-  createMockUnsavedCard
+  createMockUnsavedCard,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
 
 const TEST_DB = createSampleDatabase();
@@ -35,17 +31,10 @@ const mockSavedCard = createMockCard({
 });
 const mockUnsavedCard = createMockUnsavedCard();
 
-const setup = ({ card }: { card: Card | UnsavedCard } ) => {
+const renderDatasetEditor = (card: Card | UnsavedCard) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
-
-  // createMockState({
-  //   entities: createMockEntitiesState({
-  //     databases: [TEST_DB],
-  //     questions: 'id' in card ? [card] : [],
-  //   }),
-  // });
   const question = new Question(card);
 
   const props = {
@@ -72,10 +61,7 @@ const setup = ({ card }: { card: Card | UnsavedCard } ) => {
     toggleDataReference: () => null,
     toggleSnippetSidebar: () => null,
   };
-
-  const { rerender } = renderWithProviders(<DatasetEditor {...props} />);
-
-  return { question, rerender };
+  renderWithProviders(<DatasetEditor {...props} />);
 };
 
 describe("DatasetEditor", () => {
@@ -87,7 +73,7 @@ describe("DatasetEditor", () => {
     jest.restoreAllMocks();
   });
   it("tries to load a model index when card is already saved", async () => {
-    setup({ card: mockSavedCard });
+    renderDatasetEditor(mockSavedCard);
     const calls = fetchMock.calls("path:/api/model-index");
     expect(calls).toHaveLength(1);
     expect(
@@ -95,8 +81,8 @@ describe("DatasetEditor", () => {
     ).toBe(`${mockSavedCard.id}`);
   });
   it("does not try to load a model index when card is unsaved", async () => {
-    setup({ card: mockUnsavedCard });
+    renderDatasetEditor(mockUnsavedCard);
     const calls = fetchMock.calls("path:/api/model-index");
     expect(calls).toHaveLength(0);
   });
-})
+});
