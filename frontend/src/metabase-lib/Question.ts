@@ -1048,7 +1048,7 @@ class Question {
   }
 
   _getMLv2Query(metadata = this._metadata): Query {
-    const databaseId = this.query()?.database()?.id ?? null;
+    const databaseId = this.legacyQuery()?.database()?.id ?? null;
 
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
