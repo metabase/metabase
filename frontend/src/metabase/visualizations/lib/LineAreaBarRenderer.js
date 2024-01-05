@@ -7,10 +7,7 @@ import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import {
-  updateDateTimeFilter,
-  updateNumericFilter,
-} from "metabase-lib/queries/utils/actions";
+import * as Lib from "metabase-lib";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 
@@ -365,20 +362,39 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
-      const query = new Question(card).legacyQuery();
+      const question = new Question(card);
+      const query = question._getMLv2Query();
+      const stageIndex = 0;
       const [start, end] = range;
+
       if (isDimensionTimeseries(series)) {
+        const nextQuery = Lib.updateTemporalFilter(
+          query,
+          stageIndex,
+          column,
+          start,
+          end,
+        );
+        const updatedQuestion = question._setMLv2Query(nextQuery);
+        const nextCard = updatedQuestion.card();
+
         onChangeCardAndRun({
-          nextCard: updateDateTimeFilter(query, column, start, end)
-            .question()
-            .card(),
+          nextCard,
           previousCard: card,
         });
       } else {
+        const nextQuery = Lib.updateNumericFilter(
+          query,
+          stageIndex,
+          column,
+          start,
+          end,
+        );
+        const updatedQuestion = question._setMLv2Query(nextQuery);
+        const nextCard = updatedQuestion.card();
+
         onChangeCardAndRun({
-          nextCard: updateNumericFilter(query, column, start, end)
-            .question()
-            .card(),
+          nextCard,
           previousCard: card,
         });
       }
