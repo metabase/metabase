@@ -200,8 +200,7 @@
                                           :display_name "Category → Name"
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
-          (is (=? (lib.tu.macros/$ids [#_{:clj-kondo/ignore [:type-mismatch]}
-                                       (assoc $venues.id 2 {})
+          (is (=? (lib.tu.macros/$ids [$venues.id
                                        (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                                        $venues.category-id->categories.name])
                   (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
