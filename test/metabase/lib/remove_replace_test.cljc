@@ -44,24 +44,50 @@
                     (lib/filters)))))))
 
 (deftest ^:parallel remove-clause-join-conditions-test
-  (let [query (-> lib.tu/venues-query
-                  (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
-                                             [(lib/= (meta/field-metadata :venues :price) 4)
-                                              (lib/= (meta/field-metadata :venues :name) "x")])))
-        conditions (lib/join-conditions (first (lib/joins query)))]
-    (is (= 2 (count conditions)))
-    (is (= [(second conditions)]
-           (-> query
-               (lib/remove-clause (first conditions))
-               lib/joins
-               first
-               lib/join-conditions)))
-    (is (thrown-with-msg?
-          #?(:clj Exception :cljs js/Error)
-          #"Cannot remove the final join condition"
-          (-> query
-              (lib/remove-clause (first conditions))
-              (lib/remove-clause (second conditions)))))))
+  (testing "directly removing the final join condition throws an exception"
+    (let [query (-> lib.tu/venues-query
+                    (lib/join (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                                               [(lib/= (meta/field-metadata :venues :price) 4)
+                                                (lib/= (meta/field-metadata :venues :name) "x")])))
+          conditions (lib/join-conditions (first (lib/joins query)))]
+      (is (= 2 (count conditions)))
+      (is (= [(second conditions)]
+             (-> query
+                 (lib/remove-clause (first conditions))
+                 lib/joins
+                 first
+                 lib/join-conditions)))
+      (is (thrown-with-msg?
+            #?(:clj Exception :cljs js/Error)
+            #"Cannot remove the final join condition"
+            (-> query
+                (lib/remove-clause (first conditions))
+                (lib/remove-clause (second conditions)))))))
+
+  (testing "a cascading delete that removes the final join condition should remove the whole join (#36690)"
+    (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                [(lib/= (meta/field-metadata :orders :product-id)
+                                                        (meta/field-metadata :products :id))]))
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (meta/field-metadata :products :id))
+                     lib/append-stage)
+          cols   (lib/returned-columns base)
+          id     (first cols)
+          query  (lib/join base (lib/join-clause (meta/table-metadata :reviews)
+                                                 [(lib/= id (meta/field-metadata :reviews :product-id))]))]
+      (is (=? {:stages [{:joins       [{:conditions [[:= {} vector? vector?]]}]
+                         :aggregation [[:count {}]]
+                         :breakout    [[:field {} int?]]}
+                        {:joins       [{:conditions [[:= {} vector? vector?]]}]
+                         :aggregation (symbol "nil #_\"key is not present.\"")
+                         :breakout    (symbol "nil #_\"key is not present.\"")}]}
+              query))
+      (is (=? {:stages [{:joins       [{:conditions [[:= {} vector? vector?]]}]
+                         :aggregation [[:count {}]]
+                         :breakout    (symbol "nil #_\"key is not present.\"")}
+                        {:joins (symbol "nil #_\"key is not present.\"")}]}
+              (lib/remove-clause query 0 (first (lib/breakouts query 0))))))))
 
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> lib.tu/venues-query

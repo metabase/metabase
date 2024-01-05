@@ -71,7 +71,7 @@ const shouldRender = ({
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.isQueryEditable() &&
-  (question.query() as LegacyQuery).topLevelFilters().length > 0 &&
+  (question.legacyQuery() as LegacyQuery).topLevelFilters().length > 0 &&
   !isObjectDetail;
 
 FilterHeader.shouldRender = shouldRender;

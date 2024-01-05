@@ -19,7 +19,7 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-const ordersQuery = ordersTable.query();
+const ordersQuery = ordersTable.legacyQuery();
 
 // this component does not manage its own filter state, so we need a wrapper to test
 // any state updates because the component's behavior is based on the filter state

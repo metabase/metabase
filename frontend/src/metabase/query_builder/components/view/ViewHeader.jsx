@@ -93,8 +93,10 @@ export function ViewTitleHeader(props) {
       return;
     }
 
-    const filtersCount = question.query().filters().length;
-    const previousFiltersCount = previousQuestion.query().filters().length;
+    const filtersCount = question.legacyQuery().filters().length;
+    const previousFiltersCount = previousQuestion
+      .legacyQuery()
+      .filters().length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
@@ -107,7 +109,7 @@ export function ViewTitleHeader(props) {
   const isDataset = question.isDataset();
 
   const isSummarized =
-    isStructured && question.query().topLevelQuery().hasAggregations();
+    isStructured && question.legacyQuery().topLevelQuery().hasAggregations();
 
   const onQueryChange = useCallback(
     newQuery => {
@@ -416,7 +418,7 @@ function ViewTitleHeaderRightSide(props) {
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question.query().hasData();
+  const isNewQuery = !question.legacyQuery().hasData();
   const hasSaveButton =
     !isDataset &&
     !!isDirty &&

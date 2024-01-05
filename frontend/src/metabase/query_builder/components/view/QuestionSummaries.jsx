@@ -70,6 +70,6 @@ QuestionSummarizeWidget.shouldRender = ({
   question &&
   question.isStructured() &&
   question.isQueryEditable() &&
-  question.query().table() &&
+  question.legacyQuery().table() &&
   !isObjectDetail &&
   isActionListVisible;

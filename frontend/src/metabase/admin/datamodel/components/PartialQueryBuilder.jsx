@@ -56,7 +56,7 @@ class PartialQueryBuilder extends Component {
 
     // only set the query if it doesn't already have an aggregation or filter
     const question = getSegmentOrMetricQuestion(value, table, metadata);
-    if (!question.query().isRaw()) {
+    if (!question.legacyQuery().isRaw()) {
       return;
     }
 
@@ -79,7 +79,7 @@ class PartialQueryBuilder extends Component {
     const { features, value, metadata, table, previewSummary } = this.props;
 
     const question = getSegmentOrMetricQuestion(value, table, metadata);
-    const query = question.query();
+    const query = question.legacyQuery();
     const previewUrl = Urls.serializedQuestion(question.card());
 
     return (

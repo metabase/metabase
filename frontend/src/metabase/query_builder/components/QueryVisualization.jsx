@@ -25,7 +25,7 @@ export default class QueryVisualization extends Component {
 
   _getStateFromProps(props) {
     return {
-      lastRunDatasetQuery: copy(props.question.query().datasetQuery()),
+      lastRunDatasetQuery: copy(props.question.legacyQuery().datasetQuery()),
       lastRunParameterValues: copy(props.parameterValues),
     };
   }
