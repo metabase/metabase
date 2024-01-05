@@ -44,7 +44,7 @@ export default class AggregationWidget extends Component {
   render() {
     const {
       aggregation,
-      query = aggregation.query && aggregation.query(),
+      query = aggregation.query && aggregation.legacyQuery(),
       children,
       className,
     } = this.props;

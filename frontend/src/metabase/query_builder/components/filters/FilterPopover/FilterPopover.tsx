@@ -89,7 +89,7 @@ export function FilterPopover({
   useEffect(() => {
     if (
       filter &&
-      filter.query() === previousQuery &&
+      filter.legacyQuery() === previousQuery &&
       legacyQuery !== previousQuery
     ) {
       setFilter(filter.setQuery(legacyQuery));
@@ -137,11 +137,15 @@ export function FilterPopover({
   const handleDimensionChange = (dimension: FieldDimension) => {
     const field = dimension?.field();
     const newFilter =
-      !filter || filter.query() !== dimension.query() || field?.isDate?.()
+      !filter ||
+      filter.legacyQuery() !== dimension.legacyQuery() ||
+      field?.isDate?.()
         ? new Filter(
             [],
             null,
-            dimension.query() || (filter && filter.query()) || legacyQuery,
+            dimension.legacyQuery() ||
+              (filter && filter.legacyQuery()) ||
+              legacyQuery,
           )
         : filter;
 
@@ -204,7 +208,7 @@ export function FilterPopover({
             isTopLevel
               ? legacyQuery.topLevelFilterFieldOptionSections()
               : (
-                  (filter && filter.query()) ||
+                  (filter && filter.legacyQuery()) ||
                   legacyQuery
                 ).filterFieldOptionSections(filter, {
                   includeSegments: showCustom,

@@ -35,7 +35,7 @@ describe("BooleanPicker", () => {
   const field = checkNotNull(metadata.field(1));
 
   const question = new Question(createAdHocCard(), metadata);
-  const query = question.query() as StructuredQuery;
+  const query = question.legacyQuery() as StructuredQuery;
 
   const fieldRef = field.reference();
 

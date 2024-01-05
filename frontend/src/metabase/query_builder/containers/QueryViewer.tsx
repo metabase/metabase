@@ -31,7 +31,7 @@ export default function QueryViewer({
 
   const question = new Question(card, metadata);
 
-  const query = question.query();
+  const query = question.legacyQuery();
 
   if (question.isNative()) {
     return (

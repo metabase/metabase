@@ -98,7 +98,7 @@ export function FilterHeader({
 
   const handleQueryChange = (nextQuery: Lib.Query) => {
     const nextQuestion = question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
-    onQueryChange(nextQuestion.query() as LegacyQuery);
+    onQueryChange(nextQuestion.legacyQuery() as LegacyQuery);
   };
 
   if (filters.length === 0 || !expanded) {
@@ -198,7 +198,7 @@ const shouldRender = ({
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.isQueryEditable() &&
-  (question.query() as LegacyQuery).topLevelFilters().length > 0 &&
+  (question.legacyQuery() as LegacyQuery).topLevelFilters().length > 0 &&
   !isObjectDetail;
 
 FilterHeader.shouldRender = shouldRender;

@@ -5,6 +5,7 @@
             [metabase.models.permissions-group :as perms-group]
             [metabase.util :as u]
             [metabase.util.password :as u.password]
+            [metabase.util.secret :as u.secret]
             [methodical.core :as methodical]
             [toucan2.core :as t2]))
 
@@ -54,14 +55,15 @@
 (defn- add-prefix [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
     (contains? api-key :unhashed_key)
-    (assoc :key_prefix (some-> unhashed_key prefix))))
+    (assoc :key_prefix (some-> unhashed_key u.secret/expose prefix))))
 
 (defn generate-key
   "Generates a new API key - a random base64 string prefixed with `mb_`"
   []
-  (str "mb_" (crypto-random/base64 bytes-key-length)))
+  (u.secret/secret
+   (str "mb_" (crypto-random/base64 bytes-key-length))))
 
-(def ^:private string-key-length (count (generate-key)))
+(def ^:private string-key-length (count (u.secret/expose (generate-key))))
 
 (defn mask
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
@@ -75,7 +77,7 @@
   [{:keys [unhashed_key] :as api-key}]
   (cond-> api-key
     (contains? api-key :unhashed_key)
-    (assoc :key (some-> unhashed_key u.password/hash-bcrypt))
+    (assoc :key (some-> unhashed_key u.secret/expose u.password/hash-bcrypt))
 
     true (dissoc :unhashed_key)))
 
