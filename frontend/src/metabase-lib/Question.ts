@@ -89,7 +89,7 @@ class Question {
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
-  _card: CardObject;
+  _card: CardObject | UnsavedCard;
 
   /**
    * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})

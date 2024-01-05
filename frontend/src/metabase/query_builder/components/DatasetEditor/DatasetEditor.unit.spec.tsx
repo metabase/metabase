@@ -7,20 +7,22 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { Card } from "metabase-types/api";
+import type { Card, UnsavedCard} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockNativeDatasetQuery,
+  createMockUnsavedCard
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
+import Question from "metabase-lib/Question";
 
 const TEST_DB = createSampleDatabase();
 
-const TEST_NATIVE_CARD = createMockCard({
+const mockSavedCard = createMockCard({
   dataset_query: createMockNativeDatasetQuery({
     type: "native",
     database: TEST_DB.id,
@@ -30,18 +32,11 @@ const TEST_NATIVE_CARD = createMockCard({
     },
   }),
 });
+const mockUnsavedCard = createMockUnsavedCard();
 
 const ROOT_COLLECTION = createMockCollection({ id: "root" });
 
-interface SetupOpts {
-  card?: Card;
-  shouldUnsetCardId?: boolean;
-}
-
-const setup = async ({
-  card = TEST_NATIVE_CARD,
-  shouldUnsetCardId = true,
-}: SetupOpts) => {
+const setup = async ({ card }: { card: Card | UnsavedCard } ) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
@@ -49,15 +44,11 @@ const setup = async ({
   const storeInitialState = createMockState({
     entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
-      questions: [card],
+      questions: 'id' in card ? [card] : [],
     }),
   });
   const metadata = getMetadata(storeInitialState);
-  const question = checkNotNull(metadata.question(card.id));
-  const query = question._card.dataset_query;
-  if (shouldUnsetCardId) {
-    question._card.id = undefined;
-  }
+  const question = new Question(card); //checkNotNull(metadata.question(card.id));
 
   const props = {
     question: question,
@@ -86,7 +77,7 @@ const setup = async ({
 
   const { rerender } = renderWithProviders(<DatasetEditor {...props} />);
 
-  return { query, question, rerender };
+  return { question, rerender };
 };
 
 describe("DatasetEditor", () => {
@@ -98,15 +89,15 @@ describe("DatasetEditor", () => {
       "path:/api/model-index",
       (_: any, __: any, request: Request) => {
         const params = new URL(request.url).searchParams;
-        expect(params.get("model_id")).toBe(`${TEST_NATIVE_CARD.id}`);
+        expect(params.get("model_id")).toBe(`${mockSavedCard.id}`);
         return { body: { data: [] } };
       },
     );
-    await setup({ shouldUnsetCardId: false });
+    await setup({ card: mockSavedCard });
   });
   it("does not try to load a model index when model_id is absent", async () => {
-    fetchMock.mock("*", 200);
-    await setup({ shouldUnsetCardId: true });
+    fetchMock.get("*", () => ({ body: { data: [] } }));
+    await setup({ card: mockUnsavedCard });
     expect(fetchMock.calls("path:/api/model-index")).toHaveLength(0);
   });
 });
