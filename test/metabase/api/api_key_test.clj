@@ -100,13 +100,13 @@
 (deftest api-count-works
   (mt/with-empty-h2-app-db
     (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
-    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  "prefix_key"
+    (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
                                               :name          "my cool name"
                                               :user_id       (mt/user->id :crowberto)
                                               :creator_id    (mt/user->id :crowberto)
                                               :updated_by_id (mt/user->id :crowberto)}]
       (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count")))
-      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  "some_other_key"
+      (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
                                                 :name          "my cool OTHER name"
                                                 :user_id       (mt/user->id :crowberto)
                                                 :creator_id    (mt/user->id :crowberto)

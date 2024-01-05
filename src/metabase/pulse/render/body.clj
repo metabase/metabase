@@ -872,9 +872,22 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- get-col-by-name
+    [cols col-name]
+    (->> (map-indexed (fn [idx m] [idx m]) cols)
+         (some (fn [[idx col]]
+                 (when (= col-name (:name col))
+                   [idx col])))))
+
 (s/defmethod render :scalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
-  (let [value (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
+  (let [field-name    (:scalar.field viz-settings)
+        [row-idx col] (or (when field-name
+                            (get-col-by-name cols field-name))
+                          [0 (first cols)])
+        row           (first rows)
+        raw-value     (get row row-idx)
+        value         (format-cell timezone-id raw-value col viz-settings)]
     {:attachments
      nil
 
