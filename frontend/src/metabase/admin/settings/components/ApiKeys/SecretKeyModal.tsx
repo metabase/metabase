@@ -15,7 +15,7 @@ export const SecretKeyModal = ({
   <Modal
     size="30rem"
     padding="xl"
-    zIndex={DEFAULT_Z_INDEX} // prevents CopyWidgetButton’s Tippy popover from being obscured
+    zIndex={DEFAULT_Z_INDEX} // prevents CopyWidgetButton's Tippy popover from being obscured
     opened
     onClose={onClose}
     title={t`Copy and save the API key`}
@@ -45,7 +45,7 @@ export const SecretKeyModal = ({
         <Text
           size="sm"
           color="text.1"
-        >{t`Please copy this key and save it somewhere safe. For security reasons, we can’t show it to you again.`}</Text>
+        >{t`Please copy this key and save it somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       </Flex>
       <Group position="right">
         <Button onClick={onClose} variant="filled">{t`Done`}</Button>
