@@ -277,13 +277,47 @@
       (sql.helpers/left-join [:metabase_table :table] [:= :metric.table_id :table.id])
       (with-last-editing-info model)))
 
+(defn- add-model-index-permissions-clause
+  [query current-user-perms]
+  (let [has-perm-clause (fn [path] [:in path current-user-perms])]
+    (if (contains? current-user-perms "/")
+      query
+      ;; Select indexed rows if user has /db/:id/ OR (/db/:id/native/ AND /db/:id/schema/) - aka full access to the database
+      ;; in at least one group. (Access to only a subset of tables isn't enough, since models can be based on native
+      ;; queries.)
+      ;; AND
+      ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in.
+      (let [data-perm-clause
+            [:or
+             (has-perm-clause (h2x/concat (h2x/literal "/db/") :model.database_id (h2x/literal "/")))
+             [:and
+              (has-perm-clause (h2x/concat (h2x/literal "/db/") :model.database_id (h2x/literal "/native/")))
+              (has-perm-clause (h2x/concat (h2x/literal "/db/") :model.database_id (h2x/literal "/schema/")))]]
+
+            has-root-access?
+            (or (contains? current-user-perms "/collection/root/")
+                (contains? current-user-perms "/collection/root/read/"))
+
+            collection-perm-clause
+            [:or
+             (when has-root-access? [:= :model.collection_id nil])
+             [:and
+              [:not= :model.collection_id nil]
+              [:or
+               (has-perm-clause (h2x/concat (h2x/literal "/collection/") :model.collection_id (h2x/literal "/")))
+               (has-perm-clause (h2x/concat (h2x/literal "/collection/") :model.collection_id (h2x/literal "/read/")))]]]]
+        (sql.helpers/where
+         query
+         [:and data-perm-clause collection-perm-clause])))))
+
 (defmethod search-query-for-model "indexed-entity"
-  [model search-ctx]
+  [model {:keys [current-user-perms] :as search-ctx}]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:model_index :model-index]
                              [:= :model-index.id :model-index-value.model_index_id])
       (sql.helpers/left-join [:report_card :model] [:= :model-index.model_id :model.id])
-      (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])))
+      (sql.helpers/left-join [:collection :collection] [:= :model.collection_id :collection.id])
+      (add-model-index-permissions-clause current-user-perms)))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
