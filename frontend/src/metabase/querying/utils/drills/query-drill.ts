@@ -7,7 +7,7 @@ export function queryDrill(
   question: Question,
   clicked?: Lib.ClickObject,
 ): ClickAction[] {
-  const query = question._getMLv2Query();
+  const query = question.query();
   const stageIndex = -1;
   const drills = Lib.availableDrillThrus(
     query,

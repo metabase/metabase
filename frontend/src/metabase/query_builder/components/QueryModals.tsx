@@ -238,7 +238,7 @@ class QueryModals extends Component<QueryModalsProps> {
       case MODAL_TYPES.FILTERS:
         return (
           <FilterModal
-            query={question._getMLv2Query()}
+            query={question.query()}
             onSubmit={this.onQueryChange}
             onClose={onCloseModal}
           />

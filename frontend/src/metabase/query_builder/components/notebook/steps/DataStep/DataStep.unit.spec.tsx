@@ -90,7 +90,7 @@ const setup = async (
 const setupEmptyQuery = () => {
   const question = Question.create({ databaseId: SAMPLE_DB_ID });
   const legacyQuery = question.legacyQuery() as StructuredQuery;
-  const query = question._getMLv2Query();
+  const query = question.query();
   return setup(
     createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
   );
