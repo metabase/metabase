@@ -45,7 +45,7 @@ export const DeleteApiKeyModal = ({
               <Button
                 color="error.0"
                 onClick={onClose}
-              >{t`No, don’t delete`}</Button>
+              >{t`No, don't delete`}</Button>
               <FormSubmitButton
                 label={t`Delete API Key`}
                 variant="filled"

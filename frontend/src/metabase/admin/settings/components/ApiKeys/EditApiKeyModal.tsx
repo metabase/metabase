@@ -74,7 +74,7 @@ const RegenerateKeyModal = ({
             <Group position="right">
               <Button
                 onClick={() => setModal("edit")}
-              >{t`No, don’t regenerate`}</Button>
+              >{t`No, don't regenerate`}</Button>
               <FormSubmitButton variant="filled" label={t`Regenerate`} />
             </Group>
           </Stack>
