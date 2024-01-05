@@ -80,11 +80,12 @@
              #"Permission type :data-access requires an object ID"
              (perms-v2/set-permission! :data-access group-id :unrestricted nil))))
 
+
       (testing "An invalid permission type cannot be saved"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Invalid permission type: :invalid"
-             (perms-v2/set-permission! :invalid group-id :unrestricted nil)))))))
+             #"Permission type :invalid-type cannot be set to :unrestricted"
+             (perms-v2/set-permission! :invalid-type group-id :unrestricted nil)))))))
 
 (deftest set-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
@@ -120,7 +121,7 @@
       (testing "An invalid permission type cannot be saved"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Invalid permission type: :invalid"
+             #"Invalid permission type, received: :invalid"
              (perms-v2/set-permissions! :invalid group-id {table-id-1 :block})))))))
 
 (deftest permission-for-user-test
