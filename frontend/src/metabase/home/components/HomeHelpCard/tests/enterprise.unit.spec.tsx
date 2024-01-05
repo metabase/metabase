@@ -6,7 +6,7 @@ function setup(opts: SetupOpts = {}) {
   return baseSetup({ hasEnterprisePlugins: true, ...opts });
 }
 
-describe("HomeHelpCard (Enterprise without token)", () => {
+describe("HomeHelpCard (EE without token)", () => {
   it("should render correctly", () => {
     setup();
     expect(screen.getByText("Metabase tips")).toBeInTheDocument();

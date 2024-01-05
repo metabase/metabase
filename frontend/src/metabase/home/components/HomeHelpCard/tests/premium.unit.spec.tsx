@@ -10,7 +10,7 @@ function setup(opts: SetupOpts = {}) {
   });
 }
 
-describe("HomeHelpCard (Enterprise with token)", () => {
+describe("HomeHelpCard (EE with token)", () => {
   it("should render correctly", () => {
     setup();
     expect(screen.getByText("Metabase tips")).toBeInTheDocument();
