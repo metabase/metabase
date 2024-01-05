@@ -122,7 +122,7 @@
      (test-query-results actual)
 
      "/json"
-     (is (= [{:Count 100}]
+     (is (= [{:Count "100"}]
             actual))
 
      "/csv"
@@ -175,6 +175,13 @@
     (with-temp-card [card {:enable_embedding true}]
       (is (re= #"Token is expired.*"
                (client/client :get 400 (card-url card {:exp (buddy-util/to-timestamp yesterday)})))))))
+
+(deftest bad-card-id-fails
+  (with-embedding-enabled-and-new-secret-key
+    (let [card-url (str "embed/card/" (sign {:resource {:question "8"}
+                                             :params   {}}))]
+      (is (= "Card id should be a positive integer."
+             (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
@@ -297,7 +304,7 @@
 
 (deftest card-query-test
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (do-response-formats [response-format request-options]
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding false]
@@ -353,7 +360,7 @@
                    (count (csv/read-csv results))))))))))
 
 (deftest card-locked-params-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "locked"}}]
         (do-response-formats [response-format request-options]
@@ -388,7 +395,7 @@
                  (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
 
 (deftest card-enabled-params-test
-  (mt/with-ensure-with-temp-no-transaction!
+  (mt/test-helpers-set-global-values!
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :embedding_params {:venue_id "enabled"}}]
         (do-response-formats [response-format request-options]
@@ -486,13 +493,14 @@
                (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
-  (with-embedding-enabled-and-new-secret-key
-    (mt/with-temp! [Card card (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))))
+  (mt/test-helpers-set-global-values!
+   (with-embedding-enabled-and-new-secret-key
+     (mt/with-temp [Card card (card-with-date-field-filter)]
+       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+       (binding [client/*url-prefix* ""]
+         (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+           (is (= "count\n107\n"
+                  (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
@@ -689,7 +697,7 @@
   (testing "Tests that embedding download context shows up in the query execution table when downloading cards."
     ;; Clear out the query execution log so that test doesn't read stale state
     (t2/delete! :model/QueryExecution)
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (mt/mbql-query venues)}}]
@@ -1425,7 +1433,7 @@
 
 (deftest pivot-dashcard-locked-params-test
   (mt/dataset test-data
-    (mt/with-ensure-with-temp-no-transaction!
+    (mt/test-helpers-set-global-values!
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                   :embedding_params {:abc "locked"}

@@ -350,7 +350,7 @@ export const getQuestion = createSelector(
 );
 
 function isQuestionEditable(question) {
-  return !question?.query().readOnly();
+  return question ? question.isQueryEditable() : false;
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
@@ -572,7 +572,7 @@ export const getIsSavedQuestionChanged = createSelector(
 
 export const getQuery = createSelector(
   [getQuestion],
-  question => question && question.query(),
+  question => question && question.legacyQuery(),
 );
 
 export const getIsRunnable = createSelector(
@@ -582,7 +582,7 @@ export const getIsRunnable = createSelector(
       return false;
     }
     if (!question.isSaved() || isDirty) {
-      return question.canRun() && !question.query().readOnly();
+      return question.canRun() && question.isQueryEditable();
     }
     return question.canRun();
   },
@@ -715,7 +715,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && question.query() instanceof NativeQuery,
+  question => question && question.legacyQuery() instanceof NativeQuery,
 );
 
 /**

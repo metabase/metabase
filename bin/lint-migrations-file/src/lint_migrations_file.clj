@@ -32,17 +32,9 @@
     ;; can't apply distinct? with so many IDs
     (= (count ids) (count (set ids)))))
 
-(defn- compare-ids
-  "If `x` and `y` are integers, compare numerical values. Otherwise do String comparison."
-  [x y]
-  ;; Clojure gets confused if you try to compare a String and a Number.
-  (if (= (class x) (class y))
-    (compare x y)
-    (compare (str x) (str y))))
-
 (defn- change-set-ids-in-order? [change-log]
   (let [ids (change-set-ids change-log)]
-    (= ids (sort-by identity compare-ids ids))))
+    (= ids (sort-by identity compare ids))))
 
 (defn- assert-no-types-in-change-set
   "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-types` (a set of strings).
@@ -81,7 +73,7 @@
 (defn no-bare-blob-or-text-types?
   "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
   0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
-  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type\" should be used instead of \"blob\"."
+  `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
   [change-log]
   (let [problem-cols (atom [])
         walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
@@ -96,6 +88,19 @@
       (walk/postwalk walk-fn change-set))
     (empty? @problem-cols)))
 
+(defn no-bare-boolean-types?
+  "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
+  \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
+  [change-log]
+  (let [problem-cols (atom [])
+        walk-fn      (partial assert-no-types-in-change-set #{"boolean"} problem-cols)]
+    (doseq [{{id :id} :changeSet :as change-set} change-log
+            :when                                (and id
+                                                      (string? id)
+                                                      (pos? (compare id "v49.00-032")))]
+      (walk/postwalk walk-fn change-set))
+    (empty? @problem-cols)))
+
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
 
@@ -103,6 +108,7 @@
   (s/and distinct-change-set-ids?
          change-set-ids-in-order?
          no-bare-blob-or-text-types?
+         no-bare-boolean-types?
          (s/+ (s/alt :property              (s/keys :req-un [::property])
                      :objectQuotingStrategy (s/keys :req-un [::objectQuotingStrategy])
                      :changeSet             (s/keys :req-un [::changeSet])))))

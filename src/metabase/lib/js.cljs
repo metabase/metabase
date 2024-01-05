@@ -16,6 +16,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
@@ -471,7 +472,11 @@
 (defn ^:export expression-clause
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [an-operator args options]
-  (lib.core/expression-clause (keyword an-operator) args (js->clj options :keywordize-keys true)))
+  (-> (lib.core/expression-clause
+        (keyword an-operator)
+        args
+        (js->clj options :keywordize-keys true))
+      (lib.core/normalize)))
 
 (defn ^:export expression-parts
   "Returns the parts (operator, args, and optionally, options) of `expression-clause`."
@@ -1115,3 +1120,28 @@
                  (and (vector? legacy-expr)
                       (= (first legacy-expr) :aggregation-options))
                  (get 1))))))
+
+(defn ^:export field-values-search-info
+  "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
+  widget in the QB filter modals."
+  [metadata-providerable column]
+  (-> (lib.field/field-values-search-info metadata-providerable column)
+      (update :has-field-values name)
+      (update-keys cljs-key->js-key)
+      clj->js))
+
+(defn ^:export update-lat-lon-filter
+  "Add or update a filter against a `latitude-column` and `longitude-column`."
+  [a-query stage-number latitude-column longitude-column bounds]
+  (let [bounds (js->clj bounds :keywordize-keys true)]
+    (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
+
+(defn ^:export update-numeric-filter
+  "Add or update a filter against `numeric-column`."
+  [a-query numeric-column stage-number start end]
+  (lib.core/update-numeric-filter a-query numeric-column stage-number start end))
+
+(defn ^:export update-temporal-filter
+  "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
+  [a-query temporal-column stage-number start end]
+  (lib.core/update-temporal-filter a-query temporal-column stage-number start end))

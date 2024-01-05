@@ -458,7 +458,7 @@
 
 (deftest add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
-    (impl/test-migrations ["v48.00-007" "v48.00-009"] [migrate!]
+    (impl/test-migrations ["v48.00-007"] [migrate!]
       (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
             old              (t/minus (t/local-date-time) (t/hours 1))
             rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
@@ -757,3 +757,11 @@
         (is (t2/exists? :pulse :id dash-subscription-id))
         (is (t2/exists? :pulse :id alert-id))
         (is (not (t2/exists? :pulse :id legacy-pulse-id)))))))
+
+(deftest no-tiny-int-columns
+  (mt/test-driver :mysql
+    (testing "All boolean columns in mysql, mariadb should be bit(1)"
+      (is (= [{:table_name "DATABASECHANGELOGLOCK" :column_name "LOCKED"}] ;; outlier because this is liquibase's table
+             (t2/query
+              (format "SELECT table_name, column_name FROM information_schema.columns WHERE data_type LIKE 'tinyint%%' AND table_schema = '%s';"
+                      (-> (mdb.connection/data-source) .getConnection .getCatalog))))))))

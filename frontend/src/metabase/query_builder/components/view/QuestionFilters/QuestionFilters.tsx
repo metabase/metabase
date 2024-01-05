@@ -86,7 +86,7 @@ export function FilterHeader({
   expanded,
   onQueryChange,
 }: FilterHeaderProps) {
-  const query = question._getMLv2Query();
+  const query = question.query();
 
   const stageCount = Lib.stageCount(query);
   const lastStageIndex = stageCount - 1;
@@ -98,7 +98,7 @@ export function FilterHeader({
 
   const handleQueryChange = (nextQuery: Lib.Query) => {
     const nextQuestion = question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
-    onQueryChange(nextQuestion.query() as LegacyQuery);
+    onQueryChange(nextQuestion.legacyQuery() as LegacyQuery);
   };
 
   if (filters.length === 0 || !expanded) {
@@ -197,8 +197,8 @@ const shouldRender = ({
 }: RenderCheckOpts) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
-  question.query().isEditable() &&
-  (question.query() as LegacyQuery).topLevelFilters().length > 0 &&
+  question.isQueryEditable() &&
+  (question.legacyQuery() as LegacyQuery).topLevelFilters().length > 0 &&
   !isObjectDetail;
 
 FilterHeader.shouldRender = shouldRender;

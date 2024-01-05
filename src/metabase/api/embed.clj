@@ -36,7 +36,9 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n
+    :as i18n
+    :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -343,7 +345,7 @@
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
    (api/check (pos-int? id)
-              [400 (tru "Dashboard id should be a positive integer.")])
+     [400 (tru "{0} id should be a positive integer." (name entity))])
    (check-embedding-enabled-for-object (t2/select-one [entity :enable_embedding] :id id)))
 
   ([object]

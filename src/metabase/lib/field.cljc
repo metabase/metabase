@@ -19,17 +19,20 @@
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- normalize-binning-options [opts]
   (lib.normalize/normalize-map
@@ -540,13 +543,8 @@
   This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.
   Fields from explicit joins are listed on the join itself and should not be listed in `:fields`."
   [query stage-number]
-  (lib.util/update-query-stage query stage-number
-                               (fn [stage]
-                                 (assoc stage :fields
-                                        (into [] (comp (remove (comp #{:source/joins :source/implicitly-joinable}
-                                                                     :lib/source))
-                                                       (map lib.ref/ref))
-                                              (lib.metadata.calculation/returned-columns query stage-number stage))))))
+  (let [defaults (lib.metadata.calculation/default-columns-for-stage query stage-number)]
+    (lib.util/update-query-stage query stage-number assoc :fields (mapv lib.ref/ref defaults))))
 
 (defn- query-with-fields
   "If the given stage already has a `:fields` clause, do nothing. If it doesn't, populate the `:fields` clause with the
@@ -606,23 +604,25 @@
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
-    (case source
-      (:source/table-defaults
-       :source/fields
-       :source/card
-       :source/previous-stage
-       :source/expressions
-       :source/aggregations
-       :source/breakouts)         (cond-> query
-                                    (contains? stage :fields) (include-field stage-number column))
-      :source/joins               (add-field-to-join query stage-number column)
-      :source/implicitly-joinable (include-field query stage-number column)
-      :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-      ;; Default case - do nothing if we don't know about the incoming value.
-      ;; Generates a warning, as we should aim to capture all the :source/* values here.
-      (do
-        (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
-        query))))
+    (-> (case source
+          (:source/table-defaults
+            :source/fields
+            :source/card
+            :source/previous-stage
+            :source/expressions
+            :source/aggregations
+            :source/breakouts)         (cond-> query
+                                         (contains? stage :fields) (include-field stage-number column))
+          :source/joins               (add-field-to-join query stage-number column)
+          :source/implicitly-joinable (include-field query stage-number column)
+          :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
+          ;; Default case - do nothing if we don't know about the incoming value.
+          ;; Generates a warning, as we should aim to capture all the :source/* values here.
+          (do
+            (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
+            query))
+        ;; Then drop any redundant :fields clauses.
+        lib.remove-replace/normalize-fields-clauses)))
 
 (defn- remove-matching-ref [column refs]
   (let [match (lib.equality/find-matching-ref column refs)]
@@ -670,22 +670,25 @@
    stage-number :- :int
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [source (:lib/source column)]
-    (case source
-      (:source/table-defaults
-       :source/fields
-       :source/breakouts
-       :source/aggregations
-       :source/expressions
-       :source/card
-       :source/previous-stage
-       :source/implicitly-joinable) (exclude-field query stage-number column)
-      :source/joins                 (remove-field-from-join query stage-number column)
-      :source/native                (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-      ;; Default case: do nothing and return the query unchaged.
-      ;; Generate a warning - we should aim to capture every `:source/*` value above.
-      (do
-        (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
-        query))))
+    (-> (case source
+          (:source/table-defaults
+            :source/fields
+            :source/breakouts
+            :source/aggregations
+            :source/expressions
+            :source/card
+            :source/previous-stage
+            :source/implicitly-joinable) (exclude-field query stage-number column)
+          :source/joins                 (remove-field-from-join query stage-number column)
+          :source/native                (throw (ex-info (native-query-fields-edit-error)
+                                                        {:query query :stage stage-number}))
+          ;; Default case: do nothing and return the query unchaged.
+          ;; Generate a warning - we should aim to capture every `:source/*` value above.
+          (do
+            (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
+            query))
+        ;; Then drop any redundant :fields clauses.
+        lib.remove-replace/normalize-fields-clauses)))
 
 ;; TODO: Refactor this away? The special handling for aggregations is strange.
 (mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
@@ -723,3 +726,69 @@
   "Return true if field is a JSON field, false if not."
   [field]
   (some? (:nfc-path field)))
+
+;;; yes, this is intentionally different from the version in `:metabase.lib.schema.metadata/column.has-field-values`.
+;;; The FE isn't supposed to need to worry about the distinction between `:auto-list` and `:list` for filter purposes.
+;;; See [[infer-has-field-values]] for more info.
+(mr/def ::field-values-search-info.has-field-values
+  [:enum :list :search :none])
+
+(mr/def ::field-values-search-info
+  [:map
+   [:field-id         [:maybe [:ref ::lib.schema.id/field]]]
+   [:search-field-id  [:maybe [:ref ::lib.schema.id/field]]]
+   [:has-field-values [:ref ::field-values-search-info.has-field-values]]])
+
+(mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
+  "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
+  filter search widgets, either when returned by the the REST API or in MLv2 with [[field-values-search-info]].
+
+  Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
+  `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by
+  the FE filter stuff, so we will instead return `:list`; the distinction is not important to it anyway."
+  [{:keys [has-field-values], :as field} :- [:map
+                                             ;; this doesn't use `::lib.schema.metadata/column` because it's stricter
+                                             ;; than we need and the REST API calls this function with optimized Field
+                                             ;; maps that don't include some keys like `:name`
+                                             [:base-type        {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                             [:effective-type   {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                             [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]
+  (cond
+    ;; if `has_field_values` is set in the DB, use that value; but if it's `auto-list`, return the value as `list` to
+    ;; avoid confusing FE code, which can remain blissfully unaware that `auto-list` is a thing
+    (= has-field-values :auto-list)   :list
+    has-field-values                  has-field-values
+    ;; otherwise if it does not have value set in DB we will infer it
+    (lib.types.isa/searchable? field) :search
+    :else                             :none))
+
+(mu/defn ^:private remapped-field :- [:maybe ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+    (lib.metadata/field metadata-providerable remap-field-id)))
+
+(mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  ;; ignore remappings for PK columns.
+  (let [col (or (when (lib.types.isa/primary-key? column)
+                  column)
+                (remapped-field metadata-providerable column)
+                column)]
+    (when (lib.types.isa/searchable? col)
+      col)))
+
+(mu/defn field-values-search-info :- ::field-values-search-info
+  "Info about whether the column in question has FieldValues associated with it for purposes of powering a search
+  widget in the QB filter modals."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   column                :- ::lib.schema.metadata/column]
+  (when column
+    (let [column-field-id (:id column)
+          search-field-id (:id (search-field metadata-providerable column))]
+      {:field-id (when (int? column-field-id) column-field-id)
+       :search-field-id (when (int? search-field-id) search-field-id)
+       :has-field-values (if column
+                           (infer-has-field-values column)
+                           :none)})))

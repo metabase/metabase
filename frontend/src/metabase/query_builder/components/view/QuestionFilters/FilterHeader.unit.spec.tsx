@@ -41,7 +41,7 @@ function setup({
     });
 
     const handleQueryChange = (nextLegacyQuery: StructuredQuery) => {
-      const nextQuery = nextLegacyQuery.question()._getMLv2Query();
+      const nextQuery = nextLegacyQuery.question().query();
       setQuery(nextQuery);
       onChange(nextQuery);
     };

@@ -3,6 +3,7 @@ import type { FieldReference } from "metabase-types/api";
 import type {
   Clause,
   ColumnMetadata,
+  FieldValuesSearchInfo,
   MetricMetadata,
   Query,
   SegmentMetadata,
@@ -43,28 +44,11 @@ export function fieldableColumns(
   return ML.fieldable_columns(query, stageIndex);
 }
 
-/**
- * This should only be used to get field IDs when it is necessary, like interacting with backend API parameters.
- * For most purposes, you should be use ColumnMetadata objects and not access field ids directly
- *
- * @param {ColumnMetadata} column
- * @returns {number|string|null} field id
- */
-export function _fieldId(column: ColumnMetadata): number | string | null {
-  return ML.field_id(column);
-}
-
-export function _cardOrTableId(column: ColumnMetadata): number | string | null {
-  return ML.legacy_card_or_table_id(column);
-}
-
-// TODO: This should be removed and usage replaced with calls to `visibleColumns` and `findColumnIndexesFromLegacyRefs`.
-export function findVisibleColumnForLegacyRef(
+export function fieldValuesSearchInfo(
   query: Query,
-  stageIndex: number,
-  fieldRef: FieldReference,
-): ColumnMetadata | null {
-  return ML.find_visible_column_for_legacy_ref(query, stageIndex, fieldRef);
+  column: ColumnMetadata,
+): FieldValuesSearchInfo {
+  return ML.field_values_search_info(query, column);
 }
 
 export function legacyRef(

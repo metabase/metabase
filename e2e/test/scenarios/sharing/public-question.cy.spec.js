@@ -4,6 +4,8 @@ import {
   visitQuestion,
   downloadAndAssert,
   assertSheetRowsCount,
+  openNewPublicLinkDropdown,
+  createPublicQuestionLink,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -67,9 +69,8 @@ describe("scenarios > public > question", () => {
       // Make sure metadata fully loaded before we continue
       cy.get(".cellData").contains("Winner");
 
-      cy.icon("share").click();
+      openNewPublicLinkDropdown("card");
 
-      enableSharing();
       // Although we already have API helper `visitPublicQuestion`,
       // it makes sense to use the UI here in order to check that the
       // generated url originally doesn't include query params
@@ -86,12 +87,34 @@ describe("scenarios > public > question", () => {
       cy.get(".cellData").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.icon("download").click();
       cy.get("@uuid").then(publicUid => {
         downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUid },
           assertSheetRowsCount(5),
         );
+      });
+    });
+  });
+
+  it("should only allow non-admin users to see a public link if one has already been created", () => {
+    cy.get("@questionId").then(id => {
+      createPublicQuestionLink(id);
+      cy.signOut();
+    });
+
+    cy.signInAsNormalUser().then(() => {
+      cy.get("@questionId").then(id => {
+        visitQuestion(id);
+      });
+
+      cy.icon("share").click();
+
+      cy.findByTestId("public-link-popover-content").within(() => {
+        cy.findByText("Public link").should("be.visible");
+        cy.findByTestId("public-link-input").then($input =>
+          expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
+        );
+        cy.findByText("Remove public URL").should("not.exist");
       });
     });
   });
@@ -120,12 +143,7 @@ describe("scenarios > public > question", () => {
 });
 
 const visitPublicURL = () => {
-  // Ideally we would just find the first input
-  // but unless we filter by value
-  // Cypress finds an input before the copyable inputs are rendered
-  cy.findByRole("heading", { name: "Public link" })
-    .parent()
-    .findByDisplayValue(/^http/)
+  cy.findByTestId("public-link-input")
     .invoke("val")
     .then(publicURL => {
       // Copied URL has no get params
@@ -134,23 +152,4 @@ const visitPublicURL = () => {
       cy.signOut();
       cy.visit(publicURL);
     });
-};
-
-const enableSharing = () => {
-  cy.intercept("POST", "/api/card/*/public_link").as("sharingEnabled");
-
-  cy.findByRole("heading", { name: "Enable sharing" })
-    .parent()
-    .findByRole("switch")
-    .check();
-
-  cy.wait("@sharingEnabled").then(
-    ({
-      response: {
-        body: { uuid },
-      },
-    }) => {
-      cy.wrap(uuid).as("uuid");
-    },
-  );
 };

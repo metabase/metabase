@@ -1,7 +1,8 @@
 (ns metabase.lib.js-test
   (:require
-   [clojure.test :refer [deftest is are testing]]
+   [clojure.test :refer [are deftest is testing]]
    [goog.object :as gobject]
+   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.js :as lib.js]
    [metabase.lib.options :as lib.options]
@@ -259,3 +260,52 @@
     (are [query] (nil? (lib.js/source-table-or-card-id query))
       lib.tu/native-query
       (lib/append-stage lib.tu/native-query))))
+
+(deftest ^:parallel expression-clause-normalization-test
+  (are [x y] (do
+               (is (mc/validate :metabase.lib.schema.expression/expression y))
+               (is (=? x y)))
+
+    [:time-interval {} [:field {} int?] :current :day]
+    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) "current" "day"] nil)
+
+    [:time-interval {} [:field {} int?] 10 :day]
+    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day"] nil)
+
+    [:relative-datetime {} :current :day]
+    (lib.js/expression-clause "relative-datetime" ["current" "day"] nil)
+
+    [:relative-datetime {} 10 :day]
+    (lib.js/expression-clause "relative-datetime" [10 "day"] nil)
+
+    [:interval {} 10 :day]
+    (lib.js/expression-clause "interval" [10 "day"] nil)
+
+    [:datetime-add {} [:field {} int?] 10 :day]
+    (lib.js/expression-clause "datetime-add" [(meta/field-metadata :products :created-at) 10 "day"] nil)
+
+    [:datetime-subtract {} [:field {} int?] 10 :day]
+    (lib.js/expression-clause "datetime-subtract" [(meta/field-metadata :products :created-at) 10 "day"] nil)
+
+    [:get-week {} [:field {} int?] :iso]
+    (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at) "iso"] nil)
+
+    [:get-week {} [:field {} int?]]
+    (lib.js/expression-clause "get-week" [(meta/field-metadata :products :created-at)] nil)
+
+    [:temporal-extract {} [:field {} int?] :day-of-week]
+    (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week"] nil)
+
+    [:temporal-extract {} [:field {} int?] :day-of-week :iso]
+    (lib.js/expression-clause "temporal-extract" [(meta/field-metadata :products :created-at) "day-of-week" "iso"] nil)
+
+    [:datetime-diff {} [:field {} int?] [:field {} int?] :day]
+    (lib.js/expression-clause "datetime-diff" [(meta/field-metadata :products :created-at) (meta/field-metadata :products :created-at) "day"] nil))
+
+  (testing "normalizes recursively"
+    (is (=?
+          [:time-interval {} [:field {} int?]
+           [:interval {} 10 :day]
+           :day]
+          (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at)
+                                                     (lib.js/expression-clause "interval" [10 "day"] nil) "day"] nil)))))

@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { isValidElement, cloneElement } from "react";
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import { useArgs } from "@storybook/addons";
 
 import Toggle from "../Toggle/Toggle";
 import FormField from "./FormField";

@@ -41,9 +41,10 @@
   :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)
@@ -56,7 +57,7 @@
    :type             mi/transform-keyword})
 
 (def ^:private allowed-user-types
-  #{:internal :personal})
+  #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -326,7 +327,8 @@
    [:email                             ms/Email]
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
-   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"

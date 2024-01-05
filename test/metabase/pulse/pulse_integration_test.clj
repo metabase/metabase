@@ -354,13 +354,16 @@
                                       :as      pulse} {:name "Consistent Time Formatting Pulse"}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           native-card-id
-                                            :dashboard_card_id base-dash-card-id}
+                                            :dashboard_card_id base-dash-card-id
+                                            :include_csv       true}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           model-card-id
-                                            :dashboard_card_id model-dash-card-id}
+                                            :dashboard_card_id model-dash-card-id
+                                            :include_csv       true}
                                PulseCard _ {:pulse_id          pulse-id
                                             :card_id           meta-model-card-id
-                                            :dashboard_card_id metamodel-dash-card-id}
+                                            :dashboard_card_id metamodel-dash-card-id
+                                            :include_csv       true}
                                PulseChannel {pulse-channel-id :id} {:channel_type :email
                                                                     :pulse_id     pulse-id
                                                                     :enabled      true}
@@ -410,8 +413,8 @@
           (testing "Custom column metadata settings are applied"
             (is (= "2023-12-11, 15:30"
                    (metamodel-results "Example Timestamp With Time Zone"))))
-          (testing "Custom column settings metadata takes precedence over visualization settings"
-            (is (= "December 11, 2023, 3:30:45 PM"
+          (testing "Visualization settings overwrite custom metadata column settings"
+            (is (= "December 11, 2023, 3:30:45.123 PM"
                    (metamodel-results "Example Timestamp"))))
           (testing "Setting time-enabled to nil for a date time column results in only showing the date"
             (is (= "December 11, 2023"
@@ -419,3 +422,201 @@
           (testing "Setting time-enabled to nil for a time column just returns an empty string"
             (is (= ""
                    (metamodel-results "Example Time")))))))))
+
+(deftest renamed-column-names-are-applied-test
+  (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
+    (mt/with-temporary-setting-values [custom-formatting nil]
+      (let [query        {:source-table (mt/id :orders)
+                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
+                                         [:expression "Tax Rate"]],
+                          :expressions  {"Tax Rate" [:/
+                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                          :limit        10}
+            viz-settings {:table.cell_column "TAX",
+                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
+                                              {:column_title "THE_ID"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :tax))
+                                              {:column_title "ORDER TAX"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :total))
+                                              {:column_title "Total Amount"},
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
+                                                      (mt/id :orders :discount))
+                                              {:column_title "Discount Applied"}
+                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                      (mt/id :orders :quantity))
+                                              {:column_title "Amount Ordered"}
+                                              "[\"ref\",[\"expression\",\"Tax Rate\"]]"
+                                              {:column_title "Effective Tax Rate"}}}]
+        (t2.with-temp/with-temp [Card {base-card-name :name
+                                       base-card-id   :id} {:name                   "RENAMED"
+                                                            :dataset_query          {:database (mt/id)
+                                                                                     :type     :query
+                                                                                     :query    query}
+                                                            :visualization_settings viz-settings}
+                                 Card {model-card-name :name
+                                       model-card-id   :id
+                                       model-metadata  :result_metadata} {:name          "MODEL"
+                                                                          :dataset       true
+                                                                          :dataset_query {:database (mt/id)
+                                                                                          :type     :query
+                                                                                          :query    {:source-table
+                                                                                                     (format "card__%s" base-card-id)}}}
+                                 Card {meta-model-card-name :name
+                                       meta-model-card-id   :id} {:name            "MODEL_WITH_META"
+                                                                  :dataset         true
+                                                                  :dataset_query   {:database (mt/id)
+                                                                                    :type     :query
+                                                                                    :query    {:source-table
+                                                                                               (format "card__%s" model-card-id)}}
+                                                                  :result_metadata (mapv
+                                                                                     (fn [{column-name :name :as col}]
+                                                                                       (cond-> col
+                                                                                         (= "DISCOUNT" column-name)
+                                                                                         (assoc :display_name "Amount of Discount")
+                                                                                         (= "TOTAL" column-name)
+                                                                                         (assoc :display_name "Grand Total")
+                                                                                         (= "QUANTITY" column-name)
+                                                                                         (assoc :display_name "N")))
+                                                                                     model-metadata)}
+                                 Card {question-card-name :name
+                                       question-card-id   :id} {:name                   "FINAL_QUESTION"
+                                                                :dataset_query          {:database (mt/id)
+                                                                                         :type     :query
+                                                                                         :query    {:source-table
+                                                                                                    (format "card__%s" meta-model-card-id)}}
+                                                                :visualization_settings {:table.pivot_column "DISCOUNT",
+                                                                                         :table.cell_column  "TAX",
+                                                                                         :column_settings    {(format
+                                                                                                                "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                                (mt/id :orders :quantity))
+                                                                                                              {:column_title "Count"}
+                                                                                                              (format
+                                                                                                                "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                                (mt/id :orders :id))
+                                                                                                              {:column_title "IDENTIFIER"}}}}
+                                 Dashboard {dash-id :id} {:name "The Dashboard"}
+                                 DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                                        :card_id      base-card-id}
+                                 DashboardCard {model-dash-card-id :id} {:dashboard_id dash-id
+                                                                         :card_id      model-card-id}
+                                 DashboardCard {meta-model-dash-card-id :id} {:dashboard_id dash-id
+                                                                              :card_id      meta-model-card-id}
+                                 DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
+                                                                            :card_id      question-card-id}
+                                 Pulse {pulse-id :id
+                                        :as      pulse} {:name "Consistent Column Names"}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           base-card-id
+                                              :dashboard_card_id base-dash-card-id
+                                              :include_csv       true}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           model-card-id
+                                              :dashboard_card_id model-dash-card-id
+                                              :include_csv       true}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           meta-model-card-id
+                                              :dashboard_card_id meta-model-dash-card-id
+                                              :include_csv       true}
+                                 PulseCard _ {:pulse_id          pulse-id
+                                              :card_id           question-card-id
+                                              :dashboard_card_id question-dash-card-id
+                                              :include_csv       true}
+                                 PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                      :pulse_id     pulse-id
+                                                                      :enabled      true}
+                                 PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                          :user_id          (mt/user->id :rasta)}]
+          (let [attachment-name->cols (mt/with-fake-inbox
+                                        (with-redefs [email/bcc-enabled? (constantly false)]
+                                          (mt/with-test-user nil
+                                            (metabase.pulse/send-pulse! pulse)))
+                                        (->>
+                                          (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+                                          (keep
+                                            (fn [{:keys [type content-type file-name content]}]
+                                              (when (and
+                                                      (= :attachment type)
+                                                      (= "text/csv" content-type))
+                                                [file-name
+                                                 (first (csv/read-csv (slurp content)))])))
+                                          (into {})))]
+            (testing "Renaming columns via viz settings is correctly applied to the CSV export"
+              (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" base-card-name)))))
+            (testing "A question derived from another question does not bring forward any renames"
+              (is (= ["ID" "Tax" "Total" "Discount ($)" "Quantity" "Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" model-card-name)))))
+            (testing "A model with custom metadata shows the renamed metadata columns"
+              (is (= ["ID" "Tax" "Grand Total" "Amount of Discount ($)" "N" "Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" meta-model-card-name)))))
+            (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
+              (is (= ["IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"]
+                     (attachment-name->cols (format "%s.csv" question-card-name)))))))))))
+
+(defn- run-pulse-and-return-scalars
+  "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
+  [pulse]
+  (mt/with-fake-inbox
+    (with-redefs [email/bcc-enabled? (constantly false)]
+      (mt/with-test-user nil
+        (metabase.pulse/send-pulse! pulse)))
+    (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
+          doc         (-> html-body hik/parse hik/as-hickory)
+          data-tables (hik.s/select
+                       (hik.s/class "pulse-body")
+                       doc)]
+      (mapcat
+       (fn [data-table]
+         (->> (hik.s/select
+               hik.s/first-child
+               data-table)
+              (map (comp first :content))))
+       data-tables))))
+
+(deftest number-viz-shows-correct-value
+  (testing "Static Viz. Render of 'Number' Visualization shows the correct column's first value #32362."
+    (mt/dataset test-data
+      (let [ ;; test card 1 'narrows' the query to a single column (the "TAX" field)
+            test-card1 {:visualization_settings {:scalar.field "TAX"}
+                        :display                :scalar
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table (mt/id :orders)
+                                                            :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]]}}}
+            ;; test card 2's query returns all cols/rows of the table, but still has 'Number' viz settings `{:scalar.field "TAX"}`
+            test-card2 {:visualization_settings {:scalar.field "TAX"}
+                        :display                :scalar
+                        :dataset_query          {:database (mt/id)
+                                                 :type     :query
+                                                 :query    {:source-table (mt/id :orders)}}}]
+        (mt/with-temp [Card          {card-id1 :id} test-card1
+                       Card          {card-id2 :id} test-card2
+                       Dashboard     {dash-id :id} {:name "just dash"}
+                       DashboardCard {dash-card-id1 :id} {:dashboard_id dash-id
+                                                          :card_id      card-id1}
+                       DashboardCard {dash-card-id2 :id} {:dashboard_id dash-id
+                                                          :card_id      card-id2}
+                       Pulse         {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                               :dashboard_id dash-id}
+                       PulseCard             _             {:pulse_id          pulse-id
+                                                            :card_id           card-id1
+                                                            :dashboard_card_id dash-card-id1}
+                       PulseCard             _             {:pulse_id          pulse-id
+                                                            :card_id           card-id2
+                                                            :dashboard_card_id dash-card-id2}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          ;; First value is the scalar returned from card1 (specified "TAX" field directly in the query)
+          ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
+          (is (= ["2.07" "2.07"]
+                 (run-pulse-and-return-scalars pulse))))))))

@@ -358,15 +358,14 @@
      (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
        {:effective-type effective-type})
      (when-let [table-id (:table-id x-metadata)]
-       {:table (display-info
-                query
-                stage-number
-                ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
-                ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
-                ;; `:default` method.
-                (cond
-                  (integer? table-id) (lib.metadata/table query table-id)
-                  (string? table-id)  (lib.metadata/card query (lib.util/legacy-string-table-id->card-id table-id))))})
+       ;; TODO: only ColumnMetadatas should possibly have legacy `card__<id>` `:table-id`s... we should
+       ;; probably move this special casing into [[metabase.lib.field]] instead of having it be part of the
+       ;; `:default` method.
+       (when-let [inner-metadata (cond
+                                   (integer? table-id) (lib.metadata/table query table-id)
+                                   (string? table-id)  (lib.metadata/card
+                                                         query (lib.util/legacy-string-table-id->card-id table-id)))]
+         {:table (display-info query stage-number inner-metadata)}))
      (when-let [source (:lib/source x-metadata)]
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
@@ -575,3 +574,17 @@
                               (assoc field :lib/desired-column-alias (unique-name-fn
                                                                       (lib.join.util/desired-alias query field))))))))
           column-metadatas)))
+
+(mu/defn default-columns-for-stage :- ColumnsWithUniqueAliases
+  "Given a query and stage, returns the columns which would be selected by default.
+
+  This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.
+  (Fields from explicit joins are listed on the join itself and should not be listed in `:fields`.)
+
+  If there is already a `:fields` list on that stage, it is ignored for this calculation."
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (let [no-fields (lib.util/update-query-stage query stage-number dissoc :fields)]
+    (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
+                           :lib/source))
+          (returned-columns no-fields stage-number (lib.util/query-stage no-fields stage-number)))))
