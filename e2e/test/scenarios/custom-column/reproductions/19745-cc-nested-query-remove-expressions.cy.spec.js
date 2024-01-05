@@ -22,13 +22,12 @@ const questionDetails = {
       "source-table": PRODUCTS_ID,
       aggregation: [
         ["count"],
-        ["sum", ["field", PRODUCTS.PRICE, null]],
-        ["sum", ["field", PRODUCTS.RATING, null]],
+        ["sum", ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }]],
       ],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
+      breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
     },
     fields: [
-      ["field", PRODUCTS.CATEGORY, null],
+      ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
       ["field", "sum", { "base-type": "type/Float" }],
       ["expression", "Custom Column"],
     ],
