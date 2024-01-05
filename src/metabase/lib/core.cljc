@@ -168,7 +168,6 @@
   filter-args-display-name]
  [lib.field
   add-field
-  field-id
   legacy-card-or-table-id
   fieldable-columns
   fields

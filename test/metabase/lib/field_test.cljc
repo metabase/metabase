@@ -691,18 +691,6 @@
                (lib/with-binning (m/find-first (comp #{"PRICE"} :name) breakoutables)
                  (first (lib.binning/numeric-binning-strategies)))))))))
 
-(deftest ^:parallel field-id-test
-  (let [id-meta (meta/field-metadata :venues :id)
-        query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                  (lib/with-fields [id-meta])
-                  (lib/expression "foo" (lib/+ id-meta 10)))
-        venues-id (:id id-meta)
-        cols (lib/orderable-columns query)]
-    (is (= venues-id (lib/field-id id-meta)))
-    (is (=? {"foo" nil
-             "ID" venues-id}
-           (into {} (map (juxt :lib/desired-column-alias lib/field-id)) cols)))))
-
 (defn- sorted-fields [fields]
   (sort-by (comp str last) fields))
 

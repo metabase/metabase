@@ -215,11 +215,6 @@
     (keyword "display-info-outer" (str "stage-" stage-number)) x
     #(display-info* a-query stage-number %)))
 
-(defn ^:export field-id
-  "Find the field id for something or nil."
-  [field-metadata]
-  (lib.core/field-id field-metadata))
-
 (defn ^:export legacy-card-or-table-id
   "Find the legacy card id or table id for a given ColumnMetadata or nil.
    Returns a either `\"card__<id>\"` or integer table id."

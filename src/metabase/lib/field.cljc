@@ -525,11 +525,6 @@
              visible-columns)
        (lib.equality/mark-selected-columns query stage-number visible-columns selected-fields)))))
 
-(mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
-  "Find the field id for something or nil."
-  [field-metadata :- ::lib.schema.metadata/column]
-  (:id field-metadata))
-
 (mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
   "Find the legacy card id or table id for a given ColumnMetadata or nil.
    Returns a either `\"card__<id>\"` or integer table id."
