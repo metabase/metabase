@@ -100,7 +100,7 @@ export class Api extends EventEmitter {
         let body;
         if (options.hasBody) {
           body = options.formData
-            ? rawData
+            ? rawData.formData
             : JSON.stringify(
                 options.bodyParamName != null
                   ? data[options.bodyParamName]

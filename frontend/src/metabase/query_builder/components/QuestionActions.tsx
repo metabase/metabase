@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -12,6 +13,8 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import { softReloadCard } from "metabase/query_builder/actions";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import Databases from "metabase/entities/databases";
+import { uploadFile } from "metabase/redux/uploads";
 
 import { color } from "metabase/lib/colors";
 
@@ -70,6 +73,23 @@ const QuestionActions = ({
   const isMetabotEnabled = useSelector(state =>
     getSetting(state, "is-metabot-enabled"),
   );
+
+  const canUpload = useSelector(state => {
+    const uploadsEnabled = getSetting(state, "uploads-enabled");
+    if (!uploadsEnabled) {
+      return false;
+    }
+    const uploadsDbId = getSetting(state, "uploads-database-id");
+    const canUploadToDb =
+      uploadsDbId === question.databaseId() &&
+      Databases.selectors
+        .getObject(state, {
+          entityId: uploadsDbId,
+        })
+        ?.canUpload();
+    return canUploadToDb;
+  });
+
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
   const dispatch = useDispatch();
@@ -84,6 +104,9 @@ const QuestionActions = ({
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
+  // TODO: check if uploads are enabled
+  const canAppend =
+    canUpload && canWrite && isDataset && !!question._card.based_on_upload;
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -215,6 +238,34 @@ const QuestionActions = ({
     });
   }
 
+  if (canAppend) {
+    extraButtons.push({
+      title: t`Append data`,
+      icon: "add",
+      action: () => {
+        document.getElementById("append-file-input")?.click();
+      },
+    });
+  }
+
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && question._card.based_on_upload) {
+      uploadFile({
+        file,
+        tableId: question._card.based_on_upload,
+      })(dispatch);
+
+      // reset the file input so that subsequent uploads of the same file trigger the change handler
+      const fileInput = document.getElementById(
+        "append-file-input",
+      ) as HTMLInputElement;
+      if (fileInput.value) {
+        fileInput.value = "";
+      }
+    }
+  };
+
   return (
     <>
       <QuestionActionsDivider />
@@ -237,6 +288,15 @@ const QuestionActions = ({
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>
+      {!!canAppend && (
+        <input
+          type="file"
+          accept="text/csv"
+          id="append-file-input"
+          onChange={handleFileUpload}
+          style={{ display: "none" }}
+        />
+      )}
       {extraButtons.length > 0 && (
         <EntityMenu
           triggerAriaLabel={t`Move, archive, and more...`}

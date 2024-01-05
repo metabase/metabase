@@ -1,11 +1,12 @@
 import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
-import { CardApi } from "metabase/services";
+import { CardApi, MetabaseApi } from "metabase/services";
+import { runQuestionQuery } from "metabase/query_builder/actions";
 import Collections from "metabase/entities/collections";
 
 import type { Dispatch, State } from "metabase-types/store";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
 import type { FileUploadState } from "metabase-types/store/upload";
 
 import {
@@ -44,7 +45,15 @@ export const hasActiveUploads = (state: State) =>
 
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
-  ({ file, collectionId }: { file: File; collectionId?: CollectionId }) =>
+  ({
+      file,
+      collectionId,
+      tableId,
+    }: {
+      file: File;
+      collectionId?: CollectionId;
+      tableId?: TableId;
+    }) =>
     async (dispatch: Dispatch) => {
       const id = Date.now();
 
@@ -58,6 +67,7 @@ export const uploadFile = createThunkAction(
           id,
           name: file.name,
           collectionId,
+          tableId,
         }),
       );
 
@@ -76,7 +86,10 @@ export const uploadFile = createThunkAction(
         const formData = new FormData();
         formData.append("file", file);
         formData.append("collection_id", String(collectionId));
-        const response = await CardApi.uploadCSV(formData);
+
+        const response = await (tableId
+          ? MetabaseApi.tableAppendCSV({ tableId, formData })
+          : CardApi.uploadCSV({ formData }));
 
         dispatch(
           uploadEnd({
@@ -85,7 +98,12 @@ export const uploadFile = createThunkAction(
           }),
         );
 
-        dispatch(Collections.actions.invalidateLists());
+        if (tableId) {
+          dispatch(runQuestionQuery());
+        } else if (collectionId) {
+          dispatch(Collections.actions.invalidateLists());
+        }
+
         clear();
       } catch (err: any) {
         dispatch(
@@ -102,7 +120,8 @@ export const uploadFile = createThunkAction(
 interface UploadStartPayload {
   id: number;
   name: string;
-  collectionId: CollectionId;
+  collectionId?: CollectionId;
+  tableId?: TableId;
 }
 
 interface UploadEndPayload {

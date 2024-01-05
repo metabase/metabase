@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Box, Stack } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
-import type { Collection } from "metabase-types/api";
+import type { Collection, Table } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
 
 import {
@@ -19,14 +19,14 @@ import { FileUploadErrorModal } from "./FileUploadErrorModal";
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;
 
 export interface FileUploadLargeProps {
-  collection: Collection;
+  uploadDestination: Collection | Table;
   uploads: FileUpload[];
   resetUploads: () => void;
   isActive?: boolean;
 }
 
 const FileUploadLarge = ({
-  collection,
+  uploadDestination,
   uploads,
   resetUploads,
   isActive,
@@ -49,7 +49,7 @@ const FileUploadLarge = ({
   const title =
     isLoading && loadingTime > 0
       ? getLoadingMessage(loadingTime)
-      : getTitle(uploads, collection);
+      : getTitle(uploads, uploadDestination);
 
   const status = {
     title,
@@ -91,16 +91,19 @@ const getName = (upload: FileUpload) => {
   return upload.name;
 };
 
-const getTitle = (uploads: FileUpload[], collection: Collection) => {
+const getTitle = (
+  uploads: FileUpload[],
+  uploadDestination: Collection | Table,
+) => {
   const isDone = uploads.every(isUploadCompleted);
   const isError = uploads.some(isUploadAborted);
 
   if (isDone) {
-    return t`Data added to ${collection.name}`;
+    return t`Data added to ${uploadDestination.name}`;
   } else if (isError) {
-    return t`Error uploading your File`;
+    return t`Error uploading your file`;
   } else {
-    return t`Uploading data to ${collection.name} …`;
+    return t`Uploading data to ${uploadDestination.name} …`;
   }
 };
 
