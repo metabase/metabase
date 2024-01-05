@@ -569,11 +569,10 @@
 (defn export-dashboard-card-series
   "Given the hydrated `:series` of a DashboardCard, as a vector of maps, converts it to a portable form with
   the card IDs replaced with their entity IDs."
-  [serieses]
-  (->> serieses
-       (sort-by :position)
-       (map (fn [series]
-              {:card_id (serdes/*export-fk* (:id series) :model/Card)}))))
+  [cards]
+  (mapv (fn [card]
+          {:card_id (serdes/*export-fk* (:id card) :model/Card)})
+        cards))
 
 (defn- extract-dashcard
   [dashcard]
