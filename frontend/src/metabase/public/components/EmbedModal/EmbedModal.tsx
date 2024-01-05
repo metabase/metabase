@@ -4,6 +4,7 @@ import {
   EmbedModalHeaderBackIcon,
   EmbedTitleContainer,
 } from "metabase/public/components/EmbedModal/EmbedModal.styled";
+import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import Modal from "metabase/components/Modal";
@@ -45,15 +46,16 @@ const EmbedTitle = ({
 };
 
 export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
+  const shouldShowEmbedTerms = useSelector(state =>
+      getSetting(state, "show-static-embed-terms"),
+  );
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
   const applicationName = useSelector(getApplicationName);
 
   const goToNextStep = () => {
-    if (embedType === null) {
+    if (embedType === null && shouldShowEmbedTerms) {
       setEmbedType("legalese");
-    }
-
-    if (embedType === "legalese") {
+    } else {
       setEmbedType("application");
     }
   };

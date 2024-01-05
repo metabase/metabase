@@ -18,7 +18,7 @@ const TestEmbedModal = ({
       {({ embedType, goToNextStep, goBackToEmbedModal }) => (
         <Group data-testid="test-embed-modal-content">
           <Button onClick={goBackToEmbedModal}>Previous</Button>
-          <Text>{embedType ?? "Embed Landing"}</Text>
+          <Text data-testid="test-embed-step">{embedType ?? "Embed Landing"}</Text>
           <Button onClick={goToNextStep}>Next</Button>
         </Group>
       )}
@@ -26,7 +26,7 @@ const TestEmbedModal = ({
   );
 };
 
-const setup = ({ isOpen = true } = {}) => {
+const setup = ({ isOpen = true, showStaticEmbedTerms = true } = {}) => {
   const onClose = jest.fn();
 
   renderWithProviders(
@@ -38,6 +38,7 @@ const setup = ({ isOpen = true } = {}) => {
       storeInitialState: createMockState({
         settings: mockSettings({
           "application-name": "Embed Metabase",
+          "show-static-embed-terms": showStaticEmbedTerms,
         }),
       }),
       initialRoute: "*",
@@ -58,7 +59,7 @@ describe("EmbedModal", () => {
 
     expect(screen.getByTestId("test-embed-modal-content")).toBeInTheDocument();
 
-    expect(screen.getByText("Embed Landing")).toBeInTheDocument();
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("Embed Landing");
   });
 
   it("should go to the legalese step when `Next` is clicked", () => {
@@ -66,33 +67,36 @@ describe("EmbedModal", () => {
 
     userEvent.click(screen.getByText("Next"));
 
-    expect(screen.getByText("legalese")).toBeInTheDocument();
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
   });
 
-  it("should go to the static embedding step when `Next` is clicked twice", async () => {
-    // TODO: add logic for this test when we add the API call
-    //  for checking if the user has already accepted the terms
-
-    setup();
-
+  it("should go to the legalese step then the static embedding step if the user has not accepted the embedding terms", () => {
+    setup({ showStaticEmbedTerms: true });
     userEvent.click(screen.getByText("Next"));
-    expect(screen.getByText("legalese")).toBeInTheDocument();
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
+
+    userEvent.click(screen.getByText("Next"))
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("application");
+  })
+
+  it("should immediately go to the static embedding step if the user has accepted the terms", async () => {
+    setup({ showStaticEmbedTerms: false});
 
     userEvent.click(screen.getByText("Next"));
     expect(
       within(screen.getByTestId("modal-header")).getByText("Static embedding"),
     ).toBeInTheDocument();
-    expect(screen.getByText("application")).toBeInTheDocument();
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("application");
   });
 
   it("returns to the initial embed modal landing when the user clicks the modal title", () => {
     setup();
 
     userEvent.click(screen.getByText("Next"));
-    expect(screen.getByText("legalese")).toBeInTheDocument();
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
 
     userEvent.click(screen.getByText("Static embedding"));
-    expect(screen.getByText("Embed Landing")).toBeInTheDocument();
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("Embed Landing");
   });
 
   it("calls onClose when the modal is closed", () => {
