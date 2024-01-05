@@ -31,37 +31,43 @@ const mockSavedCard = createMockCard({
 });
 const mockUnsavedCard = createMockUnsavedCard();
 
+const noop = () => null;
+const defaultDatasetEditorProps = {
+  datasetEditorTab: "query",
+  isDirty: false,
+  isMetadataDirty: false,
+  isRunning: true,
+  isShowingDataReference: false,
+  isShowingSnippetSidebar: false,
+  isShowingTemplateTagsEditor: false,
+  parameterValues: {},
+  params: { slug: "query" },
+  handleResize: noop,
+  onCancelCreateNewModel: noop,
+  onCancelDatasetChanges: noop,
+  onOpenModal: noop,
+  onSave: noop,
+  runQuestionQuery: noop,
+  setFieldMetadata: noop,
+  setQueryBuilderMode: noop,
+  toggleDataReference: noop,
+  toggleSnippetSidebar: noop,
+  toggleTemplateTagsEditor: noop,
+};
+
 const renderDatasetEditor = (card: Card | UnsavedCard) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
   const question = new Question(card);
 
-  const props = {
-    question: question,
-    params: { slug: "query" },
-    datasetEditorTab: "query",
-    isMetadataDirty: false,
-    parameterValues: {},
-    query: question.legacyQuery(),
-    isDirty: false,
-    isRunning: true,
-    setQueryBuilderMode: () => null,
-    setFieldMetadata: () => null,
-    onSave: () => null,
-    onCancelCreateNewModel: () => null,
-    onCancelDatasetChanges: () => null,
-    handleResize: () => null,
-    runQuestionQuery: () => null,
-    onOpenModal: () => null,
-    isShowingTemplateTagsEditor: false,
-    isShowingDataReference: false,
-    isShowingSnippetSidebar: false,
-    toggleTemplateTagsEditor: () => null,
-    toggleDataReference: () => null,
-    toggleSnippetSidebar: () => null,
-  };
-  renderWithProviders(<DatasetEditor {...props} />);
+  renderWithProviders(
+    <DatasetEditor
+      {...defaultDatasetEditorProps}
+      question={question}
+      query={question.legacyQuery()}
+    />,
+  );
 };
 
 describe("DatasetEditor", () => {
