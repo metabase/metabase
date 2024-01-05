@@ -76,7 +76,7 @@ function NotebookStep({
               large={hasLargeActionButtons}
               {...stepUi}
               aria-label={stepUi.title}
-              onClick={() => action.action({ query: step.query, openStep })}
+              onClick={() => action.action({ openStep })}
             />
           ),
         };
@@ -86,7 +86,7 @@ function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.query, step.actions, isLastStep, openStep]);
+  }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {

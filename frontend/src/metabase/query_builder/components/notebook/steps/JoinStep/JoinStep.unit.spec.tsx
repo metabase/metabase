@@ -19,7 +19,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { createMockNotebookStep } from "../../test-utils";
 import { JoinStep } from "./JoinStep";
 
@@ -124,10 +123,7 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
   function Wrapper() {
     const [query, setQuery] = useState(step.topLevelQuery);
 
-    const onChange = async (nextQuery: Lib.Query | StructuredQuery) => {
-      if (nextQuery instanceof StructuredQuery) {
-        throw new Error("Expected MLv2 query");
-      }
+    const onChange = async (nextQuery: Lib.Query) => {
       setQuery(nextQuery);
       updateQuery(nextQuery);
     };

@@ -22,7 +22,7 @@ export const DataStep = ({
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
 
-  const collectionId = 0;
+  const collectionId = step.question.collectionId();
   const databaseId = Lib.databaseID(topLevelQuery);
   const tableId = Lib.sourceTableOrCardId(topLevelQuery);
   const table = tableId

@@ -10,7 +10,6 @@ import {
 } from "__support__/server-mocks";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   columnFinder,
   createQuery,
@@ -88,11 +87,8 @@ const setup = async (
 
 const setupEmptyQuery = () => {
   const question = Question.create({ databaseId: SAMPLE_DB_ID });
-  const legacyQuery = question.legacyQuery() as StructuredQuery;
   const query = question.query();
-  return setup(
-    createMockNotebookStep({ query: legacyQuery, topLevelQuery: query }),
-  );
+  return setup(createMockNotebookStep({ topLevelQuery: query }));
 };
 
 describe("DataStep", () => {

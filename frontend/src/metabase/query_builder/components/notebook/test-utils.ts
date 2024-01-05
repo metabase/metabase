@@ -6,7 +6,6 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { NotebookStep } from "./types";
 
 export const metadata = createMockMetadata({
@@ -15,8 +14,6 @@ export const metadata = createMockMetadata({
 });
 
 export const DEFAULT_QUESTION = checkNotNull(metadata.question(1));
-export const DEFAULT_LEGACY_QUERY =
-  DEFAULT_QUESTION.legacyQuery() as StructuredQuery;
 export const DEFAULT_QUERY = DEFAULT_QUESTION.query();
 
 export function createMockNotebookStep({
@@ -32,8 +29,8 @@ export function createMockNotebookStep({
     stageIndex,
     itemIndex,
     testID: `step-${type}-${stageIndex}-${itemIndex}`,
+    question: DEFAULT_QUESTION,
     topLevelQuery: DEFAULT_QUERY,
-    query: DEFAULT_LEGACY_QUERY,
     valid: true,
     active: true,
     visible: true,
