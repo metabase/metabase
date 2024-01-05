@@ -21,6 +21,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
 
 const TEST_DB = createSampleDatabase();
+const ROOT_COLLECTION = createMockCollection({ id: "root" });
 
 const mockSavedCard = createMockCard({
   dataset_query: createMockNativeDatasetQuery({
@@ -34,21 +35,18 @@ const mockSavedCard = createMockCard({
 });
 const mockUnsavedCard = createMockUnsavedCard();
 
-const ROOT_COLLECTION = createMockCollection({ id: "root" });
-
 const setup = ({ card }: { card: Card | UnsavedCard } ) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
   setupNativeQuerySnippetEndpoints();
 
-  const storeInitialState = createMockState({
-    entities: createMockEntitiesState({
-      databases: [TEST_DB],
-      questions: 'id' in card ? [card] : [],
-    }),
-  });
-  const metadata = getMetadata(storeInitialState);
-  const question = new Question(card); //checkNotNull(metadata.question(card.id));
+  // createMockState({
+  //   entities: createMockEntitiesState({
+  //     databases: [TEST_DB],
+  //     questions: 'id' in card ? [card] : [],
+  //   }),
+  // });
+  const question = new Question(card);
 
   const props = {
     question: question,
