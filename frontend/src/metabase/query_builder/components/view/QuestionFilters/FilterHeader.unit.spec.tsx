@@ -163,9 +163,9 @@ describe("FilterHeader", () => {
     expect(screen.getByText("Count is greater than 5")).toBeInTheDocument();
 
     const query = getNextQuery();
+    expect(Lib.stageCount(query)).toBe(2);
     expect(Lib.filters(query, 0)).toHaveLength(1);
     expect(Lib.filters(query, 1)).toHaveLength(1);
-    expect(Lib.filters(query, 2)).toHaveLength(0);
   });
 
   it("should remove a filter from the previous stage", () => {
