@@ -661,9 +661,7 @@
         (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
 
 (defmethod ->honeysql [:sql :field]
-  [driver [_ id-or-name {:keys             [database-type]
-                         ::nest-query/keys [outer-select]
-                         :as               options}
+  [driver [_ id-or-name {:keys [database-type] :as options}
            :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
@@ -671,7 +669,7 @@
           field                (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
           allow-casting?       (and field
-                                    (not outer-select))
+                                    (not (:qp/ignore-coercion options)))
           database-type        (or database-type
                                    (:database-type field))
           identifier           (->honeysql driver
@@ -1068,8 +1066,8 @@
                           true
                           (assoc ::add/source-alias        (::add/desired-alias opts)
                                  ::add/source-table        ::add/none
-                                 ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
-                                 ::nest-query/outer-select true
+                                 ;; this key will tell the SQL QP not to apply casting here either.
+                                 :qp/ignore-coercion       true
                                  ;; used to indicate that this is a forced alias
                                  ::forced-alias            true)
                           ;; don't want to do temporal bucketing or binning inside the order by only.
