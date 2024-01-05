@@ -97,6 +97,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang Keyword Symbol)
+   (com.fasterxml.jackson.core JsonParseException)
    (java.io StringWriter)
    (java.time.temporal Temporal)))
 
@@ -1342,3 +1343,22 @@
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))
+
+(defn- has-invalid-json? [{:keys [name type]}]
+  (when (= :json type)
+    (try
+      ;; parse, but ignore the result
+      (json/parse-string (get-value-of-type :string name))
+      false
+      (catch JsonParseException _ true)
+      ;; something else went wrong, and it could be masking an issue with the json value
+      ;; we don't want to return false positives, but indicate an issue by returning a different falsey value
+      (catch Exception _ nil))))
+
+(defn validate-json-settings!
+  "Throws an exception if there are any settings with invalid JSON configuration.
+   Note that this will only validate settings whose defsetting forms have already been evaluated."
+  []
+  (when-let [invalid-settings (seq (map key (filter (comp has-invalid-json? val) @registered-settings)))]
+    (throw (ex-info (tru "Invalid JSON configuration for settings: {0}" invalid-settings)
+                    {:registered-settings (sort (keys @registered-settings ))}))))
