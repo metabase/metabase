@@ -286,7 +286,7 @@ function loadQuestionMetadata(getQuestion) {
       fetch() {
         const { question, loadMetadataForQuery } = this.props;
         if (question) {
-          loadMetadataForQuery(question.query());
+          loadMetadataForQuery(question.legacyQuery());
         }
       }
 

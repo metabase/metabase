@@ -26,10 +26,10 @@ import { serializeCardForUrl } from "metabase/lib/card";
  *        { // link to a new question created by adding a filter }
  *        <Link
  *          to={
- *            question.query()
+ *            question.legacyQuery()
  *                    .filter([
  *                      "segment",
- *                      question.query().filterSegmentOptions()[0]
+ *                      question.legacyQuery().filterSegmentOptions()[0]
  *                    ])
  *                    .question()
  *                    .getUrl()

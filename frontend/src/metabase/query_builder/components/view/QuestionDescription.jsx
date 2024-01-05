@@ -12,7 +12,7 @@ const QuestionDescription = ({
   isObjectDetail,
   onClick,
 }) => {
-  const query = question.query();
+  const query = question.legacyQuery();
   if (query instanceof StructuredQuery) {
     const topQuery = query.topLevelQuery();
     const aggregations = topQuery.aggregations();

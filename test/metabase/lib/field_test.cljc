@@ -1580,3 +1580,52 @@
              (lib.field/field-values-search-info
               metadata-provider
               (lib.metadata/field metadata-provider (meta/id :venues :id))))))))
+
+(deftest ^:parallel field-values-search-info-native-test
+  (testing "No field-id without custom metadata (#37100)"
+    (is (= {:field-id nil :search-field-id nil :has-field-values :none}
+           (lib.field/field-values-search-info
+             meta/metadata-provider
+             (-> lib.tu/native-query
+                 lib/visible-columns
+                 first))))
+    (is (= {:field-id nil :search-field-id nil :has-field-values :none}
+           (lib.field/field-values-search-info
+             meta/metadata-provider
+             (-> (lib.tu/query-with-stage-metadata-from-card
+                   meta/metadata-provider
+                   (:venues/native lib.tu/mock-cards))
+                 lib/visible-columns
+                 first))))
+    (is (= {:field-id nil :search-field-id nil :has-field-values :none}
+           (lib.field/field-values-search-info
+             meta/metadata-provider
+             (-> (lib.tu/query-with-stage-metadata-from-card
+                   meta/metadata-provider
+                   (:venues/native lib.tu/mock-cards))
+                 lib/append-stage
+                 lib/visible-columns
+                 first)))))
+  (testing "field-id with custom metadata (#37100)"
+    (is (= {:field-id 1 :search-field-id 1 :has-field-values :search}
+           (lib.field/field-values-search-info
+             meta/metadata-provider
+             (-> (update-in lib.tu/native-query [:stages 0 :lib/stage-metadata :columns] conj
+                            {:lib/type :metadata/column
+                             :id 1
+                             :name "search"
+                             :display-name "Search"
+                             :base-type :type/Text})
+                 lib/visible-columns
+                 last))))
+    (is (= {:field-id 1 :search-field-id nil :has-field-values :none}
+           (lib.field/field-values-search-info
+             meta/metadata-provider
+             (-> (update-in lib.tu/native-query [:stages 0 :lib/stage-metadata :columns] conj
+                            {:lib/type :metadata/column
+                             :id 1
+                             :name "num"
+                             :display-name "Random number"
+                             :base-type :type/Integer})
+                 lib/visible-columns
+                 last))))))

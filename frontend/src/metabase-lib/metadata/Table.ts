@@ -85,11 +85,13 @@ class Table {
     return match ? parseInt(match[1]) : null;
   }
 
-  query(query = {}) {
-    return (this.question().query() as StructuredQuery).updateQuery(q => ({
-      ...q,
-      ...query,
-    }));
+  legacyQuery(query = {}) {
+    return (this.question().legacyQuery() as StructuredQuery).updateQuery(
+      q => ({
+        ...q,
+        ...query,
+      }),
+    );
   }
 
   dimensions() {
