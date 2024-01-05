@@ -2,10 +2,12 @@
   "Model namespace for the V2 permissions system. This is not based on permission paths (as in V1), but rather explicit
   permission types and associated values for every object (table/collection) or capability on the system."
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -29,26 +31,23 @@
 ;;  - If a user does not have any value for the permission when it is fetched, the *least* permissive value is used as a
 ;;    fallback.
 
-;; Permissions which apply to individual databases or tables
-(def ^:private DataPermissions
-  {:data-access           {:values [:unrestricted :no-self-service :block]
-                           :model  :model/Table}
-   :native-query-editing  {:values [:yes :no]
-                           :model  :model/Database}
-   :download-results      {:values [:one-million-rows :ten-thousand-rows :no]
-                           :model  :model/Table}
-   :manage-table-metadata {:values [:yes :no]
-                           :model  :model/Table}
-   :manage-database       {:values [:yes :no]
-                           :model  :model/Database}})
 
-;; Permissions which apply to collections
+(def ^:private DataPermissions
+  "Permissions which apply to individual databases or tables"
+  {:data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
+   :download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
+   :manage-table-metadata {:model :model/Table :values [:yes :no]}
+
+   :native-query-editing {:model :model/Database :values [:yes :no]}
+   :manage-database      {:model :model/Database :values [:yes :no]}})
+
 (def ^:private CollectionPermissions
+  "Permissions which apply to collections"
   {:collection {:values [:curate :view :no-access]
                 :model  :model/Collection}})
 
-;; Permissions which apply to the application as a whole, rather than being linked to a specific model
 (def ^:private ApplicationPermissions
+  "Permissions which apply to the application as a whole, rather than being linked to a specific model"
   {:settings-access          {:values [:yes :no]}
    :monitoring-access        {:values [:yes :no]}
    :subscriptions-and-alerts {:values [:yes :no]}})
@@ -60,8 +59,13 @@
 
 (def PermissionType
   "Malli spec for valid permission types."
-  (into [:enum] (keys Permissions)))
+  (into [:enum {:error/message "Invalid permission type"}]
+        (keys Permissions)))
 
+(def PermissionValue
+  "Malli spec for a keyword that matches any value in [[Permissions]]."
+  (into [:enum {:error/message "Invalid permission value"}]
+        (distinct (mapcat :values (vals Permissions)))))
 
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
@@ -85,14 +89,20 @@
     (throw (ex-info (tru "Permission type {0} requires an object ID" perm-type)
                     {perm-type (Permissions perm-type)}))))
 
+(defn- assert-value-matches-perm-type
+  [perm-type perm-value]
+  (when-not (contains? (set (get-in Permissions [perm-type :values])) perm-value)
+    (throw (ex-info (tru "Permission type {0} cannot be set to {1}" perm-type perm-value)
+                    {perm-type (Permissions perm-type)}))))
+
 (def perm-types-by-model
   "A map from model identifiers to a list of permission types that apply to that model."
   (reduce-kv
-   (fn [m perm-type {:keys [model]}]
-     (when model (update m model (fnil conj #{}) perm-type)))
+   (fn [acc perm-type {:keys [model]}]
+     (cond-> acc
+       model (update model (fnil conj #{}) perm-type)))
    {}
    Permissions))
-
 
 ;;; ---------------------------------------- Fetching permissions -----------------------------------------------------
 
@@ -102,8 +112,10 @@
   user has in any group.
 
   For instance,
-    #{} -> :yes
-    #{:view :no-access} -> :view"
+  - Given an empty set, we return the most permissive.
+    (coalesce :settings-access #{}) => :yes
+  - Given a set with values, we select the most permissive option in the set.
+    (coalesce :settings-access #{:view :no-access}) => :view"
   {:arglists '([perm-type perm-values])}
   (fn [perm-type _perm-values] perm-type))
 
@@ -112,7 +124,7 @@
   (let [ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
-(defn permission-for-user
+(mu/defn permission-for-user :- PermissionValue
   "Returns the effective permission value for a given user, permission type, and (optional) object ID. If the user has
   multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type & [object-or-id]]
@@ -170,29 +182,36 @@
     ;; TODO: build graph
     [table-level-permissions db-level-permissions]))
 
-
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 
 (t2/define-before-insert :model/PermissionsV2
-  [{perm-type :type, object-id :object_id :as permission}]
+  [{perm-type :type, perm-value :value, object-id :object_id :as permission}]
   (when-not (mc/validate PermissionType perm-type)
-    (throw (ex-info (tru "Invalid permission type: {0}" perm-type)
-                    permission)))
+    (throw (ex-info (str/join (mu/explain PermissionType perm-type)) permission)))
+  (assert-value-matches-perm-type perm-type perm-value)
   (assert-required-object-id perm-type object-id)
   permission)
 
-(defn set-permission!
+
+(def ^:private TheIdable
+  [:or pos-int? [:map [:id pos-int?]]])
+
+(mu/defn set-permission!
   "Sets a single permission to a specified value for a given group. Optionally takes an `object-or-id` representing the
   object (e.g. table or collection) that this permission applies to. If a permission value already exists for the
   specified group and object, it will be updated to the new value. Returns the number of permission rows added."
-  [perm-type group-or-id value & [object-or-id]]
+  [perm-type             :- :keyword
+   group-or-group-id     :- TheIdable
+   value                 :- :keyword
+   & [object-or-group-id :- TheIdable]]
+  (assert-value-matches-perm-type perm-type value)
   (t2/with-transaction [_conn]
-    (let [group-id         (u/the-id group-or-id)
-          object-id        (when object-or-id (u/the-id object-or-id))
-          new-perm         {:type       perm-type
-                            :group_id   group-id
-                            :object_id  object-id
-                            :value      value}
+    (let [group-id         (u/the-id group-or-group-id)
+          object-id        (when object-or-group-id (u/the-id object-or-group-id))
+          new-perm         {:type      perm-type
+                            :group_id  group-id
+                            :object_id object-id
+                            :value     value}
           existing-perm-id (t2/select-one-pk :model/PermissionsV2
                                              :type perm-type
                                              :group_id group-id
@@ -201,10 +220,12 @@
         (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
         (t2/insert! :model/PermissionsV2 new-perm)))))
 
-(defn set-permissions!
-  "For a single group and permission type, sets permissions for multiple objects at onces (e.g. tables or collections).
+(mu/defn set-permissions!
+  "For a single group and permission type, sets permissions for multiple objects at once (e.g. tables or collections).
   Takes a map of `object-or-id` -> `value` pairs. Returns the number of permission rows added."
-  [perm-type group-id object-or-id->value]
+  [perm-type           :- :keyword
+   group-id            :- pos-int?
+   object-or-id->value :- [:map-of TheIdable :keyword]]
   (let [object-id->value (update-keys object-or-id->value u/the-id)
         permissions      (for [[object-id value] object-id->value]
                            {:type       perm-type
@@ -218,14 +239,38 @@
                   {:where [:in :object_id (keys object-id->value)]})
       (t2/insert! :model/PermissionsV2 permissions))))
 
+
 ;; TODO
 ;; - Function that takes a DB and perm type, and sets permissions for all tables to a given value
 ;; - Similar function for a single schema
 
+
 (comment
+  (defn do-try-catch-message [thunk] (try (thunk) (catch Exception e (ex-message e))))
+  (defmacro tcm [& body] `(do-try-catch-message (fn [] ~@body)))
+
   (set-permission! :data-access 1 :no-self-service 1)
-  (set-permission! :settings-access 1 :yes)
+  (set-permission! :data-access 1 :no-self-service {:id 2})
+  (set-permission! :data-access {:id 1} :no-self-service 3)
+  (set-permission! :data-access {:id 1} :no-self-service {:id 4})
+
+  (= :no-self-service
+     (permission-for-user 1 :data-access 1)
+     (permission-for-user 1 :data-access {:id 1}))
+
+  (set-permission! :settings-access 1 :no)
+
+  (= :no (permission-for-user 1 :settings-access 1))
+
   (t2/delete! :model/PermissionsV2
               :type :data-access
               :group_id 1
-              {:where [:in :object_id (keys {3 :unrestricted})]}))
+              {:where [:in :object_id (keys {3 :unrestricted})]})
+
+  (tcm (set-permission! :settings-access 1 :no-self-service))
+  ;; => "Permission type :settings-access cannot be set to :no-self-service"
+
+  (tcm (set-permission! :settings-access 1 :yes))
+  ;; => "ERROR: insert or update on table \"permissions_v2\" violates foreign key constraint \"fk_permissions_v2_ref_permissions_group\"\n  Detail: Key (group_id)=(10) is not present in table \"permissions_group\"."
+
+  )
