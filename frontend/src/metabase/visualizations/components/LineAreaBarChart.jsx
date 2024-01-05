@@ -89,19 +89,6 @@ export default class LineAreaBarChart extends Component {
     }
   }
 
-  static propTypes = {
-    card: PropTypes.object.isRequired,
-    series: PropTypes.array.isRequired,
-    settings: PropTypes.object.isRequired,
-    actionButtons: PropTypes.node,
-    showTitle: PropTypes.bool,
-    isDashboard: PropTypes.bool,
-    headerIcon: PropTypes.object,
-    width: PropTypes.number,
-  };
-
-  static defaultProps = {};
-
   getHoverClasses() {
     const { hovered } = this.props;
     if (hovered && hovered.index != null) {
@@ -320,6 +307,17 @@ export default class LineAreaBarChart extends Component {
     );
   }
 }
+
+LineAreaBarChart.propTypes = {
+  card: PropTypes.object.isRequired,
+  series: PropTypes.array.isRequired,
+  settings: PropTypes.object.isRequired,
+  actionButtons: PropTypes.node,
+  showTitle: PropTypes.bool,
+  isDashboard: PropTypes.bool,
+  headerIcon: PropTypes.object,
+  width: PropTypes.number,
+};
 
 function transformSingleSeries(s, series, seriesIndex) {
   const { card, data } = s;
