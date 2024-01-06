@@ -179,6 +179,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       editDashboard();
 
       getDashboardCard().realHover().icon("click").should("not.exist");
+      // When the default menu is selected, it should've visual cue (metabase#34848)
+      cy.get("aside")
+        .findByText("Open the Metabase drill-through menu")
+        .parent()
+        .parent()
+        .should("have.attr", "aria-selected", "true")
+        .should("have.css", "background-color", "rgb(80, 158, 227)");
     });
   });
 
@@ -208,6 +215,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
 
       editDashboard();
+
+      cy.log("doesn't throw when setting default behavior (metabase#35354)");
+      cy.on("uncaught:exception", err => {
+        expect(err.name.includes("TypeError")).to.be.false;
+      });
 
       getDashboardCard().realHover().icon("click").click();
       addDashboardDestination();
