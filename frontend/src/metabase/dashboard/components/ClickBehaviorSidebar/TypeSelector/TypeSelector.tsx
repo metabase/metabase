@@ -18,7 +18,7 @@ import { SidebarItem } from "../SidebarItem";
 import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
-  value: ClickBehaviorType | "menu";
+  value: ClickBehaviorType;
   dashcard: DashboardCard;
   icon: IconName;
   hasNextStep: boolean;
