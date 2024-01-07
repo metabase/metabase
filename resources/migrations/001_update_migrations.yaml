@@ -5153,7 +5153,7 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
-      id: 2024-01-04T13:52:51
+      id: v49.2024-01-04T13:52:51
       author: noahmoss
       comment: >-
         Permissions v2 schema (proof of concept)
@@ -5229,7 +5229,7 @@ databaseChangeLog:
                   name: unique_permissions_v2_group_id_type_object_id
 
   - changeSet:
-      id: 2024-01-04T13:53:29
+      id: v49.2024-01-04T13:53:29
       author: noahmoss
       comment: Add unique constraint to permissions_v2 table on group_id, type, and object_id columns
       changes:
