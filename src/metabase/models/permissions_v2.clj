@@ -91,20 +91,20 @@
 
 (defn- assert-required-object-id
  "Takes a permission type and a possibly-nil object ID, and throws an exception if the permission type requires an
-  object ID and the object ID is nil.
-
-  Additionally takes the possibly-nil DB ID, and ensures that they are not-nil for table-level permissions."
- [perm-type object-id]
- (when (and (model-by-perm-type perm-type)
-            (not object-id))
-   (throw (ex-info (tru "Permission type {0} requires an object ID" perm-type)
-                   {perm-type (Permissions perm-type)}))))
+  object ID and the object ID is nil."
+  [perm-type object-id]
+  (let [model (model-by-perm-type perm-type)]
+    (when (and model
+               (not (#{:model/Database :model/Table} model))
+               (not object-id))
+      (throw (ex-info (tru "Permission type {0} requires an object ID" perm-type)
+                      {perm-type (Permissions perm-type)})))))
 
 (defn- assert-required-db-id
   [perm-type db-id]
-  (when (and (= :model/Table (model-by-perm-type perm-type))
+  (when (and (#{:model/Database :model/Table} (model-by-perm-type perm-type))
              (nil? db-id))
-    (throw (ex-info (tru "Permission type {0} requires an additional database ID" perm-type)
+    (throw (ex-info (tru "Permission type {0} requires a database ID" perm-type)
                     {perm-type (Permissions perm-type)}))))
 
 
@@ -132,8 +132,10 @@
   "Returns the effective permission value for a given user, permission type, and (optional) object ID. If the user has
   multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type & [object-or-id]]
-  (let [object-id (u/id object-or-id)]
+  (let [object-id (u/id object-or-id)
+        db-perm?  (= :model/Database (model-by-perm-type perm-type))]
     (assert-required-object-id perm-type object-id)
+    (assert-required-db-id perm-type object-id)
     (when (t2/select-one-fn :is_superuser :model/User :id user-id)
       (most-permissive-value perm-type))
     (let [perm-values (t2/select-fn-set :value
@@ -145,7 +147,11 @@
                                          :where [:and
                                                  [:= :pgm.user_id user-id]
                                                  [:= :p.type (name perm-type)]
-                                                 (when object-id [:= :p.object_id object-id])]})]
+                                                 (when object-id
+                                                   (if db-perm?
+                                                    [:= :p.db_id object-id]
+                                                    [:= :p.object_id object-id]))]})]
+
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -180,7 +186,8 @@
   For permissions set at the database, table, or collection-level, this function takes an additional `object-or-id`
   argument which indicates the ID of the model to which this permission value applies.
 
-  For permissions set at the table-level, this function also requires `db-or-id` and `schema` to be passed in.
+  For permissions set at the table-level, this function also requires `db-or-id` and `schema` to be passed in, in
+  addition to `object-or-id`.
 
   If a permission value already exists for the specified group and object, it will be updated to the new value. Returns
   the number of permission rows added."
@@ -192,22 +199,30 @@
       schema       :- [:maybe :string]]]
   (t2/with-transaction [_conn]
     (let [group-id         (u/the-id group-or-id)
-          object-id        (u/id object-or-id)
           db-id            (u/id db-or-id)
+          db-perm?         (= :model/Database (model-by-perm-type perm-type))
+          table-perm?      (= :model/Table (model-by-perm-type perm-type))
+                           ;; Set object-id for non-data permissions; otherwise store that value in db_id or table_id
+                           ;; depending on the permission type.
+          object-id        (when-not (or db-perm? table-perm?) (u/id object-or-id))
+          db-id            (if db-perm? (u/id object-or-id) db-id)
+          table-id         (when table-perm? (u/id object-or-id))
+          existing-perm-id (t2/select-one-pk :model/PermissionsV2
+                                             :type      perm-type
+                                             :group_id  group-id
+                                             :object_id object-id
+                                             :db_id     db-id
+                                             :table_id  table-id)
           new-perm         {:type      perm-type
                             :group_id  group-id
                             :object_id object-id
                             :value     value
                             :db_id     db-id
-                            :schema    schema}
-          existing-perm-id (t2/select-one-pk :model/PermissionsV2
-                                             :type      perm-type
-                                             :group_id  group-id
-                                             :object_id object-id)]
+                            :table_id  table-id
+                            :schema    schema}]
       (if existing-perm-id
         (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
         (t2/insert! :model/PermissionsV2 new-perm)))))
-
 
 ;; TODO
 ;; - Function that takes a DB and perm type, and sets permissions for all tables to a given value
@@ -218,7 +233,7 @@
   (defn do-try-catch-message [thunk] (try (thunk) (catch Exception e (ex-message e))))
   (defmacro tcm [& body] `(do-try-catch-message (fn [] ~@body)))
 
-  (set-permission! :data-access 1 :no-self-service 1 2 "PUBLIC")
+  (set-permission! :data-access 2 :no-self-service 2 1 "PUBLIC")
   (set-permission! :data-access 1 :no-self-service {:id 2})
   (set-permission! :data-access {:id 1} :no-self-service 3)
   (set-permission! :data-access {:id 1} :no-self-service {:id 4})

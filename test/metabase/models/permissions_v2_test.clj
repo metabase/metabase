@@ -57,6 +57,7 @@
 (deftest set-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
                  :model/Collection       {collection-id :id} {}
+                 :model/Database         {database-id :id}    {}
                  :model/Table            {table-id :id}      {}]
     (with-restored-perms-for-group! group-id
       (testing "`set-permission!` can set a new permission"
@@ -69,11 +70,52 @@
 
       (testing "`set-permission!` can update an existing permission"
         (is (= 1 (perms-v2/set-permission! :collection group-id :view collection-id)))
+        (is (= 1 (t2/count :model/PermissionsV2
+                           :type     :collection
+                           :group_id group-id)))
         (is (= :view (t2/select-one-fn :value
                                        :model/PermissionsV2
                                        :type      :collection
                                        :group_id  group-id
                                        :object_id collection-id))))
+
+      (testing "`set-permission!` can set a new database-level permission"
+        (is (= 1 (perms-v2/set-permission! :manage-database group-id :yes database-id)))
+        (is (= :yes (t2/select-one-fn :value
+                                      :model/PermissionsV2
+                                      :group_id  group-id
+                                      :type      :manage-database
+                                      :db_id     database-id))))
+
+      (testing "`set-permission!` can update a new database-level permission"
+        (is (= 1 (perms-v2/set-permission! :manage-database group-id :no database-id)))
+        (is (= 1 (t2/count :model/PermissionsV2
+                           :type     :manage-database
+                           :group_id group-id)))
+        (is (= :no (t2/select-one-fn :value
+                                     :model/PermissionsV2
+                                     :group_id  group-id
+                                     :type      :manage-database
+                                     :db_id     database-id))))
+
+      (testing "`set-permission!` can set a new table-level permission"
+        (is (= 1 (perms-v2/set-permission! :data-access group-id :unrestricted table-id database-id "PUBLIC")))
+        (is (= :unrestricted (t2/select-one-fn :value
+                                               :model/PermissionsV2
+                                               :group_id  group-id
+                                               :type      :data-access
+                                               :table_id  table-id))))
+
+      (testing "`set-permission!` can update a new table-level permission"
+        (is (= 1 (perms-v2/set-permission! :data-access group-id :no-self-service table-id database-id "PUBLIC")))
+        (is (= 1 (t2/count :model/PermissionsV2
+                           :type     :data-access
+                           :group_id group-id)))
+        (is (= :no-self-service (t2/select-one-fn :value
+                                                  :model/PermissionsV2
+                                                  :group_id  group-id
+                                                  :type      :data-access
+                                                  :table_id  table-id))))
 
       (testing "A permission associated with a model cannot be saved without an object_id"
         (is (thrown-with-msg?
@@ -84,7 +126,7 @@
       (testing "A table-level permission cannot be saved without a DB ID"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Permission type :data-access requires an additional database ID"
+             #"Permission type :data-access requires a database ID"
              (perms-v2/set-permission! :data-access group-id :unrestricted table-id))))
 
       (testing "An invalid permission type cannot be saved"
@@ -121,5 +163,10 @@
       (testing "`permission-for-user` throws an exception if an object ID is required but not provided"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Permission type :native-query-editing requires an object ID"
-             (perms-v2/permission-for-user user-id :native-query-editing)))))))
+             #"Permission type :native-query-editing requires a database ID"
+             (perms-v2/permission-for-user user-id :native-query-editing)))
+
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Permission type :collection requires an object ID"
+             (perms-v2/permission-for-user user-id :collection)))))))
