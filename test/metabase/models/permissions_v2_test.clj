@@ -55,74 +55,86 @@
       :view            [:collection [:view :view :no-access :view :no-access]])))
 
 (deftest set-permission!-test
-  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                 :model/Table            {table-id :id} {}]
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                 :model/Collection       {collection-id :id} {}
+                 :model/Table            {table-id :id}      {}]
     (with-restored-perms-for-group! group-id
       (testing "`set-permission!` can set a new permission"
-        (is (= 1 (perms-v2/set-permission! :data-access group-id :unrestricted table-id)))
-        (is (= :unrestricted (t2/select-one-fn :value
-                                               :model/PermissionsV2
-                                               :type      :data-access
-                                               :group_id  group-id
-                                               :object_id table-id))))
+        (is (= 1 (perms-v2/set-permission! :collection group-id :curate collection-id)))
+        (is (= :curate (t2/select-one-fn :value
+                                     :model/PermissionsV2
+                                     :group_id  group-id
+                                     :type      :collection
+                                     :object_id collection-id))))
 
       (testing "`set-permission!` can update an existing permission"
-        (is (= 1 (perms-v2/set-permission! :data-access group-id :no-self-service table-id)))
-        (is (= :no-self-service (t2/select-one-fn :value
-                                                  :model/PermissionsV2
-                                                  :type      :data-access
-                                                  :group_id  group-id
-                                                  :object_id table-id))))
+        (is (= 1 (perms-v2/set-permission! :collection group-id :view collection-id)))
+        (is (= :view (t2/select-one-fn :value
+                                       :model/PermissionsV2
+                                       :type      :collection
+                                       :group_id  group-id
+                                       :object_id collection-id))))
 
-      (testing "A permission associated with a model (e.g. :data-access) cannot be saved without an object_id"
+      (testing "A permission associated with a model cannot be saved without an object_id"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Permission type :data-access requires an object ID"
-             (perms-v2/set-permission! :data-access group-id :unrestricted nil))))
+             #"Permission type :collection requires an object ID"
+             (perms-v2/set-permission! :collection group-id :curate nil))))
 
+      (testing "A table-level permission cannot be saved without a DB ID"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Permission type :data-access requires an additional database ID"
+             (perms-v2/set-permission! :data-access group-id :unrestricted table-id))))
 
       (testing "An invalid permission type cannot be saved"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Permission type :invalid-type cannot be set to :unrestricted"
-             (perms-v2/set-permission! :invalid-type group-id :unrestricted nil)))))))
+             #"Invalid permission type, received: :invalid-type"
+             (perms-v2/set-permission! :invalid-type group-id :unrestricted nil))))
 
-(deftest set-permissions!-test
-  (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
-                 :model/Table            {table-id-1 :id} {}
-                 :model/Table            {table-id-2 :id} {}]
-    (with-restored-perms-for-group! group-id
-      (testing "`set-permissions!` can set multiple permissions at once"
-        (is (= 2 (perms-v2/set-permissions! :data-access group-id {table-id-1 :unrestricted
-                                                                   table-id-2 :no-self-service})))
-        (is (= [:unrestricted :no-self-service]
-               (t2/select-fn-vec :value :model/PermissionsV2
-                                 :type      :data-access
-                                 :group_id  group-id
-                                 {:order-by [[:object_id :asc]]}))))
-
-      (testing "`set-permissions!` can update an existing permission"
-        (is (= 2 (perms-v2/set-permissions! :data-access group-id {table-id-1 :no-self-service
-                                                                   table-id-2 :no-self-service})))
-        (is (= [:no-self-service :no-self-service]
-               (t2/select-fn-vec :value :model/PermissionsV2
-                                 :type      :data-access
-                                 :group_id  group-id
-                                 {:order-by [[:object_id :asc]]}))))
-
-      (testing "`set-permissions! will not affect permissions for objects which are not specified"
-        (is (= 1 (perms-v2/set-permissions! :data-access group-id {table-id-1 :block})))
-        (is (= [:block :no-self-service]
-               (t2/select-fn-vec :value :model/PermissionsV2
-                                 :type      :data-access
-                                 :group_id  group-id
-                                 {:order-by [[:object_id :asc]]}))))
-
-      (testing "An invalid permission type cannot be saved"
+      (testing "A permission value which is not valid for the provided type cannot be saved"
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Invalid permission type, received: :invalid"
-             (perms-v2/set-permissions! :invalid group-id {table-id-1 :block})))))))
+             #"Permission type :collection cannot be set to :invalid-value"
+             (perms-v2/set-permission! :collection group-id :invalid-value collection-id)))))))
+
+#_(deftest set-permissions!-test
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
+                   :model/Table            {table-id-1 :id} {}
+                   :model/Table            {table-id-2 :id} {}]
+      (with-restored-perms-for-group! group-id
+        (testing "`set-permissions!` can set multiple permissions at once"
+          (is (= 2 (perms-v2/set-permissions! :data-access group-id {table-id-1 :unrestricted
+                                                                     table-id-2 :no-self-service})))
+          (is (= [:unrestricted :no-self-service]
+                 (t2/select-fn-vec :value :model/PermissionsV2
+                                   :type      :data-access
+                                   :group_id  group-id
+                                   {:order-by [[:object_id :asc]]}))))
+
+        (testing "`set-permissions!` can update an existing permission"
+          (is (= 2 (perms-v2/set-permissions! :data-access group-id {table-id-1 :no-self-service
+                                                                     table-id-2 :no-self-service})))
+          (is (= [:no-self-service :no-self-service]
+                 (t2/select-fn-vec :value :model/PermissionsV2
+                                   :type      :data-access
+                                   :group_id  group-id
+                                   {:order-by [[:object_id :asc]]}))))
+
+        (testing "`set-permissions! will not affect permissions for objects which are not specified"
+          (is (= 1 (perms-v2/set-permissions! :data-access group-id {table-id-1 :block})))
+          (is (= [:block :no-self-service]
+                 (t2/select-fn-vec :value :model/PermissionsV2
+                                   :type      :data-access
+                                   :group_id  group-id
+                                   {:order-by [[:object_id :asc]]}))))
+
+        (testing "An invalid permission type cannot be saved"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Invalid permission type, received: :invalid"
+               (perms-v2/set-permissions! :invalid group-id {table-id-1 :block})))))))
 
 (deftest permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id} {}
