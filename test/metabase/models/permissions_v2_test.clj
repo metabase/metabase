@@ -99,43 +99,6 @@
              #"Permission type :collection cannot be set to :invalid-value"
              (perms-v2/set-permission! :collection group-id :invalid-value collection-id)))))))
 
-#_(deftest set-permissions!-test
-    (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
-                   :model/Table            {table-id-1 :id} {}
-                   :model/Table            {table-id-2 :id} {}]
-      (with-restored-perms-for-group! group-id
-        (testing "`set-permissions!` can set multiple permissions at once"
-          (is (= 2 (perms-v2/set-permissions! :data-access group-id {table-id-1 :unrestricted
-                                                                     table-id-2 :no-self-service})))
-          (is (= [:unrestricted :no-self-service]
-                 (t2/select-fn-vec :value :model/PermissionsV2
-                                   :type      :data-access
-                                   :group_id  group-id
-                                   {:order-by [[:object_id :asc]]}))))
-
-        (testing "`set-permissions!` can update an existing permission"
-          (is (= 2 (perms-v2/set-permissions! :data-access group-id {table-id-1 :no-self-service
-                                                                     table-id-2 :no-self-service})))
-          (is (= [:no-self-service :no-self-service]
-                 (t2/select-fn-vec :value :model/PermissionsV2
-                                   :type      :data-access
-                                   :group_id  group-id
-                                   {:order-by [[:object_id :asc]]}))))
-
-        (testing "`set-permissions! will not affect permissions for objects which are not specified"
-          (is (= 1 (perms-v2/set-permissions! :data-access group-id {table-id-1 :block})))
-          (is (= [:block :no-self-service]
-                 (t2/select-fn-vec :value :model/PermissionsV2
-                                   :type      :data-access
-                                   :group_id  group-id
-                                   {:order-by [[:object_id :asc]]}))))
-
-        (testing "An invalid permission type cannot be saved"
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Invalid permission type, received: :invalid"
-               (perms-v2/set-permissions! :invalid group-id {table-id-1 :block})))))))
-
 (deftest permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id} {}
                  :model/PermissionsGroup           {group-id-2 :id} {}

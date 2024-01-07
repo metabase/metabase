@@ -83,15 +83,6 @@
   "A map from permiiion types directly to model identifiers (or `nil`)."
   (update-vals Permissions :model))
 
-(def ^:private perm-type-by-model
-  "A map from model identifiers to a list of permission types that apply to that model."
-  (reduce-kv
-   (fn [acc perm-type {:keys [model]}]
-     (cond-> acc
-       model (update model (fnil conj #{}) perm-type)))
-   {}
-   Permissions))
-
 (defn- assert-value-matches-perm-type
   [perm-type perm-value]
   (when-not (contains? (set (get-in Permissions [perm-type :values])) perm-value)
@@ -115,6 +106,7 @@
              (nil? db-id))
     (throw (ex-info (tru "Permission type {0} requires an additional database ID" perm-type)
                     {perm-type (Permissions perm-type)}))))
+
 
 ;;; ---------------------------------------- Fetching permissions -----------------------------------------------------
 
@@ -157,42 +149,6 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-#_(defn permissions-graph
-    "Returns a map representing all permissions on the Metabase instance. Can be optionally be scoped by `group-id`
-  and/or `perm-type`."
-    [& {:keys [group-id perm-type]}]
-    [group-id perm-type]
-    (let [permissions (t2/select :model/PermissionsV2
-                                 {:where [:and
-                                          (when group-id [:= :group_id group-id])
-                                          (when perm-type [:= :type (name perm-type)])]})]
-      permissions))
-
-(defn data-permissions-graph
-  "Returns a tree representation of all data permissions on the instance."
-  [user-id]
-  (let [table-level-permissions
-        (t2/select :model/PermissionsV2
-                   {:select [:p.type :p.value [:p.object_id :table_id] [:mt.db_id :db-id] :mt.schema]
-                    :from   [[:permissions_group_membership :pgm]]
-                    :join   [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                             [:permissions_v2 :p]     [:= :p.group_id :pg.id]
-                             [:metabase_table :mt]    [:and
-                                                       [:= :mt.id :p.object_id]
-                                                       [:in :p.type (map name (perm-type-by-model :model/Table))]]]
-                    :where  [:= :pgm.user_id user-id]})
-        db-level-permissions
-        (t2/select :model/PermissionsV2
-                   {:select [:p.type :p.value [:p.object_id :object-id] [:md.id :db_id]]
-                    :from   [[:permissions_group_membership :pgm]]
-                    :join   [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                             [:permissions_v2 :p]     [:= :p.group_id :pg.id]
-                             [:metabase_database :md] [:and
-                                                       [:= :md.id :p.object_id]
-                                                       [:in :p.type (map name (perm-type-by-model :model/Database))]]]
-                    :where  [:= :pgm.user_id user-id]})]
-    ;; TODO: build graph
-    [table-level-permissions db-level-permissions]))
 
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 
@@ -252,24 +208,6 @@
         (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
         (t2/insert! :model/PermissionsV2 new-perm)))))
 
-#_(mu/defn set-table-permissions!
-    "For a single group and permission type, sets permissions for multiple objects at once (e.g. tables or collections).
-  Takes a map of `object-or-id` -> `value` pairs. Returns the number of permission rows added."
-    [perm-type   :- :keyword
-     group-id    :- pos-int?
-     table>value :- [:map-of TheIdable :keyword]]
-    (let [object-id->value (update-keys object-or-id->value u/the-id)
-          permissions      (for [[object-id value] object-id->value]
-                             {:type       perm-type
-                              :group_id   group-id
-                              :object_id  object-id
-                              :value      value})]
-      (t2/with-transaction [_conn]
-        (t2/delete! :model/PermissionsV2
-                    :type perm-type
-                    :group_id group-id
-                    {:where [:in :object_id (keys object-id->value)]})
-        (t2/insert! :model/PermissionsV2 permissions))))
 
 ;; TODO
 ;; - Function that takes a DB and perm type, and sets permissions for all tables to a given value
