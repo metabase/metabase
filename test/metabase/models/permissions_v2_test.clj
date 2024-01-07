@@ -170,3 +170,95 @@
              ExceptionInfo
              #"Permission type :collection requires an object ID"
              (perms-v2/permission-for-user user-id :collection)))))))
+
+(deftest data-permissions-graph-test
+  (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
+                 :model/PermissionsGroup {group-id-2 :id}      {}
+                 :model/Database         {database-id-1 :id}   {}
+                 :model/Database         {database-id-2 :id}   {}
+                 :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-2 :id}      {:db_id database-id-1
+                                                                :schema "PUBLIC"}
+                 :model/Table            {table-id-3 :id}      {:db_id database-id-2
+                                                                :schema nil}]
+    (with-restored-perms-for-groups! [group-id-1 group-id-2]
+      (testing "Data access and native query permissions can be fetched as a graph"
+        (perms-v2/set-permission! :data-access group-id-1 :unrestricted table-id-1 database-id-1 "PUBLIC")
+        (perms-v2/set-permission! :data-access group-id-1 :unrestricted table-id-2 database-id-1 "PUBLIC")
+        (perms-v2/set-permission! :data-access group-id-1 :unrestricted table-id-3 database-id-2 nil)
+        (perms-v2/set-permission! :native-query-editing group-id-1 :yes database-id-1)
+        (perms-v2/set-permission! :native-query-editing group-id-1 :no database-id-2)
+        (perms-v2/set-permission! :data-access group-id-2 :no-self-service table-id-1 database-id-1 "PUBLIC")
+        (is (partial=
+             {group-id-1
+              {database-id-1 {:data-access
+                              {"PUBLIC"
+                               {table-id-1 :unrestricted
+                                table-id-2 :unrestricted}}
+                              :native-query-editing :yes}
+               database-id-2 {:data-access
+                              {""
+                               {table-id-3 :unrestricted}}
+                              :native-query-editing :no}}
+              group-id-2
+              {database-id-1 {:data-access
+                              {"PUBLIC"
+                               {table-id-1 :no-self-service}}}}}
+             (perms-v2/data-permissions-graph))))
+
+      (testing "Additional data permissions are included when set"
+        (perms-v2/set-permission! :download-results group-id-1 :one-million-rows table-id-3 database-id-2 nil)
+        (perms-v2/set-permission! :manage-table-metadata group-id-1 :yes table-id-1 database-id-1 "PUBLIC")
+        (perms-v2/set-permission! :manage-database group-id-1 :yes database-id-2)
+        (is (partial=
+             {group-id-1
+              {database-id-1 {:manage-table-metadata
+                              {"PUBLIC"
+                               {table-id-1 :yes}}}
+               database-id-2 {:download-results
+                              {""
+                               {table-id-3 :one-million-rows}}
+                              :manage-database :yes}}}
+             (perms-v2/data-permissions-graph))))
+
+      (testing "Data permissions graph can be filtered by group ID, databse ID, and permission type"
+        (is (= {group-id-1
+                {database-id-1 {:data-access
+                                {"PUBLIC"
+                                 {table-id-1 :unrestricted
+                                  table-id-2 :unrestricted}}
+                                :native-query-editing :yes
+                                :manage-table-metadata
+                                {"PUBLIC"
+                                 {table-id-1 :yes}}}
+                 database-id-2 {:data-access
+                                {""
+                                 {table-id-3 :unrestricted}}
+                                :download-results
+                                {""
+                                 {table-id-3 :one-million-rows}}
+                                :manage-database :yes
+                                :native-query-editing :no}}}
+               (perms-v2/data-permissions-graph :group-id group-id-1)))
+
+        (is (= {group-id-1
+                {database-id-1 {:data-access
+                                {"PUBLIC"
+                                 {table-id-1 :unrestricted
+                                  table-id-2 :unrestricted}}
+                                :native-query-editing :yes
+                                :manage-table-metadata
+                                {"PUBLIC"
+                                 {table-id-1 :yes}}}}}
+               (perms-v2/data-permissions-graph :group-id group-id-1
+                                                :db-id database-id-1)))
+
+        (is (= {group-id-1
+                {database-id-1 {:data-access
+                                {"PUBLIC"
+                                 {table-id-1 :unrestricted
+                                  table-id-2 :unrestricted}}}}}
+               (perms-v2/data-permissions-graph :group-id group-id-1
+                                                :db-id database-id-1
+                                                :perm-type :data-access)))))))

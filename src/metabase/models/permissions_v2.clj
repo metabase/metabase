@@ -109,7 +109,7 @@
                     {perm-type (Permissions perm-type)}))))
 
 
-;;; ---------------------------------------- Fetching permissions -----------------------------------------------------
+;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
 
 (defmulti coalesce
   "Coalesce a set of permission values into a single value. This is used to determine the permission to enforce for a
@@ -155,6 +155,49 @@
 
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
+
+
+;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
+
+(comment
+  ;; General hierarchy of the data access permissions graph
+  {#_:group-id 1
+   {#_:db-id 1
+    {#_:perm-type :data-access
+     {#_:schema-name "PUBLIC"
+      {#_:table-id 1 :unrestricted}}}}})
+
+(defn data-permissions-graph
+  "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
+  and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
+  for permission enforcement, as it will read much more data than necessary."
+  [& {:keys [group-id db-id perm-type]}]
+  (let [data-perms (t2/select [:model/PermissionsV2
+                               :type
+                               [:group_id :group-id]
+                               :value
+                               [:db_id :db-id]
+                               :schema
+                               [:table_id :table-id]]
+                              {:where [:and
+                                       (when db-id [:= :db_id db-id])
+                                       (when group-id [:= :group_id group-id])
+                                       (when perm-type [:= :type (name perm-type)])]})]
+    (reduce
+     (fn [graph {group-id  :group-id
+                 perm-type :type
+                 value     :value
+                 db-id     :db-id
+                 schema    :schema
+                 table-id  :table-id}]
+       (let [schema   (or schema "")
+             db-perm? (= :model/Database (model-by-perm-type perm-type))
+             path     (if db-perm?
+                        [group-id db-id perm-type]
+                        [group-id db-id perm-type schema table-id])]
+         (assoc-in graph path value)))
+     {}
+     data-perms)))
 
 
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
@@ -234,7 +277,7 @@
   (defn do-try-catch-message [thunk] (try (thunk) (catch Exception e (ex-message e))))
   (defmacro tcm [& body] `(do-try-catch-message (fn [] ~@body)))
 
-  (set-permission! :data-access 2 :no-self-service 2 1 "PUBLIC")
+  (set-permission! :data-access 1 :unrestricted 3 1 "PUBLIC")
   (set-permission! :data-access 1 :no-self-service {:id 2})
   (set-permission! :data-access {:id 1} :no-self-service 3)
   (set-permission! :data-access {:id 1} :no-self-service {:id 4})
