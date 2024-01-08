@@ -34,11 +34,7 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   (set (map #(keyword "model" %)
-            (concat
-             ;; These are not exported at all
-             serdes.models/excluded-models
-             ;; These are exported as children of something else
-             serdes.models/inlined-models))))
+            (concat serdes.models/excluded-models serdes.models/inlined-models))))
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.entity-ids/toucan-models)
