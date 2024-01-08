@@ -190,7 +190,7 @@ Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#m
 Type: integer<br>
 Default: `20`<br>
 
-Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts.
+Limits the number of rows Metabase will include in tables sent as attachments with dashboard subscriptions and alerts. Range: 1-100.
 
 ### `MB_AUDIT_MAX_RETENTION_DAYS`
 
