@@ -63,8 +63,10 @@ function ApiKeysTable({
             <tr key={apiKey.id} className="border-bottom">
               <td className="text-bold">{apiKey.name}</td>
               <td>{apiKey.group.name}</td>
-              <td className="text-monospace">
-                {formatMaskedKey(apiKey.masked_key)}
+              <td>
+                <Text variant="monospace">
+                  {formatMaskedKey(apiKey.masked_key)}
+                </Text>
               </td>
               <td>{apiKey.updated_by.common_name}</td>
               <td>{formatDateTimeWithUnit(apiKey.updated_at, "minute")}</td>

@@ -12,6 +12,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { getThemeOverrides } from "metabase/ui/theme";
+const { fontFamilyMonospace } = getThemeOverrides();
+
 import { ApiKeysApi } from "metabase/services";
 
 import { SecretKeyModal } from "./SecretKeyModal";
@@ -156,7 +159,12 @@ export const EditApiKeyModal = ({
                   name="masked_key"
                   label={t`API Key`}
                   size="sm"
-                  styles={{ input: { fontFamily: "Monaco, monospace" } }}
+                  styles={{
+                    input: {
+                      color: `black !important`,
+                      fontFamily: fontFamilyMonospace as string,
+                    },
+                  }}
                   disabled
                 />
                 <FormErrorMessage />
