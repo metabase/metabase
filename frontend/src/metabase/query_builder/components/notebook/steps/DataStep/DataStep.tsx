@@ -5,7 +5,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { FieldPicker } from "metabase/common/components/FieldPicker";
 import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
 
-import type { TableId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
@@ -22,7 +22,8 @@ export const DataStep = ({
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
 
-  const collectionId = step.question.collectionId();
+  const question = step.question;
+  const collectionId = question.collectionId();
   const databaseId = Lib.databaseID(query);
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
@@ -40,23 +41,11 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleCreateQuery = (tableId: TableId) => {
-    const nextTable = Lib.tableOrCardMetadata(query, tableId);
-    updateQuery(Lib.queryFromTableOrCardMetadata(query, nextTable));
-  };
-
-  const handleChangeTable = (nextTableId: TableId) => {
-    const nextQuery = Lib.withDifferentTable(query, nextTableId);
-    updateQuery(nextQuery);
-  };
-
-  const handleTableSelect = (tableId: TableId) => {
-    const isNew = !databaseId;
-    if (isNew) {
-      handleCreateQuery(tableId);
-    } else {
-      handleChangeTable(tableId);
-    }
+  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
+    const metadata = question.metadata();
+    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
+    updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
   };
 
   return (

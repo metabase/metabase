@@ -793,7 +793,7 @@ export class UnconnectedDataSelector extends Component {
 
   onChangeTable = async table => {
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table?.id);
+      this.props.setSourceTableFn(table?.id, table?.db_id);
     }
     await this.nextStep({ selectedTableId: table?.id });
   };
@@ -957,7 +957,7 @@ export class UnconnectedDataSelector extends Component {
     const table = convertSearchResultToTableLikeItem(item);
     await this.props.fetchFields(table.id);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table.id);
+      this.props.setSourceTableFn(table.id, table.db_id);
     }
     this.popover.current.toggle();
     this.handleClose();
