@@ -10,12 +10,12 @@ import { Icon } from "metabase/core/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import AggregationWidget from "./AggregationWidget";
-import BreakoutWidget from "./BreakoutWidget";
-import FilterWidgetList from "./filters/FilterWidgetList";
-import { FilterPopover } from "./filters/FilterPopover";
+import { AggregationWidget } from "../AggregationWidget";
+import { BreakoutWidget } from "../BreakoutWidget";
+import { FilterWidgetList } from "../FilterWidgetList/FilterWidgetList";
+import { FilterPopover } from "../FilterPopover";
 
-export default class GuiQueryEditor extends Component {
+export class GuiQueryEditor extends Component {
   constructor(props) {
     super(props);
 

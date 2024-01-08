@@ -3,10 +3,9 @@ import { Component } from "react";
 
 import Dimension from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
-import DimensionList from "./DimensionList";
+import { DimensionList } from "../DimensionList";
 
-// DEPRECATED: use DimensionList directly
-export default class FieldList extends Component {
+export class FieldList extends Component {
   state = {
     sections: [],
   };

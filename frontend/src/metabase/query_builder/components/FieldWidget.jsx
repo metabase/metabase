@@ -6,7 +6,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import Popover from "metabase/components/Popover";
 import * as FieldRef from "metabase-lib/queries/utils/field-ref";
-import FieldList from "./FieldList";
+import { FieldList } from "../../admin/datamodel/components/FieldList/FieldList";
 import Clearable from "./Clearable";
 
 export default class FieldWidget extends Component {

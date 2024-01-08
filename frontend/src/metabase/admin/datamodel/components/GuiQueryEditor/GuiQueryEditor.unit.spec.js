@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
 import { createMockMetadata } from "__support__/metadata";
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import {
   createSampleDatabase,
   ORDERS,
@@ -8,6 +7,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+import { GuiQueryEditor } from "./GuiQueryEditor";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

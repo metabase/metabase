@@ -17,10 +17,10 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Filter from "metabase-lib/queries/structured/Filter";
 import { isExpression } from "metabase-lib/expressions";
 
-import DatePicker from "../pickers/DatePicker/DatePicker";
-import TimePicker from "../pickers/TimePicker";
-import type { DateShortcutOptions } from "../pickers/DatePicker/DatePickerShortcutOptions";
-import DimensionList from "../../DimensionList";
+import DatePicker from "../../../../query_builder/components/filters/pickers/DatePicker/DatePicker";
+import TimePicker from "../../../../query_builder/components/filters/pickers/TimePicker";
+import type { DateShortcutOptions } from "../../../../query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
+import { DimensionList } from "../DimensionList";
 import {
   Button,
   EmptyFilterPickerPlaceholder,

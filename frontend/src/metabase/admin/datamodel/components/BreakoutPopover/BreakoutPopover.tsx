@@ -17,7 +17,7 @@ interface BreakoutPopoverProps {
   onClose?: () => void;
 }
 
-const BreakoutPopover = ({
+export const BreakoutPopover = ({
   className,
   query,
   breakout,
@@ -52,6 +52,3 @@ const BreakoutPopover = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default BreakoutPopover;

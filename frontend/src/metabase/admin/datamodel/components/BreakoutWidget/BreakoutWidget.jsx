@@ -4,13 +4,13 @@ import PropTypes from "prop-types";
 
 import Popover from "metabase/components/Popover";
 
-import Clearable from "./Clearable";
-import BreakoutPopover from "./BreakoutPopover";
+import { BreakoutPopover } from "../BreakoutPopover/BreakoutPopover";
+import Clearable from "../../../../query_builder/components/Clearable";
 import { BreakoutLabel } from "./BreakoutWidget.styled";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
-export default class BreakoutWidget extends Component {
+export class BreakoutWidget extends Component {
   constructor(props, context) {
     super(props, context);
 

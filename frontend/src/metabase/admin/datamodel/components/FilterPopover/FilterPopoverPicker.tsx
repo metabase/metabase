@@ -1,9 +1,9 @@
 import { Component } from "react";
 
 import type Filter from "metabase-lib/queries/structured/Filter";
-import TimePicker from "../pickers/TimePicker";
-import BooleanPicker from "../pickers/BooleanPicker";
-import { DefaultPicker } from "../pickers/DefaultPicker";
+import TimePicker from "../../../../query_builder/components/filters/pickers/TimePicker";
+import BooleanPicker from "../../../../query_builder/components/filters/pickers/BooleanPicker";
+import { DefaultPicker } from "../../../../query_builder/components/filters/pickers/DefaultPicker";
 
 type Props = {
   className?: string;

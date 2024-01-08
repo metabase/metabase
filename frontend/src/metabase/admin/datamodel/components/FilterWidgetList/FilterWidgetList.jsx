@@ -2,9 +2,9 @@
 import { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
-import FilterWidget from "./FilterWidget";
+import { FilterWidget } from "../FilterWidget/FilterWidget";
 
-export default class FilterWidgetList extends Component {
+export class FilterWidgetList extends Component {
   constructor(props) {
     super(props);
     this.state = {

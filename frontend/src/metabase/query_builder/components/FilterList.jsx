@@ -3,8 +3,8 @@ import { Component } from "react";
 import { connect } from "react-redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { filterWidgetFilterRenderer } from "../../admin/datamodel/components/FilterWidget/FilterWidget";
 import Filter from "./Filter";
-import { filterWidgetFilterRenderer } from "./filters/FilterWidget";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),

@@ -10,7 +10,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import { Box } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/Dimension";
 
-import { DimensionPicker } from "./DimensionPicker";
+import { DimensionPicker } from "../DimensionPicker";
 import { FieldListGroupingTrigger } from "./DimensionList.styled";
 
 const SUBMENU_TETHER_OPTIONS = {
@@ -26,7 +26,7 @@ const SUBMENU_TETHER_OPTIONS = {
   ],
 };
 
-export default class DimensionList extends Component {
+export class DimensionList extends Component {
   state = {
     sections: [],
   };
