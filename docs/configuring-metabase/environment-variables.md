@@ -62,8 +62,9 @@ The email address users should be referred to if they encounter a problem.
 Type: integer<br>
 Default: 10000
 
-Maximum number of rows to return for aggregated queries via the API. Must be less than 1048575. See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
-This environment variable also affects how many rows are returned in the subscription attachments.
+Maximum number of rows to return for aggregated queries via the API. Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+
+See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
 
 ### `MB_ANON_TRACKING_ENABLED`
 
@@ -1364,5 +1365,6 @@ Allowed email address domain(s) for new Subscriptions and Alerts. Specify multip
 Type: integer<br>
 Default: 2000
 
-Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575 and also less than the number configured in MB_AGGREGATED_QUERY_ROW_LIMIT. See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).
-This environment variable also affects how many rows are returned in the subscription attachments.
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575, and less than the number configured in `MB_AGGREGATED_QUERY_ROW_LIMIT`. This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+
+See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).
