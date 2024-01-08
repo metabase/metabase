@@ -4,7 +4,6 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type { PopoverBaseProps } from "metabase/ui";
 import { FilterPicker } from "metabase/querying";
 import * as Lib from "metabase-lib";
-import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
@@ -14,7 +13,6 @@ const POPOVER_PROPS: PopoverBaseProps = {
 };
 
 export function FilterStep({
-  query: legacyQuery,
   topLevelQuery,
   step,
   color,
@@ -73,7 +71,6 @@ export function FilterStep({
             stageIndex={stageIndex}
             filter={filter}
             filterIndex={index}
-            legacyQuery={legacyQuery}
             onAddFilter={handleAddFilter}
             onUpdateFilter={handleUpdateFilter}
             onClose={onClose}
@@ -90,7 +87,6 @@ interface FilterPopoverProps {
   stageIndex: number;
   filter?: Lib.FilterClause;
   filterIndex?: number;
-  legacyQuery: LegacyQuery;
   onAddFilter: (
     filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => void;
