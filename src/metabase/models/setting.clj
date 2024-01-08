@@ -1360,5 +1360,5 @@
    Note that this will only validate settings whose defsetting forms have already been evaluated."
   []
   (when-let [invalid-settings (seq (map key (filter (comp has-invalid-json? val) @registered-settings)))]
-    (throw (ex-info (tru "Invalid JSON configuration for settings: {0}" invalid-settings)
+    (throw (ex-info (trs "Invalid JSON configuration for settings: {0}" invalid-settings)
                     {:registered-settings (sort (keys @registered-settings ))}))))
