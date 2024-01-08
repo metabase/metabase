@@ -233,6 +233,26 @@
                           (some #(when (= (:id %) (u/the-id personal-collection)) %)
                                 response)))))))))
 
+(deftest collections-tree-exclude-other-user-collections-test
+  (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
+    (with-collection-hierarchy [a b c d e f g]
+      (collection/move-collection! a (collection/children-location personal-collection))
+      (let [ids            (set (map :id (cons personal-collection [a b c d e f g])))
+            response-rasta (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
+            response-lucky (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
+        (testing "Make sure that user is not able to see other users personal collections"
+          (is (= []
+                 (collection-tree-view ids response-rasta))))
+        (testing "Make sure that user is able to see his own collections"
+          (is (= [{:name "Lucky Pigeon's Personal Collection",
+                   :children
+                   [{:name "A"
+                     :children
+                     [{:name "B" :children []}
+                      {:name "C"
+                       :children [{:name "D" :children [{:name "E" :children []}]} {:name "F" :children [{:name "G" :children []}]}]}]}]}]
+                 (collection-tree-view ids response-lucky))))))))
+
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
     (with-collection-hierarchy [a b c d e f g]
