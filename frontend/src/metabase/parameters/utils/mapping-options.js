@@ -108,7 +108,9 @@ export function getParameterMappingOptions(
     const columnFilter = parameter
       ? columnFilterForParameter(parameter)
       : () => true;
-    const columns = Lib.visibleColumns(query, stageIndex).filter(columnFilter);
+    const columns = Lib.filterableColumns(query, stageIndex).filter(
+      columnFilter,
+    );
     const columnGroups = Lib.groupColumns(columns);
     return columnGroups.flatMap(group =>
       buildStructuredQuerySectionOptions(query, stageIndex, group),
