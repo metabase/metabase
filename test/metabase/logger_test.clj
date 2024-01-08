@@ -73,5 +73,9 @@
     (let [baos (java.io.ByteArrayOutputStream.)]
       (with-open [_ (logger/for-ns 'metabase.logger-test baos {:additive false})]
         (log/info "just a test"))
-      (is (=? #".*just a test\n"
-              (.toString baos "UTF-8"))))))
+      (log/info "this line is not going into our stream")
+      (let [s (.toString baos "UTF-8")]
+        (testing "We catched the line we needed"
+          (is (=? #".*just a test\n" s)))
+        (testing "Only wrapped logging is catched"
+          (is (= 1 (count (re-seq #"\n" s)))))))))

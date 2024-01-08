@@ -89,7 +89,7 @@
     (.get logger)))
 
 (defn- find-logger-layout
-  "Find any logger with a specified layout"
+  "Find any logger with a specified layout."
   [^LoggerConfig logger]
   (when logger
     (or (first (keep #(.getLayout ^AbstractAppender (val %)) (.getAppenders logger)))
@@ -116,13 +116,14 @@
        (.setTarget out)))))
 
 (defn for-ns
-  "Create separate logger for a given namespace to fork out some logs"
-  ^AutoCloseable [ns out & [{:keys [additive]
-                             :or   {additive true}}]]
+  "Create separate logger for a given namespace to fork out some logs."
+  ^AutoCloseable [ns out & [{:keys [additive level]
+                             :or   {additive true
+                                    level Level/INFO}}]]
   (let [config        (configuration)
         parent-logger (effective-ns-logger ns)
         appender      (make-appender out (logger-name ns) (find-logger-layout parent-logger))
-        logger        (LoggerConfig. (logger-name ns) Level/INFO additive)]
+        logger        (LoggerConfig. (logger-name ns) level additive)]
     (.start appender)
     (.addAppender config appender)
     (.addAppender logger appender (.getLevel logger) nil)
