@@ -48,7 +48,9 @@ const StatusLarge = ({
   return (
     <StatusRoot role="status">
       <StatusHeader>
-        <StatusTitle>{status.title}</StatusTitle>
+        <StatusTitle>
+          <Ellipsified>{status.title}</Ellipsified>
+        </StatusTitle>
         {onCollapse && (
           <StatusToggle onClick={onCollapse}>
             <Icon name="chevrondown" />
