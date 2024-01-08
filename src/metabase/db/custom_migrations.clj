@@ -981,7 +981,12 @@
 
 (defn- alter-table-column-type-sql
   [db-type table column ttype nullable?]
-  (let [ttype (name ttype)]
+  (let [ttype (name ttype)
+        db-type (if (and (= db-type :mysql)
+                     (with-open [conn (.getConnection (mdb.connection/data-source))]
+                       (= "MariaDB" (.getDatabaseProductName (.getMetaData conn)))))
+                 :mariadb
+                 db-type)]
     (case db-type
       :postgres
       (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" TYPE %s USING (\"%s\"::%s), ALTER COLUMN %s %s"
@@ -990,6 +995,13 @@
       :mysql
       (format "ALTER TABLE `%s` MODIFY `%s` %s %s"
               table column ttype (if nullable? "NULL" "NOT NULL"))
+
+      ;; maridb will automatically add extra on update set current_timestamp if you don't have a default value for not
+      ;; nullable columns.
+      ;; We don't want this property for created_at columns. so adding a default value here to avoid that default extra
+      :mariadb
+      (format "ALTER TABLE `%s` MODIFY `%s` %s %s"
+              table column ttype (if nullable? "NULL" "NOT NULL DEFAULT CURRENT_TIMESTAMP"))
 
       :h2
       (format "ALTER TABLE \"%s\" ALTER COLUMN \"%s\" %s %s"
