@@ -44,7 +44,7 @@
        (map (comp keyword u/lower-case-en))
        set))
 
-(defn- tar-types [f]
+(defn- tar-file-types [f]
   (with-open [tar (open-tar f)]
     (->> (u.compress/entries tar)
          (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
@@ -77,12 +77,12 @@
                   (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                 :collection (:id coll) :data_model false :settings false)]
                     (is (= #{:log :dir :dashboard :card :collection}
-                           (tar-types f)))))
+                           (tar-file-types f)))))
 
                 (testing "Default export: all-collections, data-model, settings"
                   (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
                     (is (= #{:log :dir :dashboard :card :collection :settings :schema :database}
-                           (tar-types f)))))
+                           (tar-file-types f)))))
 
                 (testing "On exception API returns log"
                   (with-redefs [u.compress/tgz (fn [& _] (throw (ex-info "Just an error" {})))]
