@@ -52,10 +52,6 @@
                           :padding     :16px})}
            (trs "An error occurred while displaying this card.")]}))
 
-(def rows-limit
-  "Maximum number of rows to render in a Pulse image."
-  10)
-
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -171,7 +167,7 @@
        timezone-id
        remapping-lookup
        cols
-       (take rows-limit rows)
+       (take (min (public-settings/attachment-table-row-limit) 100) rows)
        viz-settings
        data-attributes)))))
 
@@ -229,7 +225,7 @@
                                       (color/make-color-selector data viz-settings)
                                       (mapv :name ordered-cols)
                                       (prep-for-html-rendering timezone-id card data))
-                                     (render-truncation-warning rows-limit (count rows))]]
+                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
      nil
 
@@ -876,9 +872,22 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- get-col-by-name
+    [cols col-name]
+    (->> (map-indexed (fn [idx m] [idx m]) cols)
+         (some (fn [[idx col]]
+                 (when (= col-name (:name col))
+                   [idx col])))))
+
 (s/defmethod render :scalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
-  (let [value (format-cell timezone-id (ffirst rows) (first cols) viz-settings)]
+  (let [field-name    (:scalar.field viz-settings)
+        [row-idx col] (or (when field-name
+                            (get-col-by-name cols field-name))
+                          [0 (first cols)])
+        row           (first rows)
+        raw-value     (get row row-idx)
+        value         (format-cell timezone-id raw-value col viz-settings)]
     {:attachments
      nil
 

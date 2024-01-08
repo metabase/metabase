@@ -44,7 +44,7 @@ import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
-import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
+import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   aggregate,
@@ -179,7 +179,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  query = _.once((): AtomicQuery => {
+  legacyQuery = _.once((): AtomicQuery => {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -195,11 +195,11 @@ class Question {
   });
 
   isNative(): boolean {
-    return this.query() instanceof NativeQuery;
+    return this.legacyQuery() instanceof NativeQuery;
   }
 
   isStructured(): boolean {
-    return this.query() instanceof StructuredQuery;
+    return this.legacyQuery() instanceof StructuredQuery;
   }
 
   /**
@@ -228,7 +228,7 @@ class Question {
    * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
    */
   atomicQueries(): AtomicQuery[] {
-    const query = this.query();
+    const query = this.legacyQuery();
 
     if (query instanceof AtomicQuery) {
       return [query];
@@ -335,7 +335,7 @@ class Question {
       return this;
     }
 
-    const query = this.query();
+    const query = this.legacyQuery();
 
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
@@ -415,7 +415,7 @@ class Question {
   }
 
   setDefaultQuery() {
-    return this.query().setDefaultQuery().question();
+    return this.legacyQuery().setDefaultQuery().question();
   }
 
   settings(): VisualizationSettings {
@@ -444,7 +444,7 @@ class Question {
   }
 
   isEmpty(): boolean {
-    return this.query().isEmpty();
+    return this.legacyQuery().isEmpty();
   }
 
   /**
@@ -458,7 +458,7 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    return this.query().canRun();
+    return this.legacyQuery().canRun();
   }
 
   canWrite(): boolean {
@@ -477,7 +477,7 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const query = this.query();
+    const query = this.legacyQuery();
 
     // we want to check the metadata for the underlying table, not the model
     const table = query.sourceTable();
@@ -493,6 +493,11 @@ class Question {
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
+  }
+
+  isQueryEditable(): boolean {
+    const query = this.legacyQuery();
+    return query ? query.isEditable() : false;
   }
 
   /**
@@ -556,7 +561,7 @@ class Question {
     return (
       this.isStructured() &&
       _.any(
-        QUERY.getAggregations(this.query().query()),
+        QUERY.getAggregations(this.legacyQuery().legacyQuery()),
         aggregation => AGGREGATION.getMetric(aggregation) === metricId,
       )
     );
@@ -565,7 +570,7 @@ class Question {
   usesSegment(segmentId): boolean {
     return (
       this.isStructured() &&
-      QUERY.getFilters(this.query().query()).some(
+      QUERY.getFilters(this.legacyQuery().legacyQuery()).some(
         filter => FILTER.isSegment(filter) && filter[1] === segmentId,
       )
     );
@@ -605,7 +610,7 @@ class Question {
     previousQuestion,
     previousQuery,
   ) {
-    const query = this.query();
+    const query = this.legacyQuery();
 
     if (
       !_.isEqual(
@@ -721,14 +726,14 @@ class Question {
   }
 
   syncColumnsAndSettings(previous, queryResults) {
-    const query = this.query();
+    const query = this.legacyQuery();
     const isQueryResultValid = queryResults && !queryResults.error;
 
     if (query instanceof NativeQuery && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
 
-    const previousQuery = previous && previous.query();
+    const previousQuery = previous && previous.legacyQuery();
 
     if (
       query instanceof StructuredQuery &&
@@ -819,7 +824,7 @@ class Question {
   }
 
   database(): Database | null | undefined {
-    const query = this.query();
+    const query = this.legacyQuery();
     return query && typeof query.database === "function"
       ? query.database()
       : null;
@@ -831,7 +836,7 @@ class Question {
   }
 
   table(): Table | null | undefined {
-    const query = this.query();
+    const query = this.legacyQuery();
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
@@ -979,13 +984,10 @@ class Question {
   _serializeForUrl({
     includeOriginalCardId = true,
     clean = true,
-    cleanFilters = false,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean
-      ? this.query().clean({ skipFilters: !cleanFilters })
-      : this.query();
+    const query = clean ? this.legacyQuery().clean() : this.legacyQuery();
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
@@ -1024,27 +1026,26 @@ class Question {
       return this;
     }
 
-    const mbqlFilters = this.parameters()
-      .map(parameter => {
-        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
-      })
+    const query = this.query();
+    const stageIndex = -1;
+    const filters = this.parameters()
+      .map(parameter =>
+        fieldFilterParameterToFilter(query, stageIndex, parameter),
+      )
       .filter(mbqlFilter => mbqlFilter != null);
 
-    const query = mbqlFilters.reduce((query, mbqlFilter) => {
-      return query.filter(mbqlFilter);
-    }, this.query());
-
-    const hasQueryBeenAltered = mbqlFilters.length > 0;
-
-    const question = query
-      .question()
+    const newQuery = filters.reduce((query, filter) => {
+      return ML.filter(query, stageIndex, filter);
+    }, query);
+    const newQuestion = this._setMLv2Query(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return hasQueryBeenAltered ? question.markDirty() : question;
+    const hasQueryBeenAltered = filters.length > 0;
+    return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 
-  _getMLv2Query(metadata = this._metadata): Query {
+  query(metadata = this._metadata): Query {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
@@ -1084,7 +1085,7 @@ class Question {
   }
 
   generateQueryDescription() {
-    const query = this._getMLv2Query();
+    const query = this.query();
     return ML.suggestedName(query);
   }
 
@@ -1102,8 +1103,8 @@ class Question {
       this.isNative() &&
       this.isSaved() &&
       this.parameters().length === 0 &&
-      this.query().canNest() &&
-      !this.query().readOnly() // originally "canRunAdhocQuery"
+      this.legacyQuery().canNest() &&
+      this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }
 

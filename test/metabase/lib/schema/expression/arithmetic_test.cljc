@@ -103,7 +103,20 @@
 
     [:interval {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1 :year]
     [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
-    :type/Temporal))
+    :type/Temporal)
+
+  (testing "special case: subtracting two :type/Dates yields :type/Interval (#37263)"
+    (is (= :type/Interval
+           (expression/type-of
+             [:- {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/Date} 1]
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000002", :base-type :type/Date} 2]]))))
+  (testing "special case: subtracting two :type/DateTimes yields :type/Interval (#37263)"
+    (is (= :type/Interval
+           (expression/type-of
+             [:- {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000001", :base-type :type/DateTime} 1]
+              [:field {:lib/uuid "00000000-0000-0000-0000-000000000002", :base-type :type/DateTime} 2]])))))
 
 (deftest ^:parallel temporal-arithmetic-schema-test
   (testing "Should allow multiple intervals; interval should be allowed as first arg"
@@ -151,8 +164,23 @@
              [:+
               {:lib/uuid "00000000-0000-0000-0000-000000000000"}
               [:interval {:lib/uuid "00000000-0000-0000-0000-000000000002"} 3 :minute]
-              [:field {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000001"} 1]]))))))
-
+              [:field {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000001"} 1]])))))
+  (testing "subtracting two dates should yield an interval (#37263)"
+    (is (not (me/humanize
+               (mc/explain
+                 :mbql.clause/-
+                 [:-
+                  {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                  [:field {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                  [:field {:base-type :type/Date, :lib/uuid "00000000-0000-0000-0000-000000000001"} 2]])))))
+  (testing "subtracting two datetimes should yield an interval (#37263)"
+    (is (not (me/humanize
+               (mc/explain
+                 :mbql.clause/-
+                 [:-
+                  {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                  [:field {:base-type :type/DateTime, :lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                  [:field {:base-type :type/DateTime, :lib/uuid "00000000-0000-0000-0000-000000000001"} 2]]))))))
 
 (deftest ^:parallel metric-test
   (are [schema] (not (me/humanize (mc/explain schema

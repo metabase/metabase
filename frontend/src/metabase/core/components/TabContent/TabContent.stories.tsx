@@ -1,5 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import { useArgs } from "@storybook/addons";
 import Tab from "../Tab";
 import TabList from "../TabList";
 import TabPanel from "../TabPanel";

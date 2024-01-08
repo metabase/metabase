@@ -334,7 +334,9 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
               return null;
             }
 
-            const dimension = question.query().parseFieldReference(fieldRef);
+            const dimension = question
+              .legacyQuery()
+              .parseFieldReference(fieldRef);
             return (
               <span>
                 <strong>{dimension?.render()}</strong> field

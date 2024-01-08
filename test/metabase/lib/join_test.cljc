@@ -77,7 +77,7 @@
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
-          (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
+           (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
   (testing "source-table"
     (let [query {:lib/type :mbql/query
                  :lib/metadata lib.tu/metadata-provider-with-mock-cards
@@ -193,8 +193,8 @@
                                                                 :lib/options  {:lib/uuid "bbbae500-c972-4550-b100-e0584eb72c4d"}
                                                                 :source-table (meta/id :categories)}]}]}]
                  :database     (meta/id)
-                 :lib/metadata meta/metadata-provider}]
-      (let [metadata (lib/returned-columns query)]
+                 :lib/metadata meta/metadata-provider}
+          metadata (lib/returned-columns query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
                         {:display-name         "Name"
                          :lib/source           :source/fields
@@ -205,7 +205,7 @@
         (is (=? [:field
                  {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
                  (meta/id :categories :name)]
-                (lib/ref (first metadata))))))))
+                (lib/ref (first metadata)))))))
 
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
@@ -510,15 +510,15 @@
 (deftest ^:parallel with-join-conditions-do-not-add-alias-when-already-present-test
   (testing "with-join-conditions should not replace an existing join alias (don't second guess explicit aliases)"
     (let [query  lib.tu/query-with-join
-          [join] (lib/joins query)]
-      (let [new-conditions [(lib/=
-                             (meta/field-metadata :venues :id)
-                             (-> (meta/field-metadata :categories :id)
-                                 (lib/with-join-alias "My Join")))]]
+          [join] (lib/joins query)
+          new-conditions [(lib/=
+                           (meta/field-metadata :venues :id)
+                           (-> (meta/field-metadata :categories :id)
+                               (lib/with-join-alias "My Join")))]]
         (is (=? [[:= {}
                   [:field {} (meta/id :venues :id)]
                   [:field {:join-alias "My Join"} (meta/id :categories :id)]]]
-                (lib/join-conditions (lib/with-join-conditions join new-conditions))))))))
+                (lib/join-conditions (lib/with-join-conditions join new-conditions)))))))
 
 (deftest ^:parallel with-join-conditions-join-has-no-alias-yet-test
   (testing "with-join-conditions should work if join doesn't yet have an alias"

@@ -132,7 +132,7 @@ export default class Filter extends MBQLClause {
         return true;
       }
 
-      const query = this.query();
+      const query = this.legacyQuery();
 
       if (
         !dimension ||

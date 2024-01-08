@@ -59,7 +59,11 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
             database: SAMPLE_DB_ID,
             query: {
               aggregation: [["count"]],
-              filter: [">", ["field", ORDERS.TOTAL, null], 100],
+              filter: [
+                ">",
+                ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
+                100,
+              ],
               "source-table": ORDERS_ID,
             },
             type: "query",
@@ -94,8 +98,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               "source-table": PEOPLE_ID,
               aggregation: [["count"]],
               breakout: [
-                ["field", PEOPLE.SOURCE, null],
-                ["field", PEOPLE.CREATED_AT, { "temporal-unit": "month" }],
+                ["field", PEOPLE.SOURCE, { "base-type": "type/Text" }],
+                [
+                  "field",
+                  PEOPLE.CREATED_AT,
+                  { "base-type": "type/DateTime", "temporal-unit": "month" },
+                ],
               ],
             },
             display: "line",
