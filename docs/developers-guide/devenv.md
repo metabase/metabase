@@ -180,7 +180,9 @@ You could also pass a full conection string in as the `mb.db.connection.uri`:
 "-Dmb.db.connection.uri=postgres://<user>:<password>@localhost:5432/<dbname>"
 ```
 
-Another option is to create a `.lein-env` file within your project directory:
+There is another option besides using environment variables, and instead uses a feature of our configuration library [environ](https://github.com/weavejester/environ) directly.
+
+This approach requires creating a `.lein-env` file within your project directory:
 
 ```
 {:mb-db-type   "postgres"
@@ -190,9 +192,9 @@ Another option is to create a `.lein-env` file within your project directory:
  :mb-db-pass   ""}
 ```
 
-Despite the name, this works fine with `deps.edn` projects, and is read directly by [environ](https://github.com/weavejester/environ).
+An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only. Despite the name, this file works fine with `deps.edn` projects.
 
-There is already an entry in `.gitignore` to prevent you accidentally committing this file.
+Only use this for development. This is not supported for production use. There is already entry in `.gitignore` to prevent you accidentally committing this file.
 
 ### Building drivers
 
