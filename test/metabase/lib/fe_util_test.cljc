@@ -123,6 +123,8 @@
         date-arg-2 "2024-01-03"]
     (are [expected clause] (=? expected (lib/filter-args-display-name lib.tu/venues-query -1 clause))
       "Nov 2, 2023" (lib/= created-at date-arg-1)
+      "Excludes Nov 2, 2023" (lib/!= created-at date-arg-1)
+      "Excludes Q4" (lib/!= (lib/with-temporal-bucket created-at :quarter-of-year) date-arg-1)
       "Nov 2, 2023 – Jan 3, 2024" (lib/between created-at date-arg-1 date-arg-2)
       "After Nov 2, 2023" (lib/> created-at date-arg-1)
       "Before Nov 2, 2023" (lib/< created-at date-arg-1)

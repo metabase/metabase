@@ -200,20 +200,20 @@
                                           :display_name "Category → Name"
                                           :base_type    :type/Text
                                           :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
-          (is (= (lib.tu.macros/$ids [$venues.id
-                           (mbql.u/update-field-options field-ref dissoc :temporal-unit)
-                           $venues.category-id->categories.name])
-                 (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
-                         [:query :fields]))))))))
+          (is (=? (lib.tu.macros/$ids [$venues.id
+                                       (mbql.u/update-field-options field-ref dissoc :temporal-unit)
+                                       $venues.category-id->categories.name])
+                  (get-in (qp.add-implicit-clauses/add-implicit-clauses query)
+                          [:query :fields]))))))))
 
 (deftest ^:parallel add-correct-implicit-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
     (qp.store/with-metadata-provider meta/metadata-provider
       (let [expected-cols (fn [query]
                             (qp/query->expected-cols
-                             {:database (meta/id)
-                              :type     :query
-                              :query    query}))
+                              {:database (meta/id)
+                               :type     :query
+                               :query    query}))
             q1            (lib.tu.macros/$ids orders
                             {:source-table $$orders
                              :filter       [:= $id 1]
@@ -234,12 +234,12 @@
             query         {:database (meta/id)
                            :type     :query
                            :query    q3}]
-        (is (= (lib.tu.macros/$ids orders
-                 [$product-id->products.title
-                  *sum/Float])
-               (-> (qp.add-implicit-clauses/add-implicit-clauses query)
-                   :query
-                   :fields)))))))
+        (is (=? (lib.tu.macros/$ids orders
+                  [$product-id->products.title
+                   *sum/Float])
+                (-> (qp.add-implicit-clauses/add-implicit-clauses query)
+                    :query
+                    :fields)))))))
 
 (defn- add-implicit-clauses [query]
   (qp.store/with-metadata-provider meta/metadata-provider

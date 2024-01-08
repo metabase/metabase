@@ -136,7 +136,10 @@ function QueryActionContextProvider({
 
   const [question, setQuestion] = useState(initialQuestion);
 
-  const query = useMemo(() => question.query() as NativeQuery, [question]);
+  const query = useMemo(
+    () => question.legacyQuery() as NativeQuery,
+    [question],
+  );
 
   const [formSettings, setFormSettings] = useState(initialFormSettings);
 

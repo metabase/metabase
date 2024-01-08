@@ -433,91 +433,92 @@
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
-          (mt/with-temp!
-            [Database   db1s {:name "my-db"}
-             Collection coll1s {:name "My Collection"}
-             Table      table1s {:name  "CUSTOMERS"
-                                 :db_id (:id db1s)}
-             Field      field1s {:name     "NAME"
-                                 :table_id (:id table1s)}
-             Card       card1s  {:name "Source card"}
-             Card       card2s  {:name "Card with parameter"
-                                 :database_id (:id db1s)
-                                 :table_id (:id table1s)
-                                 :collection_id (:id coll1s)
-                                 :parameters [{:id                   "abc"
-                                               :type                 "category"
-                                               :name                 "CATEGORY"
-                                               :values_source_type   "card"
-                                               ;; card_id is in a different collection with dashboard's collection
-                                               :values_source_config {:card_id     (:id card1s)
-                                                                      :value_field [:field (:id field1s) nil]}}]}
-             Dashboard  dash1s {:name "A dashboard"
-                                :collection_id (:id coll1s)
-                                :parameters [{:id                   "abc"
-                                              :type                 "category"
-                                              :name                 "CATEGORY"
-                                              :values_source_type   "card"
-                                              ;; card_id is in a different collection with dashboard's collection
-                                              :values_source_config {:card_id     (:id card1s)
-                                                                     :value_field [:field (:id field1s) nil]}}]}]
+          (mt/test-helpers-set-global-values!
+            (mt/with-temp
+              [Database   db1s {:name "my-db"}
+               Collection coll1s {:name "My Collection"}
+               Table      table1s {:name  "CUSTOMERS"
+                                   :db_id (:id db1s)}
+               Field      field1s {:name     "NAME"
+                                   :table_id (:id table1s)}
+               Card       card1s  {:name "Source card"}
+               Card       card2s  {:name          "Card with parameter"
+                                   :database_id   (:id db1s)
+                                   :table_id      (:id table1s)
+                                   :collection_id (:id coll1s)
+                                   :parameters    [{:id                   "abc"
+                                                    :type                 "category"
+                                                    :name                 "CATEGORY"
+                                                    :values_source_type   "card"
+                                                    ;; card_id is in a different collection with dashboard's collection
+                                                    :values_source_config {:card_id     (:id card1s)
+                                                                           :value_field [:field (:id field1s) nil]}}]}
+               Dashboard  dash1s {:name          "A dashboard"
+                                  :collection_id (:id coll1s)
+                                  :parameters    [{:id                   "abc"
+                                                   :type                 "category"
+                                                   :name                 "CATEGORY"
+                                                   :values_source_type   "card"
+                                                   ;; card_id is in a different collection with dashboard's collection
+                                                   :values_source_config {:card_id     (:id card1s)
+                                                                          :value_field [:field (:id field1s) nil]}}]}]
 
-            (testing "make sure we insert ParameterCard when insert Dashboard/Card"
-              ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
-              (is (= 2 (t2/count ParameterCard))))
+              (testing "make sure we insert ParameterCard when insert Dashboard/Card"
+                ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+                (is (= 2 (t2/count ParameterCard))))
 
-            (testing "extract and store"
-              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-                (is (= [{:id                   "abc",
-                         :name                 "CATEGORY",
-                         :type                 :category,
-                         :values_source_config {:card_id     (:entity_id card1s),
-                                                :value_field [:field
-                                                              ["my-db" nil "CUSTOMERS" "NAME"]
-                                                              nil]},
-                         :values_source_type "card"}]
-                       (:parameters (first (by-model extraction "Dashboard")))))
+              (testing "extract and store"
+                (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                  (is (= [{:id                   "abc",
+                           :name                 "CATEGORY",
+                           :type                 :category,
+                           :values_source_config {:card_id     (:entity_id card1s),
+                                                  :value_field [:field
+                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                nil]},
+                           :values_source_type   "card"}]
+                         (:parameters (first (by-model extraction "Dashboard")))))
 
-                (is (= [{:id                   "abc",
-                         :name                 "CATEGORY",
-                         :type                 :category,
-                         :values_source_config {:card_id     (:entity_id card1s),
-                                                :value_field [:field
-                                                              ["my-db" nil "CUSTOMERS" "NAME"]
-                                                              nil]},
-                         :values_source_type "card"}]
-                       (:parameters (first (by-model extraction "Card")))))
+                  (is (= [{:id                   "abc",
+                           :name                 "CATEGORY",
+                           :type                 :category,
+                           :values_source_config {:card_id     (:entity_id card1s),
+                                                  :value_field [:field
+                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                nil]},
+                           :values_source_type   "card"}]
+                         (:parameters (first (by-model extraction "Card")))))
 
-                (storage/store! (seq extraction) dump-dir)))
+                  (storage/store! (seq extraction) dump-dir)))
 
-           (testing "ingest and load"
-             (ts/with-dest-db
-               ;; ingest
-               (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                     "successful"))
+              (testing "ingest and load"
+                (ts/with-dest-db
+                  ;; ingest
+                  (testing "doing ingestion"
+                    (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                        "successful"))
 
-               (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
-                     card1d (t2/select-one Card :name (:name card1s))
-                     card2d (t2/select-one Card :name (:name card2s))
-                     field1d (t2/select-one Field :name (:name field1s))]
-                 (testing "parameter on dashboard is loaded correctly"
-                   (is (= {:card_id     (:id card1d),
-                           :value_field [:field (:id field1d) nil]}
-                          (-> dash1d
-                              :parameters
-                              first
-                              :values_source_config)))
-                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                  (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
+                        card1d  (t2/select-one Card :name (:name card1s))
+                        card2d  (t2/select-one Card :name (:name card2s))
+                        field1d (t2/select-one Field :name (:name field1s))]
+                    (testing "parameter on dashboard is loaded correctly"
+                      (is (= {:card_id     (:id card1d),
+                              :value_field [:field (:id field1d) nil]}
+                             (-> dash1d
+                                 :parameters
+                                 first
+                                 :values_source_config)))
+                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                 (testing "parameter on card is loaded correctly"
-                   (is (= {:card_id     (:id card1d),
-                           :value_field [:field (:id field1d) nil]}
-                          (-> card2d
-                              :parameters
-                              first
-                              :values_source_config)))
-                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+                    (testing "parameter on card is loaded correctly"
+                      (is (= {:card_id     (:id card1d),
+                              :value_field [:field (:id field1d) nil]}
+                             (-> card2d
+                                 :parameters
+                                 first
+                                 :values_source_config)))
+                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]

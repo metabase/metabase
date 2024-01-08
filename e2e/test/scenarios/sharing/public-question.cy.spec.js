@@ -87,7 +87,6 @@ describe("scenarios > public > question", () => {
       cy.get(".cellData").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.icon("download").click();
       cy.get("@uuid").then(publicUid => {
         downloadAndAssert(
           { fileType: "xlsx", questionId: id, publicUid },
@@ -117,20 +116,6 @@ describe("scenarios > public > question", () => {
         );
         cy.findByText("Remove public URL").should("not.exist");
       });
-    });
-  });
-
-  it("should see a tooltip prompting the user to ask their admin to create a public link", () => {
-    cy.signInAsNormalUser();
-    cy.get("@questionId").then(id => {
-      visitQuestion(id);
-    });
-
-    cy.findByTestId("view-footer").icon("share").realHover();
-    cy.findByRole("tooltip").within(() => {
-      cy.findByText("Ask your admin to create a public link").should(
-        "be.visible",
-      );
     });
   });
 

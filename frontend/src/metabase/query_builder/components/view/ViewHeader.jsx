@@ -93,8 +93,10 @@ export function ViewTitleHeader(props) {
       return;
     }
 
-    const filtersCount = question.query().filters().length;
-    const previousFiltersCount = previousQuestion.query().filters().length;
+    const filtersCount = question.legacyQuery().filters().length;
+    const previousFiltersCount = previousQuestion
+      .legacyQuery()
+      .filters().length;
 
     if (filtersCount > previousFiltersCount) {
       expandFilters();
@@ -107,7 +109,7 @@ export function ViewTitleHeader(props) {
   const isDataset = question.isDataset();
 
   const isSummarized =
-    isStructured && question.query().topLevelQuery().hasAggregations();
+    isStructured && question.legacyQuery().topLevelQuery().hasAggregations();
 
   const onQueryChange = useCallback(
     newQuery => {
@@ -296,8 +298,7 @@ function AhHocQuestionLeftSide(props) {
   } = props;
 
   const handleTitleClick = () => {
-    const query = question.query();
-    if (!query.readOnly()) {
+    if (question.isQueryEditable()) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
@@ -412,12 +413,12 @@ function ViewTitleHeaderRightSide(props) {
     onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canEditQuery = !question.query().readOnly();
+  const canEditQuery = question.isQueryEditable();
   const hasExploreResultsLink =
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question.query().hasData();
+  const isNewQuery = !question.legacyQuery().hasData();
   const hasSaveButton =
     !isDataset &&
     !!isDirty &&
@@ -446,8 +447,8 @@ function ViewTitleHeaderRightSide(props) {
       {FilterHeaderToggle.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
-          query={question._getMLv2Query()}
-          expanded={areFiltersExpanded}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
         />

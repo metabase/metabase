@@ -81,12 +81,12 @@ function getCardForBlankQuestion({
 
   if (databaseId && tableId) {
     if (segment) {
-      question = (question.query() as StructuredQuery)
+      question = (question.legacyQuery() as StructuredQuery)
         .filter(["segment", parseInt(segment)])
         .question();
     }
     if (metric) {
-      question = (question.query() as StructuredQuery)
+      question = (question.legacyQuery() as StructuredQuery)
         .aggregate(["metric", parseInt(metric)])
         .question();
     }
@@ -319,8 +319,8 @@ async function handleQBInit(
     uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
   }
 
-  if (question.isNative() && !question.query().readOnly()) {
-    const query = question.query() as NativeQuery;
+  if (question.isNative() && question.isQueryEditable()) {
+    const query = question.legacyQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
     question = question.setQuery(newQuery);
   }

@@ -31,7 +31,7 @@ class Metric {
   /** Underlying query for this metric */
   definitionQuery() {
     return this.table && this.definition
-      ? this.table.query().setQuery(this.definition)
+      ? this.table.legacyQuery().setQuery(this.definition)
       : null;
   }
 

@@ -97,7 +97,7 @@ export function checkDatabaseCanPersistDatasets(database?: Database | null) {
 }
 
 export function checkCanBeModel(question: Question) {
-  const query = question.query();
+  const query = question.legacyQuery();
 
   if (!checkDatabaseSupportsModels(query.database())) {
     return false;

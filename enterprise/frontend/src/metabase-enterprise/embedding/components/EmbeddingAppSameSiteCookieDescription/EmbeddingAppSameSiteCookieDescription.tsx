@@ -10,7 +10,8 @@ import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector(state =>
     getDocsUrl(state, {
-      page: "embedding/interactive-embedding#embedding-metabase-in-a-different-domain",
+      page: "embedding/interactive-embedding",
+      anchor: "embedding-metabase-in-a-different-domain",
     }),
   );
 
@@ -26,8 +27,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
     authorizedOriginsContainsNonInstanceDomain(embeddingAuthorizedOrigins);
 
   return (
-    <Stack mb="1rem" spacing="sm">
-      <Text fw="bold">{t`SameSite cookie setting`}</Text>
+    <Stack spacing="sm">
       {shouldDisplayNote && <AuthorizedOriginsNote />}
       <Text>{t`Determines whether or not cookies are allowed to be sent on cross-site requests. You’ll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure.`}</Text>
       <Text>{jt`If you set this to None, you'll have to use HTTPS (unless you're just embedding locally), or browsers will reject the request. ${(
@@ -45,7 +45,7 @@ function AuthorizedOriginsNote() {
       <SameSiteAlert variant="warning" hasBorder>
         <Center>
           <Text>{jt`You should probably change this setting to ${(
-            <Text span fw="bold">
+            <Text key="inner" span fw="bold">
               {t`None`}
             </Text>
           )}.`}</Text>

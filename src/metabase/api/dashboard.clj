@@ -864,7 +864,7 @@
    (let [dashboard   (t2/hydrate dashboard :resolved-params)
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
-         field-ids   (map :field-id (param->fields param))]
+         field-ids   (into #{} (map :field-id (param->fields param)))]
      (if (empty? field-ids)
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))

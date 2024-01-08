@@ -57,8 +57,8 @@
   {:style/indent 2}
   [user collection & body]
   `(do-with-french-user-and-personal-collection
-     (fn [~user ~collection]
-       ~@body)))
+    (fn [~user ~collection]
+      ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                GET /collection                                                 |
@@ -225,14 +225,85 @@
                            :slug              "rasta_toucan_s_personal_collection"
                            :name              "Rasta Toucan's Personal Collection"
                            :personal_owner_id (mt/user->id :rasta)
-                           :id                (:id (collection/user->personal-collection (mt/user->id :rasta)))
+                           :id                (u/the-id personal-collection)
                            :location          "/"
                            :namespace         nil
                            :children          []
                            :authority_level   nil}
-                          (some #(when (= (:id %) (:id (collection/user->personal-collection (mt/user->id :rasta))))
-                                   %)
+                          (some #(when (= (:id %) (u/the-id personal-collection)) %)
                                 response)))))))))
+
+(deftest collection-tree-shallow-test
+  (testing "GET /api/collection/tree?shallow=true"
+    (with-collection-hierarchy [a b c d e f g]
+      (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))
+            ids                 (set (map :id (cons personal-collection [a b c d e f g])))]
+        (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true")]
+          (testing "Make sure overall tree shape of the response is as is expected"
+            (is (= [{:name     "A"
+                     :children true}
+                    {:name "Rasta Toucan's Personal Collection"
+                     :children false}]
+                   (->> response
+                        (filter (fn [coll] (contains? ids (:id coll))))
+                        (map #(select-keys % [:name :children])))))
+            (testing "Make sure each Collection comes back with the expected keys"
+              (is (partial= {:description       nil
+                             :archived          false
+                             :entity_id         (:entity_id personal-collection)
+                             :slug              "rasta_toucan_s_personal_collection"
+                             :name              "Rasta Toucan's Personal Collection"
+                             :personal_owner_id (mt/user->id :rasta)
+                             :id                (u/the-id personal-collection)
+                             :location          "/"
+                             :namespace         nil
+                             :children          false
+                             :authority_level   nil}
+                            (some #(when (= (:id %) (u/the-id personal-collection)) %)
+                                  response))))))
+        (let [response (mt/user-http-request :rasta :get 200 (str "collection/tree?shallow=true&collection-id=" (:id a)))]
+          (testing "Make sure collection-id param works as expected"
+            (is (= [{:name     "B"
+                     :children false}
+                    {:name     "C"
+                     :children true}]
+                   (->> response
+                        (filter (fn [coll] (contains? ids (:id coll))))
+                        (map #(select-keys % [:name :children])))))))))))
+
+(deftest select-collections-shallow-test
+  (testing "Selecting collections based off collection-id equaling nil works."
+    (with-collection-hierarchy [a b c d e f g]
+      (let [personal-collection (collection/user->personal-collection (mt/user->id :crowberto))
+            ids      (set (map :id (cons personal-collection [a b c d e f g])))]
+        (mt/with-test-user :crowberto
+          (testing "Make sure we get the expected collections when collection-id is nil"
+            (let [collections (#'api.collection/select-collections false false nil true nil)]
+              (is (= #{{:name "A"}
+                       {:name "B"}
+                       {:name "C"}
+                       {:name "Crowberto Corv's Personal Collection"}}
+                     (->> collections
+                          (filter (fn [coll] (contains? ids (:id coll))))
+                          (map #(select-keys % [:name]))
+                          (into #{}))))))
+          (testing "Make sure we get the expected collections when collection-id is an integer"
+            (let [collections (#'api.collection/select-collections false false nil true (:id a))]
+              ;; E & G are too deep to show up
+              (is (= #{{:name "C"}
+                       {:name "B"}
+                       {:name "D"}
+                       {:name "F"}}
+                     (->> collections
+                          (filter (fn [coll] (contains? ids (:id coll))))
+                          (map #(select-keys % [:name]))
+                          (into #{})))))
+            (let [collections (#'api.collection/select-collections false false nil true (:id b))]
+              (is (= #{}
+                     (->> collections
+                          (filter (fn [coll] (contains? ids (:id coll))))
+                          (map #(select-keys % [:name]))
+                          (into #{})))))))))))
 
 (deftest collection-tree-exclude-archived-collections-test
   (testing "GET /api/collection/tree"
@@ -470,14 +541,14 @@
 (defn- collection-item [collection-name & {:as extra-keypairs}]
   (let [personal-collection (str/ends-with? collection-name "Personal Collection")]
     (merge (cond->
-            {:id              true
-             :description     nil
-             :can_write       personal-collection
-             :model           "collection"
-             :authority_level nil
-             :entity_id       true
-             :name            collection-name}
-            personal-collection (assoc :personal_owner_id personal-collection))
+             {:id              true
+              :description     nil
+              :can_write       personal-collection
+              :model           "collection"
+              :authority_level nil
+              :entity_id       true
+              :name            collection-name}
+             personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
 (deftest collection-items-return-cards-test
@@ -492,20 +563,20 @@
                                                                         :moderator_id        user-id
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
-                 [{:id                  card-id
-                   :name                (:name card)
-                   :collection_position nil
-                   :collection_preview  true
-                   :database_id         nil
-                   :display             "table"
-                   :description         nil
-                   :entity_id           (:entity_id card)
-                   :moderated_status    "verified"
-                   :model               "card"
-                   :fully_parametrized  true}])
+                [{:id                  card-id
+                  :name                (:name card)
+                  :collection_position nil
+                  :collection_preview  true
+                  :database_id         nil
+                  :display             "table"
+                  :description         nil
+                  :entity_id           (:entity_id card)
+                  :moderated_status    "verified"
+                  :model               "card"
+                  :fully_parametrized  true}])
                (mt/obj->json->obj
-                 (:data (mt/user-http-request :crowberto :get 200
-                                              (str "collection/" (u/the-id collection) "/items"))))))))))
+                (:data (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items"))))))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -607,72 +678,73 @@
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
-    (mt/with-temp!
-      [Collection {collection-id :id}      {:name "Collection with Items"}
-       User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-       User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-       Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-       Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-       Card       _                        {:name "ZZ" :collection_id collection-id}
-       Card       _                        {:name "AA" :collection_id collection-id}
-       Revision   revision1                {:model    "Card"
-                                            :model_id card1-id
-                                            :user_id  user2-id
-                                            :object   (revision/serialize-instance card1 card1-id card1)}
-       Revision   _revision2               {:model    "Card"
-                                            :model_id card2-id
-                                            :user_id  user1-id
-                                            :object   (revision/serialize-instance card2 card2-id card2)}]
-      ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
-      (is (= 1
-             (t2/query-one {:update :revision
-                            ;; in the past
-                            :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                            :where  [:= :id (:id revision1)]})))
-      (testing "Results include last edited information from the `Revision` table"
-        (is (= [{:name "AA"}
-                {:name "Card with history 1",
-                 :last-edit-info
-                 {:id         true,
-                  :email      "zzzz@example.com",
-                  :first_name "Test",
-                  :last_name  "ZZZZ",
-                  :timestamp  true}}
-                {:name "Card with history 2",
-                 :last-edit-info
-                 {:id         true,
-                  :email      "aaaa@example.com",
-                  :first_name "Test",
-                  :last_name  "AAAA",
-                  ;; timestamp collapsed to true, ordinarily a OffsetDateTime
-                  :timestamp  true}}
-                {:name "ZZ"}]
-               (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
-                    mt/boolean-ids-and-timestamps
-                    (map #(select-keys % [:name :last-edit-info]))))))
-      (testing "Results can be ordered by last-edited-at"
-        (testing "ascending"
-          (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
-                      :data
-                      (map :name)))))
-        (testing "descending"
-          (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
-                      :data
-                      (map :name))))))
-      (testing "Results can be ordered by last-edited-by"
-        (testing "ascending"
-          ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
-          (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
-                      :data
-                      (map :name)))))
-        (testing "descending"
-          (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                 (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
-                      :data
-                      (map :name)))))))))
+    (mt/test-helpers-set-global-values!
+     (mt/with-temp
+       [Collection {collection-id :id}      {:name "Collection with Items"}
+        User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+        User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+        Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+        Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+        Card       _                        {:name "ZZ" :collection_id collection-id}
+        Card       _                        {:name "AA" :collection_id collection-id}
+        Revision   revision1                {:model    "Card"
+                                             :model_id card1-id
+                                             :user_id  user2-id
+                                             :object   (revision/serialize-instance card1 card1-id card1)}
+        Revision   _revision2               {:model    "Card"
+                                             :model_id card2-id
+                                             :user_id  user1-id
+                                             :object   (revision/serialize-instance card2 card2-id card2)}]
+       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
+       (is (= 1
+              (t2/query-one {:update :revision
+                             ;; in the past
+                             :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
+                             :where  [:= :id (:id revision1)]})))
+       (testing "Results include last edited information from the `Revision` table"
+         (is (= [{:name "AA"}
+                 {:name "Card with history 1",
+                  :last-edit-info
+                  {:id         true,
+                   :email      "zzzz@example.com",
+                   :first_name "Test",
+                   :last_name  "ZZZZ",
+                   :timestamp  true}}
+                 {:name "Card with history 2",
+                  :last-edit-info
+                  {:id         true,
+                   :email      "aaaa@example.com",
+                   :first_name "Test",
+                   :last_name  "AAAA",
+                   ;; timestamp collapsed to true, ordinarily a OffsetDateTime
+                   :timestamp  true}}
+                 {:name "ZZ"}]
+                (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
+                     mt/boolean-ids-and-timestamps
+                     (map #(select-keys % [:name :last-edit-info]))))))
+       (testing "Results can be ordered by last-edited-at"
+         (testing "ascending"
+           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
+                       :data
+                       (map :name)))))
+         (testing "descending"
+           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
+                       :data
+                       (map :name))))))
+       (testing "Results can be ordered by last-edited-by"
+         (testing "ascending"
+           ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
+           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                       :data
+                       (map :name)))))
+         (testing "descending"
+           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
+                       :data
+                       (map :name))))))))))
 
 (deftest collection-items-order-by-model-test
   (testing "GET /api/collection/:id/items"
@@ -838,16 +910,15 @@
 
         (testing "Snippets in nested collections should be returned as a flat list on OSS"
           (premium-features-test/with-premium-features #{}
-             (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
-                                                                         :name      "Nested Snippet Collection"
-                                                                         :location  (collection/location-path collection)}
-                                      :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
-                                                                             :name          "Nested Snippet"}]
-               (is (=?
-                    [{:id (:id snippet), :name "My Snippet"}
-                     {:id (:id sub-snippet), :name "Nested Snippet"}]
-                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
-
+            (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
+                                                                        :name      "Nested Snippet Collection"
+                                                                        :location  (collection/location-path collection)}
+                                     :model/NativeQuerySnippet sub-snippet {:collection_id (:id sub-collection)
+                                                                            :name          "Nested Snippet"}]
+              (is (=?
+                   [{:id (:id snippet), :name "My Snippet"}
+                    {:id (:id sub-snippet), :name "Nested Snippet"}]
+                   (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
@@ -936,8 +1007,8 @@
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
   (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta
-                                         :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
-                                         additional-get-params))))
+                                               :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
+                                               additional-get-params))))
 
 ;;; for the tests below, create hierarchy like
 ;;;
@@ -1378,7 +1449,6 @@
             (is (= ["My Snippet", "My Snippet 2"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
                                                                       "collection/root/items?namespace=snippets&model=snippet")))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              POST /api/collection                                              |

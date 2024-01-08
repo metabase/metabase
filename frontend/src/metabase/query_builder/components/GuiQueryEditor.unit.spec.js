@@ -32,7 +32,7 @@ describe("GuiQueryEditor", () => {
       tableId: ORDERS_ID,
       metadata,
     })
-      .query()
+      .legacyQuery()
       .aggregate(["count"]);
 
     render(getGuiQueryEditor(query));
@@ -49,7 +49,7 @@ describe("GuiQueryEditor", () => {
       tableId: ORDERS_ID,
       metadata,
     })
-      .query()
+      .legacyQuery()
       .aggregate(["count"])
       .breakout(["field", ORDERS.TOTAL, null]);
 

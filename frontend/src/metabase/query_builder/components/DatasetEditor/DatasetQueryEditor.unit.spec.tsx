@@ -63,7 +63,7 @@ const setup = async ({
   });
   const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
-  const query = question.query();
+  const query = question.legacyQuery();
   const DatasetQueryEditor = await importDatasetQueryEditor();
 
   const { rerender } = renderWithProviders(
