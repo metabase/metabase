@@ -33,13 +33,13 @@
 
 
 (def ^:private DataPermissions
-  "Permissions which apply to individual databases or tables"
+  "Permissions which apply to individual tables or databases"
   {:data-access           {:model :model/Table :values [:unrestricted :no-self-service :block]}
    :download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :manage-table-metadata {:model :model/Table :values [:yes :no]}
 
-   :native-query-editing {:model :model/Database :values [:yes :no]}
-   :manage-database      {:model :model/Database :values [:yes :no]}})
+   :native-query-editing  {:model :model/Database :values [:yes :no]}
+   :manage-database       {:model :model/Database :values [:yes :no]}})
 
 (def ^:private CollectionPermissions
   "Permissions which apply to collections"
@@ -190,7 +190,7 @@
                  db-id     :db-id
                  schema    :schema
                  table-id  :table-id}]
-       (let [schema   (or schema "")
+       (let [schema   (or schema "") ;; `nil` schemas are represented as empty strings in the graph
              db-perm? (= :model/Database (model-by-perm-type perm-type))
              path     (if db-perm?
                         [group-id db-id perm-type]
@@ -268,10 +268,24 @@
         (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
         (t2/insert! :model/PermissionsV2 new-perm)))))
 
-;; TODO
-;; - Function that takes a DB and perm type, and sets permissions for all tables to a given value
-;; - Similar function for a single schema
-
+(mu/defn set-table-permissions!
+  "Sets a single permission type to a specified value for all tables in `tables`."
+  [perm-type group-or-id value tables]
+  (t2/with-transaction [_conn]
+    (let [group-id  (u/the-id group-or-id)
+          new-perms (map (fn [{:keys [id db_id schema]}]
+                           {:type     perm-type
+                            :group_id group-id
+                            :value    value
+                            :db_id    db_id
+                            :schema   schema
+                            :table_id id})
+                         tables)]
+      (t2/delete! :model/PermissionsV2 {:where [:and
+                                                [:= :group_id  group-id]
+                                                [:= :type      (name perm-type)]
+                                                [:in :table_id (map u/id tables)]]})
+      (t2/insert! :model/PermissionsV2 new-perms))))
 
 (comment
   (defn do-try-catch-message [thunk] (try (thunk) (catch Exception e (ex-message e))))
