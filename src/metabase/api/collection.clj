@@ -57,16 +57,16 @@
      [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
     [:not [:like :location "/%/%/"]]))
 
-(defn- remove-other-users-personal-collections
+(defn- remove-other-users-personal-subcollections
   [user-id collections]
   (let [personal-ids        (t2/select-fn-set :id :model/Collection
                                               {:where
                                                [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]})
-        personal-descendant (comp personal-ids
-                                  first
-                                  collection/location-path->ids
-                                  :location)]
-    (remove personal-descendant collections)))
+        personal-descendant? (comp personal-ids
+                                   first
+                                   collection/location-path->ids
+                                   :location)]
+    (remove personal-descendant? collections)))
 
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
@@ -91,7 +91,7 @@
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
