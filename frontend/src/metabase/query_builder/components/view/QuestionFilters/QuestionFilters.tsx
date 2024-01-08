@@ -4,7 +4,6 @@ import type { QueryBuilderMode } from "metabase-types/store";
 
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
 
 interface FilterHeaderToggleProps {
   className?: string;
@@ -71,7 +70,7 @@ const shouldRender = ({
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.isQueryEditable() &&
-  (question.legacyQuery() as LegacyQuery).topLevelFilters().length > 0 &&
+  FilterPanel.shouldRender({ query: question.query() }) &&
   !isObjectDetail;
 
 FilterHeader.shouldRender = shouldRender;

@@ -37,3 +37,11 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
     </FilterPanelRoot>
   );
 }
+
+interface RenderCheckOpts {
+  query: Lib.Query;
+}
+
+FilterPanel.shouldRender = ({ query }: RenderCheckOpts) => {
+  return getFilterItems(query).length > 0;
+};
