@@ -29,8 +29,8 @@ async function setup() {
       },
       creator_id: 1,
       masked_key: "asdfasdfa",
-      created_at: "2010 Aug 10",
-      updated_at: "2010 Aug 10",
+      created_at: "2010-08-10",
+      updated_at: "2010-08-10",
       updated_by: {
         common_name: "John Doe",
         id: 10,
@@ -45,8 +45,8 @@ async function setup() {
       },
       creator_id: 1,
       masked_key: "asdfasdfa",
-      created_at: "2010 Aug 10",
-      updated_at: "2010 Aug 10",
+      created_at: "2010-08-10",
+      updated_at: "2010-08-10",
       updated_by: {
         common_name: "Jane Doe",
         id: 10,
@@ -54,9 +54,9 @@ async function setup() {
     },
   ]);
   renderWithProviders(<ManageApiKeys />);
-  await waitFor(async () => {
+  await waitFor(() => {
     expect(
-      await fetchMock.calls("path:/api/api-key", { method: "GET" }),
+      fetchMock.calls("path:/api/api-key", { method: "GET" }),
     ).toHaveLength(1);
   });
 }
@@ -88,9 +88,9 @@ describe("ManageApiKeys", () => {
     ).toEqual({ name: "New key", group_id: 5 });
 
     userEvent.click(screen.getByRole("button", { name: "Done" }));
-    await waitFor(async () =>
+    await waitFor(() =>
       expect(
-        await fetchMock.calls("path:/api/api-key", { method: "GET" }),
+        fetchMock.calls("path:/api/api-key", { method: "GET" }),
       ).toHaveLength(2),
     );
   });
@@ -114,9 +114,9 @@ describe("ManageApiKeys", () => {
     expect(
       await fetchMock.lastCall(REGEN_URL, { method: "PUT" })?.request?.json(),
     ).toEqual({});
-    await waitFor(async () => {
+    await waitFor(() => {
       expect(
-        await fetchMock.calls("path:/api/api-key", { method: "GET" }),
+        fetchMock.calls("path:/api/api-key", { method: "GET" }),
       ).toHaveLength(2);
     });
   });
@@ -148,9 +148,9 @@ describe("ManageApiKeys", () => {
         await fetchMock.lastCall(EDIT_URL, { method: "PUT" })?.request?.json(),
       ).toEqual({ group_id: 5, name: "My Key" });
     });
-    await waitFor(async () => {
+    await waitFor(() => {
       expect(
-        await fetchMock.calls("path:/api/api-key", { method: "GET" }),
+        fetchMock.calls("path:/api/api-key", { method: "GET" }),
       ).toHaveLength(2);
     });
   });
@@ -169,14 +169,12 @@ describe("ManageApiKeys", () => {
     userEvent.click(
       await screen.findByRole("button", { name: "Delete API Key" }),
     );
-    await waitFor(async () => {
-      expect(
-        await fetchMock.calls(DELETE_URL, { method: "DELETE" }),
-      ).toHaveLength(1);
+    await waitFor(() => {
+      expect(fetchMock.calls(DELETE_URL, { method: "DELETE" })).toHaveLength(1);
     });
-    await waitFor(async () => {
+    await waitFor(() => {
       expect(
-        await fetchMock.calls("path:/api/api-key", { method: "GET" }),
+        fetchMock.calls("path:/api/api-key", { method: "GET" }),
       ).toHaveLength(2);
     });
   });
