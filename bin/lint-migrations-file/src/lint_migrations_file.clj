@@ -59,9 +59,9 @@
 
 
        ;; a modifyDataType change; see if it changes a column to target-type
-       (:modifyDataType x)
-       (when (match-target-types? (str/lower-case (get-in x [:modifyDataType :newDataType] "")))
-         (swap! found-cols conj x)))
+       (and (:modifyDataType x)
+            (match-target-types? (get-in x [:modifyDataType :newDataType] "")))
+       (swap! found-cols conj x))
       x)))
 
 (defn no-bare-blob-or-text-types?
