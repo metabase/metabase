@@ -44,30 +44,25 @@
   TODO: add and conform to a spec instead?"
   [target-types found-cols x]
   {:pre [(set? target-types) (instance? clojure.lang.Atom found-cols)]}
-  (if (map? x)
-    (cond
-      ;; a createTable or addColumn change; see if it adds a target-type col
-      (or (:createTable x) (:addColumn x))
-      (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
-            cols   (filter (fn [col-def]
-                             (contains? target-types
-                                        (str/lower-case (or (get-in col-def [:column :type]) ""))))
-                     (get-in x [op :columns]))]
-        (doseq [col cols]
-          (swap! found-cols conj col))
-        x)
+  (let [match-target-types? (fn [ttype]
+                              (contains? target-types (str/lower-case ttype)))]
+    (when (map? x)
+      (cond
+       ;; a createTable or addColumn change; see if it adds a target-type col
+       (or (:createTable x) (:addColumn x))
+       (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
+             cols   (filter (fn [col-def]
+                              (match-target-types? (get-in col-def [:column :type] "")))
+                            (get-in x [op :columns]))]
+         (doseq [col cols]
+           (swap! found-cols conj col)))
 
-      ;; a modifyDataType change; see if it changes a column to target-type
-      (:modifyDataType x)
-      (if (contains? target-types (str/lower-case (or (get-in x [:modifyDataType :newDataType]) "")))
-        (do
-         (swap! found-cols conj x)
-         x)
-        x)
 
-      ;; some other kind of change; continue walking
-      :else x)
-    x))
+       ;; a modifyDataType change; see if it changes a column to target-type
+       (:modifyDataType x)
+       (when (match-target-types? (str/lower-case (get-in x [:modifyDataType :newDataType] "")))
+         (swap! found-cols conj x)))
+      x)))
 
 (defn no-bare-blob-or-text-types?
   "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
@@ -80,7 +75,7 @@
             :when                                (and id
                                                       (string? id)
                                                       (str/starts-with? id "v"))]
-      (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
+      (run! walk-fn (get-in change-set [:changeSet :changes])))
     (empty? @problem-cols)))
 
 (defn no-bare-boolean-types?
@@ -93,7 +88,7 @@
             :when                                (and id
                                                       (string? id)
                                                       (pos? (compare id "v49.00-032")))]
-      (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
+      (run! walk-fn (get-in change-set [:changeSet :changes])))
     (empty? @problem-cols)))
 
 (defn no-datetime-type?
@@ -107,7 +102,7 @@
             :when                                (and id
                                                       (string? id)
                                                       (pos? (compare id "v49.00-000")))]
-      (doall (map walk-fn (get-in change-set [:changeSet :changes]))))
+      (run! walk-fn (get-in change-set [:changeSet :changes])))
     (empty? @problem-cols)))
 
 (s/def ::changeSet
