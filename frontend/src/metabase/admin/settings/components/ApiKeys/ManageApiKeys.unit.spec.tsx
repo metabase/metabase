@@ -76,7 +76,10 @@ describe("ManageApiKeys", () => {
     userEvent.type(screen.getByLabelText(/Key name/), "New key");
     userEvent.click(await screen.findByLabelText(/which group/i));
     userEvent.click(await screen.findByText("flamingos"));
-    userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    const createButton = screen.getByRole("button", { name: "Create" });
+    await waitFor(() => expect(createButton).toBeEnabled());
+    userEvent.click(createButton);
 
     expect(
       await screen.findByText("Copy and save the API key"),
@@ -88,6 +91,7 @@ describe("ManageApiKeys", () => {
     ).toEqual({ name: "New key", group_id: 5 });
 
     userEvent.click(screen.getByRole("button", { name: "Done" }));
+
     await waitFor(() =>
       expect(
         fetchMock.calls("path:/api/api-key", { method: "GET" }),
