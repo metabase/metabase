@@ -10,8 +10,7 @@
 
 (defn- tuple-clause-of-comparables-schema
   "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple` and ensure that
-  `args` can be compared.
-  Use this for fixed-length MBQL clause schemas. Use [[catn-clause-schema]] for variable-length schemas."
+  the elements of `args` at positions specified by the pairs in `compared-position-pairs` can be compared."
   [compared-position-pairs]
   (fn [tag & args]
     {:pre [(simple-keyword? tag)]}
