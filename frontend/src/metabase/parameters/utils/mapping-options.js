@@ -105,7 +105,9 @@ export function getParameterMappingOptions(
       ? question.composeDataset().query()
       : question.query();
     const stageIndex = -1;
-    const columnFilter = columnFilterForParameter(parameter);
+    const columnFilter = parameter
+      ? columnFilterForParameter(parameter)
+      : () => true;
     const columns = Lib.visibleColumns(query, stageIndex).filter(columnFilter);
     const columnGroups = Lib.groupColumns(columns);
     return columnGroups.flatMap(group =>
