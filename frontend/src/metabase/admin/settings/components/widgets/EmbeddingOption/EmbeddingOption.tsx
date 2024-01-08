@@ -3,9 +3,10 @@ import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { getSetting } from "metabase/selectors/settings";
+import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import type { ButtonProps } from "metabase/ui";
 import { Button, Flex, Text, Title } from "metabase/ui";
+import { getPlan } from "metabase/common/utils/plan";
 import { Label, StyledCard, BoldExternalLink } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
 import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
@@ -45,15 +46,13 @@ function EmbeddingOption({
 
 export const StaticEmbeddingOptionCard = () => {
   const enabled = useSelector(state => getSetting(state, "enable-embedding"));
+  const upgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, { utm_media: "embed-settings" }),
+  );
   const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
 
   const upgradeText = jt`A "powered by Metabase" banner appears on static embeds. You can ${(
-    <ExternalLink
-      key="upgrade-link"
-      href={
-        "https://www.metabase.com/pricing/?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
-      }
-    >
+    <ExternalLink key="upgrade-link" href={upgradeUrl}>
       {t`upgrade to a paid plan`}
     </ExternalLink>
   )} to remove it.`;
@@ -83,6 +82,9 @@ export const StaticEmbeddingOptionCard = () => {
 
 export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
   const enabled = useSelector(state => getSetting(state, "enable-embedding"));
 
   return (
@@ -98,7 +100,7 @@ export const InteractiveEmbeddingOptionCard = () => {
       label={t`PRO & ENTERPRISE`}
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
-          href="https://www.metabase.com/blog/why-full-app-embedding"
+          href={`https://www.metabase.com/blog/why-full-app-embedding?utm_source=${plan}&utm_media=embed-settings`}
           key="why-full-app-embedding"
         >
           {t`offer multi-tenant, self-service analytics`}
@@ -106,11 +108,7 @@ export const InteractiveEmbeddingOptionCard = () => {
       )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
     >
       <BoldExternalLink
-        href={
-          isEE
-            ? "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-pro-cta"
-            : "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
-        }
+        href={`https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=${plan}&utm_media=embed-settings`}
       >
         {t`Check out our Quick Start`}
       </BoldExternalLink>
@@ -124,7 +122,7 @@ export const InteractiveEmbeddingOptionCard = () => {
       ) : (
         <Button
           component={ExternalLink}
-          href="https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta"
+          href={`https://www.metabase.com/product/embedded-analytics?utm_source=${plan}&utm_media=embed-settings`}
         >
           {t`Learn More`}
         </Button>

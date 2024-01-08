@@ -39,7 +39,7 @@ describe("[OSS] embedding settings", () => {
           screen.getByRole("link", { name: "upgrade to a paid plan" }),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/pricing/?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+          "https://www.metabase.com/upgrade?utm_media=embed-settings&utm_source=oss",
         );
       });
     });
@@ -66,7 +66,7 @@ describe("[OSS] embedding settings", () => {
         ).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Learn More" })).toHaveProperty(
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
         );
       });
 
@@ -77,11 +77,11 @@ describe("[OSS] embedding settings", () => {
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=oss&utm_media=embed-settings",
         );
       });
 
-      it("should link to https://www.metabase.com/blog/why-full-app-embedding", async () => {
+      it("should link to https://www.metabase.com/blog/why-full-app-embedding?utm_source=oss&utm_media=embed-settings", async () => {
         await setupEmbedding({
           settingValues: { "enable-embedding": false },
         });
@@ -90,7 +90,7 @@ describe("[OSS] embedding settings", () => {
           screen.getByText("offer multi-tenant, self-service analytics"),
         ).toHaveProperty(
           "href",
-          "https://www.metabase.com/blog/why-full-app-embedding",
+          "https://www.metabase.com/blog/why-full-app-embedding?utm_source=oss&utm_media=embed-settings",
         );
       });
     });
