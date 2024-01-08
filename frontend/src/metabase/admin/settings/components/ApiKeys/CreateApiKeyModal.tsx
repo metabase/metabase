@@ -13,6 +13,7 @@ import {
 import { ApiKeysApi } from "metabase/services";
 
 import { SecretKeyModal } from "./SecretKeyModal";
+import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
 export const CreateApiKeyModal = ({
   onClose,
@@ -47,7 +48,11 @@ export const CreateApiKeyModal = ({
         onClose={onClose}
         title={t`Create a new API Key`}
       >
-        <FormProvider initialValues={{}} onSubmit={handleSubmit}>
+        <FormProvider
+          initialValues={{ name: "", group_id: "" }}
+          validationSchema={API_KEY_VALIDATION_SCHEMA}
+          onSubmit={handleSubmit}
+        >
           <Form data-testid="create-api-key-modal">
             <Stack spacing="md">
               <FormTextInput
@@ -55,6 +60,7 @@ export const CreateApiKeyModal = ({
                 label={t`Key name`}
                 size="sm"
                 required
+                maxLength={250}
               />
               <FormGroupWidget
                 name="group_id"
