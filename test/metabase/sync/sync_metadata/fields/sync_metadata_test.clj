@@ -258,7 +258,7 @@
          (let [original-field (t2/select-one :model/Field (mt/id :table :field))]
            (testing "sanity check: the original state"
              (is (=? {:semantic_type  :type/Email
-                      :fingerprint    (mt/malli=? :map)
+                      :fingerprint    #hawk/malli :map
                       :base_type      :type/Text
                       :effective_type :type/Text}
                      original-field)))
@@ -276,7 +276,7 @@
            (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
              (testing "updated field is re-fingerprinted and analyzed"
                (is (=? {:semantic_type  :type/Category
-                        :fingerprint    (mt/malli=? :map)
+                        :fingerprint    #hawk/malli :map
                         :base_type      :type/Integer
                         :effective_type :type/Integer}
                        new-field))
