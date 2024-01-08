@@ -24,8 +24,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *in-tests* "Set when executed in tests to force sync removal of files" false)
-
 ;;; Storage
 
 (def parent-dir "Dir for storing serialization API export-in-progress and archives."
@@ -47,9 +45,7 @@
     ring.protocols/StreamableResponseBody
     (write-body-to-stream [_ response out]
       (ring.protocols/write-body-to-stream data response out)
-      (if *in-tests*
-        (callback)
-        (future (callback))))
+      (future (callback)))
 
     ;; mt/user-http-request goes here
     clojure.java.io.IOFactory
