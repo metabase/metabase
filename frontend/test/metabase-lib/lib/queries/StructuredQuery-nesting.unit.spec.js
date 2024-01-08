@@ -84,26 +84,6 @@ describe("StructuredQuery nesting", () => {
     });
   });
 
-  describe("topLevelFilters", () => {
-    it("should return filters for the last two stages", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery()
-        .aggregate(["count"])
-        .filter(["=", ["field", ORDERS.PRODUCT_ID, null], 1])
-        .nest()
-        .filter(["=", ["field", "count", { "base-type": "type/Integer" }], 2]);
-      const filters = q.topLevelFilters();
-      expect(filters).toHaveLength(2);
-      expect(filters[0]).toEqual(["=", ["field", ORDERS.PRODUCT_ID, null], 1]);
-      expect(filters[1]).toEqual([
-        "=",
-        ["field", "count", { "base-type": "type/Integer" }],
-        2,
-      ]);
-    });
-  });
-
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
       const { ordersTable } = setup();
