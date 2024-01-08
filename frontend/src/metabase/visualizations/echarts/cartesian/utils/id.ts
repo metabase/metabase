@@ -13,11 +13,11 @@ export function createWaterfallSeriesIdForECharts(
 }
 
 export function getSeriesIdFromECharts(
-  echartsSeriesId: string | number | undefined,
+  echartsSeriesId: string | number | undefined | null,
   display: CardDisplayType,
 ) {
   if (
-    echartsSeriesId === undefined ||
+    echartsSeriesId == null ||
     typeof echartsSeriesId === "number" ||
     display !== "waterfall"
   ) {
