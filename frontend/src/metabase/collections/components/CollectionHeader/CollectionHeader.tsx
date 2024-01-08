@@ -20,7 +20,13 @@ export interface CollectionHeaderProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
-  onUpload: (file: File, collectionId: CollectionId) => void;
+  onUpload: ({
+    file,
+    collectionId,
+  }: {
+    file: File;
+    collectionId: CollectionId;
+  }) => void;
   canUpload: boolean;
   uploadsEnabled: boolean;
 }
