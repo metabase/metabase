@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { connect } from "react-redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
