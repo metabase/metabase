@@ -32,4 +32,5 @@
    "DashboardTab"
    "Dimension"
    "ParameterCard"
+   "DashboardCardSeries"
    "TimelineEvent"])
