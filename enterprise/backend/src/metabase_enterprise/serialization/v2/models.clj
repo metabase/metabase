@@ -52,9 +52,9 @@
    "GroupTableAccessPolicy"            ; permissions are not serialized
    "HTTPAction"                        ; HTTP actions are not fully implemented, and if they were they would be inlined into Action
    "LoginHistory"                      ; login history is not serialized
-   "MetricImportantField"              ; ???
-   "ModelIndex"                        ; Why are model indexes not verified???
-   "ModelIndexValue"                   ; Why are model indexes not verified???
+   "MetricImportantField"              ; ??? Cal: I'm not sure what this is
+   "ModelIndex"                        ; ??? Cal: Why are model indexes not serialized
+   "ModelIndexValue"                   ; ??? Cal: Why are model indexes not serialized
    "ModerationReview"                  ; Which content is verified is not serialized
    "Permissions"                       ; permissions are not serialized
    "PermissionsGroup"                  ; permissions are not serialized
