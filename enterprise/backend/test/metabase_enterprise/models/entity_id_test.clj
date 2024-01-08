@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
    #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.models]
    [metabase.models.revision-test]
@@ -32,48 +33,12 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/ApiKey
-    :model/HTTPAction
-    :model/ImplicitAction
-    :model/QueryAction
-    :model/Activity
-    :model/ApplicationPermissionsRevision
-    :model/AuditLog
-    :model/BookmarkOrdering
-    :model/CardBookmark
-    :model/CollectionBookmark
-    :model/DashboardBookmark
-    :model/CollectionPermissionGraphRevision
-    :model/DashboardCardSeries
-    :model/LoginHistory
-    :model/FieldValues
-    :model/MetricImportantField
-    :model/ModelIndex
-    :model/ModelIndexValue
-    :model/ModerationReview
-    :model/ParameterCard
-    :model/Permissions
-    :model/PermissionsGroup
-    :model/PermissionsGroupMembership
-    :model/PermissionsRevision
-    :model/PersistedInfo
-    :model/PulseCard
-    :model/PulseChannel
-    :model/PulseChannelRecipient
-    :model/Query
-    :model/QueryCache
-    :model/QueryExecution
-    :model/RecentViews
-    :model/Revision
-    :model/Secret
-    :model/Session
-    :model/TablePrivileges
-    :model/TaskHistory
-    :model/TimelineEvent
-    :model/User
-    :model/ViewLog
-    :model/GroupTableAccessPolicy
-    :model/ConnectionImpersonation})
+  (set (map #(keyword "model" %)
+            (concat
+             ;; These are not exported at all
+             serdes.models/excluded-models
+             ;; These are exported as children of something else
+             serdes.models/inlined-models))))
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.entity-ids/toucan-models)
