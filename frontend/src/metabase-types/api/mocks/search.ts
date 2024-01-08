@@ -21,6 +21,7 @@ export const createMockSearchResult = (
     archived: null,
     collection,
     collection_position: null,
+    can_write: null,
     table_id: 1,
     table_name: null,
     bookmark: null,
