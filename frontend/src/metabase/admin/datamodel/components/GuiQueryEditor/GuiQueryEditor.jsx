@@ -12,7 +12,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { AggregationWidget } from "../AggregationWidget";
 import { BreakoutWidget } from "../BreakoutWidget";
-import { FilterWidgetList } from "../FilterWidgetList/FilterWidgetList";
+import { FilterWidgetList } from "../FilterWidgetList";
 import { FilterPopover } from "../FilterPopover";
 
 /**
