@@ -8,15 +8,14 @@ import _ from "underscore";
 import Link from "metabase/core/components/Link";
 import { getMetadata } from "metabase/selectors/metadata";
 import Tables from "metabase/entities/tables";
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import * as Urls from "metabase/lib/urls";
 import Query from "metabase-lib/queries/Query";
 import {
   getSegmentOrMetricQuestion,
   getDefaultSegmentOrMetricQuestion,
 } from "metabase-lib/queries/utils/segments";
-
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
+import { GuiQueryEditor } from "./GuiQueryEditor";
 
 class PartialQueryBuilder extends Component {
   static propTypes = {

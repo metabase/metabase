@@ -27,6 +27,7 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+;; TODO: change this namespace to use the version in metabase.test
 (defn- do-with-all-user-data-perms
   "Implementation for [[with-all-users-data-perms]]"
   [graph f]

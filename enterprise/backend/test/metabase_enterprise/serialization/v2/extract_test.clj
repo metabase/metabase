@@ -576,6 +576,32 @@
                       (serdes/extract-all "Dashboard")
                       (by-model "Dashboard")))))))))
 
+(deftest dashboard-card-series-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
+       :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
+       :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
+       :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
+       :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
+       :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
+       :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+      (testing "Inlined dashcards include their series' card entity IDs"
+        (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id dash-id))]
+          (is (=? {:entity_id dash-eid
+                   :dashcards [{:entity_id dc1-eid, :series (mt/exactly=? [{:card_id c2-eid} {:card_id c3-eid}])}
+                               {:entity_id dc2-eid, :series []}]}
+                  ser))
+
+          (testing "and depend on all referenced cards, including cards from dashboard cards' series"
+            (is (= #{[{:model "Card"       :id c1-eid}]
+                     [{:model "Card"       :id c2-eid}]
+                     [{:model "Card"       :id c3-eid}]
+                     [{:model "Collection" :id coll-eid}]}
+                   (set (serdes/dependencies ser))))))))))
+
 (deftest dimensions-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [;; Simple case: a singular field, no human-readable field.
