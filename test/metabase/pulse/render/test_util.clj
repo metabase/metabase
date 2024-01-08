@@ -12,13 +12,17 @@
   (:require
    [clojure.string :as str]
    [clojure.zip :as zip]
+   [hiccup.core :as hiccup]
+   [hickory.core :as hik]
    [metabase.formatter.datetime :as datetime]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.query-processor :as qp]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
    (org.apache.batik.dom GenericText)
@@ -481,9 +485,12 @@
         (recur (zip/next (edit-fn loc)))
         (recur (zip/next loc))))))
 
-(defn- img-node?
+(defn- img-node-with-svg?
   [loc]
-  (= (first (zip/node loc)) :img))
+  (let [[tag {:keys [src]}] (zip/node loc)]
+    (and
+     (= tag :img)
+     (str/starts-with? src "<svg>"))))
 
 (defn- wrapped-children?
   [loc]
@@ -566,7 +573,7 @@
     (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
                       :content)]
       (-> content
-          (edit-nodes img-node? img-node->svg-node)          ;; replace the :img tag with its parsed SVG.
+          (edit-nodes img-node-with-svg? img-node->svg-node)          ;; replace the :img tag with its parsed SVG.
           (edit-nodes wrapped-node? unwrap-node)             ;; eg: ([:div "content"]) -> [:div "content"]
           (edit-nodes wrapped-children? unwrap-children))))) ;; eg: [:tr ([:td 1] [:td 2])] -> [:tr [:td 1] [:td 2]]
 
@@ -634,3 +641,34 @@
                   (let [[k _m & c] (zip/node loc)]
                     (zip/replace loc (into [k] c))))]
     (edit-nodes tree matcher edit-fn)))
+
+(defn render-card-as-hiccup
+  [card-id]
+  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
+        {:keys [data]}                    (qp/process-query dataset_query)]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
+                        :content)]
+        (-> content
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            (edit-nodes wrapped-node? unwrap-node)    ;; eg: ([:div "content"]) -> [:div "content"]
+            (edit-nodes wrapped-children? unwrap-children))))))
+
+(defn render-card-as-hickory
+  [card-id]
+  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
+        {:keys [data]}                    (qp/process-query dataset_query)]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
+                        :content)]
+        (-> content
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            hiccup/html
+            hik/parse
+            hik/as-hickory)))))

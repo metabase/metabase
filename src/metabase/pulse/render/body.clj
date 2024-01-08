@@ -984,8 +984,14 @@
   [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
-        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
+        raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        funnel-rows    (:funnel.rows viz-settings)
+        rows           (if funnel-rows
+                           (mapv (fn [[idx val]]
+                                   [(get-in funnel-rows [(dec idx) :key]) val])
+                                 raw-rows)
+                           raw-rows)
         [x-col y-col]  cols
         settings       (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                          (assoc jsviz-settings :step    {:name   (:display_name x-col)
