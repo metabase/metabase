@@ -134,9 +134,9 @@
       (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                          email-smtp-port 587]
         (mt/reset-inbox!)
-        (reset-retry)
         (#'messages/reconfigure-retrying nil nil)
-        (#'messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
+        (reset-retry)
+        (#'messages/send-password-reset-retrying! "test@test.com" nil "http://localhost/some/url" true)
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (pos-metrics (reset-retry))))
         (is (= 1 (count @mt/inbox))))))
@@ -146,7 +146,7 @@
                                          email-smtp-port 587]
         (mt/reset-inbox!)
         (reset-retry)
-        (#'messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
+        (#'messages/send-password-reset-retrying! "test@test.com" nil "http://localhost/some/url" true)
         (is (= {:numberOfFailedCallsWithRetryAttempt 1}
                (pos-metrics (reset-retry))))
         (is (= 0 (count @mt/inbox))))))
@@ -155,13 +155,13 @@
       (try
         (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
                       messages/retry-configuration (constantly (assoc retry-config
-                                                                            :max-attempts 2
-                                                                            :initial-interval-millis 1))]
+                                                                      :max-attempts 2
+                                                                      :initial-interval-millis 1))]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
             (reset-retry)
-            (#'messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
+            (#'messages/send-password-reset-retrying! "test@test.com" nil "http://localhost/some/url" true)
             (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                    (pos-metrics (reset-retry))))
             (is (= 1 (count @mt/inbox)))))

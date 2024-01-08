@@ -185,11 +185,11 @@
                               :isActive         is-active?
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
-    (email/send-message!
-     :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+    (email/send-message-or-throw!
+     {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
+      :recipients   [email]
+      :message-type :html
+      :message      message-body})))
 
 (declare ^:private reconfigure-retrying)
 
@@ -232,7 +232,7 @@
     (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
 
 (defn- make-retry-state
-  "Returns a notification sender wrapping [[send-notifications!]] retrying
+  "Returns a notification sender wrapping [[send-password-reset-email!]] retrying
   according to `retry-configuration`."
   []
   (let [retry (retry/random-exponential-backoff-retry "send-password-reset-retrying"
@@ -242,23 +242,29 @@
 
 (defonce
   ^{:private true
-    :doc "Stores the current retry state. Updated whenever the notification
+    :doc "Stores the current retry state. Updated whenever the reset password
   retry settings change. It starts with value `nil` but is set whenever the
-  settings change or when the first call with retry is made. (See #22790 for more details.)"}
+  settings change or when the first call with retry is made."}
   retry-state
   (atom nil))
 
 (defn- reconfigure-retrying [_old-value _new-value]
-  (log/info (trs "Reconfiguring notification sender"))
+  (log/info (trs "Reconfiguring reset password sender"))
   (reset! retry-state (make-retry-state)))
 
 (defn send-password-reset-retrying!
-  "Like [[send-notification!]] but retries sending on errors according
+  "Like [[send-password-reset-email!]] but retries sending on errors according
   to the retry settings."
   [& args]
-  (when-not @retry-state
-    (compare-and-set! retry-state nil (make-retry-state)))
-  (apply (:sender @retry-state) args))
+  (try
+    (when-not @retry-state
+      (compare-and-set! retry-state nil (make-retry-state)))
+    (apply (:sender @retry-state) args)
+    ;; This is called when our number of retries is up.
+    (catch Throwable e
+      (log/error e (trs "Error sending password reset!")))))
+
+;; End
 
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
