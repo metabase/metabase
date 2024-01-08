@@ -46,19 +46,52 @@
 
 (declare root-collection)
 
-(defn- remove-other-users-personal-collections
+(defn- location-from-collection-id-clause
+  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
+   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
+   then restrict to that collection's parents and children."
+  [collection-id]
+  (if collection-id
+    [:and
+     [:like :location (str "%/" collection-id "/%")]
+     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
+    [:not [:like :location "/%/%/"]]))
+
+(defn- remove-other-users-personal-subcollections
   [user-id collections]
-  (let [personal-ids (into #{} (comp (filter :personal_owner_id)
-                                     (remove (comp #{user-id} :personal_owner_id))
-                                     (map :id))
-                           collections)
-        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
-        personal?    (fn [{^String location :location id :id}]
-                       (or (personal-ids id)
-                           (prefixes (re-find #"^/\d+/" location))))]
-    (if (seq prefixes)
-      (remove personal? collections)
-      collections)))
+  (let [personal-ids        (t2/select-fn-set :id :model/Collection
+                                              {:where
+                                               [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]})
+        personal-descendant? (comp personal-ids
+                                   first
+                                   collection/location-path->ids
+                                   :location)]
+    (remove personal-descendant? collections)))
+
+(defn- select-collections
+  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
+  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
+  is not necessary.
+
+  For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
+  [archived exclude-other-user-collections namespace shallow collection-id]
+  (cond->>
+   (t2/select :model/Collection
+              {:where [:and
+                       (when (some? archived)
+                         [:= :archived archived])
+                       (when shallow
+                         (location-from-collection-id-clause collection-id))
+                       (when exclude-other-user-collections
+                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+                       (perms/audit-namespace-clause :namespace namespace)
+                       (collection/visible-collection-ids->honeysql-filter-clause
+                        :id
+                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+               ;; Order NULL collection types first so that audit collections are last
+               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+                          [:%lower.name :asc]]})
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -73,20 +106,8 @@
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
    namespace                      [:maybe ms/NonBlankString]}
-  (as-> (t2/select Collection
-                   {:where    [:and
-                               [:= :archived archived]
-                               (perms/audit-namespace-clause :namespace namespace)
-                               (collection/visible-collection-ids->honeysql-filter-clause
-                                :id
-                                (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                              ;; Order NULL collection types first so that audit collections are last
-                    :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
-                               [:%lower.name :asc]]}) collections
-    ;; Remove other users' personal collections
-    (if exclude-other-user-collections
-      (remove-other-users-personal-collections api/*current-user-id* collections)
-      collections)
+  (as->
+   (select-collections archived exclude-other-user-collections namespace false nil) collections
     ;; include Root Collection at beginning or results if archived isn't `true`
     (if archived
       collections
@@ -122,35 +143,6 @@
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
-(defn- location-from-collection-id-clause
-  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
-   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
-   then restrict to that collection's parents and children."
-  [collection-id]
-  (if collection-id
-    [:and
-     [:like :location (str "%/" collection-id "/%")]
-     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
-    [:not [:like :location "/%/%/"]]))
-
-(defn- select-collections
-  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
-  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
-  is not necessary."
-  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
-  (cond->>
-   (t2/select Collection
-              {:where [:and
-                       (when exclude-archived
-                         [:= :archived false])
-                       (when shallow
-                         (location-from-collection-id-clause collection-id))
-                       (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        :id
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-    exclude-other-user-collections (remove-other-users-personal-collections api/*current-user-id*)))
-
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -178,7 +170,8 @@
    namespace                      [:maybe ms/NonBlankString]
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
-  (let [collections (select-collections exclude-archived exclude-other-user-collections namespace shallow collection-id)]
+  (let [archived    (if exclude-archived false nil)
+        collections (select-collections archived exclude-other-user-collections namespace shallow collection-id)]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
