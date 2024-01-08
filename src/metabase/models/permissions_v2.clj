@@ -80,7 +80,7 @@
   (-> Permissions perm-type :values first))
 
 (def ^:private model-by-perm-type
-  "A map from permiiion types directly to model identifiers (or `nil`)."
+  "A map from permission types directly to model identifiers (or `nil`)."
   (update-vals Permissions :model))
 
 (defn- assert-value-matches-perm-type
