@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
-import { Component, useState, useEffect } from "react";
+import { Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
 
 import { jt, t } from "ttag";
+import { useAsync } from "react-use";
 import Link from "metabase/core/components/Link";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { Stack, Text, Group, Button } from "metabase/ui";
@@ -27,6 +28,7 @@ import UserAvatar from "metabase/components/UserAvatar";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { AddRow } from "./AddRow";
 import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";
@@ -277,11 +279,11 @@ function GroupsTable({
   onEditGroupCancelClicked,
   onEditGroupDoneClicked,
 }) {
-  const [apiKeys, setApiKeys] = useState([]);
+  const { loading, value: apiKeys } = useAsync(() => ApiKeysApi.list(), []);
 
-  useEffect(() => {
-    ApiKeysApi.list().then(setApiKeys);
-  }, []);
+  if (loading) {
+    return <LoadingAndErrorWrapper loading={loading} />;
+  }
 
   return (
     <AdminContentTable columnTitles={[t`Group name`, t`Members`]}>

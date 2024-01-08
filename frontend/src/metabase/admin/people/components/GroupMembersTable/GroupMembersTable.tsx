@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useAsync } from "react-use";
 import { Tooltip, Text } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
@@ -8,6 +9,7 @@ import { Icon } from "metabase/core/components/Icon";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import User from "metabase/entities/users";
 
@@ -59,13 +61,10 @@ function GroupMembersTable({
   onPreviousPage,
   reload,
 }: GroupMembersTableProps) {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-
-  useEffect(() => {
-    ApiKeysApi.list().then((apiKeys: ApiKey[]) =>
-      setApiKeys(apiKeys.filter(apiKey => apiKey.group.id === group.id)),
-    );
-  }, [group.id]);
+  const { loading, value: apiKeys } = useAsync(
+    () => ApiKeysApi.list(),
+    [group.id],
+  );
 
   // you can't remove people from Default and you can't remove the last user from Admin
   const isCurrentUser = ({ id }: Partial<IUser>) => id === currentUserId;
@@ -96,8 +95,12 @@ function GroupMembersTable({
     [groupMemberships],
   );
 
+  if (loading) {
+    return <LoadingAndErrorWrapper loading={loading} />;
+  }
+
   return (
-    <Fragment>
+    <>
       <AdminContentTable columnTitles={columnTitles}>
         {showAddUser && (
           <AddMemberRow
@@ -141,7 +144,7 @@ function GroupMembersTable({
           <h2 className="text-medium">{t`A group is only as good as its members.`}</h2>
         </div>
       )}
-    </Fragment>
+    </>
   );
 }
 
@@ -229,7 +232,7 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
       <td>
         <Text weight="bold" color="text.1">{t`API Key`}</Text>
       </td>
-      <td>{/* api keys don't have emails */}</td>
+      <td>{/* api keys don't have real emails */}</td>
       <td className="text-right">
         <Link to="/admin/settings/authentication/api-keys">
           <Tooltip label={t`Manage API keys`} position="left">
