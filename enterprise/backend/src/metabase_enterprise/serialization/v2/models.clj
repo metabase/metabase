@@ -21,20 +21,20 @@
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["FieldValues"
-           "Setting"]))
+          ["Setting"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
   These are not extracted and serialized separately, but they may need some processing done.
   For example, the models should also have their entity_id fields populated (if they have one)."
-  ["ImplicitAction"      ; inlined into Action
-   "QueryAction"         ; inlined into Action
-   "DashboardCard"       ; inlined into Dashboard
+  ["DashboardCard"       ; inlined into Dashboard
+   "DashboardCardSeries" ; inlined into Dashboard
    "DashboardTab"        ; inlined into Dashboard
    "Dimension"           ; inlined into Field
+   "FieldValues"         ; inlined into Field
+   "ImplicitAction"      ; inlined into Action
    "ParameterCard"       ; inlined into Card
-   "DashboardCardSeries" ; inlined into Dashboard
+   "QueryAction"         ; inlined into Action
    "TimelineEvent"])     ; inlined into Timeline
 
 (def excluded-models
