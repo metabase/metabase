@@ -108,7 +108,9 @@
       (.transcode transcoder in out))
     (.toByteArray os)))
 
-(defn- svg-string->bytes [s]
+(defn svg-string->bytes
+  "Convert a string (from svg rendering) an svg document then return the bytes"
+  [s]
   (-> s parse-svg-string render-svg))
 
 (defn waterfall
@@ -133,14 +135,11 @@
 (defn isomorphic
   "Clojure entrypoint to render isomorphic visualizations."
   [cards-with-data dashcard-viz-settings]
-  (let [svg-string (.asString (js/execute-fn-name (context) "isomorphic"
-                                                  (json/generate-string cards-with-data)
-                                                  (json/generate-string dashcard-viz-settings)
-                                                  (json/generate-string (public-settings/application-colors))))
-        {rendered-type :type content :content :as response}  (json/parse-string svg-string true)]
-    (cond-> response
-      (= :svg rendered-type)
-      (update :content svg-string->bytes))))
+  (let [response (.asString (js/execute-fn-name (context) "isomorphic"
+                                                (json/generate-string cards-with-data)
+                                                (json/generate-string dashcard-viz-settings)
+                                                (json/generate-string (public-settings/application-colors))))]
+    (json/parse-string response true)))
 
 (defn combo-chart
   "Clojure entrypoint to render a combo or multiple chart.
