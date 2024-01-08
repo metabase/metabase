@@ -12,12 +12,7 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function QueryViewer({
-  datasetQuery,
-}: {
-  datasetQuery: DatasetQuery;
-}) {
+export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata, _.isEqual);
   const card = useMemo(() => ({ dataset_query: datasetQuery }), [datasetQuery]);

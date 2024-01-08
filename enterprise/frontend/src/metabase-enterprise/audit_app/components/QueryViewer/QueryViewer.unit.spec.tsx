@@ -12,7 +12,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
-import QueryViewer from "./QueryViewer";
+import { QueryViewer } from "./QueryViewer";
 
 const makeQuery = (options: any) => {
   return createMockStructuredDatasetQuery({
