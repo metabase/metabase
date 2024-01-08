@@ -76,7 +76,7 @@
 
 (deftest mbql-on-table-requires-filter-will-include-the-filter-test
   (mt/with-temp
-    [:model/Database db     {:engine :bigquery-cloud-sdk}
+    [:model/Database db     {}
      :model/Table    table  {:database_require_filter true :db_id (:id db)}
      :model/Field    field1 {:name "name" :table_id (:id table)}
      :model/Field    field2 {:name "group_id" :table_id (:id table) :database_partitioned true :base_type :type/Integer}]
