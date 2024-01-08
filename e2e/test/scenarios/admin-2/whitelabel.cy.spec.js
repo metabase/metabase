@@ -288,15 +288,23 @@ describeEE("formatting > whitelabel", () => {
       cy.signInAsAdmin();
       cy.visit("/admin/settings/whitelabel");
 
-      cy.findByTestId("landing-page").click().clear().type("/test").blur();
+      // test relative url
+      cy.findByTestId("landing-page").click().clear().type("/test-1").blur();
       cy.findByTestId("landing-page-error").should("not.exist");
 
-      cy.findByTestId("landing-page")
-        .click()
-        .clear()
-        .type("http://localhost:4000/test")
-        .blur();
-      cy.findByTestId("landing-page-error").should("not.exist");
+      cy.window().then(window => {
+        // test absolute url matching the page's origin
+        cy.findByTestId("landing-page")
+          .click()
+          .clear()
+          .type(window.location.origin + "/test-2")
+          .blur();
+        cy.findByTestId("landing-page-error").should("not.exist");
+
+        // test no input
+        cy.findByTestId("landing-page").click().clear().blur();
+        cy.findByTestId("landing-page-error").should("not.exist");
+      });
     });
 
     it("should not allow users to provide external urls", () => {
