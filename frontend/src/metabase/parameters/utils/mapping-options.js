@@ -105,13 +105,11 @@ export function getParameterMappingOptions(
       ? question.composeDataset().query()
       : question.query();
     const stageIndex = -1;
-    const columnFilter = parameter
-      ? columnFilterForParameter(parameter)
-      : () => true;
-    const columns = Lib.filterableColumns(query, stageIndex).filter(
-      columnFilter,
-    );
-    const columnGroups = Lib.groupColumns(columns);
+    const availableColumns = Lib.filterableColumns(query, stageIndex);
+    const parameterColumns = parameter
+      ? availableColumns.filter(columnFilterForParameter(parameter))
+      : availableColumns;
+    const columnGroups = Lib.groupColumns(parameterColumns);
     return columnGroups.flatMap(group =>
       buildStructuredQuerySectionOptions(query, stageIndex, group),
     );
