@@ -12,7 +12,6 @@
    [clojure.core.match :refer [match]]
    [clojure.java.io :as io]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -1020,18 +1019,16 @@
         target-type    (case direction
                          :up timestamp-type
                          :down datetime-type)]
-    (doseq [[table column nullable?] columns]
-      ;; this is a specical case beacuse core_user.updated_at is referenced in a view in postgres,
-      ;; so we need to drop the view before changing the type, then re-create it again
-      (when (= [db-type table column]
-               [:postgres :core_user :updated_at])
+    (doseq [[table column nullable?] columns
+            ;; core_user.updated_at is referenced in a view in postgres, and PG doesn't allow changing column types if a
+            ;; view depends on it. so we need to drop the view before changing the type, then re-create it again
+            :let [is-pg-specical-case? (= [db-type table column]
+                                          [:postgres :core_user :updated_at])]]
+      (when is-pg-specical-case?
         (t2/query [(format "DROP VIEW IF EXISTS v_users;")]))
       (t2/query [(alter-table-column-type-sql db-type (name table) (name column) target-type nullable?)])
-      (when (= [db-type table column]
-               [:postgres :core_user :updated_at])
-        (t2/query [(-> (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql")
-                       slurp
-                       (str/replace #"\n" " "))])))))
+      (when is-pg-specical-case?
+        (t2/query [(slurp (io/resource "migrations/instance_analytics_views/users/v1/postgres-users.sql"))])))))
 
 (define-reversible-migration UnifyTimeColumnsType
   (unify-time-column-type! :up)
