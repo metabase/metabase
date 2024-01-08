@@ -16,7 +16,6 @@ import type {
   ExpressionClause,
   Filter,
   Join,
-  OrderBy,
   TableId,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
@@ -48,7 +47,7 @@ import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
 import * as ML from "../v2";
-import type { Limit, Query } from "../types";
+import type { Query } from "../types";
 
 import type Segment from "../metadata/Segment";
 import type Database from "../metadata/Database";
@@ -88,9 +87,6 @@ export interface DimensionOption {
 // type guards for determining data types
 export const isSegmentOption = (content: any): content is SegmentOption =>
   content?.filter && isSegment(content.filter);
-
-export const isDimensionOption = (content: any): content is DimensionOption =>
-  !!content?.dimension;
 
 export interface SegmentOption {
   name: string;
@@ -996,32 +992,6 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.clearSegments, arguments);
   }
 
-  // SORTS
-  /**
-   * @deprecated use the orderBys function from metabase-lib v2
-   */
-  sorts = _.once((): OrderBy[] => {
-    return Q.getOrderBys(this.legacyQuery());
-  });
-
-  // LIMIT
-  /**
-   * @deprecated use metabase-lib v2's currentLimit function
-   */
-  limit(stageIndex = this.queries().length - 1): Limit {
-    const query = this.getMLv2Query();
-    return ML.currentLimit(query, stageIndex);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2's limit function
-   */
-  updateLimit(limit: Limit, stageIndex = this.queries().length - 1) {
-    const query = this.getMLv2Query();
-    const nextQuery = ML.limit(query, stageIndex, limit);
-    return this.updateWithMLv2(nextQuery);
-  }
-
   // EXPRESSIONS
   expressions = _.once((): ExpressionClause => {
     return Q.getExpressions(this.legacyQuery());
@@ -1427,25 +1397,6 @@ class StructuredQuery extends AtomicQuery {
       return this.lastSummarizedQuery() || this;
     }
   });
-
-  /**
-   * Returns the corresponding {Dimension} in the "top-level" {StructuredQuery}
-   */
-  topLevelDimension(dimension: Dimension): Dimension | null | undefined {
-    const topQuery = this.topLevelQuery();
-    let query = this;
-
-    while (query) {
-      if (query === topQuery) {
-        return dimension;
-      } else {
-        dimension = query.dimensionForSourceQuery(dimension);
-        query = query.sourceQuery();
-      }
-    }
-
-    return null;
-  }
 
   dimensionForColumn(column: DatasetColumn) {
     if (column) {

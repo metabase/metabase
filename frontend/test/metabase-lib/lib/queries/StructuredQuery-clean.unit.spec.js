@@ -155,29 +155,5 @@ describe("StructuredQuery", () => {
         },
       );
     });
-    it("should remove outer empty queries", () => {
-      expect(
-        ordersTable
-          .legacyQuery()
-          .updateLimit(10)
-          .nest()
-          .nest()
-          .nest()
-          .cleanNesting()
-          .legacyQuery(),
-      ).toEqual({ "source-table": ORDERS_ID, limit: 10 });
-    });
-    it("should remove intermediate empty queries", () => {
-      expect(
-        ordersTable
-          .legacyQuery()
-          .nest()
-          .nest()
-          .nest()
-          .updateLimit(10)
-          .cleanNesting()
-          .legacyQuery(),
-      ).toEqual({ "source-query": { "source-table": ORDERS_ID }, limit: 10 });
-    });
   });
 });
