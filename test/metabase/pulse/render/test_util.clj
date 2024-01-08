@@ -20,6 +20,7 @@
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -490,7 +491,7 @@
   (let [[tag {:keys [src]}] (zip/node loc)]
     (and
      (= tag :img)
-     (str/starts-with? src "<svg>"))))
+     (str/starts-with? src "<svg"))))
 
 (defn- wrapped-children?
   [loc]
@@ -659,16 +660,17 @@
 
 (defn render-card-as-hickory
   [card-id]
-  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
-        {:keys [data]}                    (qp/process-query dataset_query)]
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+        query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
+        results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
     (with-redefs [js-svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
-      (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
-                        :content)]
+      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
+                            :content)]
         (-> content
-            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
-            hiccup/html
-            hik/parse
-            hik/as-hickory)))))
+              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+              hiccup/html
+              hik/parse
+              hik/as-hickory)))))
