@@ -363,7 +363,7 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
       const question = new Question(card);
-      const query = question._getMLv2Query();
+      const query = question.query();
       const stageIndex = -1;
 
       // timestamps
