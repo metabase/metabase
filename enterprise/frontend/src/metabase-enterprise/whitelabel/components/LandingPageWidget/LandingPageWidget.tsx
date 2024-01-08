@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { Text } from "metabase/ui";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
+import { Text } from "metabase/ui";
+import { isMetabaseUrl } from "metabase/lib/dom";
 import { SettingInputBlurChange } from "./LandingPageWidget.styled";
 
 interface Props {
@@ -13,10 +14,7 @@ interface Props {
   ) => Promise<void>;
 }
 
-export const LandingPageWidget = ({
-  onChangeSetting,
-  settingValues,
-}: Props) => {
+export function LandingPageWidget({ onChangeSetting, settingValues }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const normalize = (value: string | number | null) => {
@@ -29,15 +27,14 @@ export const LandingPageWidget = ({
 
   const handleChange = async (rawValue: string) => {
     const value = rawValue.trim();
-    const url = new URL(value, location.origin);
-    const isSameOrigin = location.origin === url.origin;
 
-    if (!isSameOrigin) {
+    if (!isMetabaseUrl(value)) {
       setError(t`This field must be a relative URL.`);
     } else {
       setError(null);
       try {
         // Extract relative url info w/o protocol & host if url contains same origin
+        const url = new URL(value, window.location.origin);
         const relativeUrl = url.pathname + url.search + url.hash;
         await onChangeSetting("landing-page", relativeUrl);
       } catch (e: any) {
@@ -49,7 +46,7 @@ export const LandingPageWidget = ({
   return (
     <div>
       {error && (
-        <Text size="md" color="error.0">
+        <Text size="md" color="error.0" data-testid="landing-page-error">
           {error}
         </Text>
       )}
@@ -61,9 +58,10 @@ export const LandingPageWidget = ({
         value={settingValues["landing-page"]}
         onChange={() => setError(null)}
         aria-label={t`Landing page custom destination`}
+        data-testid="landing-page"
         placeholder="/"
         onBlurChange={e => handleChange(e.target.value)}
       />
     </div>
   );
-};
+}

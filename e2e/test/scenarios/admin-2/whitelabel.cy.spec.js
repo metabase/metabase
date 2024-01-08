@@ -282,6 +282,35 @@ describeEE("formatting > whitelabel", () => {
         .should("not.exist");
     });
   });
+
+  describe("Landing Page", () => {
+    it("should allow users to provide interal urls", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("landing-page").click().clear().type("/test").blur();
+      cy.findByTestId("landing-page-error").should("not.exist");
+
+      cy.findByTestId("landing-page")
+        .click()
+        .clear()
+        .type("http://localhost:4000/test")
+        .blur();
+      cy.findByTestId("landing-page-error").should("not.exist");
+    });
+
+    it("should not allow users to provide external urls", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.findByTestId("landing-page")
+        .click()
+        .clear()
+        .type("https://google.com")
+        .blur();
+      cy.findByTestId("landing-page-error").should("not.exist");
+    });
+  });
 });
 
 function changeLoadingMessage(message) {
