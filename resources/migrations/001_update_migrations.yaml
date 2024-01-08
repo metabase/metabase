@@ -5179,6 +5179,7 @@ databaseChangeLog:
                     referencedTableName: permissions_group
                     referencedColumnNames: id
                     foreignKeyName: fk_permissions_v2_ref_permissions_group
+                    deleteCascade: true
               - column:
                   remarks: The type of the permission (e.g. "data", "collection", "download"...)
                   name: type
@@ -5194,6 +5195,7 @@ databaseChangeLog:
                     referencedTableName: metabase_database
                     referencedColumnNames: id
                     foreignKeyName: fk_permissions_v2_ref_db_id
+                    deleteCascade: true
               - column:
                   remarks: A schema name, for table-level permissions
                   name: schema
@@ -5209,6 +5211,7 @@ databaseChangeLog:
                     referencedTableName: metabase_table
                     referencedColumnNames: id
                     foreignKeyName: fk_permissions_v2_ref_table_id
+                    deleteCascade: true
               - column:
                   remarks: >-
                     The ID of the object this permission is assocaited with, for non-DB and Table permissions.
@@ -5223,20 +5226,6 @@ databaseChangeLog:
                   type: varchar(64)
                   constraints:
                     nullable: false
-            uniqueConstraints:
-              - unique:
-                  columnNames: group_id, type, object_id
-                  name: unique_permissions_v2_group_id_type_object_id
-
-  - changeSet:
-      id: v49.2024-01-04T13:53:29
-      author: noahmoss
-      comment: Add unique constraint to permissions_v2 table on group_id, type, and object_id columns
-      changes:
-        - addUniqueConstraint:
-            tableName: permissions_v2
-            constraintName: unique_permissions_v2_group_id_type_object_id
-            columnNames: group_id, type, object_id
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
