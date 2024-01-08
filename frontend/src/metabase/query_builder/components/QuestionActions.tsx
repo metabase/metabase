@@ -104,9 +104,7 @@ const QuestionActions = ({
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
-  // TODO: check if uploads are enabled
-  const canAppend =
-    canUpload && canWrite && isDataset && !!question._card.based_on_upload;
+  const canAppend = canUpload && canWrite && !!question._card.based_on_upload;
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
