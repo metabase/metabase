@@ -10,6 +10,7 @@ import {
   REVIEWS,
   PRODUCTS,
   PRODUCTS_ID,
+  PEOPLE,
 } from "metabase-types/api/mocks/presets";
 
 import { getParameterMappingOptions } from "./mapping-options";
@@ -137,16 +138,20 @@ describe("parameters/utils/mapping-options", () => {
           metadata,
           { type: "date/single" },
           structured({
-            "source-table": REVIEWS_ID,
+            "source-table": ORDERS_ID,
             joins: [
               {
-                alias: "Joined Table",
+                alias: "Product",
                 fields: "all",
-                "source-table": ORDERS_ID,
+                "source-table": PRODUCTS_ID,
                 condition: [
                   "=",
-                  ["field", REVIEWS.ID, { "base-type": "type/BigInteger" }],
-                  ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                  [
+                    "field",
+                    ORDERS.PRODUCT_ID,
+                    { "base-type": "type/BigInteger" },
+                  ],
+                  ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
                 ],
               },
             ],
@@ -154,28 +159,14 @@ describe("parameters/utils/mapping-options", () => {
         );
         expect(options).toEqual([
           {
-            sectionName: "Review",
-            name: "Created At",
-            icon: "calendar",
-            target: [
-              "dimension",
-              ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
-            ],
-            isForeign: false,
-          },
-          {
             sectionName: "Order",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
-              [
-                "field",
-                ORDERS.CREATED_AT,
-                { "base-type": "type/DateTime", "join-alias": "Joined Table" },
-              ],
+              ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
-            isForeign: true,
+            isForeign: false,
           },
           {
             sectionName: "Product",
@@ -186,9 +177,40 @@ describe("parameters/utils/mapping-options", () => {
               [
                 "field",
                 PRODUCTS.CREATED_AT,
+                { "base-type": "type/DateTime", "join-alias": "Product" },
+              ],
+            ],
+            isForeign: true,
+          },
+          {
+            sectionName: "User",
+            name: "Birth Date",
+            icon: "calendar",
+            target: [
+              "dimension",
+              [
+                "field",
+                PEOPLE.BIRTH_DATE,
+                {
+                  "base-type": "type/Date",
+                  "source-field": ORDERS.USER_ID,
+                },
+              ],
+            ],
+            isForeign: true,
+          },
+          {
+            sectionName: "User",
+            name: "Created At",
+            icon: "calendar",
+            target: [
+              "dimension",
+              [
+                "field",
+                PEOPLE.CREATED_AT,
                 {
                   "base-type": "type/DateTime",
-                  "source-field": REVIEWS.PRODUCT_ID,
+                  "source-field": ORDERS.USER_ID,
                 },
               ],
             ],
