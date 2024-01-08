@@ -32,6 +32,7 @@
    "DashboardTab"
    "Dimension"
    "ParameterCard"
+   "DashboardCardSeries"
    "TimelineEvent"])
 
 (def excluded-models
@@ -45,7 +46,6 @@
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
    "DashboardBookmark"
-   "DashboardCardSeries"
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
