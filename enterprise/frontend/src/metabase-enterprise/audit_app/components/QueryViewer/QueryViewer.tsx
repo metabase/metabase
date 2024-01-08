@@ -12,6 +12,9 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
+/**
+ * @deprecated use MLv2
+ */
 export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata, _.isEqual);
