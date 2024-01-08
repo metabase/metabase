@@ -13,6 +13,7 @@ import { Icon } from "metabase/core/components/Icon";
 import type { ApiKey } from "metabase-types/api";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { EditApiKeyModal } from "./EditApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -61,7 +62,9 @@ function ApiKeysTable({
         <tbody>
           {apiKeys?.map(apiKey => (
             <tr key={apiKey.id} className="border-bottom">
-              <td className="text-bold">{apiKey.name}</td>
+              <td className="text-bold" style={{ maxWidth: 400 }}>
+                <Ellipsified>{apiKey.name}</Ellipsified>
+              </td>
               <td>{apiKey.group.name}</td>
               <td>
                 <Text variant="monospace">
@@ -116,25 +119,16 @@ export const ManageApiKeys = () => {
     refreshList();
   }, [refreshList]);
 
-  const isShowingEmptyTable = !loading && !error && apiKeys?.length === 0;
+  const tableIsEmpty = !loading && !error && apiKeys?.length === 0;
 
   return (
     <>
-      {modal === "create" ? (
-        <CreateApiKeyModal onClose={handleClose} refreshList={refreshList} />
-      ) : modal === "edit" && activeApiKey ? (
-        <EditApiKeyModal
-          onClose={handleClose}
-          refreshList={refreshList}
-          apiKey={activeApiKey}
-        />
-      ) : modal === "delete" && activeApiKey ? (
-        <DeleteApiKeyModal
-          apiKey={activeApiKey}
-          onClose={handleClose}
-          refreshList={refreshList}
-        />
-      ) : null}
+      <ApiKeyModals
+        onClose={handleClose}
+        refreshList={refreshList}
+        modal={modal}
+        activeApiKey={activeApiKey}
+      />
       <Stack pl="md" spacing="lg">
         <Breadcrumbs
           crumbs={[
@@ -149,7 +143,7 @@ export const ManageApiKeys = () => {
         >
           <Stack>
             <Title>{t`Manage API Keys`}</Title>
-            {!isShowingEmptyTable && (
+            {!tableIsEmpty && (
               <Text color="text.1">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
             )}
           </Stack>
@@ -169,3 +163,41 @@ export const ManageApiKeys = () => {
     </>
   );
 };
+
+function ApiKeyModals({
+  onClose,
+  refreshList,
+  modal,
+  activeApiKey,
+}: {
+  onClose: () => void;
+  refreshList: () => void;
+  modal: Modal;
+  activeApiKey: ApiKey | null;
+}) {
+  if (modal === "create") {
+    return <CreateApiKeyModal onClose={onClose} refreshList={refreshList} />;
+  }
+
+  if (modal === "edit" && activeApiKey) {
+    return (
+      <EditApiKeyModal
+        onClose={onClose}
+        refreshList={refreshList}
+        apiKey={activeApiKey}
+      />
+    );
+  }
+
+  if (modal === "delete" && activeApiKey) {
+    return (
+      <DeleteApiKeyModal
+        apiKey={activeApiKey}
+        onClose={onClose}
+        refreshList={refreshList}
+      />
+    );
+  }
+
+  return null;
+}
