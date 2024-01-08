@@ -1,11 +1,13 @@
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
+import { checkNotNull } from "metabase/lib/types";
 import type { Query } from "metabase-lib/types";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
+import type { NotebookStep, OpenSteps } from "../types";
 
 // This converts an MBQL query into a sequence of notebook "steps", with special logic to determine which steps are
 // allowed to be added at every other step, generating a preview query at each step, how to delete a step,
@@ -13,169 +15,215 @@ import type { NotebookStep, NotebookStepFn, OpenSteps } from "../types";
 
 // identifier for this step, e.x. `0:data` (or `0:join:1` for sub-steps)
 
-type NotebookStepDef = Pick<NotebookStep, "type" | "clean" | "revert"> & {
-  valid: NotebookStepFn<boolean>;
-  active: NotebookStepFn<boolean>;
+type NotebookStepDef = Pick<NotebookStep, "type" | "revert"> & {
+  valid: (query: Query, stageIndex: number, metadata: Metadata) => boolean;
+  active: (query: Query, stageIndex: number, index?: number) => boolean;
   subSteps?: (query: Lib.Query, stageIndex: number) => number;
 };
-
-function convertStageQueryToLegacyStageQuery(
-  query: Query,
-  legacyQuery: StructuredQuery,
-  stageIndex: number,
-) {
-  const legacyDatasetQuery = Lib.toLegacyQuery(query);
-  const legacyStructuredQuery = legacyQuery.setDatasetQuery(legacyDatasetQuery);
-  const stagedLegacyQueries = legacyStructuredQuery.queries();
-  return stagedLegacyQueries[stageIndex];
-}
 
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
-    valid: query => !query.sourceQuery(),
-    active: _query => true,
-    clean: query => query,
-    revert: null,
+    valid: (_query, stageIndex) => stageIndex === 0,
+    active: () => true,
+    revert: null, // this step is non-reversible (i.e. non-removable)
   },
   {
     type: "join",
-    valid: query => {
-      const database = query.database();
-      return query.hasData() && database != null && database.hasFeature("join");
+    valid: (query, _stageIndex, metadata) => {
+      const database = metadata.database(Lib.databaseID(query));
+      return hasData(query) && Boolean(database?.hasFeature("join"));
     },
-    subSteps: (topLevelQuery, stageIndex) =>
-      Lib.joins(topLevelQuery, stageIndex).length,
-    active: (legacyQuery, index, topLevelQuery, stageIndex) =>
-      typeof index === "number" &&
-      Lib.joins(topLevelQuery, stageIndex).length > index,
-    revert: (legacyQuery, index, topLevelQuery, stageIndex) => {
+    subSteps: (query, stageIndex) => {
+      return Lib.joins(query, stageIndex).length;
+    },
+    active: (query, stageIndex, index) => {
       if (typeof index !== "number") {
-        return legacyQuery;
+        return false;
       }
-      const join = Lib.joins(topLevelQuery, stageIndex)[index];
-      if (!join) {
-        return legacyQuery;
-      }
-      const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, join);
-      return convertStageQueryToLegacyStageQuery(
-        nextQuery,
-        legacyQuery,
-        stageIndex,
-      );
+
+      return Lib.joins(query, stageIndex).length > index;
     },
-    clean: query => query,
+    revert: (query, stageIndex, index) => {
+      if (typeof index !== "number") {
+        return query;
+      }
+
+      const join = Lib.joins(query, stageIndex)[index];
+
+      if (!join) {
+        return query;
+      }
+
+      return Lib.removeClause(query, stageIndex, join);
+    },
   },
   {
     type: "expression",
-    valid: query => {
-      const database = query.database();
-      return (
-        query.hasData() && database != null && database.supportsExpressions()
-      );
+    valid: (query, _stageIndex, metadata) => {
+      const database = metadata.database(Lib.databaseID(query));
+      return hasData(query) && Boolean(database?.hasFeature("expressions"));
     },
-    active: query => query.hasExpressions(),
-    revert: query => query.clearExpressions(),
-    clean: query => query.cleanExpressions(),
+    active: (query, stageIndex) => {
+      return Lib.expressions(query, stageIndex).length > 0;
+    },
+    revert: (query, stageIndex) => {
+      return Lib.expressions(query, stageIndex).reduce((query, expression) => {
+        return Lib.removeClause(query, stageIndex, expression);
+      }, query);
+    },
   },
   {
     type: "filter",
-    valid: query => query.hasData(),
-    active: query => query.hasFilters(),
-    revert: query => query.clearFilters(),
-    clean: query => query.cleanFilters(),
+    valid: query => {
+      return hasData(query);
+    },
+    active: (query, stageIndex) => {
+      return Lib.filters(query, stageIndex).length > 0;
+    },
+    revert: (query, stageIndex) => {
+      return Lib.filters(query, stageIndex).reduce((query, filter) => {
+        return Lib.removeClause(query, stageIndex, filter);
+      }, query);
+    },
   },
   {
     // NOTE: summarize is a combination of aggregate and breakout
     type: "summarize",
-    valid: query => query.hasData(),
-    active: query => query.hasAggregations() || query.hasBreakouts(),
-    revert: query =>
-      // only clear if there are aggregations or breakouts because it will also clear `fields`
-      query.hasAggregations() || query.hasBreakouts()
-        ? query.clearBreakouts().clearAggregations()
-        : query,
-    clean: query => query,
+    valid: query => {
+      return hasData(query);
+    },
+    active: (query, stageIndex) => {
+      const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+      const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+
+      return hasAggregations || hasBreakouts;
+    },
+    revert: (query, stageIndex) => {
+      const clauses = [
+        ...Lib.breakouts(query, stageIndex),
+        ...Lib.aggregations(query, stageIndex),
+      ];
+
+      return clauses.reduce((query, clause) => {
+        return Lib.removeClause(query, stageIndex, clause);
+      }, query);
+    },
   },
   {
     type: "sort",
-    valid: query =>
-      query.hasData() &&
-      (!query.hasAggregations() || query.hasBreakouts()) &&
-      (!query.sourceQuery() || query.hasAnyClauses()),
-    active: (legacyQuery, itemIndex, query, stageIndex) =>
-      Lib.orderBys(query, stageIndex).length > 0,
-    revert: (legacyQuery, itemIndex, query, stageIndex) => {
-      const reverted = Lib.removeOrderBys(query, stageIndex);
-      return convertStageQueryToLegacyStageQuery(
-        reverted,
-        legacyQuery,
-        stageIndex,
+    valid: (query, stageIndex) => {
+      const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+      const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+
+      if (hasAggregations && !hasBreakouts) {
+        return false;
+      }
+
+      return (
+        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
       );
     },
-
-    // Order-bys can only be added from the notebook editor with MLv2.
-    // MLv2 guarantees that a query is valid at any given point of time,
-    // so we can skip order-bys cleaning.
-    clean: query => query,
+    active: (query, stageIndex) => {
+      return Lib.orderBys(query, stageIndex).length > 0;
+    },
+    revert: (query, stageIndex) => {
+      return Lib.removeOrderBys(query, stageIndex);
+    },
   },
   {
     type: "limit",
-    valid: query =>
-      query.hasData() &&
-      (!query.hasAggregations() || query.hasBreakouts()) &&
-      (!query.sourceQuery() || query.hasAnyClauses()),
-    active: (legacyQuery, itemIndex, query, stageIndex) =>
-      Lib.hasLimit(query, stageIndex),
-    revert: (legacyQuery, itemIndex, query, stageIndex) => {
-      const reverted = Lib.limit(query, stageIndex, null);
-      return convertStageQueryToLegacyStageQuery(
-        reverted,
-        legacyQuery,
-        stageIndex,
+    valid: (query, stageIndex) => {
+      const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+      const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+
+      if (hasAggregations && !hasBreakouts) {
+        return false;
+      }
+
+      return (
+        hasData(query) && (stageIndex === 0 || hasAnyClauses(query, stageIndex))
       );
     },
-    clean: query => query,
+    active: (query, stageIndex) => {
+      return Lib.hasLimit(query, stageIndex);
+    },
+    revert: (query, stageIndex) => {
+      return Lib.limit(query, stageIndex, null);
+    },
   },
 ];
+
+const hasData = (query: Lib.Query): boolean => {
+  const databaseId = Lib.databaseID(query);
+  return databaseId !== null;
+};
+
+const hasAnyClauses = (query: Lib.Query, stageIndex: number): boolean => {
+  const hasJoins = Lib.joins(query, stageIndex).length > 0;
+  const hasExpressions = Lib.expressions(query, stageIndex).length > 0;
+  const hasFilters = Lib.filters(query, stageIndex).length > 0;
+  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+  const hasBreakouts = Lib.breakouts(query, stageIndex).length > 0;
+  const hasOrderBys = Lib.orderBys(query, stageIndex).length > 0;
+  const hasLimits = Lib.hasLimit(query, stageIndex);
+  const hasFields = Lib.fields(query, stageIndex).length > 0;
+
+  return (
+    hasJoins ||
+    hasExpressions ||
+    hasFilters ||
+    hasAggregations ||
+    hasBreakouts ||
+    hasOrderBys ||
+    hasLimits ||
+    hasFields
+  );
+};
 
 /**
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
-export function getQuestionSteps(question: Question, openSteps = {}) {
+export function getQuestionSteps(
+  question: Question,
+  metadata: Metadata,
+  openSteps: OpenSteps,
+) {
   const allSteps: NotebookStep[] = [];
 
-  if (question.isStructured()) {
-    let query = question.legacyQuery() as StructuredQuery;
+  let legacyQuery = question.legacyQuery() as StructuredQuery;
+  let query = question.query();
 
-    let topLevelQuery = query.rootQuery().question()._getMLv2Query();
+  // strip empty source queries
+  legacyQuery = legacyQuery.cleanNesting();
+  query = Lib.dropEmptyStages(query);
 
-    const database = question.database();
-    const allowsNesting = database && database.hasFeature("nested-queries");
+  const database = metadata.database(Lib.databaseID(query));
+  const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
+  const hasBreakouts = Lib.breakouts(query, -1).length > 0;
 
-    // strip empty source queries
-    query = query.cleanNesting();
+  // add a level of nesting, if valid
+  if (allowsNesting && hasBreakouts) {
+    legacyQuery = legacyQuery.nest();
+    query = Lib.appendStage(query);
+  }
 
-    // add a level of nesting, if valid
-    if (allowsNesting && query.hasBreakouts()) {
-      query = query.nest();
-      topLevelQuery = Lib.appendStage(topLevelQuery);
+  const stagedQueries = legacyQuery.queries();
+
+  for (let stageIndex = 0; stageIndex < Lib.stageCount(query); ++stageIndex) {
+    const stageQuery = stagedQueries[stageIndex];
+    const { steps, actions } = getStageSteps(
+      query,
+      stageQuery,
+      stageIndex,
+      metadata,
+      openSteps,
+    );
+    // append actions to last step of previous stage
+    if (allSteps.length > 0) {
+      allSteps[allSteps.length - 1].actions.push(...actions);
     }
-
-    const stagedQueries = query.queries();
-    for (const [stageIndex, stageQuery] of stagedQueries.entries()) {
-      const { steps, actions } = getStageSteps(
-        topLevelQuery,
-        stageQuery,
-        stageIndex,
-        openSteps,
-      );
-      // append actions to last step of previous stage
-      if (allSteps.length > 0) {
-        allSteps[allSteps.length - 1].actions.push(...actions);
-      }
-      allSteps.push(...steps);
-    }
+    allSteps.push(...steps);
   }
 
   // set up pointers to the next and previous steps
@@ -191,9 +239,10 @@ export function getQuestionSteps(question: Question, openSteps = {}) {
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
 function getStageSteps(
-  topLevelQuery: Query,
-  stageQuery: StructuredQuery,
+  query: Query,
+  legacyQuery: StructuredQuery,
   stageIndex: number,
+  metadata: Metadata,
   openSteps: OpenSteps,
 ) {
   const getId = (step: NotebookStepDef, itemIndex: number | null) => {
@@ -211,52 +260,26 @@ function getStageSteps(
 
   function getStep(STEP: NotebookStepDef, itemIndex: number | null = null) {
     const id = getId(STEP, itemIndex);
+    const active = STEP.active(query, stageIndex, itemIndex ?? undefined);
     const step: NotebookStep = {
       id: id,
       type: STEP.type,
       stageIndex: stageIndex,
       itemIndex: itemIndex,
-      topLevelQuery,
-      query: stageQuery,
-      valid: STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex),
-      active: STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex),
+      topLevelQuery: query,
+      query: legacyQuery,
+      valid: STEP.valid(query, stageIndex, metadata),
+      active,
       visible:
-        STEP.valid(stageQuery, itemIndex, topLevelQuery, stageIndex) &&
-        !!(
-          STEP.active(stageQuery, itemIndex, topLevelQuery, stageIndex) ||
-          openSteps[id]
-        ),
+        STEP.valid(query, stageIndex, metadata) &&
+        Boolean(active || openSteps[id]),
       testID: getTestId(STEP, itemIndex),
       revert: STEP.revert
-        ? (query: StructuredQuery) =>
-            STEP.revert
-              ? STEP.revert(query, itemIndex, topLevelQuery, stageIndex)
-              : null
-        : null,
-      clean: query => STEP.clean(query, itemIndex, topLevelQuery, stageIndex),
-      update: datasetQuery => {
-        let newQuery = stageQuery.setDatasetQuery(datasetQuery);
-        // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
-        // the current step is in a temporarily invalid state
-        let current: NotebookStep | null = step;
-        while ((current = current.next)) {
-          // when switching to the next stage we need to setSourceQuery
-          if (
-            current.previous &&
-            current.previous.stageIndex < current.stageIndex
-          ) {
-            newQuery = current.query.setSourceQuery(newQuery.legacyQuery());
+        ? (query: Lib.Query) => {
+            const revert = checkNotNull(STEP.revert);
+            return revert(query, stageIndex, itemIndex ?? undefined);
           }
-          newQuery = current.clean(
-            newQuery,
-            current.itemIndex,
-            topLevelQuery,
-            current.stageIndex,
-          );
-        }
-        // strip empty source queries
-        return newQuery.cleanNesting();
-      },
+        : null,
       // `actions`, `previewQuery`, `next` and `previous` will be set later
       actions: [],
       previewQuery: null,
@@ -271,10 +294,7 @@ function getStageSteps(
     STEPS.map(STEP => {
       if (STEP.subSteps) {
         // add 1 for the initial or next action button
-        const itemIndexes = _.range(
-          0,
-          STEP.subSteps(topLevelQuery, stageIndex) + 1,
-        );
+        const itemIndexes = _.range(0, STEP.subSteps(query, stageIndex) + 1);
         return itemIndexes.map(itemIndex => getStep(STEP, itemIndex));
       } else {
         return [getStep(STEP)];
@@ -282,7 +302,7 @@ function getStageSteps(
     }),
   );
 
-  let previewQuery: StructuredQuery | null = stageQuery;
+  let previewQuery: Lib.Query | null = query;
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions
@@ -312,9 +332,8 @@ function getStageSteps(
     if (step.revert && previewQuery) {
       previewQuery = step.revert(
         previewQuery,
-        step.itemIndex,
-        topLevelQuery,
         step.stageIndex,
+        step.itemIndex ?? undefined,
       );
     }
   }

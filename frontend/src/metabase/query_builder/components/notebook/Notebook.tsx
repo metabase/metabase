@@ -51,12 +51,8 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
   async function cleanupQuestion() {
     // Converting a query to MLv2 and back performs a clean-up
     let cleanQuestion = question.setDatasetQuery(
-      Lib.toLegacyQuery(question._getMLv2Query()),
+      Lib.toLegacyQuery(Lib.dropEmptyStages(question.query())),
     );
-
-    // MLv2 doesn't clean up redundant stages, so we do it with MLv1 for now
-    const query = cleanQuestion.legacyQuery() as StructuredQuery;
-    cleanQuestion = cleanQuestion.setQuery(query.clean({ skipFilters: true }));
 
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();

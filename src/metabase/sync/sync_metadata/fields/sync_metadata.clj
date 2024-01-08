@@ -38,10 +38,10 @@
          new-database-is-auto-increment :database-is-auto-increment
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
-        new-database-is-auto-increment             (boolean new-database-is-auto-increment)
-        new-db-required                            (boolean new-db-required)
-        new-database-type                          (or new-database-type "NULL")
-        new-semantic-type                          (common/semantic-type field-metadata)
+        new-database-is-auto-increment  (boolean new-database-is-auto-increment)
+        new-db-required                 (boolean new-db-required)
+        new-database-type               (or new-database-type "NULL")
+        new-semantic-type               (common/semantic-type field-metadata)
 
         new-db-type?
         (not= old-database-type new-database-type)
@@ -79,11 +79,18 @@
                       new-database-type)
            {:database_type new-database-type})
          (when new-base-type?
-           (log/infof "Base type of %s has changed from ''%s'' to ''%s''."
+           (log/infof "Base type of %s has changed from ''%s'' to ''%s''. This field will be refingerprinted and analyzed."
                      (common/field-metadata-name-for-logging table metabase-field)
                      old-base-type
                      new-base-type)
-           {:base_type new-base-type})
+           {:base_type           new-base-type
+            :effective_type      new-base-type
+            :coercion_strategy   nil
+            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+            :fingerprint_version 0
+            :fingerprint         nil
+            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+            :semantic_type       nil})
          (when new-semantic-type?
            (log/infof "Semantic type of {0} has changed from ''%s'' to ''%s''."
                       (common/field-metadata-name-for-logging table metabase-field)

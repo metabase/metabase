@@ -1,39 +1,15 @@
-import { t } from "ttag";
-
-import { Flex, Popover, Tooltip } from "metabase/ui";
-import { FilterPicker } from "metabase/querying";
-
-import { color } from "metabase/lib/colors";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { FilterPanel, FilterPanelButton } from "metabase/querying";
 
 import type { QueryBuilderMode } from "metabase-types/store";
 
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type LegacyQuery from "metabase-lib/queries/StructuredQuery";
-
-import ViewPill from "../ViewPill";
-import type { ViewPillProps } from "../ViewPill";
-import {
-  FilterHeaderContainer,
-  FilterHeaderButton,
-} from "./QuestionFilters.styled";
-
-const NO_TRANSITION = { duration: 0 };
-
-const FilterPill = (props: ViewPillProps) => (
-  <ViewPill
-    color={color("filter")}
-    {...props}
-    data-testid="filter-pill"
-    removeButtonLabel={t`Remove`}
-  />
-);
 
 interface FilterHeaderToggleProps {
   className?: string;
   query: Lib.Query;
-  expanded: boolean;
+  isExpanded: boolean;
   onExpand: () => void;
   onCollapse: () => void;
 }
@@ -41,36 +17,18 @@ interface FilterHeaderToggleProps {
 export function FilterHeaderToggle({
   className,
   query,
-  expanded,
+  isExpanded,
   onExpand,
   onCollapse,
 }: FilterHeaderToggleProps) {
-  const stageCount = Lib.stageCount(query);
-  const lastStageIndex = stageCount - 1;
-
-  const lastStageFilters = Lib.filters(query, lastStageIndex);
-  const previousStageFilters =
-    stageCount > 1 ? Lib.filters(query, lastStageIndex - 1) : [];
-  const filters = [...previousStageFilters, ...lastStageFilters];
-
   return (
     <div className={className}>
-      <Tooltip label={expanded ? t`Hide filters` : t`Show filters`}>
-        <FilterHeaderButton
-          small
-          icon="filter"
-          onClick={expanded ? onCollapse : onExpand}
-          active={expanded}
-          data-metabase-event={
-            expanded
-              ? `View Mode; Header Filters Collapse Click`
-              : `View Mode; Header Filters Expand Click`
-          }
-          data-testid="filters-visibility-control"
-        >
-          <span>{filters.length}</span>
-        </FilterHeaderButton>
-      </Tooltip>
+      <FilterPanelButton
+        query={query}
+        isExpanded={isExpanded}
+        onExpand={onExpand}
+        onCollapse={onCollapse}
+      />
     </div>
   );
 }
@@ -78,110 +36,25 @@ export function FilterHeaderToggle({
 interface FilterHeaderProps {
   question: Question;
   expanded: boolean;
-  onQueryChange: (query: LegacyQuery) => void;
+  updateQuestion: (question: Question, opts: { run: boolean }) => void;
 }
 
 export function FilterHeader({
   question,
   expanded,
-  onQueryChange,
+  updateQuestion,
 }: FilterHeaderProps) {
-  const query = question._getMLv2Query();
+  const query = question.query();
 
-  const stageCount = Lib.stageCount(query);
-  const lastStageIndex = stageCount - 1;
-
-  const lastStageFilters = Lib.filters(query, lastStageIndex);
-  const previousStageFilters =
-    stageCount > 1 ? Lib.filters(query, lastStageIndex - 1) : [];
-  const filters = [...previousStageFilters, ...lastStageFilters];
-
-  const handleQueryChange = (nextQuery: Lib.Query) => {
-    const nextQuestion = question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
-    onQueryChange(nextQuestion.legacyQuery() as LegacyQuery);
+  const handleChange = (query: Lib.Query) => {
+    updateQuestion(question._setMLv2Query(query), { run: true });
   };
 
-  if (filters.length === 0 || !expanded) {
+  if (!expanded) {
     return null;
   }
 
-  return (
-    <FilterHeaderContainer data-testid="qb-filters-panel">
-      <Flex align="center" wrap="wrap" gap="sm" pb="sm">
-        {filters.map((filter, index) => {
-          const isLastStage = index >= previousStageFilters.length;
-          const stageIndex = isLastStage ? lastStageIndex : lastStageIndex - 1;
-          return (
-            <FilterHeaderPopover
-              key={index}
-              query={query}
-              stageIndex={stageIndex}
-              filter={filter}
-              onQueryChange={handleQueryChange}
-            />
-          );
-        })}
-      </Flex>
-    </FilterHeaderContainer>
-  );
-}
-
-interface FilterHeaderPopoverProps {
-  query: Lib.Query;
-  stageIndex: number;
-  filter: Lib.FilterClause;
-  onQueryChange: (query: Lib.Query) => void;
-}
-
-function FilterHeaderPopover({
-  query,
-  stageIndex,
-  filter,
-  onQueryChange,
-}: FilterHeaderPopoverProps) {
-  const [isOpen, { turnOff: handleClose, toggle: handleToggle }] =
-    useToggle(false);
-
-  const handleChange = (
-    newFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
-  ) => {
-    const nextQuery = Lib.replaceClause(query, stageIndex, filter, newFilter);
-    onQueryChange(nextQuery);
-  };
-
-  const handleRemove = () => {
-    const nextQuery = Lib.removeClause(query, stageIndex, filter);
-    onQueryChange(nextQuery);
-  };
-
-  const filterInfo = Lib.displayInfo(query, stageIndex, filter);
-
-  return (
-    <Popover
-      opened={isOpen}
-      trapFocus
-      transitionProps={NO_TRANSITION}
-      position="bottom-start"
-      onClose={handleClose}
-    >
-      <Popover.Target>
-        <div>
-          <FilterPill onClick={handleToggle} onRemove={handleRemove}>
-            {filterInfo.longDisplayName}
-          </FilterPill>
-        </div>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <FilterPicker
-          query={query}
-          stageIndex={stageIndex}
-          filter={filter}
-          onSelect={handleChange}
-          onClose={handleClose}
-        />
-      </Popover.Dropdown>
-    </Popover>
-  );
+  return <FilterPanel query={query} onChange={handleChange} />;
 }
 
 type RenderCheckOpts = {
