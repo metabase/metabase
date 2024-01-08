@@ -316,7 +316,7 @@ describeEE("formatting > whitelabel", () => {
         .clear()
         .type("https://google.com")
         .blur();
-      cy.findByTestId("landing-page-error").should("not.exist");
+      cy.findByTestId("landing-page-error").should("exist");
     });
   });
 });
