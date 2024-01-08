@@ -5,15 +5,21 @@ import type { SearchResult } from "metabase-types/api";
 import { QuestionPicker } from "./SpecificEntityPickers/QuestionPicker";
 import { TablePicker } from "./SpecificEntityPickers/TablePicker";
 import { CollectionPicker } from "./SpecificEntityPickers/CollectionPicker";
-import { SnippetCollectionPicker } from "./SpecificEntityPickers/SnippetCollectionPicker";
 
 export const getIcon = (item: SearchResult) => {
   const entity = entityForObject(item);
   return entity?.objectSelectors?.getIcon?.(item)?.name || "table";
 };
 
-export const isSelectedItem = (item: SearchResult, selectedItem: SearchResult | null): boolean => {
-  return !!selectedItem && item.id === selectedItem.id && item.model === selectedItem.model;
+export const isSelectedItem = (
+  item: SearchResult,
+  selectedItem: SearchResult | null,
+): boolean => {
+  return (
+    !!selectedItem &&
+    item.id === selectedItem.id &&
+    item.model === selectedItem.model
+  );
 };
 
 export const tabOptions = {
