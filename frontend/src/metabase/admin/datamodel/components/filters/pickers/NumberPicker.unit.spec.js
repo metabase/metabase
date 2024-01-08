@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 
-import NumberPicker from "metabase/query_builder/components/filters/pickers/NumberPicker";
+import NumberPicker from "./NumberPicker";
 
 describe("NumberPicker", () => {
   it("should display provided values", () => {

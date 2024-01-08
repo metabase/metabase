@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 
-import TextPicker from "metabase/query_builder/components/filters/pickers/TextPicker";
+import TextPicker from "./TextPicker";
 
 describe("TextPicker", () => {
   it("should display provided values", () => {
