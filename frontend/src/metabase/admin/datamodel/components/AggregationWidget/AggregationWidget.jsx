@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { isRows } from "metabase-lib/queries/utils/aggregation";
-import AggregationPopover from "../AggregationPopover";
+import { AggregationPopover } from "../AggregationPopover";
 import { Clearable } from "../Clearable";
 import { AggregationLabel } from "./AggregationWidget.styled";
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
