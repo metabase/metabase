@@ -52,12 +52,6 @@
         (data-perms/set-database-permission! group-id database-id :native-query-editing :no)
         (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil))))
 
-      (testing "A non database-level permission cannot be set"
-        (is (thrown-with-msg?
-             ExceptionInfo
-             #"Permission type :data-access cannot be set on databases."
-             (data-perms/set-database-permission! group-id database-id :data-access :unrestricted))))
-
       (testing "A database-level permission cannot be set to an invalid value"
         (is (thrown-with-msg?
              ExceptionInfo

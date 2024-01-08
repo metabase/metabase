@@ -219,10 +219,6 @@
    db-or-id    :- TheIdable
    perm-type   :- :keyword
    value       :- :keyword]
-  (when (and (not= :model/Database (model-by-perm-type perm-type))
-             (not= [:data-access :block] [perm-type value]))
-    (throw (ex-info (tru "Permission type {0} cannot be set on databases." perm-type)
-                    {perm-type (Permissions perm-type)})))
   (t2/with-transaction [_conn]
     (let [group-id (u/the-id group-or-id)
           db-id    (u/the-id db-or-id)]
