@@ -180,9 +180,10 @@ export const enableColumnInQuery = (
   }
 
   const displayInfo = Lib.displayInfo(query, STAGE_INDEX, metadataColumn);
-  return displayInfo.selected
+  const newQuery = displayInfo.selected
     ? query
     : Lib.addField(query, STAGE_INDEX, metadataColumn);
+  return Lib.dropStageIfEmpty(newQuery, STAGE_INDEX);
 };
 
 export const disableColumnInQuery = (
@@ -193,7 +194,8 @@ export const disableColumnInQuery = (
     return query;
   }
 
-  return Lib.removeField(query, STAGE_INDEX, metadataColumn);
+  const newQuery = Lib.removeField(query, STAGE_INDEX, metadataColumn);
+  return Lib.dropStageIfEmpty(newQuery, STAGE_INDEX);
 };
 
 export const findColumnSettingIndex = (

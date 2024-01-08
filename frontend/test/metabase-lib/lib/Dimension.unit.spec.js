@@ -724,7 +724,7 @@ describe("Dimension", () => {
         describe("when an expression dimension has a query that relies on a nested card", () => {
           it("should return a field inferred from the expression", () => {
             const question = new Question(nestedQuestionCard, null);
-            const query = question.query();
+            const query = question.legacyQuery();
             const dimension = Dimension.parseMBQL(
               ["expression", "Foobar"], // "Foobar" does not exist in the metadata
               null,
@@ -740,7 +740,7 @@ describe("Dimension", () => {
 
           it("should return a field inferred from the expression (from metadata)", () => {
             const question = new Question(nestedQuestionCard, metadata);
-            const query = question.query();
+            const query = question.legacyQuery();
             const dimension = Dimension.parseMBQL(
               ["expression", "Foo"],
               metadata,
@@ -784,7 +784,7 @@ describe("Dimension", () => {
         const dimension = Dimension.parseMBQL(
           ["expression", 42],
           metadata,
-          question.query(),
+          question.legacyQuery(),
         );
         expect(dimension.dimensions().length).toEqual(5); // 5 different binnings for a number
       });
@@ -1020,7 +1020,7 @@ describe("Dimension", () => {
     const dimension = Dimension.parseMBQL(
       ["field", "boolean", { "base-type": "type/Boolean" }],
       metadata,
-      question.query(),
+      question.legacyQuery(),
     );
 
     describe("INSTANCE METHODS", () => {

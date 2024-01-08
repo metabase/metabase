@@ -99,7 +99,7 @@ function ModelDetailPage({
     database != null && database.hasFeature("nested-queries");
 
   const mainTable = useMemo(
-    () => (model.isStructured() ? model.query().sourceTable() : null),
+    () => (model.isStructured() ? model.legacyQuery().sourceTable() : null),
     [model],
   );
 

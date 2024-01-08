@@ -75,7 +75,7 @@ export function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
-  const visualizationSettings = filter?.query()?.question()?.settings();
+  const visualizationSettings = filter?.legacyQuery()?.question()?.settings();
 
   const key = dimension?.column?.()
     ? getColumnKey(dimension.column() as DatasetColumn)

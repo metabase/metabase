@@ -11,7 +11,6 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 
 import type { Query } from "metabase-lib/types";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type {
   NotebookStep as INotebookStep,
@@ -43,7 +42,7 @@ interface NotebookStepProps {
   reportTimezone: string;
   readOnly?: boolean;
   openStep: (id: string) => void;
-  updateQuery: (query: StructuredQuery | Query) => Promise<void>;
+  updateQuery: (query: Query) => Promise<void>;
 }
 
 function NotebookStep({
@@ -90,13 +89,12 @@ function NotebookStep({
   }, [step.query, step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
-    const reverted = step.revert?.(
-      step.query,
-      step.itemIndex,
-      step.topLevelQuery,
-      step.stageIndex,
-    );
-    if (reverted) {
+    if (step.revert) {
+      const reverted = step.revert(
+        step.topLevelQuery,
+        step.stageIndex,
+        step.itemIndex ?? undefined,
+      );
       updateQuery(reverted);
     }
   }, [step, updateQuery]);
@@ -108,7 +106,7 @@ function NotebookStep({
   } = STEP_UI[step.type] || {};
 
   const color = getColor();
-  const canPreview = step?.previewQuery?.isValid?.();
+  const canPreview = Boolean(step.previewQuery);
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = typeof step.revert === "function" && !readOnly;
 
