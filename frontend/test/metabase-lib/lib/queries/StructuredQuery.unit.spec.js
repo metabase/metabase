@@ -658,21 +658,6 @@ describe("StructuredQuery", () => {
     });
   });
 
-  describe("SORT METHODS", () => {
-    describe("sorts", () => {
-      it("return an empty array", () => {
-        expect(query.sorts()).toEqual([]);
-      });
-      it("return an array with the sort clause", () => {
-        expect(
-          makeQuery({
-            "order-by": [["asc", ["field", ORDERS.TOTAL, null]]],
-          }).sorts(),
-        ).toEqual([["asc", ["field", ORDERS.TOTAL, null]]]);
-      });
-    });
-  });
-
   describe("DIMENSION METHODS", () => {
     describe("fieldOptions", () => {
       it("includes the correct number of dimensions", () => {

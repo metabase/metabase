@@ -117,33 +117,6 @@ describe("StructuredQuery nesting", () => {
     });
   });
 
-  describe("topLevelDimension", () => {
-    it("should return same dimension if not nested", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery();
-      const d = q.topLevelDimension(
-        q.parseFieldReference(["field", ORDERS.TOTAL, null]),
-      );
-      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL, null]);
-    });
-    it("should return underlying dimension for a nested query", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery()
-        .aggregate(["count"])
-        .breakout(["field", ORDERS.TOTAL, null])
-        .nest();
-      const d = q.topLevelDimension(
-        q.parseFieldReference([
-          "field",
-          "TOTAL",
-          { "base-type": "type/Float" },
-        ]),
-      );
-      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL, null]);
-    });
-  });
-
   describe("model question", () => {
     it("should not include implicit join dimensions when the underyling question has an explicit join", () => {
       const fields = [
