@@ -12,6 +12,7 @@
             DashboardCard Database Metric PermissionsGroup
             PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.collection :as collection]
+   [metabase.models.database :as database]
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -572,11 +573,6 @@
                      "Fort Worth" "Fort Smith" "Fort Wayne"}
                    (into #{} (comp relevant (map :name)) (search! "fort"))))
 
-            (testing "Sandboxed users do not see indexed entities in search"
-              (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-                (is (= #{}
-                       (into #{} (comp relevant (map :name)) (search! "fort"))))))
-
             (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
               (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
                                  :name           "Rome"
@@ -590,6 +586,94 @@
                                  :model_index_id (mt/malli=? :int)}}
                       (into {} (comp relevant (map (juxt :name normalize)))
                             (search! "rom")))))))))))
+
+(deftest indexed-entity-perms-test
+  (mt/dataset airports
+    (let [query (mt/mbql-query municipality)]
+      (mt/with-temp [Collection collection           {:name     "test"
+                                                      :location "/"}
+                     Card       root-model           {:dataset       true
+                                                      :dataset_query query
+                                                      :collection_id nil}
+                     Card       sub-collection-model {:dataset true
+                                                      :dataset_query query
+                                                      :collection_id (u/id collection)}]
+        (let [model-index-1 (model-index/create
+                             (mt/$ids {:model-id   (:id root-model)
+                                       :pk-ref     $municipality.id
+                                       :value-ref  $municipality.name
+                                       :creator-id (mt/user->id :rasta)}))
+              model-index-2 (model-index/create
+                             (mt/$ids {:model-id   (:id sub-collection-model)
+                                       :pk-ref     $municipality.id
+                                       :value-ref  $municipality.name
+                                       :creator-id (mt/user->id :rasta)}))
+              relevant-1    (comp (filter (comp #{(:id root-model)} :model_id))
+                                  (filter (comp #{"indexed-entity"} :model)))
+              relevant-2    (comp (filter (comp #{(:id sub-collection-model)} :model_id))
+                                  (filter (comp #{"indexed-entity"} :model)))
+              search!       (fn search!
+                              ([search-term] (search! search-term :crowberto))
+                              ([search-term user] (:data (make-search-request user [:q search-term]))))
+              normalize     (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+          (model-index/add-values! model-index-1)
+          (model-index/add-values! model-index-2)
+
+          (testing "Indexed entities returned if a non-admin user has full data perms and collection access"
+            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :all :native :all}}}
+              (is (=? {"Rome"   {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Rome"
+                                 :model_id       (:id root-model)
+                                 :model_name     (:name root-model)
+                                 :model_index_id (mt/malli=? :int)}
+                       "Tromsø" {:pk_ref         (mt/$ids $municipality.id)
+                                 :name           "Tromsø"
+                                 :model_id       (:id root-model)
+                                 :model_name     (:name root-model)
+                                 :model_index_id (mt/malli=? :int)}}
+                      (into {} (comp relevant-1 (map (juxt :name normalize)))
+                            (search! "rom" :rasta))))))
+
+          (testing "Indexed entities are not returned if a user doesn't have full data perms for the DB"
+            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :none :native :none}}}
+              (is (= #{}
+                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                           (search! "rom" :rasta)))))
+
+            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :all :native :none}}}
+              (is (= #{}
+                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                           (search! "rom" :rasta)))))
+
+            (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+              (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas {"PUBLIC" {id-1 :all
+                                                                                       id-2 :all
+                                                                                       id-3 :all
+                                                                                       id-4 :none}}}}}
+                (is (= #{}
+                       (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                             (search! "rom" :rasta))))))
+
+            (mt/with-all-users-data-perms-graph {(mt/id) {:data {:schemas :block :native :none}}}
+              (is (= #{}
+                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                           (search! "rom" :rasta))))))
+
+          (testing "Indexed entities are not returned if a user doesn't have root collection access"
+            (mt/with-non-admin-groups-no-root-collection-perms
+              (is (= #{}
+                     (into #{} (comp relevant-1 (map (juxt :name normalize)))
+                           (search! "rom" :rasta)))))
+
+            (mt/with-non-admin-groups-no-collection-perms collection
+              (is (= #{}
+                     (into #{} (comp relevant-2 (map (juxt :name normalize)))
+                           (search! "rom" :rasta))))))
+
+          (testing "Sandboxed users do not see indexed entities in search"
+            (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+              (is (= #{}
+                     (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
