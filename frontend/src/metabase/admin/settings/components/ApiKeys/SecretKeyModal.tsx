@@ -4,6 +4,8 @@ import { Text, Button, Flex, Group, Modal, Stack } from "metabase/ui";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { Icon } from "metabase/core/components/Icon";
 import { CopyTextInput } from "metabase/components/CopyTextInput";
+import { getThemeOverrides } from "metabase/ui/theme";
+const { fontFamilyMonospace } = getThemeOverrides();
 
 export const SecretKeyModal = ({
   secretKey,
@@ -31,7 +33,7 @@ export const SecretKeyModal = ({
         styles={{
           input: {
             color: `black !important`,
-            fontFamily: "Monaco, monospace",
+            fontFamily: fontFamilyMonospace as string,
           },
         }}
       />

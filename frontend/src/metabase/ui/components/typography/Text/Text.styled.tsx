@@ -18,5 +18,12 @@ export const getTextOverrides = (): MantineThemeOverride["components"] => ({
         },
       }),
     },
+    variants: {
+      monospace: theme => ({
+        root: {
+          fontFamily: theme.fontFamilyMonospace,
+        },
+      }),
+    },
   },
 });
