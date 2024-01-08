@@ -83,7 +83,7 @@ The Settings menu (the "gear" menu in the upper right of your Metabase) includes
 
 - Link to [Metabase help](https://www.metabase.com/help/) (default)
 - Hide it (the Settings menu won't display the Help option at all).
-- Go to a custom destination. Enter a URL that the Settings menu's Help option should link to.
+- Go to a custom destination. Enter a URL that the Settings menu's Help option should link to. Valid URLs include http, https, and mailto URLs.
 
 ## Metabot
 
