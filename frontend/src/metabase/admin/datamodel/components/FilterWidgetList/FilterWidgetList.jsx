@@ -2,7 +2,7 @@
 import { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
-import { FilterWidget } from "../FilterWidget/FilterWidget";
+import { FilterWidget } from "../FilterWidget";
 
 /**
  * @deprecated use MLv2
