@@ -1495,4 +1495,19 @@
           (migrate! :down 48)
           (is (true? (set/subset?
                       (set (#'custom-migrations/db-type->to-unified-columns db-type))
-                      (table-and-column-of-type datetime-type))))))))
+                      (table-and-column-of-type datetime-type)))))
+
+        ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
+        (testing "not nullable timestamp column should not have extra on update"
+          (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                             :last_name   "Hughes"
+                                                             :email       "howard@aircraft.com"
+                                                             :password    "superstrong"
+                                                             :date_joined :%now})
+                session (t2/insert-returning-instance! :core_session {:user_id    user-id
+                                                                      :id         (random-uuid)
+                                                                      :created_at :%now})]
+            (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
+            (testing "created_at shouldn't change if there is an update"
+              (is (= (:created_at session)
+                     (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
