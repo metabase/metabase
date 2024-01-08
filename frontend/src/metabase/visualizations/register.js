@@ -13,7 +13,7 @@ import { Text } from "./visualizations/Text";
 import { LinkViz } from "./visualizations/LinkViz";
 import { LineChart } from "./visualizations/LineChart";
 import { BarChart } from "./visualizations/BarChart";
-import WaterfallChart from "./visualizations/WaterfallChart";
+import { WaterfallChart } from "./visualizations/WaterfallChart";
 import RowChart from "./visualizations/RowChart";
 import PieChart from "./visualizations/PieChart";
 import { AreaChart } from "./visualizations/AreaChart";
