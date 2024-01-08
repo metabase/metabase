@@ -136,5 +136,7 @@
                  {:data
                   {:schemas
                    {"PUBLIC"
-                    {(mt/id :venues) {:query :segmented :read :all}}}}}}}
+                    {(mt/id :venues)
+                     {:query :segmented
+                      :read :all}}}}}}}
                (sandboxes/add-sandboxes-to-permissions-graph {})))))))
