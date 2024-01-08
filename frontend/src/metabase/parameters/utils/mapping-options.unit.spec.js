@@ -84,7 +84,10 @@ describe("parameters/utils/mapping-options", () => {
             isForeign: false,
             name: "~*~Created At~*~",
             sectionName: "Order",
-            target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+            target: [
+              "dimension",
+              ["field", "CREATED_AT", { "base-type": "type/DateTime" }],
+            ],
           },
         ]);
       });
@@ -104,7 +107,10 @@ describe("parameters/utils/mapping-options", () => {
             sectionName: "Review",
             icon: "calendar",
             name: "Created At",
-            target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
+            target: [
+              "dimension",
+              ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+            ],
             isForeign: false,
           },
           {
@@ -116,7 +122,10 @@ describe("parameters/utils/mapping-options", () => {
               [
                 "field",
                 PRODUCTS.CREATED_AT,
-                { "source-field": REVIEWS.PRODUCT_ID },
+                {
+                  "base-type": "type/DateTime",
+                  "source-field": REVIEWS.PRODUCT_ID,
+                },
               ],
             ],
             isForeign: true,
@@ -132,7 +141,13 @@ describe("parameters/utils/mapping-options", () => {
             joins: [
               {
                 alias: "Joined Table",
+                fields: "all",
                 "source-table": ORDERS_ID,
+                condition: [
+                  "=",
+                  ["field", REVIEWS.ID, { "base-type": "type/BigInteger" }],
+                  ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                ],
               },
             ],
           }),
@@ -142,16 +157,23 @@ describe("parameters/utils/mapping-options", () => {
             sectionName: "Review",
             name: "Created At",
             icon: "calendar",
-            target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
+            target: [
+              "dimension",
+              ["field", REVIEWS.CREATED_AT, { "base-type": "type/DateTime" }],
+            ],
             isForeign: false,
           },
           {
-            sectionName: "Joined Table",
+            sectionName: "Order",
             name: "Created At",
             icon: "calendar",
             target: [
               "dimension",
-              ["field", ORDERS.CREATED_AT, { "join-alias": "Joined Table" }],
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "join-alias": "Joined Table" },
+              ],
             ],
             isForeign: true,
           },
@@ -164,7 +186,10 @@ describe("parameters/utils/mapping-options", () => {
               [
                 "field",
                 PRODUCTS.CREATED_AT,
-                { "source-field": REVIEWS.PRODUCT_ID },
+                {
+                  "base-type": "type/DateTime",
+                  "source-field": REVIEWS.PRODUCT_ID,
+                },
               ],
             ],
             isForeign: true,
