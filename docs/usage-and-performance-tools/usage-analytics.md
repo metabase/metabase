@@ -32,7 +32,7 @@ You can duplicate any of the questions, dashboards and models in the Metabase an
 
 ### Custom reports collection
 
-While you _can_ save custom questions, models, and dashboards wherever you like (except for the Metabase analytics collection), we recommend that you save your custom Metabase analytics reports in the conveniently named "Custom reports" sub-collection. That way these items inherit the same permissions as the parent Metabase analytics collection. 
+While you _can_ save custom questions, models, and dashboards wherever you like (except for the Metabase analytics collection), we recommend that you save your custom Metabase analytics reports in the conveniently named "Custom reports" sub-collection. That way these items inherit the same permissions as the parent Metabase analytics collection.
 
 There is one thing to know about the Custom reports collection: its metadata resets whenever Metabase restarts. While you are able to temporarily rename the Custom reports collection, or give it a description or an Official badge, Metabase will drop this collection's metadata when it restarts. But rest assured that Metabase will preserve any questions, models, events, or dashboards that you add to the Custom reports collection.
 
@@ -206,8 +206,10 @@ Query sources include:
 - csv-download
 - dashboard
 - embedded-dashboard
+- embedded-csv-download
+- embedded-json-download
 - embedded-question
-- embedded-xlsx/csv/json-download 
+- embedded-xlsx-download
 - json-download
 - map-tiles
 - metabot
