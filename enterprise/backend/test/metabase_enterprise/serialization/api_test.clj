@@ -104,47 +104,48 @@
       (premium-features-test/with-premium-features #{:serialization}
         (binding [api.serialization/*in-tests* true]
           (testing "POST /api/ee/serialization/export"
-            (mt/with-temp! [Collection coll  {}
-                            Dashboard  _dash {:collection_id (:id coll)}
-                            Card       card  {:collection_id (:id coll)}]
-              (let [res    (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
-                                                 {:request-options {:as :byte-array}}
-                                                 :collection (:id coll) :data_model false :settings false)
-                    files* (atom [])
-                    ;; to avoid closing input stream
-                    ba     (#'api.serialization/ba-copy (io/input-stream res))]
-                (with-open [tar (open-tar ba)]
-                  (doseq [^TarArchiveEntry e (u.compress/entries tar)]
-                    (when (.isFile e)
-                      (swap! files* conj (.getName e)))
-                    (condp re-find (.getName e)
-                      #"/export.log$" (testing "Three lines in a log for data files"
-                                        (is (= 3 (count (line-seq (io/reader tar))))))
-                      nil)))
+            (mt/test-helpers-set-global-values!
+              (mt/with-temp [Collection coll  {}
+                             Dashboard  _dash {:collection_id (:id coll)}
+                             Card       card  {:collection_id (:id coll)}]
+                (let [res    (mt/user-real-request :crowberto :post 200 "ee/serialization/export"
+                                                   {:request-options {:as :byte-array}}
+                                                   :collection (:id coll) :data_model false :settings false)
+                      files* (atom [])
+                      ;; to avoid closing input stream
+                      ba     (#'api.serialization/ba-copy (io/input-stream res))]
+                  (with-open [tar (open-tar ba)]
+                    (doseq [^TarArchiveEntry e (u.compress/entries tar)]
+                      (when (.isFile e)
+                        (swap! files* conj (.getName e)))
+                      (condp re-find (.getName e)
+                        #"/export.log$" (testing "Three lines in a log for data files"
+                                          (is (= 3 (count (line-seq (io/reader tar))))))
+                        nil)))
 
-                (testing "We get only our data and a log file in an archive"
-                  (is (= 4 (count @files*))))
+                  (testing "We get only our data and a log file in an archive"
+                    (is (= 4 (count @files*))))
 
-                (testing "POST /api/ee/serialization/import"
-                  (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
+                  (testing "POST /api/ee/serialization/import"
+                    (t2/update! :model/Card {:id (:id card)} {:name (str "qwe_" (:name card))})
 
-                  (let [res (mt/user-real-request :crowberto :post 200 "ee/serialization/import"
-                                                  {:request-options {:as      :byte-array
-                                                                     :headers {"content-type" "multipart/form-data"}}}
-                                                  {:file ba})]
-                    (testing "We get our data items back"
-                      (is (= #{:collection :dashboard :card :database}
-                             (->> (line-seq (io/reader (io/input-stream res)))
-                                  log-types))))
-                    (testing "And they hit the db"
-                      (is (= (:name card)
-                             (t2/select-one-fn :name :model/Card :id (:id card))))))))
+                    (let [res (mt/user-real-request :crowberto :post 200 "ee/serialization/import"
+                                                    {:request-options {:as      :byte-array
+                                                                       :headers {"content-type" "multipart/form-data"}}}
+                                                    {:file ba})]
+                      (testing "We get our data items back"
+                        (is (= #{:collection :dashboard :card :database}
+                               (->> (line-seq (io/reader (io/input-stream res)))
+                                    log-types))))
+                      (testing "And they hit the db"
+                        (is (= (:name card)
+                               (t2/select-one-fn :name :model/Card :id (:id card))))))))
 
-              (testing "Only admins can export/import"
-                (is (= "You don't have permissions to do that."
-                       (mt/user-real-request :rasta :post 403 "ee/serialization/export")))
-                (is (= "You don't have permissions to do that."
-                       (mt/user-real-request :rasta :post 403 "ee/serialization/import"))))))))
+                (testing "Only admins can export/import"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-real-request :rasta :post 403 "ee/serialization/export")))
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-real-request :rasta :post 403 "ee/serialization/import")))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
