@@ -1,12 +1,22 @@
-/* eslint "react/prop-types": "warn" */
-
-import PropTypes from "prop-types";
-
 import cx from "classnames";
+import type { ReactNode } from "react";
 
 // NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
+interface ErrorMessageProps {
+  title: string;
+  type: string;
+  message: string;
+  action: ReactNode;
+  className?: string;
+}
 
-const ErrorMessage = ({ title, type, message, action, className }) => {
+export const ErrorMessage = ({
+  title,
+  type,
+  message,
+  action,
+  className,
+}: ErrorMessageProps) => {
   return (
     <div className={cx(className, "QueryError flex align-center")}>
       <div className={`QueryError-image QueryError-image--${type}`} />
@@ -18,13 +28,3 @@ const ErrorMessage = ({ title, type, message, action, className }) => {
     </div>
   );
 };
-
-ErrorMessage.propTypes = {
-  title: PropTypes.string.isRequired,
-  type: PropTypes.string.isRequired,
-  message: PropTypes.string.isRequired,
-  action: PropTypes.node,
-  className: PropTypes.string,
-};
-
-export default ErrorMessage;
