@@ -18,6 +18,7 @@ const { fontFamilyMonospace } = getThemeOverrides();
 import { ApiKeysApi } from "metabase/services";
 
 import { SecretKeyModal } from "./SecretKeyModal";
+import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
 type EditModalName = "edit" | "regenerate" | "secretKey";
 
@@ -139,6 +140,7 @@ export const EditApiKeyModal = ({
         <FormProvider
           initialValues={{ ...apiKey, group_id: apiKey.group.id }}
           onSubmit={handleSubmit}
+          validationSchema={API_KEY_VALIDATION_SCHEMA}
         >
           {({ dirty }) => (
             <Form>
