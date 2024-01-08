@@ -16,6 +16,10 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
     onChange(dropStageIfEmpty(query));
   };
 
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <FilterPanelRoot
       align="center"
@@ -37,11 +41,3 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
     </FilterPanelRoot>
   );
 }
-
-interface RenderCheckOpts {
-  query: Lib.Query;
-}
-
-FilterPanel.shouldRender = ({ query }: RenderCheckOpts) => {
-  return getFilterItems(query).length > 0;
-};

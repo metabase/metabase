@@ -70,7 +70,6 @@ const shouldRender = ({
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.isQueryEditable() &&
-  FilterPanel.shouldRender({ query: question.query() }) &&
   !isObjectDetail;
 
 FilterHeader.shouldRender = shouldRender;
