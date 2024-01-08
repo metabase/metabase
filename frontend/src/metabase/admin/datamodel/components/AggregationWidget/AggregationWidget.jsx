@@ -10,6 +10,9 @@ import { Clearable } from "../Clearable";
 import { AggregationLabel } from "./AggregationWidget.styled";
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
+/**
+ * @deprecated use MLv2
+ */
 export class AggregationWidget extends Component {
   constructor(props, context) {
     super(props, context);

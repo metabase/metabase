@@ -15,6 +15,9 @@ import { BreakoutWidget } from "../BreakoutWidget";
 import { FilterWidgetList } from "../FilterWidgetList/FilterWidgetList";
 import { FilterPopover } from "../FilterPopover";
 
+/**
+ * @deprecated use MLv2
+ */
 export class GuiQueryEditor extends Component {
   constructor(props) {
     super(props);

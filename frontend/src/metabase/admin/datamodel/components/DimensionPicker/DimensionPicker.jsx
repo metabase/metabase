@@ -10,6 +10,9 @@ const propTypes = {
   onChangeDimension: PropTypes.func.isRequired,
 };
 
+/**
+ * @deprecated use MLv2
+ */
 export const DimensionPicker = ({
   style,
   className,

@@ -3,6 +3,9 @@ import cx from "classnames";
 
 import { Icon } from "metabase/core/components/Icon";
 
+/**
+ * @deprecated use MLv2
+ */
 export const Clearable = ({ onClear, children, className }) => (
   <span className={cx("flex align-center", className)}>
     {children}

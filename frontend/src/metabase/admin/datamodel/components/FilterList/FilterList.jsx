@@ -34,4 +34,7 @@ class _FilterList extends Component {
   }
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export const FilterList = connect(mapStateToProps)(_FilterList);

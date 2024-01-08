@@ -5,6 +5,9 @@ import Dimension from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import { DimensionList } from "../DimensionList";
 
+/**
+ * @deprecated use MLv2
+ */
 export class FieldList extends Component {
   state = {
     sections: [],

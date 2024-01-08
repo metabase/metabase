@@ -4,6 +4,9 @@ import { findDOMNode } from "react-dom";
 import { t } from "ttag";
 import { FilterWidget } from "../FilterWidget/FilterWidget";
 
+/**
+ * @deprecated use MLv2
+ */
 export class FilterWidgetList extends Component {
   constructor(props) {
     super(props);

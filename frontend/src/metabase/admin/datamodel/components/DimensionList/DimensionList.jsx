@@ -26,6 +26,9 @@ const SUBMENU_TETHER_OPTIONS = {
   ],
 };
 
+/**
+ * @deprecated use MLv2
+ */
 export class DimensionList extends Component {
   state = {
     sections: [],

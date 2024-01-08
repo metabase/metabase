@@ -10,6 +10,9 @@ import { BreakoutLabel } from "./BreakoutWidget.styled";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
+/**
+ * @deprecated use MLv2
+ */
 export class BreakoutWidget extends Component {
   constructor(props, context) {
     super(props, context);

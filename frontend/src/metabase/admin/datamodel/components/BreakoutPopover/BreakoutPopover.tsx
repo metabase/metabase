@@ -17,6 +17,9 @@ interface BreakoutPopoverProps {
   onClose?: () => void;
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export const BreakoutPopover = ({
   className,
   query,

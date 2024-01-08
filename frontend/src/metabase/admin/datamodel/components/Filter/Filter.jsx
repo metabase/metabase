@@ -109,6 +109,9 @@ export const SegmentFilter = ({
   });
 };
 
+/**
+ * @deprecated use MLv2
+ */
 export const Filter = ({ filter, ...props }) =>
   filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />

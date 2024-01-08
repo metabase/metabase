@@ -56,6 +56,9 @@ type Props = {
   checkedColor?: string;
 };
 
+/**
+ * @deprecated use MLv2
+ */
 export function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,

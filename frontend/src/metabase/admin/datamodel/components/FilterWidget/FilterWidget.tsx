@@ -70,6 +70,9 @@ type State = {
   isOpen: boolean;
 };
 
+/**
+ * @deprecated use MLv2
+ */
 export class FilterWidget extends Component<Props, State> {
   rootRef: React.RefObject<HTMLDivElement>;
 

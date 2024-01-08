@@ -5,6 +5,9 @@ import { t } from "ttag";
 import FieldSet from "metabase/components/FieldSet";
 import { QueryDefinition } from "../QueryDefinition";
 
+/**
+ * @deprecated use MLv2
+ */
 export class QueryDefinitionTooltip extends Component {
   static propTypes = {
     type: PropTypes.string,

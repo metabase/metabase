@@ -25,6 +25,9 @@ function _QueryDefinition({ className, object, metadata }) {
   );
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export const QueryDefinition = connect(state => ({
   metadata: getMetadata(state),
 }))(_QueryDefinition);
