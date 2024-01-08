@@ -38,7 +38,7 @@ export default class MBQLArrayClause extends Array {
   /**
    * returns the parent query object
    */
-  query(): StructuredQuery {
+  legacyQuery(): StructuredQuery {
     return this._query;
   }
 
@@ -92,7 +92,7 @@ export class MBQLObjectClause {
   /**
    * returns the parent query object
    */
-  query(): StructuredQuery {
+  legacyQuery(): StructuredQuery {
     return this._query;
   }
 

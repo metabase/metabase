@@ -2,7 +2,7 @@ import Question from "metabase-lib/Question";
 
 export function getSegmentOrMetricQuestion(query, table, metadata) {
   return table
-    ? metadata.table(table.id).query(query).question()
+    ? metadata.table(table.id).legacyQuery(query).question()
     : Question.create({ metadata });
 }
 

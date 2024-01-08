@@ -14,6 +14,7 @@ import Button from "metabase/core/components/Button";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
 
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/Question";
 import {
   PreviewButtonContainer,
@@ -21,6 +22,8 @@ import {
   PreviewIconContainer,
   PreviewRoot,
 } from "./NotebookStepPreview.styled";
+
+const PREVIEW_ROWS_LIMIT = 10;
 
 class NotebookStepPreview extends Component {
   constructor(props) {
@@ -37,10 +40,15 @@ class NotebookStepPreview extends Component {
   };
 
   getPreviewQuestion(step) {
-    const query = step.previewQuery;
-    const hasSuitableLimit = query.hasLimit() && query.limit() < 10;
+    const { previewQuery: query, stageIndex } = step;
+    const limit = Lib.currentLimit(query, stageIndex);
+    const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;
+    const queryWithLimit = hasSuitableLimit
+      ? query
+      : Lib.limit(query, stageIndex, PREVIEW_ROWS_LIMIT);
+
     return Question.create()
-      .setQuery(hasSuitableLimit ? query : query.updateLimit(10))
+      ._setMLv2Query(queryWithLimit)
       .setDisplay("table")
       .setSettings({ "table.pivot": false });
   }
