@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import FieldSet from "metabase/components/FieldSet";
-import QueryDefinition from "../../../../query_builder/components/QueryDefinition";
+import { QueryDefinition } from "../QueryDefinition";
 
 export class QueryDefinitionTooltip extends Component {
   static propTypes = {

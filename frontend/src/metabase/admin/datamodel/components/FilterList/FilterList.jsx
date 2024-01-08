@@ -3,14 +3,14 @@ import { Component } from "react";
 import { connect } from "react-redux";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { filterWidgetFilterRenderer } from "../../admin/datamodel/components/FilterWidget/FilterWidget";
-import Filter from "./Filter";
+import { filterWidgetFilterRenderer } from "../FilterWidget/FilterWidget";
+import { Filter } from "../Filter";
 
 const mapStateToProps = state => ({
   metadata: getMetadata(state),
 });
 
-class FilterList extends Component {
+class _FilterList extends Component {
   static defaultProps = {
     filterRenderer: filterWidgetFilterRenderer,
   };
@@ -34,4 +34,4 @@ class FilterList extends Component {
   }
 }
 
-export default connect(mapStateToProps)(FilterList);
+export const FilterList = connect(mapStateToProps)(_FilterList);

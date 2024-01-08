@@ -3,7 +3,7 @@ import cx from "classnames";
 
 import { Icon } from "metabase/core/components/Icon";
 
-const Clearable = ({ onClear, children, className }) => (
+export const Clearable = ({ onClear, children, className }) => (
   <span className={cx("flex align-center", className)}>
     {children}
     {onClear && (
@@ -16,5 +16,3 @@ const Clearable = ({ onClear, children, className }) => (
     )}
   </span>
 );
-
-export default Clearable;

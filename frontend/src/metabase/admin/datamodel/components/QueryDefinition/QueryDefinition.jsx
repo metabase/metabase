@@ -4,9 +4,9 @@ import { connect } from "react-redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/Question";
 
-import FilterList from "./FilterList";
+import { FilterList } from "../FilterList";
 
-function QueryDefinition({ className, object, metadata }) {
+function _QueryDefinition({ className, object, metadata }) {
   const query = new Question(
     {
       dataset_query: { type: "query", query: object.definition },
@@ -25,6 +25,6 @@ function QueryDefinition({ className, object, metadata }) {
   );
 }
 
-export default connect(state => ({ metadata: getMetadata(state) }))(
-  QueryDefinition,
-);
+export const QueryDefinition = connect(state => ({
+  metadata: getMetadata(state),
+}))(_QueryDefinition);

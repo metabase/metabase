@@ -109,11 +109,9 @@ export const SegmentFilter = ({
   });
 };
 
-const Filter = ({ filter, ...props }) =>
+export const Filter = ({ filter, ...props }) =>
   filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />
   ) : (
     <OperatorFilter filter={filter} {...props} />
   );
-
-export default Filter;
