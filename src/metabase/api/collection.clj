@@ -59,14 +59,16 @@
 
 (defn- remove-other-users-personal-subcollections
   [user-id collections]
-  (let [personal-ids        (t2/select-fn-set :id :model/Collection
-                                              {:where
-                                               [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]})
+  (let [personal-ids         (t2/select-fn-set :id :model/Collection
+                                               {:where
+                                                [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]})
         personal-descendant? (comp personal-ids
                                    first
                                    collection/location-path->ids
                                    :location)]
-    (remove personal-descendant? collections)))
+    (if (nil? personal-ids)
+      collections
+      (remove personal-descendant? collections))))
 
 (defn- select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
