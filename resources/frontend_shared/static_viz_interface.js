@@ -70,3 +70,15 @@ function progress(data, settings, instanceColors) {
     colors: JSON.parse(instanceColors),
   });
 }
+
+function isomorphic(cardsWithData, dashcardSettings, colors) {
+  return JSON.stringify({
+    type: "html",
+    content: "<div>test</div>",
+  });
+  // return StaticViz.RenderChart("isomorphic", {
+  //   rawSeries: JSON.parse(cardsWithData),
+  //   dashcardSettings: JSON.parse(dashcardSettings),
+  //   colors: JSON.parse(colors),
+  // });
+}
