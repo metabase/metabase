@@ -1,8 +1,33 @@
 import ReactDOMServer from "react-dom/server";
-import StaticChart from "./containers/StaticChart";
+import { StaticChart } from "metabase/static-viz/components/StaticChart";
+import { createColorGetter } from "metabase/static-viz/lib/colors";
+import { formatStaticValue } from "metabase/static-viz/lib/format";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
+import { LegacyStaticChart } from "./containers/LegacyStaticChart";
 
-export function RenderChart(type, options) {
+/**
+ * @deprecated use RenderChart instead
+ */
+export function LegacyRenderChart(type, options) {
   return ReactDOMServer.renderToStaticMarkup(
-    <StaticChart type={type} options={options} />,
+    <LegacyStaticChart type={type} options={options} />,
   );
+}
+
+export function RenderChart(rawSeries, dashcardSettings, colors) {
+  const getColor = createColorGetter(colors);
+  const renderingContext = {
+    getColor,
+    formatValue: formatStaticValue,
+    measureText: measureTextWidth,
+    fontFamily: "Lato",
+  };
+
+  const props = {
+    rawSeries,
+    dashcardSettings,
+    renderingContext,
+  };
+
+  return ReactDOMServer.renderToStaticMarkup(<StaticChart {...props} />);
 }

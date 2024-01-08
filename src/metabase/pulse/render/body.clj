@@ -896,16 +896,17 @@
       (h value)]
      :render/text (str value)}))
 
-(s/defmethod render :isomorphic :- formatter/RenderedPulseCard
+(s/defmethod render :javascript_visualization :- formatter/RenderedPulseCard
   [_ render-type _timezone-id card dashcard data]
   (let [combined-cards-results (pu/execute-multi-card card dashcard)
         cards-with-data        (map (fn [c d] {:card c :data d})
                                     (cons card (map :card combined-cards-results))
                                     (cons data (map #(get-in % [:result :data]) combined-cards-results)))
         dashcard-viz-settings  (get dashcard :visualization_settings)
-        {rendered-type :type content :content} (js-svg/isomorphic cards-with-data dashcard-viz-settings)]
+        {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
     (case rendered-type
-      :svg
+      ;; TODO: ensure keyword matching works
+      (:svg "svg")
       (let [image-bundle (image-bundle/make-image-bundle
                            render-type
                            (js-svg/svg-string->bytes content))]
@@ -917,8 +918,8 @@
          [:div
           [:img {:style (style/style {:display :block :width :100%})
                  :src   (:image-src image-bundle)}]]})
-      :html
-      {:content content})))
+      (:html "html")
+      {:content [:div content] :attachments nil})))
 
 (s/defmethod render :smartscalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]

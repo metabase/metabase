@@ -132,10 +132,10 @@
                                                   (json/generate-string settings)))]
     (svg-string->bytes svg-string)))
 
-(defn isomorphic
-  "Clojure entrypoint to render isomorphic visualizations."
+(defn javascript-visualization
+  "Clojure entrypoint to render javascript visualizations."
   [cards-with-data dashcard-viz-settings]
-  (let [response (.asString (js/execute-fn-name (context) "isomorphic"
+  (let [response (.asString (js/execute-fn-name (context) "javascript_visualization"
                                                 (json/generate-string cards-with-data)
                                                 (json/generate-string dashcard-viz-settings)
                                                 (json/generate-string (public-settings/application-colors))))]
