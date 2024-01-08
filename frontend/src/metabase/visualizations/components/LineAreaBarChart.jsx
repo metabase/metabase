@@ -446,7 +446,7 @@ function transformSingleSeries(s, series, seriesIndex) {
       ]
         .filter(n => n)
         .join(": ");
-
+      
       return {
         card: {
           ...card,
@@ -465,6 +465,7 @@ function transformSingleSeries(s, series, seriesIndex) {
           }),
           cols: rowColumnIndexes.map(i => cols[i]),
           _transformed: true,
+          _rawRows: rows,
           _rawCols: cols,
         },
       };

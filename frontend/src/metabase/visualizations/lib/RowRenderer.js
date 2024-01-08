@@ -73,6 +73,19 @@ export default function rowRenderer(
         col: cols[1],
       },
     ];
+
+    const getAllData = d => {
+      const _rawRow = series[0].data._rawRows[d.index];
+      const _rawCols = series[0].data._rawCols;
+      return _rawRow.map((value, index) => {
+        return {
+          key: getFriendlyName(_rawCols[index]),
+          value: value,
+          col: _rawCols[index],
+        };
+      });
+    };
+
     if (onHoverChange) {
       chart
         .selectAll(".row rect")
@@ -101,7 +114,7 @@ export default function rowRenderer(
               column: cols[0],
             },
           ],
-          data: getData(d),
+          data: getAllData(d),
           element: this,
           settings,
         });
