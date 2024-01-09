@@ -15,6 +15,7 @@ const setupPremium = (opts?: SetupOpts) => {
     ...opts,
     hasEnterprisePlugins: true,
     hasEmbeddingFeature: true,
+    hasWhiteLabelFeature: true, // this activates the different utm tag from getPlan
   });
 };
 
@@ -66,13 +67,13 @@ describe("[EE, with token] embedding settings", () => {
       });
 
       it("should link to quickstart for interactive embedding", async () => {
-        await setupEmbedding({
+        await setupPremium({
           settingValues: { "enable-embedding": false },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=oss&utm_media=embed-settings",
+          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=pro-self-hosted&utm_media=embed-settings",
         );
       });
     });
