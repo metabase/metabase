@@ -59,7 +59,6 @@ const metadata = createMockMetadata({
 });
 
 const ordersTable = metadata.table(ORDERS_ID);
-const productsTable = metadata.table(PRODUCTS_ID);
 
 function makeDatasetQuery(query = {}) {
   return {
@@ -302,17 +301,6 @@ describe("StructuredQuery", () => {
       it("allows you to set a new database", () => {
         const db = metadata.database(ANOTHER_DB_ID);
         expect(query.setDatabase(db).database().id).toBe(db.id);
-      });
-    });
-    describe("setTable", () => {
-      it("allows you to set a new table", () => {
-        expect(query.setTable(productsTable).tableId()).toBe(PRODUCTS_ID);
-      });
-
-      it("retains the correct database id when setting a new table", () => {
-        expect(query.setTable(productsTable).table().database.id).toBe(
-          SAMPLE_DB_ID,
-        );
       });
     });
     describe("tableId", () => {
