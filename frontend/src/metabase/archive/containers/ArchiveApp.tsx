@@ -148,13 +148,6 @@ const BulkActionControls = ({ selected }: { selected: any[] }) => {
           )
         }
       >{t`Unarchive`}</Button>
-      <Button
-        variant="default"
-        ml="0.5rem"
-        onClick={() =>
-          selected.forEach(item => dispatch(Search.actions.delete(item)))
-        }
-      >{t`Delete`}</Button>
     </span>
   );
 };
