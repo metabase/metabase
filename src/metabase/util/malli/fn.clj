@@ -295,8 +295,34 @@
   `(let [~'&f ~(deparameterized-fn-form parsed)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
+(defn uninstrumented-fn-form
+  "Given a `fn-tail` like
+
+  ([x :- :int y] (+ 1 2))
+
+  and parsed by [[parsed-fn-tail]],
+
+  return an unevaluated, and uninstrumented fn form like
+
+  (fn [x y] (+ 1 2))
+
+  This is used to emit fn which ignore checks."
+  [parsed]
+  (deparameterized-fn-form parsed))
+
+;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
+
+(def namespaces-toskip
+  "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
+  (atom #{}))
+
+(def ^:private ^:dynamic *skip-ns-decision-fn*
+  (core/fn skip-ns-decision-fn [] (and config/is-prod? (contains? @namespaces-toskip *ns*))))
+
 (defmacro fn
-  "Malli version of [[schema.core/fn]]. A form like
+  "Malli version of [[schema.core/fn]].
+
+  Unless it's in a skipped namespace during prod, a form like:
 
     (fn :- :int [x :- :int] (inc x))
 
@@ -315,6 +341,8 @@
   for [[metabase.util.malli/defmethod]] it will be something like
 
     {:fn-name 'whatever/my-multimethod, :dispatch-value :field}
+
+  If compiled in a namespace in [[namespaces-toskip]], during `config/is-prod?`, it will be emitted as a vanilla clojure.core/fn form.
 
   Known issue: this version of `fn` does not capture the optional function name and make it available, e.g. you can't
   do
@@ -344,7 +372,17 @@
   problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
   fix this later."
   [& fn-tail]
-  (let [error-context (if (symbol? (first fn-tail))
-                        {:fn-name (list 'quote (first fn-tail))}
-                        {})]
-    (instrumented-fn-form error-context (parse-fn-tail fn-tail))))
+  (let [parsed (parse-fn-tail fn-tail)]
+    `(if (*skip-ns-decision-fn*)
+       ~(uninstrumented-fn-form parsed)
+       ~(let [error-context (if (symbol? (first fn-tail))
+                              {:fn-name (list 'quote (first fn-tail))}
+                              {})]
+          (instrumented-fn-form error-context parsed)))))
+
+[(binding [*skip-ns-decision-fn* (constantly true)]
+   ((fn :- :string [x] x) 3))
+
+ (binding [*skip-ns-decision-fn* (constantly false)]
+   (try ((fn :- :string [x] x) 3)
+        (catch Exception e (ex-message e))))]
