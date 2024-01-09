@@ -5,6 +5,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import * as Lib from "metabase-lib";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -823,16 +824,17 @@ class Question {
     return this._card && this._card.public_uuid;
   }
 
-  database(): Database | null | undefined {
-    const query = this.legacyQuery();
-    return query && typeof query.database === "function"
-      ? query.database()
-      : null;
+  database(): Database | null {
+    const metadata = this.metadata();
+    const databaseId = this.databaseId();
+    const database = metadata.database(databaseId);
+    return database;
   }
 
-  databaseId(): DatabaseId | null | undefined {
-    const db = this.database();
-    return db ? db.id : null;
+  databaseId(): DatabaseId | null {
+    const query = this.query();
+    const databaseId = Lib.databaseID(query);
+    return databaseId;
   }
 
   table(): Table | null | undefined {
@@ -1046,13 +1048,12 @@ class Question {
   }
 
   query(metadata = this._metadata): Query {
+    const databaseId = this.datasetQuery().database;
+
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = ML.metadataProvider(
-          this.databaseId(),
-          metadata,
-        );
+        this.__mlv2MetadataProvider = ML.metadataProvider(databaseId, metadata);
       }
       metadata = this.__mlv2MetadataProvider;
     }
@@ -1065,7 +1066,7 @@ class Question {
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
       this.__mlv2Query = ML.fromLegacyQuery(
-        this.databaseId(),
+        databaseId,
         metadata,
         this.datasetQuery(),
       );
@@ -1099,11 +1100,13 @@ class Question {
    * and satisfies other conditionals below.
    */
   canExploreResults() {
+    const canNest = Boolean(this.database()?.hasFeature("nested-queries"));
+
     return (
       this.isNative() &&
       this.isSaved() &&
       this.parameters().length === 0 &&
-      this.legacyQuery().canNest() &&
+      canNest &&
       this.isQueryEditable() // originally "canRunAdhocQuery"
     );
   }

@@ -64,14 +64,14 @@ describe("NativeQuery", () => {
         expect(Array.isArray(query.tables()[0].fields)).toBe(true);
       });
     });
-    describe("databaseId()", () => {
+    describe("_databaseId()", () => {
       it("returns the Database ID of the wrapped query", () => {
-        expect(query.databaseId()).toBe(SAMPLE_DB_ID);
+        expect(query._databaseId()).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("database()", () => {
+    describe("_database()", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(SAMPLE_DB_ID);
+        expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
 

@@ -137,7 +137,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns true if this is new query that hasn't been modified yet.
    */
   isEmpty() {
-    return !this.databaseId();
+    return !this._databaseId();
   }
 
   /**
@@ -158,7 +158,7 @@ class StructuredQuery extends AtomicQuery {
   // Determined based on availability of database and source table metadata
   // For queries based on questions expects virtual table metadata for the source card
   isEditable(): boolean {
-    return this.database() != null && this.hasMetadata();
+    return this._database() != null && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
@@ -167,23 +167,25 @@ class StructuredQuery extends AtomicQuery {
    * @returns all tables in the currently selected database that can be used.
    */
   tables(): Table[] | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return (database && database.tables) || null;
   }
 
   /**
    * @returns the currently selected database ID, if any is selected.
+   * @deprecated Use MLv2
    */
-  databaseId(): DatabaseId | null | undefined {
+  _databaseId(): DatabaseId | null | undefined {
     // same for both structured and native
     return this._structuredDatasetQuery.database;
   }
 
   /**
    * @returns the currently selected database metadata, if a database is selected and loaded.
+   * @deprecated Use MLv2
    */
-  database(): Database | null | undefined {
-    const databaseId = this.databaseId();
+  _database(): Database | null | undefined {
+    const databaseId = this._databaseId();
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
@@ -191,7 +193,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns the database engine object, if a database is selected and loaded.
    */
   engine(): string | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return database && database.engine;
   }
 
@@ -232,7 +234,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns a new query with the provided Database ID set.
    */
   setDatabaseId(databaseId: DatabaseId): StructuredQuery {
-    if (databaseId !== this.databaseId()) {
+    if (databaseId !== this._databaseId()) {
       // TODO: this should reset the rest of the query?
       return new StructuredQuery(
         this._originalQuestion,
@@ -342,7 +344,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this);
+    return getStructuredQueryTable(this.question(), this);
   });
 
   /**
@@ -787,6 +789,10 @@ class StructuredQuery extends AtomicQuery {
    */
   canAddBreakout() {
     return this.breakoutOptions().count > 0;
+  }
+
+  canNest(): boolean {
+    return Boolean(this._database()?.hasFeature("nested-queries"));
   }
 
   /**
@@ -1492,7 +1498,7 @@ class StructuredQuery extends AtomicQuery {
       }
     }
 
-    const dbId = this.databaseId();
+    const dbId = this._databaseId();
     if (dbId) {
       addDependency({
         type: "schema",
