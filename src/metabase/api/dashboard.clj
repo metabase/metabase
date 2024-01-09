@@ -65,7 +65,7 @@
   Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
   *  `all`      - Return all Dashboards.
   *  `mine`     - Return Dashboards created by the current user.
-  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)""
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
   [f]
   {f [:maybe [:enum "all" "mine" "archived"]]}
   (let [dashboards (dashboards-list f)
