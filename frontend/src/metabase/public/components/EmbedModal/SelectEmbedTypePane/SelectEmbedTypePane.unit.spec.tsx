@@ -28,7 +28,7 @@ const setup = ({
 
   const onCreatePublicLink = jest.fn();
   const onDeletePublicLink = jest.fn();
-  const getPublicUrl = jest.fn(resource => resource.public_uuid);
+  const getPublicUrl = jest.fn(uuid => uuid);
   const onChangeEmbedType = jest.fn();
 
   const { history } = renderWithProviders(
