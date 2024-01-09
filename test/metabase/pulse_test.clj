@@ -864,7 +864,7 @@
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-retry-metrics []
-  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'metabase.pulse/retry-state)]
+  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'email/retry-state)]
     (bean (.getMetrics retry))))
 
 (defn- pos-metrics [m]
@@ -880,7 +880,7 @@
 
 (defn- reset-retry []
   (let [old (get-retry-metrics)]
-    (#'metabase.pulse/reconfigure-retrying nil nil)
+    (#'email/reconfigure-retrying nil nil)
     old))
 
 (def ^:private fake-email-notification
@@ -895,6 +895,7 @@
       (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                          email-smtp-port 587]
         (mt/reset-inbox!)
+        (#'email/reconfigure-retrying nil nil)
         (reset-retry)
         (#'metabase.pulse/send-notifications! [fake-email-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
@@ -921,10 +922,10 @@
                (pos-metrics (reset-retry))))
         (is (= 0 (count @mt/inbox))))))
   (testing "send email succeeds w/ retry"
-    (let [retry-config (#'metabase.pulse/retry-configuration)]
+    (let [retry-config (#'email/retry-configuration)]
       (try
         (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                      metabase.pulse/retry-configuration (constantly (assoc retry-config
+                      email/retry-configuration (constantly (assoc retry-config
                                                                             :max-attempts 2
                                                                             :initial-interval-millis 1))]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
@@ -966,10 +967,10 @@
       (is (= {:numberOfFailedCallsWithRetryAttempt 1}
              (pos-metrics (reset-retry))))))
   (testing "post slack message succeeds with retry"
-    (let [retry-config (#'metabase.pulse/retry-configuration)]
+    (let [retry-config (#'email/retry-configuration)]
       (try
         (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
-                      metabase.pulse/retry-configuration (constantly (assoc retry-config
+                      email/retry-configuration (constantly (assoc retry-config
                                                                             :max-attempts 2
                                                                             :initial-interval-millis 1))]
           (reset-retry)

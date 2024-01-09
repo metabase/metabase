@@ -173,29 +173,30 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message] :as email} :- EmailMessage]
   (try
-   (when-not (email-smtp-host)
-     (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
+    (when-not (email-smtp-host)
+      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
    ;; Now send the email
-   (let [to-type (if (:bcc? email) :bcc :to)]
-     (send-email! (smtp-settings)
-                  (merge
-                   {:from    (if-let [from-name (email-from-name)]
-                               (str from-name " <" (email-from-address) ">")
-                               (email-from-address))
-                    to-type  recipients
-                    :subject subject
-                    :body    (case message-type
-                               :attachments message
-                               :text        message
-                               :html        [{:type    "text/html; charset=utf-8"
-                                              :content message}])}
-                   (when-let [reply-to (email-reply-to)]
-                     {:reply-to reply-to}))))
-   (catch Throwable e
-     (prometheus/inc :metabase-email/message-errors)
-     (throw e))
-   (finally
-    (prometheus/inc :metabase-email/messages))))
+    (let [to-type (if (:bcc? email) :bcc :to)]
+      (send-email! (smtp-settings)
+                   (merge
+                    {:from    (if-let [from-name (email-from-name)]
+                                (str from-name " <" (email-from-address) ">")
+                                (email-from-address))
+                     to-type  recipients
+                     :subject subject
+                     :body    (case message-type
+                                :attachments message
+                                :text        message
+                                :html        [{:type    "text/html; charset=utf-8"
+                                               :content message}])}
+                    (when-let [reply-to (email-reply-to)]
+                      {:reply-to reply-to}))))
+    (catch Throwable e
+      (prometheus/inc :metabase-email/message-errors)
+      (when (not= :smtp-host-not-set (:cause (ex-data e)))
+        (throw e)))
+    (finally
+      (prometheus/inc :metabase-email/messages))))
 
 (defn- retry-configuration []
   (cond-> {:max-attempts (email-retry-max-attempts)
@@ -236,7 +237,8 @@
     (apply (:sender @retry-state) args)
     ;; This is called when our number of retries is up.
     (catch Throwable e
-      (log/error e (trs "Error sending email!")))))
+      (log/error e (trs "Error sending email!"))
+          (throw e))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
