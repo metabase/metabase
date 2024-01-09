@@ -1,5 +1,4 @@
 import type { Query } from "metabase-lib/types";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Question from "metabase-lib/Question";
 
 export type NotebookStepType =
@@ -20,8 +19,8 @@ export interface NotebookStep {
   type: NotebookStepType;
   stageIndex: number;
   itemIndex: number | null;
-  topLevelQuery: Query;
-  query: StructuredQuery;
+  question: Question;
+  query: Query;
   valid: boolean;
   active: boolean;
   visible: boolean;
@@ -35,17 +34,13 @@ export interface NotebookStep {
 
 export interface NotebookStepAction {
   type: NotebookStepType;
-  action: (args: {
-    query?: StructuredQuery;
-    openStep: (id: string) => void;
-  }) => void;
+  action: (args: { openStep: (id: string) => void }) => void;
 }
 
 export interface NotebookStepUiComponentProps {
   step: NotebookStep;
-  topLevelQuery: Query;
+  query: Query;
   stageIndex: number;
-  query: StructuredQuery;
   sourceQuestion?: Question;
   color: string;
   isLastOpened: boolean;
