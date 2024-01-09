@@ -121,10 +121,29 @@ const mainConfig = {
   viewportHeight: 800,
   viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
-  reporter: "junit",
+  reporter: "cypress-multi-reporters",
   reporterOptions: {
-    mochaFile: "./target/junit/[hash].xml",
-    toConsole: true,
+    configFile: false,
+    // 🤯 mochawesome != cypress-mochawesome-reporter != mochaAwesome (this form does not exist) 🤯
+    // See https://glebbahmutov.com/blog/the-awesome-battle/ to compare the first two.
+    reporterEnabled: "mochawesome, mocha-junit-reporter",
+    mochawesomeReporterOptions: {
+      // https://github.com/adamgruber/mochawesome (NOT https://www.npmjs.com/package/cypress-mochawesome-reporter)
+      reportDir: "cypress/reports/mochareports",
+      reportFilename: "[status]-[name]",
+      quiet: true,
+      html: true,
+      json: true,
+    },
+    // 🤯🤮mochaJunitReporterReporterOptions 🤮🤯
+    // Exercise care when using this poorly documented key:
+    // - https://stackoverflow.com/questions/51180963/cypress-tests-with-mocha-multi-reports-not-able-to-get-aggregated-results-for-a
+    // - https://stackoverflow.com/questions/37965049/mocha-multi-reporter-with-junit
+    // For the curious, ChatGPT 3.5 does NOT get it right
+    mochaJunitReporterReporterOptions: {
+      mochaFile: "./target/junit/[hash].xml",
+      toConsole: false,
+    },
   },
   retries: {
     runMode: 1,
