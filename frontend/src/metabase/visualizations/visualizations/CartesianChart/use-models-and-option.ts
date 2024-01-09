@@ -12,7 +12,7 @@ import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesia
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
-import type { WaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/types";
+import { checkWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/utils";
 
 export function useModelsAndOption({
   rawSeries,
@@ -73,7 +73,7 @@ export function useModelsAndOption({
     switch (card.display) {
       case "waterfall":
         return getWaterfallOption(
-          chartModel as WaterfallChartModel,
+          checkWaterfallChartModel(chartModel),
           timelineEventsModel,
           selectedTimelineEventIds,
           settings,
