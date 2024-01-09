@@ -63,7 +63,7 @@ CSV files cannot exceed 50 MB in size.
 
 > While Metabase limits uploads to 50 MB, the server you use to run your Metabase may impose a lower limit. For example, the default client upload limit for [NGINX is 1 MB](https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size). So you may need to change your server settings to allow uploads up to 50 MB. People on Metabase Cloud don't have to worry about this.
 
-If you have a file larger than 200 MB, the workaround here is to:
+If you have a file larger than 50 MB, the workaround here is to:
 
 1. Split the data into multiple files.
 2. Upload those files one by one. Metabase will create a new model for each sheet.
