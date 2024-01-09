@@ -6,7 +6,11 @@ title: Usage analytics
 
 {% include plans-blockquote.html feature="Metabase analytics" %}
 
-The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase. These resources are useful for:
+The **Metabase Analytics** collection is a special collection that contains view-only questions, dashboards, and models that help you understand how people are using your Metabase.
+
+![Metabase analytics collection](./images/metabase-analytics.png)
+
+These resources are useful for:
 
 - **Understanding Usage**: Understand how people use your Metabase (e.g., new questions, most active people and groups, and so on).
 - **Auditing activity**: Know who viewed or did what and when, including tracking dashboard and question views, queries, downloads, and other activity like changing settings or inviting people to your Metabase.
