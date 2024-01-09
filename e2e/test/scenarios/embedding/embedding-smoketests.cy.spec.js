@@ -115,7 +115,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
           );
       });
     });
