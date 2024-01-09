@@ -125,8 +125,6 @@ export function getDataFromClicked({
   return { column, parameter, parameterByName, parameterBySlug, userAttribute };
 }
 
-const { Text, Number, Temporal } = TYPE;
-
 function notRelativeDateOrRange({ type }: Parameter) {
   return type !== "date/range" && type !== "date/relative";
 }
@@ -135,15 +133,18 @@ export function getTargetsForQuestion(question: Question): Target[] {
   if (question.isStructured()) {
     return getTargetsForStructuredQuestion(question);
   }
+
   if (question.isNative()) {
     return getTargetsForNativeQuestion(question);
   }
+
   return [];
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
   const query = question.query();
   const stageIndex = -1;
+
   return Lib.visibleColumns(query, stageIndex).map(targetColumn => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
@@ -169,18 +170,18 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 
 function getTargetsForNativeQuestion(question: Question): Target[] {
   const legacyQuery = question.legacyQuery() as NativeQuery;
+
   return legacyQuery.variables().map(variable => {
-    const tag = checkNotNull(variable.tag());
-    const { id, type, name } = tag;
+    const { id, type, name } = checkNotNull(variable.tag());
     const target: ClickBehaviorTarget = { type: "variable", id: name };
     const parentType = type
       ? {
           card: undefined,
           dimension: undefined,
           snippet: undefined,
-          text: Text,
-          number: Number,
-          date: Temporal,
+          text: TYPE.Text,
+          number: TYPE.Number,
+          date: TYPE.Temporal,
         }[type]
       : undefined;
 
@@ -194,7 +195,7 @@ function getTargetsForNativeQuestion(question: Question): Target[] {
             column.base_type && parentType && isa(column.base_type, parentType),
           ),
         parameter: parameter => variableFilterForParameter(parameter)(variable),
-        userAttribute: () => parentType === Text,
+        userAttribute: () => parentType === TYPE.Text,
       },
     };
   });

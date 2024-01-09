@@ -1,6 +1,6 @@
 import * as TYPES from "cljs/metabase.lib.types.isa";
-import type { ColumnMetadata } from "./types";
 import type { DatasetColumn } from "metabase-types/api";
+import type { ColumnMetadata } from "./types";
 
 type TypeFn = (column: ColumnMetadata) => boolean;
 
