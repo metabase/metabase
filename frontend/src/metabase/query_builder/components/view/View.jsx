@@ -313,10 +313,8 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
-    const isStructured = legacyQuery instanceof StructuredQuery;
-
     const isNewQuestion =
-      isStructured &&
+      question.isStructured() &&
       !legacyQuery.sourceTableId() &&
       !legacyQuery.sourceQuery();
 
@@ -356,7 +354,7 @@ class View extends Component {
         <QueryBuilderViewRoot className="QueryBuilder">
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {isStructured && (
+            {question.isStructured() && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}
