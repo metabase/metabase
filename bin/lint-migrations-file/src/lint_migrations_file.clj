@@ -80,7 +80,7 @@
   0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
   `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
   [change-log]
-  (assert-no-types-in-change-log #{"blob" "text"} change-log #(pos? (compare % "v49.00-052"))))
+  (assert-no-types-in-change-log #{"blob" "text"} change-log))
 
 (defn no-bare-boolean-types?
   "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
