@@ -16,10 +16,6 @@ export const FormFieldEditorDragContainer = styled.div`
   margin-bottom: ${space(1)};
 `;
 
-export const InfoText = styled.div`
-  color: ${color("text-medium")};
-`;
-
 export const FieldSettingsButtonsContainer = styled.div`
   display: flex;
   align-items: center;
