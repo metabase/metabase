@@ -4,7 +4,7 @@ import * as Urls from "metabase/lib/urls";
 import { getEventCount, getTimelineName } from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import type { Timeline } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import {
   CardBody,
   CardCount,

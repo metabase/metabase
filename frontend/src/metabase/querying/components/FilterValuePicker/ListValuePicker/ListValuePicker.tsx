@@ -1,8 +1,15 @@
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
-import { Checkbox, MultiSelect, Stack, Text, TextInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import {
+  Checkbox,
+  MultiSelect,
+  Stack,
+  Text,
+  TextInput,
+  Icon,
+} from "metabase/ui";
+
 import type { FieldValue } from "metabase-types/api";
 import { getEffectiveOptions } from "../utils";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";

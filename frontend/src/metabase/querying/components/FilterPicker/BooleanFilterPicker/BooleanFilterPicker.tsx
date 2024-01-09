@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import { Box, Button, Radio, Stack } from "metabase/ui";
+import { Icon, Box, Button, Radio, Stack } from "metabase/ui";
+
 import { useBooleanOptionFilter } from "metabase/querying/hooks/use-boolean-option-filter";
 import * as Lib from "metabase-lib";
 import { FilterPickerHeader } from "../FilterPickerHeader";

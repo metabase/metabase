@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";

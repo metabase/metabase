@@ -4,7 +4,7 @@ import {
   SortableContainer,
   SortableElement,
 } from "metabase/components/sortable";
-import type { IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/ui";
 import { ColumnItem } from "../ColumnItem";
 
 interface SortableItem {

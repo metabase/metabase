@@ -3,7 +3,7 @@
 import moment from "moment-timezone";
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { SectionRoot } from "./QuestionLastUpdated.styled";
 
 export default function QuestionLastUpdated({ result, ...props }) {

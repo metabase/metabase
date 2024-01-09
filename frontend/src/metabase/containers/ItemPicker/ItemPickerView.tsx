@@ -3,8 +3,8 @@ import type * as React from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import type { IconProps } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import Search from "metabase/entities/search";
 

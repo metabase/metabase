@@ -3,7 +3,7 @@ import { t } from "ttag";
 import type { Placement } from "tippy.js";
 
 import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { UserTypeToggleRoot } from "./UserTypeToggle.styled";
 
 interface UserTypeCellProps {

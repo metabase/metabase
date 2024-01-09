@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Button, Menu } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Button, Menu, Icon } from "metabase/ui";
 
 type Option<T> = {
   name: string;
