@@ -13,20 +13,17 @@ export type SetupOpts = {
   settingValues?: Partial<Settings>;
   hasEmbeddingFeature?: boolean;
   hasEnterprisePlugins?: boolean;
-  hasWhiteLabelFeature?: boolean;
 };
 
 export const setupEmbedding = async ({
   settingValues,
   hasEmbeddingFeature = false,
   hasEnterprisePlugins = false,
-  hasWhiteLabelFeature = false,
 }: SetupOpts) => {
   const returnedValue = await setup({
     settingValues: createMockSettings(settingValues),
     tokenFeatures: createMockTokenFeatures({
       embedding: hasEmbeddingFeature,
-      whitelabel: hasWhiteLabelFeature,
     }),
     hasEnterprisePlugins,
   });

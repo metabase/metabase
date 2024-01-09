@@ -15,7 +15,6 @@ const setupPremium = (opts?: SetupOpts) => {
     ...opts,
     hasEnterprisePlugins: true,
     hasEmbeddingFeature: true,
-    hasWhiteLabelFeature: true, // this activates the different utm tag from getPlan
   });
 };
 
