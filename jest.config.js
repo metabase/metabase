@@ -45,6 +45,7 @@ const config = {
     ace: {},
     ga: {},
   },
+  reporters: ['default', 'jest-junit'],
   coverageDirectory: "./coverage",
   coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
