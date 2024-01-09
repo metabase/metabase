@@ -192,7 +192,7 @@ describe("scenarios > models metadata", () => {
     // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
-  it("should keep metadata in sync with the query", { tags: "@flaky" }, () => {
+  it("should keep metadata in sync with the query", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
@@ -207,7 +207,7 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
     popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.get(".ace_content").type(
+    cy.findByTestId("native-query-editor").type(
       "{selectAll}{backspace}SELECT TOTAL FROM ORDERS LIMIT 5",
     );
 
