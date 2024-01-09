@@ -2,6 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import {
   createMockField,
   createMockSavedQuestionsDatabase,
@@ -18,12 +19,10 @@ import {
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import type Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import type Field from "metabase-lib/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
-import type StructuredQuery from "../StructuredQuery";
 import { getStructuredQueryTable } from "./structured-query-table";
 
 const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
@@ -87,11 +86,12 @@ const metadata = createMockMetadata({
 
 describe("metabase-lib/queries/utils/structured-query-table", () => {
   describe("Card that relies on another card as its source table", () => {
-    const nestedQuestion = metadata.question(nestedCard.id) as Question;
-    const virtualTable = metadata.table(cardTable.id) as Table;
+    const nestedQuestion = checkNotNull(metadata.question(nestedCard.id));
+    const virtualTable = checkNotNull(metadata.table(cardTable.id));
 
     const table = getStructuredQueryTable(
-      nestedQuestion.legacyQuery() as StructuredQuery,
+      nestedQuestion,
+      nestedQuestion.legacyQuery(),
     );
 
     it("should return a table", () => {
@@ -105,11 +105,8 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
   });
 
   describe("Model card", () => {
-    const model = metadata.question(modelCard.id) as Question;
-
-    const table = getStructuredQueryTable(
-      model.legacyQuery() as StructuredQuery,
-    );
+    const model = checkNotNull(metadata.question(modelCard.id));
+    const table = getStructuredQueryTable(model, model.legacyQuery());
 
     it("should return a nested card table using the given query's question", () => {
       expect(table?.getPlainObject()).toEqual(
@@ -131,13 +128,14 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
   });
 
   describe("Card that relies on a source query", () => {
-    const sourceQueryQuestion = metadata.question(
-      sourceQueryCard.id,
-    ) as Question;
-    const productsTable = metadata.table(PRODUCTS_ID) as Table;
+    const sourceQueryQuestion = checkNotNull(
+      metadata.question(sourceQueryCard.id),
+    );
+    const productsTable = checkNotNull(metadata.table(PRODUCTS_ID));
 
     const table = getStructuredQueryTable(
-      sourceQueryQuestion.legacyQuery() as StructuredQuery,
+      sourceQueryQuestion,
+      sourceQueryQuestion.legacyQuery(),
     );
 
     it("should return a virtual table based on the nested query", () => {
@@ -178,10 +176,11 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
   });
 
   describe("Card that has a concrete source table", () => {
-    const ordersTable = metadata.table(ORDERS_ID) as Table;
+    const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
 
     const table = getStructuredQueryTable(
-      ordersTable.legacyQuery() as StructuredQuery,
+      ordersTable.legacyQuery().question(),
+      ordersTable.legacyQuery(),
     );
 
     it("should return the concrete table stored on the Metadata object", () => {

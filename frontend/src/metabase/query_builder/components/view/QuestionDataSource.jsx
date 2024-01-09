@@ -175,7 +175,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   const parts = [];
 
-  const database = query.database();
+  const database = question.database();
   if (database) {
     parts.push({
       icon: !subHead ? "database" : undefined,

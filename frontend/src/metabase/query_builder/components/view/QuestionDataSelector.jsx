@@ -13,11 +13,11 @@ export default function QuestionDataSelector({
       containerClassName="DataPopoverContainer"
       hasTableSearch
       databaseQuery={{ saved: true }}
-      selectedDatabaseId={legacyQuery.databaseId()}
+      selectedDatabaseId={Lib.databaseID(query)}
       selectedTableId={Lib.sourceTableOrCardId(query)}
       setSourceTableFn={tableId =>
         updateQuestion(
-          legacyQuery.setSourceTableId(tableId).setDefaultQuery().question(),
+          legacyQuery.setTableId(tableId).setDefaultQuery().question(),
           {
             run: true,
           },

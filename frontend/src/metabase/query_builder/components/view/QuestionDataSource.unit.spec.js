@@ -408,15 +408,15 @@ describe("QuestionDataSource", () => {
         });
 
         it("shows nothing if a user doesn't have data permissions", () => {
-          const originalMethod = question.legacyQuery().database;
-          question.legacyQuery().database = () => null;
+          const originalMethod = question.legacyQuery()._database;
+          question.legacyQuery()._database = () => null;
 
           setup({ question });
           expect(
             screen.getByTestId("head-crumbs-container"),
           ).toBeEmptyDOMElement();
 
-          question.legacyQuery().database = originalMethod;
+          question.legacyQuery()._database = originalMethod;
         });
       });
     });
