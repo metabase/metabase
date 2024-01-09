@@ -1202,7 +1202,6 @@
   (doseq [[db-id new-db-perms] new-group-perms
           [perm-type new-perms] new-db-perms]
     (case perm-type
-
       :data
       (update-db-data-access-permissions! group-id db-id new-perms)
 
