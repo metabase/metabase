@@ -18,6 +18,7 @@ import {
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
+import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
@@ -76,7 +77,7 @@ export function SmartScalar({
 
   const insights = rawSeries?.[0].data?.insights;
   const trend = useMemo(
-    () => computeTrend(series, insights, settings, { formatValue }),
+    () => computeTrend(series, insights, settings, { color, formatValue }),
     [series, insights, settings],
   );
   if (trend == null) {

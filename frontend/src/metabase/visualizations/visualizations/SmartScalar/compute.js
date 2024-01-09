@@ -3,13 +3,17 @@ import moment from "moment";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import { color } from "metabase/lib/colors";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
-export function computeTrend(series, insights, settings, { formatValue }) {
+export function computeTrend(
+  series,
+  insights,
+  settings,
+  { formatValue, color },
+) {
   const comparisons = settings["scalar.comparisons"] || [];
   const currentMetricData = getCurrentMetricData({
     series,
@@ -42,6 +46,7 @@ export function computeTrend(series, insights, settings, { formatValue }) {
         series,
         settings,
         formatValue,
+        color,
       }),
     ),
   };
@@ -53,6 +58,7 @@ function buildComparisonObject({
   series,
   settings,
   formatValue,
+  color,
 }) {
   const { formatOptions, value } = currentMetricData;
 
@@ -84,6 +90,7 @@ function buildComparisonObject({
     ? getArrowColor(
         changeArrowIconName,
         settings["scalar.switch_positive_negative"],
+        { color },
       )
     : undefined;
 
@@ -577,7 +584,11 @@ function computeChangeTypeWithOptions({
   };
 }
 
-function getArrowColor(changeArrowIconName, shouldSwitchPositiveNegative) {
+function getArrowColor(
+  changeArrowIconName,
+  shouldSwitchPositiveNegative,
+  { color },
+) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
         [CHANGE_ARROW_ICONS.ARROW_DOWN]: color("success"),

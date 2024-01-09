@@ -10,12 +10,13 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { colors } from "metabase/lib/colors";
+import { color, colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
 
-const computeTrend = (...args) => computeTrend(...args, { formatValue });
+const computeTrend = (...args) =>
+  _computeTrend(...args, { color, formatValue });
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {
