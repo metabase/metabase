@@ -1505,7 +1505,7 @@
                                                              :password    "superstrong"
                                                              :date_joined :%now})
                 session (t2/insert-returning-instance! :core_session {:user_id    user-id
-                                                                      :id         (random-uuid)
+                                                                      :id         (str (random-uuid))
                                                                       :created_at :%now})]
             (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
             (testing "created_at shouldn't change if there is an update"

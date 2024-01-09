@@ -35,75 +35,63 @@
   (let [ids (change-set-ids change-log)]
     (= ids (sort-by identity compare ids))))
 
-(defn- assert-no-types-in-change-set
-  "Walks over x (a changeset map) to ensure it doesn't add any columns of `target-types` (a set of strings).
-  `found-cols` is an atom of vector, in which any problematic changes to the `target-types` will be stored.
-
-  A partial application of this function will be passed to postwalk below.
-
-  TODO: add and conform to a spec instead?"
-  [target-types found-cols x]
-  {:pre [(set? target-types) (instance? clojure.lang.Atom found-cols)]}
+(defn- check-change-use-types?
+  "Return `true` if change use any type in `types`."
+  [types change]
+  {:pre [(set? types)]}
   (let [match-target-types? (fn [ttype]
-                              (contains? target-types (str/lower-case ttype)))]
-    (when (map? x)
-      (cond
-       ;; a createTable or addColumn change; see if it adds a target-type col
-       (or (:createTable x) (:addColumn x))
-       (let [op     (cond (:createTable x) :createTable (:addColumn x) :addColumn)
-             cols   (filter (fn [col-def]
-                              (match-target-types? (get-in col-def [:column :type] "")))
-                            (get-in x [op :columns]))]
-         (doseq [col cols]
-           (swap! found-cols conj col)))
+                              (contains? types (str/lower-case ttype)))]
+    (cond
+     ;; a createTable or addColumn change; see if it adds a target-type col
+     (or (:createTable change) (:addColumn change))
+     (let [op (cond (:createTable change) :createTable (:addColumn change) :addColumn)]
+       (some (fn [col-def]
+               (match-target-types? (get-in col-def [:column :type] "")))
+             (get-in change [op :columns])))
 
+     ;; a modifyDataType change; see if it change a column to target-type
+     (and (:modifyDataType change)
+          (match-target-types? (get-in change [:modifyDataType :newDataType] "")))
+     true)))
 
-       ;; a modifyDataType change; see if it changes a column to target-type
-       (and (:modifyDataType x)
-            (match-target-types? (get-in x [:modifyDataType :newDataType] "")))
-       (swap! found-cols conj x))
-      x)))
+(defn- check-change-set-use-types?
+  "Return true if `change-set` doesn't contain usage of any type in `types`."
+  [target-types change-set]
+  (some #(check-change-use-types? target-types %) (get-in change-set [:changeSet :changes])))
+
+(defn- check-change-log-use-types?
+  ([target-types change-log]
+   (check-change-log-use-types? target-types change-log (constantly true)))
+  ([target-types change-log id-filter-fn]
+   {:pre [(set? target-types)]}
+   (->> change-log
+        (filter (fn [change-set]
+                  (let [id (get-in change-set [:changeSet :id])]
+                    (and (string? id)
+                         (id-filter-fn id)))))
+        (some #(check-change-set-use-types? target-types %)))))
 
 (defn no-bare-blob-or-text-types?
   "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
   0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
   `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
   [change-log]
-  (let [problem-cols (atom [])
-        walk-fn      (partial assert-no-types-in-change-set #{"blob" "text"} problem-cols)]
-    (doseq [{{id :id} :changeSet :as change-set} change-log
-            :when                                (and id
-                                                      (string? id)
-                                                      (str/starts-with? id "v"))]
-      (run! walk-fn (get-in change-set [:changeSet :changes])))
-    (empty? @problem-cols)))
+  (not (check-change-log-use-types? #{"blob" "text"} change-log)))
 
 (defn no-bare-boolean-types?
   "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
   \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
   [change-log]
-  (let [problem-cols (atom [])
-        walk-fn      (partial assert-no-types-in-change-set #{"boolean"} problem-cols)]
-    (doseq [{{id :id} :changeSet :as change-set} change-log
-            :when                                (and id
-                                                      (string? id)
-                                                      (pos? (compare id "v49.00-032")))]
-      (run! walk-fn (get-in change-set [:changeSet :changes])))
-    (empty? @problem-cols)))
+  (not (check-change-log-use-types? #{"boolean"} change-log #(pos? (compare % "v49.00-032")))))
 
 (defn no-datetime-type?
   "Ensures that no \"datetime\" or \"timestamp without time zone\".
   From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columsn are tz-aware."
   [change-log]
-  (let [problem-cols (atom [])
-        walk-fn      (fn [x]
-                       (assert-no-types-in-change-set #{"datetime" "timestamp" "timestamp without time zone"} problem-cols x))]
-    (doseq [{{id :id} :changeSet :as change-set} change-log
-            :when                                (and id
-                                                      (string? id)
-                                                      (pos? (compare id "v49.00-000")))]
-      (run! walk-fn (get-in change-set [:changeSet :changes])))
-    (empty? @problem-cols)))
+  (not (check-change-log-use-types?
+        #{"datetime" "timestamp" "timestamp without time zone"}
+        change-log
+        #(pos? (compare % "v49.00-000")))))
 
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
