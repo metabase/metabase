@@ -4,7 +4,11 @@ title: Uploading data
 
 # Uploading data
 
-You can upload data in CSV format to Metabase and start asking questions about it. This feature is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
+Once you've [set up CSV uploads](#enabling-uploads), you can [upload data](../exploration-and-organization/collections.md#uploading-data) in CSV format to a collection in Metabase.
+
+![Upload data to collection](./images/upload-to-collection.png)
+
+Uploading CSV data is best suited for ad hoc analysis of spreadsheet data. If you have a lot of data, or will need to update or add to that data regularly, we recommend setting up a way to load that data into a database directly, then connecting Metabase to that database.
 
 ## Enabling uploads
 
