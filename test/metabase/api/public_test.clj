@@ -9,6 +9,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
+   [metabase.api.embed-test :as embed-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
@@ -165,6 +166,91 @@
              (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
                  (update-in [category-name-id :values] count)
                  (update category-name-id #(into {} %))))))))
+
+(defn- parameter-expectations []
+  [{:input-card embed-test/card-with-embedded-params
+    :expected-parameters-from-api [{:type :date/single,
+                                    :name "a",
+                                    :display_name "a",
+                                    :id "a",
+                                    :default "A TAG",
+                                    :target [:variable [:template-tag "a"]],
+                                    :slug "a"}
+                                   {:type :date/single,
+                                    :name "b",
+                                    :display_name "b",
+                                    :id "b",
+                                    :default "B TAG",
+                                    :target [:variable [:template-tag "b"]],
+                                    :slug "b"}
+                                   {:slug "c",
+                                    :default "C TAG",
+                                    :name "c",
+                                    :type :date/single,
+                                    :values_source_type "static-list",
+                                    :id "c",
+                                    :target [:variable [:template-tag "c"]],
+                                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]},
+                                    :display_name "c"}
+                                   {:id "d",
+                                    :type :date/single,
+                                    :target [:variable [:template-tag "d"]],
+                                    :name "d",
+                                    :slug "d",
+                                    :default "D TAG"}]}
+
+   {:input-card embed-test/card-with-snippet
+    :expected-parameters-from-api [{:type :date/single,
+                                    :name "a",
+                                    :display_name "a",
+                                    :id "a",
+                                    :default "A TAG",
+                                    :target [:variable [:template-tag "a"]],
+                                    :slug "a"}
+                                   {:id      nil,
+                                    :type    :category,
+                                    :target  [:dimension [:template-tag "category"]],
+                                    :name    "Category",
+                                    :slug    "category",
+                                    :default nil}]}])
+
+(deftest get-card-parameters-should-include-relevant-template-tags-only
+  (testing "parameters should get from both template-tags and card.parameters"
+    ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+    ;; because doing such migration is costly.
+    ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+    ;; that why we need to keep concat both of them then dedupe by id
+    (doseq [{:keys [input-card expected-parameters-from-api]} (parameter-expectations)]
+      (mt/with-temp [:model/Card card input-card]
+        (is (= expected-parameters-from-api
+               (:parameters (#'api.public/public-card :id (u/the-id card)))))))))
+
+#_(deftest get-card-parameters-should-include-relevant-template-tags
+(let [category-name-id (mt/id :categories :name)]
+  (t2.with-temp/with-temp [Card card {:dataset_query
+                                      {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query         "select {{snippet: all}} from orders"
+                                                  :collection    "CATEGORIES"
+                                                  :template-tags {:category {:name         "category"
+                                                                             :display-name "Category"
+                                                                             :type         "dimension"
+                                                                             :dimension    ["field" category-name-id nil]
+                                                                             :widget-type  "category"
+                                                                             :required     true}
+                                                                  "snippet: all" {:type :snippet,
+                                                                                  :name "snippet: all",
+                                                                                  :id "3d64e6a4-e4a3-41d1-bbda-e0ae2ebb0ff2",
+                                                                                  :snippet-name "all",
+                                                                                  :display-name "Snippet: All",
+                                                                                  :snippet-id 1}}}}}]
+                          (is (= [{:id      nil,
+                                   :type    :category,
+                                   :target  [:dimension [:template-tag "category"]],
+                                   :name    "Category",
+                                   :slug    "category",
+                                   :default nil}]
+                                 (:parameters (#'api.public/public-card :id (u/the-id card))))))))
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
