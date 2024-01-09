@@ -321,7 +321,7 @@ class View extends Component {
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <NewQuestionView
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           className="full-height"
         />
