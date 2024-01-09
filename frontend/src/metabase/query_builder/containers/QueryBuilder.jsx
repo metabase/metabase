@@ -59,7 +59,7 @@ import {
   getMode,
   getModalSnippet,
   getSnippetCollectionId,
-  getQuery,
+  getLegacyQuery,
   getQuestion,
   getOriginalQuestion,
   getQueryStartTime,
@@ -122,7 +122,7 @@ const mapStateToProps = (state, props) => {
     nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
 
-    query: getQuery(state),
+    legacyQuery: getLegacyQuery(state),
     metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),

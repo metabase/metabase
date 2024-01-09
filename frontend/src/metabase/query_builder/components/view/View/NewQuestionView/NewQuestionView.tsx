@@ -7,16 +7,16 @@ import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import QuestionDataSelector from "../../QuestionDataSelector";
 
 type Props = {
-  query: StructuredQuery;
+  legacyQuery: StructuredQuery;
   updateQuestion: typeof updateQuestion;
 };
 
-function NewQuestionView({ query, updateQuestion }: Props) {
+function NewQuestionView({ legacyQuery, updateQuestion }: Props) {
   return (
     <div className="full-height">
       <div className="p4 mx2">
         <QuestionDataSelector
-          query={query}
+          legacyQuery={legacyQuery}
           updateQuestion={updateQuestion}
           triggerElement={
             <Subhead className="mb2">{t`Pick your data`}</Subhead>
