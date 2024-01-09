@@ -832,7 +832,7 @@ class Question {
   }
 
   databaseId(): DatabaseId | null {
-    const query = this._getMLv2Query();
+    const query = this.query();
     const databaseId = Lib.databaseID(query);
     return databaseId;
   }

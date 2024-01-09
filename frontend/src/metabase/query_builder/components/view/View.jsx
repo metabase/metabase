@@ -321,7 +321,7 @@ class View extends Component {
       !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      const query = question._getMLv2Query();
+      const query = question.query();
 
       return (
         <NewQuestionView
