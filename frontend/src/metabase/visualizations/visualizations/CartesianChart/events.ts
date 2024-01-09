@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { t } from "ttag";
 import type {
   CartesianChartModel,
   DataKey,
@@ -130,7 +131,7 @@ export const getEventColumnsData = (
 
       return {
         key: col.display_name, // TODO: use the title from the viz settings
-        value,
+        value: value ?? t`(empty)`,
         col,
       };
     })
@@ -139,11 +140,10 @@ export const getEventColumnsData = (
   if (isBreakoutSeries) {
     eventData.push({
       key: seriesModel.breakoutColumn.display_name,
-      value: seriesModel.breakoutValue,
+      value: seriesModel.breakoutValue ?? t`(empty)`,
       col: seriesModel.breakoutColumn,
     });
   }
-
   return eventData;
 };
 
