@@ -1,10 +1,10 @@
 ---
-title: "Api key"
+title: "API key"
 summary: |
   /api/api-key endpoints for CRUD management of API Keys.
 ---
 
-# Api key
+# API key
 
 /api/api-key endpoints for CRUD management of API Keys.
 
