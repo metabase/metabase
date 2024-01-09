@@ -15,6 +15,7 @@ import {
   setModelMetadata,
   sidebar,
   saveMetadataChanges,
+  main,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -207,11 +208,12 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
     popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.get(".ace_text-input")
-      .first()
-      .focus()
-      .invoke("val", "")
-      .type("SELECT TOTAL FROM ORDERS LIMIT 5");
+    main().within(() => {
+      cy.get("textarea")
+        .focus()
+        .invoke("val", "")
+        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
+    });
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");
