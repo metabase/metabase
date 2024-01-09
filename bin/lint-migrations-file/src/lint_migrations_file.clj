@@ -39,7 +39,6 @@
   "Return `true` if change use any type in `types`."
   [types change]
   {:pre [(set? types)]}
-  #p change
   (let [match-target-types? (fn [ttype]
                               (contains? types (str/lower-case ttype)))]
     (cond
