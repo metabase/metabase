@@ -18,7 +18,7 @@ const aggTetherOptions = {
 };
 
 export function AggregateStep({
-  topLevelQuery,
+  query,
   step,
   color,
   isLastOpened,
@@ -28,11 +28,11 @@ export function AggregateStep({
   const { stageIndex } = step;
 
   const clauses = useMemo(() => {
-    return Lib.aggregations(topLevelQuery, stageIndex);
-  }, [topLevelQuery, stageIndex]);
+    return Lib.aggregations(query, stageIndex);
+  }, [query, stageIndex]);
 
   const handleAddAggregation = (aggregation: Lib.Aggregable) => {
-    const nextQuery = Lib.aggregate(topLevelQuery, stageIndex, aggregation);
+    const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
     updateQuery(nextQuery);
   };
 
@@ -41,7 +41,7 @@ export function AggregateStep({
     nextClause: Lib.Aggregable,
   ) => {
     const nextQuery = Lib.replaceClause(
-      topLevelQuery,
+      query,
       stageIndex,
       currentClause,
       nextClause,
@@ -50,12 +50,12 @@ export function AggregateStep({
   };
 
   const handleRemoveAggregation = (aggregation: Lib.AggregationClause) => {
-    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, aggregation);
+    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
     updateQuery(nextQuery);
   };
 
   const renderAggregationName = (aggregation: Lib.AggregationClause) =>
-    Lib.displayInfo(topLevelQuery, stageIndex, aggregation).longDisplayName;
+    Lib.displayInfo(query, stageIndex, aggregation).longDisplayName;
 
   return (
     <ClauseStep
@@ -68,7 +68,7 @@ export function AggregateStep({
       renderName={renderAggregationName}
       renderPopover={({ item: aggregation, index }) => (
         <AggregationPopover
-          query={topLevelQuery}
+          query={query}
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
