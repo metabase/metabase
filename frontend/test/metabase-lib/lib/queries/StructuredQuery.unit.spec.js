@@ -335,7 +335,7 @@ describe("StructuredQuery", () => {
 
       it("should be not editable when database object is missing", () => {
         const q = makeQuery();
-        q.database = () => null;
+        q._database = () => null;
         expect(q.isEditable()).toBe(false);
       });
     });
