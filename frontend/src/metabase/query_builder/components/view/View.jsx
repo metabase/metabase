@@ -14,7 +14,6 @@ import { TimeseriesChrome } from "metabase/querying";
 import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -198,10 +197,9 @@ class View extends Component {
   renderHeader = () => {
     const { query: legacyQuery, question } = this.props;
     const query = question.query();
-    const isStructured = legacyQuery instanceof StructuredQuery;
 
     const isNewQuestion =
-      isStructured &&
+      question.isStructured() &&
       Lib.sourceTableOrCardId(query) === null &&
       !legacyQuery.sourceQuery();
 
