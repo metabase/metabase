@@ -18,11 +18,17 @@ export default class AtomicQuery extends Query {
     return null;
   }
 
-  databaseId(): DatabaseId | null | undefined {
+  /**
+   * @deprecated Use MLv2
+   */
+  _databaseId(): DatabaseId | null | undefined {
     return null;
   }
 
-  database(): Database | null | undefined {
+  /**
+   * @deprecated Use MLv2
+   */
+  _database(): Database | null | undefined {
     return null;
   }
 

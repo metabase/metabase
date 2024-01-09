@@ -224,14 +224,14 @@ describe("StructuredQuery", () => {
         expect(query.table()).toBe(ordersTable);
       });
     });
-    describe("databaseId", () => {
+    describe("_databaseId", () => {
       it("returns the Database ID of the wrapped query", () => {
-        expect(query.databaseId()).toBe(SAMPLE_DB_ID);
+        expect(query._databaseId()).toBe(SAMPLE_DB_ID);
       });
     });
-    describe("database", () => {
+    describe("_database", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(SAMPLE_DB_ID);
+        expect(query._database().id).toBe(SAMPLE_DB_ID);
       });
     });
     describe("engine", () => {
@@ -287,7 +287,7 @@ describe("StructuredQuery", () => {
   describe("SIMPLE QUERY MANIPULATION METHODS", () => {
     describe("reset", () => {
       it("Expect a reset query to not have a selected database", () => {
-        expect(query.reset().database()).toBe(null);
+        expect(query.reset()._database()).toBe(null);
       });
       it("Expect a reset query to not be runnable", () => {
         expect(query.reset().canRun()).toBe(false);
@@ -301,7 +301,7 @@ describe("StructuredQuery", () => {
     describe("setDatabase", () => {
       it("allows you to set a new database", () => {
         const db = metadata.database(ANOTHER_DB_ID);
-        expect(query.setDatabase(db).database().id).toBe(db.id);
+        expect(query.setDatabase(db)._database().id).toBe(db.id);
       });
     });
     describe("setTable", () => {
