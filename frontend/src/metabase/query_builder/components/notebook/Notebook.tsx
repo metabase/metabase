@@ -7,7 +7,6 @@ import { useDispatch } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
@@ -93,12 +92,10 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 };
 
 function getSourceQuestionId(question: Question) {
-  const query = question.legacyQuery();
-  if (query instanceof StructuredQuery) {
-    const sourceTableId = query.sourceTableId();
-    if (isVirtualCardId(sourceTableId)) {
-      return getQuestionIdFromVirtualTableId(sourceTableId);
-    }
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  if (isVirtualCardId(sourceTableId)) {
+    return getQuestionIdFromVirtualTableId(sourceTableId);
   }
 }
 

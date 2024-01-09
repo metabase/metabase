@@ -35,6 +35,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { createMockEntitiesState } from "__support__/store";
+import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
@@ -724,10 +725,10 @@ describe("QB Actions > initializeQB", () => {
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });
       const question = new Question(result.card, metadata);
-      const query = question.legacyQuery() as StructuredQuery;
+      const query = question.query();
 
       expect(result.card).toEqual(expectedCard);
-      expect(query.sourceTableId()).toBe(null);
+      expect(Lib.sourceTableOrCardId(query)).toBe(null);
       expect(result.originalCard).toBeUndefined();
     });
 

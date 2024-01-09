@@ -196,11 +196,14 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { query } = this.props;
-    const isStructured = query instanceof StructuredQuery;
+    const { query: legacyQuery, question } = this.props;
+    const query = question.query();
+    const isStructured = legacyQuery instanceof StructuredQuery;
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      isStructured &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     return (
       <Motion
@@ -295,7 +298,7 @@ class View extends Component {
   render() {
     const {
       question,
-      query,
+      query: legacyQuery,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -313,14 +316,18 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
-    const isStructured = query instanceof StructuredQuery;
+    const isStructured = legacyQuery instanceof StructuredQuery;
+    const query = question.query();
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      isStructured &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <NewQuestionView
+          legacyQuery={legacyQuery}
           query={query}
           updateQuestion={updateQuestion}
           className="full-height"

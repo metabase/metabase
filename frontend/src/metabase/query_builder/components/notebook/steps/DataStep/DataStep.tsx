@@ -26,7 +26,7 @@ export const DataStep = ({
   const question = query.question();
   const metadata = question.metadata();
   const collectionId = question.collectionId();
-  const tableId = query.sourceTableId();
+  const tableId = Lib.sourceTableOrCardId(topLevelQuery);
 
   const databaseId = Lib.databaseID(topLevelQuery);
   const table = tableId
