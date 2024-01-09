@@ -35,7 +35,7 @@
   (classloader/require 'metabase.api.ldap)
   (let [current-features (premium-features/*token-features*)]
     ;; The :sso-jwt token is needed to set the jwt-enabled setting
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:sso-jwt}
         (mt/with-temporary-setting-values [ldap-enabled false
                                            jwt-enabled  false]
