@@ -16,7 +16,6 @@
    [metabase.email :as email]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -34,10 +33,9 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.retry :as retry]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
@@ -168,7 +166,7 @@
 ;;; |                                             Password Reset                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- send-password-reset-email!
+(defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
   [email sso-source password-reset-url is-active?]
   {:pre [(u/email? email)
@@ -185,86 +183,11 @@
                               :isActive         is-active?
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
-    (email/send-message-or-throw!
+    (email/send-message!
      {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
       :recipients   [email]
       :message-type :html
       :message      message-body})))
-
-(declare ^:private reconfigure-retrying)
-
-(defsetting reset-password-retry-max-attempts
-  (deferred-tru "The maximum number of attempts for delivering a single password reset email.")
-  :type :integer
-  :default 7
-  :on-change reconfigure-retrying)
-
-(defsetting reset-password-retry-initial-interval
-  (deferred-tru "The initial retry delay in milliseconds when delivering password resets.")
-  :type :integer
-  :default 500
-  :on-change reconfigure-retrying)
-
-(defsetting reset-password-retry-multiplier
-  (deferred-tru "The delay multiplier between attempts to deliver a password reset.")
-  :type :double
-  :default 2.0
-  :on-change reconfigure-retrying)
-
-(defsetting reset-password-retry-randomization-factor
-  (deferred-tru "The randomization factor of the retry delay when delivering password resets.")
-  :type :double
-  :default 0.1
-  :on-change reconfigure-retrying)
-
-(defsetting reset-password-retry-max-interval-millis
-  (deferred-tru "The maximum delay between attempts to deliver a single password reset.")
-  :type :integer
-  :default 30000
-  :on-change reconfigure-retrying)
-
-(defn- retry-configuration []
-  (cond-> {:max-attempts (reset-password-retry-max-attempts)
-           :initial-interval-millis (reset-password-retry-initial-interval)
-           :multiplier (reset-password-retry-multiplier)
-           :randomization-factor (reset-password-retry-randomization-factor)
-           :max-interval-millis (reset-password-retry-max-interval-millis)}
-    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
-
-(defn- make-retry-state
-  "Returns a notification sender wrapping [[send-password-reset-email!]] retrying
-  according to `retry-configuration`."
-  []
-  (let [retry (retry/random-exponential-backoff-retry "send-password-reset-retrying"
-                                                      (retry-configuration))]
-    {:retry retry
-     :sender (retry/decorate send-password-reset-email! retry)}))
-
-(defonce
-  ^{:private true
-    :doc "Stores the current retry state. Updated whenever the reset password
-  retry settings change. It starts with value `nil` but is set whenever the
-  settings change or when the first call with retry is made."}
-  retry-state
-  (atom nil))
-
-(defn- reconfigure-retrying [_old-value _new-value]
-  (log/info (trs "Reconfiguring reset password sender"))
-  (reset! retry-state (make-retry-state)))
-
-(defn send-password-reset-retrying!
-  "Like [[send-password-reset-email!]] but retries sending on errors according
-  to the retry settings."
-  [& args]
-  (try
-    (when-not @retry-state
-      (compare-and-set! retry-state nil (make-retry-state)))
-    (apply (:sender @retry-state) args)
-    ;; This is called when our number of retries is up.
-    (catch Throwable e
-      (log/error e (trs "Error sending password reset!")))))
-
-;; End
 
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
@@ -689,7 +612,7 @@
   [user subject template-path template-context]
   (future
     (try
-      (email/send-message-or-throw!
+      (email/send-email-retrying!
        {:recipients   [(:email user)]
         :message-type :html
         :subject      subject

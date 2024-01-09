@@ -2,11 +2,13 @@
   (:require
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.retry :as retry]
    [postal.core :as postal]
    [postal.support :refer [make-props]])
   (:import
@@ -85,6 +87,37 @@
                 (when (some? new-value)
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+(declare ^:private reconfigure-retrying)
+
+(defsetting email-retry-max-attempts
+  (deferred-tru "The maximum number of attempts for delivering a single password reset email.")
+  :type :integer
+  :default 7
+  :on-change reconfigure-retrying)
+
+(defsetting email-retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds when delivering password resets.")
+  :type :integer
+  :default 500
+  :on-change reconfigure-retrying)
+
+(defsetting email-retry-multiplier
+  (deferred-tru "The delay multiplier between attempts to deliver a password reset.")
+  :type :double
+  :default 2.0
+  :on-change reconfigure-retrying)
+
+(defsetting email-retry-randomization-factor
+  (deferred-tru "The randomization factor of the retry delay when delivering password resets.")
+  :type :double
+  :default 0.1
+  :on-change reconfigure-retrying)
+
+(defsetting email-retry-max-interval-millis
+  (deferred-tru "The maximum delay between attempts to deliver a single password reset.")
+  :type :integer
+  :default 30000
+  :on-change reconfigure-retrying)
 
 ;; ## PUBLIC INTERFACE
 
@@ -133,7 +166,7 @@
         (and (sequential? message) (every? map? message))
         (string? message)))]])
 
-(mu/defn send-message-or-throw!
+(mu/defn ^:private send-message-or-throw!
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up."
   {:style/indent 0}
@@ -163,6 +196,47 @@
    (finally
     (prometheus/inc :metabase-email/messages))))
 
+(defn- retry-configuration []
+  (cond-> {:max-attempts (email-retry-max-attempts)
+           :initial-interval-millis (email-retry-initial-interval)
+           :multiplier (email-retry-multiplier)
+           :randomization-factor (email-retry-randomization-factor)
+           :max-interval-millis (email-retry-max-interval-millis)}
+    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
+
+(defn- make-retry-state
+  "Returns a notification sender wrapping [[send-password-reset-email!]] retrying
+  according to `retry-configuration`."
+  []
+  (let [retry (retry/random-exponential-backoff-retry "send-password-reset-retrying"
+                                                      (retry-configuration))]
+    {:retry retry
+     :sender (retry/decorate send-message-or-throw! retry)}))
+
+(defonce
+  ^{:private true
+    :doc "Stores the current retry state. Updated whenever the reset password
+  retry settings change. It starts with value `nil` but is set whenever the
+  settings change or when the first call with retry is made."}
+  retry-state
+  (atom nil))
+
+(defn- reconfigure-retrying [_old-value _new-value]
+  (log/info (trs "Reconfiguring reset password sender"))
+  (reset! retry-state (make-retry-state)))
+
+(defn send-email-retrying!
+  "Like [[send-password-reset-email!]] but retries sending on errors according
+  to the retry settings."
+  [& args]
+  (try
+    (when-not @retry-state
+      (compare-and-set! retry-state nil (make-retry-state)))
+    (apply (:sender @retry-state) args)
+    ;; This is called when our number of retries is up.
+    (catch Throwable e
+      (log/error e (trs "Error sending email!")))))
+
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
   `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
@@ -184,7 +258,7 @@
   log any exception, returning a [[SMTPStatus]]."
   [& {:as msg-args}]
   (try
-    (send-message-or-throw! msg-args)
+    (send-email-retrying! msg-args)
     (catch Throwable e
       (log/warn e (trs "Failed to send email"))
       {::error e})))

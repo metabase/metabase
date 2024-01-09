@@ -227,11 +227,11 @@
                               (u/lower-case-en email))]
       (if (some? sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token
-        (messages/send-password-reset-retrying! email sso-source nil is-active?)
+        (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-retrying! email nil password-reset-url is-active?)))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?)))
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
 

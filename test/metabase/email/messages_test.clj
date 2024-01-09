@@ -109,7 +109,7 @@
         (is (map? (first emails)))))))
 
 (defn- get-retry-metrics []
-  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'messages/retry-state)]
+  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'email/retry-state)]
     (bean (.getMetrics retry))))
 
 (defn- pos-metrics [m]
@@ -125,18 +125,23 @@
 
 (defn- reset-retry []
   (let [old (get-retry-metrics)]
-    (#'messages/reconfigure-retrying nil nil)
+    (#'email/reconfigure-retrying nil nil)
     old))
 
-(deftest email-password-reset-retry-test
+(def test-email {:subject      "Test email subject"
+                 :recipients   ["test@test.com"]
+                 :message-type :html
+                 :message      "test mmail body"})
+
+(deftest email-retry-test
   (testing "send email succeeds w/o retry"
     (with-redefs [email/send-email! mt/fake-inbox-email-fn]
       (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                          email-smtp-port 587]
         (mt/reset-inbox!)
-        (#'messages/reconfigure-retrying nil nil)
+        (#'email/reconfigure-retrying nil nil)
         (reset-retry)
-        (#'messages/send-password-reset-retrying! "test@test.com" nil "http://localhost/some/url" true)
+        (#'email/send-email-retrying! test-email)
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (pos-metrics (reset-retry))))
         (is (= 1 (count @mt/inbox))))))
@@ -146,22 +151,22 @@
                                          email-smtp-port 587]
         (mt/reset-inbox!)
         (reset-retry)
-        (#'messages/send-password-reset-retrying! "test@test.com" nil "http://localhost/some/url" true)
+        (#'email/send-email-retrying! test-email)
         (is (= {:numberOfFailedCallsWithRetryAttempt 1}
                (pos-metrics (reset-retry))))
         (is (= 0 (count @mt/inbox))))))
   (testing "send email succeeds w/ retry"
-    (let [retry-config (#'messages/retry-configuration)]
+    (let [retry-config (#'email/retry-configuration)]
       (try
         (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                      messages/retry-configuration (constantly (assoc retry-config
-                                                                      :max-attempts 2
-                                                                      :initial-interval-millis 1))]
+                      email/retry-configuration (constantly (assoc retry-config
+                                                                   :max-attempts 2
+                                                                   :initial-interval-millis 1))]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
             (reset-retry)
-            (#'messages/send-password-reset-retrying! "test@test.com" nil "http://localhost/some/url" true)
+            (#'email/send-email-retrying! test-email)
             (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                    (pos-metrics (reset-retry))))
             (is (= 1 (count @mt/inbox)))))
