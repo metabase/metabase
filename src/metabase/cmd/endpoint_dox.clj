@@ -35,7 +35,7 @@
   "Converts initialisms to upper case."
   [name initialisms]
   (let [re (re-pattern (str "(?i)(?:" (str/join "|" (map #(str % "\\b") initialisms)) ")"))]
-    (str/replace name re #(u/upper-case-en %))))
+    (str/replace name re u/upper-case-en)))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
