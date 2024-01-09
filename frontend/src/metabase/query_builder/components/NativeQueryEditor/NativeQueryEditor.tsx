@@ -765,6 +765,7 @@ export class NativeQueryEditor extends Component<
               <DataSourceSelectors
                 isNativeEditorOpen={isNativeEditorOpen}
                 query={query}
+                question={question}
                 readOnly={readOnly}
                 setDatabaseId={this.setDatabaseId}
                 setTableId={this.setTableId}

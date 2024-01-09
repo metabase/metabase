@@ -36,6 +36,7 @@ const MockNativeQueryEditor = ({
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}
           query={query}
+          question={question}
           readOnly={readOnly}
           setDatabaseId={onDatabaseIdChange}
           setTableId={onTableIdChange}
