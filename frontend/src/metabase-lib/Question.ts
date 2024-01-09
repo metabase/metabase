@@ -206,7 +206,7 @@ class Question {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: BaseQuery): Question {
+  setLegacyQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
