@@ -375,8 +375,8 @@
 
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-test-helpers-set-global-values!
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
         ;; make sure the URL doesn't include /api/ at the beginning like it normally would
         (binding [client/*url-prefix* ""]

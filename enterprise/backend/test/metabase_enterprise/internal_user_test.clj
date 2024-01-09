@@ -43,10 +43,9 @@
         (is (false? (contains? user-ids-minus-internal config/internal-mb-user-id))
             "Selecting Users with a clause to ignore internal users does not return the internal user."))
       ;; oss:
-      (do
-        (is (= (t2/select-fn-set :id User {:where [:not= :id config/internal-mb-user-id]})
-               (t2/select-fn-set :id User))
-            "Ignore internal user where clause does nothing in ee mode."))))
+      (is (= (t2/select-fn-set :id User {:where [:not= :id config/internal-mb-user-id]})
+             (t2/select-fn-set :id User))
+          "Ignore internal user where clause does nothing in ee mode.")))
   (is (= (setup/has-user-setup)
          (with-internal-user-restoration
            ;; there's no internal-user in this block

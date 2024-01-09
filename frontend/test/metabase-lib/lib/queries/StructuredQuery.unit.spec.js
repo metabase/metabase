@@ -114,7 +114,7 @@ function makeQueryWithoutNumericFields() {
     ],
   });
 
-  return new Question(questionDetail, metadata).query();
+  return new Question(questionDetail, metadata).legacyQuery();
 }
 
 // no numeric fields, but have linked table (FK) with a numeric field
@@ -171,7 +171,7 @@ function makeQueryWithLinkedTable() {
     ],
   });
 
-  return new Question(questionDetail, metadata).query();
+  return new Question(questionDetail, metadata).legacyQuery();
 }
 
 const getShortName = aggregation => aggregation.short;
@@ -295,7 +295,7 @@ describe("StructuredQuery", () => {
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
-        expect(query.query()["source-table"]).toBe(ORDERS_ID);
+        expect(query.legacyQuery()["source-table"]).toBe(ORDERS_ID);
       });
     });
     describe("setDatabase", () => {
@@ -443,7 +443,7 @@ describe("StructuredQuery", () => {
 
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
-        expect(query.aggregate(["count"]).query()).toEqual({
+        expect(query.aggregate(["count"]).legacyQuery()).toEqual({
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
@@ -654,21 +654,6 @@ describe("StructuredQuery", () => {
         expect(queryWithSegmentFilter.segments().length).toBe(1);
         // and they should actually be segments
         expect(queryWithSegmentFilter.segments()[0]).toBeInstanceOf(Segment);
-      });
-    });
-  });
-
-  describe("SORT METHODS", () => {
-    describe("sorts", () => {
-      it("return an empty array", () => {
-        expect(query.sorts()).toEqual([]);
-      });
-      it("return an array with the sort clause", () => {
-        expect(
-          makeQuery({
-            "order-by": [["asc", ["field", ORDERS.TOTAL, null]]],
-          }).sorts(),
-        ).toEqual([["asc", ["field", ORDERS.TOTAL, null]]]);
       });
     });
   });

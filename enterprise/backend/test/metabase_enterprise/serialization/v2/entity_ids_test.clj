@@ -20,7 +20,7 @@
     (is (true? (v2.entity-ids/seed-entity-ids!))))
   (testing "With a temp Collection with no entity ID"
     (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-test-helpers-set-global-values!
+      (mt/test-helpers-set-global-values!
         (mt/with-temp [Collection c {:name       "No Entity ID Collection"
                                      :slug       "no_entity_id_collection"
                                      :created_at now}]
@@ -35,25 +35,26 @@
             (is (= "998b109c"
                    (entity-id))))
           (testing "Error: duplicate entity IDs"
-            (mt/with-temp [Collection c2 {:name       "No Entity ID Collection"
-                                          :slug       "no_entity_id_collection"
-                                          :created_at now}]
-              (t2/update! Collection (:id c2) {:entity_id nil})
-              (letfn [(entity-id []
-                        (some-> (t2/select-one-fn :entity_id Collection :id (:id c2)) str/trim))]
-                (is (= nil
-                       (entity-id)))
-                (testing "Should return falsey on error"
-                  (is (= false
-                         (v2.entity-ids/seed-entity-ids!))))
-                (is (= nil
-                       (entity-id)))))))))))
+            (mt/test-helpers-set-global-values!
+              (mt/with-temp [Collection c2 {:name       "No Entity ID Collection"
+                                            :slug       "no_entity_id_collection"
+                                            :created_at now}]
+                (t2/update! Collection (:id c2) {:entity_id nil})
+                (letfn [(entity-id []
+                          (some-> (t2/select-one-fn :entity_id Collection :id (:id c2)) str/trim))]
+                  (is (= nil
+                         (entity-id)))
+                  (testing "Should return falsey on error"
+                    (is (= false
+                           (v2.entity-ids/seed-entity-ids!))))
+                  (is (= nil
+                         (entity-id))))))))))))
 
 (deftest drop-entity-ids-test
   (mt/with-empty-h2-app-db
-    (mt/with-test-helpers-set-global-values!
-      (testing "With a temp Collection with an entity ID"
-        (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+    (testing "With a temp Collection with an entity ID"
+      (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
+        (mt/test-helpers-set-global-values!
           (mt/with-temp [Collection c {:name       "No Entity ID Collection"
                                        :slug       "no_entity_id_collection"
                                        :created_at now}]
@@ -63,9 +64,10 @@
               (testing "Should return truthy on success"
                 (is (= true
                        (v2.entity-ids/drop-entity-ids!))))
-              (is (nil? (entity-id)))))))
-      (testing "empty table"
-        (testing "has no entity ids"
+              (is (nil? (entity-id))))))))
+    (testing "empty table"
+      (testing "has no entity ids"
+        (mt/test-helpers-set-global-values!
           (mt/with-temp [Collection _ {:name "No Entity ID Collection"
                                        :slug "no_entity_id_collection"}]
             (is (nil? (t2/select-fn-set :entity-id Dashboard)))

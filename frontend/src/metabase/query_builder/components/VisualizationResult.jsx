@@ -108,7 +108,7 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
-      const hasDrills = this.props.query.isEditable();
+      const hasDrills = question.isQueryEditable();
       return (
         <>
           <Visualization

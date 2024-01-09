@@ -40,7 +40,7 @@
 
 (deftest send-email-on-first-login-from-new-device-test
   (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (mt/with-temp [User {user-id :id, email :email, first-name :first_name}]
         (let [device              (str (random-uuid))
               original-maybe-send (var-get #'login-history/maybe-send-login-from-new-device-email)]
@@ -74,7 +74,7 @@
                                                       [:type [:= "text/html; charset=utf-8"]]
                                                       [:content :string]]]]]]]
                               @mt/inbox))
-                  (let [message (-> @mt/inbox (get email) first :body first :content)
+                  (let [message  (-> @mt/inbox (get email) first :body first :content)
                         site-url (public-settings/site-url)]
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                       (is (string? message))

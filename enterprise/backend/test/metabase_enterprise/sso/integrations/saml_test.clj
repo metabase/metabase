@@ -80,7 +80,7 @@
 
 (defmacro with-saml-default-setup [& body]
   ;; most saml tests make actual http calls, so ensuring any nested with-temp doesn't create transaction
-  `(mt/with-test-helpers-set-global-values!
+  `(mt/test-helpers-set-global-values!
      (mt/with-additional-premium-features #{:sso-saml}
        (call-with-login-attributes-cleared!
          (fn []

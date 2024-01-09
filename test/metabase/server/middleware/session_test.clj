@@ -21,6 +21,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
+   [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -249,7 +250,7 @@
                                             :user_id       (mt/user->id :lucky)
                                             :creator_id    (mt/user->id :lucky)
                                             :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  "mb_foobar"}]
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -289,12 +290,12 @@
                                             :user_id       (mt/user->id :lucky)
                                             :creator_id    (mt/user->id :lucky)
                                             :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  "mb_foobar"}
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}
                            :model/ApiKey _ {:name          "A superuser API Key"
                                             :user_id       (mt/user->id :crowberto)
                                             :creator_id    (mt/user->id :lucky)
                                             :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  "mb_superuser"}]
+                                            :unhashed_key  (u.secret/secret "mb_superuser")}]
     (testing "A valid API key works, and user info is added to the request"
       (is (= {:is-superuser?     false
               :is-group-manager? false

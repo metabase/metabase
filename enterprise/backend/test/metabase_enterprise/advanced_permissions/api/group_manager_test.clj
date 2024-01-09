@@ -299,13 +299,13 @@
 
 (deftest update-user-api-test
   (testing "PUT /api/user/:id"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (mt/with-user-in-groups
         [group {:name "New Group"}
          user  [group]]
         (mt/with-temp [User user-to-update]
           (letfn [(update-user-firstname! [req-user status]
-                    (testing (format "- update users firstname with %s user" (mt/user-descriptor user))
+                    (testing (format "- update users firstname with %s test-user" (mt/user-descriptor user))
                       (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
                                             {:first_name (mt/random-name)})))
                   (add-user-to-group! [req-user status group-to-add]

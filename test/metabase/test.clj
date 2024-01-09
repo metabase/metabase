@@ -85,6 +85,7 @@
   tu.misc/keep-me
   tu.public-setings/keep-me
   tu.random/keep-me
+  tu.thread-local/keep-me
   tu/keep-me
   tx.env/keep-me
   tx/keep-me)
@@ -239,6 +240,8 @@
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
+  with-non-admin-groups-no-collection-perms
+  with-all-users-data-perms-graph
   with-temp-env-var-value
   with-temp-dir
   with-temp-file
@@ -275,7 +278,7 @@
   random-email]
 
  [tu.thread-local
-  with-test-helpers-set-global-values!]
+  test-helpers-set-global-values!]
 
  [test.tz
   with-system-timezone-id]
@@ -306,5 +309,8 @@
 
 ;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
 (p/import-fn hawk.approx/malli malli=?)
+(p/import-fn hawk.approx/exactly exactly=?)
 
-(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, wraps the [[with-temp]] with [[mt/with-test-helpers-set-global-values!]]\n"))
+(alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
+  it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
+  global state of the application database.")

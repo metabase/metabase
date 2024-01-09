@@ -94,7 +94,7 @@
 
 (deftest reactivate-nested-field-when-parent-is-reactivated-test
   (testing "Nested fields get reactivated if the parent field gets reactivated"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
         ;; do the initial sync
         (sync-metadata/sync-db-metadata! db)

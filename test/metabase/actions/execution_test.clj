@@ -10,7 +10,7 @@
 
 (deftest fetch-values-save-execution-info-test
   (testing "fetch values for implicit action will save an execution info"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (mt/with-actions-enabled
         (let [dataset-query (mt/mbql-query venues {:fields [$id $name]})
               query (assoc

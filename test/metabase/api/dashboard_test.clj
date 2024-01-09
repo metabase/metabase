@@ -1504,7 +1504,7 @@
 
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (t2.with-temp/with-temp
         [Dashboard               {dashboard-id :id}  {}
          Card                    {card-id-1 :id}     {}
@@ -1596,7 +1596,7 @@
 
 (deftest e2e-update-cards-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (mt/with-temp
         [Dashboard           {dashboard-id :id}  {}
          Card                {card-id-1 :id}     {}
@@ -1611,57 +1611,57 @@
         ;; send a request that update and create and delete some cards at the same time
         (let [get-revision-count (fn [] (t2/count :model/Revision :model_id dashboard-id :model "Dashboard"))
               revisions-before   (get-revision-count)
-              cards (:dashcards (mt/user-http-request
-                                 :crowberto :put 200 (format "dashboard/%d" dashboard-id)
-                                 {:dashcards [{:id      dashcard-id-1
-                                               :size_x  4
-                                               :size_y  4
-                                               :col     1
-                                               :row     1
-                                               ;; update series for card 1
-                                               :series  [{:id series-id-2}]
-                                               :card_id card-id-1}
-                                              {:id     dashcard-id-2
-                                               :size_x 2
-                                               :size_y 2
-                                               :col    2
-                                               :row    2}
-                                              ;; remove the dashcard3 and create a new card using negative numbers
-                                              {:id      -1
-                                               :size_x  1
-                                               :size_y  1
-                                               :col     3
-                                               :row     3
-                                               :card_id card-id-2
-                                               :series  [{:id series-id-1}]}]
-                                  :tabs      []}))
-              updated-card-1 {:id           dashcard-id-1
-                              :card_id      card-id-1
-                              :dashboard_id dashboard-id
-                              :size_x       4
-                              :size_y       4
-                              :action_id    nil
-                              :row          1
-                              :col          1
-                              :series       [{:name "Series Card 2"}]}
-              updated-card-2 {:id           dashcard-id-2
-                              :card_id      card-id-1
-                              :dashboard_id dashboard-id
-                              :size_x       2
-                              :size_y       2
-                              :action_id    nil
-                              :row          2
-                              :col          2
-                              :series       []}
-              new-card       {:card_id      card-id-2
-                              :dashboard_id dashboard-id
-                              :size_x       1
-                              :size_y       1
-                              :action_id    nil
-                              :row          3
-                              :col          3
-                              :series       [{:name "Series Card 1"}]}
-              revisions-after (get-revision-count)]
+              cards              (:dashcards (mt/user-http-request
+                                              :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                                              {:dashcards [{:id      dashcard-id-1
+                                                            :size_x  4
+                                                            :size_y  4
+                                                            :col     1
+                                                            :row     1
+                                                            ;; update series for card 1
+                                                            :series  [{:id series-id-2}]
+                                                            :card_id card-id-1}
+                                                           {:id     dashcard-id-2
+                                                            :size_x 2
+                                                            :size_y 2
+                                                            :col    2
+                                                            :row    2}
+                                                           ;; remove the dashcard3 and create a new card using negative numbers
+                                                           {:id      -1
+                                                            :size_x  1
+                                                            :size_y  1
+                                                            :col     3
+                                                            :row     3
+                                                            :card_id card-id-2
+                                                            :series  [{:id series-id-1}]}]
+                                               :tabs      []}))
+              updated-card-1     {:id           dashcard-id-1
+                                  :card_id      card-id-1
+                                  :dashboard_id dashboard-id
+                                  :size_x       4
+                                  :size_y       4
+                                  :action_id    nil
+                                  :row          1
+                                  :col          1
+                                  :series       [{:name "Series Card 2"}]}
+              updated-card-2     {:id           dashcard-id-2
+                                  :card_id      card-id-1
+                                  :dashboard_id dashboard-id
+                                  :size_x       2
+                                  :size_y       2
+                                  :action_id    nil
+                                  :row          2
+                                  :col          2
+                                  :series       []}
+              new-card           {:card_id      card-id-2
+                                  :dashboard_id dashboard-id
+                                  :size_x       1
+                                  :size_y       1
+                                  :action_id    nil
+                                  :row          3
+                                  :col          3
+                                  :series       [{:name "Series Card 1"}]}
+              revisions-after    (get-revision-count)]
          (is (=? [updated-card-1
                   updated-card-2
                   new-card]
@@ -3388,7 +3388,7 @@
 
 (deftest dashboard-card-query-export-format-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
-    (mt/with-test-helpers-set-global-values!
+    (mt/test-helpers-set-global-values!
       (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard, {card-id :id} :card, {dashcard-id :id} :dashcard}]
         (doseq [export-format [:csv :json :xlsx]]
           (testing (format "Export format = %s" export-format)

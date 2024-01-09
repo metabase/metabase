@@ -112,8 +112,10 @@
                              (not grouping) (str/replace #"," ""))]
     (fn [value]
       (if (number? value)
-        (let [scaled-value (* value (or scale 1))
-              decimals-in-value (digits-after-decimal (if percent? (* 100 scaled-value) scaled-value))
+        (let [scaled-value      (cond-> (* value (or scale 1))
+                                  percent?
+                                  (* 100))
+              decimals-in-value (digits-after-decimal scaled-value)
               decimal-digits (cond
                                decimals decimals ;; if user ever specifies # of decimals, use that
                                integral? 0
@@ -127,22 +129,25 @@
                                            decimals-in-value))))
               fmt-str (cond-> base
                         (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
-                        scientific? (str "E0")
-                        percent?    (str "%"))
+                        scientific? (str "E0"))
               fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
           (map->NumericWrapper
            {:num-value value
-            :num-str   (str (when prefix prefix)
-                            (when (and currency? (or (nil? currency-style)
-                                                     (= currency-style "symbol")))
-                              (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-                            (when (and currency? (= currency-style "code"))
-                              (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                            (cond-> (.format fmtr scaled-value)
-                              (not decimals) (strip-trailing-zeroes decimal))
-                            (when (and currency? (= currency-style "name"))
-                              (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                            (when suffix suffix))}))
+            :num-str   (let [inline-currency? (and currency?
+                                                   (false? (::mb.viz/currency-in-header column-settings)))]
+                         (str (when prefix prefix)
+                              (when (and inline-currency? (or (nil? currency-style)
+                                                       (= currency-style "symbol")))
+                                (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
+                              (when (and inline-currency? (= currency-style "code"))
+                                (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
+                              (cond-> (.format fmtr scaled-value)
+                                (and (not currency?) (not decimals))
+                                (strip-trailing-zeroes decimal)
+                                percent?    (str "%"))
+                              (when (and inline-currency? (= currency-style "name"))
+                                (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
+                              (when suffix suffix)))}))
         value))))
 
 (s/defn format-number :- NumericWrapper

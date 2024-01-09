@@ -191,8 +191,8 @@
 (deftest user-full-name-test
   (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
     (mt/with-test-user :crowberto
-      (mt/with-premium-features #{:audit-app}
-        (mt/with-test-helpers-set-global-values!
+      (mt/test-helpers-set-global-values!
+        (mt/with-premium-features #{:audit-app}
           (mt/with-temp [User a {:first_name "a" :last_name nil :email "a@metabase.com"}
                          User b {:first_name nil :last_name "b" :email "b@metabase.com"}
                          User c {:first_name nil :last_name nil :email "c@metabase.com"}]
@@ -208,8 +208,8 @@
 (deftest user-login-method-test
   (testing "User login method takes into account both the google_auth and sso_source columns"
     (mt/with-test-user :crowberto
-      (mt/with-premium-features #{:audit-app}
-        (mt/with-test-helpers-set-global-values!
+      (mt/test-helpers-set-global-values!
+        (mt/with-premium-features #{:audit-app}
           (mt/with-temp [User a {:email "a@metabase.com" :sso_source nil}
                          User b {:email "b@metabase.com" :sso_source :google}
                          User c {:email "c@metabase.com" :sso_source :saml}

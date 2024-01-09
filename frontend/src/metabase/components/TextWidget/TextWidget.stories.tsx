@@ -1,5 +1,5 @@
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import { useArgs } from "@storybook/addons";
 import { TextWidget } from "./TextWidget";
 
 export default {

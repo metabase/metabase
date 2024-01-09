@@ -18,11 +18,11 @@
         :args [dashboard-name]}))))
 
 (deftest table-test
-  (mt/with-test-helpers-set-global-values!
-    (mt/with-premium-features #{}
-      (is (= []
-             (mt/rows (dashboard-subscriptions (mt/random-name)))))
-      (let [dashboard-name (mt/random-name)]
+  (mt/with-premium-features #{}
+    (is (= []
+           (mt/rows (dashboard-subscriptions (mt/random-name)))))
+    (let [dashboard-name (mt/random-name)]
+      (mt/test-helpers-set-global-values!
         (mt/with-temp [Collection {collection-id :id, collection-name :name}]
           ;; test with both the Root Collection and a non-Root Collection
           (doseq [{:keys [collection-id collection-name]} [{:collection-id   collection-id

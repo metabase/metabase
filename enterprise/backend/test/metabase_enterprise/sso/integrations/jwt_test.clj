@@ -32,7 +32,7 @@
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (defmacro with-sso-jwt-token
-  "Stubs the `premium-features/*token-features*` function to simulate a premium token with the `:sso-jwt` feature.
+  "Stubs the [[premium-features/*token-features*]] function to simulate a premium token with the `:sso-jwt` feature.
    This needs to be included to test any of the JWT features."
   [& body]
   `(mt/with-additional-premium-features #{:sso-jwt}
@@ -54,7 +54,7 @@
       ~@body)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
-  `(mt/with-test-helpers-set-global-values!
+  `(mt/test-helpers-set-global-values!
      (mt/with-premium-features #{:audit-app}
        (disable-other-sso-types
         (fn []

@@ -9,10 +9,9 @@
    [toucan2.connection :as t2.connection]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^{:dynamic true
-       :private true
-       :doc     "Used to detect whether we're in a nested [[with-temp]]. Default is false."}
-  *in-tx* false)
+(def ^:dynamic ^:private *in-tx*
+  "Used to detect whether we're in a nested [[with-temp]]. Default is false."
+  false)
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :default
   "Initialize the DB before doing the other with-temp stuff.
@@ -23,7 +22,6 @@
   ((resolve 'metabase.test.initialize/initialize-if-needed!) :db)
   ;; so with-temp-defaults are loaded
   (classloader/require 'metabase.test.util)
-
   ;; run `f` in a transaction if it's the top-level with-temp
   (if (and tu.thread-local/*thread-local* (not *in-tx*))
     (binding [*in-tx* true]

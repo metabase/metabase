@@ -15,9 +15,13 @@ Metabase is an open-source business intelligence platform. You can use Metabase 
 
 ## First steps
 
+### Metabase Cloud
+
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
+
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
-Run as a JAR, using Docker, or on Metabase Cloud.
+Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/checkout).
 
 ### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 
@@ -158,6 +162,7 @@ Metabase's reference documentation.
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
 - [Interactive embedding](./embedding/interactive-embedding.md)
+- [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
 - [Static embedding](./embedding/static-embedding.md)
 - [Parameters for static embeds](./embedding/static-embedding-parameters.md)
 
