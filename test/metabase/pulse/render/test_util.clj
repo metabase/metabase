@@ -644,14 +644,18 @@
     (edit-nodes tree matcher edit-fn)))
 
 (defn render-card-as-hiccup
+  "Render the card with `card-id` using the static-viz rendering pipeline as a hiccup data structure.
+
+  Redefines some internal rendering functions to keep svg from being rendered into a png."
   [card-id]
-  (let [{:keys [dataset_query] :as card} (t2/select-one :model/Card :id card-id)
-        {:keys [data]}                    (qp/process-query dataset_query)]
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+        query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
+        results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
     (with-redefs [js-svg/svg-string->bytes       identity
                   image-bundle/make-image-bundle (fn [_ s]
                                                    {:image-src   s
                                                     :render-type :inline})]
-      (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
+      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
                         :content)]
         (-> content
             (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
@@ -659,6 +663,9 @@
             (edit-nodes wrapped-children? unwrap-children))))))
 
 (defn render-card-as-hickory
+  "Render the card with `card-id` using the static-viz rendering pipeline as a hickory data structure.
+  Redefines some internal rendering functions to keep svg from being rendered into a png.
+  Functions from `hickory.select` can be used on the output of this function and are particularly useful for writing test assertions."
   [card-id]
   (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
         query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
