@@ -312,9 +312,14 @@
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
+;; FIXME: is there a cleaner way to setup `namespaces-toskip`?
+;; I was thinking we could `swap!` it from the namespaces themselves with:
+;; `(swap namespaces-toskip conj *ns*)`
+(require ['metabase.lib.metadata.calculation])
+
 (def namespaces-toskip
   "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
-  (atom #{}))
+  (atom #{(find-ns 'metabase.lib.metadata.calculation)}))
 
 (def ^:private ^:dynamic *skip-ns-decision-fn*
   (core/fn skip-ns-decision-fn []
@@ -380,10 +385,3 @@
                               {:fn-name (list 'quote (first fn-tail))}
                               {})]
           (instrumented-fn-form error-context parsed)))))
-
-[(binding [*skip-ns-decision-fn* (constantly true)]
-   ((fn :- :string [x] x) 3))
-
- (binding [*skip-ns-decision-fn* (constantly false)]
-   (try ((fn :- :string [x] x) 3)
-        (catch Exception e (ex-message e))))]
