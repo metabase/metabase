@@ -31,7 +31,7 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
-(defn- disable-other-sso-types! [thunk]
+(defn- disable-other-sso-types [thunk]
   (classloader/require 'metabase.api.ldap)
   (let [current-features (premium-features/*token-features*)]
     ;; The :sso-jwt token is needed to set the jwt-enabled setting
@@ -42,9 +42,7 @@
           (mt/with-premium-features current-features
             (thunk)))))))
 
-(comment
- ;; maybe we'll need it later
- disable-other-sso-types!)
+(use-fixtures :each disable-other-sso-types)
 
 (def ^:private default-idp-uri            "http://test.idp.metabase.com")
 (def ^:private default-redirect-uri       "http://localhost:3000/test")
@@ -436,43 +434,42 @@
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
-    (mt/with-test-helpers-set-global-values!
-      (mt/with-premium-features #{:audit-app}
-        (do-with-some-validators-disabled
-         (fn []
-           (with-saml-default-setup
-             (try
-              (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
-              (let [req-options (saml-post-request-options (new-user-saml-test-response)
-                                                           (saml/str->base64 default-redirect-uri))]
-                (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options))))
-              (let [new-user (t2/select-one User :email "newuser@metabase.com")]
-                (is (= {:email        "newuser@metabase.com"
-                        :first_name   "New"
-                        :is_qbnewb    true
-                        :is_superuser false
-                        :id           true
-                        :last_name    "User"
-                        :date_joined  true
-                        :common_name  "New User"}
-                       (-> (mt/boolean-ids-and-timestamps new-user)
-                           (dissoc :last_login))))
-                (testing "User Invite Event is logged."
-                  (is (= {:details  {:email      "newuser@metabase.com"
-                                     :first_name "New"
-                                     :last_name  "User"
-                                     :user_group_memberships [{:id 1}]
-                                     :sso_source "saml"}
-                          :model    "User"
-                          :model_id (:id new-user)
-                          :topic    :user-invited
-                          :user_id  nil}
-                         (mt/latest-audit-log-entry :user-invited (:id new-user))))))
-              (testing "attributes"
-                (is (= (some-saml-attributes "newuser")
-                       (saml-login-attributes "newuser@metabase.com"))))
-              (finally
-               (t2/delete! User :%lower.email "newuser@metabase.com"))))))))))
+    (mt/with-premium-features #{:audit-app}
+      (do-with-some-validators-disabled
+       (fn []
+         (with-saml-default-setup
+           (try
+            (is (not (t2/exists? User :%lower.email "newuser@metabase.com")))
+            (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options))))
+            (let [new-user (t2/select-one User :email "newuser@metabase.com")]
+              (is (= {:email        "newuser@metabase.com"
+                      :first_name   "New"
+                      :is_qbnewb    true
+                      :is_superuser false
+                      :id           true
+                      :last_name    "User"
+                      :date_joined  true
+                      :common_name  "New User"}
+                     (-> (mt/boolean-ids-and-timestamps new-user)
+                         (dissoc :last_login))))
+              (testing "User Invite Event is logged."
+                (is (= {:details  {:email      "newuser@metabase.com"
+                                   :first_name "New"
+                                   :last_name  "User"
+                                   :user_group_memberships [{:id 1}]
+                                   :sso_source "saml"}
+                        :model    "User"
+                        :model_id (:id new-user)
+                        :topic    :user-invited
+                        :user_id  nil}
+                       (mt/latest-audit-log-entry :user-invited (:id new-user))))))
+            (testing "attributes"
+              (is (= (some-saml-attributes "newuser")
+                     (saml-login-attributes "newuser@metabase.com"))))
+            (finally
+             (t2/delete! User :%lower.email "newuser@metabase.com")))))))))
 
 (deftest login-update-account-test
   (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
