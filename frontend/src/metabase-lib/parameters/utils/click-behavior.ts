@@ -21,6 +21,7 @@ import {
   formatDateTimeForParameter,
   formatDateToRangeForParameter,
 } from "metabase/lib/formatting/date";
+import { checkNotNull } from "metabase/lib/types";
 import {
   dimensionFilterForParameter,
   variableFilterForParameter,
@@ -32,6 +33,7 @@ import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 interface Target {
   id: Parameter["id"];
@@ -193,6 +195,44 @@ export function getTargetsForQuestion(question: Question): Target[] {
     };
   });
 }
+
+export function getTargetsForNativeQuestion(question: Question): Target[] {
+  const legacyQuery = question.legacyQuery() as NativeQuery;
+  return legacyQuery.variables().map(o => {
+    const tag = checkNotNull(o.tag());
+    const id = tag.id;
+    const target: ClickBehaviorTarget = { type: "variable", id: tag.name };
+    let parameterSourceFilter: SourceFilters["parameter"] = () => true;
+    const type = o.tag()?.type;
+    const parentType = type
+      ? {
+          card: undefined,
+          dimension: undefined,
+          snippet: undefined,
+          text: Text,
+          number: Number,
+          date: Temporal,
+        }[type]
+      : undefined;
+    parameterSourceFilter = parameter =>
+      variableFilterForParameter(parameter)(o);
+
+    return {
+      id,
+      target,
+      name: o.displayName(),
+      sourceFilters: {
+        column: column =>
+          Boolean(
+            column.base_type && parentType && isa(column.base_type, parentType),
+          ),
+        parameter: parameterSourceFilter,
+        userAttribute: () => parentType === Text,
+      },
+    };
+  });
+}
+
 export function getTargetsForDashboard(
   dashboard: Dashboard,
   dashcard: DashboardCard,
