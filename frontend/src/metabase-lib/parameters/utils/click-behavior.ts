@@ -22,15 +22,14 @@ import {
   formatDateToRangeForParameter,
 } from "metabase/lib/formatting/date";
 import { checkNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
 import {
-  dimensionFilterForParameter,
+  columnFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
 import type { ClickObjectDimension as DimensionType } from "metabase-lib/types";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
-import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
-import { TemplateTagDimension } from "metabase-lib/Dimension";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -133,77 +132,47 @@ function notRelativeDateOrRange({ type }: Parameter) {
 }
 
 export function getTargetsForQuestion(question: Question): Target[] {
-  const query = question.legacyQuery();
-  return [...query.dimensionOptions().all(), ...query.variables()].map(o => {
-    let id, target: ClickBehaviorTarget;
-    if (o instanceof TemplateTagVariable || o instanceof TemplateTagDimension) {
-      let name;
-      ({ id, name } = o.tag());
-      target = { type: "variable", id: name };
-    } else if ("mbql" in o) {
-      const dimension: ClickBehaviorDimensionTarget["dimension"] = [
-        "dimension",
-        o.mbql(),
-      ];
-      id = JSON.stringify(dimension);
-      target = { type: "dimension", id, dimension };
-    } else {
-      throw new Error("Unknown target type");
-    }
-    let parentType: string | undefined | null;
-    let parameterSourceFilter: SourceFilters["parameter"] = () => true;
-    if (o instanceof TemplateTagVariable) {
-      const type = o.tag()?.type;
-      parentType = type
-        ? {
-            card: undefined,
-            dimension: undefined,
-            snippet: undefined,
-            text: Text,
-            number: Number,
-            date: Temporal,
-          }[type]
-        : undefined;
-      parameterSourceFilter = parameter =>
-        variableFilterForParameter(parameter)(o);
-    } else {
-      const field = o.field();
+  if (question.isStructured()) {
+    return getTargetsForStructuredQuestion(question);
+  }
+  if (question.isNative()) {
+    return getTargetsForNativeQuestion(question);
+  }
+  return [];
+}
 
-      if (field != null) {
-        const { base_type } = field;
-        parentType =
-          [Temporal, Number, Text].find(
-            t => typeof base_type === "string" && isa(base_type, t),
-          ) || base_type;
-        parameterSourceFilter = parameter =>
-          dimensionFilterForParameter(parameter)(o);
-      }
-    }
+function getTargetsForStructuredQuestion(question: Question): Target[] {
+  const query = question.query();
+  const stageIndex = -1;
+  return Lib.visibleColumns(query, stageIndex).map(targetColumn => {
+    const dimension: ClickBehaviorDimensionTarget["dimension"] = [
+      "dimension",
+      Lib.legacyRef(targetColumn),
+    ];
+    const id = JSON.stringify(dimension);
+    const target: ClickBehaviorTarget = { type: "dimension", id, dimension };
 
     return {
       id,
       target,
-      name: o.displayName({ includeTable: true }),
+      name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: column =>
-          Boolean(
-            column.base_type && parentType && isa(column.base_type, parentType),
-          ),
-        parameter: parameterSourceFilter,
-        userAttribute: () => parentType === Text,
+        column: sourceColumn =>
+          Lib.isCompatibleType(sourceColumn, targetColumn),
+        parameter: parameter =>
+          columnFilterForParameter(parameter)(targetColumn),
+        userAttribute: () => Lib.isString(targetColumn),
       },
     };
   });
 }
 
-export function getTargetsForNativeQuestion(question: Question): Target[] {
+function getTargetsForNativeQuestion(question: Question): Target[] {
   const legacyQuery = question.legacyQuery() as NativeQuery;
-  return legacyQuery.variables().map(o => {
-    const tag = checkNotNull(o.tag());
-    const id = tag.id;
-    const target: ClickBehaviorTarget = { type: "variable", id: tag.name };
-    let parameterSourceFilter: SourceFilters["parameter"] = () => true;
-    const type = o.tag()?.type;
+  return legacyQuery.variables().map(variable => {
+    const tag = checkNotNull(variable.tag());
+    const { id, type, name } = tag;
+    const target: ClickBehaviorTarget = { type: "variable", id: name };
     const parentType = type
       ? {
           card: undefined,
@@ -214,19 +183,17 @@ export function getTargetsForNativeQuestion(question: Question): Target[] {
           date: Temporal,
         }[type]
       : undefined;
-    parameterSourceFilter = parameter =>
-      variableFilterForParameter(parameter)(o);
 
     return {
       id,
       target,
-      name: o.displayName(),
+      name: variable.displayName(),
       sourceFilters: {
         column: column =>
           Boolean(
             column.base_type && parentType && isa(column.base_type, parentType),
           ),
-        parameter: parameterSourceFilter,
+        parameter: parameter => variableFilterForParameter(parameter)(variable),
         userAttribute: () => parentType === Text,
       },
     };
