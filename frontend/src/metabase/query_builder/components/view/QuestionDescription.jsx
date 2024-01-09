@@ -29,7 +29,7 @@ const QuestionDescription = ({
         : aggregations
             .map(
               aggregation =>
-                Lib.displayInfo(query, stageIndex, aggregation).displayName,
+                Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
             )
             .join(t` and `);
     const breakoutDescription =
@@ -44,7 +44,7 @@ const QuestionDescription = ({
         : breakouts
             .map(
               breakout =>
-                Lib.displayInfo(query, stageIndex, breakout).displayName,
+                Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
             )
             .join(t` and `);
     if (aggregationDescription || breakoutDescription) {
