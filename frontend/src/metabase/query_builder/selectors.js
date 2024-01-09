@@ -570,11 +570,6 @@ export const getIsSavedQuestionChanged = createSelector(
   },
 );
 
-export const getLegacyQuery = createSelector(
-  [getQuestion],
-  question => question && question.legacyQuery(),
-);
-
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
   (question, isDirty) => {

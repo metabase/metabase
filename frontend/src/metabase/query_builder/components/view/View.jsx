@@ -11,7 +11,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
 import { TimeseriesChrome } from "metabase/querying";
 
-import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -98,8 +97,7 @@ class View extends Component {
         <SummarizeSidebar
           query={query}
           onQueryChange={nextQuery => {
-            const datesetQuery = Lib.toLegacyQuery(nextQuery);
-            const nextQuestion = question.setDatasetQuery(datesetQuery);
+            const nextQuestion = question._setMLv2Query(nextQuery);
             updateQuestion(nextQuestion.setDefaultDisplay(), { run: true });
           }}
           onClose={onCloseSummary}
@@ -223,8 +221,8 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, legacyQuery, card, height, isDirty, isNativeEditorOpen } =
-      this.props;
+    const { question, card, height, isDirty, isNativeEditorOpen } = this.props;
+    const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
@@ -252,14 +250,10 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const {
-      legacyQuery,
-      mode,
-      parameters,
-      isLiveResizable,
-      setParameterValue,
-    } = this.props;
+    const { question, mode, parameters, isLiveResizable, setParameterValue } =
+      this.props;
 
+    const legacyQuery = question.legacyQuery();
     const queryMode = mode && mode.queryMode();
     const isNative = legacyQuery instanceof NativeQuery;
     const validationError = _.first(legacyQuery.validate?.());
@@ -301,7 +295,6 @@ class View extends Component {
   render() {
     const {
       question,
-      legacyQuery,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -319,6 +312,7 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
+    const legacyQuery = question.legacyQuery();
     const isStructured = legacyQuery instanceof StructuredQuery;
 
     const isNewQuestion =
