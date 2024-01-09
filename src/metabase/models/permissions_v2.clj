@@ -43,7 +43,7 @@
 
 (def ^:private CollectionPermissions
   "Permissions which apply to collections"
-  {:collection {:model  :model/Collection :values [:curate :view :no-access]}})
+  {:collection {:model :model/Collection :values [:curate :view :no-access]}})
 
 (def ^:private ApplicationPermissions
   "Permissions which apply to the application as a whole, rather than being linked to a specific model"
@@ -65,6 +65,7 @@
   "Malli spec for a keyword that matches any value in [[Permissions]]."
   (into [:enum {:error/message "Invalid permission value"}]
         (distinct (mapcat :values (vals Permissions)))))
+
 
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
