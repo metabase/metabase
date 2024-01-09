@@ -14,6 +14,7 @@ import RunButtonWithTooltip from "./RunButtonWithTooltip";
 export default class QueryVisualization extends Component {
   constructor(props, context) {
     super(props, context);
+    this.state = {};
   }
 
   static defaultProps = {
