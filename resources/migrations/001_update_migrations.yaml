@@ -5123,6 +5123,14 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v49.00-059
+      author: qnkhuat
+      comment: Added 0.49.0 - unify type of time columns
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.UnifyTimeColumnsType"
+
+  - changeSet:
       id: v49.00-060
       author: qnkhuat
       comment: >-
@@ -5145,7 +5153,6 @@ databaseChangeLog:
             type: mysql,mariadb
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
 
 ########################################################################################################################
 #
