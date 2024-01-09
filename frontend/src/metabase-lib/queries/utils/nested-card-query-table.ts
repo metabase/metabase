@@ -10,8 +10,11 @@ import { createVirtualField, createVirtualTable } from "./virtual-table";
 
 // This function expects a `sourceTableId` to exist in the `metadata.table` cache
 // It also expects the card associated with the `sourceTableId` to exist in the `metadata.question` cache
-export function getNestedCardTable(query: StructuredQuery): Table | null {
-  const sourceTableId = query.sourceTableId();
+export function getNestedCardTable(
+  question: Question,
+  query: StructuredQuery,
+): Table | null {
+  const sourceTableId = question.tableId();
   const metadata = query.metadata();
   const nestedCardTable = metadata.table(sourceTableId);
   if (nestedCardTable) {
@@ -39,7 +42,7 @@ export function getDatasetTable(
   const composedDatasetQuestion = question.composeDataset();
   const composedQuestionQuery =
     composedDatasetQuestion.legacyQuery() as StructuredQuery;
-  return getNestedCardTable(composedQuestionQuery);
+  return getNestedCardTable(question, composedQuestionQuery);
 }
 
 function createVirtualTableUsingQuestionMetadata(question: Question): Table {

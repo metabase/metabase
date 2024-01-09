@@ -5,6 +5,7 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import * as Lib from "metabase-lib";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -480,7 +481,7 @@ class Question {
     const query = this.legacyQuery();
 
     // we want to check the metadata for the underlying table, not the model
-    const table = query.sourceTable();
+    const table = this.table();
 
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
@@ -835,14 +836,15 @@ class Question {
     return db ? db.id : null;
   }
 
-  table(): Table | null | undefined {
-    const query = this.legacyQuery();
-    return query && typeof query.table === "function" ? query.table() : null;
+  table(): Table | null {
+    const tableId = this.tableId();
+    return tableId != null ? this.metadata().table(tableId) : null;
   }
 
-  tableId(): TableId | null | undefined {
-    const table = this.table();
-    return table ? table.id : null;
+  tableId(): TableId | null {
+    const query = this.query();
+    const tableId = Lib.sourceTableOrCardId(query);
+    return tableId;
   }
 
   isArchived(): boolean {

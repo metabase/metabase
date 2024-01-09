@@ -20,6 +20,7 @@ import type {
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -250,12 +251,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table ID, if a table is selected.
    */
   sourceTableId(): TableId | null | undefined {
-    return this.legacyQuery()?.["source-table"];
-  }
-
-  sourceTable(): Table | null | undefined {
-    const tableId = this.sourceTableId();
-    return tableId != null ? this._metadata.table(tableId) : null;
+    const query = this.getMLv2Query();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    return sourceTableId;
   }
 
   /**
