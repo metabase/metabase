@@ -145,7 +145,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns true if this query is in a state where it can be run.
    */
   canRun() {
-    return !!(this.sourceTableId() || this.sourceQuery());
+    return !!(this._sourceTableId() || this.sourceQuery());
   }
 
   /**
@@ -249,8 +249,9 @@ class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns the table ID, if a table is selected.
+   * @deprecated Use MLv2
    */
-  sourceTableId(): TableId | null | undefined {
+  private _sourceTableId(): TableId | null | undefined {
     const query = this.getMLv2Query();
     const sourceTableId = Lib.sourceTableOrCardId(query);
     return sourceTableId;
@@ -260,7 +261,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns a new query with the provided Table ID set.
    */
   setSourceTableId(tableId: TableId): StructuredQuery {
-    if (tableId !== this.sourceTableId()) {
+    if (tableId !== this._sourceTableId()) {
       return new StructuredQuery(
         this._originalQuestion,
         chain(this.datasetQuery())
@@ -279,7 +280,7 @@ class StructuredQuery extends AtomicQuery {
    * @deprecated: use sourceTableId
    */
   tableId(): TableId | null | undefined {
-    return this.sourceTableId();
+    return this._sourceTableId();
   }
 
   /**
@@ -1498,7 +1499,7 @@ class StructuredQuery extends AtomicQuery {
       });
     }
 
-    const tableId = this.sourceTableId();
+    const tableId = this._sourceTableId();
     if (tableId) {
       addDependency({
         type: "table",
