@@ -126,11 +126,6 @@ class StructuredQuery extends AtomicQuery {
     return this.question().query();
   }
 
-  private updateWithMLv2(nextQuery: Query) {
-    const nextMLv1Query = ML.toLegacyQuery(nextQuery);
-    return this.setDatasetQuery(nextMLv1Query);
-  }
-
   /* Query superclass methods */
 
   /**
