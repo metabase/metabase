@@ -2,12 +2,16 @@ import type { FieldReference } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
 
 import type StructuredQuery from "../StructuredQuery";
 import { createVirtualTable, createVirtualField } from "./virtual-table";
 import { getDatasetTable, getNestedCardTable } from "./nested-card-query-table";
 
-export function getStructuredQueryTable(query: StructuredQuery): Table | null {
+export function getStructuredQueryTable(
+  question: Question,
+  query: StructuredQuery,
+): Table | null {
   const sourceQuery = query.sourceQuery();
   // 1. Query has a source query. Use the source query as a table.
   if (sourceQuery) {
@@ -21,7 +25,6 @@ export function getStructuredQueryTable(query: StructuredQuery): Table | null {
   }
 
   // 3. The query's question is a saved dataset.
-  const question = query.question();
   const isDataset = question?.isDataset() && question.isSaved();
   if (isDataset) {
     return getDatasetTable(query);

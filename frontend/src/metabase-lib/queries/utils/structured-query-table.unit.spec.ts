@@ -91,6 +91,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     const virtualTable = metadata.table(cardTable.id) as Table;
 
     const table = getStructuredQueryTable(
+      nestedQuestion,
       nestedQuestion.legacyQuery() as StructuredQuery,
     );
 
@@ -108,6 +109,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     const model = metadata.question(modelCard.id) as Question;
 
     const table = getStructuredQueryTable(
+      model,
       model.legacyQuery() as StructuredQuery,
     );
 
@@ -137,6 +139,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
     const table = getStructuredQueryTable(
+      sourceQueryQuestion,
       sourceQueryQuestion.legacyQuery() as StructuredQuery,
     );
 
@@ -181,6 +184,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     const ordersTable = metadata.table(ORDERS_ID) as Table;
 
     const table = getStructuredQueryTable(
+      ordersTable,
       ordersTable.legacyQuery() as StructuredQuery,
     );
 

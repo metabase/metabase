@@ -344,7 +344,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this);
+    return getStructuredQueryTable(this.question(), this);
   });
 
   /**
