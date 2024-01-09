@@ -38,7 +38,7 @@ export const InteractiveEmbeddingCTA = () => {
     // TODO: Check padding because design keeps using non-mantine-standard units
     <Box pos="relative">
       <ProBadge
-        bg="brand.1"
+        bg="brand"
         py="0.125rem"
         px="0.375rem"
         pos="absolute"
@@ -76,7 +76,7 @@ export const InteractiveEmbeddingCTA = () => {
             <Text inline lh="unset" fz="sm">
               {description}
               {"  "}
-              <Text inline inherit span color="brand.1" fw={700}>
+              <Text inline inherit span color="brand" fw={700}>
                 {linkText}
               </Text>
             </Text>
