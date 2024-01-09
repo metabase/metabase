@@ -315,15 +315,13 @@
 ;; FIXME: is there a cleaner way to setup `namespaces-toskip`?
 ;; I was thinking we could `swap!` it from the namespaces themselves with:
 ;; `(swap namespaces-toskip conj *ns*)`
-(require ['metabase.lib.metadata.calculation])
-
 (def namespaces-toskip
   "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
-  (atom #{(find-ns 'metabase.lib.metadata.calculation)}))
+  (atom #{"metabase.lib.metadata.calculation"}))
 
 (def ^:private ^:dynamic *skip-ns-decision-fn*
   (core/fn skip-ns-decision-fn []
-    (and config/is-prod? (contains? @namespaces-toskip *ns*))))
+    (and config/is-prod? (contains? @namespaces-toskip (str *ns*)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]].
