@@ -207,9 +207,11 @@ describe("scenarios > models metadata", () => {
     openQuestionActions();
     popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.findByTestId("native-query-editor").type(
-      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS LIMIT 5",
-    );
+    cy.get(".ace_text-input")
+      .first()
+      .focus()
+      .invoke("val", "")
+      .type("SELECT TOTAL FROM ORDERS LIMIT 5");
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");
