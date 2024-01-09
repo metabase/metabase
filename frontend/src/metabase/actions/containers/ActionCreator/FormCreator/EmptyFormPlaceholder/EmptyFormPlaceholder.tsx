@@ -12,7 +12,7 @@ import {
   ExplainerLink,
   IconContainer,
   TopRightIcon,
-} from "./FormCreator.styled";
+} from "./EmptyFormPlaceholder.styled";
 
 export const EmptyFormPlaceholder = () => (
   <EmptyFormPlaceholderWrapper>
