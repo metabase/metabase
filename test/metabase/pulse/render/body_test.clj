@@ -568,7 +568,7 @@
 
 (deftest render-funnel-text-row-labels-test
   (testing "Static-viz Funnel Chart with text keys in viz-settings renders without error (#26944)."
-    (mt/dataset test-data
+    (mt/dataset sample-dataset
       (let [funnel-query {:database (mt/id)
                           :type     :query
                           :query
