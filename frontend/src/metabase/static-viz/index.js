@@ -1,5 +1,5 @@
 import ReactDOMServer from "react-dom/server";
-import { StaticChart } from "metabase/static-viz/components/StaticChart";
+import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
@@ -29,5 +29,7 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     renderingContext,
   };
 
-  return ReactDOMServer.renderToStaticMarkup(<StaticChart {...props} />);
+  return ReactDOMServer.renderToStaticMarkup(
+    <StaticVisualization {...props} />,
+  );
 }

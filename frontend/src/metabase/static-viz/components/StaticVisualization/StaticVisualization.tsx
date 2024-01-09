@@ -1,16 +1,10 @@
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { StaticVisualizationProps } from "metabase/visualizations/types";
 
 const Placeholder = ({ text }: { text: string }) => {
   return <div style={{ width: "300px", height: "200px" }}>{text}</div>;
 };
 
-export interface StaticChartProps {
-  rawSeries: RawSeries;
-  dashcardSettings: VisualizationSettings;
-  renderingContext: RenderingContext;
-}
-
-export const StaticChart = (props: StaticChartProps) => {
+export const StaticVisualization = (props: StaticVisualizationProps) => {
   const display = props.rawSeries[0].card.display;
 
   switch (display) {

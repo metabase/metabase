@@ -8,10 +8,19 @@ import type {
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
 import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type Query from "metabase-lib/queries/Query";
 
 import type { HoveredObject } from "./hover";
 import type { RemappingHydratedDatasetColumn } from "./columns";
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  formatValue: (value: unknown) => string;
+  measureText: TextWidthMeasurer;
+  fontFamily: string;
+}
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -26,6 +35,12 @@ export type ComputedVisualizationSettings = VisualizationSettings & {
     col: RemappingHydratedDatasetColumn,
   ) => RemappingHydratedDatasetColumn;
 };
+
+export interface StaticVisualizationProps {
+  rawSeries: RawSeries;
+  dashcardSettings: VisualizationSettings;
+  renderingContext: RenderingContext;
+}
 
 export interface VisualizationProps {
   series: Series;
