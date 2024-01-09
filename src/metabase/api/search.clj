@@ -279,7 +279,8 @@
 
 (defn- add-model-index-permissions-clause
   [query current-user-perms]
-  (let [has-perm-clause (fn [path] [:in path current-user-perms])]
+  (let [build-path (fn [x y z] (h2x/concat (h2x/literal x) y (h2x/literal z)))
+        has-perm-clause (fn [x y z] [:in (build-path x y z) current-user-perms])]
     (if (contains? current-user-perms "/")
       query
       ;; Select indexed rows if user has /db/:id/ OR (/db/:id/native/ AND /db/:id/schema/) - aka full access to the database
@@ -289,10 +290,10 @@
       ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in.
       (let [data-perm-clause
             [:or
-             (has-perm-clause (h2x/concat (h2x/literal "/db/") :model.database_id (h2x/literal "/")))
+             (has-perm-clause "/db/" :model.database_id "/")
              [:and
-              (has-perm-clause (h2x/concat (h2x/literal "/db/") :model.database_id (h2x/literal "/native/")))
-              (has-perm-clause (h2x/concat (h2x/literal "/db/") :model.database_id (h2x/literal "/schema/")))]]
+              (has-perm-clause "/db/" :model.database_id "/native/")
+              (has-perm-clause "/db/" :model.database_id "/schema/")]]
 
             has-root-access?
             (or (contains? current-user-perms "/collection/root/")
@@ -304,8 +305,8 @@
              [:and
               [:not= :model.collection_id nil]
               [:or
-               (has-perm-clause (h2x/concat (h2x/literal "/collection/") :model.collection_id (h2x/literal "/")))
-               (has-perm-clause (h2x/concat (h2x/literal "/collection/") :model.collection_id (h2x/literal "/read/")))]]]]
+               (has-perm-clause "/collection/" :model.collection_id "/")
+               (has-perm-clause "/collection/" :model.collection_id "/read/")]]]]
         (sql.helpers/where
          query
          [:and data-perm-clause collection-perm-clause])))))

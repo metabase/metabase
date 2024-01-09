@@ -84,26 +84,6 @@ describe("StructuredQuery nesting", () => {
     });
   });
 
-  describe("topLevelFilters", () => {
-    it("should return filters for the last two stages", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery()
-        .aggregate(["count"])
-        .filter(["=", ["field", ORDERS.PRODUCT_ID, null], 1])
-        .nest()
-        .filter(["=", ["field", "count", { "base-type": "type/Integer" }], 2]);
-      const filters = q.topLevelFilters();
-      expect(filters).toHaveLength(2);
-      expect(filters[0]).toEqual(["=", ["field", ORDERS.PRODUCT_ID, null], 1]);
-      expect(filters[1]).toEqual([
-        "=",
-        ["field", "count", { "base-type": "type/Integer" }],
-        2,
-      ]);
-    });
-  });
-
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
       const { ordersTable } = setup();
@@ -134,33 +114,6 @@ describe("StructuredQuery nesting", () => {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
-    });
-  });
-
-  describe("topLevelDimension", () => {
-    it("should return same dimension if not nested", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery();
-      const d = q.topLevelDimension(
-        q.parseFieldReference(["field", ORDERS.TOTAL, null]),
-      );
-      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL, null]);
-    });
-    it("should return underlying dimension for a nested query", () => {
-      const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery()
-        .aggregate(["count"])
-        .breakout(["field", ORDERS.TOTAL, null])
-        .nest();
-      const d = q.topLevelDimension(
-        q.parseFieldReference([
-          "field",
-          "TOTAL",
-          { "base-type": "type/Float" },
-        ]),
-      );
-      expect(d.mbql()).toEqual(["field", ORDERS.TOTAL, null]);
     });
   });
 

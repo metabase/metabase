@@ -16,6 +16,10 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
     onChange(dropStageIfEmpty(query));
   };
 
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <FilterPanelRoot
       align="center"

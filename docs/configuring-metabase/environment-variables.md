@@ -57,6 +57,15 @@ Default: `null`
 
 The email address users should be referred to if they encounter a problem.
 
+### `MB_AGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 10000
+
+Maximum number of rows to return for aggregated queries via the API. Must be less than 1048575. This environment variable also affects how many rows Metabase includes in dashboard subscription attachments.
+
+See also [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](#mb_unaggregated_query_row_limit).
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 Type: boolean<br>
@@ -440,7 +449,7 @@ Secret key used to sign JSON Web Tokens for requests to /api/embed endpoints.
 
 The secret should be kept safe (treated like a password) and recommended to be a 64 character string.
 
-This is for Static embedding, and has nothing to do with JWT SSO authentication, which is [MB_JWT_*](#mb_jwt_enabled).
+This is for Static embedding, and has nothing to do with JWT SSO authentication (see [`MB_JWT_ENABLED`](#mb_jwt_enabled)).
 
 ### `MB_EMOJI_IN_LOGS`
 
@@ -1354,3 +1363,12 @@ Default: `null`<br>
 Since: v41.0
 
 Allowed email address domain(s) for new Subscriptions and Alerts. Specify multiple domain comma-separated. When not defined, all domains are allowed.
+
+### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
+
+Type: integer<br>
+Default: 2000
+
+Maximum number of rows to return specifically on `:rows`-type queries via the API. Must be less than 1048575, and less than the number configured in `MB_AGGREGATED_QUERY_ROW_LIMIT`. This environment variable also affects how many rows Metabase returns in dashboard subscription attachments.
+
+See also [`MB_AGGREGATED_QUERY_ROW_LIMIT`](#mb_aggregated_query_row_limit).
