@@ -162,10 +162,6 @@
                                                 :adminEmail        (first recipients)
                                                 :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")})))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             Password Reset                                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
   [email sso-source password-reset-url is-active?]

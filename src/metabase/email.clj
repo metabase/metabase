@@ -87,6 +87,7 @@
                 (when (some? new-value)
                   (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
                 (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+
 (declare ^:private reconfigure-retrying)
 
 (defsetting email-retry-max-attempts
