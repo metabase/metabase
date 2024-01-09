@@ -1,7 +1,7 @@
 import {
   CHANGE_ARROW_ICONS,
   computeChange,
-  computeTrend,
+  computeTrend as _computeTrend,
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import {
@@ -14,6 +14,8 @@ import { colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
+
+const computeTrend = (...args) => computeTrend(...args, { formatValue });
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {
