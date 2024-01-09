@@ -29,7 +29,7 @@
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
     (et/with-fake-inbox
-      (#'messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
       (is (= [{:from    "notifications@metabase.com",
                :to      ["test@test.com"],
                :subject "[Metabase] Password Reset Request",
