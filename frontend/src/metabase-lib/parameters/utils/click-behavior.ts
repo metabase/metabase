@@ -25,6 +25,7 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
   columnFilterForParameter,
+  dimensionFilterForParameter,
   variableFilterForParameter,
 } from "metabase-lib/parameters/utils/filters";
 import type { ClickObjectDimension as DimensionType } from "metabase-lib/types";
@@ -33,6 +34,7 @@ import { TYPE } from "metabase-lib/types/constants";
 import type Question from "metabase-lib/Question";
 import type { ClickObjectDataRow } from "metabase-lib/queries/drills/types";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type { TemplateTagDimension } from "metabase-lib/Dimension";
 
 interface Target {
   id: Parameter["id"];
@@ -171,8 +173,52 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 function getTargetsForNativeQuestion(question: Question): Target[] {
   const legacyQuery = question.legacyQuery() as NativeQuery;
 
-  return legacyQuery.variables().map(variable => {
-    const { id, type, name } = checkNotNull(variable.tag());
+  return [
+    ...getTargetsForDimensionOptions(legacyQuery),
+    ...getTargetsForVariables(legacyQuery),
+  ];
+}
+
+function getTargetsForDimensionOptions(legacyQuery: NativeQuery): Target[] {
+  return legacyQuery
+    .dimensionOptions()
+    .all()
+    .map(templateTagDimension => {
+      const { name, id } = (
+        templateTagDimension as unknown as TemplateTagDimension
+      ).tag();
+      const target: ClickBehaviorTarget = { type: "variable", id: name };
+
+      const field = templateTagDimension.field();
+      const { base_type } = field;
+
+      const parentType =
+        [TYPE.Temporal, TYPE.Number, TYPE.Text].find(
+          t => typeof base_type === "string" && isa(base_type, t),
+        ) || base_type;
+
+      return {
+        id,
+        target,
+        name: templateTagDimension.displayName(),
+        sourceFilters: {
+          column: (column: DatasetColumn) =>
+            Boolean(
+              column.base_type &&
+                parentType &&
+                isa(column.base_type, parentType),
+            ),
+          parameter: parameter =>
+            dimensionFilterForParameter(parameter)(templateTagDimension),
+          userAttribute: () => parentType === TYPE.Text,
+        },
+      };
+    });
+}
+
+function getTargetsForVariables(legacyQuery: NativeQuery): Target[] {
+  return legacyQuery.variables().map(templateTagVariable => {
+    const { name, id, type } = checkNotNull(templateTagVariable.tag());
     const target: ClickBehaviorTarget = { type: "variable", id: name };
     const parentType = type
       ? {
@@ -188,13 +234,14 @@ function getTargetsForNativeQuestion(question: Question): Target[] {
     return {
       id,
       target,
-      name: variable.displayName(),
+      name: templateTagVariable.displayName(),
       sourceFilters: {
-        column: column =>
+        column: (column: DatasetColumn) =>
           Boolean(
             column.base_type && parentType && isa(column.base_type, parentType),
           ),
-        parameter: parameter => variableFilterForParameter(parameter)(variable),
+        parameter: parameter =>
+          variableFilterForParameter(parameter)(templateTagVariable),
         userAttribute: () => parentType === TYPE.Text,
       },
     };
