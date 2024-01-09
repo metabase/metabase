@@ -223,7 +223,7 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, query, card, height, isDirty, isNativeEditorOpen } =
+    const { question, legacyQuery, card, height, isDirty, isNativeEditorOpen } =
       this.props;
 
     // Normally, when users open native models,
@@ -241,8 +241,9 @@ class View extends Component {
       <NativeQueryEditorContainer>
         <NativeQueryEditor
           {...this.props}
+          query={legacyQuery}
           viewHeight={height}
-          isOpen={query.isEmpty() || isDirty}
+          isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
         />
@@ -251,12 +252,17 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { query, mode, parameters, isLiveResizable, setParameterValue } =
-      this.props;
+    const {
+      legacyQuery,
+      mode,
+      parameters,
+      isLiveResizable,
+      setParameterValue,
+    } = this.props;
 
     const queryMode = mode && mode.queryMode();
-    const isNative = query instanceof NativeQuery;
-    const validationError = _.first(query.validate?.());
+    const isNative = legacyQuery instanceof NativeQuery;
+    const validationError = _.first(legacyQuery.validate?.());
     const isSidebarOpen = leftSidebar || rightSidebar;
 
     return (
