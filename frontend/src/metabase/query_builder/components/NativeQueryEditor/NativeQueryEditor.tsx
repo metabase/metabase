@@ -664,8 +664,8 @@ export class NativeQueryEditor extends Component<
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    const { query, setDatasetQuery } = this.props;
-    if (query.databaseId() !== databaseId) {
+    const { query, setDatasetQuery, question } = this.props;
+    if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
       if (!this.props.readOnly) {
         // HACK: the cursor doesn't blink without this intended small delay
@@ -710,8 +710,8 @@ export class NativeQueryEditor extends Component<
   };
 
   isPromptInputVisible = () => {
-    const { canUsePromptInput, isNativeEditorOpen, query } = this.props;
-    const database = query.question().database();
+    const { canUsePromptInput, isNativeEditorOpen, question } = this.props;
+    const database = question.database();
     const isSupported =
       database != null && canGenerateQueriesForDatabase(database);
 
@@ -790,7 +790,7 @@ export class NativeQueryEditor extends Component<
         )}
         {isPromptInputVisible && (
           <NativeQueryEditorPrompt
-            databaseId={query.databaseId()}
+            databaseId={question.databaseId()}
             onQueryGenerated={this.handleQueryGenerated}
             onClose={this.togglePromptVisibility}
           />
