@@ -12,6 +12,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions-v2 :as perms-v2]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -90,6 +91,22 @@
  [{group-name :name, :as group}]
  (u/prog1 group
    (check-name-not-already-taken group-name)))
+
+(defn- set-default-permission-values!
+  [group]
+  ;; New groups generally get *no* permissions by default
+  (let [tables (t2/select [:model/Table :id :db_id :schema])]
+    (perms-v2/set-table-permissions! :data-access group :no-self-service tables)
+    (perms-v2/set-table-permissions! :download-results group :no tables)
+    (perms-v2/set-table-permissions! :manage-table-metadata group :no tables))
+  (let [db-ids (t2/select-pks-set :model/Database)]
+    (perms-v2/set-db-permissions! :native-query-editing group :no db-ids)
+    (perms-v2/set-db-permissions! :manage-database group :no db-ids)))
+
+(t2/define-after-insert :model/PermissionsGroup
+  [group]
+  (u/prog1 group
+    (set-default-permission-values! group)))
 
 (t2/define-before-delete :model/PermissionsGroup
   [{id :id, :as group}]
