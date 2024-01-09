@@ -137,3 +137,9 @@
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
   (t2/select PermissionsGroup :name [:not= admin-group-name]))
+
+(defn non-magic-groups
+  "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
+  []
+  (t2/select PermissionsGroup {:where [:and [:not= :name admin-group-name]
+                                            [:not= :name all-users-group-name]]}))
