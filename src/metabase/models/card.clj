@@ -250,13 +250,13 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
 
-;; TODO: move this to [[metabase.query-processor.card]]
+;; TODO: move this to [[metabase.query-processor.card]] or MLv2 so the logic can be shared between the backend and frontend
+;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
+;; If this function moves you should update the comment that links to this one
 (defn template-tag-parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card]
-  ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase-lib/parameters/utils/template-tags.ts
-  ;; If this function moves you should update the comment that links to this one
   (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
         :when                         (and tag-type
                                            (or (contains? mbql.s/raw-value-template-tag-types tag-type)
