@@ -267,36 +267,3 @@
       (if existing-perm-id
         (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
         (t2/insert! :model/PermissionsV2 new-perm)))))
-
-;; TODO
-;; - Function that takes a DB and perm type, and sets permissions for all tables to a given value
-;; - Similar function for a single schema
-
-
-(comment
-  (defn do-try-catch-message [thunk] (try (thunk) (catch Exception e (ex-message e))))
-  (defmacro tcm [& body] `(do-try-catch-message (fn [] ~@body)))
-
-  (set-permission! :data-access 1 :unrestricted 3 1 "PUBLIC")
-  (set-permission! :data-access 1 :no-self-service {:id 2})
-  (set-permission! :data-access {:id 1} :no-self-service 3)
-  (set-permission! :data-access {:id 1} :no-self-service {:id 4})
-
-  (= :no-self-service
-     (permission-for-user 1 :data-access 1)
-     (permission-for-user 1 :data-access {:id 1}))
-
-  (set-permission! :settings-access 1 :no)
-
-  (= :no (permission-for-user 1 :settings-access 1))
-
-  (t2/delete! :model/PermissionsV2
-              :type :data-access
-              :group_id 1
-              {:where [:in :object_id (keys {3 :unrestricted})]})
-
-  (tcm (set-permission! :settings-access 1 :no-self-service))
-  ;; => "Permission type :settings-access cannot be set to :no-self-service"
-
-  (tcm (set-permission! :settings-access 1 :yes)))
-  ;; => "ERROR: insert or update on table \"permissions_v2\" violates foreign key constraint \"fk_permissions_v2_ref_permissions_group\"\n  Detail: Key (group_id)=(10) is not present in table \"permissions_group\"."
