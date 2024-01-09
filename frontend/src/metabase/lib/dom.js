@@ -224,7 +224,7 @@ function getSitePath() {
   return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
 }
 
-export function isMetabaseUrl(url) {
+function isMetabaseUrl(url) {
   const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
 
   if (!isAbsoluteUrl(url)) {
