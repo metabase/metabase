@@ -302,6 +302,20 @@
                                                 [:in :table_id (map u/id tables)]]})
       (t2/insert! :model/PermissionsV2 new-perms))))
 
+(mu/defn set-db-permissions!
+  "Sets a single permission type to a specified value for all databases in `dbs-or-ids`."
+  [perm-type group-or-id value dbs-or-ids]
+  (t2/with-transaction [_conn]
+    (let [group-id  (u/the-id group-or-id)
+          db-ids    (map u/id dbs-or-ids)
+          new-perms (map (fn [id] (new-perm perm-type group-or-id value id))
+                         db-ids)]
+      (t2/delete! :model/PermissionsV2 {:where [:and
+                                                [:= :group_id group-id]
+                                                [:= :type     (name perm-type)]
+                                                [:in :db_id   db-ids]]})
+      (t2/insert! :model/PermissionsV2 new-perms))))
+
 (mu/defn set-group-permissions!
   "Sets a single permission type and value for all groups in `groups`."
   [perm-type       :- :keyword

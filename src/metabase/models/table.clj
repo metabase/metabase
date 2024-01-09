@@ -70,11 +70,13 @@
         non-admin-groups (conj non-magic-groups all-users-group)]
     ;; Data access permissions
     (perms-v2/set-permission! :data-access all-users-group :unrestricted id db_id schema)
-    (perms-v2/set-group-permissions! :data-access non-magic-groups :no-self-service id db_id schema)
+    (when (not-empty non-magic-groups)
+     (perms-v2/set-group-permissions! :data-access non-magic-groups :no-self-service id db_id schema))
 
     ;; Download permissions
     (perms-v2/set-permission! :download-results all-users-group :one-million-rows id db_id schema)
-    (perms-v2/set-group-permissions! :download-results non-magic-groups :no id db_id schema)
+    (when (not-empty non-magic-groups)
+     (perms-v2/set-group-permissions! :download-results non-magic-groups :no id db_id schema))
 
     ;; Table metadata management
     (perms-v2/set-group-permissions! :manage-table-metadata non-admin-groups :no id db_id schema)))
