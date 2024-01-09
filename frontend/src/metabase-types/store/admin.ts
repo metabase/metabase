@@ -30,7 +30,7 @@ export interface AdminState {
     saveError?: string;
     isHelpReferenceOpen: boolean;
     hasRevisionChanged: {
-      revision: number;
+      revision: number | null;
       hasChanged: boolean;
     };
   };
