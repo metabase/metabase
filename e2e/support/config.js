@@ -27,6 +27,9 @@ const {
   removeDirectory,
 } = require("./commands/downloads/deleteDownloadsFolder");
 
+const convertStringToInt = string =>
+  string.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
@@ -41,7 +44,19 @@ const defaultConfig = {
       replay.default(on, config, {
         upload: true,
         apiKey: process.env.REPLAY_API_KEY,
-        filter: r => r.metadata.test?.result === "failed",
+        filter: r => {
+          const hasCrashed = r.status === "crashed";
+          const hasFailed = r.metadata.test?.result === "failed";
+          const randomlyUploadAll =
+            convertStringToInt(r.metadata.test.run.id) % 10 === 1;
+
+          console.log("upload replay ::", {
+            hasCrashed,
+            hasFailed,
+            randomlyUploadAll,
+          });
+          return hasCrashed || hasFailed || randomlyUploadAll;
+        },
       });
     }
 
