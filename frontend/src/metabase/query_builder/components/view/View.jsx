@@ -93,12 +93,10 @@ class View extends Component {
     const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
-      const query = question._getMLv2Query();
-      const legacyQuery = question.legacyQuery();
+      const query = question.query();
       return (
         <SummarizeSidebar
           query={query}
-          legacyQuery={legacyQuery}
           onQueryChange={nextQuery => {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
             const nextQuestion = question.setDatasetQuery(datesetQuery);
