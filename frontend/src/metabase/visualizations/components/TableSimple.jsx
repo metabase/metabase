@@ -244,7 +244,6 @@ export default class TableSimple extends Component {
                         <td
                           key={columnIndex}
                           style={{
-                            whiteSpace: "nowrap",
                             backgroundColor:
                               getCellBackgroundColor &&
                               getCellBackgroundColor(
