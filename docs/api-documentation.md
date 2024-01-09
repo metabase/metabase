@@ -30,6 +30,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Advanced permissions application*](api/ee/advanced-permissions-application.md)
 - [Advanced permissions impersonation*](api/ee/advanced-permissions-impersonation.md)
 - [Alert](api/alert.md)
+- [Api key](api/api-key.md)
 - [Audit app user*](api/ee/audit-app-user.md)
 - [Automagic dashboards](api/automagic-dashboards.md)
 - [Bookmark](api/bookmark.md)
