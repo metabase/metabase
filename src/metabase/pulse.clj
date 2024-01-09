@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -14,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
@@ -26,10 +24,9 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2])
