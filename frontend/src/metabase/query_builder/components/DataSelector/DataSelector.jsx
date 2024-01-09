@@ -26,10 +26,7 @@ import {
   isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
-import {
-  SearchResults,
-  convertSearchResultToTableLikeItem,
-} from "./data-search";
+import { SearchResults, getSearchItemTableOrCardId } from "./data-search";
 import SavedQuestionPicker from "./saved-question-picker/SavedQuestionPicker";
 import DataBucketPicker from "./DataSelectorDataBucketPicker";
 import DatabasePicker from "./DataSelectorDatabasePicker";
@@ -955,9 +952,10 @@ export class UnconnectedDataSelector extends Component {
     });
 
   handleSearchItemSelect = async item => {
-    const table = convertSearchResultToTableLikeItem(item);
-    await this.props.fetchFields(table.id);
+    const tableOrCardId = getSearchItemTableOrCardId(item);
+    await this.props.fetchFields(tableOrCardId);
     if (this.props.setSourceTableFn) {
+      const table = this.props.metadata.table(tableOrCardId);
       this.props.setSourceTableFn(table.id, table.db_id);
     }
     this.popover.current.toggle();
