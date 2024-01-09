@@ -286,13 +286,6 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @deprecated: use setSourceTableId
    */
-  setTableId(tableId: TableId): StructuredQuery {
-    return this.setSourceTableId(tableId);
-  }
-
-  /**
-   * @deprecated: use setSourceTableId
-   */
   setTable(table: Table): StructuredQuery {
     return this.setSourceTableId(table.id);
   }

@@ -17,7 +17,7 @@ export default function QuestionDataSelector({
       selectedTableId={Lib.sourceTableOrCardId(query)}
       setSourceTableFn={tableId =>
         updateQuestion(
-          legacyQuery.setTableId(tableId).setDefaultQuery().question(),
+          legacyQuery.setSourceTableId(tableId).setDefaultQuery().question(),
           {
             run: true,
           },
