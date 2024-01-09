@@ -1,5 +1,6 @@
 import * as TYPES from "cljs/metabase.lib.types.isa";
 import type { ColumnMetadata } from "./types";
+import type { DatasetColumn } from "metabase-types/api";
 
 type TypeFn = (column: ColumnMetadata) => boolean;
 
@@ -38,3 +39,10 @@ export const isTime: TypeFn = TYPES.time_QMARK_;
 export const isTitle: TypeFn = TYPES.title_QMARK_;
 export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
+
+export function isCompatibleType(
+  column1: ColumnMetadata | DatasetColumn,
+  column2: ColumnMetadata | DatasetColumn,
+): boolean {
+  return TYPES.compatible_type_QMARK_(column1, column2);
+}
