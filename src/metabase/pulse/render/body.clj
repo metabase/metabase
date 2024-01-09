@@ -985,8 +985,9 @@
   (let [[x-axis-rowfn
          y-axis-rowfn] (formatter/graphing-column-row-fns card data)
         funnel-rows    (:funnel.rows viz-settings)
-        rows           (cond->> (map (juxt x-axis-rowfn y-axis-rowfn)
-                                     (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
+                            (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        rows           (cond->> raw-rows
                          funnel-rows (mapv (fn [[idx val]]
                                              [(get-in funnel-rows [(dec idx) :key]) val])))
         [x-col y-col]  cols
