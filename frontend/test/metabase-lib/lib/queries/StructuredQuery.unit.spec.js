@@ -60,6 +60,8 @@ const metadata = createMockMetadata({
 
 const ordersTable = metadata.table(ORDERS_ID);
 
+const ordersIdField = ["field", ORDERS.ID, { "base-type": "type/BigInteger" }];
+
 function makeDatasetQuery(query = {}) {
   return {
     type: "query",
@@ -485,20 +487,7 @@ describe("StructuredQuery", () => {
           const query = makeQueryWithoutNumericFields().addExpression(
             "custom_numeric_field",
             // Expression: case([ID] = 1, 11, 99)
-            [
-              "case",
-              [
-                [
-                  [
-                    "=",
-                    ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-                    1,
-                  ],
-                  11,
-                ],
-              ],
-              { default: 99 },
-            ],
+            ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
           );
 
           expect(
@@ -567,20 +556,7 @@ describe("StructuredQuery", () => {
         const query = makeQueryWithoutNumericFields().addExpression(
           "custom_numeric_field",
           // Expression: case([ID] = 1, 11, 99)
-          [
-            "case",
-            [
-              [
-                [
-                  "=",
-                  ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-                  1,
-                ],
-                11,
-              ],
-            ],
-            { default: 99 },
-          ],
+          ["case", [[["=", ordersIdField, 1], 11]], { default: 99 }],
         );
         const short = "avg";
 
