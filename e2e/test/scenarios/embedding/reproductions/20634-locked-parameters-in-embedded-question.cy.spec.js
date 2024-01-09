@@ -33,11 +33,9 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   });
 
   it("should let the user lock parameters to specific values", () => {
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal("Parameters");
 
     modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"
       cy.findByText("Text")
         .parent()
@@ -56,8 +54,6 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
       // publish the embedded question so that we can directly navigate to its url
       cy.findByText("Publish changes").click();
       cy.wait("@publishChanges");
-
-      cy.findByText("Preview").click();
     });
 
     // directly navigate to the embedded question

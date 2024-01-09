@@ -3,13 +3,11 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import Modal from "metabase/components/Modal";
-import { Box } from "metabase/ui";
+import { Divider } from "metabase/ui";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { ModalContentActionIcon } from "metabase/components/ModalContent";
-import { color } from "metabase/lib/colors";
 
-import type { EmbedType } from "./EmbedModal.types";
-import { EmbedModalHeader } from "./EmbedModal.styled";
+import { EmbedModalHeaderBackIcon } from "./EmbedModal.styled";
+import type { EmbedType } from "./types";
 
 interface EmbedModalProps {
   isOpen?: boolean;
@@ -39,23 +37,24 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
     <Modal
       isOpen={isOpen}
       onClose={onEmbedClose}
-      title={!isEmbeddingStage ? t`Embed ${applicationName}` : undefined}
-      fit
-      formModal={false}
-    >
-      <Box bg={isEmbeddingStage ? color("white") : "bg.0"} h="100%">
-        {isEmbeddingStage && (
-          <EmbedModalHeader onClose={onEmbedClose}>
-            <ModalContentActionIcon
+      title={
+        isEmbeddingStage ? (
+          <>
+            <EmbedModalHeaderBackIcon
               name="chevronleft"
               onClick={() => setEmbedType(null)}
             />
             {t`Static embedding`}
-          </EmbedModalHeader>
-        )}
-
-        {children({ embedType, setEmbedType })}
-      </Box>
+          </>
+        ) : (
+          t`Embed ${applicationName}`
+        )
+      }
+      fit
+      formModal={false}
+    >
+      <Divider />
+      {children({ embedType, setEmbedType })}
     </Modal>
   );
 };

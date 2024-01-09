@@ -1,4 +1,5 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
+import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 /**
  * @typedef {object} QuestionResource
@@ -107,6 +108,8 @@ export function visitEmbeddedPage(
  * but make sure user is signed out.
  */
 export function visitIframe() {
+  modal().findByText("Preview").click();
+
   cy.document().then(doc => {
     const iframe = doc.querySelector("iframe");
 
@@ -147,10 +150,25 @@ export function openEmbedModalFromMenu() {
     .click();
 }
 
-export function openStaticEmbeddingModal() {
+/**
+ * Open Static Embedding setup modal
+ * @param {("Overview"|"Parameters"|"Appearance")} [activeTab] - modal tab to open
+ * @param {("Code"|"Preview")} [previewMode] - preview mode type to activate
+ */
+export function openStaticEmbeddingModal(activeTab, previewMode) {
   openEmbedModalFromMenu();
 
   cy.findByTestId("sharing-pane-static-embed-button").click();
+
+  modal().within(() => {
+    if (activeTab) {
+      cy.findByRole("tab", { name: activeTab }).click();
+    }
+
+    if (previewMode) {
+      cy.findByText(previewMode).click();
+    }
+  });
 }
 
 // @param {("card"|"dashboard")} resourceType - The type of resource we are sharing

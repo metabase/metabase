@@ -61,7 +61,7 @@ export default class EmbedCodePane extends Component {
         />
 
         {withExamplesLink && (
-          <div className="text-centered mb2 mt4">
+          <div className="text-centered mt4">
             <h4>{jt`More ${(
               <ExternalLink
                 key="examples"

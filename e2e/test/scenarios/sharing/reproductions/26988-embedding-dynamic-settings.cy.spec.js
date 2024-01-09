@@ -1,7 +1,6 @@
 import {
   describeEE,
   getIframeBody,
-  modal,
   openStaticEmbeddingModal,
   popover,
   restore,
@@ -35,12 +34,7 @@ describeEE("issue 26988", () => {
       visitDashboard(card.dashboard_id);
     });
 
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Appearance" }).click();
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Appearance", "Preview");
 
     cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);

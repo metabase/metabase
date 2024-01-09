@@ -3,11 +3,12 @@ import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Select from "metabase/core/components/Select";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 
+import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {
   ActivePreviewPane,
   EmbeddingDisplayOptions,
@@ -15,11 +16,10 @@ import type {
   EmbedResource,
   EmbedResourceType,
   EmbedType,
-} from "../EmbedModal.types";
+} from "../types";
 import EmbedCodePane from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import {
-  CODE_PREVIEW_CONTROL_OPTIONS,
   DisplayOptionSection,
   SettingsTabLayout,
 } from "./StaticEmbedSetupPane.styled";
@@ -67,7 +67,7 @@ export const AppearanceSettings = ({
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
-  const canWhitelabel = useSelector(PLUGIN_SELECTORS.canWhitelabel);
+  const canWhitelabel = useSelector(getCanWhitelabel);
   const availableFonts = useSelector(state =>
     getSetting(state, "available-fonts"),
   );
@@ -212,11 +212,7 @@ export const AppearanceSettings = ({
       }
       previewSlot={
         <>
-          <SegmentedControl
-            value={activePane}
-            data={CODE_PREVIEW_CONTROL_OPTIONS}
-            onChange={onChangePane}
-          />
+          <PreviewModeSelector value={activePane} onChange={onChangePane} />
 
           {activePane === "preview" ? (
             <PreviewPane

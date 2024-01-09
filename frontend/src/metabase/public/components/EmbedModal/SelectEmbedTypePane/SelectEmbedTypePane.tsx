@@ -10,11 +10,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Link from "metabase/core/components/Link";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 
-import type {
-  EmbedResource,
-  EmbedResourceType,
-  EmbedType,
-} from "../EmbedModal.types";
+import type { EmbedResource, EmbedResourceType, EmbedType } from "../types";
 import { SharingPaneActionButton } from "./SharingPaneButton/SharingPaneButton.styled";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
 import { PublicEmbedIcon, StaticEmbedIcon } from "./icons";
@@ -25,10 +21,7 @@ interface SelectEmbedTypePaneProps {
   resourceType: EmbedResourceType;
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
-  getPublicUrl: (
-    resource: EmbedResource,
-    extension?: ExportFormatType,
-  ) => string | null;
+  getPublicUrl: (publicUuid: string, extension?: ExportFormatType) => string;
   onChangeEmbedType: (embedType: EmbedType) => void;
 }
 
@@ -40,9 +33,7 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   onChangeEmbedType,
 }: SelectEmbedTypePaneProps) {
-  const iframeSource = getPublicEmbedHTML(getPublicUrl(resource));
-
-  const hasPublicLink = !!resource.public_uuid;
+  const hasPublicLink = resource.public_uuid != null;
 
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
@@ -94,7 +85,11 @@ export function SelectEmbedTypePane({
       );
     }
 
-    if (hasPublicLink) {
+    if (hasPublicLink && resource.public_uuid != null) {
+      const iframeSource = getPublicEmbedHTML(
+        getPublicUrl(resource.public_uuid),
+      );
+
       return (
         <PublicLinkCopyPanel
           url={iframeSource}

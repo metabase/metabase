@@ -29,7 +29,7 @@ export const StaticEmbedSetupPane = ({
   secretKey,
   params,
   displayOptions,
-  previewParameters,
+  lockedParameters,
   parameterValues,
   resourceParameters,
   embeddingParams,
@@ -39,69 +39,62 @@ export const StaticEmbedSetupPane = ({
   onChangePane,
 }: StaticEmbedSetupPaneProps): JSX.Element => {
   return (
-    <div className="full flex">
-      <div
-        className="flex-full flex flex-column"
-        data-testid="embedding-preview"
-      >
-        <Tabs defaultValue={TABS.Overview}>
-          <Tabs.List p="0 1.5rem">
-            <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
-            <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
-            <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
-          </Tabs.List>
-          <Tabs.Panel value={TABS.Overview}>
-            <OverviewSettings
-              embedType={embedType}
-              resource={resource}
-              resourceType={resourceType}
-              iframeUrl={iframeUrl}
-              token={token}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={params}
-              displayOptions={displayOptions}
-            />
-          </Tabs.Panel>
-          <Tabs.Panel value={TABS.Parameters}>
-            <ParametersSettings
-              activePane={activePane}
-              resource={resource}
-              resourceType={resourceType}
-              resourceParameters={resourceParameters}
-              embeddingParams={embeddingParams}
-              previewParameters={previewParameters}
-              parameterValues={parameterValues}
-              embedType={embedType}
-              iframeUrl={iframeUrl}
-              token={token}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={params}
-              displayOptions={displayOptions}
-              onChangeEmbeddingParameters={onChangeEmbeddingParameters}
-              onChangeParameterValue={onChangeParameterValue}
-              onChangePane={onChangePane}
-            />
-          </Tabs.Panel>
-          <Tabs.Panel value={TABS.Appearance}>
-            <AppearanceSettings
-              activePane={activePane}
-              embedType={embedType}
-              resource={resource}
-              resourceType={resourceType}
-              iframeUrl={iframeUrl}
-              token={token}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={params}
-              displayOptions={displayOptions}
-              onChangePane={onChangePane}
-              onChangeDisplayOptions={onChangeDisplayOptions}
-            />
-          </Tabs.Panel>
-        </Tabs>
-      </div>
-    </div>
+    <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
+      <Tabs.List p="0 1.5rem">
+        <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
+        <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
+        <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel value={TABS.Overview}>
+        <OverviewSettings
+          embedType={embedType}
+          resource={resource}
+          resourceType={resourceType}
+          iframeUrl={iframeUrl}
+          token={token}
+          siteUrl={siteUrl}
+          secretKey={secretKey}
+          params={params}
+          displayOptions={displayOptions}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel value={TABS.Parameters}>
+        <ParametersSettings
+          activePane={activePane}
+          resource={resource}
+          resourceType={resourceType}
+          resourceParameters={resourceParameters}
+          embeddingParams={embeddingParams}
+          lockedParameters={lockedParameters}
+          parameterValues={parameterValues}
+          embedType={embedType}
+          iframeUrl={iframeUrl}
+          token={token}
+          siteUrl={siteUrl}
+          secretKey={secretKey}
+          params={params}
+          displayOptions={displayOptions}
+          onChangeEmbeddingParameters={onChangeEmbeddingParameters}
+          onChangeParameterValue={onChangeParameterValue}
+          onChangePane={onChangePane}
+        />
+      </Tabs.Panel>
+      <Tabs.Panel value={TABS.Appearance}>
+        <AppearanceSettings
+          activePane={activePane}
+          embedType={embedType}
+          resource={resource}
+          resourceType={resourceType}
+          iframeUrl={iframeUrl}
+          token={token}
+          siteUrl={siteUrl}
+          secretKey={secretKey}
+          params={params}
+          displayOptions={displayOptions}
+          onChangePane={onChangePane}
+          onChangeDisplayOptions={onChangeDisplayOptions}
+        />
+      </Tabs.Panel>
+    </Tabs>
   );
 };

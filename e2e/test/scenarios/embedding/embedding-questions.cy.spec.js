@@ -4,7 +4,6 @@ import {
   popover,
   visitIframe,
   openStaticEmbeddingModal,
-  modal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -44,13 +43,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Parameters");
 
     visitIframe();
 
@@ -93,13 +86,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Parameters");
 
     visitIframe();
 
@@ -132,13 +119,7 @@ describe("scenarios > embedding > questions ", () => {
       });
     });
 
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Parameters");
 
     visitIframe();
 
@@ -174,13 +155,7 @@ describe("scenarios > embedding > questions ", () => {
       visitQuestion(id);
     });
 
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Parameters");
 
     visitIframe();
 
@@ -221,13 +196,7 @@ describe("scenarios > embedding > questions ", () => {
 
     visitQuestion(ORDERS_QUESTION_ID);
 
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Parameters");
 
     visitIframe();
 

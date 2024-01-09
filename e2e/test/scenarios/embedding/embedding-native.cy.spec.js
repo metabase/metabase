@@ -6,7 +6,6 @@ import {
   visitEmbeddedPage,
   visitIframe,
   openStaticEmbeddingModal,
-  modal,
 } from "e2e/support/helpers";
 
 import { questionDetails } from "./shared/embedding-native";
@@ -24,17 +23,14 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      openStaticEmbeddingModal();
+      openStaticEmbeddingModal({ activeTab: "Parameters" });
     });
 
     it("should not display disabled parameters", () => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
       publishChanges(({ request }) => {
         assert.deepEqual(request.body.embedding_params, {});
       });
 
-      modal().findByText("Preview").click();
       visitIframe();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -48,8 +44,6 @@ describe("scenarios > embedding > native questions", () => {
     });
 
     it("should display and work with enabled parameters while hiding the locked one", () => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
       setParameter("Order ID", "Editable");
       setParameter("Created At", "Editable");
       setParameter("Total", "Locked");
@@ -82,7 +76,6 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(actual, expected);
       });
 
-      modal().findByText("Preview").click();
       visitIframe();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -273,9 +266,8 @@ describe("scenarios > embedding > native questions with default parameters", () 
     cy.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
     });
-    openStaticEmbeddingModal();
 
-    cy.findByRole("tab", { name: "Parameters" }).click();
+    openStaticEmbeddingModal({ activeTab: "Parameters" });
 
     // Note: ID is disabled
     setParameter("Source", "Locked");
@@ -287,7 +279,6 @@ describe("scenarios > embedding > native questions with default parameters", () 
       });
     });
 
-    modal().findByText("Preview").click();
     visitIframe();
 
     // Remove default filter value

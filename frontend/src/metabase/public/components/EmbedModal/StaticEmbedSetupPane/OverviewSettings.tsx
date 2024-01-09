@@ -10,7 +10,7 @@ import type {
   EmbedResourceType,
   EmbedType,
   EmbeddingDisplayOptions,
-} from "../EmbedModal.types";
+} from "../types";
 import EmbedCodePane from "./EmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";

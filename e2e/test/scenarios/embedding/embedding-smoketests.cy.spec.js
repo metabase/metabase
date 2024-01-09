@@ -180,10 +180,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
             cy.button("Publish changes").click();
 
             cy.wait("@embedObject");
-
-            cy.findByText("Preview").click();
-            visitIframe();
           });
+
+          visitIframe();
 
           cy.findByTestId("embed-frame").within(() => {
             cy.findByRole("heading", { name: objectName });
@@ -226,9 +225,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
             cy.wait("@embedObject");
 
             cy.findByRole("tab", { name: "Parameters" }).click();
-            cy.findByText("Preview").click();
-            visitIframe();
           });
+
+          visitIframe();
 
           cy.findByTestId("embed-frame").findByText(
             "Embedding is not enabled for this object.",

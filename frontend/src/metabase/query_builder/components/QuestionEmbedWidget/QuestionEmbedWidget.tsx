@@ -7,7 +7,6 @@ import {
   EmbedModal,
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
-import type { EmbedResource } from "metabase/public/components/EmbedModal";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
@@ -37,15 +36,9 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
     dispatch(updateEmbeddingParams(card, embeddingParams));
 
   const getPublicQuestionUrl = (
-    { public_uuid }: EmbedResource,
+    publicUuid: string,
     extension?: ExportFormatType,
-  ) => {
-    if (public_uuid) {
-      return publicQuestion({ uuid: public_uuid, type: extension });
-    }
-
-    return null;
-  };
+  ) => publicQuestion({ uuid: publicUuid, type: extension });
 
   return (
     <EmbedModal onClose={onClose}>

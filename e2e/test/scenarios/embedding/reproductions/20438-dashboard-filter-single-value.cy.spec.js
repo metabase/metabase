@@ -5,7 +5,6 @@ import {
   visitDashboard,
   visitIframe,
   openStaticEmbeddingModal,
-  modal,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -85,13 +84,7 @@ describe("issue 20438", () => {
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
-    openStaticEmbeddingModal();
-
-    modal().within(() => {
-      cy.findByRole("tab", { name: "Parameters" }).click();
-
-      cy.findByText("Preview").click();
-    });
+    openStaticEmbeddingModal("Parameters");
 
     visitIframe();
 

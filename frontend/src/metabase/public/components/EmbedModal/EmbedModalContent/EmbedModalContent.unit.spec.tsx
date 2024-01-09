@@ -4,7 +4,7 @@ import { renderWithProviders } from "__support__/ui";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
-import type { EmbedResource } from "../EmbedModal.types";
+import type { EmbedResource } from "../types";
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
 
@@ -103,7 +103,7 @@ describe("EmbedModalContent", () => {
   });
 
   it("should update a card with only valid parameters", async () => {
-    const { mocks } = setup({
+    const { onUpdateEmbeddingParams } = setup({
       embedType: "application",
       resource: {
         ...createMockDashboard(),
@@ -137,7 +137,7 @@ describe("EmbedModalContent", () => {
     screen.getByRole("button", { name: "Publish changes" }).click();
 
     await waitFor(() =>
-      expect(mocks.onUpdateEmbeddingParams).toHaveBeenCalledWith({
+      expect(onUpdateEmbeddingParams).toHaveBeenCalledWith({
         my_param: "locked",
       }),
     );
@@ -149,30 +149,25 @@ function setup({
   resource = {} as EmbedResource,
   resourceType = "dashboard",
   resourceParameters = [],
-  getPublicUrl,
+  setEmbedType = jest.fn(),
+  getPublicUrl = jest.fn(_resource => "some URL"),
+  onUpdateEmbeddingParams = jest.fn(),
+  onUpdateEnableEmbedding = jest.fn(),
+  onCreatePublicLink = jest.fn(),
+  onDeletePublicLink = jest.fn(),
 }: Partial<EmbedModalContentProps> = {}) {
-  const mocks = {
-    setEmbedType: jest.fn(),
-    getPublicUrl: getPublicUrl || jest.fn(_resource => "some URL"),
-    onUpdateEmbeddingParams: jest.fn(),
-    onUpdateEnableEmbedding: jest.fn(),
-    onClose: jest.fn(),
-    onCreatePublicLink: jest.fn(),
-    onDeletePublicLink: jest.fn(),
-  };
-
   const view = renderWithProviders(
     <EmbedModalContent
       embedType={embedType}
-      setEmbedType={mocks.setEmbedType}
+      setEmbedType={setEmbedType}
       resource={resource}
       resourceType={resourceType}
       resourceParameters={resourceParameters}
-      getPublicUrl={mocks.getPublicUrl}
-      onUpdateEmbeddingParams={mocks.onUpdateEmbeddingParams}
-      onUpdateEnableEmbedding={mocks.onUpdateEnableEmbedding}
-      onCreatePublicLink={mocks.onCreatePublicLink}
-      onDeletePublicLink={mocks.onDeletePublicLink}
+      getPublicUrl={getPublicUrl}
+      onUpdateEmbeddingParams={onUpdateEmbeddingParams}
+      onUpdateEnableEmbedding={onUpdateEnableEmbedding}
+      onCreatePublicLink={onCreatePublicLink}
+      onDeletePublicLink={onDeletePublicLink}
     />,
     {
       storeInitialState: {
@@ -185,5 +180,13 @@ function setup({
     },
   );
 
-  return { mocks, view };
+  return {
+    ...view,
+    setEmbedType,
+    getPublicUrl,
+    onUpdateEmbeddingParams,
+    onUpdateEnableEmbedding,
+    onCreatePublicLink,
+    onDeletePublicLink,
+  };
 }

@@ -12,7 +12,7 @@ export const HeaderContainer = styled.div`
   flex-direction: row;
   gap: 0.5rem;
 
-  align-items: flex-start;
+  align-items: center;
 `;
 
 export const HeaderText = styled.h2`
@@ -29,8 +29,7 @@ export const ActionsWrapper = styled.div`
   flex-direction: row;
   gap: 0.5rem;
 
-  margin-top: -0.5rem;
-  margin-right: -0.5rem;
+  margin: -0.5rem -0.5rem -0.5rem 0;
 `;
 
 export const ModalContentActionIcon = styled(Icon)`

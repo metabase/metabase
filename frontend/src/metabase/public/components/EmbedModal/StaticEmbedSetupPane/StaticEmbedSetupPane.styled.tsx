@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 import type { ReactNode } from "react";
 import { color } from "metabase/lib/colors";
-import { Box, Center, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Text } from "metabase/ui";
 
 const ContentWrapper = styled.div`
   width: 100%;
@@ -14,7 +13,7 @@ const ContentWrapper = styled.div`
 
 const SettingsAsideBlock = styled.div`
   flex-shrink: 0;
-  width: 345px;
+  width: 21.6rem;
   padding: 2rem;
   border-right: 1px solid ${color("border")};
   background-color: ${color("white")};
@@ -22,7 +21,7 @@ const SettingsAsideBlock = styled.div`
 
 const PreviewAreaBlock = styled.div`
   width: 100%;
-  min-width: 810px;
+  min-width: 50rem;
 
   display: flex;
   flex-direction: column;
@@ -31,7 +30,7 @@ const PreviewAreaBlock = styled.div`
 
   gap: 1rem;
 
-  padding: 0.5rem 1.5rem 2rem;
+  padding: 1rem 1.5rem 2rem 1rem;
   background-color: ${color("bg-light")};
 `;
 
@@ -49,27 +48,6 @@ export const SettingsTabLayout = ({
     </ContentWrapper>
   );
 };
-
-export const CODE_PREVIEW_CONTROL_OPTIONS = [
-  {
-    label: (
-      <Center>
-        <Icon name="embed" />
-        <Box ml="0.5rem">Code</Box>
-      </Center>
-    ),
-    value: "code",
-  },
-  {
-    label: (
-      <Center>
-        <Icon name="eye_filled" />
-        <Box ml="0.5rem">Preview</Box>
-      </Center>
-    ),
-    value: "preview",
-  },
-];
 
 export const DisplayOptionSection = ({
   title,

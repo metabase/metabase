@@ -7,7 +7,6 @@ import {
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
 import { getParameters } from "metabase/dashboard/selectors";
-import type { EmbedResource } from "metabase/public/components/EmbedModal";
 
 import {
   createPublicLink,
@@ -40,13 +39,7 @@ export const DashboardSharingEmbeddingModal = (
   const updateDashboardEmbeddingParams = (embeddingParams: EmbedOptions) =>
     dispatch(updateEmbeddingParams(dashboard, embeddingParams));
 
-  const getPublicUrl = ({ public_uuid }: EmbedResource) => {
-    if (public_uuid) {
-      return Urls.publicDashboard(public_uuid);
-    }
-
-    return null;
-  };
+  const getPublicUrl = (publicUuid: string) => Urls.publicDashboard(publicUuid);
 
   return (
     <EmbedModal isOpen={isOpen} onClose={onClose}>

@@ -5,6 +5,7 @@ import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 
+import { checkNotNull } from "metabase/lib/types";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 import type {
   ActivePreviewPane,
@@ -15,11 +16,9 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
   EmbedType,
-} from "../EmbedModal.types";
+} from "../types";
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
-
-const FALLBACK_SECRET_KEY = "<METABASE_SECRET_KEY>";
 
 export interface EmbedModalContentProps {
   embedType: EmbedType;
@@ -34,10 +33,7 @@ export interface EmbedModalContentProps {
 
   onCreatePublicLink: () => void;
   onDeletePublicLink: () => void;
-  getPublicUrl: (
-    resource: EmbedResource,
-    extension?: ExportFormatType,
-  ) => string | null;
+  getPublicUrl: (publicUuid: string, extension?: ExportFormatType) => string;
 
   className?: string;
 }
@@ -61,11 +57,9 @@ export const EmbedModalContent = (
   const [pane, setPane] = useState<ActivePreviewPane>("code");
 
   const siteUrl = useSelector(state => getSetting(state, "site-url"));
-  const secretKey =
-    useSelector(state => getSetting(state, "embedding-secret-key")) ||
-    // "secretKey" should always exist if embedding has been turned on, but to fix typings we add here a fallback value
-    FALLBACK_SECRET_KEY;
-
+  const secretKey = checkNotNull(
+    useSelector(state => getSetting(state, "embedding-secret-key")),
+  );
   const [embeddingParams, setEmbeddingParams] = useState<EmbeddingParameters>(
     getDefaultEmbeddingParams(resource, resourceParameters),
   );
@@ -112,7 +106,7 @@ export const EmbedModalContent = (
   };
 
   const getPreviewParamsBySlug = () => {
-    const lockedParameters = getPreviewParameters(
+    const lockedParameters = getLockedPreviewParameters(
       resourceParameters,
       embeddingParams,
     );
@@ -126,7 +120,7 @@ export const EmbedModalContent = (
   };
 
   const previewParametersBySlug = getPreviewParamsBySlug();
-  const previewParameters = getPreviewParameters(
+  const lockedParameters = getLockedPreviewParameters(
     resourceParameters,
     embeddingParams,
   );
@@ -153,7 +147,7 @@ export const EmbedModalContent = (
     <div className="flex flex-column full-height">
       <EmbedModalContentStatusBar
         resourceType={resourceType}
-        isEmbeddingEnabled={resource.enable_embedding}
+        isPublished={resource.enable_embedding}
         hasSettingsChanges={hasSettingsChanges}
         onSave={handleSave}
         onUnpublish={handleUnpublish}
@@ -186,15 +180,15 @@ export const EmbedModalContent = (
           secretKey={secretKey}
           params={previewParametersBySlug}
           displayOptions={displayOptions}
-          previewParameters={previewParameters}
+          lockedParameters={lockedParameters}
           parameterValues={parameterValues}
           resourceParameters={resourceParameters}
           embeddingParams={embeddingParams}
           onChangeDisplayOptions={setDisplayOptions}
           onChangeEmbeddingParameters={setEmbeddingParams}
           onChangeParameterValue={(id: string, value: string) =>
-            setParameterValues(prevState => ({
-              ...prevState,
+            setParameterValues(state => ({
+              ...state,
               [id]: value,
             }))
           }
@@ -224,7 +218,7 @@ function filterValidResourceParameters(
   return _.pick(embeddingParams, validParameters);
 }
 
-function getPreviewParameters(
+function getLockedPreviewParameters(
   resourceParameters: EmbedResourceParameter[],
   embeddingParams: EmbeddingParameters,
 ) {

@@ -2,10 +2,11 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 import { Flex, Paper, Text } from "metabase/ui";
+import type { EmbedResourceType } from "metabase/public/components/EmbedModal";
 
 interface EmbedModalContentStatusBarProps {
-  isEmbeddingEnabled: boolean;
-  resourceType: string;
+  isPublished: boolean;
+  resourceType: EmbedResourceType;
   hasSettingsChanges: boolean;
   onDiscard: () => void;
   onUnpublish: () => void;
@@ -13,7 +14,7 @@ interface EmbedModalContentStatusBarProps {
 }
 
 export const EmbedModalContentStatusBar = ({
-  isEmbeddingEnabled,
+  isPublished,
   resourceType,
   hasSettingsChanges,
   onDiscard,
@@ -21,10 +22,10 @@ export const EmbedModalContentStatusBar = ({
   onSave,
 }: EmbedModalContentStatusBarProps): JSX.Element => {
   return (
-    <Paper withBorder shadow="lg" m="1.5rem 2rem" p="0.75rem 1rem">
+    <Paper withBorder shadow="sm" m="1.5rem 2rem" p="0.75rem 1rem">
       <Flex w="100%" justify="space-between" align="center" gap="0.5rem">
         <Text fw="bold">
-          {!isEmbeddingEnabled
+          {!isPublished
             ? t`You will need to publish this ${resourceType} before you can embed it in another application.`
             : hasSettingsChanges
             ? t`You’ve made changes that need to be published before they will be reflected in your application embed.`
@@ -32,7 +33,7 @@ export const EmbedModalContentStatusBar = ({
         </Text>
 
         <div className="flex-no-shrink">
-          {isEmbeddingEnabled &&
+          {isPublished &&
             (hasSettingsChanges ? (
               <Button
                 className="ml1"
@@ -48,7 +49,7 @@ export const EmbedModalContentStatusBar = ({
               >{t`Unpublish`}</Button>
             ))}
 
-          {(!isEmbeddingEnabled || hasSettingsChanges) && (
+          {(!isPublished || hasSettingsChanges) && (
             <ActionButton
               className="ml1"
               primary

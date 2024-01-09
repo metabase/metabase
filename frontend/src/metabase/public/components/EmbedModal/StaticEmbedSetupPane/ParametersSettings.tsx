@@ -1,10 +1,11 @@
 import { t } from "ttag";
 import { useMemo } from "react";
+import type { IconName } from "metabase/core/components/Icon";
 import { Icon } from "metabase/core/components/Icon";
-import { color } from "metabase/lib/colors";
 import Select, { Option } from "metabase/core/components/Select";
-import { Box, Divider, SegmentedControl, Stack, Text } from "metabase/ui";
+import { Box, Divider, Stack, Text } from "metabase/ui";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import type {
@@ -17,13 +18,10 @@ import type {
   EmbedResource,
   EmbedType,
   EmbedResourceParameterWithValue,
-} from "../EmbedModal.types";
+} from "../types";
 import EmbedCodePane from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
-import {
-  CODE_PREVIEW_CONTROL_OPTIONS,
-  SettingsTabLayout,
-} from "./StaticEmbedSetupPane.styled";
+import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 export interface ParametersSettingsProps {
@@ -34,7 +32,7 @@ export interface ParametersSettingsProps {
   resourceParameters: EmbedResourceParameter[];
 
   embeddingParams: EmbeddingParameters;
-  previewParameters: EmbedResourceParameter[];
+  lockedParameters: EmbedResourceParameter[];
   parameterValues: EmbeddingParametersValues;
 
   embedType: EmbedType;
@@ -58,7 +56,7 @@ export const ParametersSettings = ({
   resourceType,
   resourceParameters,
   embeddingParams,
-  previewParameters,
+  lockedParameters,
   parameterValues,
   displayOptions,
   embedType,
@@ -71,13 +69,13 @@ export const ParametersSettings = ({
   onChangeParameterValue,
   onChangePane,
 }: ParametersSettingsProps): JSX.Element => {
-  const valuePopulatedParameters = useMemo(
+  const valuePopulatedLockedParameters = useMemo(
     () =>
       getValuePopulatedParameters(
-        previewParameters,
+        lockedParameters,
         parameterValues,
       ) as EmbedResourceParameterWithValue[],
-    [previewParameters, parameterValues],
+    [lockedParameters, parameterValues],
   );
 
   return (
@@ -96,7 +94,6 @@ export const ParametersSettings = ({
                     <Icon
                       name={getIconForParameter(parameter)}
                       className="mr2"
-                      style={{ color: color("text-light") }}
                     />
                     <h3>{parameter.name}</h3>
                     <Select
@@ -127,7 +124,7 @@ export const ParametersSettings = ({
               </Stack>
             </StaticEmbedSetupPaneSettingsContentSection>
 
-            {previewParameters.length > 0 && (
+            {lockedParameters.length > 0 && (
               <>
                 <Divider my="2rem" />
                 <StaticEmbedSetupPaneSettingsContentSection
@@ -136,12 +133,12 @@ export const ParametersSettings = ({
                   <Stack spacing="1rem">
                     <Text>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</Text>
 
-                    {valuePopulatedParameters.map(parameter => (
+                    {valuePopulatedLockedParameters.map(parameter => (
                       <StaticParameterWidget
                         key={parameter.id}
                         className="m0"
                         parameter={parameter}
-                        parameters={valuePopulatedParameters}
+                        parameters={valuePopulatedLockedParameters}
                         setValue={(value: string) =>
                           onChangeParameterValue(parameter.id, value)
                         }
@@ -155,7 +152,7 @@ export const ParametersSettings = ({
         ) : (
           <>
             <Box mb="2rem">
-              {t`This ${resourceType} doesn't have any parameters to configure yet.`}
+              <Text>{t`This ${resourceType} doesn't have any parameters to configure yet.`}</Text>
             </Box>
             <Divider />
           </>
@@ -163,11 +160,7 @@ export const ParametersSettings = ({
       }
       previewSlot={
         <>
-          <SegmentedControl
-            value={activePane}
-            data={CODE_PREVIEW_CONTROL_OPTIONS}
-            onChange={onChangePane}
-          />
+          <PreviewModeSelector value={activePane} onChange={onChangePane} />
 
           {activePane === "preview" ? (
             <PreviewPane
@@ -195,9 +188,14 @@ export const ParametersSettings = ({
   );
 };
 
-const getIconForParameter = (parameter: EmbedResourceParameter) =>
-  parameter.type === "category"
-    ? "string"
-    : parameter.type.indexOf("date/") === 0
-    ? "calendar"
-    : "unknown";
+const getIconForParameter = (parameter: EmbedResourceParameter): IconName => {
+  if (parameter.type === "category") {
+    return "string";
+  }
+
+  if (parameter.type.indexOf("date/") === 0) {
+    return "calendar";
+  }
+
+  return "unknown";
+};
