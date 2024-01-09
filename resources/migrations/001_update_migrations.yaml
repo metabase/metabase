@@ -5227,6 +5227,42 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v49.2024-01-09T13:52:21
+      author: noahmoss
+      comment: Index on permissions_v2.table_id
+      changes:
+        - createIndex:
+            tableName: permissions_v2
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_permissions_v2_table_id
+
+  - changeSet:
+      id: v49.2024-01-09T13:53:50
+      author: noahmoss
+      comment: Index on permissions_v2.db_id
+      changes:
+        - createIndex:
+            tableName: permissions_v2
+            columns:
+              - column:
+                  name: db_id
+            indexName: idx_permissions_v2_db_id
+
+  - changeSet:
+      id: v49.2024-01-09T13:53:54
+      author: noahmoss
+      comment: Index on permissions_v2.group_id
+      changes:
+        - createIndex:
+            tableName: permissions_v2
+            columns:
+              - column:
+                  name: group_id
+            indexName: idx_permissions_v2_group_id
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
