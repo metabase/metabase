@@ -215,7 +215,7 @@ Query sources include:
 - metabot
 - public-dashboard
 - public-question
-- pulse
+- pulse (which includes dashboard subscriptions and alerts)
 - question
 - xlsx-download
 
