@@ -3,7 +3,7 @@ import moment from "moment";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import { color, colors } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
@@ -580,13 +580,13 @@ function computeChangeTypeWithOptions({
 function getArrowColor(changeArrowIconName, shouldSwitchPositiveNegative) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: colors.success,
-        [CHANGE_ARROW_ICONS.ARROW_UP]: colors.error,
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: color("success"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: color("error"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: colors.error,
-        [CHANGE_ARROW_ICONS.ARROW_UP]: colors.success,
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: color("error"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: color("success"),
       };
 
-  return color(arrowIconColorNames[changeArrowIconName]);
+  return arrowIconColorNames[changeArrowIconName];
 }
