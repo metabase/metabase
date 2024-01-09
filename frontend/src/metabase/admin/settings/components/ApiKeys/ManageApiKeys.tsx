@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 
 import { Stack, Title, Text, Button, Group } from "metabase/ui";
+import { getThemeOverrides } from "metabase/ui/theme";
+const { fontFamilyMonospace } = getThemeOverrides();
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -67,7 +69,7 @@ function ApiKeysTable({
               </td>
               <td>{apiKey.group.name}</td>
               <td>
-                <Text variant="monospace">
+                <Text ff={fontFamilyMonospace as string}>
                   {formatMaskedKey(apiKey.masked_key)}
                 </Text>
               </td>
