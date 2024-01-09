@@ -330,7 +330,7 @@
 
 (deftest template-tag-parameters-test
   (testing "Card with a Field filter parameter"
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query (qp.card-test/field-filter-query)}]
+    (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/field-filter-query)}]
       (is (= [{:id "_DATE_",
                :type :date/all-options,
                :target [:dimension [:template-tag "date"]],
@@ -339,7 +339,7 @@
                :default nil}]
              (card/template-tag-parameters card)))))
   (testing "Card with a non-Field-filter parameter"
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
+    (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-field-filter-query)}]
       (is (= [{:id "_ID_",
                :type :number/=,
                :target [:variable [:template-tag "id"]],
@@ -348,7 +348,7 @@
                :default "1"}]
              (card/template-tag-parameters card)))))
   (testing "Should ignore native query snippets and source card IDs"
-    (t2.with-temp/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
+    (mt/with-temp [:model/Card card {:dataset_query (qp.card-test/non-parameter-template-tag-query)}]
       (is (= [{:id "_ID_",
                :type :number/=,
                :target [:variable [:template-tag "id"]],
