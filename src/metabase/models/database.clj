@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-v2 :as perms-v2]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -94,9 +95,20 @@
     (catch Throwable e
       (log/error e (trs "Error unscheduling tasks for DB.")))))
 
+(defn- set-new-database-permissions!
+  [database]
+  (let [all-users-group  (perms-group/all-users)
+        non-magic-groups (perms-group/non-magic-groups)
+        non-admin-groups (conj non-magic-groups all-users-group)]
+    ;; All other permissions are set at the table-level, so they are added when individual tables are synced
+    (perms-v2/set-permission! :native-query-editing all-users-group :yes database)
+    (perms-v2/set-group-permissions! :native-query-editing non-magic-groups :no database)
+    (perms-v2/set-group-permissions! :manage-database non-admin-groups :no database)))
+
 (t2/define-after-insert :model/Database
   [database]
   (u/prog1 database
+    (set-new-database-permissions! database)
     ;; add this database to the All Users permissions group
     (perms/grant-full-data-permissions! (perms-group/all-users) database)
     ;; give full download perms for this database to the All Users permissions group

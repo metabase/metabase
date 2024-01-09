@@ -10,6 +10,8 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group :as perms-group]
+   [metabase.models.permissions-v2 :as perms-v2]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -60,6 +62,27 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
     (merge defaults table)))
+
+(defn- set-new-table-permissions!
+  [{:keys [db_id schema id]}]
+  (let [all-users-group  (perms-group/all-users)
+        non-magic-groups (perms-group/non-magic-groups)
+        non-admin-groups (conj non-magic-groups all-users-group)]
+    ;; Data access permissions
+    (perms-v2/set-permission! :data-access all-users-group :unrestricted id db_id schema)
+    (perms-v2/set-group-permissions! :data-access non-magic-groups :no-self-service id db_id schema)
+
+    ;; Download permissions
+    (perms-v2/set-permission! :download-results all-users-group :one-million-rows id db_id schema)
+    (perms-v2/set-group-permissions! :download-results non-magic-groups :no id db_id schema)
+
+    ;; Table metadata management
+    (perms-v2/set-group-permissions! :manage-table-metadata non-admin-groups :no id db_id schema)))
+
+(t2/define-after-insert :model/Table
+  [table]
+  (u/prog1 table
+   (set-new-table-permissions! table)))
 
 (t2/define-before-delete :model/Table
   [{:keys [db_id schema id]}]

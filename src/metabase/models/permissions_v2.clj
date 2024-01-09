@@ -134,7 +134,8 @@
   multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type & [object-or-id]]
   (let [object-id (u/id object-or-id)
-        db-perm?  (= :model/Database (model-by-perm-type perm-type))]
+        db-perm?    (= :model/Database (model-by-perm-type perm-type))
+        table-perm? (= :model/Table (model-by-perm-type perm-type))]
     (assert-required-object-id perm-type object-id)
     (assert-required-db-id perm-type object-id)
     (when (t2/select-one-fn :is_superuser :model/User :id user-id)
@@ -148,11 +149,10 @@
                                          :where [:and
                                                  [:= :pgm.user_id user-id]
                                                  [:= :p.type (name perm-type)]
-                                                 (when object-id
-                                                   (if db-perm?
-                                                    [:= :p.db_id object-id]
-                                                    [:= :p.object_id object-id]))]})]
-
+                                                 (cond
+                                                   db-perm?    [:= :p.db_id object-id]
+                                                   table-perm? [:= :p.table_id object-id]
+                                                   object-id   [:= :p.object_id object-id])]})]
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
@@ -224,6 +224,37 @@
   "An ID, or something with an ID."
   [:or pos-int? [:map [:id pos-int?]]])
 
+(defn- id-fields-for-perm-type
+  "Permissions almost always apply to a single instance of a model, which is passed into `set-permission!` (and related
+  functions) as `object-or-id`. However, database- and table- level perms store this ID in `db_id` or `table_id`,
+  respectively. Other perms, such as collection perms, store this in `object_id`.
+
+  This function takes the arguments passed to `set-permission!` and returns the values which should be stored in each
+  field in the database."
+  [perm-type object-or-id db-or-id]
+  (let [db-id (u/id db-or-id)
+        db-perm?    (= :model/Database (model-by-perm-type perm-type))
+        table-perm? (= :model/Table (model-by-perm-type perm-type))
+        ;; Set object-id for non-data permissions; otherwise store that value in db_id or table_id
+        ;; depending on the permission type.
+        object-id   (when-not (or db-perm? table-perm?) (u/id object-or-id))
+        db-id       (if db-perm? (u/id object-or-id) db-id)
+        table-id    (when table-perm? (u/id object-or-id))]
+    {:object_id object-id
+     :db_id     db-id
+     :table_id  table-id}))
+
+(defn- new-perm
+  "Constructs a new permission from the given args."
+  [perm-type group-or-id value & [object-or-id db-or-id schema]]
+  (let [group-id    (u/the-id group-or-id)]
+    (merge
+     (id-fields-for-perm-type perm-type object-or-id db-or-id)
+     {:type      perm-type
+      :group_id  group-id
+      :value     value
+      :schema    schema})))
+
 (mu/defn set-permission!
   "Sets a single permission to a specified value for a given group.
 
@@ -242,31 +273,17 @@
       db-or-id     :- [:maybe TheIdable]
       schema       :- [:maybe :string]]]
   (t2/with-transaction [_conn]
-    (let [group-id         (u/the-id group-or-id)
-          db-id            (u/id db-or-id)
-          db-perm?         (= :model/Database (model-by-perm-type perm-type))
-          table-perm?      (= :model/Table (model-by-perm-type perm-type))
-                           ;; Set object-id for non-data permissions; otherwise store that value in db_id or table_id
-                           ;; depending on the permission type.
-          object-id        (when-not (or db-perm? table-perm?) (u/id object-or-id))
-          db-id            (if db-perm? (u/id object-or-id) db-id)
-          table-id         (when table-perm? (u/id object-or-id))
-          existing-perm-id (t2/select-one-pk :model/PermissionsV2
-                                             :type      perm-type
-                                             :group_id  group-id
-                                             :object_id object-id
-                                             :db_id     db-id
-                                             :table_id  table-id)
-          new-perm         {:type      perm-type
-                            :group_id  group-id
-                            :object_id object-id
-                            :value     value
-                            :db_id     db-id
-                            :table_id  table-id
-                            :schema    schema}]
-      (if existing-perm-id
-        (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
-        (t2/insert! :model/PermissionsV2 new-perm)))))
+    (let [group-id                           (u/the-id group-or-id)
+          {:keys [object_id db_id table_id]} (id-fields-for-perm-type perm-type object-or-id db-or-id)
+          existing-perm-id                   (t2/select-one-pk :model/PermissionsV2
+                                                               :type      perm-type
+                                                               :group_id  group-id
+                                                               :object_id object_id
+                                                               :db_id     db_id
+                                                               :table_id  table_id)
+          new-perm                           (new-perm perm-type group-or-id value object-or-id db-or-id schema)]
+      (t2/delete! :model/PermissionsV2 existing-perm-id)
+      (t2/insert! :model/PermissionsV2 new-perm))))
 
 (mu/defn set-table-permissions!
   "Sets a single permission type to a specified value for all tables in `tables`."
@@ -274,17 +291,33 @@
   (t2/with-transaction [_conn]
     (let [group-id  (u/the-id group-or-id)
           new-perms (map (fn [{:keys [id db_id schema]}]
-                           {:type     perm-type
-                            :group_id group-id
-                            :value    value
-                            :db_id    db_id
-                            :schema   schema
-                            :table_id id})
+                           (new-perm perm-type group-or-id value id db_id schema))
                          tables)]
       (t2/delete! :model/PermissionsV2 {:where [:and
                                                 [:= :group_id  group-id]
                                                 [:= :type      (name perm-type)]
                                                 [:in :table_id (map u/id tables)]]})
+      (t2/insert! :model/PermissionsV2 new-perms))))
+
+(mu/defn set-group-permissions!
+  "Sets a single permission type and value for all groups in `groups`."
+  [perm-type       :- :keyword
+   groups-or-ids   :- [:sequential TheIdable]
+   value           :- :keyword
+   & [object-or-id :- [:maybe TheIdable]
+      db-or-id     :- [:maybe TheIdable]
+      schema       :- [:maybe :string]]]
+  (t2/with-transaction [_conn]
+    (let [group-ids                          (map u/the-id groups-or-ids)
+          {:keys [object_id db_id table_id]} (id-fields-for-perm-type perm-type object-or-id db-or-id)
+          new-perms                          (map #(new-perm perm-type % value object-or-id db-or-id schema)
+                                                  group-ids)]
+      (t2/delete! :model/PermissionsV2 {:where [:and
+                                                [:in :group_id group-ids]
+                                                [:=  :type      (name perm-type)]
+                                                [:=  :object_id object_id]
+                                                [:=  :db_id     db_id]
+                                                [:=  :table_id  table_id]]})
       (t2/insert! :model/PermissionsV2 new-perms))))
 
 (comment
