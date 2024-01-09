@@ -44,7 +44,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
 
-        openStaticEmbeddingModal({ activeTab: "Appearance" });
+        openStaticEmbeddingModal("Appearance");
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
