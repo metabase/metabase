@@ -317,7 +317,8 @@
   (atom #{}))
 
 (def ^:private ^:dynamic *skip-ns-decision-fn*
-  (core/fn skip-ns-decision-fn [] (and config/is-prod? (contains? @namespaces-toskip *ns*))))
+  (core/fn skip-ns-decision-fn []
+    (and config/is-prod? (contains? @namespaces-toskip *ns*))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]].
@@ -373,7 +374,7 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)]
-    `(if (*skip-ns-decision-fn*)
+    `(if (#'*skip-ns-decision-fn*)
        ~(uninstrumented-fn-form parsed)
        ~(let [error-context (if (symbol? (first fn-tail))
                               {:fn-name (list 'quote (first fn-tail))}
