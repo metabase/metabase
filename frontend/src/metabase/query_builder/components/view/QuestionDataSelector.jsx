@@ -3,26 +3,24 @@ import { DataSourceSelector } from "metabase/query_builder/components/DataSelect
 import * as Lib from "metabase-lib";
 
 export default function QuestionDataSelector({
-  legacyQuery,
-  query,
+  question,
   updateQuestion,
   triggerElement,
 }) {
+  const handleTableChange = (tableId, databaseId) => {
+    const metadata = question.metadata();
+    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+    const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+    const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    updateQuestion(question._setMLv2Query(query), { run: true });
+  };
+
   return (
     <DataSourceSelector
       containerClassName="DataPopoverContainer"
       hasTableSearch
       databaseQuery={{ saved: true }}
-      selectedDatabaseId={Lib.databaseID(query)}
-      selectedTableId={legacyQuery.tableId()}
-      setSourceTableFn={tableId =>
-        updateQuestion(
-          legacyQuery.setTableId(tableId).setDefaultQuery().question(),
-          {
-            run: true,
-          },
-        )
-      }
+      setSourceTableFn={handleTableChange}
       triggerElement={triggerElement}
       isOpen
     />
