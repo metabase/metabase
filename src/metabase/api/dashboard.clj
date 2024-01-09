@@ -59,10 +59,13 @@
     (filter mi/can-read? <>)))
 
 (api/defendpoint GET "/"
-  "Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
+  "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.
+  It only exists for backwards compatibility and may be removed in the future.
+
+  Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
   *  `all`      - Return all Dashboards.
   *  `mine`     - Return Dashboards created by the current user.
-  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)""
   [f]
   {f [:maybe [:enum "all" "mine" "archived"]]}
   (let [dashboards (dashboards-list f)
