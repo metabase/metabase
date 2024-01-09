@@ -1037,7 +1037,7 @@ class Question {
     const newQuery = filters.reduce((query, filter) => {
       return ML.filter(query, stageIndex, filter);
     }, query);
-    const newQuestion = this._setMLv2Query(newQuery)
+    const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
@@ -1080,7 +1080,7 @@ class Question {
     return this.__mlv2Query;
   }
 
-  _setMLv2Query(query: Query): Question {
+  setQuery(query: Query): Question {
     return this.setDatasetQuery(ML.toLegacyQuery(query));
   }
 

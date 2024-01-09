@@ -30,7 +30,7 @@ export function TimeseriesChrome({
   const query = question.query();
 
   const handleChange = (query: Lib.Query) => {
-    updateQuestion(question._setMLv2Query(query), { run: true });
+    updateQuestion(question.setQuery(query), { run: true });
   };
 
   return (
