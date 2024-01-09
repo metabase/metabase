@@ -212,7 +212,7 @@ Query sources include:
 - embedded-xlsx-download
 - json-download
 - map-tiles
-- metabot
+- metabot (experimental)
 - public-dashboard
 - public-question
 - pulse (which includes dashboard subscriptions and alerts)
