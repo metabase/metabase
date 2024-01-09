@@ -91,7 +91,14 @@
                     (testing "First three lines for coll+dash+card, and then error during compression"
                       (is (= #{:collection :dashboard :card}
                              (log-types (take 3 lines))))
-                      (is (re-find #"ERROR" (nth lines 3)))))))))))
+                      (is (re-find #"ERROR" (nth lines 3)))))))
+
+              (testing "You can pass specific directory name"
+                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                              :dirname "check" :all_collections false :data_model false :settings false)]
+                  (is (= "check/"
+                         (with-open [tar (open-tar f)]
+                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files

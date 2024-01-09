@@ -58,11 +58,12 @@
 
 ;;; Logic
 
-(defn- serialize&pack ^File [opts]
-  (let [id       (format "%s-%s"
-                         (u/slugify (public-settings/site-name))
-                         (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time)))
-        path     (io/file parent-dir id)
+(defn- serialize&pack ^File [{:keys [dirname] :as opts}]
+  (let [dirname (or dirname
+                    (format "%s-%s"
+                            (u/slugify (public-settings/site-name))
+                            (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
+        path     (io/file parent-dir dirname)
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")]
     (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file)]
@@ -106,6 +107,7 @@
   "Serialize and retrieve Metabase instance.
 
   Parameters:
+  - `dirname`: str, name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
   - `all_collections`: bool, serialize all collections (default: true, unless you specify `collection`)
   - `collection`: array of int, db id of a collection to serialize
   - `settings`: bool, if Metabase settings should be serialized (default: `true`)
@@ -115,7 +117,7 @@
 
   Outputs .tar.gz file with serialization results and an `export.log` file.
   On error just returns serialization logs."
-  [:as {{:strs [all_collections collection settings data_model field_values database_secrets]
+  [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname]
          :or   {all_collections true
                 settings        true
                 data_model      true}}
@@ -134,7 +136,8 @@
                             :no-data-model            (not data_model)
                             :no-settings              (not settings)
                             :include-field-values     field_values
-                            :include-database-secrets database_secrets}
+                            :include-database-secrets database_secrets
+                            :dirname                  dirname}
         {:keys [archive
                 log-file
                 callback]} (serialize&pack opts)]
