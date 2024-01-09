@@ -194,11 +194,12 @@ function QueryActionContextProvider({
     ({ isEditable }: EditorBodyProps) => (
       <QueryActionEditor
         query={query}
+        question={question}
         isEditable={isEditable}
         onChangeQuestionQuery={handleQueryChange}
       />
     ),
-    [query, handleQueryChange],
+    [query, question, handleQueryChange],
   );
 
   const isDirty = useMemo(() => {

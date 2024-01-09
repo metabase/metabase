@@ -2,20 +2,23 @@ import { t } from "ttag";
 
 import Subhead from "metabase/components/type/Subhead";
 import type { updateQuestion } from "metabase/query_builder/actions";
+import type * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import QuestionDataSelector from "../../QuestionDataSelector";
 
 type Props = {
-  query: StructuredQuery;
+  legacyQuery: StructuredQuery;
+  query: Lib.Query;
   updateQuestion: typeof updateQuestion;
 };
 
-function NewQuestionView({ query, updateQuestion }: Props) {
+function NewQuestionView({ legacyQuery, query, updateQuestion }: Props) {
   return (
     <div className="full-height">
       <div className="p4 mx2">
         <QuestionDataSelector
+          legacyQuery={legacyQuery}
           query={query}
           updateQuestion={updateQuestion}
           triggerElement={
