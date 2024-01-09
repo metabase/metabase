@@ -211,10 +211,15 @@ class PublicQuestionInner extends Component {
               className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>
                 this.setState({
+                  card: updateIn(
+                    card,
+                    ["visualization_settings"],
+                    previousSettings => ({ ...previousSettings, ...settings }),
+                  ),
                   result: updateIn(
                     result,
                     ["card", "visualization_settings"],
-                    s => ({ ...s, ...settings }),
+                    previousSettings => ({ ...previousSettings, ...settings }),
                   ),
                 })
               }
