@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.sync.describe-database
   "SQL JDBC impl for `describe-database`."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -77,21 +78,21 @@
   [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
-  (let [sql-args (simple-select-probe-query driver table-schema table-name)]
+  (let [sql-args  (simple-select-probe-query driver table-schema table-name)]
     (log/tracef "Checking for SELECT privileges for %s with query %s"
                 (str (when table-schema
                        (str (pr-str table-schema) \.))
                      (pr-str table-name))
                 (pr-str sql-args))
     (try
-      (execute-select-probe-query driver conn sql-args)
-      (log/trace "SELECT privileges confirmed")
-      true
-      (catch Throwable e
-        (log/trace e "Assuming no SELECT privileges: caught exception")
-        (when-not (.getAutoCommit conn)
-          (.rollback conn))
-        false))))
+     (execute-select-probe-query driver conn sql-args)
+     (log/trace "SELECT privileges confirmed")
+     true
+     (catch Throwable e
+       (log/trace e "Assuming no SELECT privileges: caught exception")
+       (when-not (.getAutoCommit conn)
+         (.rollback conn))
+       false))))
 
 (defn db-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
@@ -109,6 +110,17 @@
                                          (when-not (str/blank? remarks)
                                            remarks))}))))))
 
+(defn- table-privileges
+  [driver ^DatabaseMetaData metadata schema-or-nil db-name-or-nil]
+  (->> (jdbc/result-set-seq
+        (.getTablePrivileges
+         metadata db-name-or-nil
+         (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"))
+       (filter #(= "SELECT" (:privilege %)))
+       (map (fn [x]
+              [(:table_schem x) (:table_name x)]))
+       set))
+
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
   list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
@@ -119,10 +131,11 @@
   {:pre [(instance? Connection conn)]}
   (let [metadata (.getMetaData conn)]
     (eduction
-     (comp (mapcat (fn [schema]
-                     (db-tables driver metadata schema db-name-or-nil)))
-           (filter (fn [{table-schema :schema table-name :name}]
-                     (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name))))
+     (mapcat (fn [schema]
+               (let [table-privileges (table-privileges driver metadata schema db-name-or-nil)]
+                 (->> (db-tables driver metadata schema db-name-or-nil)
+                      (filter (fn [table]
+                                (contains? table-privileges [(:schema table) (:name table)])))))))
      (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
                                                         schema-inclusion-filters schema-exclusion-filters))))
 
@@ -176,3 +189,30 @@
               (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
             (default-active-tbl-fn))
           (default-active-tbl-fn)))))})
+
+
+#_(let [schema-filter-prop (driver.u/find-schema-filters-prop :redshift)
+         db-or-id-or-spec  3
+         database           (db-or-id-or-spec->database db-or-id-or-spec)
+         prop-nm            (:name schema-filter-prop)
+         driver             :redshift
+         [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
+                                                           prop-nm
+                                                           database)]
+     #_(driver.s/db-details->schema-filter-patterns
+        prop-nm
+        database)
+     (sql-jdbc.execute/do-with-connection-with-options
+      driver
+      db-or-id-or-spec
+      nil
+      (fn [conn]
+        (time
+         (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns))))))
+
+#_(time
+   (do
+    (t2/query
+     (t2/select-one :model/Database 2)
+     ["select * from information_schema.table_privileges limit 100"])
+    nil))
