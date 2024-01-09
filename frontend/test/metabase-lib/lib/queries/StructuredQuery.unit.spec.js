@@ -485,7 +485,20 @@ describe("StructuredQuery", () => {
           const query = makeQueryWithoutNumericFields().addExpression(
             "custom_numeric_field",
             // Expression: case([ID] = 1, 11, 99)
-            ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+            [
+              "case",
+              [
+                [
+                  [
+                    "=",
+                    ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                    1,
+                  ],
+                  11,
+                ],
+              ],
+              { default: 99 },
+            ],
           );
 
           expect(
@@ -554,7 +567,20 @@ describe("StructuredQuery", () => {
         const query = makeQueryWithoutNumericFields().addExpression(
           "custom_numeric_field",
           // Expression: case([ID] = 1, 11, 99)
-          ["case", [["=", ORDERS.ID, 1], 11], { default: 99 }],
+          [
+            "case",
+            [
+              [
+                [
+                  "=",
+                  ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+                  1,
+                ],
+                11,
+              ],
+            ],
+            { default: 99 },
+          ],
         );
         const short = "avg";
 
