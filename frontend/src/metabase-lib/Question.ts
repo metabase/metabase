@@ -1049,7 +1049,7 @@ class Question {
   }
 
   query(metadata = this._metadata): Query {
-    const databaseId = this.legacyQuery()?._databaseId() ?? null;
+    const databaseId = this.datasetQuery().database;
 
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
