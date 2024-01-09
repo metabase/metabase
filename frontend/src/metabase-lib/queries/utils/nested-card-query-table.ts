@@ -42,7 +42,7 @@ export function getDatasetTable(
   const composedDatasetQuestion = question.composeDataset();
   const composedQuestionQuery =
     composedDatasetQuestion.legacyQuery() as StructuredQuery;
-  return getNestedCardTable(question, composedQuestionQuery);
+  return getNestedCardTable(composedDatasetQuestion, composedQuestionQuery);
 }
 
 function createVirtualTableUsingQuestionMetadata(question: Question): Table {
