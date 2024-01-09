@@ -303,9 +303,9 @@ describe("StructuredQuery", () => {
         expect(query.setDatabase(db).database().id).toBe(db.id);
       });
     });
-    describe("tableId", () => {
+    describe("_sourceTableId", () => {
       it("Return the right table id", () => {
-        expect(query.tableId()).toBe(ORDERS_ID);
+        expect(query._sourceTableId()).toBe(ORDERS_ID);
       });
     });
   });

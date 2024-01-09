@@ -277,13 +277,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @deprecated: use sourceTableId
-   */
-  tableId(): TableId | null | undefined {
-    return this._sourceTableId();
-  }
-
-  /**
    *
    */
   setDefaultQuery(): StructuredQuery {
