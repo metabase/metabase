@@ -58,7 +58,7 @@
     (t2/hydrate <> :creator)
     (filter mi/can-read? <>)))
 
-(api/defendpoint GET "/"
+(api/defendpoint ^:deprecated GET "/"
   "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.
   It only exists for backwards compatibility and may be removed in the future.
 
