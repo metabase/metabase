@@ -39,6 +39,7 @@
   "Return `true` if change use any type in `types`."
   [types change]
   {:pre [(set? types)]}
+  #p change
   (let [match-target-types? (fn [ttype]
                               (contains? types (str/lower-case ttype)))]
     (cond
@@ -59,9 +60,12 @@
   [target-types change-set]
   (some #(check-change-use-types? target-types %) (get-in change-set [:changeSet :changes])))
 
-(defn- check-change-log-use-types?
+(defn- assert-no-types-in-change-log
+  "Returns true if none of the changes in the change-log contain usage of any type specified in `target-types`.
+
+  `id-filter-fn` is a function that takes an ID and return true if the changeset should be checked."
   ([target-types change-log]
-   (check-change-log-use-types? target-types change-log (constantly true)))
+   (assert-no-types-in-change-log target-types change-log (constantly true)))
   ([target-types change-log id-filter-fn]
    {:pre [(set? target-types)]}
    (->> change-log
@@ -69,29 +73,30 @@
                   (let [id (get-in change-set [:changeSet :id])]
                     (and (string? id)
                          (id-filter-fn id)))))
-        (some #(check-change-set-use-types? target-types %)))))
+        (some #(check-change-set-use-types? target-types %))
+        not)))
 
 (defn no-bare-blob-or-text-types?
   "Ensures that no \"text\" or \"blob\" type columns are added in changesets with id later than 320 (i.e. version
   0.42.0).  From that point on, \"${text.type}\" should be used instead, so that MySQL can handle it correctly (by using
   `LONGTEXT`).  And similarly, from an earlier point, \"${blob.type}\" should be used instead of \"blob\"."
   [change-log]
-  (not (check-change-log-use-types? #{"blob" "text"} change-log)))
+  (assert-no-types-in-change-log #{"blob" "text"} change-log #(pos? (compare % "v49.00-052"))))
 
 (defn no-bare-boolean-types?
   "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
   \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
   [change-log]
-  (not (check-change-log-use-types? #{"boolean"} change-log #(pos? (compare % "v49.00-032")))))
+  (assert-no-types-in-change-log #{"boolean"} change-log #(pos? (compare % "v49.00-032"))))
 
 (defn no-datetime-type?
   "Ensures that no \"datetime\" or \"timestamp without time zone\".
   From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columsn are tz-aware."
   [change-log]
-  (not (check-change-log-use-types?
-        #{"datetime" "timestamp" "timestamp without time zone"}
-        change-log
-        #(pos? (compare % "v49.00-000")))))
+  (assert-no-types-in-change-log
+   #{"datetime" "timestamp" "timestamp without time zone"}
+   change-log
+   #(pos? (compare % "v49.00-000"))))
 
 (s/def ::changeSet
   (s/spec :change-set.strict/change-set))
