@@ -27,7 +27,7 @@ export function TimeseriesChrome({
   question,
   updateQuestion,
 }: TimeseriesChromeProps) {
-  const query = question._getMLv2Query();
+  const query = question.query();
 
   const handleChange = (query: Lib.Query) => {
     updateQuestion(question._setMLv2Query(query), { run: true });

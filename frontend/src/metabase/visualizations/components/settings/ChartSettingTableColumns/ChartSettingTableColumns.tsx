@@ -40,7 +40,7 @@ export const ChartSettingTableColumns = ({
   );
 
   if (question?.isStructured()) {
-    const query = question._getMLv2Query();
+    const query = question.query();
 
     return (
       <QueryColumnSelector

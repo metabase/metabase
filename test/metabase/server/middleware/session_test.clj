@@ -23,6 +23,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
+   [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -131,7 +132,7 @@
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
               [[:%now                                                               false "brand-new session"]
-               [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
+               [#t "1970-01-01T00:00:01Z"                                           true  "really old session"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
                [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
@@ -251,7 +252,7 @@
                                             :user_id       (mt/user->id :lucky)
                                             :creator_id    (mt/user->id :lucky)
                                             :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  "mb_foobar"}]
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
     (testing "A valid API key works, and user info is added to the request"
       (let [req {:headers {"x-api-key" "mb_foobar"}}]
         (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
@@ -291,12 +292,12 @@
                                             :user_id       (mt/user->id :lucky)
                                             :creator_id    (mt/user->id :lucky)
                                             :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  "mb_foobar"}
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}
                            :model/ApiKey _ {:name          "A superuser API Key"
                                             :user_id       (mt/user->id :crowberto)
                                             :creator_id    (mt/user->id :lucky)
                                             :updated_by_id (mt/user->id :lucky)
-                                            :unhashed_key  "mb_superuser"}]
+                                            :unhashed_key  (u.secret/secret "mb_superuser")}]
     (testing "A valid API key works, and user info is added to the request"
       (is (= {:is-superuser?     false
               :is-group-manager? false
@@ -398,7 +399,7 @@
       (t2/insert! Session {:id      (str test-uuid)
                            :user_id (mt/user->id :lucky)})
         ;; use low-level `execute!` because updating is normally disallowed for Sessions
-      (t2/query-one {:update :core_session, :set {:created_at (t/instant 0)}, :where [:= :id (str test-uuid)]})
+      (t2/query-one {:update :core_session, :set {:created_at (t/instant 1000)}, :where [:= :id (str test-uuid)]})
       (is (= nil
              (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally

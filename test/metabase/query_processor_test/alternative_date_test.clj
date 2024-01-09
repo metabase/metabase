@@ -10,7 +10,8 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time OffsetDateTime)))
 
@@ -35,6 +36,19 @@
                   :coercion-strategy :Coercion/UNIXMicroSeconds->DateTime}]
     [[4 1433587200000000]
      [0 1433965860000000]]]])
+
+(deftest double-coercion-through-model
+  (testing "Ensure that coerced values only get coerced once. #33861"
+    (mt/dataset
+      toucan-microsecond-incidents
+      (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
+                                                                          :type     :query
+                                                                          :query    {:source-table (mt/id :incidents)}}}]
+        (is (= [[1 4 "2015-06-06T10:40:00Z"]
+                [2 0 "2015-06-10T19:51:00Z"]]
+               (mt/rows (qp/process-query {:database (mt/id)
+                                           :type     :query
+                                           :query    {:source-table (str "card__" card-id)}}))))))))
 
 (deftest ^:parallel microseconds-test
   (mt/test-drivers (disj (mt/normal-drivers) :sqlite)

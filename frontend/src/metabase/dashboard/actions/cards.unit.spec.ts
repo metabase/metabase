@@ -87,12 +87,18 @@ const PIE_CHART_DASHCARD = createMockDashboardCard({
     {
       card_id: ORDERS_TABLE_CARD.id,
       parameter_id: "1",
-      target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+      target: [
+        "dimension",
+        ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+      ],
     },
     {
       card_id: ORDERS_TABLE_CARD.id,
       parameter_id: "2",
-      target: ["dimension", ["field", ORDERS.DISCOUNT, null]],
+      target: [
+        "dimension",
+        ["field", ORDERS.DISCOUNT, { "base-type": "type/Float" }],
+      ],
     },
   ],
 });
@@ -220,7 +226,7 @@ describe("dashboard/actions/cards", () => {
       });
 
       expect(nextDashCard.parameter_mappings).toEqual(
-        expectedParameterMappings.reverse(),
+        expectedParameterMappings,
       );
     });
 

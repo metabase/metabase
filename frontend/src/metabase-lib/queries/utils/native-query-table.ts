@@ -13,7 +13,7 @@ export function getNativeQueryTable(nativeQuery: NativeQuery): Table | null {
     return getDatasetTable(nativeQuery);
   }
 
-  const database = nativeQuery.database();
+  const database = question.database();
   const collection = nativeQuery.collection();
   if (database && collection) {
     return (

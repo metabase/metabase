@@ -20,6 +20,7 @@ import type {
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import type Database from "metabase-lib/metadata/Database";
 import type Field from "metabase-lib/metadata/Field";
+import type Question from "metabase-lib/Question";
 
 import { TagEditorParam } from "./TagEditorParam";
 import { TagEditorHelp } from "./TagEditorHelp";
@@ -29,6 +30,7 @@ interface TagEditorSidebarProps {
   query: NativeQuery;
   databases: Database[];
   databaseFields: Field[];
+  question: Question;
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
@@ -73,14 +75,15 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
       sampleDatabaseId,
       setDatasetQuery,
       query,
+      question,
       setTemplateTag,
       setTemplateTagConfig,
       setParameterValue,
       onClose,
     } = this.props;
     const tags = query.variableTemplateTags();
-    const database = query.database();
-    const parameters = query.question().parameters();
+    const database = question.database();
+    const parameters = question.parameters();
     const parametersById = _.indexBy(parameters, "id");
 
     let section;

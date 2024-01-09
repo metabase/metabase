@@ -55,9 +55,9 @@ const getSubmitButtonColor = (
 ) => {
   switch (status) {
     case "fulfilled":
-      return "success.0";
+      return "success";
     case "rejected":
-      return "error.0";
+      return "error";
     default:
       return color;
   }
