@@ -10,6 +10,7 @@
    "fa"
    "fi"
    "fr"
+   "hu"
    "id"
    "it"
    "ja"
