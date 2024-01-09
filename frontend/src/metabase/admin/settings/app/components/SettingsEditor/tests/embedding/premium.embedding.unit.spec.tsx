@@ -66,13 +66,13 @@ describe("[EE, with token] embedding settings", () => {
       });
 
       it("should link to quickstart for interactive embedding", async () => {
-        await setupEmbedding({
+        await setupPremium({
           settingValues: { "enable-embedding": false },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-pro-cta",
+          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=pro-self-hosted&utm_media=embed-settings",
         );
       });
     });

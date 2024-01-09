@@ -15,7 +15,7 @@ import {
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
   "/admin/settings/embedding-in-other-applications/standalone";
-const pricingUrl = "https://www.metabase.com/pricing";
+const upgradeUrl = "https://www.metabase.com/upgrade";
 const embeddingDescription =
   "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
 
@@ -74,7 +74,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByTestId("-static-embedding-setting").within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
         // so we don't have to do it here usign a conditional logic
-        assertLinkMatchesUrl("upgrade to a paid plan", pricingUrl);
+        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
 
         cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")
@@ -115,7 +115,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
           );
       });
     });
