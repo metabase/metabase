@@ -4,9 +4,12 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
+   [hickory.select :as hik.s]
+   [metabase.models :refer [Card]]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.render.common :as common]
-   [metabase.pulse.render.test-util :as render.tu]))
+   [metabase.pulse.render.test-util :as render.tu]
+   [metabase.test :as mt]))
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -557,6 +560,45 @@
           {:cols         default-columns
            :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
+
+(defn- render-error?
+  [pulse-body]
+  (let [content (get-in pulse-body [0 :content 0 :content])]
+    (str/includes? content "error occurred")))
+
+(deftest render-funnel-text-row-labels-test
+  (testing "Static-viz Funnel Chart with text keys in viz-settings renders without error (#26944)."
+    (mt/dataset sample-dataset
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :orders)
+                           :aggregation  [[:count]]
+                           :breakout     [[:field (mt/id :orders :created_at)
+                                           {:base-type :type/DateTime :temporal-unit :month-of-year}]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings
+                          {:funnel.rows
+                           [{:key "December", :name "December", :enabled true}
+                            {:key "November", :name "November", :enabled true}
+                            {:key "October", :name "October", :enabled true}
+                            {:key "September", :name "September", :enabled true}
+                            {:key "August", :name "August", :enabled true}
+                            {:key "July", :name "July", :enabled true}
+                            {:key "June", :name "June", :enabled true}
+                            {:key "May", :name "May", :enabled true}
+                            {:key "April", :name "April", :enabled true}
+                            {:key "March", :name "March", :enabled true}
+                            {:key "February", :name "February", :enabled true}
+                            {:key "January", :name "January", :enabled true}],
+                           :funnel.order_dimension "CREATED_AT"}}]
+        (mt/with-temp [Card {card-id :id} funnel-card]
+          (let [doc        (render.tu/render-card-as-hickory card-id)
+                pulse-body (hik.s/select
+                            (hik.s/class "pulse-body")
+                            doc)]
+            (is (not (render-error? pulse-body)))))))))
 
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
