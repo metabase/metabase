@@ -842,14 +842,13 @@ class Question {
   }
 
   table(): Table | null {
-    const tableId = this.tableId();
-    return tableId != null ? this.metadata().table(tableId) : null;
+    const query = this.legacyQuery();
+    return query && typeof query.table === "function" ? query.table() : null;
   }
 
   tableId(): TableId | null {
-    const query = this.query();
-    const tableId = Lib.sourceTableOrCardId(query);
-    return tableId;
+    const table = this.table();
+    return table ? table.id : null;
   }
 
   isArchived(): boolean {

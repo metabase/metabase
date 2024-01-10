@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import {
   getQuestionIdFromVirtualTableId,
   getQuestionVirtualTableId,
@@ -12,10 +13,11 @@ import { createVirtualField, createVirtualTable } from "./virtual-table";
 // It also expects the card associated with the `sourceTableId` to exist in the `metadata.question` cache
 export function getNestedCardTable(
   question: Question,
-  query: StructuredQuery,
+  legacyQuery: StructuredQuery,
 ): Table | null {
-  const sourceTableId = question.tableId();
-  const metadata = query.metadata();
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const metadata = legacyQuery.metadata();
   const nestedCardTable = metadata.table(sourceTableId);
   if (nestedCardTable) {
     return nestedCardTable;
@@ -36,27 +38,27 @@ export function getNestedCardTable(
 // Treat the Dataset/Model like a Question that uses itself as its source table
 // Expects the Question to have been fetched as a virtual table
 export function getDatasetTable(
-  query: StructuredQuery | NativeQuery,
+  legacyQuery: StructuredQuery | NativeQuery,
 ): Table | null {
-  const question = query.question();
+  const question = legacyQuery.question();
   const composedDatasetQuestion = question.composeDataset();
   const composedQuestionQuery =
     composedDatasetQuestion.legacyQuery() as StructuredQuery;
-  return getNestedCardTable(composedDatasetQuestion, composedQuestionQuery);
+  return getNestedCardTable(question, composedQuestionQuery);
 }
 
 function createVirtualTableUsingQuestionMetadata(question: Question): Table {
   const metadata = question.metadata();
   const questionResultMetadata = question.getResultMetadata();
   const questionDisplayName = question.displayName() as string;
-  const query = question.legacyQuery() as StructuredQuery | NativeQuery;
+  const legacyQuery = question.legacyQuery() as StructuredQuery | NativeQuery;
   const fields = questionResultMetadata.map((fieldMetadata: any) => {
     const field = metadata.field(fieldMetadata.id);
     const virtualField = field
       ? field.clone(fieldMetadata)
       : createVirtualField(fieldMetadata);
 
-    virtualField.query = query;
+    virtualField.query = legacyQuery;
     virtualField.metadata = metadata;
 
     return virtualField;
