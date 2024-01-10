@@ -1235,18 +1235,21 @@
       :else
       parsed-value)))
 
+(defn- set-via-env-var? [setting]
+  (some? (env-var-value setting)))
+
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
-  (let [set-via-env-var? (boolean (env-var-value setting))]
+  (let [from-env? (set-via-env-var? setting)]
     {:key            k
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
                          (log/error e (trs "Error fetching value of Setting"))))
-     :is_env_setting set-via-env-var?
+     :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
-     :default        (if set-via-env-var?
+     :default        (if from-env?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
@@ -1344,9 +1347,6 @@
                   [setting-name (get setting-name)])))
      @registered-settings)))
 
-(defn- set-via-env? [setting]
-  (contains? env/env (setting-env-map-name setting)))
-
 (defmulti ^:private validate-setting-format :type)
 
 ;; Treat setting as valid unless a validator has been defined for its type
@@ -1366,7 +1366,7 @@
   (when-let [error (validate-setting-format setting)]
     (assoc (select-keys setting [:name :type])
       :parse-error error
-      :env-var? (set-via-env? setting))))
+      :env-var? (set-via-env-var? setting))))
 
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
