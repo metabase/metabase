@@ -1225,5 +1225,11 @@
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
-    (let [ex (get-parse-exception "{\"a\": 2")]
-      (is (str/includes? (pr-str ex) "Unexpected end-of-input")))))
+    (let [password "123abc"
+          ex (get-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
+      (is (not (str/includes? (pr-str ex) password)))
+      (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+      (is (= (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
+                  " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
+                  " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")
+             (ex-message (ex-cause ex)))))))
