@@ -153,7 +153,11 @@ class View extends Component {
 
     if (isShowingTemplateTagsEditor) {
       return (
-        <TagEditorSidebar {...this.props} onClose={toggleTemplateTagsEditor} />
+        <TagEditorSidebar
+          {...this.props}
+          query={question.legacyQuery()}
+          onClose={toggleTemplateTagsEditor}
+        />
       );
     }
 
