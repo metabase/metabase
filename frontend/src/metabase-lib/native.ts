@@ -47,6 +47,10 @@ export function withDifferentDatabase(
   return ML.with_different_database(query, databaseId, metadata);
 }
 
+export function engine(query: Query): string {
+  return ML.engine(query);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
