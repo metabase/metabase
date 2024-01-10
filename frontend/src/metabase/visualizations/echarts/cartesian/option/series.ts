@@ -1,6 +1,7 @@
 import type { RegisteredSeriesOption } from "echarts";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 
+import type { CallbackDataParams } from "echarts/types/dist/shared";
 import type {
   SeriesModel,
   CartesianChartModel,
@@ -17,15 +18,16 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { buildEChartsWaterfallSeries } from "../waterfall/series";
+import type { WaterfallChartModel } from "../waterfall/types";
 import { getSeriesYAxisIndex } from "./utils";
 
-const buildEChartsLabelOptions = (
+export function getDataLabelFormatter(
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
-  { getColor, fontFamily, formatValue }: RenderingContext,
-): SeriesLabelOption => {
+  renderingContext: RenderingContext,
+) {
   const valueFormatter = (value: unknown) =>
-    formatValue(value, {
+    renderingContext.formatValue(value, {
       ...(settings.column?.(seriesModel.column) ?? {}),
       jsx: false,
       compact: settings["graph.label_value_formatting"] === "compact",
@@ -33,26 +35,34 @@ const buildEChartsLabelOptions = (
 
   const valueGetter = getMetricDisplayValueGetter(settings);
 
+  return (datum: CallbackDataParams) => {
+    const dimensionIndex = datum?.encode?.y[0];
+    const dimensionName =
+      dimensionIndex != null ? datum?.dimensionNames?.[dimensionIndex] : null;
+    if (dimensionName == null) {
+      return " ";
+    }
+    const value = valueGetter((datum?.value as any)?.[dimensionName]);
+    return valueFormatter(value);
+  };
+}
+
+export const buildEChartsLabelOptions = (
+  seriesModel: SeriesModel,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+): SeriesLabelOption => {
   return {
     silent: true,
     show: settings["graph.show_values"],
     position: "top",
-    fontFamily,
+    fontFamily: renderingContext.fontFamily,
     fontWeight: 900,
     fontSize: 12,
-    color: getColor("text-dark"),
-    textBorderColor: getColor("white"),
+    color: renderingContext.getColor("text-dark"),
+    textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,
-    formatter: datum => {
-      const dimensionIndex = datum?.encode?.y[0];
-      const dimensionName =
-        dimensionIndex != null ? datum?.dimensionNames?.[dimensionIndex] : null;
-      if (dimensionName == null) {
-        return " ";
-      }
-      const value = valueGetter((datum?.value as any)?.[dimensionName]);
-      return valueFormatter(value);
-    },
+    formatter: getDataLabelFormatter(seriesModel, settings, renderingContext),
   };
 };
 
@@ -226,7 +236,12 @@ export const buildEChartsSeries = (
             renderingContext,
           );
         case "waterfall":
-          return buildEChartsWaterfallSeries(settings);
+          return buildEChartsWaterfallSeries(
+            seriesModel,
+            settings,
+            (chartModel as WaterfallChartModel).total, // TODO remove the typecast later after refactoring
+            renderingContext,
+          );
       }
     })
     .flat()
