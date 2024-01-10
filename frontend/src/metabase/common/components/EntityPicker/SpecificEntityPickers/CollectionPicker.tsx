@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, forwardRef } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import type { Collection, SearchResult } from "metabase-types/api";
@@ -10,11 +10,10 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
-
 export type CollectionPickerOptions = {
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
-  namespace?: 'snippets';
+  namespace?: "snippets";
 };
 
 const defaultOptions: CollectionPickerOptions = {
@@ -31,6 +30,7 @@ interface CollectionPickerProps {
 const rootCollection = {
   id: "root",
   model: "collection",
+  name: "Our Analytics",
 } as unknown as SearchResult;
 
 function getCollectionIdPath(collection: Collection) {
@@ -44,11 +44,10 @@ function getCollectionIdPath(collection: Collection) {
   return path;
 }
 
-export function CollectionPicker({
-  onItemSelect,
-  value,
-  options = defaultOptions,
-}: CollectionPickerProps) {
+export const CollectionPicker = forwardRef(function CollectionPickerInner(
+  { onItemSelect, value, options = defaultOptions }: CollectionPickerProps,
+  ref,
+) {
   const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -58,7 +57,9 @@ export function CollectionPicker({
         const collectionsData = [];
 
         if (options.showRootCollection || options.namespace === "snippets") {
-          const ourAnalytics = await CollectionsApi.getRoot({ namespace: options.namespace });
+          const ourAnalytics = await CollectionsApi.getRoot({
+            namespace: options.namespace,
+          });
           collectionsData.push({
             ...ourAnalytics,
             model: "collection",
@@ -66,7 +67,10 @@ export function CollectionPicker({
           });
         }
 
-        if (options.showPersonalCollections && options.namespace !== "snippets") {
+        if (
+          options.showPersonalCollections &&
+          options.namespace !== "snippets"
+        ) {
           const currentUser = await UserApi.current();
           const personalCollection = await CollectionsApi.get({
             id: currentUser.personal_collection_id,
@@ -79,20 +83,30 @@ export function CollectionPicker({
           if (isAdmin) {
             collectionsData.push({
               ...PERSONAL_COLLECTIONS,
-              model: 'collection',
-            })
+              model: "collection",
+            });
           }
         }
 
         return collectionsData;
       }
 
-      if (isAdmin && folder.id === PERSONAL_COLLECTIONS.id as unknown as number) { // 🙄
+      if (
+        isAdmin &&
+        folder.id === (PERSONAL_COLLECTIONS.id as unknown as number)
+      ) {
+        // 🙄
         const allCollections = await CollectionsApi.list();
 
-        const allRootPersonalCollections = allCollections.filter(
-          (collection: Collection) => (collection?.is_personal && collection?.location === "/")
-        ).map((collection: Collection) => ({ ...collection, model: "collection" }));
+        const allRootPersonalCollections = allCollections
+          .filter(
+            (collection: Collection) =>
+              collection?.is_personal && collection?.location === "/",
+          )
+          .map((collection: Collection) => ({
+            ...collection,
+            model: "collection",
+          }));
 
         return allRootPersonalCollections;
       }
@@ -161,6 +175,7 @@ export function CollectionPicker({
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       initialState={initialState}
+      ref={ref}
     />
   );
-}
+});
