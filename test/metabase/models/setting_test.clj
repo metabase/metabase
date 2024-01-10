@@ -1208,6 +1208,9 @@
     (let [ex (get-parse-exception "[1, 2,")]
       (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
       ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+      #_(is (= (str "Unexpected end-of-input within/between Array entries\n"
+                  " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
+             (ex-message (ex-cause ex))))
       (is (= "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"
              (ex-message (ex-cause ex)))))))
 
