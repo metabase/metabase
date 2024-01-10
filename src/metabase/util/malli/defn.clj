@@ -71,10 +71,19 @@
                           {:arglists (list 'quote (deparameterized-arglists parsed))
                            :schema   (mu.fn/fn-schema parsed)}
                           attr-map)
-        docstring        (annotated-docstring parsed)]
-    `(def ~(vary-meta fn-name merge attr-map)
-       ~docstring
-       ~(macros/case
-          :clj  (let [error-context {:fn-name (list 'quote (symbol (name (ns-name *ns*)) (name fn-name)))}]
-                  (mu.fn/instrumented-fn-form error-context parsed))
-          :cljs (mu.fn/deparameterized-fn-form parsed)))))
+        docstring        (annotated-docstring parsed)
+        skip?      (#'mu.fn/*skip-ns-decision-fn* *ns*)]
+    (tap> {:namespace (ns-name *ns*)
+           :instrument? skip?})
+    (if skip?
+      `(def ~(vary-meta fn-name merge attr-map)
+         ~docstring
+         ~(macros/case
+            :clj  (let [error-context {:fn-name (list 'quote (symbol (name (ns-name *ns*)) (name fn-name)))}]
+                    (mu.fn/instrumented-fn-form error-context parsed))
+            :cljs (mu.fn/deparameterized-fn-form parsed)))
+      `(def ~(vary-meta fn-name merge attr-map)
+         ~docstring
+         ~(macros/case
+            :clj  (mu.fn/deparameterized-fn-form parsed)
+            :cljs (mu.fn/deparameterized-fn-form parsed))))))

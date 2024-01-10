@@ -295,21 +295,6 @@
   `(let [~'&f ~(deparameterized-fn-form parsed)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
-(defn uninstrumented-fn-form
-  "Given a `fn-tail` like
-
-  ([x :- :int y] (+ 1 2))
-
-  and parsed by [[parsed-fn-tail]],
-
-  return an unevaluated, and uninstrumented fn form like
-
-  (fn [x y] (+ 1 2))
-
-  This is used to emit fn which ignore checks."
-  [parsed]
-  (deparameterized-fn-form parsed))
-
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
 (defn instrument-ns?
@@ -328,13 +313,12 @@
           (contains? ad-hoc (ns-name namespace))  false
           :else                                   true)))
 
-(def ^:dynamic *skip-ns-decision-fn*
+(def ^:private ^:dynamic *skip-ns-decision-fn*
   (core/fn skip-ns-decision-fn [namespace]
-    (and #_config/is-prod? config/is-dev? ;;nocommit
-         (let [should? (instrument-ns? namespace)]
-           (when (not should?)
-             (println "skipping instrumenting var in " (ns-name namespace)))
-           (not should?)))))
+    (and config/is-prod?
+         (let [instrument? (instrument-ns? namespace)]
+           (when-not instrument? (println "skipping instrumentation of var in " (ns-name namespace)))
+           (not instrument?)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]].
@@ -391,31 +375,29 @@
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
         skip? (*skip-ns-decision-fn* *ns*)]
-    (prn {:namespace (ns-name *ns*)
-          :skip? skip?
-          :sequence `(let [error-context (if (symbol? (first ~fn-tail))
-                                           {:fn-name (list 'quote (first ~fn-tail))}
-                                           {})]
-                       (instrumented-fn-form error-context ~parsed))})
-    (eval
-     (if skip?
-       `(uninstrumented-fn-form '~parsed)
-       (let [error-context (if (symbol? (first fn-tail))
-                             {:fn-name `(first ~fn-tail)}
-                             {})]
-         `(instrumented-fn-form ~error-context '~parsed))))))
+    (prn ["SKIP" skip?])
+    (if skip?
+      (deparameterized-fn-form parsed)
+      (let [error-context (if (symbol? (first fn-tail))
+                            ;; We want the quoted symbol of first fn-tail:
+                            `{:fn-name '~(first fn-tail)} {})]
+        (instrumented-fn-form error-context parsed)))))
+
 (comment
 
 
-  (binding [*skip-ns-decision-fn* (constantly true)]
-    [(*skip-ns-decision-fn* *ns*)
-     (try ((fn :- :int [] "bad output"))
-          (catch Exception e (ex-message e)))])
-  ;; => [true
-  ;;     ;; the macro body prints: ... :skip? false ...
-  ;;     "Invalid output: [\"should be an integer\"]"]
+  (alter-var-root #'*skip-ns-decision-fn*
+                  (constantly (core/fn [nns] (prn "Me true" nns) true)))
 
-  (binding [*skip-ns-decision-fn* (constantly false)]
-    ((fn :- :int [] "bad output")))
+  (def f (fn name :- :int [] "bad output"))
+  (f)
+
+  (alter-var-root #'*skip-ns-decision-fn*
+                  (constantly (core/fn [nns] (prn "Me false" nns) false)))
+
+  (def f (fn name :- :int [] "bad output"))
+  (f)
+
 
   )
+
