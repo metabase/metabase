@@ -9,6 +9,7 @@
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
+   [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -109,20 +110,21 @@
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
-  (let [c1          {:entity_id nil,
-                     :name      "My Duped Collection",
-                     :location  "/"}
-        c1-instance (t2/insert-returning-instance! :model/Collection c1)]
-    ;; fill in the entity id for c1:
-    (serdes.backfill/backfill-ids-for! :model/Collection)
-    (let [c2-query (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
-      (try
+  (mt/with-model-cleanup [:model/Collection]
+    (let [c1-instance (t2/insert-returning-instance! :model/Collection
+                                                     {:entity_id nil,
+                                                      :name      "My Duped Collection",
+                                                      :location  "/"})]
+      ;; fill in the entity_id for c1:
+      (serdes.backfill/backfill-ids-for! :model/Collection)
+      ;; insert c2, which will have the same entity id:
+      (let [c2-instance (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
+        (testing "c1 and c2 hash to the same value"
+          (is (= (serdes/identity-hash c1-instance)
+                 (serdes/identity-hash c2-instance))))
         (testing "A backfill with 'duplicate' rows (with different ids)"
           (is (thrown? Exception
                        (serdes.backfill/backfill-ids-for! :model/Collection))))
         (testing "No exception is thrown when db has 'duplicate' entries."
           (is (= :metabase-enterprise.audit-db/no-op
-                 (audit-db/ensure-audit-db-installed!))))
-        (finally
-          (t2/delete! :model/Collection (:id c1-instance))
-          (t2/delete! :model/Collection (:id c2-query)))))))
+                 (audit-db/ensure-audit-db-installed!))))))))
