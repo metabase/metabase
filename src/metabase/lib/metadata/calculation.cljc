@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
+   [metabase.config :as config]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -97,10 +98,12 @@
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
-  (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-             (pr-str x)
-             `display-name-method
-             (lib.dispatch/dispatch-value x))
+  ;; This was suspected as hurting performance, going to skip it in prod for now
+  (when-not config/is-prod?
+    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+               (pr-str x)
+               `display-name-method
+               (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause: just use the name of the clause.
