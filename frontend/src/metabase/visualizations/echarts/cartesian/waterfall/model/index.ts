@@ -54,8 +54,9 @@ function getSortedAggregatedRows(
   cardColumns: CartesianChartColumns,
   settings: ComputedVisualizationSettings,
 ) {
+  let sortedRows = rows;
   if (settings["graph.x_axis.scale"] === "timeseries") {
-    rows.sort((left, right) => {
+    sortedRows = [...rows].sort((left, right) => {
       const leftValue = left[cardColumns.dimension.index];
       const rightValue = right[cardColumns.dimension.index];
 
@@ -71,7 +72,7 @@ function getSortedAggregatedRows(
   const columns = assertMultiMetricColumns(cardColumns);
   const dimensionMetricMap = new Map<RowValue, number>();
 
-  rows.forEach(row => {
+  sortedRows.forEach(row => {
     const dimension = row[columns.dimension.index];
     const rawMetric = row[columns.metrics[0].index];
     if (rawMetric == null) {
@@ -89,7 +90,7 @@ function getSortedAggregatedRows(
   const seenDimensions = new Set();
   const aggregatedRows: RowValues[] = [];
 
-  rows.forEach(row => {
+  sortedRows.forEach(row => {
     const dimension = row[columns.dimension.index];
     if (seenDimensions.has(dimension)) {
       return;
