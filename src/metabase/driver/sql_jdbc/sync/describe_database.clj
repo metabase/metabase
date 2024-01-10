@@ -117,33 +117,33 @@
   vs 60)."
   [driver ^Connection conn database & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [metadata         (.getMetaData conn)
-        syncable-schemas (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
-                                                                            schema-inclusion-filters schema-exclusion-filters)
-        xform            (if (driver/database-supports? driver :table-privileges database)
-                           (let [schema+table-with-select-privileges (->> (driver/current-user-table-privileges driver database)
-                                                                          (filter #(true? (:select %)))
-                                                                          (map (fn [{:keys [schema table]}]
-                                                                                 [schema table]))
-                                                                          set)]
-                             (mapcat (fn [schema]
-                                       (->> (db-tables driver metadata schema db-name-or-nil)
-                                            (filter (fn [{schema :schema table :name}]
-                                                      (contains? schema+table-with-select-privileges [schema table])))))))
-                           (comp (mapcat (fn [schema]
-                                           (db-tables driver metadata schema db-name-or-nil)))
-                                 (filter (fn [{table-schema :schema table-name :name}]
-                                           (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name)))))]
-       (eduction xform syncable-schemas)))
+  (with-open [metadata (.getMetaData conn)]
+    (let [syncable-schemas (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
+                                                                              schema-inclusion-filters schema-exclusion-filters)
+          xform            (if (driver/database-supports? driver :table-privileges database)
+                             (let [schema+table-with-select-privileges (->> (driver/current-user-table-privileges driver database)
+                                                                            (filter #(true? (:select %)))
+                                                                            (map (fn [{:keys [schema table]}]
+                                                                                   [schema table]))
+                                                                            set)]
+                               (mapcat (fn [schema]
+                                         (->> (db-tables driver metadata schema db-name-or-nil)
+                                              (filter (fn [{schema :schema table :name}]
+                                                        (contains? schema+table-with-select-privileges [schema table])))))))
+                             (comp (mapcat (fn [schema]
+                                             (db-tables driver metadata schema db-name-or-nil)))
+                                   (filter (fn [{table-schema :schema table-name :name}]
+                                             (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name)))))]
+      (eduction xform syncable-schemas))))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
-  [driver connection database schema-inclusion-filters schema-exclusion-filters]
+  [driver database connection schema-inclusion-filters schema-exclusion-filters]
   (fast-active-tables driver connection database nil schema-inclusion-filters schema-exclusion-filters))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
-  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
+  [driver database ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
   (eduction
    (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
@@ -180,8 +180,13 @@
           (let [prop-nm              (:name schema-filter-prop)
                 [inclusion-patterns
                  exclusion-patterns] (driver.s/db-details->schema-filter-patterns prop-nm database)]
-            (into #{} (sql-jdbc.sync.interface/active-tables driver conn database inclusion-patterns exclusion-patterns)))
-          (into #{} (sql-jdbc.sync.interface/active-tables driver conn database nil nil))))))})
+            (into #{} (sql-jdbc.sync.interface/active-tables driver database conn inclusion-patterns exclusion-patterns)))
+          (into #{} (sql-jdbc.sync.interface/active-tables driver database conn nil nil))))))})
+#_(try
+   (describe-database :mysql 8)
+   (catch Exception e
+     e))
+
 
 #_(let [schema-filter-prop (driver.u/find-schema-filters-prop :redshift)
          db-or-id-or-spec  3
