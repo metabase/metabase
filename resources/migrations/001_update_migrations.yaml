@@ -5312,6 +5312,15 @@ databaseChangeLog:
                   name: group_id
             indexName: idx_data_permissions_group_id
 
+  - changeSet:
+      id: v49.2024-01-10T03:27:30
+      author: noahmoss
+      comment: Migrate data-access permissions from `permissions` to `permissions_v2`
+      changes:
+        - sqlFile:
+            path: permissions/data_access.sql
+            relativeToChangelogFile: true
+      rollback:
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
