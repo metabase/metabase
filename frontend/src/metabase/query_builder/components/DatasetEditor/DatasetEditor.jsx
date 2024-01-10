@@ -149,7 +149,13 @@ function getSidebar(
   }
 
   if (isShowingTemplateTagsEditor) {
-    return <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />;
+    return (
+      <TagEditorSidebar
+        {...props}
+        query={dataset.legacyQuery()}
+        onClose={toggleTemplateTagsEditor}
+      />
+    );
   }
   if (isShowingDataReference) {
     return <DataReference {...props} onClose={toggleDataReference} />;
