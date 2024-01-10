@@ -35,6 +35,10 @@ export function extractTemplateTags(
   return ML.extract_template_tags(queryText, existingTags);
 }
 
+export function hasWritePermission(query: Query): boolean {
+  return ML.has_write_permission(query);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
