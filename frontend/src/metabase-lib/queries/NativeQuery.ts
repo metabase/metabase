@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
-import * as ML from "cljs/metabase.lib.js";
+import * as Lib from "metabase-lib";
 import type {
   Card,
   DatabaseId,
@@ -431,7 +431,7 @@ export default class NativeQuery extends AtomicQuery {
    */
   private _getUpdatedTemplateTags(queryText: string): TemplateTags {
     return queryText && this.supportsNativeParameters()
-      ? ML.extract_template_tags(queryText, this.templateTagsMap())
+      ? Lib.extractTemplateTags(queryText, this.templateTagsMap())
       : {};
   }
 
