@@ -1197,7 +1197,7 @@
     (let [ok (lazy-seq (cons 1 (lazy-seq (list 2))))
           ok-deep (lazy-seq (cons 1 (lazy-seq (list (lazy-seq (list 2))))))
           shallow (lazy-seq (cons 1 (throw (ex-info "Surprise!" {}))))
-          deep (lazy-seq (cons 1 (cons 2 (lazy-seq (throw (ex-info "Surprise!" {}))))))]
+          deep (lazy-seq (cons 1 (cons 2 (list (lazy-seq (throw (ex-info "Surprise!" {})))))))]
       (is (= '(1 2) (#'setting/realize ok)))
       (is (= '(1 (2)) (#'setting/realize ok-deep)))
       (doseq [x [shallow deep]]
