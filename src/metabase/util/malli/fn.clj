@@ -305,7 +305,8 @@
         matches?           (core/fn [namespace regexes]
                              (let [n (-> namespace ns-name str)]
                                (some #(re-matches % n) regexes)))
-        ad-hoc             #{'metabase.pulse.render}
+        ;; empty but placeholder for any namespaces we want to never instrument (in prod)
+        ad-hoc             #{}
         m                  (meta namespace)]
     (cond (:instrument/always m)                  true
           (:instrument/never m)                   false
