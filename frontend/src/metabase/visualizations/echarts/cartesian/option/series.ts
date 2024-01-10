@@ -226,7 +226,7 @@ export const buildEChartsSeries = (
             renderingContext,
           );
         case "waterfall":
-          return buildEChartsWaterfallSeries();
+          return buildEChartsWaterfallSeries(settings);
       }
     })
     .flat()
