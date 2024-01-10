@@ -74,7 +74,6 @@
 (doseq [feature [:actions
                  :actions/custom
                  :table-privileges
-                 :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
