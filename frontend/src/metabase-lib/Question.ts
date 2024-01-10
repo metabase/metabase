@@ -195,7 +195,7 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
-  legacyQuery({ useStructuredQuery = false } = {}) {
+  legacyQuery({ useStructuredQuery }: { useStructuredQuery?: boolean } = {}) {
     const query = this._legacyQuery();
     if (query instanceof StructuredQuery && !useStructuredQuery) {
       throw new Error("StructuredQuery usage is forbidden. Use MLv2");
