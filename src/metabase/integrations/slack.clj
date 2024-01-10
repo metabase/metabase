@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util :as u]
@@ -15,7 +14,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.retry :as retry]
    [metabase.util.string :as u.str]))
 
 (set! *warn-on-reflection* true)
