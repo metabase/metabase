@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { useAsync } from "react-use";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { getAllUploads, clearAllUploads } from "metabase/redux/uploads";
 import type { CollectionId, TableId } from "metabase-types/api";
@@ -87,10 +88,12 @@ const FileUploadStatusContent = ({
   }
 
   return (
-    <FileUploadStatusLarge
-      uploads={uploads}
-      resetUploads={resetUploads}
-      uploadDestination={entityInfo}
-    />
+    <ErrorBoundary>
+      <FileUploadStatusLarge
+        uploads={uploads}
+        resetUploads={resetUploads}
+        uploadDestination={entityInfo}
+      />
+    </ErrorBoundary>
   );
 };

@@ -32,9 +32,6 @@ const FileUploadLarge = ({
   isActive,
 }: FileUploadLargeProps) => {
   const [loadingTime, setLoadingTime] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | undefined>(
-    undefined,
-  );
 
   const hasError = uploads.some(isUploadAborted);
   const isLoading = uploads.some(isUploadInProgress);
@@ -57,7 +54,7 @@ const FileUploadLarge = ({
       id: upload.id,
       title: getName(upload),
       icon: "model",
-      description: Description({ upload, setErrorMessage }),
+      description: Description({ upload }),
       isInProgress: isUploadInProgress(upload),
       isCompleted: isUploadCompleted(upload),
       isAborted: isUploadAborted(upload),
@@ -75,11 +72,6 @@ const FileUploadLarge = ({
         isActive={isActive || hasError}
         onDismiss={hasError ? resetUploads : undefined}
       />
-      {errorMessage && (
-        <FileUploadErrorModal onClose={() => setErrorMessage(undefined)}>
-          {String(errorMessage)}
-        </FileUploadErrorModal>
-      )}
     </>
   );
 };
@@ -120,13 +112,7 @@ const getLoadingMessage = (time: number) => {
   return `${loadingMessages[index]} …`;
 };
 
-const Description = ({
-  upload,
-  setErrorMessage,
-}: {
-  upload: FileUpload;
-  setErrorMessage: (msg?: string) => void;
-}) => {
+const Description = ({ upload }: { upload: FileUpload }) => {
   if (upload.status === "complete" && upload.modelId) {
     return <Link to={`/model/${upload.modelId}`}>Start exploring</Link>;
   }
@@ -135,16 +121,33 @@ const Description = ({
     return (
       <Stack align="start" spacing="xs">
         <Box>{upload.message}</Box>
-        {upload.error && (
-          <Button onClick={() => setErrorMessage(upload.error)} onlyText>
-            {t`Show error details`}
-          </Button>
-        )}
+        <UploadErrorDisplay upload={upload} />
       </Stack>
     );
   }
-
   return "";
+};
+
+const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
+  const [showErrorModal, setShowErrorModal] = useState(true);
+  if (!upload.error) {
+    return null;
+  }
+  return (
+    <>
+      <Button onClick={() => setShowErrorModal(true)} onlyText>
+        {t`Show error details`}
+      </Button>
+      {showErrorModal && (
+        <FileUploadErrorModal
+          fileName={upload.name}
+          onClose={() => setShowErrorModal(false)}
+        >
+          {String(upload.error)}
+        </FileUploadErrorModal>
+      )}
+    </>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
