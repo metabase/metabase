@@ -3,7 +3,7 @@ import { init } from "echarts";
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getWaterfallOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 
 import { computeStaticComboChartSettings } from "../ComboChart/settings";
 
@@ -27,7 +27,7 @@ export function WaterfallChart({
     computedVisualizationSettings,
     renderingContext,
   );
-  const option = getCartesianChartOption(
+  const option = getWaterfallOption(
     chartModel,
     null,
     [],
