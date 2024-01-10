@@ -1,6 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, TemplateTags } from "metabase-types/api";
 
 import type { MetadataProvider, Query } from "./types";
 
@@ -20,18 +20,18 @@ export function withNativeQuery(query: Query, innerQuery: string): Query {
   return ML.with_native_query(query, innerQuery);
 }
 
-export function withTemplateTags(query: Query, tags: string[]): Query {
+export function withTemplateTags(query: Query, tags: TemplateTags): Query {
   return ML.with_template_tags(query, tags);
 }
 
-export function templateTags(query: Query): string {
+export function templateTags(query: Query): TemplateTags {
   return ML.template_tags(query);
 }
 
 export function extractTemplateTags(
   queryText: string,
-  existingTags?: string,
-): string | null {
+  existingTags?: TemplateTags,
+): TemplateTags | Record<string, never> {
   return ML.extract_template_tags(queryText, existingTags);
 }
 
@@ -43,7 +43,7 @@ export function withDifferentDatabase(
   query: Query,
   databaseId: DatabaseId,
   metadata: MetadataProvider,
-): unknown {
+): Query {
   return ML.with_different_database(query, databaseId, metadata);
 }
 
