@@ -57,6 +57,27 @@ TimeSeriesDataAsOrdinalXScale.args = {
   renderingContext,
 };
 
+export const UnaggregatedOrdinal = Template.bind({});
+UnaggregatedOrdinal.args = {
+  rawSeries: data.unaggregatedOrdinal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const UnaggregatedOrdinal2 = Template.bind({});
+UnaggregatedOrdinal2.args = {
+  rawSeries: data.unaggregatedOrdinal2 as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const UnaggregatedTimeseries = Template.bind({});
+UnaggregatedTimeseries.args = {
+  rawSeries: data.unaggregatedTimeseries as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const MixedAboveZero = Template.bind({});
 MixedAboveZero.args = {
   rawSeries: data.mixedAboveZero as any,
