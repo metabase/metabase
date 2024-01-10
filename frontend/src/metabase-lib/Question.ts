@@ -65,7 +65,6 @@ import {
 import { getBaseDimensionReference } from "metabase-lib/references";
 
 import type { Query } from "./types";
-import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -1060,7 +1059,7 @@ class Question {
       .filter(mbqlFilter => mbqlFilter != null);
 
     const newQuery = filters.reduce((query, filter) => {
-      return ML.filter(query, stageIndex, filter);
+      return Lib.filter(query, stageIndex, filter);
     }, query);
     const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
@@ -1076,7 +1075,10 @@ class Question {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = ML.metadataProvider(databaseId, metadata);
+        this.__mlv2MetadataProvider = Lib.metadataProvider(
+          databaseId,
+          metadata,
+        );
       }
       metadata = this.__mlv2MetadataProvider;
     }
@@ -1088,7 +1090,7 @@ class Question {
 
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = ML.fromLegacyQuery(
+      this.__mlv2Query = Lib.fromLegacyQuery(
         databaseId,
         metadata,
         this.datasetQuery(),
@@ -1105,12 +1107,12 @@ class Question {
   }
 
   setQuery(query: Query): Question {
-    return this.setDatasetQuery(ML.toLegacyQuery(query));
+    return this.setDatasetQuery(Lib.toLegacyQuery(query));
   }
 
   generateQueryDescription() {
     const query = this.query();
-    return ML.suggestedName(query);
+    return Lib.suggestedName(query);
   }
 
   getModerationReviews() {
