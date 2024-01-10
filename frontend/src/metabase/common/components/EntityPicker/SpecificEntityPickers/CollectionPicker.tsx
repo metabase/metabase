@@ -7,6 +7,7 @@ import Search from "metabase/entities/search";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { isRootCollection } from "metabase/collections/utils";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 
@@ -27,10 +28,10 @@ interface CollectionPickerProps {
   options?: CollectionPickerOptions;
 }
 
-const rootCollection = {
-  id: "root",
+const personalCollectionsRoot = {
+  ...PERSONAL_COLLECTIONS,
+  can_write: false,
   model: "collection",
-  name: "Our Analytics",
 } as unknown as SearchResult;
 
 function getCollectionIdPath(collection: Collection) {
@@ -65,6 +66,9 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
             model: "collection",
             id: "root",
           });
+
+          // default to selecting our analytics
+          onItemSelect(ourAnalytics);
         }
 
         if (
@@ -81,10 +85,7 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
           });
 
           if (isAdmin) {
-            collectionsData.push({
-              ...PERSONAL_COLLECTIONS,
-              model: "collection",
-            });
+            collectionsData.push(personalCollectionsRoot);
           }
         }
 
@@ -108,11 +109,15 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
             model: "collection",
           }));
 
+        onItemSelect(personalCollectionsRoot);
+
         return allRootPersonalCollections;
       }
 
       // because folders are also selectable items in the collection picker, we always select the folder
-      onItemSelect((folder ?? rootCollection) as SearchResult);
+      if (folder) {
+        onItemSelect(folder as SearchResult);
+      }
 
       const items = await Search.api.list({
         collection: folder.id,
@@ -150,19 +155,20 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
     } else {
       // default to showing our analytics selected
       onFolderSelect().then(async items => {
+        const ourAnalytics = items.find(isRootCollection);
         setInitialState([
           {
             items,
-            selectedItem: rootCollection,
+            selectedItem: ourAnalytics ?? null,
           },
           {
-            items: await onFolderSelect(rootCollection),
+            items: await onFolderSelect(ourAnalytics),
             selectedItem: null,
           },
         ]);
       });
     }
-  }, [value?.id, onFolderSelect, onItemSelect]);
+  }, [value?.id, onFolderSelect, onItemSelect, options.namespace]);
 
   if (!initialState) {
     return <LoadingSpinner />;
