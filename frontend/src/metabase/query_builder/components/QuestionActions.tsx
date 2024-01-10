@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -135,16 +135,6 @@ const QuestionActions = ({
 
   const extraButtons = [];
 
-  if (canAppend) {
-    extraButtons.push({
-      title: t`Upload data to this model`,
-      icon: "upload",
-      action: () => {
-        document.getElementById("append-file-input")?.click();
-      },
-    });
-  }
-
   if (
     isMetabotEnabled &&
     isDataset &&
@@ -246,6 +236,14 @@ const QuestionActions = ({
     });
   }
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && question._card.based_on_upload) {
@@ -286,14 +284,29 @@ const QuestionActions = ({
           />
         </ViewHeaderIconButtonContainer>
       </Tooltip>
-      {!!canAppend && (
-        <input
-          type="file"
-          accept="text/csv"
-          id="append-file-input"
-          onChange={handleFileUpload}
-          style={{ display: "none" }}
-        />
+      {canAppend && (
+        <>
+          <input
+            type="file"
+            accept="text/csv"
+            id="append-file-input"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            style={{ display: "none" }}
+          />
+          <Tooltip tooltip={t`Upload data to this model`}>
+            <ViewHeaderIconButtonContainer>
+              <Button
+                onlyIcon
+                icon="upload"
+                iconSize={HEADER_ICON_SIZE}
+                onClick={handleUploadClick}
+                color={infoButtonColor}
+                data-testid="qb-header-append-button"
+              />
+            </ViewHeaderIconButtonContainer>
+          </Tooltip>
+        </>
       )}
       {extraButtons.length > 0 && (
         <EntityMenu
