@@ -47,6 +47,9 @@
   https://metaboat.slack.com/archives/CKZEMT1MJ/p1690496060299339 and #32843 for more information. This new
   implementation solves most of our memory consumption problems.
 
+  Unless it's in a skipped namespace during prod, (see: [[mu.fn/instrument-ns?]]) this macro emits clojure code to
+  validate its inputs and outputs based on its malli schema annotations.
+
   Example macroexpansion:
 
     (mu/defn f :- :int
