@@ -20,7 +20,7 @@ import { AreaChart } from "./visualizations/AreaChart";
 import { ComboChart } from "./visualizations/ComboChart";
 import MapViz from "./visualizations/Map";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
-import Funnel from "./visualizations/Funnel";
+import Funnel from "./visualizations/Funnel/Funnel";
 import Gauge from "./visualizations/Gauge";
 import ObjectDetail from "./visualizations/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";

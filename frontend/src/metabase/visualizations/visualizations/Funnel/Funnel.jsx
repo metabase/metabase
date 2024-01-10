@@ -25,9 +25,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import FunnelNormal from "../components/FunnelNormal";
-import FunnelBar from "../components/FunnelBar";
-import LegendHeader from "../components/LegendHeader";
+import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
+import LegendHeader from "../../components/LegendHeader";
+import FunnelNormal from "../../components/FunnelNormal";
 
 const propTypes = {
   headerIcon: PropTypes.object,
@@ -233,10 +235,14 @@ export default class Funnel extends Component {
 
     const { actionButtons, className, onChangeCardAndRun, series } = this.props;
 
-    let component = <FunnelNormal {...this.props} className="flex-full" />;
-
     if (settings["funnel.type"] === "bar") {
-      component = <FunnelBar {...this.props} />;
+      return (
+        <TransformedVisualization
+          originalProps={this.props}
+          VisualizationComponent={BarChart}
+          transformSeries={funnelToBarTransform}
+        />
+      );
     }
 
     return (
@@ -258,7 +264,7 @@ export default class Funnel extends Component {
               onChangeCardAndRun={onChangeCardAndRun}
             />
           )}
-        {component}
+        <FunnelNormal {...this.props} className="flex-full" />
       </div>
     );
   }
