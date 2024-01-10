@@ -147,3 +147,31 @@ NoTotalOrdinal.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const DataLabels = Template.bind({});
+DataLabels.args = {
+  rawSeries: data.dataLabels as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const DataLabelsColumnFormatting = Template.bind({});
+DataLabelsColumnFormatting.args = {
+  rawSeries: data.dataLabelsColumnFormatting as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const DataLabelsTimeseries = Template.bind({});
+DataLabelsTimeseries.args = {
+  rawSeries: data.dataLabelsTimeseries as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const DataLabelsMixed = Template.bind({});
+DataLabelsMixed.args = {
+  rawSeries: data.dataLabelsMixed as any,
+  dashcardSettings: {},
+  renderingContext,
+};
