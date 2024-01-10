@@ -106,13 +106,13 @@
            :funnel
            :progress
            :gauge
-           :table
-           :waterfall} display-type)
+           :table} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (#{:smartscalar
            :scalar
            :scatter
+           :waterfall
            :line
            :area
            :bar
