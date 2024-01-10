@@ -28,14 +28,11 @@ export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
   }, [card, dispatch]);
 
   const question = new Question(card, metadata);
-
-  const query = question.legacyQuery({ useStructuredQuery: true });
-
   if (question.isNative()) {
     return (
       <NativeQueryEditor
         question={question}
-        query={query}
+        query={question.legacyQuery()}
         location={{ query: {} }}
         readOnly
         viewHeight={800}
@@ -45,7 +42,8 @@ export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
     );
   }
 
-  if (query.tables()) {
+  const database = question.database();
+  if (database && database.tables) {
     return <ReadOnlyNotebook question={question} />;
   }
 
