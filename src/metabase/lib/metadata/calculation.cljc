@@ -99,9 +99,9 @@
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
   ;; This was suspected as hurting performance, going to skip it in prod for now
-  (when #?(:clj (not config/is-prod?)
-           :cljs true
-           :cljs-dev true
+  (when #?(:clj          (not config/is-prod?)
+           :cljs         true ;; the linter complains when :cljs is not here(?)
+           :cljs-dev     true
            :cljs-release false)
     (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
                (pr-str x)
