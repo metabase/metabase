@@ -15,7 +15,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
-import type { Card, SegmentId } from "metabase-types/api";
+import type { Card, MetricId, SegmentId } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -31,7 +31,6 @@ import Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
 
@@ -85,10 +84,9 @@ function getCardForBlankQuestion(
     if (typeof segmentId === "number") {
       question = filterBySegmentId(question, segmentId);
     }
+
     if (typeof metricId === "number") {
-      question = (question.legacyQuery() as StructuredQuery)
-        .aggregate(["metric", metricId])
-        .question();
+      question = filterByMetricId(question, metricId);
     }
   }
 
@@ -97,20 +95,37 @@ function getCardForBlankQuestion(
 
 function filterBySegmentId(question: Question, segmentId: SegmentId) {
   const stageIndex = -1;
-  const segmentName = question.metadata().segment(segmentId)?.displayName();
   const query = question.query();
-  const segmentClause = Lib.availableSegments(query, stageIndex).find(
+  const segmentName = question.metadata().segment(segmentId)?.displayName();
+  const segmentMetadata = Lib.availableSegments(query, stageIndex).find(
     segment => {
       const info = Lib.displayInfo(query, stageIndex, segment);
       return info.displayName === segmentName;
     },
   );
 
-  if (!segmentClause) {
+  if (!segmentMetadata) {
     return question;
   }
 
-  const newQuery = Lib.filter(query, stageIndex, segmentClause);
+  const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
+  return question.setQuery(newQuery);
+}
+
+function filterByMetricId(question: Question, metricId: MetricId) {
+  const stageIndex = -1;
+  const query = question.query();
+  const metricName = question.metadata().metric(metricId)?.displayName();
+  const metricMetadata = Lib.availableMetrics(query).find(metric => {
+    const info = Lib.displayInfo(query, stageIndex, metric);
+    return info.displayName === metricName;
+  });
+
+  if (!metricMetadata) {
+    return question;
+  }
+
+  const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
   return question.setQuery(newQuery);
 }
 
