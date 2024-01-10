@@ -36,7 +36,9 @@
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (clojure.lang IRecord)))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -639,30 +641,40 @@
 
 (defn- canonicalize-mbql-clauses
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
-  [x]
+  [form]
   (cond
-    (map? x)
-    (m/map-vals canonicalize-mbql-clauses x)
+    (map? form)
+    (m/map-vals canonicalize-mbql-clauses form)
 
-    (not (mbql-clause? x))
-    (if (sequential? x)
-      (into (empty x) (map canonicalize-mbql-clauses) x)
-      x)
+    (instance? IRecord form)
+    (reduce (fn [r x] (conj r (canonicalize-mbql-clauses x))) form form)
 
-    :else
+    (mbql-clause? form)
     (let [top-canonical
           (try
-            (canonicalize-mbql-clause x)
+            (canonicalize-mbql-clause form)
             (catch #?(:clj Throwable :cljs js/Error) e
-              (log/error (i18n/tru "Invalid clause:") x)
+              (log/error (i18n/tru "Invalid clause:") form)
               (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
-                              {:clause x}
+                              {:clause form}
                               e))))]
       (if (seq top-canonical)
         (into (conj (empty top-canonical) (first top-canonical))
               (map canonicalize-mbql-clauses)
               (rest top-canonical))
-        top-canonical))))
+        top-canonical))
+
+    (list? form)
+    (apply list (map canonicalize-mbql-clauses form))
+
+    (seq? form)
+    (doall (map canonicalize-mbql-clauses form))
+
+    (coll? form)
+    (into (empty form) (map canonicalize-mbql-clauses) form)
+
+    :else
+    form))
 
 (defn- wrap-single-aggregations
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
