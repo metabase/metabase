@@ -47,7 +47,6 @@ import Dimension, {
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
-import * as ML from "../v2";
 import type { Query } from "../types";
 
 import type Segment from "../metadata/Segment";
@@ -461,7 +460,7 @@ class StructuredQuery extends AtomicQuery {
     const query = this.getMLv2Query();
     const stageIndex = this.getQueryStageIndex();
 
-    const hasJoins = ML.joins(query, stageIndex).length > 0;
+    const hasJoins = Lib.joins(query, stageIndex).length > 0;
 
     return (
       hasJoins ||
@@ -493,12 +492,12 @@ class StructuredQuery extends AtomicQuery {
 
   _hasSorts() {
     const query = this.getMLv2Query();
-    return ML.orderBys(query).length > 0;
+    return Lib.orderBys(query).length > 0;
   }
 
   hasLimit(stageIndex = this.queries().length - 1) {
     const query = this.getMLv2Query();
-    return ML.hasLimit(query, stageIndex);
+    return Lib.hasLimit(query, stageIndex);
   }
 
   _hasFields() {

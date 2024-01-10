@@ -5,6 +5,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
+import * as Lib from "metabase-lib";
+
 // Needed due to wrong dependency resolution order
 import {
   extractRemappings,
@@ -30,7 +32,6 @@ import {
 } from "metabase/visualizations/lib/renderer_utils";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import * as ML from "metabase-lib/v2";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
@@ -354,7 +355,7 @@ function isQuestionEditable(question) {
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
-  return ML.areLegacyQueriesEqual(
+  return Lib.areLegacyQueriesEqual(
     queryA,
     queryB,
     tableMetadata?.fields.map(({ id }) => id),
