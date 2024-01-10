@@ -16,6 +16,10 @@ export function rawNativeQuery(query: Query): string {
   return ML.raw_native_query(query);
 }
 
+export function withNativeQuery(query: Query, innerQuery: string): Query {
+  return ML.with_native_query(query, innerQuery);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
