@@ -99,17 +99,14 @@
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
   ;; This was suspected as hurting performance, going to skip it in prod for now
-  #?(:clj
-     (when-not config/is-prod?
-       (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-                  (pr-str x)
-                  `display-name-method
-                  (lib.dispatch/dispatch-value x)))
-     :cljs
-     (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-                (pr-str x)
-                `display-name-method
-                (lib.dispatch/dispatch-value x)))
+  (when #?(:clj (not config/is-prod?)
+           :cljs true
+           :cljs-dev true
+           :cljs-release false)
+    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+               (pr-str x)
+               `display-name-method
+               (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause: just use the name of the clause.
