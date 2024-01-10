@@ -93,10 +93,16 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 
 function getSourceQuestionId(question: Question) {
   const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  if (isVirtualCardId(sourceTableId)) {
-    return getQuestionIdFromVirtualTableId(sourceTableId);
+
+  if (question.isStructured()) {
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+
+    if (isVirtualCardId(sourceTableId)) {
+      return getQuestionIdFromVirtualTableId(sourceTableId);
+    }
   }
+
+  return undefined;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -478,17 +478,17 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const query = this.legacyQuery();
+    const legacyQuery = this.legacyQuery();
+    const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
-    const table = query.sourceTable();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const table = this.metadata().table(sourceTableId);
 
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return (
-      query instanceof StructuredQuery && !query.hasAnyClauses() && hasSinglePk
-    );
+    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -837,12 +837,12 @@ class Question {
     return databaseId;
   }
 
-  table(): Table | null | undefined {
+  table(): Table | null {
     const query = this.legacyQuery();
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
-  tableId(): TableId | null | undefined {
+  tableId(): TableId | null {
     const table = this.table();
     return table ? table.id : null;
   }
