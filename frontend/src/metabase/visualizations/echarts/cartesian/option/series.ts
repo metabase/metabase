@@ -226,12 +226,9 @@ export const buildEChartsSeries = (
             renderingContext,
           );
         case "waterfall":
-          return buildEChartsWaterfallSeries(
-            seriesModel,
-            chartModel.dimensionModel.dataKey,
-            yAxisIndex,
-          );
+          return buildEChartsWaterfallSeries();
       }
     })
+    .flat()
     .filter(isNotNull);
 };
