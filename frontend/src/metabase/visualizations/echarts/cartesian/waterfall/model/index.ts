@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
-import type { RawSeries, RowValues } from "metabase-types/api";
-import { checkNumber } from "metabase/lib/types";
+import type { RawSeries, RowValue, RowValues } from "metabase-types/api";
+import { checkNotNull, checkNumber } from "metabase/lib/types";
 import {
   assertMultiMetricColumns,
   type CartesianChartColumns,
@@ -42,25 +42,56 @@ function getWaterfallExtent(dataset: WaterfallDataset) {
   return extent;
 }
 
-function getSortedRows(
+function getSortedAggregatedRows(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
   settings: ComputedVisualizationSettings,
 ) {
-  if (settings["graph.x_axis.scale"] !== "timeseries") {
-    return rows;
+  if (settings["graph.x_axis.scale"] === "timeseries") {
+    rows.sort((left, right) => {
+      const leftValue = left[cardColumns.dimension.index];
+      const rightValue = right[cardColumns.dimension.index];
+
+      if (typeof leftValue === "string" && typeof rightValue === "string") {
+        return dayjs(leftValue).valueOf() - dayjs(rightValue).valueOf();
+      }
+
+      return 0;
+    });
   }
 
-  return rows.sort((left, right) => {
-    const leftValue = left[cardColumns.dimension.index];
-    const rightValue = right[cardColumns.dimension.index];
+  // aggregate metric values by dimension into a map
+  const columns = assertMultiMetricColumns(cardColumns);
+  const dimensionMetricMap = new Map<RowValue, number>();
 
-    if (typeof leftValue === "string" && typeof rightValue === "string") {
-      return dayjs(leftValue).valueOf() - dayjs(rightValue).valueOf();
+  rows.forEach(row => {
+    const dimension = row[columns.dimension.index];
+    const currMetric = checkNumber(row[columns.metrics[0].index]);
+    const existingMetric = dimensionMetricMap.get(dimension);
+
+    const newMetric = currMetric + (existingMetric ?? 0);
+    dimensionMetricMap.set(dimension, newMetric);
+  });
+
+  // create aggregated rows using the map
+  const seenDimensions = new Set();
+  const aggregatedRows: RowValues[] = [];
+
+  rows.forEach(row => {
+    const dimension = row[columns.dimension.index];
+    if (seenDimensions.has(dimension)) {
+      return;
     }
 
-    return 0;
+    const metric = checkNotNull(dimensionMetricMap.get(dimension));
+    const newRow = [...row];
+    newRow[columns.metrics[0].index] = metric;
+
+    aggregatedRows.push(newRow);
+    seenDimensions.add(dimension);
   });
+
+  return aggregatedRows;
 }
 
 function getWaterfallNegativeTranslation(
@@ -98,7 +129,11 @@ export function getWaterfallChartModel(
 
   // dataset
   const cardColumns = getCardsColumns(rawSeries, settings)[0];
-  const rows = getSortedRows(rawSeries[0].data.rows, cardColumns, settings);
+  const rows = getSortedAggregatedRows(
+    rawSeries[0].data.rows,
+    cardColumns,
+    settings,
+  );
   const negativeTranslation = getWaterfallNegativeTranslation(
     rows,
     cardColumns,
