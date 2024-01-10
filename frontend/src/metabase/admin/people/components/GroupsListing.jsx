@@ -301,7 +301,11 @@ function GroupsTable({
             key={group.id}
             group={group}
             index={index}
-            apiKeys={apiKeys.filter(apiKey => apiKey.group.id === group.id)}
+            apiKeys={
+              isDefaultGroup(group)
+                ? apiKeys
+                : apiKeys.filter(apiKey => apiKey.group.id === group.id)
+            }
             groupBeingEdited={groupBeingEdited}
             onEditGroupClicked={onEditGroupClicked}
             onDeleteGroupClicked={onDeleteGroupClicked}
