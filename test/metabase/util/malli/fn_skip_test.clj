@@ -15,8 +15,9 @@
     (testing "when skip-ns-decision-fn returns true, unvalidated form is emitted"
       (try
         (alter-var-root #'mu.fn/*skip-ns-decision-fn* (constantly (fn [_ns] true)))
-        ;; we have us use eval here because `mu.fn/fn` is expanded at _read_ time and we want to change the
-        ;; expansion. So that's why we eval here. Could definitely use some macroexpansion tests as well.
+        ;; we have to use eval here because `mu.fn/fn` is expanded at _read_ time and we want to change the
+        ;; expansion via [[*skip-ns-decision-fn*]]. So that's why we call eval here. Could definitely use some
+        ;; macroexpansion tests as well.
         (let [f (eval '(mu.fn/fn :- :int [] "schemas aren't checked if this is returned"))]
           (try (f)
                (is (= (f) "schemas aren't checked if this is returned"))

@@ -315,7 +315,9 @@
           :else                                   true)))
 
 (def ^:private ^:dynamic *skip-ns-decision-fn*
-  (core/fn skip-ns-decision-fn [namespace]
+  "Returns true to skip the emission of malli schema validation code in mu.fn/fn and mu/defn."
+  (core/fn skip-ns-decision-fn
+    [namespace]
     (and config/is-prod?
          (let [instrument? (instrument-ns? namespace)]
            (when-not instrument?
