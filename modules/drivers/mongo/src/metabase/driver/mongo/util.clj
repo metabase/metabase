@@ -55,31 +55,63 @@
     (MongoClientOptions$Builder. client-options)
     (MongoClientOptions$Builder.)))
 
+#_(defn- connection-options-builder
+    "Build connection options for Mongo.
+    We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection since Monger's wrapper method
+    doesn't support `.serverSelectionTimeout` or `.sslEnabled`. `additional-options`, a String like
+    `readPreference=nearest`, can be specified as well; when passed, these are parsed into a `MongoClientOptions` that
+    serves as a starting point for the changes made below."
+    ^MongoClientOptions [{:keys [ssl additional-options ssl-cert
+                                 ssl-use-client-auth client-ssl-cert client-ssl-key]
+                          :or   {ssl false, ssl-use-client-auth false}}]
+    ;; THIS has to be modified
+    (let [client-options (-> ^MongoClientOptions (client-options-for-url-params additional-options)
+                             client-options->builder
+                             ;; this should be removed
+                             #_^MongoClientOptions$Builder (.description config/mb-app-id-string)
+                             ^MongoClientOptions$Builder (.applicationName config/mb-app-id-string)
+                             (.connectTimeout (driver.u/db-connection-timeout-ms))
+                             (.serverSelectionTimeout (driver.u/db-connection-timeout-ms))
+                             (.sslEnabled ssl))
+          server-cert? (not (str/blank? ssl-cert))
+          client-cert? (and ssl-use-client-auth
+                            (not-any? str/blank? [client-ssl-cert client-ssl-key]))]
+      (if (or server-cert? client-cert?)
+        (let [ssl-params (cond-> {}
+                           server-cert? (assoc :trust-cert ssl-cert)
+                           client-cert? (assoc :private-key client-ssl-key
+                                               :own-cert client-ssl-cert))]
+          ;; this has to be modified to use SSLContext
+          #_^javax.net.SocketFactory (.socketFactory ^MongoClientOptions client-options ^javax.net.SocketFactory (driver.u/ssl-socket-factory ssl-params))
+          (.sslContext ^MongoClientOptions client-options ^javax.net.ssl.SSLContext (driver.u/ssl-context ssl-params)))
+        client-options)))
+
 (defn- connection-options-builder
   "Build connection options for Mongo.
   We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection since Monger's wrapper method
   doesn't support `.serverSelectionTimeout` or `.sslEnabled`. `additional-options`, a String like
   `readPreference=nearest`, can be specified as well; when passed, these are parsed into a `MongoClientOptions` that
   serves as a starting point for the changes made below."
-  ^MongoClientOptions [{:keys [ssl additional-options ssl-cert
-                               ssl-use-client-auth client-ssl-cert client-ssl-key]
-                        :or   {ssl false, ssl-use-client-auth false}}]
-  (let [client-options (-> (client-options-for-url-params additional-options)
-                           client-options->builder
-                           (.description config/mb-app-id-string)
-                           (.connectTimeout (driver.u/db-connection-timeout-ms))
-                           (.serverSelectionTimeout (driver.u/db-connection-timeout-ms))
-                           (.sslEnabled ssl))
-        server-cert? (not (str/blank? ssl-cert))
+  ^MongoClientOptions$Builder [{:keys [ssl additional-options ssl-cert
+                                       ssl-use-client-auth client-ssl-cert client-ssl-key]
+                                :or   {ssl false, ssl-use-client-auth false}}]
+  (let [server-cert? (not (str/blank? ssl-cert))
         client-cert? (and ssl-use-client-auth
-                          (not-any? str/blank? [client-ssl-cert client-ssl-key]))]
+                          (not-any? str/blank? [client-ssl-cert client-ssl-key]))
+        builder (-> (client-options-for-url-params additional-options)
+                    client-options->builder
+                    (.applicationName config/mb-app-id-string)
+                    (.connectTimeout (driver.u/db-connection-timeout-ms))
+                    (.serverSelectionTimeout (driver.u/db-connection-timeout-ms))
+                    (.sslEnabled ssl))]
     (if (or server-cert? client-cert?)
       (let [ssl-params (cond-> {}
                          server-cert? (assoc :trust-cert ssl-cert)
                          client-cert? (assoc :private-key client-ssl-key
                                              :own-cert client-ssl-cert))]
-        (.socketFactory client-options (driver.u/ssl-socket-factory ssl-params)))
-      client-options)))
+                                               ;; this has to be modified to use SSLContext
+        (.sslContext builder (driver.u/ssl-context ssl-params)))
+      builder)))
 
 ;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity
 ;; where you can pass options and credentials, as we'd like to do. We need to go in and alter the metadata of this

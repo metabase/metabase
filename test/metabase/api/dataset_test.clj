@@ -70,50 +70,51 @@
                 :js-int-to-string? true}})
 
 (deftest basic-query-test
-  (testing "POST /api/dataset"
-    (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [query (mt/mbql-query checkins
-                    {:aggregation [[:count]]})
-            result (mt/user-http-request :rasta :post 202 "dataset" query)]
-        (testing "\nAPI Response"
-          (is (partial=
-               {:data                   {:rows             [[1000]]
-                                         :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
-                                         :native_form      true
-                                         :results_timezone "UTC"}
-                :row_count              1
-                :status                 "completed"
-                :context                "ad-hoc"
-                :json_query             (-> (mt/mbql-query checkins
-                                              {:aggregation [[:count]]})
-                                            (assoc-in [:query :aggregation] [["count"]])
-                                            (assoc :type "query")
-                                            (merge query-defaults))
-                :started_at             true
-                :running_time           true
-                :average_execution_time nil
-                :database_id            (mt/id)}
-               (format-response result))))
-        (testing "\nSaved QueryExecution"
-          (is (= {:hash         true
-                  :row_count    1
-                  :result_rows  1
-                  :context      :ad-hoc
-                  :executor_id  (mt/user->id :rasta)
-                  :native       false
-                  :pulse_id     nil
-                  :card_id      nil
-                  :is_sandboxed false
-                  :dashboard_id nil
-                  :error        nil
-                  :id           true
-                  :action_id    nil
-                  :cache_hit    false
-                  :cache_hash   false
-                  :database_id  (mt/id)
-                  :started_at   true
-                  :running_time true}
-                 (format-response (most-recent-query-execution-for-query query)))))))))
+  (mt/test-drivers (mt/normal-drivers)
+                   (testing "POST /api/dataset"
+                     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
+                       (let [query (mt/mbql-query checkins
+                                                  {:aggregation [[:count]]})
+                             result (mt/user-http-request :rasta :post 202 "dataset" query)]
+                         (testing "\nAPI Response"
+                           (is (partial=
+                                {:data                   {:rows             [[1000]]
+                                                          :cols             [(mt/obj->json->obj (qp.test-util/aggregate-col :count))]
+                                                          :native_form      true
+                                                          :results_timezone "UTC"}
+                                 :row_count              1
+                                 :status                 "completed"
+                                 :context                "ad-hoc"
+                                 :json_query             (-> (mt/mbql-query checkins
+                                                                            {:aggregation [[:count]]})
+                                                             (assoc-in [:query :aggregation] [["count"]])
+                                                             (assoc :type "query")
+                                                             (merge query-defaults))
+                                 :started_at             true
+                                 :running_time           true
+                                 :average_execution_time nil
+                                 :database_id            (mt/id)}
+                                (format-response result))))
+                         (testing "\nSaved QueryExecution"
+                           (is (= {:hash         true
+                                   :row_count    1
+                                   :result_rows  1
+                                   :context      :ad-hoc
+                                   :executor_id  (mt/user->id :rasta)
+                                   :native       false
+                                   :pulse_id     nil
+                                   :card_id      nil
+                                   :is_sandboxed false
+                                   :dashboard_id nil
+                                   :error        nil
+                                   :id           true
+                                   :action_id    nil
+                                   :cache_hit    false
+                                   :cache_hash   false
+                                   :database_id  (mt/id)
+                                   :started_at   true
+                                   :running_time true}
+                                  (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test
   ;; clear out recent query executions!
