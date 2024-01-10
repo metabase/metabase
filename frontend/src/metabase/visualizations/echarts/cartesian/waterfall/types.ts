@@ -5,3 +5,5 @@ export type WaterfallDatum = {
   decrease: number | null;
   total: number | null;
 };
+
+export type WaterfallDataset = WaterfallDatum[];
