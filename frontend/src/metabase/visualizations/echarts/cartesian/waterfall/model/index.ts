@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { RawSeries, RowValues } from "metabase-types/api";
 import { checkNumber } from "metabase/lib/types";
 import {
@@ -16,7 +18,7 @@ import { DATASET_DIMENSIONS } from "../constants";
 
 import { getWaterfallDataset } from "./dataset";
 
-export function getWaterfallExtent(dataset: WaterfallDataset) {
+function getWaterfallExtent(dataset: WaterfallDataset) {
   const extent: Extent = [0, 0];
 
   dataset.forEach(datum => {
@@ -40,7 +42,28 @@ export function getWaterfallExtent(dataset: WaterfallDataset) {
   return extent;
 }
 
-export function getWaterfallNegativeTranslation(
+function getSortedRows(
+  rows: RowValues[],
+  cardColumns: CartesianChartColumns,
+  settings: ComputedVisualizationSettings,
+) {
+  if (settings["graph.x_axis.scale"] !== "timeseries") {
+    return rows;
+  }
+
+  return rows.sort((left, right) => {
+    const leftValue = left[cardColumns.dimension.index];
+    const rightValue = right[cardColumns.dimension.index];
+
+    if (typeof leftValue === "string" && typeof rightValue === "string") {
+      return dayjs(leftValue).valueOf() - dayjs(rightValue).valueOf();
+    }
+
+    return 0;
+  });
+}
+
+function getWaterfallNegativeTranslation(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
 ) {
@@ -74,16 +97,13 @@ export function getWaterfallChartModel(
   );
 
   // dataset
-  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const cardColumns = getCardsColumns(rawSeries, settings)[0];
+  const rows = getSortedRows(rawSeries[0].data.rows, cardColumns, settings);
   const negativeTranslation = getWaterfallNegativeTranslation(
-    rawSeries[0].data.rows,
-    cardsColumns[0],
+    rows,
+    cardColumns,
   );
-  const dataset = getWaterfallDataset(
-    rawSeries[0].data.rows,
-    cardsColumns[0],
-    negativeTranslation,
-  );
+  const dataset = getWaterfallDataset(rows, cardColumns, negativeTranslation);
 
   // y-axis
   const yAxisExtents: AxisExtents = [getWaterfallExtent(dataset), null];
