@@ -86,7 +86,7 @@ function getCardForBlankQuestion(
     }
 
     if (typeof metricId === "number") {
-      question = filterByMetricId(question, metricId);
+      question = aggregateByMetricId(question, metricId);
     }
   }
 
@@ -112,7 +112,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   return question.setQuery(newQuery);
 }
 
-function filterByMetricId(question: Question, metricId: MetricId) {
+function aggregateByMetricId(question: Question, metricId: MetricId) {
   const stageIndex = -1;
   const query = question.query();
   const metricName = question.metadata().metric(metricId)?.displayName();
