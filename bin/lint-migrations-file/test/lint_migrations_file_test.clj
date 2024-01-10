@@ -264,3 +264,48 @@
         (is (not= :ok ex-info))
         (is (= (take-last 2 (:via specific))
                [:change.strict/customChange :custom-change/class]))))))
+
+(deftest forbidden-new-types-test
+  (testing "should throw if changes contains text type"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [{:modifyDataType {:newDataType "text"}}]
+                                    :rollback nil))))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [{:createTable {:columns [{:column {:type "text"}}]}}]
+                                    :rollback nil)))))
+
+  (testing "should throw if changes contains boolean type"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate (mock-change-set :id "v49.00-033"
+                                    :changes [{:modifyDataType {:newDataType "boolean"}}]
+                                    :rollback nil))))
+
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [{:createTable {:columns [{:column {:type "boolean"}}]}}]
+                                    :rollback nil)))))
+
+  (testing "should throw if changes contains datetime type"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate (mock-change-set :id "v49.00-033"
+                                    :changes [{:modifyDataType {:newDataType "datetime"}}]
+                                    :rollback nil))))
+
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Validation failed"
+         (validate (mock-change-set :id "v45.12-345"
+                                    :changes [{:createTable {:columns [{:column {:type "timestamp with time zone"}}]}}]
+                                    :rollback nil))))))

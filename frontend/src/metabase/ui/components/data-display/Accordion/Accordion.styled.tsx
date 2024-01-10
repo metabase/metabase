@@ -12,26 +12,26 @@ export const getAccordionOverrides =
             },
           },
           label: {
-            color: theme.colors.brand[1],
+            color: theme.fn.themeColor("brand"),
             fontWeight: 700,
           },
           item: {
-            border: `1px solid ${theme.colors.border}`,
+            border: `1px solid ${theme.fn.themeColor("border")}`,
             borderRadius: theme.spacing.sm,
             "&[data-active]": {
-              border: `1px solid ${theme.colors.border}`,
+              border: `1px solid ${theme.fn.themeColor("border")}`,
             },
             "& + &": {
               marginTop: "0.75rem",
             },
           },
           content: {
-            borderTop: `1px solid ${theme.colors.border}`,
-            color: theme.colors.text[2],
+            borderTop: `1px solid ${theme.fn.themeColor("border")}`,
+            color: theme.fn.themeColor("text-dark"),
           },
           chevron: {
-            color: theme.colors.text[2],
-            border: `1px solid ${theme.colors.border}`,
+            color: theme.fn.themeColor("text-dark"),
+            border: `1px solid ${theme.fn.themeColor("border")}`,
             borderRadius: "100%",
             marginLeft: "1rem",
             height: "1.75rem",

@@ -188,7 +188,7 @@ export const apiCreateQuestion = question => {
     const resultsMetadata = getResultsMetadata(getState());
     const isResultDirty = getIsResultDirty(getState());
     const questionToCreate = questionWithVizSettings
-      .setQuery(question.legacyQuery().clean({ skipFilters: true }))
+      .setLegacyQuery(question.legacyQuery().clean({ skipFilters: true }))
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
@@ -253,7 +253,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       // Before we clean the query, we make sure question is not treated as a dataset
       // as calling table() method down the line would bring unwanted consequences
       // such as dropping joins (as joins are treated differently between pure questions and datasets)
-      .setQuery(
+      .setLegacyQuery(
         question.setDataset(false).legacyQuery().clean({ skipFilters: true }),
       )
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);

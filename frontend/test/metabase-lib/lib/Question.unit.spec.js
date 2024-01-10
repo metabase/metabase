@@ -356,7 +356,7 @@ describe("Question", () => {
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
         const rawQuery = native_orders_count_question.legacyQuery();
-        const newRawQuestion = orders_raw_question.setQuery(rawQuery);
+        const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
         expect(newRawQuestion.legacyQuery() instanceof NativeQuery).toBe(true);
       });
     });

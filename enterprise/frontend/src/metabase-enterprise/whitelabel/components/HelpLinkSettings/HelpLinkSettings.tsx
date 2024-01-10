@@ -66,7 +66,7 @@ export const HelpLinkSettings = ({
       {isTextInputVisible && (
         <Stack ml={28} spacing={0}>
           {error && (
-            <Text size="md" color="error.0">
+            <Text size="md" color="error">
               {error}
             </Text>
           )}

@@ -322,7 +322,7 @@ async function handleQBInit(
   if (question.isNative() && question.isQueryEditable()) {
     const query = question.legacyQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setQuery(newQuery);
+    question = question.setLegacyQuery(newQuery);
   }
 
   const finalCard = question.card();
