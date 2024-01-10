@@ -295,8 +295,39 @@
   `(let [~'&f ~(deparameterized-fn-form parsed)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
+;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
+
+(defn instrument-ns?
+  "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
+  [namespace]
+  (let [lib-and-middleware [#"^metabase\.lib\..*"
+                            #"^metabase\.query-processor\.middleware\..*"]
+        matches?           (core/fn [namespace regexes]
+                             (let [n (-> namespace ns-name str)]
+                               (some #(re-matches % n) regexes)))
+        ;; empty but placeholder for any namespaces we want to never instrument (in prod)
+        ad-hoc             #{}
+        m                  (meta namespace)]
+    (cond (:instrument/always m)                  true
+          (:instrument/never m)                   false
+          (matches? namespace lib-and-middleware) false
+          (contains? ad-hoc (ns-name namespace))  false
+          :else                                   true)))
+
+(def ^:private ^:dynamic *skip-ns-decision-fn*
+  "Returns true to skip the emission of malli schema validation code in mu.fn/fn and mu/defn."
+  (core/fn skip-ns-decision-fn
+    [namespace]
+    (and config/is-prod?
+         (let [instrument? (instrument-ns? namespace)]
+           (when-not instrument?
+             (log/info "skipping instrumentation of var in " (ns-name namespace)))
+           (not instrument?)))))
+
 (defmacro fn
-  "Malli version of [[schema.core/fn]]. A form like
+  "Malli version of [[schema.core/fn]].
+
+  Unless it's in a skipped namespace during prod, a form like:
 
     (fn :- :int [x :- :int] (inc x))
 
@@ -315,6 +346,8 @@
   for [[metabase.util.malli/defmethod]] it will be something like
 
     {:fn-name 'whatever/my-multimethod, :dispatch-value :field}
+
+  If compiled in a namespace in [[namespaces-toskip]], during `config/is-prod?`, it will be emitted as a vanilla clojure.core/fn form.
 
   Known issue: this version of `fn` does not capture the optional function name and make it available, e.g. you can't
   do
@@ -344,7 +377,11 @@
   problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
   fix this later."
   [& fn-tail]
-  (let [error-context (if (symbol? (first fn-tail))
-                        {:fn-name (list 'quote (first fn-tail))}
-                        {})]
-    (instrumented-fn-form error-context (parse-fn-tail fn-tail))))
+  (let [parsed (parse-fn-tail fn-tail)
+        skip? (*skip-ns-decision-fn* *ns*)]
+    (if skip?
+      (deparameterized-fn-form parsed)
+      (let [error-context (if (symbol? (first fn-tail))
+                            ;; We want the quoted symbol of first fn-tail:
+                            {:fn-name (list 'quote (first fn-tail))} {})]
+        (instrumented-fn-form error-context parsed)))))
