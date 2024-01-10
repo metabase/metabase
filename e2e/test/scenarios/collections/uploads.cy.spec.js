@@ -8,6 +8,7 @@ import {
   resetSnowplow,
   enableTracking,
   setTokenFeatures,
+  modal,
 } from "e2e/support/helpers";
 
 import { WRITABLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
@@ -333,8 +334,7 @@ function uploadFile(testFile, valid = true) {
 
 function appendFile(testFile, valid = true) {
   // assumes we're already looking at an uploadable model page
-  cy.findByTestId("qb-header").icon("ellipsis").click();
-  popover().findByText("Upload data to this model").click();
+  cy.findByTestId("qb-header").icon("upload");
 
   cy.fixture(`${FIXTURE_PATH}/${testFile.fileName}`).then(file => {
     cy.get("#append-file-input").selectFile(
@@ -363,6 +363,8 @@ function appendFile(testFile, valid = true) {
     cy.findByTestId("status-root-container").findByText(
       "Error uploading your file",
     );
+
+    modal().findByText("Upload error details");
   }
 }
 
