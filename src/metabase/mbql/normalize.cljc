@@ -639,25 +639,30 @@
 
 (defn- canonicalize-mbql-clauses
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
-  [mbql-query]
-  (walk/prewalk
-   (fn [x]
-     (cond
-       (map? x)
-       (m/map-vals canonicalize-mbql-clauses x)
+  [x]
+  (cond
+    (map? x)
+    (m/map-vals canonicalize-mbql-clauses x)
 
-       (not (mbql-clause? x))
-       x
+    (not (mbql-clause? x))
+    (if (sequential? x)
+      (into (empty x) (map canonicalize-mbql-clauses) x)
+      x)
 
-       :else
-       (try
-         (canonicalize-mbql-clause x)
-         (catch #?(:clj Throwable :cljs js/Error) e
-           (log/error (i18n/tru "Invalid clause:") x)
-           (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
-                           {:clause x}
-                           e))))))
-   mbql-query))
+    :else
+    (let [top-canonical
+          (try
+            (canonicalize-mbql-clause x)
+            (catch #?(:clj Throwable :cljs js/Error) e
+              (log/error (i18n/tru "Invalid clause:") x)
+              (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
+                              {:clause x}
+                              e))))]
+      (if (seq top-canonical)
+        (into (conj (empty top-canonical) (first top-canonical))
+              (map canonicalize-mbql-clauses)
+              (rest top-canonical))
+        top-canonical))))
 
 (defn- wrap-single-aggregations
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
@@ -764,6 +769,12 @@
       (dissoc :source-metadata)
       (assoc-in [:query :source-metadata] source-metadata)))
 
+(defn- canonicalize-mbql-clauses-excluding-native
+  [{:keys [native] :as outer-query}]
+  (if native
+    (-> outer-query (dissoc :native) canonicalize-mbql-clauses (assoc :native native))
+    (canonicalize-mbql-clauses outer-query)))
+
 (defn- canonicalize
   "Canonicalize a query [MBQL query], rewriting the query as if you perfectly followed the recommended style guides for
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
@@ -774,7 +785,7 @@
       query           (update :query canonicalize-inner-mbql-query)
       parameters      (update :parameters (partial mapv canonicalize-mbql-clauses))
       native          (update :native canonicalize-native-query)
-      true            canonicalize-mbql-clauses)
+      true            canonicalize-mbql-clauses-excluding-native)
     (catch #?(:clj Throwable :cljs js/Error) e
       (throw (ex-info (i18n/tru "Error canonicalizing query: {0}" (ex-message e))
                       {:query query}
