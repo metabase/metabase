@@ -1,9 +1,9 @@
 import { init } from "echarts";
 
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import type { IsomorphicStaticChartProps } from "metabase/static-viz/containers/IsomorphicStaticChart/types";
+import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getWaterfallOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
+import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 
 import { computeStaticComboChartSettings } from "../ComboChart/settings";
 
@@ -22,7 +22,7 @@ export function WaterfallChart({
     dashcardSettings,
     renderingContext,
   );
-  const chartModel = getCartesianChartModel(
+  const chartModel = getWaterfallChartModel(
     rawSeries,
     computedVisualizationSettings,
     renderingContext,
