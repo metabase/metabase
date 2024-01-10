@@ -109,9 +109,9 @@
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
-  (let [c1          {:entity_id         nil,
-                     :name              "My Duped Collection",
-                     :location          "/"}
+  (let [c1          {:entity_id nil,
+                     :name      "My Duped Collection",
+                     :location  "/"}
         c1-instance (t2/insert-returning-instance! :model/Collection c1)]
     ;; fill in the entity id for c1:
     (serdes.backfill/backfill-ids-for! :model/Collection)
