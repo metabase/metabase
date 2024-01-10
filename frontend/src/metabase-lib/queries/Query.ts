@@ -32,7 +32,7 @@ class Query {
    * Can only be applied to query that is a direct child of the question.
    */
   question = _.once((): Question => {
-    return this._originalQuestion.setQuery(this);
+    return this._originalQuestion.setLegacyQuery(this);
   });
 
   /**

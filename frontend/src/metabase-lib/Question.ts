@@ -207,7 +207,7 @@ class Question {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: BaseQuery): Question {
+  setLegacyQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -1039,7 +1039,7 @@ class Question {
     const newQuery = filters.reduce((query, filter) => {
       return ML.filter(query, stageIndex, filter);
     }, query);
-    const newQuestion = this._setMLv2Query(newQuery)
+    const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
@@ -1081,7 +1081,7 @@ class Question {
     return this.__mlv2Query;
   }
 
-  _setMLv2Query(query: Query): Question {
+  setQuery(query: Query): Question {
     return this.setDatasetQuery(ML.toLegacyQuery(query));
   }
 

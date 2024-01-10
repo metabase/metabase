@@ -49,7 +49,7 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 
   async function cleanupQuestion() {
     // Converting a query to MLv2 and back performs a clean-up
-    let cleanQuestion = question._setMLv2Query(
+    let cleanQuestion = question.setQuery(
       Lib.dropEmptyStages(question.query()),
     );
 

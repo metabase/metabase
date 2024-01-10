@@ -71,7 +71,7 @@ function NotebookSteps({
 
   const handleQueryChange = useCallback(
     async (query: Query, step: INotebookStep) => {
-      const updatedQuestion = question._setMLv2Query(
+      const updatedQuestion = question.setQuery(
         Lib.dropStageIfEmpty(query, step.stageIndex),
       );
       await updateQuestion(updatedQuestion);

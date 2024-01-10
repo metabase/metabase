@@ -12,7 +12,7 @@ export default function QuestionDataSelector({
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
     const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-    updateQuestion(question._setMLv2Query(query), { run: true });
+    updateQuestion(question.setQuery(query), { run: true });
   };
 
   return (
