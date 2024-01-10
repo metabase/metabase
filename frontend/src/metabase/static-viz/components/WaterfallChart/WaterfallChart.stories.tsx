@@ -35,3 +35,17 @@ WithoutTotal.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const OrdinalXScale = Template.bind({});
+OrdinalXScale.args = {
+  rawSeries: data.ordinalXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TimeSeriesDataAsOrdinalXScale = Template.bind({});
+TimeSeriesDataAsOrdinalXScale.args = {
+  rawSeries: data.timeSeriesDataAsOrdinalXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
