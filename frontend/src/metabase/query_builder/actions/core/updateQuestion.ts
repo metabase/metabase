@@ -42,7 +42,7 @@ function hasNewColumns(question: Question, queryResult: Dataset | null) {
   const query = question.query();
   const stageIndex = -1;
   const nextColumnNames = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).longDisplayName,
+    column => Lib.displayInfo(query, stageIndex, column).name,
   );
   const previousColumnNames = queryResult.data.cols.map(column => column.name);
   return _.difference(nextColumnNames, previousColumnNames).length > 0;
