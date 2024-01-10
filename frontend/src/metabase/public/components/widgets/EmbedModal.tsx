@@ -72,7 +72,7 @@ export const EmbedModal = ({
       formModal={false}
       {...modalProps}
     >
-      <Box bg="bg.0" h="100%">
+      <Box bg="bg-light" h="100%">
         {children({ embedType, setEmbedType })}
       </Box>
     </Modal>

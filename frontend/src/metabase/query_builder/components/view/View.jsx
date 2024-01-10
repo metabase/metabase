@@ -324,8 +324,7 @@ class View extends Component {
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <NewQuestionView
-          legacyQuery={legacyQuery}
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           className="full-height"
         />

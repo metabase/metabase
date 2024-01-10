@@ -94,9 +94,9 @@ function DefaultValuePicker({
             ))}
           </Stack>
         ) : (
-          <Stack c="text.0" justify="center" align="center">
+          <Stack c="text-light" justify="center" align="center">
             <Icon name="search" size={40} />
-            <Text c="text.1" fw="bold">{t`Didn't find anything`}</Text>
+            <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
           </Stack>
         )}
       </Checkbox.Group>
