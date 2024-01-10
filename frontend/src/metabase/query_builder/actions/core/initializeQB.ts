@@ -72,18 +72,20 @@ const NOT_FOUND_ERROR = {
 
 function getCardForBlankQuestion(
   metadata: Metadata,
-  { db, table, segment, metric }: BlankQueryOptions,
+  options: BlankQueryOptions,
 ) {
-  const databaseId = db ? parseInt(db) : undefined;
-  const tableId = table ? parseInt(table) : undefined;
+  const databaseId = options.db ? parseInt(options.db) : undefined;
+  const tableId = options.table ? parseInt(options.table) : undefined;
+  const segmentId = options.segment ? parseInt(options.segment) : undefined;
+  const metricId = options.metric ? parseInt(options.metric) : undefined;
 
   let question = Question.create({ databaseId, tableId, metadata });
 
   if (databaseId && tableId) {
     const stageIndex = -1;
 
-    if (segment) {
-      const segmentName = question.metadata().segments[segment]?.displayName();
+    if (segmentId) {
+      const segmentName = question.metadata().segment(segmentId)?.displayName();
       const query = question.query();
       const segmentClause = Lib.availableSegments(query, stageIndex).find(
         segment => {
@@ -97,9 +99,9 @@ function getCardForBlankQuestion(
         question = question.setQuery(newQuery);
       }
     }
-    if (metric) {
+    if (metricId) {
       question = (question.legacyQuery() as StructuredQuery)
-        .aggregate(["metric", parseInt(metric)])
+        .aggregate(["metric", metricId])
         .question();
     }
   }
