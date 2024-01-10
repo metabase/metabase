@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { t, ngettext, msgid } from "ttag";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import * as Lib from "metabase-lib";
 import QuestionDataSource from "./QuestionDataSource";
 
 import { AggregationAndBreakoutDescription } from "./QuestionDescription.styled";
@@ -12,11 +12,11 @@ const QuestionDescription = ({
   isObjectDetail,
   onClick,
 }) => {
-  const query = question.legacyQuery();
-  if (query instanceof StructuredQuery) {
-    const topQuery = query.topLevelQuery();
-    const aggregations = topQuery.aggregations();
-    const breakouts = topQuery.breakouts();
+  if (question.isStructured()) {
+    const query = question.query();
+    const stageIndex = -1;
+    const aggregations = Lib.aggregations(query, stageIndex);
+    const breakouts = Lib.breakouts(query, stageIndex);
     const aggregationDescription =
       aggregations.length === 0
         ? null
@@ -27,7 +27,10 @@ const QuestionDescription = ({
             aggregations.length,
           )
         : aggregations
-            .map(aggregation => aggregation.displayName())
+            .map(
+              aggregation =>
+                Lib.displayInfo(query, stageIndex, aggregation).longDisplayName,
+            )
             .join(t` and `);
     const breakoutDescription =
       breakouts.length === 0
@@ -38,7 +41,12 @@ const QuestionDescription = ({
             `${breakouts.length} breakouts`,
             breakouts.length,
           )
-        : breakouts.map(breakout => breakout.displayName()).join(t` and `);
+        : breakouts
+            .map(
+              breakout =>
+                Lib.displayInfo(query, stageIndex, breakout).longDisplayName,
+            )
+            .join(t` and `);
     if (aggregationDescription || breakoutDescription) {
       return (
         <AggregationAndBreakoutDescription onClick={onClick}>

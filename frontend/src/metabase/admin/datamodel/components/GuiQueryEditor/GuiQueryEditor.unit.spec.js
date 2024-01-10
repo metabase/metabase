@@ -13,9 +13,10 @@ const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
-const getGuiQueryEditor = query => (
+const getGuiQueryEditor = legacyQuery => (
   <GuiQueryEditor
-    query={query}
+    legacyQuery={legacyQuery}
+    query={legacyQuery.getMLv2Query()}
     databases={metadata.databasesList()}
     tables={metadata.tablesList()}
     setDatabaseFn={() => {}}
@@ -27,7 +28,7 @@ const getGuiQueryEditor = query => (
 
 describe("GuiQueryEditor", () => {
   it("should allow adding the first breakout", () => {
-    const query = Question.create({
+    const legacyQuery = Question.create({
       databaseId: SAMPLE_DB_ID,
       tableId: ORDERS_ID,
       metadata,
@@ -35,7 +36,7 @@ describe("GuiQueryEditor", () => {
       .legacyQuery()
       .aggregate(["count"]);
 
-    render(getGuiQueryEditor(query));
+    render(getGuiQueryEditor(legacyQuery));
     const ADD_ICONS = screen.getAllByRole("img", { name: /add/i });
 
     screen.getByText("Add a grouping");
@@ -44,7 +45,7 @@ describe("GuiQueryEditor", () => {
   });
 
   it("should allow adding more than one breakout", () => {
-    const query = Question.create({
+    const legacyQuery = Question.create({
       databaseId: SAMPLE_DB_ID,
       tableId: ORDERS_ID,
       metadata,
@@ -53,7 +54,7 @@ describe("GuiQueryEditor", () => {
       .aggregate(["count"])
       .breakout(["field", ORDERS.TOTAL, null]);
 
-    render(getGuiQueryEditor(query));
+    render(getGuiQueryEditor(legacyQuery));
     const ADD_ICONS = screen.getAllByRole("img", { name: /add/i });
 
     screen.getByText("Total");

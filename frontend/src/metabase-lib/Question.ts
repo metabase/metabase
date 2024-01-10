@@ -207,7 +207,7 @@ class Question {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: BaseQuery): Question {
+  setLegacyQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -478,17 +478,17 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const query = this.legacyQuery();
+    const legacyQuery = this.legacyQuery();
+    const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
-    const table = query.sourceTable();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const table = this.metadata().table(sourceTableId);
 
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return (
-      query instanceof StructuredQuery && !query.hasAnyClauses() && hasSinglePk
-    );
+    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -837,12 +837,12 @@ class Question {
     return databaseId;
   }
 
-  table(): Table | null | undefined {
+  table(): Table | null {
     const query = this.legacyQuery();
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
-  tableId(): TableId | null | undefined {
+  tableId(): TableId | null {
     const table = this.table();
     return table ? table.id : null;
   }
@@ -1039,7 +1039,7 @@ class Question {
     const newQuery = filters.reduce((query, filter) => {
       return ML.filter(query, stageIndex, filter);
     }, query);
-    const newQuestion = this._setMLv2Query(newQuery)
+    const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
@@ -1081,7 +1081,7 @@ class Question {
     return this.__mlv2Query;
   }
 
-  _setMLv2Query(query: Query): Question {
+  setQuery(query: Query): Question {
     return this.setDatasetQuery(ML.toLegacyQuery(query));
   }
 

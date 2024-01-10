@@ -14,7 +14,6 @@ import { TimeseriesChrome } from "metabase/querying";
 import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -196,11 +195,13 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { query } = this.props;
-    const isStructured = query instanceof StructuredQuery;
+    const { query: legacyQuery, question } = this.props;
+    const query = question.query();
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      question.isStructured() &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     return (
       <Motion
@@ -314,19 +315,18 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
+    const query = question.query();
     const legacyQuery = question.legacyQuery();
+
     const isNewQuestion =
       question.isStructured() &&
-      !legacyQuery.sourceTableId() &&
+      Lib.sourceTableOrCardId(query) === null &&
       !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      const query = question.query();
-
       return (
         <NewQuestionView
-          legacyQuery={legacyQuery}
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           className="full-height"
         />

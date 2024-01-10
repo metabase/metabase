@@ -78,13 +78,15 @@ class PartialQueryBuilder extends Component {
     const { features, value, metadata, table, previewSummary } = this.props;
 
     const question = getSegmentOrMetricQuestion(value, table, metadata);
-    const query = question.legacyQuery();
+    const legacyQuery = question.legacyQuery();
+    const query = question.query();
     const previewUrl = Urls.serializedQuestion(question.card());
 
     return (
       <div className="py1">
         <GuiQueryEditor
           features={features}
+          legacyQuery={legacyQuery}
           query={query}
           setDatasetQuery={this.setDatasetQuery}
           isShowingDataReference={false}
