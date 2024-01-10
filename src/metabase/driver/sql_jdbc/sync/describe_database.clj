@@ -110,16 +110,34 @@
                                          (when-not (str/blank? remarks)
                                            remarks))}))))))
 
+(defn select-table-privileges-query
+  "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
+  anything useful (only used to check whether we can execute a SELECT query)
+
+    (simple-select-probe-query :postgres \"public\" \"my_table\")
+    ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
+  [driver schema]
+  (let [table    (sql.qp/->honeysql driver (h2x/identifier :table :information_schema.privileges))
+        honeysql {:select [[:table_schema :schema] [:table_name :name] [:privilege_type :privilege]]
+                  :from   [[table]]
+                  :where  [:and
+                           [:= :grantee :%current_user]
+                           [:= :schema (sql.qp/->honeysql driver schema)]
+                           [:= :privilege (sql.qp/->honeysql driver "SELECT")]]}]
+    (sql.qp/format-honeysql driver honeysql)))
+
 (defn- table-privileges
   [driver ^DatabaseMetaData metadata schema-or-nil db-name-or-nil]
-  (->> (jdbc/result-set-seq
-        (.getTablePrivileges
-         metadata db-name-or-nil
-         (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"))
-       (filter #(= "SELECT" (:privilege %)))
-       (map (fn [x]
-              [(:table_schem x) (:table_name x)]))
-       set))
+  (let [current-user-name (.getUserName metadata)]
+    (->> (jdbc/result-set-seq
+          (.getTablePrivileges metadata db-name-or-nil
+           (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"))
+         (filter #(and
+                   (= current-user-name (:grantee %))
+                   (= "SELECT" (:privilege %))))
+         (map (fn [x]
+                [(:table_schem x) (:table_name x)]))
+         set)))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch

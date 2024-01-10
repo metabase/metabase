@@ -1028,7 +1028,7 @@
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
-            (is (some? (sync/sync-database! database))))
+            (is (some? (sync/sync-database! database {:scan :schema}))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
