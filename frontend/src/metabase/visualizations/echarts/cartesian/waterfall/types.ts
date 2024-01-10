@@ -17,5 +17,6 @@ export type WaterfallDataset = WaterfallDatum[];
 
 export type WaterfallChartModel = CartesianChartModel & {
   waterfallDataset: WaterfallDataset;
+  total: number;
   negativeTranslation: number;
 };
