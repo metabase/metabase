@@ -98,10 +98,16 @@ function ModelDetailPage({
   const supportsNestedQueries =
     database != null && database.hasFeature("nested-queries");
 
-  const mainTable = useMemo(
-    () => (model.isStructured() ? model.table() : null),
-    [model],
-  );
+  const mainTable = useMemo(() => {
+    if (model.isNative()) {
+      return null;
+    }
+
+    const legacyQuery = model.legacyQuery();
+    const sourceTableId = legacyQuery._sourceTableId();
+    const table = legacyQuery.metadata().table(sourceTableId);
+    return table;
+  }, [model]);
 
   const tab = useMemo(() => {
     const pathname = location.pathname;

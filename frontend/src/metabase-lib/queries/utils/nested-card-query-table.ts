@@ -15,8 +15,11 @@ export function getNestedCardTable(
   question: Question,
   legacyQuery: StructuredQuery,
 ): Table | null {
-  const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceTableId = legacyQuery._sourceTableId();
+  // const query = question.query();
+  // const sourceTableId = Lib.sourceTableOrCardId(query);
+  // const sourceTableId = question2 ? question2.tableId() : undefined;
+
   const metadata = legacyQuery.metadata();
   const nestedCardTable = metadata.table(sourceTableId);
   if (nestedCardTable) {

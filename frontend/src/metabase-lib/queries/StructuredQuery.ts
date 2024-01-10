@@ -249,9 +249,10 @@ class StructuredQuery extends AtomicQuery {
    * @deprecated Use MLv2
    */
   private _sourceTableId(): TableId | null | undefined {
-    const query = this.getMLv2Query();
-    const sourceTableId = Lib.sourceTableOrCardId(query);
-    return sourceTableId;
+    return this.legacyQuery()?.["source-table"];
+    // const query = this.getMLv2Query();
+    // const sourceTableId = Lib.sourceTableOrCardId(query);
+    // return sourceTableId;
   }
 
   /**
