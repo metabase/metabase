@@ -1,29 +1,27 @@
 import type { HTMLAttributes } from "react";
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { t } from "ttag";
 import { useField } from "formik";
 
-import { is } from "immer/dist/internal";
-import { filter } from "underscore";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 import FormField from "metabase/core/components/FormField";
 import SelectButton from "metabase/core/components/SelectButton";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Collections from "metabase/entities/collections";
 
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
-import { CreateCollectionOnTheGoButton } from "metabase/containers/CreateCollectionOnTheGo";
 
-import { canonicalCollectionId , isValidCollectionId } from "metabase/collections/utils";
+import {
+  canonicalCollectionId,
+  isValidCollectionId,
+} from "metabase/collections/utils";
 
 import type { CollectionId } from "metabase-types/api";
 
 import { useSelector } from "metabase/lib/redux";
 import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
-import { EntityPickerModal } from "metabase/common/components/EntityPicker";
-
+import { EntityPickerModal } from "metabase/common/components/EntityPicker/";
 
 export interface FormCollectionPickerProps
   extends HTMLAttributes<HTMLDivElement> {
@@ -64,9 +62,7 @@ function FormCollectionPicker({
   const formFieldRef = useRef<HTMLDivElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>("root");
-
-  console.log({ openCollectionId})
+  const [openCollectionId] = useState<CollectionId>("root");
 
   const openCollection = useSelector(state =>
     Collections.selectors.getObject(state, {
@@ -105,10 +101,10 @@ function FormCollectionPicker({
         <EntityPickerModal
           title={t`Select a collection`}
           tabs={["collection"]}
-          value={{ id: value, model: 'collection' }}
+          value={{ id: value, model: "collection" }}
           onChange={({ id }) => {
             setValue(canonicalCollectionId(id));
-            setIsPickerOpen(false)
+            setIsPickerOpen(false);
           }}
           onClose={() => setIsPickerOpen(false)}
           options={{

@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  forwardRef,
+} from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -15,14 +21,28 @@ interface NestedItemPickerProps<T> {
   initialState?: PickerState<T>;
 }
 
-export function NestedItemPicker({
-  onFolderSelect,
-  onItemSelect,
-  folderModel,
-  initialState = [],
-}: NestedItemPickerProps<SearchResult>) {
+export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
+  {
+    onFolderSelect,
+    onItemSelect,
+    folderModel,
+    initialState = [],
+  }: NestedItemPickerProps<SearchResult>,
+  ref,
+) {
   const [stack, setStack] = useState(initialState ?? []);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      refreshCurrentFolder: async () => {
+        const folder = stack[stack.length - 2].selectedItem;
+        if (folder) {
+          await handleFolderSelect(folder, stack.length - 2);
+        }
+      },
+    };
+  });
 
   const handleFolderSelect = async (
     folder: SearchResult,
@@ -90,4 +110,4 @@ export function NestedItemPicker({
       </Flex>
     </HorizontalScrollBox>
   );
-}
+});
