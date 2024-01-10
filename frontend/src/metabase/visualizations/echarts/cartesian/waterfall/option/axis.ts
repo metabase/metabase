@@ -10,12 +10,18 @@ import type {
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { checkNumber } from "metabase/lib/types";
 
-import { buildMetricAxis } from "../../option/axis";
+import {
+  getAxisNameGap,
+  getYAxisRange,
+  getAxisNameDefaultOption,
+  getTicksDefaultOption,
+} from "../../option/axis";
 import type { WaterfallChartModel } from "../types";
 import { getDimensionDisplayValueGetter } from "../../model/dataset";
 import { getWaterfallExtent } from "../model";
 import { getChartMeasurements } from "../../utils/layout";
 import type { TimelineEventsModel } from "../../timeline-events/types";
+import { CHART_STYLE } from "../../constants/style";
 
 function getXAxisType(settings: ComputedVisualizationSettings) {
   if (settings["graph.x_axis.scale"] === "timeseries") {
@@ -71,7 +77,10 @@ function getYAxisFormatter(
   renderingContext: RenderingContext,
 ) {
   return (rowValue: RowValue) => {
-    const value = checkNumber(rowValue) - negativeTranslation;
+    let value = checkNumber(rowValue) - negativeTranslation;
+    if (settings["graph.y_axis.scale"] === "pow") {
+      value = value >= 0 ? Math.pow(value, 2) : -Math.pow(value, 2);
+    }
 
     return renderingContext.formatValue(value, {
       column,
@@ -81,28 +90,12 @@ function getYAxisFormatter(
   };
 }
 
-export function getAxes(
+function getYAxis(
   settings: ComputedVisualizationSettings,
   chartModel: WaterfallChartModel,
   timelineEventsModel: TimelineEventsModel | null,
-  baseOption: EChartsOption,
   renderingContext: RenderingContext,
-) {
-  // x-axis
-  const baseXAxis = baseOption.xAxis;
-  if (baseXAxis === undefined || Array.isArray(baseXAxis)) {
-    throw TypeError("x-axis option is undefined or an array");
-  }
-
-  const xAxis = {
-    ...baseXAxis,
-    type: getXAxisType(settings),
-    axisLabel: {
-      ...baseXAxis.axisLabel,
-      formatter: getXAxisFormatter(settings, chartModel, renderingContext),
-    },
-  } as XAXisOption;
-
+): YAXisOption {
   // y-axis
   if (!chartModel.leftAxisModel) {
     throw Error("Missing leftAxisModel");
@@ -123,16 +116,76 @@ export function getAxes(
     timelineEventsModel != null,
     renderingContext,
   );
-  const yAxis = buildMetricAxis(
-    chartModel.leftAxisModel,
+  const nameGap = getAxisNameGap(
     chartMeasurements.ticksDimensions.yTicksWidthLeft,
-    settings,
-    "left",
-    renderingContext,
-  ) as YAXisOption;
+  );
+  const range = getYAxisRange(chartModel.leftAxisModel, settings);
+  const axisType = settings["graph.y_axis.scale"] === "log" ? "log" : "value";
+
+  return {
+    type: axisType,
+    ...range,
+    ...getAxisNameDefaultOption(
+      renderingContext,
+      nameGap,
+      chartModel.leftAxisModel.label,
+      undefined,
+    ),
+    splitLine: {
+      lineStyle: {
+        type: 5,
+        color: renderingContext.getColor("border"),
+      },
+    },
+    position: "left",
+    axisLine: {
+      show: false,
+    },
+    axisTick: {
+      show: false,
+    },
+    axisLabel: {
+      margin: CHART_STYLE.axisTicksMarginY,
+      show: !!settings["graph.y_axis.axis_enabled"],
+      ...getTicksDefaultOption(renderingContext),
+      formatter: getYAxisFormatter(
+        chartModel.negativeTranslation,
+        chartModel.leftAxisModel.column,
+        settings,
+        renderingContext,
+      ),
+    },
+  } as YAXisOption;
+}
+
+export function getAxes(
+  settings: ComputedVisualizationSettings,
+  chartModel: WaterfallChartModel,
+  timelineEventsModel: TimelineEventsModel | null,
+  baseOption: EChartsOption,
+  renderingContext: RenderingContext,
+) {
+  const baseXAxis = baseOption.xAxis;
+  if (baseXAxis === undefined || Array.isArray(baseXAxis)) {
+    throw TypeError("x-axis option is undefined or an array");
+  }
+
+  const xAxis = {
+    ...baseXAxis,
+    type: getXAxisType(settings),
+    axisLabel: {
+      ...baseXAxis.axisLabel,
+      formatter: getXAxisFormatter(settings, chartModel, renderingContext),
+    },
+  } as XAXisOption;
 
   return {
     xAxis,
-    yAxis,
+    yAxis: getYAxis(
+      settings,
+      chartModel,
+      timelineEventsModel,
+      renderingContext,
+    ),
   };
 }
