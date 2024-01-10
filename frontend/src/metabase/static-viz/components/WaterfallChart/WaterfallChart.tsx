@@ -5,7 +5,7 @@ import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 import { getWaterfallOption } from "metabase/visualizations/echarts/cartesian/waterfall/option";
 
-import { computeStaticComboChartSettings } from "../ComboChart/settings";
+import { computeStaticWaterfallChartSettings } from "./settings";
 
 const WIDTH = 540;
 const HEIGHT = 360;
@@ -17,7 +17,7 @@ export function WaterfallChart({
   width = WIDTH,
   height = HEIGHT,
 }: IsomorphicStaticChartProps) {
-  const computedVisualizationSettings = computeStaticComboChartSettings(
+  const computedVisualizationSettings = computeStaticWaterfallChartSettings(
     rawSeries,
     dashcardSettings,
     renderingContext,
