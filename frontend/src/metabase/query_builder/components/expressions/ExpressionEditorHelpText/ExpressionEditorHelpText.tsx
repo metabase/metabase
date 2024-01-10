@@ -2,6 +2,8 @@ import * as React from "react";
 import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import MetabaseSettings from "metabase/lib/settings";
+import { useSelector } from "metabase/lib/redux";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type { HelpText } from "metabase-lib/expressions/types";
 import { getHelpDocsUrl } from "metabase-lib/expressions/helper-text-strings";
 import {
@@ -28,6 +30,7 @@ export const ExpressionEditorHelpText = ({
   width,
   target,
 }: ExpressionEditorHelpTextProps) => {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   if (!helpText) {
     return null;
   }
@@ -95,18 +98,20 @@ export const ExpressionEditorHelpText = ({
             <ExampleCode data-ignore-outside-clicks>
               {helpText.example}
             </ExampleCode>
-            <DocumentationLink
-              href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
-              target="_blank"
-              data-ignore-outside-clicks
-            >
-              <LearnMoreIcon
-                name="reference"
-                size={12}
+            {showMetabaseLinks && (
+              <DocumentationLink
+                href={MetabaseSettings.docsUrl(getHelpDocsUrl(helpText))}
+                target="_blank"
                 data-ignore-outside-clicks
-              />
-              {t`Learn more`}
-            </DocumentationLink>
+              >
+                <LearnMoreIcon
+                  name="reference"
+                  size={12}
+                  data-ignore-outside-clicks
+                />
+                {t`Learn more`}
+              </DocumentationLink>
+            )}
           </Container>
         </>
       }

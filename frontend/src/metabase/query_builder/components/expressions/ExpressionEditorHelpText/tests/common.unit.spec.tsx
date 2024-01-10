@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { checkNotNull } from "metabase/lib/types";
 import { createMockMetadata } from "__support__/metadata";
 import { getBrokenUpTextMatcher } from "__support__/ui";
@@ -7,10 +7,9 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
-import type { ExpressionEditorHelpTextProps } from "../ExpressionEditorHelpText";
-import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
+import { setup } from "./setup";
 
-describe("ExpressionEditorHelpText", () => {
+describe("ExpressionEditorHelpText (OSS)", () => {
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
   const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
 
@@ -71,22 +70,25 @@ describe("ExpressionEditorHelpText", () => {
       expect(within(argumentsBlock).getByText(description)).toBeInTheDocument();
     });
   });
+
+  describe("Metabase links", () => {
+    const helpText = getHelpText("concat", database, "UTC");
+    it("should show a help link when `show-metabase-links: true`", async () => {
+      await setup({ helpText, showMetabaseLinks: true });
+
+      expect(
+        screen.getByRole("img", { name: "reference icon" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Learn more")).toBeInTheDocument();
+    });
+
+    it("should show a help link when `show-metabase-links: false`", async () => {
+      await setup({ helpText, showMetabaseLinks: false });
+
+      expect(
+        screen.getByRole("img", { name: "reference icon" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Learn more")).toBeInTheDocument();
+    });
+  });
 });
-
-async function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
-  const target = { current: null };
-
-  const props: ExpressionEditorHelpTextProps = {
-    helpText: additionalProps?.helpText,
-    width: 397,
-    target,
-    ...additionalProps,
-  };
-
-  render(<ExpressionEditorHelpText {...props} />);
-
-  // have to wait for TippyPopover to render content
-  expect(
-    await screen.findByTestId("expression-helper-popover"),
-  ).toBeInTheDocument();
-}
