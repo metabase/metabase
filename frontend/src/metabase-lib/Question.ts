@@ -180,7 +180,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  legacyQuery = _.once((): AtomicQuery => {
+  _legacyQuery = _.once((): AtomicQuery => {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -194,6 +194,14 @@ class Question {
     !isVirtualDashcard &&
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
+
+  legacyQuery({ useStructuredQuery = false } = {}) {
+    const query = this._legacyQuery();
+    if (query instanceof StructuredQuery && !useStructuredQuery) {
+      throw new Error("StructuredQuery usage is forbidden. Use MLv2");
+    }
+    return query;
+  }
 
   isNative(): boolean {
     return this.legacyQuery() instanceof NativeQuery;
