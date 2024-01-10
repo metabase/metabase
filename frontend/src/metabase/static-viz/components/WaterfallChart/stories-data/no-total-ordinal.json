@@ -81,7 +81,7 @@
       "entity_id": "yPXayfKmEAVssfjS7X7K1",
       "collection_preview": true,
       "visualization_settings": {
-        "waterfall.show_total": true,
+        "waterfall.show_total": false,
         "graph.dimensions": ["stage"],
         "graph.metrics": ["count"]
       },
@@ -196,7 +196,7 @@
         }
       ],
       "viz-settings": {
-        "waterfall.show_total": true,
+        "waterfall.show_total": false,
         "graph.dimensions": ["stage"],
         "graph.metrics": ["count"],
         "metabase.shared.models.visualization-settings/column-settings": {
