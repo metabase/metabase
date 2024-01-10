@@ -20,6 +20,10 @@ export function withNativeQuery(query: Query, innerQuery: string): Query {
   return ML.with_native_query(query, innerQuery);
 }
 
+export function withTemplateTags(query: Query, tags: string[]): Query {
+  return ML.with_template_tags(query, tags);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
