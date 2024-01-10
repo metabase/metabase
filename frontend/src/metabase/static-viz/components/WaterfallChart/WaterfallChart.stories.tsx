@@ -36,6 +36,13 @@ WithoutTotal.args = {
   renderingContext,
 };
 
+export const TimeseriesXScaleUnsorted = Template.bind({});
+TimeseriesXScaleUnsorted.args = {
+  rawSeries: data.timeseriesXScaleUnsorted as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const OrdinalXScale = Template.bind({});
 OrdinalXScale.args = {
   rawSeries: data.ordinalXScale as any,
