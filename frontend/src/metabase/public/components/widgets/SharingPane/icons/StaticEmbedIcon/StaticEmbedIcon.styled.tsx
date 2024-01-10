@@ -5,18 +5,18 @@ import { SharingPaneButtonContent } from "metabase/public/components/widgets/Sha
 export const StaticEmbedIconRoot = styled.svg`
   ${({ theme }) =>
     css`
-      color: ${theme.colors.bg[1]};
+      color: ${theme.fn.themeColor("bg-medium")};
 
       .innerFill {
-        fill: ${theme.colors.bg[2]};
+        fill: ${theme.fn.themeColor("bg-dark")};
         fill-opacity: 0.5;
       }
 
       ${SharingPaneButtonContent}:hover & {
-        color: ${theme.colors.focus};
+        color: ${theme.fn.themeColor("focus")};
 
         .innerFill {
-          fill: ${theme.colors.brand[1]};
+          fill: ${theme.fn.themeColor("brand")};
           fill-opacity: 1;
         }
       }

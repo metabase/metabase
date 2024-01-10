@@ -32,7 +32,7 @@ export function FilterColumnName({
   return (
     <Group fw="bold" spacing="xs">
       <Text color="text.2">{columnInfo.displayName}</Text>
-      <Text color="text.0">{t`in`}</Text>
+      <Text color="text-light">{t`in`}</Text>
       <Text color="text.2">{columnInfo.table.displayName}</Text>
     </Group>
   );

@@ -22,6 +22,10 @@ export function FilterPanelButton({
   const label = isExpanded ? t`Hide filters` : t`Show filters`;
   const items = useMemo(() => getFilterItems(query), [query]);
 
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
     <Tooltip label={label}>
       <FilterButton

@@ -94,11 +94,9 @@ class View extends Component {
 
     if (isShowingSummarySidebar) {
       const query = question.query();
-      const legacyQuery = question.legacyQuery();
       return (
         <SummarizeSidebar
           query={query}
-          legacyQuery={legacyQuery}
           onQueryChange={nextQuery => {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
             const nextQuestion = question.setDatasetQuery(datesetQuery);
@@ -297,7 +295,7 @@ class View extends Component {
   render() {
     const {
       question,
-      query,
+      query: legacyQuery,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -315,15 +313,15 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
-    const isStructured = query instanceof StructuredQuery;
-
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      question.isStructured() &&
+      !legacyQuery.sourceTableId() &&
+      !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <NewQuestionView
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           className="full-height"
         />
@@ -353,7 +351,7 @@ class View extends Component {
         <QueryBuilderViewRoot className="QueryBuilder">
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {isStructured && (
+            {question.isStructured() && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}

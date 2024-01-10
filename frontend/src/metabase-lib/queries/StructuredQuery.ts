@@ -16,7 +16,6 @@ import type {
   ExpressionClause,
   Filter,
   Join,
-  OrderBy,
   TableId,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
@@ -48,7 +47,7 @@ import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
 import * as ML from "../v2";
-import type { Limit, Query } from "../types";
+import type { Query } from "../types";
 
 import type Segment from "../metadata/Segment";
 import type Database from "../metadata/Database";
@@ -89,9 +88,6 @@ export interface DimensionOption {
 export const isSegmentOption = (content: any): content is SegmentOption =>
   content?.filter && isSegment(content.filter);
 
-export const isDimensionOption = (content: any): content is DimensionOption =>
-  !!content?.dimension;
-
 export interface SegmentOption {
   name: string;
   filter: ["segment", number];
@@ -130,18 +126,13 @@ class StructuredQuery extends AtomicQuery {
     return this.question().query();
   }
 
-  private updateWithMLv2(nextQuery: Query) {
-    const nextMLv1Query = ML.toLegacyQuery(nextQuery);
-    return this.setDatasetQuery(nextMLv1Query);
-  }
-
   /* Query superclass methods */
 
   /**
    * @returns true if this is new query that hasn't been modified yet.
    */
   isEmpty() {
-    return !this.databaseId();
+    return !this._databaseId();
   }
 
   /**
@@ -162,7 +153,7 @@ class StructuredQuery extends AtomicQuery {
   // Determined based on availability of database and source table metadata
   // For queries based on questions expects virtual table metadata for the source card
   isEditable(): boolean {
-    return this.database() != null && this.hasMetadata();
+    return this._database() != null && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
@@ -171,23 +162,25 @@ class StructuredQuery extends AtomicQuery {
    * @returns all tables in the currently selected database that can be used.
    */
   tables(): Table[] | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return (database && database.tables) || null;
   }
 
   /**
    * @returns the currently selected database ID, if any is selected.
+   * @deprecated Use MLv2
    */
-  databaseId(): DatabaseId | null | undefined {
+  _databaseId(): DatabaseId | null | undefined {
     // same for both structured and native
     return this._structuredDatasetQuery.database;
   }
 
   /**
    * @returns the currently selected database metadata, if a database is selected and loaded.
+   * @deprecated Use MLv2
    */
-  database(): Database | null | undefined {
-    const databaseId = this.databaseId();
+  _database(): Database | null | undefined {
+    const databaseId = this._databaseId();
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
@@ -195,7 +188,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns the database engine object, if a database is selected and loaded.
    */
   engine(): string | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return database && database.engine;
   }
 
@@ -236,7 +229,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns a new query with the provided Database ID set.
    */
   setDatabaseId(databaseId: DatabaseId): StructuredQuery {
-    if (databaseId !== this.databaseId()) {
+    if (databaseId !== this._databaseId()) {
       // TODO: this should reset the rest of the query?
       return new StructuredQuery(
         this._originalQuestion,
@@ -346,7 +339,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this);
+    return getStructuredQueryTable(this.question(), this);
   });
 
   /**
@@ -793,6 +786,10 @@ class StructuredQuery extends AtomicQuery {
     return this.breakoutOptions().count > 0;
   }
 
+  canNest(): boolean {
+    return Boolean(this._database()?.hasFeature("nested-queries"));
+  }
+
   /**
    * @returns whether the current query has a valid breakout
    */
@@ -839,14 +836,6 @@ class StructuredQuery extends AtomicQuery {
       (filter, index) => new FilterWrapper(filter, index, this),
     );
   });
-
-  /**
-   * @returns An array of MBQL @type {Filter}s from the last two query stages
-   */
-  topLevelFilters(stages = 2): FilterWrapper[] {
-    const queries = this.queries().slice(-stages);
-    return [].concat(...queries.map(q => q.filters()));
-  }
 
   filterFieldOptionSections(
     filter?: (Filter | FilterWrapper) | null | undefined,
@@ -994,32 +983,6 @@ class StructuredQuery extends AtomicQuery {
    */
   clearSegments() {
     return this._updateQuery(Q.clearSegments, arguments);
-  }
-
-  // SORTS
-  /**
-   * @deprecated use the orderBys function from metabase-lib v2
-   */
-  sorts = _.once((): OrderBy[] => {
-    return Q.getOrderBys(this.legacyQuery());
-  });
-
-  // LIMIT
-  /**
-   * @deprecated use metabase-lib v2's currentLimit function
-   */
-  limit(stageIndex = this.queries().length - 1): Limit {
-    const query = this.getMLv2Query();
-    return ML.currentLimit(query, stageIndex);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2's limit function
-   */
-  updateLimit(limit: Limit, stageIndex = this.queries().length - 1) {
-    const query = this.getMLv2Query();
-    const nextQuery = ML.limit(query, stageIndex, limit);
-    return this.updateWithMLv2(nextQuery);
   }
 
   // EXPRESSIONS
@@ -1428,25 +1391,6 @@ class StructuredQuery extends AtomicQuery {
     }
   });
 
-  /**
-   * Returns the corresponding {Dimension} in the "top-level" {StructuredQuery}
-   */
-  topLevelDimension(dimension: Dimension): Dimension | null | undefined {
-    const topQuery = this.topLevelQuery();
-    let query = this;
-
-    while (query) {
-      if (query === topQuery) {
-        return dimension;
-      } else {
-        dimension = query.dimensionForSourceQuery(dimension);
-        query = query.sourceQuery();
-      }
-    }
-
-    return null;
-  }
-
   dimensionForColumn(column: DatasetColumn) {
     if (column) {
       const fieldRef = this.fieldReferenceForColumn(column);
@@ -1549,7 +1493,7 @@ class StructuredQuery extends AtomicQuery {
       }
     }
 
-    const dbId = this.databaseId();
+    const dbId = this._databaseId();
     if (dbId) {
       addDependency({
         type: "schema",
