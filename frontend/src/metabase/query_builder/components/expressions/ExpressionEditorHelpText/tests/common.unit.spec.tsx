@@ -7,8 +7,8 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { getHelpText } from "metabase-lib/expressions/helper-text-strings";
-import type { ExpressionEditorHelpTextProps } from "./ExpressionEditorHelpText";
-import ExpressionEditorHelpText from "./ExpressionEditorHelpText";
+import type { ExpressionEditorHelpTextProps } from "../ExpressionEditorHelpText";
+import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 
 describe("ExpressionEditorHelpText", () => {
   const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
@@ -59,9 +59,8 @@ describe("ExpressionEditorHelpText", () => {
   });
 
   it("should render function arguments", async () => {
-    const {
-      props: { helpText },
-    } = await setup({ helpText: getHelpText("concat", database, "UTC") });
+    const helpText = getHelpText("concat", database, "UTC");
+    await setup({ helpText });
 
     const argumentsBlock = screen.getByTestId(
       "expression-helper-popover-arguments",
@@ -90,6 +89,4 @@ async function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   expect(
     await screen.findByTestId("expression-helper-popover"),
   ).toBeInTheDocument();
-
-  return { props };
 }

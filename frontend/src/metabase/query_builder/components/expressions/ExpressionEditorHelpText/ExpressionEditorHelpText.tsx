@@ -15,7 +15,7 @@ import {
   FunctionHelpCode,
   FunctionHelpCodeArgument,
   LearnMoreIcon,
-} from "./ExpressionEditorHelpText.styled";
+} from "../ExpressionEditorHelpText/ExpressionEditorHelpText.styled";
 
 export interface ExpressionEditorHelpTextProps {
   helpText: HelpText | null | undefined;
@@ -23,7 +23,7 @@ export interface ExpressionEditorHelpTextProps {
   target: React.RefObject<HTMLElement>;
 }
 
-const ExpressionEditorHelpText = ({
+export const ExpressionEditorHelpText = ({
   helpText,
   width,
   target,
@@ -113,6 +113,3 @@ const ExpressionEditorHelpText = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExpressionEditorHelpText;

@@ -26,7 +26,7 @@ import type {
 } from "metabase-lib/expressions/types";
 
 import type Metadata from "metabase-lib/metadata/Metadata";
-import ExpressionEditorHelpText from "../ExpressionEditorHelpText";
+import { ExpressionEditorHelpText } from "../ExpressionEditorHelpText";
 import ExpressionEditorSuggestions from "../ExpressionEditorSuggestions";
 import ExpressionMode from "../ExpressionMode";
 import {
