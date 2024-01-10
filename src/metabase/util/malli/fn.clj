@@ -317,7 +317,8 @@
   (core/fn skip-ns-decision-fn [namespace]
     (and config/is-prod?
          (let [instrument? (instrument-ns? namespace)]
-           (when-not instrument? (println "skipping instrumentation of var in " (ns-name namespace)))
+           (when-not instrument?
+             (log/info "skipping instrumentation of var in " (ns-name namespace)))
            (not instrument?)))))
 
 (defmacro fn
@@ -375,29 +376,9 @@
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
         skip? (*skip-ns-decision-fn* *ns*)]
-    (prn ["SKIP" skip?])
     (if skip?
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))
                             ;; We want the quoted symbol of first fn-tail:
-                            `{:fn-name '~(first fn-tail)} {})]
+                            {:fn-name (list 'quote (first fn-tail))} {})]
         (instrumented-fn-form error-context parsed)))))
-
-(comment
-
-
-  (alter-var-root #'*skip-ns-decision-fn*
-                  (constantly (core/fn [nns] (prn "Me true" nns) true)))
-
-  (def f (fn name :- :int [] "bad output"))
-  (f)
-
-  (alter-var-root #'*skip-ns-decision-fn*
-                  (constantly (core/fn [nns] (prn "Me false" nns) false)))
-
-  (def f (fn name :- :int [] "bad output"))
-  (f)
-
-
-  )
-

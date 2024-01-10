@@ -73,8 +73,6 @@
                           attr-map)
         docstring        (annotated-docstring parsed)
         skip?      (#'mu.fn/*skip-ns-decision-fn* *ns*)]
-    (tap> {:namespace (ns-name *ns*)
-           :instrument? skip?})
     (if skip?
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring

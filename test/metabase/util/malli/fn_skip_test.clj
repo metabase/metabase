@@ -1,21 +1,24 @@
 (ns metabase.util.malli.fn-skip-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.config :as config]
    [metabase.util.malli.fn :as mu.fn]))
 
-(deftest checks-happen-iff-skip-ns-decision-fn-returns-true
+(deftest instrumentation-can-be-omitted
   ;; Careful not to use binding for *skip-ns-decision-fn*, because the fn macro will evaluate it before it gets bound!
-  (testing "when skip-ns-decision-fn returns true, deparameterized form is emitted"
-    (alter-var-root #'mu.fn/*skip-ns-decision-fn* (constantly (fn [_ns] true)))
-    (eval
-     '(let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]
-        (is (= "schemas aren't checked if this is returned" (f)))))))
-
-(deftest checks-skipped-iff-skip-ns-decision-fn-returns-false
-  ;; Careful not to use binding for *skip-ns-decision-fn*, because the fn macro will evaluate it before it gets bound!
-  (testing "when skip-ns-decision-fn returns false, parameterized form is emitted"
-    (alter-var-root #'mu.fn/*skip-ns-decision-fn* (constantly (fn [_ns] false)))
-    (eval
-     '(let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]
-        (is (thrown-with-msg? Exception #"Invalid output" (f)))))))
+  (testing "by default, instrumented forms are emitted"
+    (let [f (mu.fn/fn :- :int [] "schemas aren't checked if this is returned")]
+      (try (f)
+           (is false "(f) did not throw")
+           (catch Exception e
+             (is (=? {:type ::mu.fn/invalid-output} (ex-data e)))))))
+  (let [orig (var-get #'mu.fn/*skip-ns-decision-fn*)]
+    (testing "when skip-ns-decision-fn returns true, unvalidated form is emitted"
+      (try
+        (alter-var-root #'mu.fn/*skip-ns-decision-fn* (constantly (fn [_ns] true)))
+        (let [f (eval '(mu.fn/fn :- :int [] "schemas aren't checked if this is returned"))]
+          (try (f)
+               (is (= (f) "schemas aren't checked if this is returned"))
+               (catch Exception _e
+                 (is false "it threw a schema error"))))
+        (finally
+          (alter-var-root #'mu.fn/*skip-ns-decision-fn* (constantly orig)))))))
