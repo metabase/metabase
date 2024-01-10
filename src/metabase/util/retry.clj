@@ -1,11 +1,47 @@
 (ns metabase.util.retry
   "Support for in-memory, thread-blocking retrying."
+  (:require    [metabase.config :as config]
+               [metabase.models.setting :refer [defsetting]]
+               [metabase.util.i18n :refer [deferred-tru]])
   (:import
    (io.github.resilience4j.core IntervalFunction)
    (io.github.resilience4j.retry Retry RetryConfig)
    (java.util.function Predicate)))
 
 (set! *warn-on-reflection* true)
+
+(defsetting retry-max-attempts
+  (deferred-tru "The maximum number of attempts for an event.")
+  :type :integer
+  :default 7)
+
+(defsetting retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds.")
+  :type :integer
+  :default 500)
+
+(defsetting retry-multiplier
+  (deferred-tru "The delay multiplier between attempts.")
+  :type :double
+  :default 2.0)
+
+(defsetting retry-randomization-factor
+  (deferred-tru "The randomization factor of the retry delay.")
+  :type :double
+  :default 0.1)
+
+(defsetting retry-max-interval-millis
+  (deferred-tru "The maximum delay between attempts.")
+  :type :integer
+  :default 30000)
+
+(defn- retry-configuration []
+  (cond-> {:max-attempts (retry-max-attempts)
+           :initial-interval-millis (retry-initial-interval)
+           :multiplier (retry-multiplier)
+           :randomization-factor (retry-randomization-factor)
+           :max-interval-millis (retry-max-interval-millis)}
+    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
 
 (defn- make-predicate [f]
   (reify Predicate (test [_ x] (f x))))
@@ -40,7 +76,9 @@
   "Returns a function accepting the same arguments as `f` but retrying on error
   as specified by `retry`.
   The calling thread is blocked during the retries."
-  [f ^Retry retry]
-  (fn [& args]
-    (let [callable (reify Callable (call [_] (apply f args)))]
-      (.call (Retry/decorateCallable retry callable)))))
+  ([f]
+  (decorate f (random-exponential-backoff-retry (str (random-uuid)) (retry-configuration))))
+  ([f ^Retry retry]
+   (fn [& args]
+     (let [callable (reify Callable (call [_] (apply f args)))]
+       (.call (Retry/decorateCallable retry callable))))))

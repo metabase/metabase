@@ -27,6 +27,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [toucan2.core :as t2])
@@ -534,18 +535,23 @@
 (defmethod send-notification! :email
   [emails]
   (doseq [{:keys [subject recipients message-type message]} emails]
-    (email/send-email-retrying! {:subject      subject
-                                 :recipients   recipients
-                                 :message-type message-type
-                                 :message      message
-                                 :bcc?         (email/bcc-enabled?)})))
+    (email/send-message-or-throw! {:subject      subject
+                                   :recipients   recipients
+                                   :message-type message-type
+                                   :message      message
+                                   :bcc?         (email/bcc-enabled?)})))
+
+(defn- send-notification-retrying!
+  "Like [[send-notification!]] but retries sending on errors according to the retry settings."
+  [& args]
+  (apply (retry/decorate send-notification!) args))
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
     ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
     ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
     (try
-      (send-notification! notification)
+      (send-notification-retrying! notification)
       (catch Throwable e
         (log/error e (trs "Error sending notification!"))))))
 

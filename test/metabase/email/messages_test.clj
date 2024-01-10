@@ -6,8 +6,10 @@
    [metabase.email-test :as et]
    [metabase.email.messages :as messages]
    [metabase.test :as mt]
-   [metabase.test.util :as tu])
+   [metabase.test.util :as tu]
+   [metabase.util.retry :as retry])
   (:import
+   [io.github.resilience4j.retry Retry]
    (java.io IOException)))
 
 (set! *warn-on-reflection* true)
@@ -108,67 +110,67 @@
         (is (vector? emails))
         (is (map? (first emails)))))))
 
-(defn- get-retry-metrics []
-  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'email/retry-state)]
-    (bean (.getMetrics retry))))
-
-(defn- pos-metrics [m]
-  (into {}
-        (map (fn [field]
-               (let [d (m field)]
-                 (when (pos? d)
-                   [field d]))))
-        [:numberOfFailedCallsWithRetryAttempt
-         :numberOfFailedCallsWithoutRetryAttempt
-         :numberOfSuccessfulCallsWithRetryAttempt
-         :numberOfSuccessfulCallsWithoutRetryAttempt]))
-
-(defn- reset-retry []
-  (let [old (get-retry-metrics)]
-    (#'email/reconfigure-retrying nil nil)
-    old))
+(defn- get-positive-retry-metrics [retry]
+  (let [metrics (bean (.getMetrics retry))]
+    (into {}
+          (map (fn [field]
+                 (let [d (metrics field)]
+                   (when (pos? d)
+                     [field d]))))
+          [:numberOfFailedCallsWithRetryAttempt
+           :numberOfFailedCallsWithoutRetryAttempt
+           :numberOfSuccessfulCallsWithRetryAttempt
+           :numberOfSuccessfulCallsWithoutRetryAttempt])))
 
 (def test-email {:subject      "Test email subject"
                  :recipients   ["test@test.com"]
                  :message-type :html
                  :message      "test mmail body"})
 
-(deftest email-retry-test
+(deftest send-email-retrying-test
   (testing "send email succeeds w/o retry"
-    (with-redefs [email/send-email! mt/fake-inbox-email-fn]
-      (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                         email-smtp-port 587]
-        (mt/reset-inbox!)
-        (#'email/reconfigure-retrying nil nil)
-        (reset-retry)
-        (#'email/send-email-retrying! test-email)
-        (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
-               (pos-metrics (reset-retry))))
-        (is (= 1 (count @mt/inbox))))))
+    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
+      (with-redefs [email/send-email! mt/fake-inbox-email-fn
+                    retry/decorate    (fn [f]
+                                        (fn [& args]
+                                          (let [callable (reify Callable (call [_] (apply f args)))]
+                                            (.call (Retry/decorateCallable test-retry callable)))))]
+        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                           email-smtp-port 587]
+          (mt/reset-inbox!)
+          (email/send-email-retrying! test-email)
+          (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry)))
+          (is (= 1 (count @mt/inbox)))))))
   (testing "send email fails b/c retry limit"
-    (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
-      (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                         email-smtp-port 587]
-        (mt/reset-inbox!)
-        (reset-retry)
-        (#'email/send-email-retrying! test-email)
-        (is (= {:numberOfFailedCallsWithRetryAttempt 1}
-               (pos-metrics (reset-retry))))
-        (is (= 0 (count @mt/inbox))))))
+    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
+      (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
+                    retry/decorate    (fn [f]
+                                        (fn [& args]
+                                          (let [callable (reify Callable (call [_] (apply f args)))]
+                                            (.call (Retry/decorateCallable test-retry callable)))))]
+        (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                           email-smtp-port 587]
+          (mt/reset-inbox!)
+          (try (#'email/send-email-retrying! test-email)
+               (catch Exception _))
+          (is (= {:numberOfFailedCallsWithRetryAttempt 1}
+                 (get-positive-retry-metrics test-retry)))
+          (is (= 0 (count @mt/inbox)))))))
   (testing "send email succeeds w/ retry"
-    (let [retry-config (#'email/retry-configuration)]
-      (try
-        (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                      email/retry-configuration (constantly (assoc retry-config
-                                                                   :max-attempts 2
-                                                                   :initial-interval-millis 1))]
-          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
-                                             email-smtp-port 587]
-            (mt/reset-inbox!)
-            (reset-retry)
-            (#'email/send-email-retrying! test-email)
-            (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
-                   (pos-metrics (reset-retry))))
-            (is (= 1 (count @mt/inbox)))))
-        (finally
-          (reset-retry))))))
+    (let [retry-config (assoc (#'retry/retry-configuration)
+                              :max-attempts 2
+                              :initial-interval-millis 1)
+          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+      (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
+                    retry/decorate    (fn [f]
+                                        (fn [& args]
+                                          (let [callable (reify Callable (call [_] (apply f args)))]
+                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                  (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                                     email-smtp-port 587]
+                      (mt/reset-inbox!)
+                      (#'email/send-email-retrying! test-email)
+                      (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                             (get-positive-retry-metrics test-retry)))
+                      (is (= 1 (count @mt/inbox))))))))
