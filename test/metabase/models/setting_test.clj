@@ -1,5 +1,6 @@
 (ns metabase.models.setting-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [environ.core :as env]
@@ -1195,9 +1196,31 @@
   (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
     (is (nil? (setting/validate-settings-formatting!)))))
 
+(defn- get-parse-exception [raw-value]
+  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" raw-value]
+    (try
+      (setting/validate-settings-formatting!)
+      (throw (java.lang.RuntimeException. "This code should never be reached."))
+      (catch java.lang.Exception e e))))
+
 (deftest invalid-json-setting-test
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2,"]
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Invalid JSON configuration for setting: test-json-setting"
-         (setting/validate-settings-formatting!)))))
+  (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
+    (let [ex (get-parse-exception "[1, 2,")]
+      (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+      ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+      (is (= "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"
+             (ex-message (ex-cause ex)))))))
+
+(deftest sensitive-data-redacted-test
+  (testing "The exception thrown by validation will not contain sensitive info from the config"
+    (let [password "$ekr3t"
+          ex (get-parse-exception (str "[" password))]
+      (is (not (str/includes? (pr-str ex) password)))
+      (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+      (is (= "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"
+             (ex-message (ex-cause ex)))))))
+
+(deftest safe-exceptions-not-redacted-test
+  (testing "An exception known not to contain sensitive info will not be redacted"
+    (let [ex (get-parse-exception "{\"a\": 2")]
+      (is (str/includes? (pr-str ex) "Unexpected end-of-input")))))
