@@ -1,21 +1,23 @@
 import type { EChartsOption } from "echarts";
-import type {
-  DatasetOption,
-  YAXisOption,
-  XAXisOption,
-} from "echarts/types/dist/shared";
+import type { DatasetOption, YAXisOption } from "echarts/types/dist/shared";
+
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { TimelineEventId } from "metabase-types/api";
+import type {
+  TimelineEventId,
+  DatasetColumn,
+  RowValue,
+} from "metabase-types/api";
 
-import type { CartesianChartModel } from "../model/types";
+import { checkNumber } from "metabase/lib/types";
 import { getCartesianChartOption } from "../option";
 import { buildMetricAxis } from "../option/axis";
 import { getChartMeasurements } from "../utils/layout";
 import type { TimelineEventsModel } from "../timeline-events/types";
-import type { WaterfallDataset } from "./types";
+
+import type { WaterfallChartModel } from "./types";
 import { DATASET_DIMENSIONS } from "./constants";
 import { getWaterfallExtent } from "./model";
 
@@ -26,16 +28,32 @@ function getXAxisType(settings: ComputedVisualizationSettings) {
   return "category";
 }
 
-// TODO remove all the typecasts
+function getYAxisFormatter(
+  negativeTranslation: number,
+  column: DatasetColumn,
+  settings: ComputedVisualizationSettings,
+  renderingContext: RenderingContext,
+) {
+  return (rowValue: RowValue) => {
+    const value = checkNumber(rowValue) - negativeTranslation;
+
+    return renderingContext.formatValue(value, {
+      column,
+      ...(settings.column?.(column) ?? {}),
+      jsx: false,
+    });
+  };
+}
+
 export function getWaterfallOption(
-  chartModel: CartesianChartModel,
+  chartModel: WaterfallChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption {
-  const option = getCartesianChartOption(
+  const baseOption = getCartesianChartOption(
     chartModel,
     timelineEventsModel,
     selectedTimelineEventsIds,
@@ -44,27 +62,31 @@ export function getWaterfallOption(
     renderingContext,
   );
 
-  // dataset
-  (option.dataset as DatasetOption[])[0].dimensions =
-    Object.values(DATASET_DIMENSIONS);
-
-  // x-axis
-  (option.xAxis as XAXisOption).type = getXAxisType(settings);
+  const dataset: DatasetOption = {
+    source: chartModel.dataset,
+    dimensions: Object.values(DATASET_DIMENSIONS),
+  };
+  const xAxisType = getXAxisType(settings);
 
   // y-axis
   if (!chartModel.leftAxisModel) {
     throw Error("Missing leftAxisModel");
   }
-  chartModel.leftAxisModel.extent = getWaterfallExtent(
-    chartModel.dataset as WaterfallDataset,
+  chartModel.leftAxisModel.extent = getWaterfallExtent(chartModel.dataset);
+  chartModel.leftAxisModel.formatter = getYAxisFormatter(
+    chartModel.negativeTranslation,
+    chartModel.leftAxisModel.column,
+    settings,
+    renderingContext,
   );
+
   const chartMeasurements = getChartMeasurements(
     chartModel,
     settings,
     timelineEventsModel != null,
     renderingContext,
   );
-  option.yAxis = buildMetricAxis(
+  const yAxis = buildMetricAxis(
     chartModel.leftAxisModel,
     chartMeasurements.ticksDimensions.yTicksWidthLeft,
     settings,
@@ -72,5 +94,10 @@ export function getWaterfallOption(
     renderingContext,
   ) as YAXisOption;
 
-  return option;
+  return {
+    ...baseOption,
+    dataset,
+    xAxis: { ...baseOption.xAxis, type: xAxisType },
+    yAxis,
+  };
 }
