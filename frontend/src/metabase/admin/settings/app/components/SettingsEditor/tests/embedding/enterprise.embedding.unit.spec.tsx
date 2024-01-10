@@ -86,7 +86,7 @@ describe("[EE, no token] embedding settings", () => {
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=oss&utm_media=embed-settings",
+          "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html?utm_source=oss&utm_media=embed-settings",
         );
       });
 

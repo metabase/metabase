@@ -3,7 +3,11 @@ import { jt, t } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
+import {
+  getDocsUrlForVersion,
+  getSetting,
+  getUpgradeUrl,
+} from "metabase/selectors/settings";
 import type { ButtonProps } from "metabase/ui";
 import { Button, Flex, Text, Title } from "metabase/ui";
 import { getPlan } from "metabase/common/utils/plan";
@@ -86,6 +90,12 @@ export const InteractiveEmbeddingOptionCard = () => {
     getPlan(getSetting(state, "token-features")),
   );
   const enabled = useSelector(state => getSetting(state, "enable-embedding"));
+  const quickStartUrl = useSelector(state =>
+    getDocsUrlForVersion(
+      getSetting(state, "version"),
+      "embedding/interactive-embedding-quick-start-guide",
+    ),
+  );
 
   return (
     <EmbeddingOption
@@ -108,7 +118,7 @@ export const InteractiveEmbeddingOptionCard = () => {
       )} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox.`}
     >
       <BoldExternalLink
-        href={`https://www.metabase.com/learn/customer-facing-analytics/interactive-embedding-quick-start?utm_source=${plan}&utm_media=embed-settings`}
+        href={`${quickStartUrl}?utm_source=${plan}&utm_media=embed-settings`}
       >
         {t`Check out our Quick Start`}
       </BoldExternalLink>
