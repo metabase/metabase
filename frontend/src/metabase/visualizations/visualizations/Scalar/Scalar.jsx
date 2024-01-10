@@ -16,7 +16,9 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { TYPE } from "metabase-lib/types/constants";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
+import { scalarToBarTransform } from "metabase/visualizations/visualizations/Scalar/scalars-bar-transform";
 import { TITLE_ICON_SIZE } from "./constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
@@ -55,36 +57,6 @@ export class Scalar extends Component {
     },
   ]) {
     // scalar can always be rendered, nothing needed here
-  }
-
-  static transformSeries(series) {
-    if (series.length > 1) {
-      return series.map((s, seriesIndex) => ({
-        card: {
-          ...s.card,
-          display: "funnel",
-          visualization_settings: {
-            ...s.card.visualization_settings,
-            "graph.x_axis.labels_enabled": false,
-          },
-          _seriesIndex: seriesIndex,
-        },
-        data: {
-          cols: [
-            {
-              base_type: TYPE.Text,
-              display_name: t`Name`,
-              name: "name",
-              source: "query-transform",
-            },
-            { ...s.data.cols[0] },
-          ],
-          rows: [[s.card.name, s.data.rows[0][0]]],
-        },
-      }));
-    } else {
-      return series;
-    }
   }
 
   static settings = {
@@ -174,7 +146,18 @@ export class Scalar extends Component {
       gridSize,
       totalNumGridCols,
       fontFamily,
+      rawSeries,
     } = this.props;
+
+    if (rawSeries.length > 1) {
+      return (
+        <TransformedVisualization
+          transformSeries={scalarToBarTransform}
+          originalProps={this.props}
+          VisualizationComponent={BarChart}
+        />
+      );
+    }
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];

@@ -52,13 +52,12 @@ export const getCardsSeriesModels = (
 ) => {
   const hasMultipleCards = rawSeries.length > 1;
   return rawSeries.flatMap((cardDataset, index) => {
-    const isFirstCard = index === 0;
     const cardColumns = cardsColumns[index];
 
     return getCardSeriesModels(
       cardDataset,
       cardColumns,
-      isFirstCard,
+      index,
       hasMultipleCards,
       settings,
       renderingContext,

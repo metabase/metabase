@@ -245,10 +245,10 @@ export const getSeriesHoverData = (
     return;
   }
 
-  const isStackedChart = settings["stackable.stack_type"] != null;
-  const stackedTooltipModel = isStackedChart
-    ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
-    : undefined;
+  const stackedTooltipModel =
+    settings["graph.tooltip_type"] === "series_comparison"
+      ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
+      : undefined;
 
   return {
     settings,
