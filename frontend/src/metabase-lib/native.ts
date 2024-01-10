@@ -31,7 +31,7 @@ export function templateTags(query: Query): TemplateTags {
 export function extractTemplateTags(
   queryText: string,
   existingTags?: TemplateTags,
-): TemplateTags | Record<string, never> {
+): TemplateTags {
   return ML.extract_template_tags(queryText, existingTags);
 }
 
