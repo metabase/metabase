@@ -5,6 +5,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { uuid } from "metabase/lib/utils";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
+import { useSelector } from "metabase/lib/redux";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/metadata/Database";
 
 const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
@@ -234,6 +236,8 @@ export const TagEditorHelp = ({
   const examples = engine === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
   const datasetId = engine === "mongo" ? database?.id : sampleDatabaseId;
 
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
   let setQueryWithDatasetId;
 
   if (datasetId != null) {
@@ -262,7 +266,7 @@ export const TagEditorHelp = ({
       <h4 className="pt2">{t`Variables`}</h4>
       <p>
         {jt`${(
-          <Code>{"{{variable_name}}"}</Code>
+          <Code key="code">{"{{variable_name}}"}</Code>
         )} creates a variable in this query template called "variable_name". Variables can be given types in the side panel, which changes their behavior. All variable types other than "Field Filter" will automatically cause a filter widget to be placed on this question; with Field Filters, this is optional. When this filter widget is filled in, that value replaces the variable in the query template.`}
       </p>
       <TagExample
@@ -285,7 +289,7 @@ export const TagEditorHelp = ({
       <h4 className="pt2">{t`Optional Clauses`}</h4>
       <p>
         {jt`Brackets around a ${(
-          <Code>{"[[{{variable}}]]"}</Code>
+          <Code key="code">{"[[{{variable}}]]"}</Code>
         )} create an optional clause in the template. If "variable" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored.`}
       </p>
       <TagExample
@@ -307,15 +311,17 @@ export const TagEditorHelp = ({
         setDatasetQuery={setQueryWithDatasetId}
       />
 
-      <p className="pt2 link">
-        <ExternalLink
-          href={MetabaseSettings.docsUrl(
-            "questions/native-editor/sql-parameters",
-          )}
-          target="_blank"
-          data-metabase-event="QueryBuilder;Template Tag Documentation Click"
-        >{t`Read the full documentation`}</ExternalLink>
-      </p>
+      {showMetabaseLinks && (
+        <p className="pt2 link">
+          <ExternalLink
+            href={MetabaseSettings.docsUrl(
+              "questions/native-editor/sql-parameters",
+            )}
+            target="_blank"
+            data-metabase-event="QueryBuilder;Template Tag Documentation Click"
+          >{t`Read the full documentation`}</ExternalLink>
+        </p>
+      )}
     </div>
   );
 };
