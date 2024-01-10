@@ -66,7 +66,7 @@ export function ClickBehaviorSidebarContent({
     );
   }
 
-  if (isTypeSelectorVisible) {
+  if (isTypeSelectorVisible || !clickBehavior) {
     return (
       <SidebarContent>
         <TypeSelector
