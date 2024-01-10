@@ -62,7 +62,7 @@ function GroupMembersTable({
   reload,
 }: GroupMembersTableProps) {
   const { loading, value: apiKeys } = useAsync(
-    () => ApiKeysApi.list(),
+    () => ApiKeysApi.list() as Promise<ApiKey[]>,
     [group.id],
   );
 
@@ -110,7 +110,7 @@ function GroupMembersTable({
             onDone={handleAddUser}
           />
         )}
-        {apiKeys.map((apiKey: ApiKey) => (
+        {apiKeys?.map((apiKey: ApiKey) => (
           <ApiKeyRow key={`apiKey-${apiKey.id}`} apiKey={apiKey} />
         ))}
         {groupUsers.map((user: IUser) => {

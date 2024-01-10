@@ -170,7 +170,7 @@ describeEE("scenarios > admin > people", () => {
   });
 
   it("after removing the last group redirects to the home page", () => {
-    cy.findByTextEnsureVisible("Groups").click();
+    cy.findByTestId("admin-left-nav-pane").findByText("Groups").click();
 
     removeFirstGroup();
     cy.url().should("match", /\/admin\/people\/groups$/);
