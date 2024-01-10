@@ -151,6 +151,59 @@ describeEE("formatting > whitelabel", () => {
       cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
     });
   });
+
+  describe("Landing Page", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/setting/landing-page").as("putLandingPage");
+    });
+
+    it("should allow users to provide internal urls", () => {
+      cy.signInAsAdmin();
+
+      cy.visit("/admin/settings/whitelabel");
+      cy.location("origin").then(origin => {
+        // test root / path
+        testValidLandingPageInput({ input: "/", expected: origin + "/" });
+
+        // test relative url
+        testValidLandingPageInput({
+          input: "/test-1",
+          expected: origin + "/test-1",
+        });
+
+        // test no input
+        testValidLandingPageInput({ input: "", expected: origin + "/" });
+
+        // test absolute url matching the page's origin
+        testValidLandingPageInput({
+          input: origin + "/test-2",
+          expected: origin + "/test-2",
+        });
+      });
+    });
+
+    it("should not allow users to provide external urls", () => {
+      cy.signInAsAdmin();
+      cy.visit("/admin/settings/whitelabel");
+
+      cy.location("origin").then(origin => {
+        // first set to a valid value
+        testValidLandingPageInput({ input: "/", expected: origin + "/" });
+
+        // test that setting invalid value errors and is not persisted
+        cy.visit("/admin/settings/whitelabel");
+        cy.findByTestId("landing-page")
+          .click()
+          .type("{selectAll}" + "{backspace}" + "https://google.com")
+          .blur();
+        cy.findByTestId("landing-page-error")
+          .findByText("This field must be a relative URL.")
+          .should("exist");
+        cy.findByText("Exit admin").click();
+        cy.url().should("eq", origin + "/");
+      });
+    });
+  });
 });
 
 function changeLoadingMessage(message) {
@@ -164,3 +217,20 @@ function setApplicationFontTo(font) {
     value: font,
   });
 }
+
+const testValidLandingPageInput = ({ input, expected }) => {
+  cy.visit("/admin/settings/whitelabel");
+
+  const field = cy.findByTestId("landing-page");
+  field.click().clear();
+  if (input) {
+    field.type(input);
+  }
+  field.blur();
+
+  cy.findByTestId("landing-page").click().clear();
+  cy.wait("@putLandingPage");
+  cy.findByTestId("landing-page-error").should("not.exist");
+  cy.findByText("Exit admin").click();
+  cy.url().should("eq", expected);
+};
