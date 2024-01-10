@@ -24,6 +24,10 @@ export function withTemplateTags(query: Query, tags: string[]): Query {
   return ML.with_template_tags(query, tags);
 }
 
+export function templateTags(query: Query): string {
+  return ML.template_tags(query);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
