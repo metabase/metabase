@@ -5,8 +5,33 @@ import {
   type CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 
-import type { WaterfallDatum } from "./types";
+import type { Extent } from "../model/types";
+import type { WaterfallDataset, WaterfallDatum } from "./types";
 import { DATASET_DIMENSIONS } from "./constants";
+
+export function getWaterfallExtent(dataset: WaterfallDataset) {
+  const extent: Extent = [0, 0];
+
+  dataset.forEach(datum => {
+    const barOffset = datum[DATASET_DIMENSIONS.barOffset];
+    const increase = datum[DATASET_DIMENSIONS.increase];
+    const decrease = datum[DATASET_DIMENSIONS.decrease];
+
+    let value: number;
+    if (increase !== null) {
+      value = barOffset + increase;
+    } else if (decrease !== null) {
+      value = barOffset - decrease;
+    } else {
+      throw TypeError("Both increase and decrease cannot be null");
+    }
+
+    extent[0] = Math.min(extent[0], value);
+    extent[1] = Math.max(extent[1], value);
+  });
+
+  return extent;
+}
 
 function createDatum({
   dimension,
@@ -33,9 +58,9 @@ function createDatum({
 export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
-): WaterfallDatum[] {
+): WaterfallDataset {
   const columns = assertMultiMetricColumns(cardColumns);
-  const dataset: WaterfallDatum[] = [];
+  const dataset: WaterfallDataset = [];
 
   rows.forEach((row, index) => {
     const dimension = String(row[columns.dimension.index]);
