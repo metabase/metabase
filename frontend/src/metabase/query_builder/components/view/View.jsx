@@ -201,7 +201,7 @@ class View extends Component {
   renderHeader = () => {
     const { question } = this.props;
     const query = question.query();
-    const legacyQuery = question.legacyQuery();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
 
     const isNewQuestion =
       question.isStructured() &&
@@ -261,7 +261,7 @@ class View extends Component {
     const { question, mode, parameters, isLiveResizable, setParameterValue } =
       this.props;
 
-    const legacyQuery = question.legacyQuery();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const queryMode = mode && mode.queryMode();
     const isNative = legacyQuery instanceof NativeQuery;
     const validationError = _.first(legacyQuery.validate?.());
@@ -321,7 +321,7 @@ class View extends Component {
     }
 
     const query = question.query();
-    const legacyQuery = question.legacyQuery();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
 
     const isNewQuestion =
       question.isStructured() &&
