@@ -103,14 +103,21 @@ export function getWaterfallChartModel(
     rows,
     cardColumns,
   );
-  const dataset = getWaterfallDataset(rows, cardColumns, negativeTranslation);
+  const waterfallDataset = getWaterfallDataset(
+    rows,
+    cardColumns,
+    negativeTranslation,
+  );
 
   // y-axis
-  const yAxisExtents: AxisExtents = [getWaterfallExtent(dataset), null];
+  const yAxisExtents: AxisExtents = [
+    getWaterfallExtent(waterfallDataset),
+    null,
+  ];
 
   const waterfallChartModel: WaterfallChartModel = {
     ...baseChartModel,
-    dataset,
+    waterfallDataset,
     negativeTranslation,
     yAxisExtents,
   };
