@@ -2,6 +2,9 @@ import withoutTotal from "./without-total.json";
 import ordinalXScale from "./ordinal-x-scale.json";
 import timeseriesXScaleUnsorted from "./timeseries-x-scale-unsorted.json";
 import timeSeriesDataAsOrdinalXScale from "./timeseries-data-as-ordinal-x-scale.json";
+import unaggregatedOrdinal from "./unaggregated-ordinal.json";
+import unaggregatedOrdinal2 from "./unaggregated-ordinal-2.json";
+import unaggregatedTimeseries from "./unaggregated-timeseries.json";
 import mixedAboveZero from "./mixed-above-zero.json";
 import mixedBelowZero from "./mixed-below-zero.json";
 import negativeOnly from "./negative-only.json";
@@ -15,6 +18,9 @@ export const data = {
   ordinalXScale,
   timeseriesXScaleUnsorted,
   timeSeriesDataAsOrdinalXScale,
+  unaggregatedOrdinal,
+  unaggregatedOrdinal2,
+  unaggregatedTimeseries,
   mixedAboveZero,
   mixedBelowZero,
   negativeOnly,
