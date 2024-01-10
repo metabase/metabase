@@ -27,23 +27,23 @@ describe("StructuredQuery nesting", () => {
   describe("nest", () => {
     it("should nest correctly", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true });
-      expect(q.legacyQuery({ useStructuredQuery: true })).toEqual({
+      const q = ordersTable.legacyQuery();
+      expect(q.legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
       });
-      expect(q.nest().legacyQuery({ useStructuredQuery: true })).toEqual({
+      expect(q.nest().legacyQuery()).toEqual({
         "source-query": { "source-table": ORDERS_ID },
       });
     });
 
     it("should be able to modify the outer question", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true });
+      const q = ordersTable.legacyQuery();
       expect(
         q
           .nest()
           .filter(["=", ["field", ORDERS.TOTAL, null], 42])
-          .legacyQuery({ useStructuredQuery: true }),
+          .legacyQuery(),
       ).toEqual({
         "source-query": { "source-table": ORDERS_ID },
         filter: ["=", ["field", ORDERS.TOTAL, null], 42],
@@ -52,14 +52,14 @@ describe("StructuredQuery nesting", () => {
 
     it("should be able to modify the source question", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true });
+      const q = ordersTable.legacyQuery();
       expect(
         q
           .nest()
           .sourceQuery()
           .filter(["=", ["field", ORDERS.TOTAL, null], 42])
           .parentQuery()
-          .legacyQuery({ useStructuredQuery: true }),
+          .legacyQuery(),
       ).toEqual({
         "source-query": {
           "source-table": ORDERS_ID,
@@ -71,7 +71,7 @@ describe("StructuredQuery nesting", () => {
     it("should return a table with correct dimensions", () => {
       const { ordersTable } = setup();
       const q = ordersTable
-        .legacyQuery({ useStructuredQuery: true })
+        .legacyQuery()
         .aggregate(["count"])
         .breakout(["field", ORDERS.PRODUCT_ID, null]);
       expect(
@@ -89,43 +89,30 @@ describe("StructuredQuery nesting", () => {
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true });
-      expect(
-        q.topLevelQuery().legacyQuery({ useStructuredQuery: true }),
-      ).toEqual({
+      const q = ordersTable.legacyQuery();
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
       });
     });
     it("should return the query if it's not summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery({ useStructuredQuery: true })
-        .aggregate(["count"]);
-      expect(
-        q.topLevelQuery().legacyQuery({ useStructuredQuery: true }),
-      ).toEqual({
+      const q = ordersTable.legacyQuery().aggregate(["count"]);
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
     });
     it("should return last stage if none are summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable.legacyQuery({ useStructuredQuery: true }).nest();
-      expect(
-        q.topLevelQuery().legacyQuery({ useStructuredQuery: true }),
-      ).toEqual({
+      const q = ordersTable.legacyQuery().nest();
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-query": { "source-table": ORDERS_ID },
       });
     });
     it("should return last summarized stage if any is summarized", () => {
       const { ordersTable } = setup();
-      const q = ordersTable
-        .legacyQuery({ useStructuredQuery: true })
-        .aggregate(["count"])
-        .nest();
-      expect(
-        q.topLevelQuery().legacyQuery({ useStructuredQuery: true }),
-      ).toEqual({
+      const q = ordersTable.legacyQuery().aggregate(["count"]).nest();
+      expect(q.topLevelQuery().legacyQuery()).toEqual({
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
       });
