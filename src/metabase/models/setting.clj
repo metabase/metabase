@@ -532,7 +532,7 @@
                       (core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
-(defn realize
+(defn- realize
   "Parsing a setting may result in a lazy value. Use this to ensure we finish parsing."
   [value]
   (when (coll? value)

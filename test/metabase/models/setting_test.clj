@@ -1192,6 +1192,20 @@
                             :new-value      "AUDIT ME"}}
                  (mt/latest-audit-log-entry :setting-update))))))))
 
+(deftest realize-throwing-test
+  (testing "The realize function ensures all nested lazy values are calculated"
+    (let [ok (lazy-seq (cons 1 (lazy-seq (list 2))))
+          ok-deep (lazy-seq (cons 1 (lazy-seq (list (lazy-seq (list 2))))))
+          shallow (lazy-seq (cons 1 (throw (ex-info "Surprise!" {}))))
+          deep (lazy-seq (cons 1 (cons 2 (lazy-seq (throw (ex-info "Surprise!" {}))))))]
+      (is (= '(1 2) (#'setting/realize ok)))
+      (is (= '(1 (2)) (#'setting/realize ok-deep)))
+      (doseq [x [shallow deep]]
+        (is (thrown-with-msg?
+              clojure.lang.ExceptionInfo
+              #"^Surprise!$"
+              (#'setting/realize x)))))))
+
 (deftest valid-json-setting-test
   (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
     (is (nil? (setting/validate-settings-formatting!)))))
