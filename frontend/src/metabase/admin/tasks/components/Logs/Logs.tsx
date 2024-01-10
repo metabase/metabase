@@ -1,6 +1,5 @@
 import { Component } from "react";
 import * as React from "react";
-import ReactDOM from "react-dom";
 import reactAnsiStyle from "react-ansi-style";
 
 import _ from "underscore";
@@ -16,11 +15,20 @@ import { LogsContainer } from "./Logs.styled";
 
 const MAX_LOGS = 50000;
 
-function logEventKey(ev) {
+interface Log {
+  timestamp: number;
+  process_uuid: string;
+  fqns: string;
+  msg: string;
+  level: string;
+  exception: any;
+}
+
+function logEventKey(ev: Log) {
   return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
 }
 
-function mergeLogs(...logArrays) {
+function mergeLogs(...logArrays: Log[] | Log[][]) {
   return _.chain(logArrays)
     .flatten(true)
     .sortBy(ev => ev.msg)
@@ -31,58 +39,58 @@ function mergeLogs(...logArrays) {
     .value();
 }
 
-export class Logs extends Component {
-  constructor() {
-    super();
+type LogsProps = unknown;
+
+interface LogsState {
+  loaded: boolean;
+  error: string | null;
+  logs: Log[];
+  selectedProcessUUID: string;
+}
+
+export class Logs extends Component<LogsProps, LogsState> {
+  constructor(props: LogsProps) {
+    super(props);
     this.state = {
+      loaded: false,
+      error: null,
       logs: [],
-      scrollToBottom: true,
       selectedProcessUUID: "ALL",
     };
-
-    this._onScroll = () => {
-      this.scrolling = true;
-      this._onScrollDebounced();
-    };
-    this._onScrollDebounced = _.debounce(() => {
-      const elem = ReactDOM.findDOMNode(this).parentNode;
-      const scrollToBottom =
-        Math.abs(elem.scrollTop - (elem.scrollHeight - elem.offsetHeight)) < 10;
-      this.setState({ scrollToBottom }, () => {
-        this.scrolling = false;
-      });
-    }, 500);
   }
 
-  async fetchLogs() {
-    const logs = await UtilApi.logs();
-    this.setState({ logs: mergeLogs(this.state.logs, logs.reverse()) });
-  }
+  timer: NodeJS.Timeout | null = null;
+  unmounted = false;
 
   componentDidMount() {
-    this.timer = setInterval(this.fetchLogs.bind(this), 1000);
-
-    const elem = ReactDOM.findDOMNode(this).parentNode;
-    elem.addEventListener("scroll", this._onScroll, false);
-  }
-
-  componentDidUpdate() {
-    const elem = ReactDOM.findDOMNode(this).parentNode;
-    if (!this.scrolling && this.state.scrollToBottom) {
-      if (elem.scrollTop !== elem.scrollHeight - elem.offsetHeight) {
-        elem.scrollTop = elem.scrollHeight - elem.offsetHeight;
-      }
-    }
+    this.fetchLogs();
+    this.timer = setInterval(this.fetchLogs, 1000);
   }
 
   componentWillUnmount() {
-    const elem = ReactDOM.findDOMNode(this).parentNode;
-    elem.removeEventListener("scroll", this._onScroll, false);
-    clearTimeout(this.timer);
+    this.unmounted = true;
+    if (this.timer) {
+      clearInterval(this.timer);
+    }
   }
 
+  fetchLogs = async () => {
+    try {
+      const logs = await UtilApi.logs();
+      !this.unmounted &&
+        this.setState({
+          loaded: true,
+          logs: mergeLogs(this.state.logs, logs.reverse()),
+        });
+    } catch (err: any) {
+      console.error(err);
+      const msg = err?.data?.message ?? err.messsage ?? t`An error occurred.`;
+      !this.unmounted && this.setState({ error: msg });
+    }
+  };
+
   render() {
-    const { logs, selectedProcessUUID } = this.state;
+    const { logs, selectedProcessUUID, error, loaded } = this.state;
     const filteredLogs = logs.filter(
       ev =>
         !selectedProcessUUID ||
@@ -101,42 +109,38 @@ export class Logs extends Component {
       ];
     });
 
-    let processUUIDSelect = null;
-    if (processUUIDs.length > 1) {
-      processUUIDSelect = (
-        <div className="pb1">
-          <label>{t`Select Metabase process:`}</label>
-          <Select
-            defaultValue="ALL"
-            value={this.state.selectedProcessUUID}
-            onChange={e =>
-              this.setState({ selectedProcessUUID: e.target.value })
-            }
-            className="inline-block ml1"
-            width={400}
-          >
-            <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
-            {processUUIDs.map(uuid => (
-              <Option key={uuid} value={uuid}>
-                <code>{uuid}</code>
-              </Option>
-            ))}
-          </Select>
-        </div>
-      );
-    }
+    const noResults = !filteredLogs || filteredLogs.length === 0;
+    const resultText = noResults
+      ? t`There's nothing here, yet.`
+      : renderedLogs.join("\n");
 
     return (
       <div>
-        {processUUIDSelect}
+        {processUUIDs.length > 1 && (
+          <div className="pb1">
+            <label>{t`Select Metabase process:`}</label>
+            <Select
+              defaultValue="ALL"
+              value={this.state.selectedProcessUUID}
+              onChange={(e: { target: { value: string } }) =>
+                this.setState({ selectedProcessUUID: e.target.value })
+              }
+              className="inline-block ml1"
+              width={400}
+            >
+              <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
+              {processUUIDs.map(uuid => (
+                <Option key={uuid} value={uuid}>
+                  <code>{uuid}</code>
+                </Option>
+              ))}
+            </Select>
+          </div>
+        )}
 
-        <LoadingAndErrorWrapper
-          loading={!filteredLogs || filteredLogs.length === 0}
-        >
+        <LoadingAndErrorWrapper loading={!loaded} error={error}>
           {() => (
-            <LogsContainer>
-              {reactAnsiStyle(React, renderedLogs.join("\n"))}
-            </LogsContainer>
+            <LogsContainer>{reactAnsiStyle(React, resultText)}</LogsContainer>
           )}
         </LoadingAndErrorWrapper>
       </div>
