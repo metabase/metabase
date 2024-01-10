@@ -10,6 +10,7 @@ import type {
   DashboardId,
   DatasetColumn,
   DatetimeUnit,
+  FieldReference,
   Parameter,
   ParameterValueOrArray,
   UserAttribute,
@@ -146,8 +147,9 @@ export function getTargetsForQuestion(question: Question): Target[] {
 function getTargetsForStructuredQuestion(question: Question): Target[] {
   const query = question.query();
   const stageIndex = -1;
+  const visibleColumns = Lib.visibleColumns(query, stageIndex);
 
-  return Lib.visibleColumns(query, stageIndex).map(targetColumn => {
+  return visibleColumns.map(targetColumn => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
       Lib.legacyRef(targetColumn),
@@ -160,8 +162,22 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       target,
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: sourceColumn =>
-          Lib.isCompatibleType(sourceColumn, targetColumn),
+        column: sourceColumn => {
+          if (!sourceColumn.field_ref) {
+            return false;
+          }
+
+          const [index] = Lib.findColumnIndexesFromLegacyRefs(
+            query,
+            stageIndex,
+            visibleColumns,
+            [sourceColumn.field_ref as FieldReference],
+          );
+
+          return index !== -1
+            ? Lib.isCompatibleType(visibleColumns[index], targetColumn)
+            : false;
+        },
         parameter: parameter =>
           columnFilterForParameter(parameter)(targetColumn),
         userAttribute: () => Lib.isString(targetColumn),

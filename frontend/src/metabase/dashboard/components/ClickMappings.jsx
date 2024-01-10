@@ -52,7 +52,7 @@ class ClickMappings extends Component {
       );
     }
     return (
-      <div>
+      <div data-testid="click-mappings">
         <div>
           {setTargets.map(target => {
             return (
