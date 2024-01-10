@@ -119,6 +119,18 @@ function getWaterfallNegativeTranslation(
   return minSum < 0 ? -minSum : 0;
 }
 
+function getWaterfallTotal(
+  rows: RowValues[],
+  cardColumns: CartesianChartColumns,
+) {
+  const columns = assertMultiMetricColumns(cardColumns);
+
+  return rows.reduce(
+    (sum, row) => (sum += checkNumber(row[columns.metrics[0].index])),
+    0,
+  );
+}
+
 export function getWaterfallChartModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -141,10 +153,12 @@ export function getWaterfallChartModel(
     rows,
     cardColumns,
   );
+  const total = getWaterfallTotal(rows, cardColumns);
   const waterfallDataset = getWaterfallDataset(
     rows,
     cardColumns,
     negativeTranslation,
+    total,
     settings,
   );
 
@@ -158,6 +172,7 @@ export function getWaterfallChartModel(
     ...baseChartModel,
     waterfallDataset,
     negativeTranslation,
+    total,
     yAxisExtents,
   };
   return waterfallChartModel;
