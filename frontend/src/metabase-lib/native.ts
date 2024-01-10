@@ -39,6 +39,14 @@ export function hasWritePermission(query: Query): boolean {
   return ML.has_write_permission(query);
 }
 
+export function withDifferentDatabase(
+  query: Query,
+  databaseId: DatabaseId,
+  metadata: MetadataProvider,
+): unknown {
+  return ML.with_different_database(query, databaseId, metadata);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
