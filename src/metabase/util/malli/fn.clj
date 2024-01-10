@@ -312,16 +312,29 @@
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
-;; FIXME: is there a cleaner way to setup `namespaces-toskip`?
-;; I was thinking we could `swap!` it from the namespaces themselves with:
-;; `(swap namespaces-toskip conj *ns*)`
-(def namespaces-toskip
+(defn instrument-ns?
   "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
-  (atom #{"metabase.lib.metadata.calculation"}))
+  [namespace]
+  (let [lib-and-middleware [#"^metabase\.lib\..*"
+                            #"^metabase\.query-processor\.middleware\..*"]
+        matches?           (core/fn [namespace regexes]
+                             (let [n (-> namespace ns-name str)]
+                               (some #(re-matches % n) regexes)))
+        ad-hoc             #{'metabase.pulse.render}
+        m                  (meta namespace)]
+    (cond (:instrument/always m)                  true
+          (:instrument/never m)                   false
+          (matches? namespace lib-and-middleware) false
+          (contains? ad-hoc (ns-name namespace))  false
+          :else                                   true)))
 
-(def ^:private ^:dynamic *skip-ns-decision-fn*
-  (core/fn skip-ns-decision-fn []
-    (and config/is-prod? (contains? @namespaces-toskip (str *ns*)))))
+(def ^:dynamic *skip-ns-decision-fn*
+  (core/fn skip-ns-decision-fn [namespace]
+    (and #_config/is-prod? config/is-dev? ;;nocommit
+         (let [should? (instrument-ns? namespace)]
+           (when (not should?)
+             (println "skipping instrumenting var in " (ns-name namespace)))
+           (not should?)))))
 
 (defmacro fn
   "Malli version of [[schema.core/fn]].
@@ -376,10 +389,33 @@
   problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
   fix this later."
   [& fn-tail]
-  (let [parsed (parse-fn-tail fn-tail)]
-    `(if (#'*skip-ns-decision-fn*)
-       ~(uninstrumented-fn-form parsed)
-       ~(let [error-context (if (symbol? (first fn-tail))
-                              {:fn-name (list 'quote (first fn-tail))}
-                              {})]
-          (instrumented-fn-form error-context parsed)))))
+  (let [parsed (parse-fn-tail fn-tail)
+        skip? (*skip-ns-decision-fn* *ns*)]
+    (prn {:namespace (ns-name *ns*)
+          :skip? skip?
+          :sequence `(let [error-context (if (symbol? (first ~fn-tail))
+                                           {:fn-name (list 'quote (first ~fn-tail))}
+                                           {})]
+                       (instrumented-fn-form error-context ~parsed))})
+    (eval
+     (if skip?
+       `(uninstrumented-fn-form '~parsed)
+       (let [error-context (if (symbol? (first fn-tail))
+                             {:fn-name `(first ~fn-tail)}
+                             {})]
+         `(instrumented-fn-form ~error-context '~parsed))))))
+(comment
+
+
+  (binding [*skip-ns-decision-fn* (constantly true)]
+    [(*skip-ns-decision-fn* *ns*)
+     (try ((fn :- :int [] "bad output"))
+          (catch Exception e (ex-message e)))])
+  ;; => [true
+  ;;     ;; the macro body prints: ... :skip? false ...
+  ;;     "Invalid output: [\"should be an integer\"]"]
+
+  (binding [*skip-ns-decision-fn* (constantly false)]
+    ((fn :- :int [] "bad output")))
+
+  )
