@@ -72,12 +72,15 @@ describe("[OSS] embedding settings", () => {
 
       it("should link to quickstart for interactive embedding", async () => {
         await setupEmbedding({
-          settingValues: { "enable-embedding": false },
+          settingValues: {
+            "enable-embedding": false,
+            version: { tag: "v0.49.3" },
+          },
         });
         expect(getQuickStartLink()).toBeInTheDocument();
         expect(getQuickStartLink()).toHaveProperty(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/interactive-embedding-quick-start-guide.html?utm_source=oss&utm_media=embed-settings",
+          "https://www.metabase.com/docs/v0.49/embedding/interactive-embedding-quick-start-guide.html?utm_source=oss&utm_media=embed-settings",
         );
       });
 
