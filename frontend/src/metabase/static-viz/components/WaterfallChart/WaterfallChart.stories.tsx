@@ -29,9 +29,9 @@ const renderingContext: RenderingContext = {
   fontFamily: "Lato",
 };
 
-export const WithoutTotal = Template.bind({});
-WithoutTotal.args = {
-  rawSeries: data.withoutTotal as any,
+export const TimeseriesXScale = Template.bind({});
+TimeseriesXScale.args = {
+  rawSeries: data.timeseriesXScale as any,
   dashcardSettings: {},
   renderingContext,
 };
@@ -130,6 +130,20 @@ StartsBelowZeroCrossesEndsBelow.args = {
 export const CustomColors = Template.bind({});
 CustomColors.args = {
   rawSeries: data.customColors as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NoTotalTimeseries = Template.bind({});
+NoTotalTimeseries.args = {
+  rawSeries: data.noTotalTimeseries as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NoTotalOrdinal = Template.bind({});
+NoTotalOrdinal.args = {
+  rawSeries: data.noTotalOrdinal as any,
   dashcardSettings: {},
   renderingContext,
 };
