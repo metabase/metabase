@@ -1,3 +1,4 @@
+import {LegaleseStep} from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import { useState } from "react";
 import _ from "underscore";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
@@ -15,14 +16,14 @@ import type {
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
-  EmbedType,
+  EmbedModalStep,
 } from "../types";
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 
 export interface EmbedModalContentProps {
-  embedType: EmbedType;
-  setEmbedType: (type: EmbedType) => void;
+  embedType: EmbedModalStep;
+  goToNextStep: () => void;
 
   resource: EmbedResource;
   resourceType: EmbedResourceType;
@@ -43,7 +44,7 @@ export const EmbedModalContent = (
 ): JSX.Element => {
   const {
     embedType,
-    setEmbedType,
+    goToNextStep,
     resource,
     resourceType,
     resourceParameters,
@@ -125,7 +126,7 @@ export const EmbedModalContent = (
     embeddingParams,
   );
 
-  if (!embedType) {
+  if (embedType == null) {
     return (
       <SelectEmbedTypePane
         resource={resource}
@@ -133,9 +134,13 @@ export const EmbedModalContent = (
         onCreatePublicLink={onCreatePublicLink}
         onDeletePublicLink={onDeletePublicLink}
         getPublicUrl={getPublicUrl}
-        onChangeEmbedType={setEmbedType}
+        goToNextStep={goToNextStep}
       />
     );
+  }
+
+  if (embedType === "legalese") {
+    return <LegaleseStep goToNextStep={goToNextStep} />;
   }
 
   const hasSettingsChanges = !_.isEqual(

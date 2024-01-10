@@ -149,7 +149,7 @@ function setup({
   resource = {} as EmbedResource,
   resourceType = "dashboard",
   resourceParameters = [],
-  setEmbedType = jest.fn(),
+  goToNextStep = jest.fn(),
   getPublicUrl = jest.fn(_resource => "some URL"),
   onUpdateEmbeddingParams = jest.fn(),
   onUpdateEnableEmbedding = jest.fn(),
@@ -159,7 +159,7 @@ function setup({
   const view = renderWithProviders(
     <EmbedModalContent
       embedType={embedType}
-      setEmbedType={setEmbedType}
+      goToNextStep={goToNextStep}
       resource={resource}
       resourceType={resourceType}
       resourceParameters={resourceParameters}
@@ -182,7 +182,7 @@ function setup({
 
   return {
     ...view,
-    setEmbedType,
+    goToNextStep,
     getPublicUrl,
     onUpdateEmbeddingParams,
     onUpdateEnableEmbedding,
