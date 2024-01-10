@@ -16,6 +16,7 @@ import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/car
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
 import { buildEChartsScatterSeries } from "../scatter/series";
+import { buildEChartsWaterfallSeries } from "../waterfall/series";
 import { getSeriesYAxisIndex } from "./utils";
 
 const buildEChartsLabelOptions = (
@@ -223,6 +224,12 @@ export const buildEChartsSeries = (
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
             renderingContext,
+          );
+        case "waterfall":
+          return buildEChartsWaterfallSeries(
+            seriesModel,
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
           );
       }
     })
