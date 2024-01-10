@@ -1386,8 +1386,8 @@
   (try
     (get-value-of-type (:type setting) setting)
     nil
-    (catch java.lang.Exception e
-      (let [parse-error (ex-cause e)
+    (catch clojure.lang.ExceptionInfo e
+      (let [parse-error (or (ex-cause e) e)
             parse-error (redact-sensitive-tokens parse-error setting)
             env-var? (set-via-env-var? setting)]
         (assoc (select-keys setting [:name :type])
