@@ -48,7 +48,9 @@
   [user-id]
   (let [roots (t2/select Collection {:where [:and [:= :location "/"]
                                                   [:or [:= :personal_owner_id nil]
-                                                       [:= :personal_owner_id user-id]]]})]
+                                                       [:= :personal_owner_id user-id]]
+                                                  [:or [:= :namespace nil]
+                                                       [:!= :namespace "analytics"]]]})]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
