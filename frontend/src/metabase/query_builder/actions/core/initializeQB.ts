@@ -23,6 +23,8 @@ import type {
 } from "metabase-types/store";
 import { isSavedCard } from "metabase-types/guards";
 import { isNotNull } from "metabase/lib/types";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/metadata/Metadata";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
@@ -68,22 +70,32 @@ const NOT_FOUND_ERROR = {
   context: "query-builder",
 };
 
-function getCardForBlankQuestion({
-  db,
-  table,
-  segment,
-  metric,
-}: BlankQueryOptions) {
+function getCardForBlankQuestion(
+  metadata: Metadata,
+  { db, table, segment, metric }: BlankQueryOptions,
+) {
   const databaseId = db ? parseInt(db) : undefined;
   const tableId = table ? parseInt(table) : undefined;
 
-  let question = Question.create({ databaseId, tableId });
+  let question = Question.create({ databaseId, tableId, metadata });
 
   if (databaseId && tableId) {
+    const stageIndex = -1;
+
     if (segment) {
-      question = (question.legacyQuery() as StructuredQuery)
-        .filter(["segment", parseInt(segment)])
-        .question();
+      const segmentName = question.metadata().segments[segment]?.displayName();
+      const query = question.query();
+      const segmentClause = Lib.availableSegments(query, stageIndex).find(
+        segment => {
+          const info = Lib.displayInfo(query, stageIndex, segment);
+          return info.displayName === segmentName;
+        },
+      );
+
+      if (segmentClause) {
+        const newQuery = Lib.filter(query, stageIndex, segmentClause);
+        question = question.setQuery(newQuery);
+      }
     }
     if (metric) {
       question = (question.legacyQuery() as StructuredQuery)
@@ -166,8 +178,10 @@ async function resolveCards({
   getState: GetState;
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
+    const metadata = getMetadata(getState());
+
     return {
-      card: getCardForBlankQuestion(options),
+      card: getCardForBlankQuestion(metadata, options),
     };
   }
   return cardId
