@@ -672,7 +672,7 @@ class TableInteractive extends Component {
       return undefined;
     }
 
-    const legacyQuery = question.legacyQuery();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     return legacyQuery.parseFieldReference(column.field_ref);
   }
 
