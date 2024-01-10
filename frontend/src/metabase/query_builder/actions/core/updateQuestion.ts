@@ -9,9 +9,9 @@ import type {
   GetState,
   QueryBuilderMode,
 } from "metabase-types/store";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
 import {
@@ -29,15 +29,23 @@ import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
-function hasNewColumns(question: Question, queryResult: Dataset) {
-  // NOTE: this assume column names will change
+function hasNewColumns(question: Question, queryResult: Dataset | null) {
+  if (!queryResult) {
+    return false;
+  }
+  if (question.isNative()) {
+    return queryResult.data.cols.length > 0;
+  }
+
+  // NOTE: this assumes column names will change
   // technically this is wrong because you could add and remove two columns with the same name
-  const query = question.legacyQuery();
-  const previousColumns =
-    (queryResult && queryResult.data.cols.map(col => col.name)) || [];
-  const nextColumns =
-    query instanceof StructuredQuery ? query.columnNames() : [];
-  return _.difference(nextColumns, previousColumns).length > 0;
+  const query = question.query();
+  const stageIndex = -1;
+  const nextColumnNames = Lib.returnedColumns(query, stageIndex).map(
+    column => Lib.displayInfo(query, stageIndex, column).longDisplayName,
+  );
+  const previousColumnNames = queryResult.data.cols.map(column => column.name);
+  return _.difference(nextColumnNames, previousColumnNames).length > 0;
 }
 
 function checkShouldRerunPivotTableQuestion({
@@ -166,7 +174,7 @@ export const updateQuestion = (
     if (wasPivot || isPivot) {
       const hasBreakouts =
         newQuestion.isStructured() &&
-        (newQuestion.legacyQuery() as StructuredQuery).hasBreakouts();
+        Lib.breakouts(newQuestion.query(), -1).length > 0;
 
       // compute the pivot setting now so we can query the appropriate data
       if (isPivot && hasBreakouts) {
