@@ -9,7 +9,6 @@
    [metabase.core :as mbc]
    [metabase.models.database :refer [Database]]
    [metabase.models.permissions :as perms]
-   [metabase.models.serialization :as serdes]
    [metabase.plugins :as plugins]
    [metabase.task :as task]
    [metabase.task.sync-databases :as task.sync-databases]
@@ -110,26 +109,20 @@
     (is (= 0 (count (get-audit-db-trigger-keys))) "no sync occured even when called directly for audit db.")))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
-  (with-audit-db-restoration
-    (mt/with-temp [:model/Collection c1 {:name "My Duped Collection"}]
-      (t2/update! :model/Collection (:id c1) {:entity_id nil})
-      (mt/with-temp [:model/Collection c2 (dissoc c1 :id)]
-        (t2/update! :model/Collection (:id c2) {:entity_id nil})
-        (let [query-c1 (t2/select-one :model/Collection (:id c1))
-              query-c2 (t2/select-one :model/Collection (:id c2))]
-          (testing "c1 and c2 have no entity ids"
-            (is (= nil (:entity_id query-c1)))
-            (is (= nil (:entity_id query-c2))))
-          (testing "c1 and c2 hash to the same value"
-            (is (= (serdes/identity-hash query-c1)
-                   (serdes/identity-hash query-c2))))
-          (testing "No exception is thrown when db has 'duplicate' entries"
-            (is (= :metabase-enterprise.audit-db/no-op
-                   (audit-db/ensure-audit-db-installed!))))
-          ;; TODO: Why does this fail
-          #_(testing "backfill-ids-for! should throw when db has 'duplicate' entries"
-            (is (thrown?
-                 Exception
-                 (serdes.backfill/backfill-ids-for! :model/Collection))))
-          (t2/update! :model/Collection (:id c1) {:entity_id nil})
-          (t2/update! :model/Collection (:id c2) {:entity_id nil}))))))
+  (let [c1          {:entity_id         nil,
+                     :name              "My Duped Collection",
+                     :location          "/"}
+        c1-instance (t2/insert-returning-instance! :model/Collection c1)]
+    ;; fill in the entity id for c1:
+    (serdes.backfill/backfill-ids-for! :model/Collection)
+    (let [c2-query (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
+      (try
+        (testing "A backfill with 'duplicate' rows (with different ids)"
+          (is (thrown? Exception
+                       (serdes.backfill/backfill-ids-for! :model/Collection))))
+        (testing "No exception is thrown when db has 'duplicate' entries."
+          (is (= :metabase-enterprise.audit-db/no-op
+                 (audit-db/ensure-audit-db-installed!))))
+        (finally
+          (t2/delete! :model/Collection (:id c1-instance))
+          (t2/delete! :model/Collection (:id c2-query)))))))
