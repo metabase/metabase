@@ -97,28 +97,11 @@ function getSortedAggregatedRows(
   return aggregatedRows;
 }
 
-function getWaterfallNegativeTranslation(
-  rows: RowValues[],
-  cardColumns: CartesianChartColumns,
-) {
-  const columns = assertMultiMetricColumns(cardColumns);
-
-  const runningSums: number[] = [];
-  rows.forEach((row, index) => {
-    const value = checkNumber(row[columns.metrics[0].index]);
-
-    if (index === 0) {
-      runningSums.push(value);
-      return;
-    }
-
-    runningSums.push(runningSums[runningSums.length - 1] + value);
-  });
-
-  const minSum = Math.min(...runningSums);
-  return minSum < 0 ? -minSum : 0;
-}
-
+/**
+ * Total is calculated separately here to avoid including the
+ * power scale transformation, since we want to show the actual
+ * value to the user in the data label.
+ */
 function getWaterfallTotal(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
@@ -149,18 +132,9 @@ export function getWaterfallChartModel(
     cardColumns,
     settings,
   );
-  const negativeTranslation = getWaterfallNegativeTranslation(
-    rows,
-    cardColumns,
-  );
   const total = getWaterfallTotal(rows, cardColumns);
-  const waterfallDataset = getWaterfallDataset(
-    rows,
-    cardColumns,
-    negativeTranslation,
-    total,
-    settings,
-  );
+  const { dataset: waterfallDataset, negativeTranslation } =
+    getWaterfallDataset(rows, cardColumns, settings);
 
   // y-axis
   const yAxisExtents: AxisExtents = [

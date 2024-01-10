@@ -175,3 +175,24 @@ DataLabelsMixed.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const PowYScale = Template.bind({});
+PowYScale.args = {
+  rawSeries: data.powYScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const PowYScaleNegativeOnly = Template.bind({});
+PowYScaleNegativeOnly.args = {
+  rawSeries: data.powYScaleNegativeOnly as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const PowYScaleMixed = Template.bind({});
+PowYScaleMixed.args = {
+  rawSeries: data.powYScaleMixed as any,
+  dashcardSettings: {},
+  renderingContext,
+};

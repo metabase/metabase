@@ -19,6 +19,9 @@ import dataLabels from "./data-labels.json";
 import dataLabelsColumnFormatting from "./data-labels-column-formatting.json";
 import dataLabelsTimeseries from "./data-labels-timeseries.json";
 import dataLabelsMixed from "./data-labels-mixed.json";
+import powYScale from "./pow-y-scale.json";
+import powYScaleNegativeOnly from "./pow-y-scale-negative-only.json";
+import powYScaleMixed from "./pow-y-scale-mixed.json";
 
 export const data = {
   timeseriesXScale,
@@ -42,4 +45,7 @@ export const data = {
   dataLabelsColumnFormatting,
   dataLabelsTimeseries,
   dataLabelsMixed,
+  powYScale,
+  powYScaleNegativeOnly,
+  powYScaleMixed,
 };
