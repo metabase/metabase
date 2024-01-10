@@ -134,7 +134,7 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
-            question={question}
+            query={question.legacyQuery({ useStructuredQuery: true })}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (
