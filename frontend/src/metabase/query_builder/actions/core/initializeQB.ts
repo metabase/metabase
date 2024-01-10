@@ -15,7 +15,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
-import type { Card } from "metabase-types/api";
+import type { Card, SegmentId } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -82,24 +82,10 @@ function getCardForBlankQuestion(
   let question = Question.create({ databaseId, tableId, metadata });
 
   if (databaseId && tableId) {
-    const stageIndex = -1;
-
-    if (segmentId) {
-      const segmentName = question.metadata().segment(segmentId)?.displayName();
-      const query = question.query();
-      const segmentClause = Lib.availableSegments(query, stageIndex).find(
-        segment => {
-          const info = Lib.displayInfo(query, stageIndex, segment);
-          return info.displayName === segmentName;
-        },
-      );
-
-      if (segmentClause) {
-        const newQuery = Lib.filter(query, stageIndex, segmentClause);
-        question = question.setQuery(newQuery);
-      }
+    if (typeof segmentId === "number") {
+      question = filterBySegmentId(question, segmentId);
     }
-    if (metricId) {
+    if (typeof metricId === "number") {
       question = (question.legacyQuery() as StructuredQuery)
         .aggregate(["metric", metricId])
         .question();
@@ -107,6 +93,25 @@ function getCardForBlankQuestion(
   }
 
   return question.card();
+}
+
+function filterBySegmentId(question: Question, segmentId: SegmentId) {
+  const stageIndex = -1;
+  const segmentName = question.metadata().segment(segmentId)?.displayName();
+  const query = question.query();
+  const segmentClause = Lib.availableSegments(query, stageIndex).find(
+    segment => {
+      const info = Lib.displayInfo(query, stageIndex, segment);
+      return info.displayName === segmentName;
+    },
+  );
+
+  if (!segmentClause) {
+    return question;
+  }
+
+  const newQuery = Lib.filter(query, stageIndex, segmentClause);
+  return question.setQuery(newQuery);
 }
 
 function deserializeCard(serializedCard: string) {
