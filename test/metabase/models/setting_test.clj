@@ -1204,45 +1204,76 @@
               #"^Surprise!$"
               (#'setting/realize x)))))))
 
-(deftest valid-json-setting-test
-  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
-    (is (nil? (setting/validate-settings-formatting!)))))
+(defn- get-formatting-exception []
+  (try
+    (setting/validate-settings-formatting!)
+    nil
+    (catch java.lang.Exception e e)) )
 
-(defn- get-parse-exception [raw-value]
+(defn- get-json-parse-exception [raw-value]
   (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" raw-value]
-    (try
-      (setting/validate-settings-formatting!)
-      (throw (java.lang.RuntimeException. "This code should never be reached."))
-      (catch java.lang.Exception e e))))
+    (get-formatting-exception)))
 
-(defn- assert-parser-exception! [ex cause-message]
-  (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+(defn- assert-parser-exception! [format-type ex cause-message]
+  (is (= (format "Invalid %s configuration for setting: test-%s-setting"
+                 (u/upper-case-en (name format-type))
+                 (name format-type))
+         (ex-message ex)))
   (is (= cause-message (ex-message (ex-cause ex)))))
+
+(deftest valid-json-setting-test
+  (testing "Validation is a no-op if the JSON is valid"
+    (is (nil? (get-json-parse-exception "[1, 2]")))))
 
 (deftest invalid-json-setting-test
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
-    (let [ex (get-parse-exception "[1, 2,")]
+    (let [ex (get-json-parse-exception "[1, 2,")]
       (assert-parser-exception!
+        :json ex
         ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
         #_(str "Unexpected end-of-input within/between Array entries\n"
                " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
-        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
     (let [password "$ekr3t"
-          ex (get-parse-exception (str "[" password))]
+          ex (get-json-parse-exception (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+        :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
     (let [password "123abc"
-          ex (get-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
+          ex (get-json-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        ex
+        :json ex
         (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
              " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
+
+
+(defn- get-csv-parse-exception [raw-value]
+  (mt/with-temp-env-var-value ["MB_TEST_CSV_SETTING" raw-value]
+    (get-formatting-exception)))
+
+(deftest valid-csv-setting-test
+  (testing "Validation is a no-op if the CSV is valid"
+    (is (nil? (get-csv-parse-exception "1, 2")))))
+
+(deftest invalid-csv-setting-eof-test
+  (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
+    (let [ex (get-csv-parse-exception "1,2,2,\",,")]
+      (assert-parser-exception!
+        :csv ex "CSV error (unexpected end of file)"))))
+
+(deftest invalid-csv-setting-char-test
+  (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
+    (let [ex (get-csv-parse-exception "\"1\"$ekr3t")]
+      (assert-parser-exception!
+        :csv ex
+        ;; we don't expose the raw exception here, as it would give away the first character of the secret
+        #_"CSV error (unexpected character: $)"
+        "Error of type class java.lang.Exception thrown while parsing a setting"))))

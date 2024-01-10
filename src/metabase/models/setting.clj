@@ -1371,6 +1371,8 @@
                 ;; err on the side of caution
                 true))
 
+    :csv (not (instance? java.io.EOFException ex))
+
     ;; TODO: handle the remaining formats explicitly
     true))
 
@@ -1403,7 +1405,7 @@
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
-                           #_:clj-kondo/ignore (str/upper-case (name (:type invalid-setting)))
+                           (u/upper-case-en (name (:type invalid-setting)))
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))
