@@ -179,7 +179,7 @@ class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  legacyQuery = _.once((): AtomicQuery => {
+  _legacyQuery = _.once((): AtomicQuery => {
     const datasetQuery = this._card.dataset_query;
 
     for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
@@ -194,12 +194,24 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
+  legacyQuery({ useStructuredQuery }: { useStructuredQuery?: boolean } = {}) {
+    const query = this._legacyQuery();
+    if (query instanceof StructuredQuery && !useStructuredQuery) {
+      throw new Error("StructuredQuery usage is forbidden. Use MLv2");
+    }
+    return query;
+  }
+
   isNative(): boolean {
-    return this.legacyQuery() instanceof NativeQuery;
+    return (
+      this.legacyQuery({ useStructuredQuery: true }) instanceof NativeQuery
+    );
   }
 
   isStructured(): boolean {
-    return this.legacyQuery() instanceof StructuredQuery;
+    return (
+      this.legacyQuery({ useStructuredQuery: true }) instanceof StructuredQuery
+    );
   }
 
   /**
@@ -228,7 +240,7 @@ class Question {
    * Returns a list of atomic queries (NativeQuery or StructuredQuery) contained in this question
    */
   atomicQueries(): AtomicQuery[] {
-    const query = this.legacyQuery();
+    const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (query instanceof AtomicQuery) {
       return [query];
@@ -335,7 +347,7 @@ class Question {
       return this;
     }
 
-    const query = this.legacyQuery();
+    const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
@@ -415,7 +427,9 @@ class Question {
   }
 
   setDefaultQuery() {
-    return this.legacyQuery().setDefaultQuery().question();
+    return this.legacyQuery({ useStructuredQuery: true })
+      .setDefaultQuery()
+      .question();
   }
 
   settings(): VisualizationSettings {
@@ -444,7 +458,7 @@ class Question {
   }
 
   isEmpty(): boolean {
-    return this.legacyQuery().isEmpty();
+    return this.legacyQuery({ useStructuredQuery: true }).isEmpty();
   }
 
   /**
@@ -458,7 +472,7 @@ class Question {
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
-    return this.legacyQuery().canRun();
+    return this.legacyQuery({ useStructuredQuery: true }).canRun();
   }
 
   canWrite(): boolean {
@@ -477,7 +491,7 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const legacyQuery = this.legacyQuery();
+    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
@@ -496,7 +510,7 @@ class Question {
   }
 
   isQueryEditable(): boolean {
-    const query = this.legacyQuery();
+    const query = this.legacyQuery({ useStructuredQuery: true });
     return query ? query.isEditable() : false;
   }
 
@@ -561,7 +575,11 @@ class Question {
     return (
       this.isStructured() &&
       _.any(
-        QUERY.getAggregations(this.legacyQuery().legacyQuery()),
+        QUERY.getAggregations(
+          this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
+            useStructuredQuery: true,
+          }),
+        ),
         aggregation => AGGREGATION.getMetric(aggregation) === metricId,
       )
     );
@@ -570,9 +588,11 @@ class Question {
   usesSegment(segmentId): boolean {
     return (
       this.isStructured() &&
-      QUERY.getFilters(this.legacyQuery().legacyQuery()).some(
-        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
-      )
+      QUERY.getFilters(
+        this.legacyQuery({ useStructuredQuery: true }).legacyQuery({
+          useStructuredQuery: true,
+        }),
+      ).some(filter => FILTER.isSegment(filter) && filter[1] === segmentId)
     );
   }
 
@@ -610,7 +630,7 @@ class Question {
     previousQuestion,
     previousQuery,
   ) {
-    const query = this.legacyQuery();
+    const query = this.legacyQuery({ useStructuredQuery: true });
 
     if (
       !_.isEqual(
@@ -726,14 +746,15 @@ class Question {
   }
 
   syncColumnsAndSettings(previous, queryResults) {
-    const query = this.legacyQuery();
+    const query = this.legacyQuery({ useStructuredQuery: true });
     const isQueryResultValid = queryResults && !queryResults.error;
 
     if (query instanceof NativeQuery && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
 
-    const previousQuery = previous && previous.legacyQuery();
+    const previousQuery =
+      previous && previous.legacyQuery({ useStructuredQuery: true });
 
     if (
       query instanceof StructuredQuery &&
@@ -837,7 +858,7 @@ class Question {
   }
 
   table(): Table | null {
-    const query = this.legacyQuery();
+    const query = this.legacyQuery({ useStructuredQuery: true });
     return query && typeof query.table === "function" ? query.table() : null;
   }
 
@@ -988,7 +1009,9 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? this.legacyQuery().clean() : this.legacyQuery();
+    const query = clean
+      ? this.legacyQuery({ useStructuredQuery: true }).clean()
+      : this.legacyQuery({ useStructuredQuery: true });
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,

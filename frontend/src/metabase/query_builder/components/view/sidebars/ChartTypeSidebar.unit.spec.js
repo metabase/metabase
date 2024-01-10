@@ -27,7 +27,7 @@ const setup = props => {
   render(
     <ChartTypeSidebar
       question={question}
-      query={question.legacyQuery()}
+      query={question.legacyQuery({ useStructuredQuery: true })}
       result={{ data: DATA }}
       {...props}
     />,
