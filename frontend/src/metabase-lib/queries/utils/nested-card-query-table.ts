@@ -12,8 +12,9 @@ import { createVirtualField, createVirtualTable } from "./virtual-table";
 // This function expects a `sourceTableId` to exist in the `metadata.table` cache
 // It also expects the card associated with the `sourceTableId` to exist in the `metadata.question` cache
 export function getNestedCardTable(question: Question): Table | null {
-  const sourceTableId = Lib.sourceTableOrCardId(question.query());
+  const query = question.query();
   const metadata = question.metadata();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
   const nestedCardTable = metadata.table(sourceTableId);
   if (nestedCardTable) {
     return nestedCardTable;

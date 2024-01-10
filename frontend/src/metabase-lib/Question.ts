@@ -488,11 +488,7 @@ class Question {
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return (
-      legacyQuery instanceof StructuredQuery &&
-      !legacyQuery.hasAnyClauses() &&
-      hasSinglePk
-    );
+    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
   }
 
   canAutoRun(): boolean {
