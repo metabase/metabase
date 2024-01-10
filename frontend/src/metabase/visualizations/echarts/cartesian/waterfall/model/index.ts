@@ -13,7 +13,11 @@ import type {
 
 import type { Extent } from "../../model/types";
 import { getCardsColumns, getCartesianChartModel } from "../../model";
-import type { WaterfallChartModel, WaterfallDataset } from "../types";
+import {
+  WATERFALL_EMPTY_VALUE,
+  type WaterfallChartModel,
+  type WaterfallDataset,
+} from "../types";
 import { DATASET_DIMENSIONS } from "../constants";
 
 import { getWaterfallDataset } from "./dataset";
@@ -28,11 +32,11 @@ export function getWaterfallExtent(dataset: WaterfallDataset) {
     const total = datum[DATASET_DIMENSIONS.total];
 
     let value: number;
-    if (increase !== "-") {
+    if (increase !== WATERFALL_EMPTY_VALUE) {
       value = barOffset + increase;
-    } else if (decrease !== "-") {
+    } else if (decrease !== WATERFALL_EMPTY_VALUE) {
       value = barOffset - decrease;
-    } else if (total !== "-") {
+    } else if (total !== WATERFALL_EMPTY_VALUE) {
       return;
     } else {
       throw TypeError("Increase, decrease, and total cannot all be empty");

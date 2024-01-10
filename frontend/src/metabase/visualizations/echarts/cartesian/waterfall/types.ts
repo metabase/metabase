@@ -4,6 +4,7 @@ import type { CartesianChartModel } from "../model/types";
 // with echarts' `DatasetOption.source` type, which
 // doesn't allow null for some reason
 export type WaterfallEmptyValue = "-";
+export const WATERFALL_EMPTY_VALUE = "-";
 
 export type WaterfallDatum = {
   dimension: string;
