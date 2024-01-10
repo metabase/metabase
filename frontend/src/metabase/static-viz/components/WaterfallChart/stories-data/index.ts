@@ -12,6 +12,7 @@ import startsAboveZeroEndsBelow from "./starts-above-zero-ends-below.json";
 import startsBelowZeroEndsAbove from "./starts-below-zero-ends-above.json";
 import startsAboveZeroCrossesEndsAbove from "./starts-above-zero-crosses-ends-above.json";
 import startsBelowZeroCrossesEndsBelow from "./starts-below-zero-crosses-ends-below.json";
+import customColors from "./custom-colors.json";
 
 export const data = {
   withoutTotal,
@@ -28,4 +29,5 @@ export const data = {
   startsBelowZeroEndsAbove,
   startsAboveZeroCrossesEndsAbove,
   startsBelowZeroCrossesEndsBelow,
+  customColors,
 };

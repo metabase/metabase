@@ -36,7 +36,7 @@ import {
 import { getDimensionModel } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echarts/cartesian/model/types";
 
-const fillWithDefaultValue = (
+export const fillWithDefaultValue = (
   settings: Record<string, unknown>,
   key: string,
   defaultValue: unknown,

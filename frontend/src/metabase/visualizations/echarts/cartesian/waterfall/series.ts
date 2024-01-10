@@ -1,8 +1,12 @@
 import type { RegisteredSeriesOption } from "echarts/types/dist/shared";
 
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+
 import { DATASET_DIMENSIONS } from "./constants";
 
-export function buildEChartsWaterfallSeries(): RegisteredSeriesOption["bar"][] {
+export function buildEChartsWaterfallSeries(
+  settings: ComputedVisualizationSettings,
+): RegisteredSeriesOption["bar"][] {
   return [
     {
       type: "bar",
@@ -30,6 +34,9 @@ export function buildEChartsWaterfallSeries(): RegisteredSeriesOption["bar"][] {
         x: DATASET_DIMENSIONS.dimension,
         y: DATASET_DIMENSIONS.increase,
       },
+      itemStyle: {
+        color: settings["waterfall.increase_color"],
+      },
     },
     {
       type: "bar",
@@ -38,6 +45,9 @@ export function buildEChartsWaterfallSeries(): RegisteredSeriesOption["bar"][] {
         x: DATASET_DIMENSIONS.dimension,
         y: DATASET_DIMENSIONS.decrease,
       },
+      itemStyle: {
+        color: settings["waterfall.decrease_color"],
+      },
     },
     {
       type: "bar",
@@ -45,6 +55,9 @@ export function buildEChartsWaterfallSeries(): RegisteredSeriesOption["bar"][] {
       encode: {
         x: DATASET_DIMENSIONS.dimension,
         y: DATASET_DIMENSIONS.total,
+      },
+      itemStyle: {
+        color: settings["waterfall.total_color"],
       },
     },
   ];

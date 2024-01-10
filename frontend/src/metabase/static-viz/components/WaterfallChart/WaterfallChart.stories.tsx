@@ -126,3 +126,10 @@ StartsBelowZeroCrossesEndsBelow.args = {
   dashcardSettings: {},
   renderingContext,
 };
+
+export const CustomColors = Template.bind({});
+CustomColors.args = {
+  rawSeries: data.customColors as any,
+  dashcardSettings: {},
+  renderingContext,
+};
