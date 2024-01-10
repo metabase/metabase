@@ -115,7 +115,9 @@ function makeQueryWithoutNumericFields() {
     ],
   });
 
-  return new Question(questionDetail, metadata).legacyQuery();
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 // no numeric fields, but have linked table (FK) with a numeric field
@@ -172,7 +174,9 @@ function makeQueryWithLinkedTable() {
     ],
   });
 
-  return new Question(questionDetail, metadata).legacyQuery();
+  return new Question(questionDetail, metadata).legacyQuery({
+    useStructuredQuery: true,
+  });
 }
 
 const getShortName = aggregation => aggregation.short;
@@ -296,7 +300,9 @@ describe("StructuredQuery", () => {
     });
     describe("query", () => {
       it("returns the wrapper for the query dictionary", () => {
-        expect(query.legacyQuery()["source-table"]).toBe(ORDERS_ID);
+        expect(
+          query.legacyQuery({ useStructuredQuery: true })["source-table"],
+        ).toBe(ORDERS_ID);
       });
     });
     describe("setDatabase", () => {
@@ -433,7 +439,9 @@ describe("StructuredQuery", () => {
 
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
-        expect(query.aggregate(["count"]).legacyQuery()).toEqual({
+        expect(
+          query.aggregate(["count"]).legacyQuery({ useStructuredQuery: true }),
+        ).toEqual({
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });

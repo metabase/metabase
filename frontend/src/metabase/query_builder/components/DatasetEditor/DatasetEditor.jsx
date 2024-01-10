@@ -411,7 +411,7 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    if (dataset.legacyQuery().isEmpty()) {
+    if (dataset.legacyQuery({ useStructuredQuery: true }).isEmpty()) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);

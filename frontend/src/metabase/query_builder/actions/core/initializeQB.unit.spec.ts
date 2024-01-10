@@ -707,7 +707,9 @@ describe("QB Actions > initializeQB", () => {
       });
 
       const question = new Question(result.card, metadata);
-      const query = question.legacyQuery() as StructuredQuery;
+      const query = question.legacyQuery({
+        useStructuredQuery: true,
+      }) as StructuredQuery;
 
       return {
         question,
