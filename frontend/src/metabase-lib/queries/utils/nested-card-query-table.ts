@@ -46,7 +46,9 @@ function createVirtualTableUsingQuestionMetadata(question: Question): Table {
   const metadata = question.metadata();
   const questionResultMetadata = question.getResultMetadata();
   const questionDisplayName = question.displayName() as string;
-  const legacyQuery = question.legacyQuery() as StructuredQuery | NativeQuery;
+  const legacyQuery = question.legacyQuery({ useStructuredQuery: true }) as
+    | StructuredQuery
+    | NativeQuery;
   const fields = questionResultMetadata.map((fieldMetadata: any) => {
     const field = metadata.field(fieldMetadata.id);
     const virtualField = field

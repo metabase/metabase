@@ -216,7 +216,7 @@ function DatasetEditor(props) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: dataset.legacyQuery(),
+      query: dataset.legacyQuery({ useStructuredQuery: true }),
       viewHeight: height,
     });
   }, [dataset, height]);
@@ -405,7 +405,7 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    if (dataset.legacyQuery().isEmpty()) {
+    if (dataset.legacyQuery({ useStructuredQuery: true }).isEmpty()) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);

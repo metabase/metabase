@@ -342,7 +342,9 @@ export default class NativeQuery extends AtomicQuery {
     config: ParameterValuesConfig,
   ): NativeQuery {
     const newParameter = getTemplateTagParameter(tag, config);
-    return this.question().setParameter(tag.id, newParameter).legacyQuery();
+    return this.question()
+      .setParameter(tag.id, newParameter)
+      .legacyQuery({ useStructuredQuery: true });
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {

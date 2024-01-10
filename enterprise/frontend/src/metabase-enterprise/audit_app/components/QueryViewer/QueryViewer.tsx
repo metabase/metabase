@@ -29,7 +29,7 @@ export function QueryViewer({ datasetQuery }: { datasetQuery: DatasetQuery }) {
 
   const question = new Question(card, metadata);
 
-  const query = question.legacyQuery();
+  const query = question.legacyQuery({ useStructuredQuery: true });
 
   if (question.isNative()) {
     return (

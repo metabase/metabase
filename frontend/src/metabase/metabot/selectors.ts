@@ -57,7 +57,7 @@ export const getFeedbackType = (state: State) => {
 };
 
 export const getNativeQueryText = createSelector([getQuestion], question => {
-  const query = question?.legacyQuery();
+  const query = question?.legacyQuery({ useStructuredQuery: true });
   return query instanceof NativeQuery ? query.queryText() : undefined;
 });
 

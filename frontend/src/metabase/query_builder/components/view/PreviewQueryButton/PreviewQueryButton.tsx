@@ -31,7 +31,7 @@ interface PreviewQueryButtonOpts {
 }
 
 PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
-  const query = question.legacyQuery();
+  const query = question.legacyQuery({ useStructuredQuery: true });
 
   return (
     question.canRun() &&

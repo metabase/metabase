@@ -159,7 +159,7 @@ export default class LeafletMap extends Component {
     const question = new Question(card);
     if (question.isStructured()) {
       const nextCard = updateLatLonFilter(
-        question.legacyQuery(),
+        question.legacyQuery({ useStructuredQuery: true }),
         latitudeColumn,
         longitudeColumn,
         bounds,

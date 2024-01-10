@@ -81,12 +81,16 @@ function getCardForBlankQuestion({
 
   if (databaseId && tableId) {
     if (segment) {
-      question = (question.legacyQuery() as StructuredQuery)
+      question = (
+        question.legacyQuery({ useStructuredQuery: true }) as StructuredQuery
+      )
         .filter(["segment", parseInt(segment)])
         .question();
     }
     if (metric) {
-      question = (question.legacyQuery() as StructuredQuery)
+      question = (
+        question.legacyQuery({ useStructuredQuery: true }) as StructuredQuery
+      )
         .aggregate(["metric", parseInt(metric)])
         .question();
     }

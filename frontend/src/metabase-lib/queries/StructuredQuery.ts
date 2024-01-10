@@ -549,7 +549,7 @@ class StructuredQuery extends AtomicQuery {
    * @deprecated use metabase-lib v2 to manage joins
    */
   joins = _.once((): JoinWrapper[] => {
-    return Q.getJoins(this.legacyQuery()).map(
+    return Q.getJoins(this.legacyQuery({ useStructuredQuery: true })).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
   });
@@ -574,7 +574,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns an array of MBQL @type {Aggregation}s.
    */
   aggregations = _.once((): AggregationWrapper[] => {
-    return Q.getAggregations(this.legacyQuery()).map(
+    return Q.getAggregations(
+      this.legacyQuery({ useStructuredQuery: true }),
+    ).map(
       (aggregation, index) => new AggregationWrapper(aggregation, index, this),
     );
   });
@@ -715,11 +717,11 @@ class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Breakout}s.
    */
   breakouts = _.once((): BreakoutWrapper[] => {
-    if (this.legacyQuery() == null) {
+    if (this.legacyQuery({ useStructuredQuery: true }) == null) {
       return [];
     }
 
-    return Q.getBreakouts(this.legacyQuery()).map(
+    return Q.getBreakouts(this.legacyQuery({ useStructuredQuery: true })).map(
       (breakout, index) => new BreakoutWrapper(breakout, index, this),
     );
   });
@@ -810,7 +812,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Filter}s.
    */
   filters = _.once((): FilterWrapper[] => {
-    return Q.getFilters(this.legacyQuery()).map(
+    return Q.getFilters(this.legacyQuery({ useStructuredQuery: true })).map(
       (filter, index) => new FilterWrapper(filter, index, this),
     );
   });
@@ -922,7 +924,7 @@ class StructuredQuery extends AtomicQuery {
    */
   canAddFilter() {
     return (
-      Q.canAddFilter(this.legacyQuery()) &&
+      Q.canAddFilter(this.legacyQuery({ useStructuredQuery: true })) &&
       (this.filterDimensionOptions().count > 0 ||
         this.filterSegmentOptions().length > 0)
     );
@@ -965,7 +967,7 @@ class StructuredQuery extends AtomicQuery {
 
   // EXPRESSIONS
   expressions = _.once((): ExpressionClause => {
-    return Q.getExpressions(this.legacyQuery());
+    return Q.getExpressions(this.legacyQuery({ useStructuredQuery: true }));
   });
 
   addExpression(name, expression) {
@@ -1009,7 +1011,7 @@ class StructuredQuery extends AtomicQuery {
   // FIELDS
   fields() {
     // FIMXE: implement field functions in query lib
-    return this.legacyQuery().fields || [];
+    return this.legacyQuery({ useStructuredQuery: true }).fields || [];
   }
 
   addField(_name, _expression) {
@@ -1325,7 +1327,9 @@ class StructuredQuery extends AtomicQuery {
    * The (wrapped) source query, if any
    */
   sourceQuery = _.once((): StructuredQuery | null | undefined => {
-    const sourceQuery = this.legacyQuery()?.["source-query"];
+    const sourceQuery = this.legacyQuery({ useStructuredQuery: true })?.[
+      "source-query"
+    ];
 
     if (sourceQuery) {
       return new NestedStructuredQuery(
@@ -1378,7 +1382,10 @@ class StructuredQuery extends AtomicQuery {
           .flatMap(q => q.dimensions())
           .find(d => d.isEqual(fieldRef));
 
-        return this.parseFieldReference(fieldRef, dimension?.legacyQuery());
+        return this.parseFieldReference(
+          fieldRef,
+          dimension?.legacyQuery({ useStructuredQuery: true }),
+        );
       }
     }
 
@@ -1429,7 +1436,7 @@ class StructuredQuery extends AtomicQuery {
         return this;
       }
 
-      sourceQuery = sourceQuery.legacyQuery();
+      sourceQuery = sourceQuery.legacyQuery({ useStructuredQuery: true });
     }
 
     // TODO: if the source query is modified in ways that make the parent query invalid we should "clean" those clauses
@@ -1554,6 +1561,8 @@ class NestedStructuredQuery extends StructuredQuery {
   });
 
   parentQuery() {
-    return this._parent.setSourceQuery(this.legacyQuery());
+    return this._parent.setSourceQuery(
+      this.legacyQuery({ useStructuredQuery: true }),
+    );
   }
 }

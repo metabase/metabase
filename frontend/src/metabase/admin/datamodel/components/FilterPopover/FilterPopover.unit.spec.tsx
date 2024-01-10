@@ -26,7 +26,7 @@ const QUERY = Question.create({
   tableId: ORDERS_ID,
   metadata,
 })
-  .legacyQuery()
+  .legacyQuery({ useStructuredQuery: true })
   // eslint-disable-next-line
   // @ts-ignore
   .aggregate(["count"])
