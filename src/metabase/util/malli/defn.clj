@@ -82,6 +82,4 @@
             :cljs (mu.fn/deparameterized-fn-form parsed)))
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
-         ~(macros/case
-            :clj  (mu.fn/deparameterized-fn-form parsed)
-            :cljs (mu.fn/deparameterized-fn-form parsed))))))
+         ~(mu.fn/deparameterized-fn-form parsed)))))
