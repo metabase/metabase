@@ -1223,7 +1223,9 @@
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
   (into {} (for [[kw-key mapping] mappings
-                 :let [k (name kw-key)]]
+                 :let [k (if (namespace kw-key)
+                           (str (namespace kw-key) "/" (name kw-key))
+                           (name kw-key))]]
              (if (mb.viz/dimension-param-mapping? mapping)
                [(json-ids->fully-qualified-names k)
                 (export-viz-click-behavior-mapping mapping)]
