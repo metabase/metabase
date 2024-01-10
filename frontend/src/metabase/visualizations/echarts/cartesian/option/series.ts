@@ -238,6 +238,7 @@ export const buildEChartsSeries = (
         case "waterfall":
           return buildEChartsWaterfallSeries(
             seriesModel,
+            chartModel.dataset,
             settings,
             (chartModel as WaterfallChartModel).total, // TODO remove the typecast later after refactoring
             renderingContext,
