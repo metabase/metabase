@@ -18,7 +18,7 @@ import type { ChartMeasurements } from "metabase/visualizations/echarts/cartesia
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
-const getAxisNameGap = (ticksWidth: number): number => {
+export const getAxisNameGap = (ticksWidth: number): number => {
   return ticksWidth + CHART_STYLE.axisNameMargin;
 };
 
@@ -56,7 +56,7 @@ export const getYAxisRange = (
     : {};
 };
 
-const getAxisNameDefaultOption = (
+export const getAxisNameDefaultOption = (
   { getColor, fontFamily }: RenderingContext,
   nameGap: number,
   name: string | undefined,
@@ -74,7 +74,10 @@ const getAxisNameDefaultOption = (
   },
 });
 
-const getTicksDefaultOption = ({ getColor, fontFamily }: RenderingContext) => {
+export const getTicksDefaultOption = ({
+  getColor,
+  fontFamily,
+}: RenderingContext) => {
   return {
     hideOverlap: true,
     color: getColor("text-dark"),
