@@ -63,7 +63,7 @@ export function getWaterfallOption(
   );
 
   const dataset: DatasetOption = {
-    source: chartModel.dataset,
+    source: chartModel.waterfallDataset,
     dimensions: Object.values(DATASET_DIMENSIONS),
   };
   const xAxisType = getXAxisType(settings);
