@@ -138,6 +138,7 @@ export function EntityPickerModal({
                 onCancel={onClose}
                 canConfirm={!!selectedItem && selectedItem?.can_write !== false}
                 allowCreateNew={options.allowCreateNew}
+                currentCollection={selectedItem}
                 onCreateNew={() => setCreateModalOpen(true)}
               />
             )}
