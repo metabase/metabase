@@ -190,7 +190,7 @@ export const apiCreateQuestion = question => {
     const isResultDirty = getIsResultDirty(getState());
     const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToCreate = questionWithVizSettings
-      ._setMLv2Query(cleanQuery)
+      .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
     const createdQuestion = await reduxCreateQuestion(
       questionToCreate,
@@ -253,7 +253,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToUpdate = questionWithVizSettings
-      ._setMLv2Query(cleanQuery)
+      .setQuery(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
