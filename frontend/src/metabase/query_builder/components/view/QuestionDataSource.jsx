@@ -166,7 +166,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   const isStructuredQuery = question.isStructured();
   const query = isStructuredQuery
     ? question.legacyQuery({ useStructuredQuery: true }).rootQuery()
-    : question.legacyQuery({ useStructuredQuery: true });
+    : question.legacyQuery();
 
   const hasDataPermission = question.isQueryEditable();
   if (!hasDataPermission) {

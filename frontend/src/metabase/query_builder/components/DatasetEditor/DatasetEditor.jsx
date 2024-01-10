@@ -216,7 +216,7 @@ function DatasetEditor(props) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: dataset.legacyQuery({ useStructuredQuery: true }),
+      query: dataset.legacyQuery(),
       viewHeight: height,
     });
   }, [dataset, height]);

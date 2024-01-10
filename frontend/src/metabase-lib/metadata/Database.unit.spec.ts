@@ -204,9 +204,7 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion();
 
-      expect(question.legacyQuery({ useStructuredQuery: true })).toBeInstanceOf(
-        NativeQuery,
-      );
+      expect(question.legacyQuery()).toBeInstanceOf(NativeQuery);
       expect(question.metadata()).toBe(database.metadata);
     });
 

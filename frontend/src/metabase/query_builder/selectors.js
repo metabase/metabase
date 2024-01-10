@@ -37,7 +37,6 @@ import {
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 
@@ -715,9 +714,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question =>
-    question &&
-    question.legacyQuery({ useStructuredQuery: true }) instanceof NativeQuery,
+  question => question && question.isNative(),
 );
 
 /**

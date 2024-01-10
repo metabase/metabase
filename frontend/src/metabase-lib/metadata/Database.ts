@@ -150,9 +150,7 @@ class Database {
   }
 
   nativeQuery(native: Partial<NativeQuery>) {
-    return this.nativeQuestion(native).legacyQuery({
-      useStructuredQuery: true,
-    });
+    return this.nativeQuestion(native).legacyQuery();
   }
 
   savedQuestionsDatabase() {
