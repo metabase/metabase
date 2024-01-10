@@ -114,6 +114,7 @@ export function ClickBehaviorSidebar({
   const handleChangeSettings = useCallback(
     nextClickBehavior => {
       const { id } = dashcard;
+
       if (selectedColumn == null) {
         onUpdateDashCardVisualizationSettings(id, {
           click_behavior: nextClickBehavior,
@@ -160,7 +161,6 @@ export function ClickBehaviorSidebar({
     }
     setOriginalColumnVizSettings(null);
     setSelectedColumn(null);
-    setTypeSelectorVisible(true);
   }, [isValidClickBehavior, originalColumnVizSettings, handleChangeSettings]);
 
   const handleCancel = useCallback(() => {
