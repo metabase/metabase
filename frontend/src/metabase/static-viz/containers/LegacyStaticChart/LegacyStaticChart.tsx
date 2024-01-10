@@ -4,7 +4,6 @@ import Funnel from "metabase/static-viz/components/FunnelChart";
 import Gauge from "metabase/static-viz/components/Gauge";
 import ProgressBar from "metabase/static-viz/components/ProgressBar";
 import RowChart from "metabase/static-viz/components/RowChart";
-import WaterfallChart from "metabase/static-viz/components/WaterfallChart";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 
 export type LegacyStaticChartType =
@@ -34,8 +33,6 @@ export const LegacyStaticChart = ({
   switch (type) {
     case "categorical/donut":
       return <CategoricalDonutChart {...chartProps} />;
-    case "waterfall":
-      return <WaterfallChart {...chartProps} />;
     case "gauge":
       return <Gauge {...chartProps} />;
     case "row":
