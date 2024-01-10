@@ -19,7 +19,7 @@
   text-decoration: none;
 }
 .link--wrappable {
-  word-break: break-all;
+  /* word-break: break-all; */
 }
 
 .link--icon {
