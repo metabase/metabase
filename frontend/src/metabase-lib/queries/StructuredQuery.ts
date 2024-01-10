@@ -20,6 +20,7 @@ import type {
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -139,7 +140,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns true if this query is in a state where it can be run.
    */
   canRun() {
-    return !!(this.sourceTableId() || this.sourceQuery());
+    return !!(this._sourceTableId() || this.sourceQuery());
   }
 
   /**
@@ -245,21 +246,19 @@ class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns the table ID, if a table is selected.
+   * @deprecated Use MLv2
    */
-  sourceTableId(): TableId | null | undefined {
-    return this.legacyQuery()?.["source-table"];
-  }
-
-  sourceTable(): Table | null | undefined {
-    const tableId = this.sourceTableId();
-    return tableId != null ? this._metadata.table(tableId) : null;
+  private _sourceTableId(): TableId | null | undefined {
+    const query = this.getMLv2Query();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    return sourceTableId;
   }
 
   /**
    * @returns a new query with the provided Table ID set.
    */
   setSourceTableId(tableId: TableId): StructuredQuery {
-    if (tableId !== this.sourceTableId()) {
+    if (tableId !== this._sourceTableId()) {
       return new StructuredQuery(
         this._originalQuestion,
         chain(this.datasetQuery())
@@ -272,27 +271,6 @@ class StructuredQuery extends AtomicQuery {
     } else {
       return this;
     }
-  }
-
-  /**
-   * @deprecated: use sourceTableId
-   */
-  tableId(): TableId | null | undefined {
-    return this.sourceTableId();
-  }
-
-  /**
-   * @deprecated: use setSourceTableId
-   */
-  setTableId(tableId: TableId): StructuredQuery {
-    return this.setSourceTableId(tableId);
-  }
-
-  /**
-   * @deprecated: use setSourceTableId
-   */
-  setTable(table: Table): StructuredQuery {
-    return this.setSourceTableId(table.id);
   }
 
   /**
@@ -1501,7 +1479,7 @@ class StructuredQuery extends AtomicQuery {
       });
     }
 
-    const tableId = this.sourceTableId();
+    const tableId = this._sourceTableId();
     if (tableId) {
       addDependency({
         type: "table",
