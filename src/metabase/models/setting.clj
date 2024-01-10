@@ -647,7 +647,7 @@
 
 (defmethod get-value-of-type :json
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? #(json/parse-string % true)))
+  (get-raw-value setting-definition-or-name coll? #(json/parse-string-strict % true)))
 
 (defmethod get-value-of-type :csv
   [_setting-type setting-definition-or-name]
