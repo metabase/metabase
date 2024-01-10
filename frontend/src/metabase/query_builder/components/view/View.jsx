@@ -199,8 +199,9 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { query: legacyQuery, question } = this.props;
+    const { question } = this.props;
     const query = question.query();
+    const legacyQuery = question.legacyQuery();
 
     const isNewQuestion =
       question.isStructured() &&
