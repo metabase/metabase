@@ -134,7 +134,7 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
-            query={this.props.query}
+            question={question}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (

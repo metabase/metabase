@@ -32,6 +32,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import * as Lib from "metabase-lib";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import Dimension from "metabase-lib/Dimension";
@@ -132,7 +133,7 @@ class TableInteractive extends Component {
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
-    this._showDetailShortcut(this.props.query, this.props.isPivoted);
+    this._showDetailShortcut(this.props.question, this.props.isPivoted);
   }
 
   componentWillUnmount() {
@@ -165,7 +166,7 @@ class TableInteractive extends Component {
 
     if (isDataChange) {
       this._findIDColumn(nextData, newProps.isPivoted);
-      this._showDetailShortcut(this.props.query, this.props.isPivoted);
+      this._showDetailShortcut(this.props.question, this.props.isPivoted);
     }
   }
 
@@ -182,8 +183,9 @@ class TableInteractive extends Component {
     document.addEventListener("keydown", this.onKeyDown);
   };
 
-  _showDetailShortcut = (query, isPivoted) => {
-    const hasAggregation = !!query?.aggregations?.()?.length;
+  _showDetailShortcut = (question, isPivoted) => {
+    const query = question.query();
+    const hasAggregation = Lib.aggregations(query, -1).length > 0;
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
     const newShowDetailState = !(
       isPivoted ||
@@ -665,12 +667,13 @@ class TableInteractive extends Component {
     return style.left;
   }
 
-  getDimension(column, query) {
-    if (!query) {
+  getDimension(column, question) {
+    if (!question) {
       return undefined;
     }
 
-    return query.parseFieldReference(column.field_ref);
+    const legacyQuery = question.legacyQuery();
+    return legacyQuery.parseFieldReference(column.field_ref);
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
@@ -803,7 +806,7 @@ class TableInteractive extends Component {
             placement="bottom-start"
             dimension={
               hasMetadataPopovers
-                ? this.getDimension(column, this.props.query)
+                ? this.getDimension(column, this.props.question)
                 : null
             }
             disabled={this.props.clicked != null}
