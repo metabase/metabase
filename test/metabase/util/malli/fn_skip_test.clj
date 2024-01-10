@@ -18,7 +18,7 @@
         ;; we have to use eval here because `mu.fn/fn` is expanded at _read_ time and we want to change the
         ;; expansion via [[*skip-ns-decision-fn*]]. So that's why we call eval here. Could definitely use some
         ;; macroexpansion tests as well.
-        (let [f (eval '(mu.fn/fn :- :int [] "schemas aren't checked if this is returned"))]
+        (let [f (eval `(mu.fn/fn :- :int [] "schemas aren't checked if this is returned"))]
           (try (f)
                (is (= (f) "schemas aren't checked if this is returned"))
                (catch Exception _e
