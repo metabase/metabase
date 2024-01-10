@@ -11,7 +11,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.models :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
@@ -110,56 +109,36 @@
                                          (when-not (str/blank? remarks)
                                            remarks))}))))))
 
-(defn select-table-privileges-query
-  "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
-  anything useful (only used to check whether we can execute a SELECT query)
-
-    (simple-select-probe-query :postgres \"public\" \"my_table\")
-    ;; -> [\"SELECT TRUE FROM public.my_table WHERE 1 <> 1 LIMIT 0\"]"
-  [driver schema]
-  (let [table    (sql.qp/->honeysql driver (h2x/identifier :table :information_schema.privileges))
-        honeysql {:select [[:table_schema :schema] [:table_name :name] [:privilege_type :privilege]]
-                  :from   [[table]]
-                  :where  [:and
-                           [:= :grantee :%current_user]
-                           [:= :schema (sql.qp/->honeysql driver schema)]
-                           [:= :privilege (sql.qp/->honeysql driver "SELECT")]]}]
-    (sql.qp/format-honeysql driver honeysql)))
-
-(defn- table-privileges
-  [driver ^DatabaseMetaData metadata schema-or-nil db-name-or-nil]
-  (let [current-user-name (.getUserName metadata)]
-    (->> (jdbc/result-set-seq
-          (.getTablePrivileges metadata db-name-or-nil
-           (some->> schema-or-nil (driver/escape-entity-name-for-metadata driver)) "%"))
-         (filter #(and
-                   (= current-user-name (:grantee %))
-                   (= "SELECT" (:privilege %))))
-         (map (fn [x]
-                [(:table_schem x) (:table_name x)]))
-         set)))
-
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
   list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
   vs 60)."
-  [driver ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
+  [driver ^Connection conn database & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [metadata (.getMetaData conn)]
-    (eduction
-     (mapcat (fn [schema]
-               (let [table-privileges (table-privileges driver metadata schema db-name-or-nil)]
-                 (->> (db-tables driver metadata schema db-name-or-nil)
-                      (filter (fn [table]
-                                (contains? table-privileges [(:schema table) (:name table)])))))))
-     (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
-                                                        schema-inclusion-filters schema-exclusion-filters))))
+  (let [metadata         (.getMetaData conn)
+        syncable-schemas (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
+                                                                            schema-inclusion-filters schema-exclusion-filters)
+        xform            (if (driver/database-supports? driver :table-privileges database)
+                           (let [schema+table-with-select-privileges (->> (driver/current-user-table-privileges driver database)
+                                                                          (filter #(true? (:select %)))
+                                                                          (map (fn [{:keys [schema table]}]
+                                                                                 [schema table]))
+                                                                          set)]
+                             (mapcat (fn [schema]
+                                       (->> (db-tables driver metadata schema db-name-or-nil)
+                                            (filter (fn [{schema :schema table :name}]
+                                                      (contains? schema+table-with-select-privileges [schema table])))))))
+                           (comp (mapcat (fn [schema]
+                                           (db-tables driver metadata schema db-name-or-nil)))
+                                 (filter (fn [{table-schema :schema table-name :name}]
+                                           (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name)))))]
+       (eduction xform syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
-  [driver connection schema-inclusion-filters schema-exclusion-filters]
-  (fast-active-tables driver connection nil schema-inclusion-filters schema-exclusion-filters))
+  [driver connection database schema-inclusion-filters schema-exclusion-filters]
+  (fast-active-tables driver connection database nil schema-inclusion-filters schema-exclusion-filters))
 
 (defn post-filtered-active-tables
   "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
@@ -168,14 +147,14 @@
   {:pre [(instance? Connection conn)]}
   (eduction
    (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
-             (fn [{table-schema :schema, table-name :name}]
+             (fn [{table-schema :schema table-name :name}]
                (and (not (contains? excluded table-schema))
                     (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
                     (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name)))))
    (db-tables driver (.getMetaData conn) nil db-name-or-nil)))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]
-  (cond (mi/instance-of? Database db-or-id-or-spec)
+  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
@@ -195,19 +174,14 @@
     db-or-id-or-spec
     nil
     (fn [^Connection conn]
-      (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
-            has-schema-filter-prop? (some? schema-filter-prop)
-            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver conn nil nil))]
-        (if has-schema-filter-prop?
-          (if-let [database (db-or-id-or-spec->database db-or-id-or-spec)]
-            (let [prop-nm                                 (:name schema-filter-prop)
-                  [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
-                                                           prop-nm
-                                                           database)]
-              (into #{} (sql-jdbc.sync.interface/active-tables driver conn inclusion-patterns exclusion-patterns)))
-            (default-active-tbl-fn))
-          (default-active-tbl-fn)))))})
-
+      (let [schema-filter-prop (driver.u/find-schema-filters-prop driver)
+            database           (db-or-id-or-spec->database db-or-id-or-spec)]
+        (if (some? schema-filter-prop)
+          (let [prop-nm              (:name schema-filter-prop)
+                [inclusion-patterns
+                 exclusion-patterns] (driver.s/db-details->schema-filter-patterns prop-nm database)]
+            (into #{} (sql-jdbc.sync.interface/active-tables driver conn database inclusion-patterns exclusion-patterns)))
+          (into #{} (sql-jdbc.sync.interface/active-tables driver conn database nil nil))))))})
 
 #_(let [schema-filter-prop (driver.u/find-schema-filters-prop :redshift)
          db-or-id-or-spec  3

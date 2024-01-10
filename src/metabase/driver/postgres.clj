@@ -61,6 +61,7 @@
                               :datetime-diff            true
                               :now                      true
                               :persist-models           true
+                              :table-privileges         true
                               :schemas                  true
                               :connection-impersonation true
                               :uploads                  true}]
@@ -73,7 +74,6 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
-                 :table-privileges
                  :uploads
                  :index-info]]
   (defmethod driver/database-supports? [:postgres feature]
@@ -856,10 +856,10 @@
        "  NULL as role,"
        "  t.schemaname as schema,"
        "  t.tablename as table,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'SELECT') as select,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'UPDATE') as update,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'INSERT') as insert,"
-       "  pg_catalog.has_table_privilege(current_user, concat('\"', t.schemaname, '\"', '.', '\"', t.tablename, '\"'), 'DELETE') as delete"
+       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'UPDATE') as update,"
+       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'SELECT') as select,"
+       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'INSERT') as insert,"
+       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'DELETE') as delete"
        "from pg_catalog.pg_tables t"
        "where t.schemaname !~ '^pg_'"
        "  and t.schemaname <> 'information_schema'"
