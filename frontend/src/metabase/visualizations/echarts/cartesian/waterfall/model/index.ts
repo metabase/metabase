@@ -136,18 +136,11 @@ export function getWaterfallChartModel(
   const { dataset: waterfallDataset, negativeTranslation } =
     getWaterfallDataset(rows, cardColumns, settings);
 
-  // y-axis
-  const yAxisExtents: AxisExtents = [
-    getWaterfallExtent(waterfallDataset),
-    null,
-  ];
-
   const waterfallChartModel: WaterfallChartModel = {
     ...baseChartModel,
     waterfallDataset,
     negativeTranslation,
     total,
-    yAxisExtents,
   };
   return waterfallChartModel;
 }
