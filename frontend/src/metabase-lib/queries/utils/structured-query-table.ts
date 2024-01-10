@@ -23,7 +23,7 @@ export function getStructuredQueryTable(
   const query = question.query();
   const sourceTableId = Lib.sourceTableOrCardId(query);
   if (isVirtualCardId(sourceTableId)) {
-    return getNestedCardTable(question, legacyQuery);
+    return getNestedCardTable(question);
   }
 
   // 3. The query's question is a saved dataset.
