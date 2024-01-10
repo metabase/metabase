@@ -1,4 +1,4 @@
-import withoutTotal from "./without-total.json";
+import timeseriesXScale from "./timeseries-x-scale.json";
 import ordinalXScale from "./ordinal-x-scale.json";
 import timeseriesXScaleUnsorted from "./timeseries-x-scale-unsorted.json";
 import timeSeriesDataAsOrdinalXScale from "./timeseries-data-as-ordinal-x-scale.json";
@@ -13,9 +13,11 @@ import startsBelowZeroEndsAbove from "./starts-below-zero-ends-above.json";
 import startsAboveZeroCrossesEndsAbove from "./starts-above-zero-crosses-ends-above.json";
 import startsBelowZeroCrossesEndsBelow from "./starts-below-zero-crosses-ends-below.json";
 import customColors from "./custom-colors.json";
+import noTotalTimeseries from "./no-total-timeseries.json";
+import noTotalOrdinal from "./no-total-ordinal.json";
 
 export const data = {
-  withoutTotal,
+  timeseriesXScale,
   ordinalXScale,
   timeseriesXScaleUnsorted,
   timeSeriesDataAsOrdinalXScale,
@@ -30,4 +32,6 @@ export const data = {
   startsAboveZeroCrossesEndsAbove,
   startsBelowZeroCrossesEndsBelow,
   customColors,
+  noTotalTimeseries,
+  noTotalOrdinal,
 };
