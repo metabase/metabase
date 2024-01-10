@@ -7,103 +7,69 @@ import {
 import { checkNumber } from "metabase/lib/types";
 
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type {
-  WaterfallDataset,
-  WaterfallDatum,
-  WaterfallEmptyValue,
-} from "../types";
-import { DATASET_DIMENSIONS } from "../constants";
-
-function createDatum({
-  dimension,
-  barOffset,
-  increase,
-  decrease,
-  total,
-}: {
-  dimension: string;
-  barOffset?: number;
-  increase?: number | WaterfallEmptyValue;
-  decrease?: number | WaterfallEmptyValue;
-  total?: number;
-}): WaterfallDatum {
-  return {
-    [DATASET_DIMENSIONS.dimension]: dimension,
-    [DATASET_DIMENSIONS.barOffset]: barOffset ?? 0,
-    [DATASET_DIMENSIONS.increase]: increase ?? "-",
-    [DATASET_DIMENSIONS.decrease]: decrease ?? "-",
-    [DATASET_DIMENSIONS.total]: total ?? "-",
-  };
-}
+import type { WaterfallDataset } from "../types";
 
 export function getWaterfallDataset(
   rows: RowValues[],
   cardColumns: CartesianChartColumns,
-  negativeTranslation: number,
-  total: number,
   settings: ComputedVisualizationSettings,
-): WaterfallDataset {
+) {
   const columns = assertMultiMetricColumns(cardColumns);
   const dataset: WaterfallDataset = [];
 
+  // Step 1: calculate runningSums, negativeTranslation beforehand
+  let runningSums: number[] = [];
   rows.forEach((row, index) => {
-    const dimension = String(row[columns.dimension.index]);
     const value = checkNumber(row[columns.metrics[0].index]);
 
-    let increase: number | "-" = "-";
-    let decrease: number | "-" = "-";
-    if (value >= 0) {
-      increase = value;
-    } else {
-      decrease = -value;
-    }
-
-    // Since echarts always stacks from below, we translate the first bar
-    // to ensure that the `barOffset` will keep each bar stack above 0 on
-    // the chart. Later when formatting the y-axis ticks we will account
-    // for this offset to make the ticks display the correct values from
-    // the underlying data.
     if (index === 0) {
-      let barOffset = negativeTranslation;
-      if (decrease !== "-") {
-        barOffset -= decrease;
-      }
-
-      dataset.push(createDatum({ barOffset, dimension, increase, decrease }));
+      runningSums.push(value);
       return;
     }
 
-    const {
-      barOffset: prevBarOffset,
-      increase: prevIncrease,
-      decrease: prevDecrease,
-    } = dataset[dataset.length - 1];
-
-    let barOffset = 0;
-    // case 1: increase following increase
-    if (increase !== "-" && prevIncrease !== "-") {
-      barOffset = prevBarOffset + prevIncrease;
-    }
-    // case 2: decrease following increase
-    else if (decrease !== "-" && prevIncrease !== "-") {
-      barOffset = prevBarOffset + prevIncrease - decrease;
-    }
-    // case 3: decrease following decrease
-    else if (decrease !== "-" && prevDecrease !== "-") {
-      barOffset = prevBarOffset - decrease;
-    }
-    // case 4: increase following decrease
-    else if (increase !== "-" && prevDecrease !== "-") {
-      barOffset = prevBarOffset;
-    }
-
-    dataset.push(createDatum({ dimension, barOffset, increase, decrease }));
+    runningSums.push(runningSums[runningSums.length - 1] + value);
   });
 
-  if (!settings["waterfall.show_total"]) {
-    return dataset;
+  if (settings["graph.y_axis.scale"] === "pow") {
+    runningSums = runningSums.map(sum => {
+      if (sum >= 0) {
+        return Math.sqrt(sum);
+      }
+      return -Math.sqrt(-sum);
+    });
   }
 
+  const minSum = Math.min(...runningSums);
+  const negativeTranslation = minSum >= 0 ? 0 : -minSum;
+
+  // Step 2: create the waterfall dataset using the previously computed values
+  for (let i = 0; i < runningSums.length; i++) {
+    const dimension = String(rows[i][columns.dimension.index]);
+
+    let barOffset = negativeTranslation;
+    let increase: number | "-" = "-";
+    let decrease: number | "-" = "-";
+
+    const prevSum = i !== 0 ? runningSums[i - 1] : 0;
+    const currSum = runningSums[i];
+
+    if (currSum >= prevSum) {
+      barOffset += prevSum;
+      increase = currSum - prevSum;
+    } else {
+      barOffset += currSum;
+      decrease = Math.abs(prevSum - currSum);
+    }
+
+    dataset.push({ dimension, barOffset, increase, decrease, total: "-" });
+  }
+
+  if (!settings["waterfall.show_total"]) {
+    return { dataset, negativeTranslation };
+  }
+
+  // Step 3 (optional): datum for "Show total" setting
+  const total = runningSums[runningSums.length - 1];
   const barOffset =
     total >= 0 ? negativeTranslation : negativeTranslation + total;
 
@@ -125,13 +91,13 @@ export function getWaterfallDataset(
     dimension = lastDate.add(1, "day").toISOString();
   }
 
-  dataset.push(
-    createDatum({
-      dimension,
-      barOffset,
-      total: Math.abs(total),
-    }),
-  );
+  dataset.push({
+    dimension,
+    barOffset,
+    increase: "-",
+    decrease: "-",
+    total: Math.abs(total),
+  });
 
-  return dataset;
+  return { dataset, negativeTranslation };
 }
