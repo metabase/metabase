@@ -307,7 +307,7 @@ describeEE("formatting > whitelabel", () => {
 
         // test absolute url matching the page's origin
         testValidLandingPageInput({
-          input: "/test-2",
+          input: origin + "/test-2",
           expected: origin + "/test-2",
         });
       });

@@ -3,6 +3,7 @@ import { t } from "ttag";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import { Text } from "metabase/ui";
 import { SettingInputBlurChange } from "./LandingPageWidget.styled";
+import { getRelativeLandingPageUrl } from "./utils";
 
 interface Props {
   settingValues: EnterpriseSettings;
@@ -23,18 +24,14 @@ export function LandingPageWidget({ onChangeSetting, settingValues }: Props) {
     return value.trim() || null;
   };
 
-  const handleChange = async (rawValue: string) => {
-    const value = rawValue.trim();
-    const url = new URL(value, location.origin);
-    const isSameOrigin = location.origin === url.origin;
+  const handleChange = async (value: string) => {
+    const { isSameOrigin, relativeUrl } = getRelativeLandingPageUrl(value);
 
     if (!isSameOrigin) {
       setError(t`This field must be a relative URL.`);
     } else {
       setError(null);
       try {
-        // Extract relative url info w/o protocol & host if url contains same origin
-        const relativeUrl = url.pathname + url.search + url.hash;
         await onChangeSetting("landing-page", relativeUrl);
       } catch (e: any) {
         setError(e?.data?.message || t`Something went wrong`);
