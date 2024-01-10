@@ -251,13 +251,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    // Before we clean the query, we make sure question is not treated as a dataset
-    // as calling table() method down the line would bring unwanted consequences
-    // such as dropping joins (as joins are treated differently between pure questions and datasets)
-    const cleanQuery = Lib.dropStageIfEmpty(
-      question.setDataset(false).query(),
-      -1,
-    );
+    const cleanQuery = Lib.dropStageIfEmpty(question.query(), -1);
     const questionToUpdate = questionWithVizSettings
       ._setMLv2Query(cleanQuery)
       .setResultsMetadata(isResultDirty ? null : resultsMetadata);
