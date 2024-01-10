@@ -1190,3 +1190,14 @@
                             :previous-value nil
                             :new-value      "AUDIT ME"}}
                  (mt/latest-audit-log-entry :setting-update))))))))
+
+(deftest valid-json-setting-test
+  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2]"]
+    (is (nil? (setting/validate-settings-formatting!)))))
+
+(deftest invalid-json-setting-test
+  (mt/with-temp-env-var-value ["MB_TEST_JSON_SETTING" "[1, 2,"]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid JSON configuration for setting: test-json-setting"
+         (setting/validate-settings-formatting!)))))

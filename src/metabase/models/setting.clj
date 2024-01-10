@@ -1344,21 +1344,41 @@
                   [setting-name (get setting-name)])))
      @registered-settings)))
 
-(defn- has-invalid-json? [{:keys [name type]}]
-  (when (= :json type)
-    (try
-      ;; parse, but ignore the result
-      (json/parse-string (get-value-of-type :string name))
-      false
-      (catch JsonParseException _ true)
-      ;; something else went wrong, and it could be masking an issue with the json value
-      ;; we don't want to return false positives, but indicate an issue by returning a different falsey value
-      (catch Exception _ nil))))
+(defn- set-via-env? [setting]
+  (contains? env/env (setting-env-map-name setting)))
 
-(defn validate-json-settings!
-  "Throws an exception if there are any settings with invalid JSON configuration.
-   Note that this will only validate settings whose defsetting forms have already been evaluated."
+(defmulti ^:private validate-setting-format :type)
+
+;; Treat setting as valid unless a validator has been defined for its type
+(defmethod validate-setting-format :default [_] nil)
+
+(defmethod validate-setting-format :json [{:keys [name]}]
+  (try
+    ;; attempt to parse the string to trigger any related exception
+    (doall (json/parse-string (get-value-of-type :string name)))
+    ;; there was no issue parsing the setting, so return a falsey value
+    nil
+    (catch JsonParseException e e)
+    ;; be conservative about what is returned, to avoid accidentally exposing secrets in the value, so do
+    (catch Exception e (ex-info "Unable to validate setting" {:exception-type (type e)}))))
+
+(defn- validate-setting [setting]
+  (when-let [error (validate-setting-format setting)]
+    (assoc (select-keys setting [:name :type])
+      :parse-error error
+      :env-var? (set-via-env? setting))))
+
+(defn validate-settings-formatting!
+  "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
+
+   Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
-  (when-let [invalid-settings (seq (map key (filter (comp has-invalid-json? val) @registered-settings)))]
-    (throw (ex-info (trs "Invalid JSON configuration for settings: {0}" invalid-settings)
-                    {:registered-settings (sort (keys @registered-settings ))}))))
+  (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
+    (if (:env-var? invalid-setting)
+      (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
+                           #_:clj-kondo/ignore (str/upper-case (name (:type invalid-setting)))
+                           (name (:name invalid-setting)))
+                      (dissoc invalid-setting :parse-error)
+                      (:cause (:parse-error invalid-setting))))
+      (log/warn (:cause (:parse-error invalid-setting))
+                (format "Unable to parse setting %s" (:name invalid-setting))))))
