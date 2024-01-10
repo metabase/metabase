@@ -36,7 +36,7 @@ const getCustomAxisRange = (
   return { min: finalMin, max: finalMax };
 };
 
-const getYAxisRange = (
+export const getYAxisRange = (
   axisModel: YAxisModel,
   settings: ComputedVisualizationSettings,
 ) => {
@@ -166,7 +166,7 @@ export const buildDimensionAxis = (
   };
 };
 
-const buildMetricAxis = (
+export const buildMetricAxis = (
   axisModel: YAxisModel,
   ticksWidth: number,
   settings: ComputedVisualizationSettings,
