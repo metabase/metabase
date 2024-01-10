@@ -1,9 +1,11 @@
 import type { ComponentStory } from "@storybook/react";
-import {
-  CATEGORICAL,
-  TIMESERIES,
-} from "metabase/static-viz/components/WaterfallChart/stories-data";
-import WaterfallChart from "./WaterfallChart";
+import { color } from "metabase/lib/colors";
+import { formatStaticValue } from "metabase/static-viz/lib/format";
+import { measureTextWidth } from "metabase/static-viz/lib/text";
+import type { RenderingContext } from "metabase/visualizations/types";
+
+import { data } from "./stories-data";
+import { WaterfallChart } from "./WaterfallChart";
 
 export default {
   title: "static-viz/WaterfallChart",
@@ -11,11 +13,24 @@ export default {
 };
 
 const Template: ComponentStory<typeof WaterfallChart> = args => {
-  return <WaterfallChart {...args} />;
+  return (
+    <div style={{ border: "1px solid black", display: "inline-block" }}>
+      <WaterfallChart {...args} />
+    </div>
+  );
 };
 
-export const Timeseries = Template.bind({});
-Timeseries.args = TIMESERIES as any;
+const renderingContext: RenderingContext = {
+  getColor: color,
+  formatValue: formatStaticValue as any,
+  measureText: (text, style) =>
+    measureTextWidth(text, style.size, style.weight),
+  fontFamily: "Lato",
+};
 
-export const Categorical = Template.bind({});
-Categorical.args = CATEGORICAL as any;
+export const WithoutTotal = Template.bind({});
+WithoutTotal.args = {
+  rawSeries: data.withoutTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};

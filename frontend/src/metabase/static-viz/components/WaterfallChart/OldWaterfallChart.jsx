@@ -61,7 +61,8 @@ const VALUES_MARGIN = 6;
  * @param {import("./types").WaterfallChartProps} props
  * @returns {JSX.Element}
  */
-function WaterfallChart({
+// TODO delete this component and file
+function OldWaterfallChart({
   data,
   type,
   accessors = getDefaultAccessors(type),
@@ -339,4 +340,4 @@ const maybeAssoc = (collection, key, value) => {
   return assoc(collection, key, value);
 };
 
-export default WaterfallChart;
+export default OldWaterfallChart;
