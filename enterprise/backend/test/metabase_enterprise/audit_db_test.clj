@@ -15,6 +15,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
@@ -119,10 +120,10 @@
       (serdes.backfill/backfill-ids-for! :model/Collection)
       ;; insert c2, which will have the same entity id:
       (let [c2-instance (t2/insert-returning-instance! :model/Collection (dissoc c1-instance :id))]
-        (testing "c1 and c2 hash to the same value"
-          (is (= (serdes/identity-hash c1-instance)
-                 (serdes/identity-hash c2-instance))))
-        (testing "A backfill with 'duplicate' rows (with different ids)"
+        (testing "c1 and c2 hash to the same entity id."
+          (is (= (u/generate-nano-id (serdes/identity-hash c1-instance))
+                 (u/generate-nano-id (serdes/identity-hash c2-instance)))))
+        (testing "A backfill with 'duplicate' rows (with different ids)."
           (is (thrown? Exception
                        (serdes.backfill/backfill-ids-for! :model/Collection))))
         (testing "No exception is thrown when db has 'duplicate' entries."
