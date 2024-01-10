@@ -68,6 +68,7 @@ function DatasetQueryEditor({
         <NativeQueryEditor
           {...props}
           question={question}
+          query={question.legacyQuery()}
           isInitiallyOpen
           hasTopBar={isActive}
           hasEditingSidebar={isActive}
