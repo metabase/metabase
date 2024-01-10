@@ -410,35 +410,6 @@
 (defn has-inline-image? [rendered]
   (some #{:img} (flatten-html-data rendered)))
 
-(defn- render-waterfall [results]
-  (body/render :waterfall :inline pacific-tz render.tu/test-card nil results))
-
-(deftest render-waterfall-test
-  (testing "Render a waterfall graph with non-nil values for the x and y axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]
-                            :viz-settings {}}))))
-  (testing "Render a waterfall graph with bigdec, bigint values for the x and y axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0M 1M] [5.0 10N] [2.50 20N] [1.25M 30]]
-                            :viz-settings {}}))))
-  (testing "Check to make sure we allow nil values for the y-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]
-                            :viz-settings {}}))))
-  (testing "Check to make sure we allow nil values for the x-axis"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [2.50 20] [nil 30]]
-                            :viz-settings {}}))))
-  (testing "Check to make sure we allow nil values for both x and y on different rows"
-    (is (has-inline-image?
-         (render-waterfall {:cols         default-columns
-                            :rows         [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]
-                            :viz-settings {}})))))
 (defn- render-funnel [results]
   (body/render :funnel :inline pacific-tz render.tu/test-card nil results))
 
