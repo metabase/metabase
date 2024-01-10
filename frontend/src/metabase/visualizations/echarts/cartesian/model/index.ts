@@ -22,7 +22,6 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import { getScatterPlotDataset } from "metabase/visualizations/echarts/cartesian/scatter/model";
-import { getWaterfallDataset } from "metabase/visualizations/echarts/cartesian/waterfall/model";
 
 const SUPPORTED_AUTO_SPLIT_TYPES = ["line", "area", "bar", "combo"];
 
@@ -95,9 +94,6 @@ export const getCartesianChartModel = (
   switch (rawSeries[0].card.display) {
     case "scatter":
       dataset = getScatterPlotDataset(rawSeries, cardsColumns);
-      break;
-    case "waterfall":
-      dataset = getWaterfallDataset(rawSeries[0].data.rows, cardsColumns[0]);
       break;
     default:
       dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
