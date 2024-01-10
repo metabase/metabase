@@ -4,6 +4,14 @@ import type { DatabaseId } from "metabase-types/api";
 
 import type { MetadataProvider, Query } from "./types";
 
+export function nativeQuery(
+  databaseId: DatabaseId,
+  metadata: MetadataProvider,
+  innerQuery: string,
+): Query {
+  return ML.native_query(databaseId, metadata, innerQuery);
+}
+
 /**
  * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
  *  needed for MongoDB queries.
