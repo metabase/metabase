@@ -216,11 +216,6 @@ class PublicQuestionInner extends Component {
                     ["visualization_settings"],
                     previousSettings => ({ ...previousSettings, ...settings }),
                   ),
-                  result: updateIn(
-                    result,
-                    ["card", "visualization_settings"],
-                    previousSettings => ({ ...previousSettings, ...settings }),
-                  ),
                 })
               }
               gridUnit={12}
