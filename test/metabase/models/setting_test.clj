@@ -1203,33 +1203,34 @@
       (throw (java.lang.RuntimeException. "This code should never be reached."))
       (catch java.lang.Exception e e))))
 
+(defn- assert-parser-exception! [ex cause-message]
+  (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
+  (is (= cause-message (ex-message (ex-cause ex)))))
+
 (deftest invalid-json-setting-test
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
     (let [ex (get-parse-exception "[1, 2,")]
-      (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
-      ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
-      #_(is (= (str "Unexpected end-of-input within/between Array entries\n"
-                  " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
-             (ex-message (ex-cause ex))))
-      (is (= "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"
-             (ex-message (ex-cause ex)))))))
+      (assert-parser-exception!
+        ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
+        #_(str "Unexpected end-of-input within/between Array entries\n"
+               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
+        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
     (let [password "$ekr3t"
           ex (get-parse-exception (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
-      (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
-      (is (= "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"
-             (ex-message (ex-cause ex)))))))
+      (assert-parser-exception!
+        ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
     (let [password "123abc"
           ex (get-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
       (is (not (str/includes? (pr-str ex) password)))
-      (is (= "Invalid JSON configuration for setting: test-json-setting" (ex-message ex)))
-      (is (= (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
-                  " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
-                  " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")
-             (ex-message (ex-cause ex)))))))
+      (assert-parser-exception!
+        ex
+        (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
+             " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
+             " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
