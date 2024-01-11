@@ -349,7 +349,9 @@ function updateSnippetsWithIds(
   const templateTags = Lib.templateTags(query);
 
   for (const snippet of snippets) {
-    for (const tag of tagsBySnippetName[snippet.name] || []) {
+    const tags = tagsBySnippetName[snippet.name] || [];
+
+    for (const tag of tags) {
       templateTags[tag.name] = {
         ...tag,
         "snippet-id": snippet.id,
