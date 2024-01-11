@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, ReactElement } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import type { Collection, SearchResult } from "metabase-types/api";
@@ -7,7 +7,7 @@ import { CollectionsApi, UserApi } from "metabase/services";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { LoadingSpinner, NestedItemPicker } from "../components";
-import type { PickerState } from "../types";
+import type { PickerState, PickerStateItem } from "../types";
 import { ItemList } from "../components/ItemList";
 import { EntityItemList } from "../components/EntityItemList";
 import { useCollectionQuery } from "metabase/common/hooks";
@@ -60,7 +60,7 @@ export const CollectionPicker = ({
     useCollectionQuery({ id: value?.id, enabled: !!value?.id });
 
   const onFolderSelect = useCallback(
-    (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
+    (folder?: Partial<SearchResult>): PickerStateItem<SearchResult> => {
       if (!folder?.id) {
         console.log("No Folder ID");
         const dataFn = async () => {
@@ -102,8 +102,9 @@ export const CollectionPicker = ({
         };
 
         return {
-          listComponent: ItemList,
+          ListComponent: ItemList,
           dataFn,
+          selectedItem: null,
         };
       }
 
@@ -131,8 +132,9 @@ export const CollectionPicker = ({
         };
 
         return {
-          listComponent: ItemList,
+          ListComponent: ItemList,
           dataFn,
+          selectedItem: null,
         };
       }
 
@@ -143,12 +145,13 @@ export const CollectionPicker = ({
 
       console.log("got a folder", folder);
       return {
-        listComponent: EntityItemList,
+        ListComponent: EntityItemList,
         query: {
           collection: folder.id,
           models: ["collection"],
           namespace: options.namespace,
         },
+        selectedItem: null,
       };
     },
     [onItemSelect, isAdmin, options],
@@ -168,10 +171,10 @@ export const CollectionPicker = ({
           },
         },
         ...path.map((step, index, arr) => ({
-          listComponent: EntityItemList,
+          ListComponent: EntityItemList,
           query: {
             collection: step,
-            models: ["collection"],
+            models: "collection",
             namespace: options.namespace,
           },
           selectedItem: {
@@ -187,7 +190,7 @@ export const CollectionPicker = ({
           ...onFolderSelect(),
           selectedItem: { model: "collection", id: "root" },
         },
-        { ...onFolderSelect(rootCollection) },
+        { ...onFolderSelect(rootCollection as SearchResult) },
       ]);
     }
   }, [

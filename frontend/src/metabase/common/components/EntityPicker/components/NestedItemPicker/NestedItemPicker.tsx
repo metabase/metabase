@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { Flex } from "metabase/ui";
 
 import type { SearchResult } from "metabase-types/api";
-import type { PickerState } from "../../types";
+import type { PickerState, PickerStateItem } from "../../types";
 import { HorizontalScrollBox, ListBox } from "./NestedItemPicker.styled";
 
 interface NestedItemPickerProps<T> {
-  onFolderSelect: (folder?: Partial<T>) => Promise<T[]>;
+  onFolderSelect: (folder?: Partial<T>) => PickerStateItem<T>;
   onItemSelect: (item: T) => void;
   folderModel: string;
   itemModel: string;
@@ -78,7 +78,7 @@ export const NestedItemPicker = ({
     <HorizontalScrollBox h="100%" ref={containerRef}>
       <Flex h="100%" w="fit-content">
         {stack.map((level, levelIndex) => {
-          const { listComponent: ListComponent, ...rest } = level;
+          const { ListComponent, ...rest } = level;
 
           return (
             <ListBox key={JSON.stringify(level).slice(0, 255)}>
