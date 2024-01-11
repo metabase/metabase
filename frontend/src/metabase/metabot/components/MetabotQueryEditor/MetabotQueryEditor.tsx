@@ -60,7 +60,7 @@ const MetabotQueryEditor = ({
     <NativeQueryEditor
       cancelQueryOnLeave={false}
       question={question}
-      query={question.legacyQuery()}
+      query={question.legacyQuery({ useStructuredQuery: true })}
       viewHeight={height}
       resizable={false}
       hasParametersList={false}
