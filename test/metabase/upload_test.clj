@@ -1351,16 +1351,10 @@
             (is (= {:row-count 1}
                    (append-csv! {:file     file
                                  :table-id (:id table)})))
-            ;; Redshift doesn't support adding auto-incrementing columns to an existing table
-            (if (= driver/*driver* :redshift)
-              (do
-                (testing "Check a _mb_row_id column wasn't created"
-                  (is (= ["name"]
-                         (column-names-for-table table))))
-                (testing "Check the data was uploaded into the table"
-                  (is (= [["Obi-Wan Kenobi"]
-                          ["Luke Skywalker"]]
-                         (rows-for-table table)))))
+            ;; Only create auto-pk columns for drivers that supported uploads before auto-pk columns
+            ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
+            ;; with an auto-pk column.
+            (if (contains? #{:postgres :mysql :h2} driver/*driver*)
               (do
                 (testing "Check a _mb_row_id column was created"
                   (is (= ["name" "_mb_row_id"]
@@ -1374,6 +1368,14 @@
                 (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
                   (is (= [["Obi-Wan Kenobi" 1]
                           ["Luke Skywalker" 2]]
+                         (rows-for-table table)))))
+              (do
+                (testing "Check a _mb_row_id column wasn't created"
+                  (is (= ["name"]
+                         (column-names-for-table table))))
+                (testing "Check the data was uploaded into the table"
+                  (is (= [["Obi-Wan Kenobi"]
+                          ["Luke Skywalker"]]
                          (rows-for-table table))))))
             (io/delete-file file)))))))
 

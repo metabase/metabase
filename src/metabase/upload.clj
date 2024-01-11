@@ -612,8 +612,12 @@
           normed-name->field (m/index-by (comp normalize-column-name :name)
                                          (t2/select :model/Field :table_id (:id table) :active true))
           normed-header      (map normalize-column-name header)
-          create-auto-pk?    (and (not= (:engine database) :redshift) ; Redshift doesn't support adding auto-incrementing columns to an existing table
-                                  (not (contains? normed-name->field auto-pk-column-name)))
+          ;; Create auto-pk columns for drivers that supported uploads before auto-pk columns
+          ;; were introduced by metabase#36249. Otherwise we can assume that the table was created
+          ;; with an auto-pk column, or it has been deliberately removed.
+          create-auto-pk?    (and
+                              (contains? #{:mysql :postgres :h2} (:engine database))
+                              (not (contains? normed-name->field auto-pk-column-name)))
           _                  (check-schema (dissoc normed-name->field auto-pk-column-name) header)
           col-upload-types   (map (comp base-type->upload-type :base_type normed-name->field) normed-header)
           parsed-rows        (parse-rows col-upload-types rows)]
