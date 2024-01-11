@@ -246,7 +246,7 @@ function getAdHocNestedQuestion({ isMultiSchemaDB } = {}) {
     },
   });
 
-  question.legacyQuery().table = () =>
+  question.legacyQuery({ useStructuredQuery: true }).table = () =>
     getNestedQuestionTableMock(isMultiSchemaDB);
 
   return question;
@@ -264,7 +264,7 @@ function getSavedNestedQuestion({ isMultiSchemaDB } = {}) {
     },
   });
 
-  question.legacyQuery().table = () =>
+  question.legacyQuery({ useStructuredQuery: true }).table = () =>
     getNestedQuestionTableMock(isMultiSchemaDB);
 
   return question;
@@ -408,15 +408,19 @@ describe("QuestionDataSource", () => {
         });
 
         it("shows nothing if a user doesn't have data permissions", () => {
-          const originalMethod = question.legacyQuery().database;
-          question.legacyQuery().database = () => null;
+          const originalMethod = question.legacyQuery({
+            useStructuredQuery: true,
+          })._database;
+          question.legacyQuery({ useStructuredQuery: true })._database = () =>
+            null;
 
           setup({ question });
           expect(
             screen.getByTestId("head-crumbs-container"),
           ).toBeEmptyDOMElement();
 
-          question.legacyQuery().database = originalMethod;
+          question.legacyQuery({ useStructuredQuery: true })._database =
+            originalMethod;
         });
       });
     });

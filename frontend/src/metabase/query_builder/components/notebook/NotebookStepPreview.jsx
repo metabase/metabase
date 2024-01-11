@@ -48,7 +48,7 @@ class NotebookStepPreview extends Component {
       : Lib.limit(query, stageIndex, PREVIEW_ROWS_LIMIT);
 
     return Question.create()
-      ._setMLv2Query(queryWithLimit)
+      .setQuery(queryWithLimit)
       .setDisplay("table")
       .setSettings({ "table.pivot": false });
   }

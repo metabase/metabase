@@ -8,7 +8,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.pulse-test :as pulse-test]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -55,20 +54,20 @@
             (testing "user's group has no subscription permissions"
               (perms/revoke-application-permissions! group :subscription)
               (testing "should succeed if `advanced-permissions` is disabled"
-                (premium-features-test/with-premium-features #{}
+                (mt/with-premium-features #{}
                   (create-pulse 200)
                   (update-pulse 200)
                   (get-form 200)))
 
               (testing "should fail if `advanced-permissions` is enabled"
-                (premium-features-test/with-premium-features #{:advanced-permissions}
+                (mt/with-premium-features #{:advanced-permissions}
                   (create-pulse 403)
                   (update-pulse 403)
                   (get-form 403))))
 
             (testing "User's group with subscription permission"
               (perms/grant-application-permissions! group :subscription)
-              (premium-features-test/with-premium-features #{:advanced-permissions}
+              (mt/with-premium-features #{:advanced-permissions}
                 (testing "should succeed if `advanced-permissions` is enabled"
                   (create-pulse 200)
                   (update-pulse 200)
@@ -107,14 +106,14 @@
                           (testing (format "- remove pulse's recipients with %s user" (mt/user-descriptor req-user))
                             (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse))))))]
             (testing "anyone could add/remove pulse's recipients if advanced-permissions is disabled"
-              (premium-features-test/with-premium-features #{}
+              (mt/with-premium-features #{}
                 (add-pulse-recipient user 200)
                 (remove-pulse-recipient user 200)
                 (add-pulse-recipient :crowberto 200)
                 (remove-pulse-recipient :crowberto 200)))
 
             (testing "non-admin can't modify recipients if advanced-permissions is enabled"
-              (premium-features-test/with-premium-features #{:advanced-permissions}
+              (mt/with-premium-features #{:advanced-permissions}
                 (add-pulse-recipient user 403)
                 (remove-pulse-recipient user 403)
 
@@ -154,7 +153,7 @@
                                 (testing "create alert"
                                   (mt/user-http-request user :post status "alert"
                                                         alert-default)))
-                user-alert   (premium-features-test/with-premium-features #{:advanced-permissions}
+                user-alert   (mt/with-premium-features #{:advanced-permissions}
                                (perms/grant-application-permissions! group :subscription)
                                (u/prog1 (create-alert! 200)
                                  (perms/revoke-application-permissions! group :subscription)))
@@ -166,18 +165,18 @@
             (testing "user's group has no subscription permissions"
               (perms/revoke-application-permissions! group :subscription)
               (testing "should succeed if `advanced-permissions` is disabled"
-                (premium-features-test/with-premium-features #{}
+                (mt/with-premium-features #{}
                   (create-alert! 200)
                   (update-alert! 200)))
 
               (testing "should fail if `advanced-permissions` is enabled"
-                (premium-features-test/with-premium-features #{:advanced-permissions}
+                (mt/with-premium-features #{:advanced-permissions}
                   (create-alert! 403)
                   (update-alert! 403))))
 
             (testing "User's group with subscription permission"
               (perms/grant-application-permissions! group :subscription)
-              (premium-features-test/with-premium-features #{:advanced-permissions}
+              (mt/with-premium-features #{:advanced-permissions}
                 (testing "should succeed if `advanced-permissions` is enabled"
                   (create-alert! 200)
                   (update-alert! 200))))))))))
@@ -219,7 +218,7 @@
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (assoc-in (alert-test/default-alert-req card pc) [:channels 0 :recipients] [])))))]
             (testing "only admin add/remove recipients and archive"
-              (premium-features-test/with-premium-features #{}
+              (mt/with-premium-features #{}
                 (add-alert-recipient user 403)
                 (archive-alert-recipient user 403)
                 (remove-alert-recipient user 403)
@@ -228,7 +227,7 @@
                 (remove-alert-recipient :crowberto 200)))
 
             (testing "non-admins can't modify recipients if advanced-permissions is enabled"
-              (premium-features-test/with-premium-features #{:advanced-permissions}
+              (mt/with-premium-features #{:advanced-permissions}
                 (add-alert-recipient user 403)
                 (archive-alert-recipient user 403)
                 (remove-alert-recipient user 403)

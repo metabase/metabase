@@ -19,7 +19,7 @@ type InfoTextAssetLinkProps = {
 };
 
 const LinkSeparator = (
-  <Box component="span" c="text.1">
+  <Box component="span" c="text-medium">
     <Icon name="chevronright" size={8} />
   </Box>
 );

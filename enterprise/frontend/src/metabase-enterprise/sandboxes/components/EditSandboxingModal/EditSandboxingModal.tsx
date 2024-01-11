@@ -335,7 +335,7 @@ const TargetName = ({ policy, target }: TargetNameProps) => {
             }
 
             const dimension = question
-              .legacyQuery()
+              .legacyQuery({ useStructuredQuery: true })
               .parseFieldReference(fieldRef);
             return (
               <span>

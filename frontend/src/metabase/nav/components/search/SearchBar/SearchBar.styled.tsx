@@ -85,7 +85,7 @@ export const SearchInput = styled.input<{
 }>`
   background-color: transparent;
   border: none;
-  color: ${({ theme }) => theme.colors.text[2]};
+  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
   font-weight: 700;
   font-size: 0.875rem;
 
@@ -96,7 +96,7 @@ export const SearchInput = styled.input<{
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.colors.text[2]};
+    color: ${({ theme }) => theme.fn.themeColor("text-dark")};
   }
 
   ${breakpointMinSmall} {

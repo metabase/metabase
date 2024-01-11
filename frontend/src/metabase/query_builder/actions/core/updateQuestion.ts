@@ -32,7 +32,7 @@ import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 function hasNewColumns(question: Question, queryResult: Dataset) {
   // NOTE: this assume column names will change
   // technically this is wrong because you could add and remove two columns with the same name
-  const query = question.legacyQuery();
+  const query = question.legacyQuery({ useStructuredQuery: true });
   const previousColumns =
     (queryResult && queryResult.data.cols.map(col => col.name)) || [];
   const nextColumns =
@@ -166,7 +166,11 @@ export const updateQuestion = (
     if (wasPivot || isPivot) {
       const hasBreakouts =
         newQuestion.isStructured() &&
-        (newQuestion.legacyQuery() as StructuredQuery).hasBreakouts();
+        (
+          newQuestion.legacyQuery({
+            useStructuredQuery: true,
+          }) as StructuredQuery
+        ).hasBreakouts();
 
       // compute the pivot setting now so we can query the appropriate data
       if (isPivot && hasBreakouts) {
@@ -232,12 +236,16 @@ export const updateQuestion = (
     const currentDependencies = currentQuestion
       ? [
           ...currentQuestion.dependentMetadata(),
-          ...currentQuestion.legacyQuery().dependentMetadata(),
+          ...currentQuestion
+            .legacyQuery({ useStructuredQuery: true })
+            .dependentMetadata(),
         ]
       : [];
     const nextDependencies = [
       ...newQuestion.dependentMetadata(),
-      ...newQuestion.legacyQuery().dependentMetadata(),
+      ...newQuestion
+        .legacyQuery({ useStructuredQuery: true })
+        .dependentMetadata(),
     ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {

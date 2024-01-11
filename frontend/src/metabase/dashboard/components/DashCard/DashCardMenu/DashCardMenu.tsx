@@ -150,7 +150,8 @@ DashCardMenu.shouldRender = ({
   isPublic,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
-  const isInternalQuery = question.legacyQuery() instanceof InternalQuery;
+  const isInternalQuery =
+    question.legacyQuery({ useStructuredQuery: true }) instanceof InternalQuery;
   if (isEmbed) {
     return isEmbed;
   }

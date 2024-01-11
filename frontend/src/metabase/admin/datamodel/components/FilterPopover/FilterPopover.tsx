@@ -87,12 +87,13 @@ export function FilterPopover({
   );
 
   const previousQuery = usePrevious(legacyQuery);
+  const question = legacyQuery.question();
 
   // if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
   useEffect(() => {
     if (
       filter &&
-      filter.legacyQuery() === previousQuery &&
+      filter.legacyQuery({ useStructuredQuery: true }) === previousQuery &&
       legacyQuery !== previousQuery
     ) {
       setFilter(filter.setQuery(legacyQuery));
@@ -141,13 +142,14 @@ export function FilterPopover({
     const field = dimension?.field();
     const newFilter =
       !filter ||
-      filter.legacyQuery() !== dimension.legacyQuery() ||
+      filter.legacyQuery({ useStructuredQuery: true }) !==
+        dimension.legacyQuery({ useStructuredQuery: true }) ||
       field?.isDate?.()
         ? new Filter(
             [],
             null,
-            dimension.legacyQuery() ||
-              (filter && filter.legacyQuery()) ||
+            dimension.legacyQuery({ useStructuredQuery: true }) ||
+              (filter && filter.legacyQuery({ useStructuredQuery: true })) ||
               legacyQuery,
           )
         : filter;
@@ -182,7 +184,7 @@ export function FilterPopover({
     const expression = isExpression(filterMBQL) ? filterMBQL : undefined;
     return (
       <ExpressionWidget
-        query={legacyQuery.question().query()}
+        query={question.query()}
         stageIndex={-1}
         expression={expression}
         startRule="boolean"
@@ -211,7 +213,8 @@ export function FilterPopover({
             isTopLevel
               ? legacyQuery.topLevelFilterFieldOptionSections()
               : (
-                  (filter && filter.legacyQuery()) ||
+                  (filter &&
+                    filter.legacyQuery({ useStructuredQuery: true })) ||
                   legacyQuery
                 ).filterFieldOptionSections(filter, {
                   includeSegments: showCustom,
@@ -255,7 +258,7 @@ export function FilterPopover({
   };
 
   const shouldShowDatePicker = field?.isDate() && !field?.isTime();
-  const supportsExpressions = legacyQuery.database()?.supportsExpressions();
+  const supportsExpressions = question.database()?.supportsExpressions();
 
   const filterOperator = filter.operator();
   const hasPicker = filterOperator && filterOperator.fields.length > 0;

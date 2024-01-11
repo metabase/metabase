@@ -10,6 +10,7 @@ import { Icon } from "metabase/ui";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import * as Lib from "metabase-lib";
 import { AggregationWidget } from "../AggregationWidget";
 import { BreakoutWidget } from "../BreakoutWidget";
 import { FilterWidgetList } from "../FilterWidgetList";
@@ -77,7 +78,7 @@ export class GuiQueryEditor extends Component {
   }
 
   renderFilters() {
-    const { query, features, setDatasetQuery } = this.props;
+    const { legacyQuery, features, setDatasetQuery } = this.props;
 
     if (!features.filter) {
       return;
@@ -87,24 +88,26 @@ export class GuiQueryEditor extends Component {
     let filterList;
     let addFilterButton;
 
-    if (query.isEditable()) {
+    if (legacyQuery.isEditable()) {
       enabled = true;
 
-      const filters = query.filters();
+      const filters = legacyQuery.filters();
       if (filters && filters.length > 0) {
         filterList = (
           <FilterWidgetList
-            query={query}
+            query={legacyQuery}
             filters={filters}
-            removeFilter={index => setDatasetQuery(query.removeFilter(index))}
+            removeFilter={index =>
+              setDatasetQuery(legacyQuery.removeFilter(index))
+            }
             updateFilter={(index, filter) =>
-              setDatasetQuery(query.updateFilter(index, filter))
+              setDatasetQuery(legacyQuery.updateFilter(index, filter))
             }
           />
         );
       }
 
-      if (query.canAddFilter()) {
+      if (legacyQuery.canAddFilter()) {
         addFilterButton = this.renderAdd(
           filterList ? null : t`Add filters to narrow your answer`,
           null,
@@ -134,8 +137,10 @@ export class GuiQueryEditor extends Component {
           >
             <FilterPopover
               isNew
-              query={query}
-              onChangeFilter={filter => setDatasetQuery(query.filter(filter))}
+              query={legacyQuery}
+              onChangeFilter={filter =>
+                setDatasetQuery(legacyQuery.filter(filter))
+              }
               onClose={() => this.filterPopover.current.close()}
             />
           </PopoverWithTrigger>
@@ -145,16 +150,20 @@ export class GuiQueryEditor extends Component {
   }
 
   renderAggregation() {
-    const { query, features, setDatasetQuery, supportMultipleAggregations } =
-      this.props;
+    const {
+      legacyQuery,
+      features,
+      setDatasetQuery,
+      supportMultipleAggregations,
+    } = this.props;
 
     if (!features.aggregation) {
       return;
     }
 
     // aggregation clause.  must have table details available
-    if (query.isEditable()) {
-      const aggregations = [...query.aggregations()];
+    if (legacyQuery.isEditable()) {
+      const aggregations = [...legacyQuery.aggregations()];
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -162,7 +171,7 @@ export class GuiQueryEditor extends Component {
       }
 
       // Placeholder aggregation for showing the add button
-      if (supportMultipleAggregations && !query.isBareRows()) {
+      if (supportMultipleAggregations && !legacyQuery.isBareRows()) {
         aggregations.push(null);
       }
 
@@ -173,11 +182,13 @@ export class GuiQueryEditor extends Component {
             className="QueryOption p1"
             key={"agg" + index}
             aggregation={aggregation}
-            query={query}
+            query={legacyQuery}
             onChangeAggregation={aggregation =>
               aggregation
-                ? setDatasetQuery(query.updateAggregation(index, aggregation))
-                : setDatasetQuery(query.removeAggregation(index))
+                ? setDatasetQuery(
+                    legacyQuery.updateAggregation(index, aggregation),
+                  )
+                : setDatasetQuery(legacyQuery.removeAggregation(index))
             }
             showMetrics={false}
             showRawData
@@ -206,7 +217,7 @@ export class GuiQueryEditor extends Component {
   }
 
   renderBreakouts() {
-    const { query, setDatasetQuery, features } = this.props;
+    const { legacyQuery, setDatasetQuery, features } = this.props;
 
     if (!features.breakout) {
       return;
@@ -214,10 +225,10 @@ export class GuiQueryEditor extends Component {
 
     const breakoutList = [];
 
-    const breakouts = [...query.breakouts()];
+    const breakouts = [...legacyQuery.breakouts()];
 
     // Placeholder breakout for showing the add button
-    if (query.canAddBreakout()) {
+    if (legacyQuery.canAddBreakout()) {
       breakouts.push(null);
     }
 
@@ -233,12 +244,12 @@ export class GuiQueryEditor extends Component {
           key={"breakout" + (breakout ? index : "-new")}
           className="QueryOption p1"
           breakout={breakout}
-          query={query}
-          breakoutOptions={query.breakoutOptions(breakout)}
+          query={legacyQuery}
+          breakoutOptions={legacyQuery.breakoutOptions(breakout)}
           onChangeBreakout={breakout =>
             breakout
-              ? setDatasetQuery(query.updateBreakout(index, breakout))
-              : setDatasetQuery(query.removeBreakout(index))
+              ? setDatasetQuery(legacyQuery.updateBreakout(index, breakout))
+              : setDatasetQuery(legacyQuery.removeBreakout(index))
           }
         >
           {this.renderAdd(index === 0 ? t`Add a grouping` : null)}
@@ -264,7 +275,7 @@ export class GuiQueryEditor extends Component {
   }
 
   renderDataSection() {
-    const { query, setDatasetQuery } = this.props;
+    const { legacyQuery, query, setDatasetQuery } = this.props;
 
     return (
       <div
@@ -275,14 +286,16 @@ export class GuiQueryEditor extends Component {
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
         {this.props.canChangeTable ? (
           <DatabaseSchemaAndTableDataSelector
-            selectedTableId={query.tableId()}
+            selectedTableId={Lib.sourceTableOrCardId(query)}
             setSourceTableFn={tableId =>
-              setDatasetQuery(query.setSourceTableId(tableId).datasetQuery())
+              setDatasetQuery(
+                legacyQuery.setSourceTableId(tableId).datasetQuery(),
+              )
             }
           />
         ) : (
           <span className="flex align-center px2 py2 text-bold text-grey">
-            {query.table() && query.table().displayName()}
+            {legacyQuery.table() && legacyQuery.table().displayName()}
           </span>
         )}
       </div>

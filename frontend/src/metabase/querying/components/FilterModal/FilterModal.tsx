@@ -114,7 +114,7 @@ export function FilterModal({
         <ModalFooter p="md" direction="row" justify="space-between">
           <Button
             variant="subtle"
-            color="text.1"
+            color="text-medium"
             disabled={!canRemoveFilters}
             onClick={handleReset}
           >
@@ -176,9 +176,9 @@ function TabContent({
 
 function SearchEmptyState() {
   return (
-    <Stack c="text.0" h="100%" justify="center" align="center">
+    <Stack c="text-light" h="100%" justify="center" align="center">
       <Icon name="search" size={40} />
-      <Text c="text.1" mt="lg" fw="bold">{t`Didn't find anything`}</Text>
+      <Text c="text-medium" mt="lg" fw="bold">{t`Didn't find anything`}</Text>
     </Stack>
   );
 }

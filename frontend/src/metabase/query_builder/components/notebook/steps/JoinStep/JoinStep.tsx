@@ -25,7 +25,7 @@ import {
 } from "./JoinStep.styled";
 
 export function JoinStep({
-  topLevelQuery: query,
+  query,
   step,
   color,
   readOnly,

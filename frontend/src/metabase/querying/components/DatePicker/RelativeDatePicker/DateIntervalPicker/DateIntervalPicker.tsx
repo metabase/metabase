@@ -120,7 +120,7 @@ export function DateIntervalPicker({
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">
-        <Group c="text.1" spacing="sm">
+        <Group c="text-medium" spacing="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

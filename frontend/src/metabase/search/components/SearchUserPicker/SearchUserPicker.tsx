@@ -89,7 +89,7 @@ export const SearchUserPicker = ({
                 <SelectedUserButton
                   data-testid="selected-user-button"
                   key={userId}
-                  c="brand.1"
+                  c="brand"
                   px="md"
                   py="sm"
                   maw="100%"
