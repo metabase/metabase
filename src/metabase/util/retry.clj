@@ -75,7 +75,8 @@
 (defn decorate
   "Returns a function accepting the same arguments as `f` but retrying on error
   as specified by `retry`.
-  The calling thread is blocked during the retries."
+  The calling thread is blocked during the retries. This function should be used to
+  trigger retries across the BE, but keep in mind to not chain retries with this function."
   ([f]
   (decorate f (random-exponential-backoff-retry (str (random-uuid)) (retry-configuration))))
   ([f ^Retry retry]
