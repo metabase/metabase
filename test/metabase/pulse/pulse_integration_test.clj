@@ -192,7 +192,7 @@
   pulse, and the queries for two cards. This enables a variety of cases to test the behavior of `:skip_if_empty` based
   on the presence or absence of card data."
   [[result skip-if-empty? query1 query2] & body]
-  `(mt/dataset ~'test-data
+  `(mt/dataset ~'sample-dataset
      (mt/with-temp [Card {~'base-card-id :id} {:name          "Card1"
                                                :dataset_query {:database (mt/id)
                                                                :type     :query
