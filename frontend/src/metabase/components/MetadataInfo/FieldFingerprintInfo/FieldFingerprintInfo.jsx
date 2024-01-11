@@ -36,7 +36,7 @@ function FieldFingerprintInfo({ className, field, showAllFieldValues }) {
 }
 
 function getTimezone(field) {
-  return field.query?.database?.()?.timezone || field.table?.database?.timezone;
+  return field.table?.database?.timezone;
 }
 
 function DateTimeFingerprint({ className, field }) {
