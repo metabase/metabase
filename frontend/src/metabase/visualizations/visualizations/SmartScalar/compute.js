@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment";
+import _ from "underscore";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
@@ -294,12 +295,14 @@ function computeComparisonPreviousValue({
   dateUnitSettings,
   formatValue,
 }) {
-  const previousRow = rows.findLast(
+  const previousRowIndex = _.findLastIndex(
+    rows,
     (row, i) =>
       i < nextValueRowIndex &&
       !isEmpty(row[metricColIndex]) &&
       !isEmpty(row[dimensionColIndex]),
   );
+  const previousRow = rows[previousRowIndex];
   // if no row exists with non-null date and non-null value
   if (isEmpty(previousRow)) {
     return null;
