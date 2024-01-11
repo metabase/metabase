@@ -307,3 +307,16 @@
   (let [column-type (or effective-type base-type)]
     (or (clojure.core/isa? column-type :type/Text)
         (clojure.core/isa? column-type :type/TextLike))))
+
+(defn ^:export assignable?
+  "Given two CLJS `:metadata/columns` returns true if the first column's type `[[lib.types.isa/isa?]]` subtype of the
+  second column's type. That is, that a value from `src-column` is assignable to `dst-column`.
+
+  That's the case if both are from the same family (strings, numbers, temporal) or if the `src-column` [[isa?]] subtype
+  of `dst-column`."
+  [src-column dst-column]
+  (or
+    (and (string? src-column)   (string? dst-column))
+    (and (number? src-column)   (number? dst-column))
+    (and (temporal? src-column) (temporal? dst-column))
+    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))
