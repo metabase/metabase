@@ -1,3 +1,4 @@
+import _ from "underscore";
 import * as ML from "cljs/metabase.lib.js";
 import type {
   AggregationClause,
@@ -34,12 +35,16 @@ export function expressions(
   return ML.expressions(query, stageIndex);
 }
 
+const memo_expressionable_columns = _.memoize(
+  ML.expressionable_columns,
+  (...args) => args.join(),
+);
 export function expressionableColumns(
   query: Query,
-  stageIndex: number,
+  stageIndex?: number,
   expressionPosition?: number,
 ): ColumnMetadata[] {
-  return ML.expressionable_columns(query, stageIndex, expressionPosition);
+  return memo_expressionable_columns(query, stageIndex, expressionPosition);
 }
 
 export function expressionParts(
