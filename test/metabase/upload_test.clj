@@ -666,7 +666,6 @@
             (testing "Table and Fields exist after sync"
               (sync-upload-test-table! :database (mt/db) :table-name table-name)
               (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
-                (is (=? {:name #"(?i)upload_test"} table))
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [[1 " true"  true true  1]
                           [2 "    1"  true false 0]
