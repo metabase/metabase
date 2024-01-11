@@ -311,9 +311,11 @@
 
     message))
 
+;; tmp now
 (defmethod driver/db-default-timezone :h2
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
+  [_driver _database]
+  (System/getProperty "user.timezone")
+  #_(sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.prepareStatement conn "select current_timestamp();")
