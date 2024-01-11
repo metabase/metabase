@@ -665,12 +665,8 @@ class TableInteractive extends Component {
     return style.left;
   }
 
-  getDimension(column, query) {
-    if (!query) {
-      return undefined;
-    }
-
-    return query.parseFieldReference(column.field_ref);
+  getField(column, metadata) {
+    return metadata?.field(column.id) ?? undefined;
   }
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
@@ -801,12 +797,8 @@ class TableInteractive extends Component {
         >
           <FieldInfoPopover
             placement="bottom-start"
-            dimension={
-              hasMetadataPopovers
-                ? this.getDimension(column, this.props.query)
-                : null
-            }
-            disabled={this.props.clicked != null}
+            field={this.getField(column, this.props.metadata)}
+            disabled={this.props.clicked != null || !hasMetadataPopovers}
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
@@ -1152,7 +1144,7 @@ export default _.compose(
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",
-    "getDimension",
+    "getField",
     "getHeaderClickedObject",
   ),
 )(TableInteractive);

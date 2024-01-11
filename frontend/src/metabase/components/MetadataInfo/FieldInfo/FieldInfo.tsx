@@ -1,6 +1,5 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
   InfoContainer,
@@ -8,13 +7,17 @@ import {
   FieldFingerprintInfo,
 } from "./FieldInfo.styled";
 
-FieldInfo.propTypes = {
-  className: PropTypes.string,
-  field: PropTypes.instanceOf(Field),
-  showAllFieldValues: PropTypes.bool,
-};
+interface FieldInfoProps {
+  className?: string;
+  field?: Field;
+  showAllFieldValues?: boolean;
+}
 
-export function FieldInfo({ className, field, showAllFieldValues }) {
+export function FieldInfo({
+  className,
+  field,
+  showAllFieldValues,
+}: FieldInfoProps) {
   const description = field?.description;
   return (
     <InfoContainer className={className}>
@@ -32,4 +35,5 @@ export function FieldInfo({ className, field, showAllFieldValues }) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export
 export default FieldInfo;
