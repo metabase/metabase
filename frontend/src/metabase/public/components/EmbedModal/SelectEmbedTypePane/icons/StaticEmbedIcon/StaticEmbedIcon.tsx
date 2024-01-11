@@ -1,4 +1,4 @@
-import { StaticEmbedIconRoot } from "metabase/public/components/widgets/SharingPane/icons/StaticEmbedIcon/StaticEmbedIcon.styled";
+import { StaticEmbedIconRoot } from "./StaticEmbedIcon.styled";
 
 export const StaticEmbedIcon = () => (
   <StaticEmbedIconRoot

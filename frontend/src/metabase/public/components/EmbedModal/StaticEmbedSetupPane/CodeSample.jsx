@@ -4,8 +4,8 @@ import { Component } from "react";
 import _ from "underscore";
 import Select, { Option } from "metabase/core/components/Select";
 import CopyButton from "metabase/components/CopyButton";
-
 import AceEditor from "metabase/components/TextEditor";
+
 import { CopyButtonContainer } from "./CodeSample.styled";
 
 export default class CodeSample extends Component {
@@ -43,7 +43,7 @@ export default class CodeSample extends Component {
             <h4>{title}</h4>
             {options && options.length > 1 ? (
               <Select
-                className="AdminSelect--borderless ml-auto pt1 pb1"
+                className="AdminSelect--borderless ml-auto"
                 value={name}
                 onChange={e => this.handleChange(e.target.value)}
                 buttonProps={{
@@ -59,7 +59,7 @@ export default class CodeSample extends Component {
             ) : null}
           </div>
         )}
-        <div className="bordered rounded shadowed relative">
+        <div className="bordered rounded shadowed relative mt2">
           <AceEditor
             className="z1"
             value={source}
