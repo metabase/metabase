@@ -25,7 +25,7 @@ export const getSegmentedControlOverrides =
             fontWeight: "normal",
             lineHeight: "1rem",
             "&:hover": {
-              color: theme.fn.themeColor("text-dark"),
+              color: theme.fn.themeColor("brand"),
             },
             "&[data-disabled]": {
               "&, &:hover": {
@@ -51,7 +51,7 @@ export const getSegmentedControlOverrides =
             },
           },
           root: {
-            backgroundColor: theme.fn.themeColor("bg-light"),
+            backgroundColor: theme.fn.themeColor("bg-medium"),
           },
           controlActive: {
             backgroundColor: shouldAnimate ? theme.white : undefined,
