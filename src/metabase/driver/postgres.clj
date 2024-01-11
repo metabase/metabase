@@ -845,29 +845,29 @@
           (.copyIn copy-manager ^String sql tsvs))))))
 
 (defmethod driver/current-user-table-privileges :postgres
-  [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/query
-     conn-spec
-     (str/join
-      "\n"
-      ["with table_privileges as ("
-       "select"
-       "  NULL as role,"
-       "  t.schemaname as schema,"
-       "  t.tablename as table,"
-       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'UPDATE') as update,"
-       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'SELECT') as select,"
-       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'INSERT') as insert,"
-       "  pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'DELETE') as delete"
-       "from pg_catalog.pg_tables t"
-       "where t.schemaname !~ '^pg_'"
-       "  and t.schemaname <> 'information_schema'"
-       "  and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-       ")"
-       "select t.*"
-       "from table_privileges t"
-       "where t.select or t.update or t.insert or t.delete"]))))
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [current-user-roles (->> (jdbc/query {:connection conn}
+                                               "SELECT DISTINCT(rolname) FROM pg_roles WHERE pg_has_role (current_user, oid, 'member');")
+                                   (map :rolname)
+                                   set)]
+       (->> (jdbc/result-set-seq
+             (.getTablePrivileges (.getMetaData conn) (:name database) nil "%"))
+            ;; need to filter out the schema that we dont' want too
+            (filter #(and (contains? current-user-roles (:grantee %))
+                          (#{"SELECT" "UPDATE" "INSERT" "DELETE"} (:privilege %))))
+            (map (fn [{:keys [table_schem table_name privilege]}]
+                   {:role   nil
+                    :schema table_schem
+                    :table  table_name
+                    :select (= "SELECT" privilege)
+                    :update (= "UDPATE" privilege)
+                    :insert (= "INSERT" privilege)
+                    :delete (= "DELETE" privilege)})))))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
