@@ -993,3 +993,19 @@ export const getIsEditingInDashboard = state => {
 export const getDashboard = state => {
   return getDashboardById(state, getDashboardId(state));
 };
+
+export const canUploadToQuestion = question => state => {
+  const uploadsEnabled = getSetting(state, "uploads-enabled");
+  if (!uploadsEnabled) {
+    return false;
+  }
+  const uploadsDbId = getSetting(state, "uploads-database-id");
+  const canUploadToDb =
+    uploadsDbId === question.databaseId() &&
+    Databases.selectors
+      .getObject(state, {
+        entityId: uploadsDbId,
+      })
+      ?.canUpload();
+  return canUploadToDb;
+};

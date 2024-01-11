@@ -28,6 +28,14 @@ describe("FileUploadStatus", () => {
         name: "Second Collection",
       }),
     );
+
+    fetchMock.get(
+      "path:/api/table/123",
+      createMockCollection({
+        id: 123,
+        name: "Fancy Table",
+      }),
+    );
   });
 
   afterEach(() => {
@@ -75,6 +83,32 @@ describe("FileUploadStatus", () => {
     expect(await screen.findByText("test two.csv")).toBeInTheDocument();
 
     expect(await screen.findByText("test three.csv")).toBeInTheDocument();
+  });
+
+  it("Should show upload status for a table append", async () => {
+    const uploadOne = createMockUpload({
+      tableId: 123,
+      collectionId: undefined,
+      id: 1,
+    });
+
+    renderWithProviders(<FileUploadStatus />, {
+      storeInitialState: createMockState({
+        upload: {
+          [1]: uploadOne,
+        },
+      }),
+    });
+
+    expect(
+      await screen.findByText("Uploading data to Fancy Table …"),
+    ).toBeInTheDocument();
+
+    expect(
+      await screen.findByText("Uploading data to Fancy Table …"),
+    ).toBeInTheDocument();
+
+    expect(await screen.findByText("test.csv")).toBeInTheDocument();
   });
 
   it("Should show a start exploring link on completion", async () => {

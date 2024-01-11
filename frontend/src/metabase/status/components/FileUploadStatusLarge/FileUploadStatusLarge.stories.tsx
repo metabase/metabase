@@ -21,7 +21,7 @@ Incomplete.args = {
       collectionId: "root",
     },
   ],
-  collection: createMockCollection({ name: "Revenue" }),
+  uploadDestination: createMockCollection({ name: "Revenue" }),
   isActive: true,
 };
 
@@ -35,7 +35,7 @@ Complete.args = {
       collectionId: "root",
     },
   ],
-  collection: createMockCollection({ name: "Revenue" }),
+  uploadDestination: createMockCollection({ name: "Revenue" }),
   isActive: true,
 };
 
@@ -50,6 +50,6 @@ Aborted.args = {
       message: "It's dead Jim",
     },
   ],
-  collection: createMockCollection({ name: "Revenue" }),
+  uploadDestination: createMockCollection({ name: "Revenue" }),
   isActive: true,
 };
