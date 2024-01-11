@@ -3,7 +3,6 @@ import type {
   StaticVisualizationProps,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { OptionsType } from "metabase/lib/formatting/types";
 import {
   computeTrend,
   CHANGE_TYPE_OPTIONS,
@@ -33,7 +32,6 @@ export function SmartScalar({
     throw new Error(`Failed to compute trend data for ${card.name}`);
   }
 
-  const { display, formatOptions } = trend;
   const comparisons: any[] = trend.comparisons || [];
 
   const styles: Record<string, CSSProperties> = {
@@ -63,14 +61,13 @@ export function SmartScalar({
 
   return (
     <div style={styles.root}>
-      <div style={styles.value}>{display.value}</div>
-      <div style={styles.date}>{display.date}</div>
+      <div style={styles.value}>{trend.display.value}</div>
+      <div style={styles.date}>{trend.display.date}</div>
       <ul style={styles.comparisonList}>
         {comparisons.map((comparison, index) => (
           <li key={index} style={styles.comparisonListItem}>
             <Comparison
               comparison={comparison}
-              formatOptions={formatOptions}
               renderingContext={renderingContext}
             />
           </li>
@@ -82,33 +79,24 @@ export function SmartScalar({
 
 interface ComparisonProps {
   comparison: any;
-  formatOptions: OptionsType;
   renderingContext: RenderingContext;
 }
 
-function Comparison({
-  comparison,
-  formatOptions,
-  renderingContext,
-}: ComparisonProps) {
-  const { formatValue, getColor } = renderingContext;
+function Comparison({ comparison, renderingContext }: ComparisonProps) {
+  const { getColor } = renderingContext;
 
   const changeDisplayValue =
     comparison.changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
       ? formatChange(comparison.percentChange)
       : comparison.display.percentChange;
 
-  const separatorText = " • ";
+  let Icon: typeof ArrowUp | null = null;
 
-  const comparisonValue = formatValue(comparison.comparisonValue, {
-    ...formatOptions,
-    compact: true,
-  });
-
-  const comparisonDescription = `${comparison.comparisonDescStr}: `;
-
-  const Icon =
-    comparison.changeArrowIconName === "arrow_up" ? ArrowUp : ArrowDown;
+  if (comparison.changeArrowIconName === "arrow_up") {
+    Icon = ArrowUp;
+  } else if (comparison.changeArrowIconName === "arrow_down") {
+    Icon = ArrowDown;
+  }
 
   const styles: Record<string, CSSProperties> = {
     icon: {
@@ -118,7 +106,7 @@ function Comparison({
       marginRight: "8px",
     },
     percentChange: {
-      color: comparison.changeColor,
+      color: comparison.changeColor || getColor("text-light"),
       fontWeight: 900,
     },
     separator: {
@@ -138,14 +126,16 @@ function Comparison({
 
   return (
     <span>
-      <Icon style={styles.icon} />
+      {!!Icon && <Icon style={styles.icon} />}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
-        <span style={styles.separator}>{separatorText}</span>
+        <span style={styles.separator}> • </span>
         <span style={styles.comparisonDescription}>
-          {comparisonDescription}
+          {`${comparison.comparisonDescStr}: `}
         </span>
-        <span style={styles.comparisonValue}>{comparisonValue}</span>
+        <span style={styles.comparisonValue}>
+          {comparison.display.comparisonValue}
+        </span>
       </span>
     </span>
   );
