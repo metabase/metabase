@@ -17,18 +17,21 @@ export const getSegmentedControlOverrides =
       ) => {
         return {
           label: {
-            color: theme.fn.themeColor("text-medium"),
+            color: theme.fn.themeColor("text-dark"),
             padding: fullWidth ? `${rem(8)} ${rem(16)}` : rem(8),
             fontWeight: "normal",
             lineHeight: "1rem",
-            "&[data-active]": {
-              "&, &:hover": {
-                color: theme.fn.themeColor("text-dark"),
-              },
+            "&:hover": {
+              color: theme.fn.themeColor("text-dark"),
             },
             "&[data-disabled]": {
               "&, &:hover": {
                 color: theme.fn.themeColor("text-light"),
+              },
+            },
+            "&[data-active]": {
+              "&, &:hover": {
+                color: theme.fn.themeColor("text-dark"),
               },
             },
           },
