@@ -417,15 +417,7 @@ function ViewTitleHeaderRightSide(props) {
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = question.isStructured()
-    ? Lib.sourceTableOrCardId(question.query()) == null
-    : !question.legacyQuery().hasData();
-
-  const hasSaveButton =
-    !isDataset &&
-    !!isDirty &&
-    (isNewQuery || canEditQuery) &&
-    isActionListVisible;
+  const hasSaveButton = !isDataset && !!isDirty && isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
