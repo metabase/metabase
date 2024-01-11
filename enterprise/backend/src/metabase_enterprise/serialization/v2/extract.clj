@@ -44,7 +44,9 @@
 
 (defn- collection-set-for-user
   "Returns a set of collection IDs to export for the provided user, if any.
-   If user-id is nil, do not include any personally-owned collections."
+   If user-id is nil, do not include any personally-owned collections.
+
+  Does not export ee-only analytics collections."
   [user-id]
   (let [roots (t2/select Collection {:where [:and [:= :location "/"]
                                                   [:or [:= :personal_owner_id nil]
