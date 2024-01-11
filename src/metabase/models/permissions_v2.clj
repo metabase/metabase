@@ -17,8 +17,10 @@
 (methodical/defmethod t2/table-name :model/PermissionsV2 [_model] :permissions_v2)
 
 (t2/deftransforms :model/PermissionsV2
-  {:type  mi/transform-keyword
-   :value mi/transform-keyword})
+  {:type       mi/transform-keyword
+   :perm_value mi/transform-keyword
+   ;; define keyword transformation for :value as well so that we can use it as an alias for :perm_value
+   :value      mi/transform-keyword})
 
 
 ;;; ---------------------------------------- Permission definitions ---------------------------------------------------
@@ -127,6 +129,7 @@
 (defmethod coalesce :default
   [perm-type perm-values]
   (let [ordered-values (-> Permissions perm-type :values)]
+    (def ordered-values ordered-values)
     (first (filter (set perm-values) ordered-values))))
 
 (mu/defn permission-for-user :- PermissionValue
@@ -141,7 +144,7 @@
       (most-permissive-value perm-type))
     (let [perm-values (t2/select-fn-set :value
                                         :model/PermissionsV2
-                                        {:select [:p.value]
+                                        {:select [[:p.perm_value :value]]
                                          :from [[:permissions_group_membership :pgm]]
                                          :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                                                 [:permissions_v2 :p]     [:= :p.group_id :pg.id]]
@@ -175,7 +178,7 @@
   (let [data-perms (t2/select [:model/PermissionsV2
                                :type
                                [:group_id :group-id]
-                               :value
+                               [:perm_value :value]
                                [:db_id :db-id]
                                :schema
                                [:table_id :table-id]]
@@ -203,10 +206,10 @@
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 
 (defn- assert-valid-permission
-  [{:keys [type value object_id db_id] :as permission}]
+  [{:keys [type perm_value object_id db_id] :as permission}]
   (when-not (mc/validate PermissionType type)
     (throw (ex-info (str/join (mu/explain PermissionType type)) permission)))
-  (assert-value-matches-perm-type type value)
+  (assert-value-matches-perm-type type perm_value)
   (assert-required-object-id type object_id)
   (assert-required-db-id type db_id))
 
@@ -257,13 +260,13 @@
                                              :object_id object-id
                                              :db_id     db-id
                                              :table_id  table-id)
-          new-perm         {:type      perm-type
-                            :group_id  group-id
-                            :object_id object-id
-                            :value     value
-                            :db_id     db-id
-                            :table_id  table-id
-                            :schema    schema}]
+          new-perm         {:type       perm-type
+                            :group_id   group-id
+                            :object_id  object-id
+                            :perm_value value
+                            :db_id      db-id
+                            :table_id   table-id
+                            :schema     schema}]
       (if existing-perm-id
         (t2/update! :model/PermissionsV2 existing-perm-id new-perm)
         (t2/insert! :model/PermissionsV2 new-perm)))))

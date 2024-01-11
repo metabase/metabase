@@ -62,18 +62,18 @@
     (with-restored-perms-for-group! group-id
       (testing "`set-permission!` can set a new permission"
         (is (= 1 (perms-v2/set-permission! :collection group-id :curate collection-id)))
-        (is (= :curate (t2/select-one-fn :value
-                                     :model/PermissionsV2
-                                     :group_id  group-id
-                                     :type      :collection
-                                     :object_id collection-id))))
+        (is (= :curate (t2/select-one-fn :perm_value
+                                         :model/PermissionsV2
+                                         :group_id  group-id
+                                         :type      :collection
+                                         :object_id collection-id))))
 
       (testing "`set-permission!` can update an existing permission"
         (is (= 1 (perms-v2/set-permission! :collection group-id :view collection-id)))
         (is (= 1 (t2/count :model/PermissionsV2
                            :type     :collection
                            :group_id group-id)))
-        (is (= :view (t2/select-one-fn :value
+        (is (= :view (t2/select-one-fn :perm_value
                                        :model/PermissionsV2
                                        :type      :collection
                                        :group_id  group-id
@@ -81,7 +81,7 @@
 
       (testing "`set-permission!` can set a new database-level permission"
         (is (= 1 (perms-v2/set-permission! :manage-database group-id :yes database-id)))
-        (is (= :yes (t2/select-one-fn :value
+        (is (= :yes (t2/select-one-fn :perm_value
                                       :model/PermissionsV2
                                       :group_id  group-id
                                       :type      :manage-database
@@ -92,7 +92,7 @@
         (is (= 1 (t2/count :model/PermissionsV2
                            :type     :manage-database
                            :group_id group-id)))
-        (is (= :no (t2/select-one-fn :value
+        (is (= :no (t2/select-one-fn :perm_value
                                      :model/PermissionsV2
                                      :group_id  group-id
                                      :type      :manage-database
@@ -100,7 +100,7 @@
 
       (testing "`set-permission!` can set a new table-level permission"
         (is (= 1 (perms-v2/set-permission! :data-access group-id :unrestricted table-id database-id "PUBLIC")))
-        (is (= :unrestricted (t2/select-one-fn :value
+        (is (= :unrestricted (t2/select-one-fn :perm_value
                                                :model/PermissionsV2
                                                :group_id  group-id
                                                :type      :data-access
@@ -111,7 +111,7 @@
         (is (= 1 (t2/count :model/PermissionsV2
                            :type     :data-access
                            :group_id group-id)))
-        (is (= :no-self-service (t2/select-one-fn :value
+        (is (= :no-self-service (t2/select-one-fn :perm_value
                                                   :model/PermissionsV2
                                                   :group_id  group-id
                                                   :type      :data-access

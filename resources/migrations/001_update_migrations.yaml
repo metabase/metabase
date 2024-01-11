@@ -5221,8 +5221,10 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  remarks: The value this permission is set to
-                  name: value
+                  remarks: >-
+                    The value this permission is set to. I wanted to call this 'value' but that's a reserved word
+                    in H2 which makes migrations a little more difficult.
+                  name: perm_value
                   type: varchar(64)
                   constraints:
                     nullable: false
