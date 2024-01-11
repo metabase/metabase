@@ -231,10 +231,7 @@ function parseHash(hash?: string) {
 
 function referencedQuestionIds(query: Lib.Query): number[] {
   const cardTemplateTags = getCardTemplateTags(query);
-  const cardIds = cardTemplateTags.flatMap(tag => {
-    const cardId = tag["card-id"];
-    return typeof cardId === "number" ? [cardId] : [];
-  });
+  const cardIds = cardTemplateTags.map(tag => tag["card-id"]);
   return cardIds;
 }
 
