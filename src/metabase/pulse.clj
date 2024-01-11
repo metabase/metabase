@@ -14,7 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
@@ -192,15 +192,19 @@
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
 
-  The gerenerated parts will follow the pulse's creator permissions."
-  [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
-  (let [dashboard-id      (u/the-id dashboard)]
+  The generated parts will follow the pulse's creator permissions."
+  [{:keys [skip_if_empty] pulse-creator-id :creator_id :as pulse} dashboard & {:as _options}]
+  (let [dashboard-id (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
-      (if (dashboard/has-tabs? dashboard)
-        (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
-         (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
-                           (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
-        (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
+      (let [parts (if (dashboard/has-tabs? dashboard)
+                    (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
+                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
+                                        (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
+                    (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
+        (if skip_if_empty
+          ;; Remove any component of the parts that have no results when empty results aren't wanted
+          (remove (fn [part] (zero? (get-in part [:result :row_count] 0))) parts)
+          parts)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -481,7 +485,7 @@
   [_ _ {:keys [channel_type]}]
   (throw (UnsupportedOperationException. (tru "Unrecognized channel type {0}" (pr-str channel_type)))))
 
-(defn- parts->notifications [{:keys [channels channel-ids], pulse-id :id, :as pulse} parts]
+(defn- parts->notifications [{:keys [channels channel-ids] pulse-id :id :as pulse} parts]
   (let [channel-ids (or channel-ids (mapv :id channels))]
     (when (should-send-notification? pulse parts)
       (let [event-type (if (= :pulse (alert-or-pulse pulse))
@@ -501,18 +505,19 @@
 
 (defn- pulse->notifications
   "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
-  [{:keys [cards], pulse-id :id, :as pulse} dashboard]
-  (parts->notifications pulse
-                        (if dashboard
-                          ;; send the dashboard
-                          (execute-dashboard pulse dashboard)
-                          ;; send the cards instead
-                          (for [card cards
-                                ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
-                                ;; some cards may return empty part, e.g. if the card has been archived
-                                :when part]
-                            part))))
+  [{:keys [cards] pulse-id :id :as pulse} dashboard]
+  (parts->notifications
+    pulse
+    (if dashboard
+      ;; send the dashboard
+      (execute-dashboard pulse dashboard)
+      ;; send the cards instead
+      (for [card cards
+            ;; Pulse ID may be `nil` if the Pulse isn't saved yet
+            :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
+            ;; some cards may return empty part, e.g. if the card has been archived
+            :when part]
+        part))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |

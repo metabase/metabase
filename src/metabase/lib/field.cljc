@@ -5,7 +5,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -525,31 +524,13 @@
              visible-columns)
        (lib.equality/mark-selected-columns query stage-number visible-columns selected-fields)))))
 
-(mu/defn field-id :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
-  "Find the field id for something or nil."
-  [field-metadata :- ::lib.schema.metadata/column]
-  (:id field-metadata))
-
-(mu/defn legacy-card-or-table-id :- [:maybe [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-  "Find the legacy card id or table id for a given ColumnMetadata or nil.
-   Returns a either `\"card__<id>\"` or integer table id."
-  [{card-id :lib/card-id table-id :table-id} :- ::lib.schema.metadata/column]
-  (cond
-    card-id (str "card__" card-id)
-    table-id table-id))
-
 (defn- populate-fields-for-stage
   "Given a query and stage, sets the `:fields` list to be the fields which would be selected by default.
   This is exactly [[lib.metadata.calculation/returned-columns]] filtered by the `:lib/source`.
   Fields from explicit joins are listed on the join itself and should not be listed in `:fields`."
   [query stage-number]
-  (lib.util/update-query-stage query stage-number
-                               (fn [stage]
-                                 (assoc stage :fields
-                                        (into [] (comp (remove (comp #{:source/joins :source/implicitly-joinable}
-                                                                     :lib/source))
-                                                       (map lib.ref/ref))
-                                              (lib.metadata.calculation/returned-columns query stage-number stage))))))
+  (let [defaults (lib.metadata.calculation/default-columns-for-stage query stage-number)]
+    (lib.util/update-query-stage query stage-number assoc :fields (mapv lib.ref/ref defaults))))
 
 (defn- query-with-fields
   "If the given stage already has a `:fields` clause, do nothing. If it doesn't, populate the `:fields` clause with the
@@ -609,23 +590,25 @@
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
-    (case source
-      (:source/table-defaults
-       :source/fields
-       :source/card
-       :source/previous-stage
-       :source/expressions
-       :source/aggregations
-       :source/breakouts)         (cond-> query
-                                    (contains? stage :fields) (include-field stage-number column))
-      :source/joins               (add-field-to-join query stage-number column)
-      :source/implicitly-joinable (include-field query stage-number column)
-      :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-      ;; Default case - do nothing if we don't know about the incoming value.
-      ;; Generates a warning, as we should aim to capture all the :source/* values here.
-      (do
-        (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
-        query))))
+    (-> (case source
+          (:source/table-defaults
+            :source/fields
+            :source/card
+            :source/previous-stage
+            :source/expressions
+            :source/aggregations
+            :source/breakouts)         (cond-> query
+                                         (contains? stage :fields) (include-field stage-number column))
+          :source/joins               (add-field-to-join query stage-number column)
+          :source/implicitly-joinable (include-field query stage-number column)
+          :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
+          ;; Default case - do nothing if we don't know about the incoming value.
+          ;; Generates a warning, as we should aim to capture all the :source/* values here.
+          (do
+            (log/warn (i18n/tru "Cannot add-field with unknown source {0}" (pr-str source)))
+            query))
+        ;; Then drop any redundant :fields clauses.
+        lib.remove-replace/normalize-fields-clauses)))
 
 (defn- remove-matching-ref [column refs]
   (let [match (lib.equality/find-matching-ref column refs)]
@@ -673,22 +656,25 @@
    stage-number :- :int
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [source (:lib/source column)]
-    (case source
-      (:source/table-defaults
-       :source/fields
-       :source/breakouts
-       :source/aggregations
-       :source/expressions
-       :source/card
-       :source/previous-stage
-       :source/implicitly-joinable) (exclude-field query stage-number column)
-      :source/joins                 (remove-field-from-join query stage-number column)
-      :source/native                (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
-      ;; Default case: do nothing and return the query unchaged.
-      ;; Generate a warning - we should aim to capture every `:source/*` value above.
-      (do
-        (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
-        query))))
+    (-> (case source
+          (:source/table-defaults
+            :source/fields
+            :source/breakouts
+            :source/aggregations
+            :source/expressions
+            :source/card
+            :source/previous-stage
+            :source/implicitly-joinable) (exclude-field query stage-number column)
+          :source/joins                 (remove-field-from-join query stage-number column)
+          :source/native                (throw (ex-info (native-query-fields-edit-error)
+                                                        {:query query :stage stage-number}))
+          ;; Default case: do nothing and return the query unchaged.
+          ;; Generate a warning - we should aim to capture every `:source/*` value above.
+          (do
+            (log/warn (i18n/tru "Cannot remove-field with unknown source {0}" (pr-str source)))
+            query))
+        ;; Then drop any redundant :fields clauses.
+        lib.remove-replace/normalize-fields-clauses)))
 
 ;; TODO: Refactor this away? The special handling for aggregations is strange.
 (mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
@@ -708,19 +694,6 @@
                     lib.metadata.calculation/visible-columns)
                   query stage-number stage)]
      (lib.equality/find-matching-column query stage-number field-ref columns))))
-
-;; TODO: Refactor this away - handle legacy refs in lib.js and using `lib.equality` directly from there.
-(mu/defn find-visible-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
-  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
-  only meant for use with `:field` clauses."
-  ([query legacy-ref]
-   (find-visible-column-for-legacy-ref query -1 legacy-ref))
-
-  ([query       :- ::lib.schema/query
-    stage-index :- :int
-    legacy-ref  :- some?]
-   (let [a-ref (lib.convert/legacy-ref->pMBQL query stage-index legacy-ref)]
-     (find-visible-column-for-ref query stage-index a-ref))))
 
 (defn json-field?
   "Return true if field is a JSON field, false if not."
@@ -784,8 +757,11 @@
   widget in the QB filter modals."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  {:field-id         (:id column)
-   :search-field-id  (:id (search-field metadata-providerable column))
-   :has-field-values (if column
-                       (infer-has-field-values column)
-                       :none)})
+  (when column
+    (let [column-field-id (:id column)
+          search-field-id (:id (search-field metadata-providerable column))]
+      {:field-id (when (int? column-field-id) column-field-id)
+       :search-field-id (when (int? search-field-id) search-field-id)
+       :has-field-values (if column
+                           (infer-has-field-values column)
+                           :none)})))

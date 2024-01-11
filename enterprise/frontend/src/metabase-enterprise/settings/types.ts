@@ -12,6 +12,7 @@ interface EnterpriseSettingsState extends SettingsState {
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: Record<string, string>;
   "application-logo-url"?: string;
+  "landing-page"?: string;
   /**
    * @deprecated
    */

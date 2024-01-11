@@ -33,7 +33,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
   });
 
   it("should let the user lock parameters to specific values", () => {
-    openStaticEmbeddingModal("Parameters");
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     modal().within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"

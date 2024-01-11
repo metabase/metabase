@@ -54,7 +54,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      openStaticEmbeddingModal("Parameters");
+      openStaticEmbeddingModal({ activeTab: "parameters" });
 
       cy.findByLabelText("Enable or lock parameters").as("allParameters");
 
@@ -137,7 +137,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         visitDashboard(dashboardId);
       });
 
-      openStaticEmbeddingModal("Parameters");
+      openStaticEmbeddingModal({ activeTab: "parameters" });
 
       cy.get("@allParameters").findByText("Locked").click();
       popover().contains("Disabled").click();
@@ -402,7 +402,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
   });
 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
-    openStaticEmbeddingModal("Parameters");
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     // ID param is disabled by default
     setParameter("Name", "Editable");

@@ -23,7 +23,7 @@ describe("scenarios > embedding > native questions", () => {
         visitQuestion: true,
       });
 
-      openStaticEmbeddingModal({ activeTab: "Parameters" });
+      openStaticEmbeddingModal({ activeTab: "parameters" });
     });
 
     it("should not display disabled parameters", () => {
@@ -267,7 +267,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
       visitQuestion: true,
     });
 
-    openStaticEmbeddingModal({ activeTab: "Parameters" });
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     // Note: ID is disabled
     setParameter("Source", "Locked");

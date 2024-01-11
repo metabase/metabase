@@ -44,7 +44,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
 
-        openStaticEmbeddingModal({ activeTab: "Appearance" });
+        openStaticEmbeddingModal({ activeTab: "appearance" });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -103,12 +103,13 @@ describeEE("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then(questionId => {
         visitQuestion(questionId);
 
-        openStaticEmbeddingModal("Appearance");
+        openStaticEmbeddingModal({ activeTab: "appearance" });
 
         cy.log("Disable downloads");
         cy.findByLabelText("Enable users to download data from this embed?")
           .as("allow-download-toggle")
           .should("be.checked");
+
         cy.findByText("Enable users to download data from this embed?").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 

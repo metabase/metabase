@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
+   [metabase.test :as mt]
    [metabase.test.util :as tu]))
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
@@ -10,7 +10,7 @@
 
 (deftest get-saml-settings-token-features-test
   (testing "Getting SAML settings should return their default values without :sso-saml feature flag enabled"
-    (premium-features-test/with-premium-features #{:sso-saml}
+    (mt/with-premium-features #{:sso-saml}
       (tu/with-temporary-setting-values [saml-identity-provider-uri         default-idp-uri
                                          saml-identity-provider-certificate default-idp-cert
                                          saml-identity-provider-issuer      "54321"
@@ -26,7 +26,7 @@
                                          saml-group-mappings                {:group_1 [1]}
                                          saml-enabled                       true]
         (doseq [feature? [true false]]
-          (premium-features-test/with-premium-features (if feature? #{:sso-saml} #{})
+          (mt/with-premium-features (if feature? #{:sso-saml} #{})
             (is (= (if feature? default-idp-uri nil)
                    (sso-settings/saml-identity-provider-uri)))
             (is (= (if feature? default-idp-cert nil)
@@ -60,7 +60,7 @@
 
 (deftest set-saml-settings-token-features-test
   (testing "Setting SAML settings should error without the :sso-saml feature flag enabled"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting saml-identity-provider-uri is not enabled because feature :sso-saml is not available"
@@ -121,7 +121,7 @@
 (deftest jwt-settings-token-features-test
   (testing "Getting JWT settings should return their default values without :sso-jwt feature flag enabled"
     (doseq [feature? [true false]]
-      (premium-features-test/with-premium-features #{:sso-jwt}
+      (mt/with-premium-features #{:sso-jwt}
         (tu/with-temporary-setting-values [jwt-identity-provider-uri default-idp-uri
                                            jwt-shared-secret         "01234"
                                            jwt-attribute-email       "not default email"
@@ -131,7 +131,7 @@
                                            jwt-group-sync            true
                                            jwt-group-mappings        {:group_id [1]}
                                            jwt-enabled               true]
-          (premium-features-test/with-premium-features (if feature? #{:sso-jwt} #{})
+          (mt/with-premium-features (if feature? #{:sso-jwt} #{})
             (is (= (if feature? default-idp-uri nil)
                    (sso-settings/jwt-identity-provider-uri)))
             (is (= (if feature? "01234" nil)
@@ -153,7 +153,7 @@
 
 (deftest set-jwt-settings-token-features-test
   (testing "Setting JWT settings should error without the :sso-jwt feature flag enabled"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting jwt-identity-provider-uri is not enabled because feature :sso-jwt is not available"

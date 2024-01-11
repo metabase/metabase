@@ -149,7 +149,13 @@ function getSidebar(
   }
 
   if (isShowingTemplateTagsEditor) {
-    return <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />;
+    return (
+      <TagEditorSidebar
+        {...props}
+        query={dataset.legacyQuery()}
+        onClose={toggleTemplateTagsEditor}
+      />
+    );
   }
   if (isShowingDataReference) {
     return <DataReference {...props} onClose={toggleDataReference} />;
@@ -216,7 +222,7 @@ function DatasetEditor(props) {
       return INITIAL_NOTEBOOK_EDITOR_HEIGHT;
     }
     return calcInitialEditorHeight({
-      query: dataset.query(),
+      query: dataset.legacyQuery(),
       viewHeight: height,
     });
   }, [dataset, height]);
@@ -405,7 +411,7 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    if (dataset.query().isEmpty()) {
+    if (dataset.legacyQuery({ useStructuredQuery: true }).isEmpty()) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);

@@ -90,7 +90,7 @@ const QuestionActions = ({
     canWrite &&
     isSaved &&
     isDataset &&
-    checkDatabaseCanPersistDatasets(question.query().database());
+    checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
     setQueryBuilderMode("dataset", {
@@ -197,7 +197,7 @@ const QuestionActions = ({
     }
   }
 
-  if (!question.query().readOnly()) {
+  if (question.isQueryEditable()) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "clone",

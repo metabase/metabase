@@ -3,8 +3,8 @@ import _ from "underscore";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
-import { DATE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
-import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
+import { DATE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/DatePicker";
+import { EXCLUDE_OPERATORS } from "metabase/admin/datamodel/components/filters/pickers/DatePicker/ExcludeDatePicker";
 import { dateParameterValueToMBQL } from "metabase-lib/parameters/utils/mbql";
 import {
   DATE_MBQL_FILTER_MAPPING,

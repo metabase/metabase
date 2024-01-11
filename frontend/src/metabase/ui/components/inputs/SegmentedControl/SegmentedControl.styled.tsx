@@ -18,7 +18,7 @@ export const getSegmentedControlOverrides =
             fontWeight: "normal",
             lineHeight: "1rem",
             "&[data-active]": {
-              color: theme.colors.text[2],
+              color: theme.fn.themeColor("text-dark"),
             },
           },
         };

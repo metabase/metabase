@@ -700,7 +700,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          openStaticEmbeddingModal("Parameters");
+          openStaticEmbeddingModal({ activeTab: "parameters" });
 
           // visit the iframe src directly to ensure it's not sing preview endpoints
           visitIframe();
@@ -1153,8 +1153,16 @@ const testQuery = {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
     breakout: [
-      ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
-      ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+      [
+        "field",
+        PEOPLE.SOURCE,
+        { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+      ],
+      [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+      ],
     ],
   },
   database: SAMPLE_DB_ID,

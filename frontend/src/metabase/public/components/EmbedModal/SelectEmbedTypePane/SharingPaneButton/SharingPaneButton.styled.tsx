@@ -19,11 +19,11 @@ export const SharingPaneButtonTitle = styled(Title)<SharingPaneElementProps>`
     !disabled
       ? css`
           ${SharingPaneButtonContent}:hover & {
-            color: ${theme.colors.brand[1]};
+            color: ${theme.fn.themeColor("brand")};
           }
         `
       : css`
-          color: ${theme.colors.text[0]};
+          color: ${theme.fn.themeColor("text-light")};
         `}
 `;
 
@@ -34,7 +34,7 @@ export const SharingPaneActionButton = styled(Button)<
     !disabled &&
     css`
       ${SharingPaneButtonContent}:hover & {
-        background-color: ${theme.colors.brand[1]};
+        background-color: ${theme.fn.themeColor("brand")};
         color: white;
       }
     `}

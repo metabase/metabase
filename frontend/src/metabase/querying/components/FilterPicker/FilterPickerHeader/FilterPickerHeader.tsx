@@ -16,7 +16,9 @@ export function FilterPickerHeader({
   return (
     <FilterHeaderRoot p="sm" justify="space-between">
       {onBack && (
-        <PopoverBackButton onClick={onBack}>{columnName}</PopoverBackButton>
+        <PopoverBackButton pr="md" onClick={onBack}>
+          {columnName}
+        </PopoverBackButton>
       )}
       {children}
     </FilterHeaderRoot>

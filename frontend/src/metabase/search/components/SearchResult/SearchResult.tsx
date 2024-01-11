@@ -128,7 +128,7 @@ export function SearchResult({
           <Group noWrap spacing="sm" data-testid="result-description">
             <DescriptionDivider
               size="md"
-              color="focus.0"
+              color="focus"
               orientation="vertical"
             />
             <SearchResultDescription

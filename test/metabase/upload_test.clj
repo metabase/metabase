@@ -167,6 +167,20 @@
            ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
            ;; Date-related
            [" 2022-01-01 "                    #t "2022-01-01"             date-type]
+           [" 2022-02-30 "                    " 2022-02-30 "              vchar-type]
+           [" -2022-01-01 "                   #t "-2022-01-01"            date-type]
+           [" Jan 30 2018"                    #t "2018-01-30"             date-type]
+           [" Jan 30 -2018"                   #t "-2018-01-30"            date-type]
+           [" Jan 30, 2018"                   #t "2018-01-30"             date-type]
+           [" Feb 30, 2018"                   " Feb 30, 2018"             vchar-type]
+           [" 30 Jan 2018"                    #t "2018-01-30"             date-type]
+           [" 30 Jan, 2018"                   #t "2018-01-30"             date-type]
+           [" January 30 2018"                #t "2018-01-30"             date-type]
+           [" January 30, 2018"               #t "2018-01-30"             date-type]
+           [" 30 January 2018"                #t "2018-01-30"             date-type]
+           [" 30 January, 2018"               #t "2018-01-30"             date-type]
+           [" Sunday, January 30 2000"        #t "2000-01-30"             date-type]
+           [" Sunday, January 30, 2000"       #t "2000-01-30"             date-type]
            [" 2022-01-01T01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01t01:00 "              #t "2022-01-01T01:00"       datetime-type]
            [" 2022-01-01 01:00 "              #t "2022-01-01T01:00"       datetime-type]
@@ -1199,35 +1213,36 @@
 
 (deftest can-append-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Happy path"
-      (is (= {:row-count 2}
-             (append-csv-with-defaults!))))
-    (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
-      (mt/with-temporary-setting-values [uploads-database-id nil
-                                         uploads-schema-name nil
-                                         uploads-table-prefix nil]
-        (is (some? (append-csv-with-defaults!)))))
-    (testing "Uploads must be enabled"
-      (is (= {:message "Uploads are not enabled."
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
-    (testing "The table must exist"
-      (is (= {:message "Not found."
-              :data    {:status-code 404}}
-             (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
-    (testing "The table must be an uploaded table"
-      (is (= {:message "The table must be an uploaded table."
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
-    (testing "The CSV file must not be empty"
-      (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
-              :data    {:status-code 422}}
-             (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
-    (testing "Uploads must be supported"
-      (with-redefs [driver/database-supports? (constantly false)]
-        (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+    (mt/with-empty-db
+      (testing "Happy path"
+        (is (= {:row-count 2}
+               (append-csv-with-defaults!))))
+      (testing "Even if the uploads database, schema and table prefix is not set, appends succeed"
+        (mt/with-temporary-setting-values [uploads-database-id nil
+                                           uploads-schema-name nil
+                                           uploads-table-prefix nil]
+          (is (some? (append-csv-with-defaults!)))))
+      (testing "Uploads must be enabled"
+        (is (= {:message "Uploads are not enabled."
                 :data    {:status-code 422}}
-               (catch-ex-info (append-csv-with-defaults!))))))))
+               (catch-ex-info (append-csv-with-defaults! :uploads-enabled false)))))
+      (testing "The table must exist"
+        (is (= {:message "Not found."
+                :data    {:status-code 404}}
+               (catch-ex-info (append-csv-with-defaults! :table-id Integer/MAX_VALUE)))))
+      (testing "The table must be an uploaded table"
+        (is (= {:message "The table must be an uploaded table."
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults! :is-upload false)))))
+      (testing "The CSV file must not be empty"
+        (is (= {:message "The CSV file contains extra columns that are not in the table: \"name\".",
+                :data    {:status-code 422}}
+               (catch-ex-info (append-csv-with-defaults! :file (csv-file-with [] (mt/random-name)))))))
+      (testing "Uploads must be supported"
+        (with-redefs [driver/database-supports? (constantly false)]
+          (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
+                  :data    {:status-code 422}}
+                 (catch-ex-info (append-csv-with-defaults!)))))))))
 
 (defn do-with-uploads-allowed
   "Set uploads-enabled to true, and uses an admin user, run the thunk"
