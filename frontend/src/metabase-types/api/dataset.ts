@@ -123,38 +123,23 @@ export type TemplateTagType =
   | "dimension"
   | "snippet";
 
-interface BaseTemplateTag {
+export interface TemplateTag {
   id: TemplateTagId;
   name: TemplateTagName;
   "display-name": string;
+  type: TemplateTagType;
   dimension?: LocalFieldReference;
   "widget-type"?: string;
   required?: boolean;
   default?: string | null;
   options?: ParameterOptions;
-}
 
-interface SnippetTemplateTag extends BaseTemplateTag {
-  type: "snippet";
-  "snippet-id": number;
-  "snippet-name": string;
-}
+  // Card template specific
+  "card-id"?: number;
 
-interface CardTemplateTag extends BaseTemplateTag {
-  type: "card";
-  "card-id": number;
+  // Snippet specific
+  "snippet-id"?: number;
+  "snippet-name"?: string;
 }
-
-interface OtherTemplateTag extends BaseTemplateTag {
-  type: Exclude<
-    TemplateTagType,
-    CardTemplateTag["type"] | SnippetTemplateTag["type"]
-  >;
-}
-
-export type TemplateTag =
-  | CardTemplateTag
-  | SnippetTemplateTag
-  | OtherTemplateTag;
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
