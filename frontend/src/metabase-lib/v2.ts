@@ -18,6 +18,7 @@ export * from "./metrics";
 export * from "./native";
 export * from "./order_by";
 export * from "./query";
+export * from "./query-utils";
 export * from "./segments";
 export * from "./temporal_bucket";
 export * from "./types";
