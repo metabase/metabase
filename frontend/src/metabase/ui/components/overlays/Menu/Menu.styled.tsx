@@ -27,6 +27,9 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
             color: theme.fn.themeColor("brand"),
           },
         },
+        "&:disabled": {
+          color: theme.fn.themeColor("text-light"),
+        },
       },
       itemIcon: {
         marginRight: theme.spacing.sm,
