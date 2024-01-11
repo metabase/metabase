@@ -26,7 +26,8 @@ const CypressBackend = {
         "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
         "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
         "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-        "-Duser.timezone=US/Pacific",
+        // "-Duser.timezone=US/Pacific",
+        "-Duser.timezone=UTC",
         // if you comment this line 👇 you can get (very noisy) backend console logs in the terminal for e2e tests
         `-Dlog4j.configurationFile=file:${__dirname}/../../frontend/test/__runner__/log4j2.xml`,
         "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}",

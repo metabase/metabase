@@ -95,7 +95,8 @@ jobs:
       RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
       RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ github.run_id }}
       REPLAY_API_KEY: ${{ secrets.REPLAY_IO_TOKEN }}
-      TZ: US/Pacific # to make node match the instance tz
+      # TZ: US/Pacific # to make node match the instance tz
+      TZ: UTC
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
