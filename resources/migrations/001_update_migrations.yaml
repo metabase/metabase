@@ -5598,7 +5598,6 @@ databaseChangeLog:
             sql: >-
               DROP VIEW IF EXISTS v_content;
 
-
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
