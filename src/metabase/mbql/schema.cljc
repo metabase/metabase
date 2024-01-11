@@ -1556,6 +1556,7 @@
    ;; Like `:id` and `:category` above, `:date/all-options` is primarily a widget type. It means that we should allow
    ;; any date option above.
    :date/all-options {:type :date, :allowed-for #{:date/all-options}}
+   :date/exclude     {:type :date, :allowed-for #{:date/all-options}}
 
    ;; "operator" parameter types.
    :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}

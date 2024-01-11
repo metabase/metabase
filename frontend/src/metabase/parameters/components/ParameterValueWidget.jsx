@@ -16,6 +16,7 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
+import { DateExcludeWidget } from "metabase/components/DateExcludeWidget";
 import { TextWidget } from "metabase/components/TextWidget";
 import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
@@ -42,6 +43,7 @@ const DATE_WIDGETS = {
   "date/month-year": DateMonthYearWidget,
   "date/quarter-year": DateQuarterYearWidget,
   "date/all-options": DateAllOptionsWidget,
+  "date/exclude": DateExcludeWidget,
 };
 
 class ParameterValueWidget extends Component {

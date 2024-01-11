@@ -104,6 +104,12 @@ export const PARAMETER_OPERATOR_TYPES = {
       menuName: t`All Options`,
       description: t`Contains all of the above`,
     },
+    {
+      type: "date/exclude",
+      operator: "exclude",
+      name: t`Exclude`,
+      description: t`Like "exclude January and February"`,
+    },
   ],
 } as const;
 

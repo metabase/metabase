@@ -189,6 +189,8 @@ export function formatDateValueForType(
       return formatQuarterYearWidget(value);
     case "date/relative":
       return formatRelativeWidget(value);
+    case "date/exclude":
+      return formatAllOptionsWidget(value);
     default:
       return value;
   }
