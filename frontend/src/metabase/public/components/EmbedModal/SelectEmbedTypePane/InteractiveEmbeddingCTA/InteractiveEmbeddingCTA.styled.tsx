@@ -11,12 +11,12 @@ export const CTAContainer = styled(Paper)<PaperProps>``;
 
 export const ClickIcon = styled(Icon)`
   ${CTAContainer}:hover & {
-    color: ${({ theme }) => theme.colors.brand[1]};
+    color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
 `;
 
 export const CTAHeader = styled(Title)`
   ${CTAContainer}:hover & {
-    color: ${({ theme }) => theme.colors.brand[1]};
+    color: ${({ theme }) => theme.fn.themeColor("brand")};
   }
 `;

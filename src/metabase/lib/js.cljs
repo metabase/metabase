@@ -215,17 +215,6 @@
     (keyword "display-info-outer" (str "stage-" stage-number)) x
     #(display-info* a-query stage-number %)))
 
-(defn ^:export field-id
-  "Find the field id for something or nil."
-  [field-metadata]
-  (lib.core/field-id field-metadata))
-
-(defn ^:export legacy-card-or-table-id
-  "Find the legacy card id or table id for a given ColumnMetadata or nil.
-   Returns a either `\"card__<id>\"` or integer table id."
-  [field-metadata]
-  (lib.core/legacy-card-or-table-id field-metadata))
-
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([orderable]
@@ -472,7 +461,11 @@
 (defn ^:export expression-clause
   "Returns a standalone clause for an `operator`, `options`, and arguments."
   [an-operator args options]
-  (lib.core/expression-clause (keyword an-operator) args (js->clj options :keywordize-keys true)))
+  (-> (lib.core/expression-clause
+        (keyword an-operator)
+        args
+        (js->clj options :keywordize-keys true))
+      (lib.core/normalize)))
 
 (defn ^:export expression-parts
   "Returns the parts (operator, args, and optionally, options) of `expression-clause`."
@@ -560,13 +553,6 @@
     itself should be removed from the query."
   [a-query stage-number column]
   (lib.core/remove-field a-query stage-number column))
-
-(defn ^:export find-visible-column-for-legacy-ref
-  "Like [[find-visible-column-for-ref]], but takes a legacy MBQL reference instead of a pMBQL one. This is currently
-  only meant for use with `:field` clauses."
-  [a-query stage-number a-legacy-ref]
-  ;; [[lib.convert/legacy-ref->pMBQL]] will handle JS -> Clj conversion as needed
-  (lib.core/find-visible-column-for-legacy-ref a-query stage-number a-legacy-ref))
 
 (defn ^:export find-column-for-legacy-ref
   "Given a sequence of `columns` (column metadatas), return the one that is the best fit for `legacy-ref`."
@@ -1125,3 +1111,19 @@
       (update :has-field-values name)
       (update-keys cljs-key->js-key)
       clj->js))
+
+(defn ^:export update-lat-lon-filter
+  "Add or update a filter against a `latitude-column` and `longitude-column`."
+  [a-query stage-number latitude-column longitude-column bounds]
+  (let [bounds (js->clj bounds :keywordize-keys true)]
+    (lib.core/update-lat-lon-filter a-query stage-number latitude-column longitude-column bounds)))
+
+(defn ^:export update-numeric-filter
+  "Add or update a filter against `numeric-column`."
+  [a-query numeric-column stage-number start end]
+  (lib.core/update-numeric-filter a-query numeric-column stage-number start end))
+
+(defn ^:export update-temporal-filter
+  "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
+  [a-query temporal-column stage-number start end]
+  (lib.core/update-temporal-filter a-query temporal-column stage-number start end))

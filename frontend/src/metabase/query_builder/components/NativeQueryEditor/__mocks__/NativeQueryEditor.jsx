@@ -8,6 +8,7 @@ const MockNativeQueryEditor = ({
   editorContext = "question",
   isNativeEditorOpen,
   query,
+  question,
   readOnly,
   setDatasetQuery,
   setParameterValue,
@@ -17,7 +18,7 @@ const MockNativeQueryEditor = ({
   };
 
   const onDatabaseIdChange = databaseId => {
-    if (query.databaseId() !== databaseId) {
+    if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
     }
   };
@@ -35,6 +36,7 @@ const MockNativeQueryEditor = ({
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}
           query={query}
+          question={question}
           readOnly={readOnly}
           setDatabaseId={onDatabaseIdChange}
           setTableId={onTableIdChange}

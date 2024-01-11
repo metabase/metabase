@@ -71,10 +71,10 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           padding: 0,
           fontSize: getSize({ size, sizes: LABEL_FONT_SIZES }),
           lineHeight: getSize({ size, sizes: LABEL_LINE_HEIGHT }),
-          color: theme.colors.text[2],
+          color: theme.fn.themeColor("text-dark"),
           cursor: "pointer",
           "&[data-disabled]": {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
             cursor: "default",
           },
         },
@@ -82,16 +82,16 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           padding: 0,
           marginTop: rem(8),
           fontSize: rem(12),
-          color: theme.colors.text[1],
+          color: theme.fn.themeColor("text-medium"),
         },
         error: {
           padding: 0,
           marginTop: rem(8),
           fontSize: rem(12),
-          color: theme.colors.error[0],
+          color: theme.fn.themeColor("error"),
         },
         track: {
-          backgroundColor: theme.colors.bg[1],
+          backgroundColor: theme.fn.themeColor("bg-medium"),
           border: error ? `1px solid ${color("accent3")}` : "none",
           boxSizing: "border-box",
           borderRadius: rem(24),
@@ -99,7 +99,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           width: getSize({ size, sizes: TRACK_WIDTHS }),
           cursor: "pointer",
           [`${getStylesRef("input")}:disabled + &`]: {
-            backgroundColor: theme.colors.bg[1],
+            backgroundColor: theme.fn.themeColor("bg-medium"),
           },
           marginTop: getSize({ size, sizes: TRACK_PADDING_TOP }),
         },
@@ -110,7 +110,7 @@ export const getSwitchOverrides = (): MantineThemeOverride["components"] => ({
           height: getSize({ size, sizes: THUMB_SIZES }),
           width: getSize({ size, sizes: THUMB_SIZES }),
           [`${getStylesRef("input")}:disabled + * > &`]: {
-            backgroundColor: theme.colors.bg[0],
+            backgroundColor: theme.fn.themeColor("bg-light"),
           },
         },
       };

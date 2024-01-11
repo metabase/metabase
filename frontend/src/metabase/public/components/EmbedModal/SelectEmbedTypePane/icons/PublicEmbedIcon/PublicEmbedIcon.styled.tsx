@@ -8,10 +8,12 @@ interface PublicEmbedIconRootProps {
 
 export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
   ${({ theme, disabled }) => css`
-    color: ${theme.colors.bg[1]};
+    color: ${theme.fn.themeColor("bg-medium")};
 
     .innerFill {
-      stroke: ${disabled ? theme.colors.text[0] : theme.colors.bg[2]};
+      stroke: ${disabled
+        ? theme.fn.themeColor("text-light")
+        : theme.fn.themeColor("bg-dark")};
       opacity: ${disabled ? 0.5 : 1};
     }
   `}
@@ -20,10 +22,10 @@ export const PublicEmbedIconRoot = styled.svg<PublicEmbedIconRootProps>`
     !disabled &&
     css`
       ${SharingPaneButtonContent}:hover & {
-        color: ${theme.colors.bg[2]};
+        color: ${theme.fn.themeColor("bg-dark")};
 
         .innerFill {
-          stroke: ${theme.colors.brand[1]};
+          stroke: ${theme.fn.themeColor("brand")};
         }
       }
     `}

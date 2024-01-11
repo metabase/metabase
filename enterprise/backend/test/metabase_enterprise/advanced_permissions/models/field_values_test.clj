@@ -7,14 +7,12 @@
     :as impersonation]
    [metabase.models :refer [Field FieldValues]]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest get-or-create-advanced-field-values!
-  (premium-features-test/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions}
     (let [field      (t2/select-one Field :id (mt/id :categories :id))]
       (try
         (testing "creates new field values for user using impersonation"

@@ -31,7 +31,7 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   coercion_strategy: null,
   fingerprint: null,
 
-  has_field_values: "list",
+  has_field_values: "none",
   has_more_values: false,
 
   last_analyzed: new Date().toISOString(),

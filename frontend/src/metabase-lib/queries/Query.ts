@@ -32,7 +32,7 @@ class Query {
    * Can only be applied to query that is a direct child of the question.
    */
   question = _.once((): Question => {
-    return this._originalQuestion.setQuery(this);
+    return this._originalQuestion.setLegacyQuery(this);
   });
 
   /**
@@ -80,13 +80,6 @@ class Query {
    */
   canRun(): boolean {
     return false;
-  }
-
-  /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly(): boolean {
-    return true;
   }
 
   /**

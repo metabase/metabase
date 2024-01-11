@@ -49,6 +49,34 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- dashboards-list [filter-option]
+  (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
+                                                      (:all :archived)  true
+                                                      :mine [:= :creator_id api/*current-user-id*])
+                                                [:= :archived (= (keyword filter-option) :archived)]]
+                                     :order-by [:%lower.name]}) <>
+    (t2/hydrate <> :creator)
+    (filter mi/can-read? <>)))
+
+(api/defendpoint ^:deprecated GET "/"
+  "This endpoint is currently unused by the Metabase frontend and may be out of date with the rest of the application.
+  It only exists for backwards compatibility and may be removed in the future.
+
+  Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
+  *  `all`      - Return all Dashboards.
+  *  `mine`     - Return Dashboards created by the current user.
+  *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.)"
+  [f]
+  {f [:maybe [:enum "all" "mine" "archived"]]}
+  (let [dashboards (dashboards-list f)
+        edit-infos (:dashboard (last-edit/fetch-last-edited-info {:dashboard-ids (map :id dashboards)}))]
+    (into []
+          (map (fn [{:keys [id] :as dashboard}]
+                 (if-let [edit-info (get edit-infos id)]
+                   (assoc dashboard :last-edit-info edit-info)
+                   dashboard)))
+          dashboards)))
+
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
   [{dashboard-id :id :as dashboard}]
@@ -864,7 +892,7 @@
    (let [dashboard   (t2/hydrate dashboard :resolved-params)
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
-         field-ids   (map :field-id (param->fields param))]
+         field-ids   (into #{} (map :field-id (param->fields param)))]
      (if (empty? field-ids)
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))

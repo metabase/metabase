@@ -7,8 +7,6 @@
    [metabase.config :as config]
    [metabase.models :refer [Collection]]
    [metabase.models.collection :as collection]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.util :as u]
@@ -16,7 +14,7 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest list-collections-instance-analytics-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (audit-db-test/with-audit-db-restoration
       (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should be the last collection."
@@ -30,7 +28,7 @@
                    (->> (mt/user-http-request :crowberto :get 200 "collection/tree")
                         last
                         :type))))))))
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (audit-db-test/with-audit-db-restoration
       (t2.with-temp/with-temp [Collection _ {:name "Zippy"}]
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
@@ -69,7 +67,7 @@
   (testing "GET /api/collection"
     (testing "You should only see your collection and public collections"
       ;; Set audit-app feature so that we can assert that audit collections are also visible when running EE
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (audit-db-test/with-audit-db-restoration
           (let [admin-user-id  (u/the-id (test.users/fetch-user :crowberto))
                 crowberto-root (t2/select-one Collection :personal_owner_id admin-user-id)]

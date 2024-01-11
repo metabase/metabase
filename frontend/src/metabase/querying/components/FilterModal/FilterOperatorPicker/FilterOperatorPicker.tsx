@@ -32,7 +32,7 @@ export function FilterOperatorPicker<T extends string>({
         <Button
           variant="subtle"
           disabled={disabled}
-          color="brand.1"
+          color="brand"
           td={disabled ? "none" : "underline"}
           rightIcon={<Icon name="chevrondown" size={8} />}
           p="xs"

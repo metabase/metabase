@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -96,10 +95,7 @@
                  :updated_at java.time.temporal.Temporal}
                 field))))
     (let [t                  #t "2022-10-13T19:21:00Z"
-          expected-timestamp (case (mdb.connection/db-type)
-                               ;; not sure why this is TIMESTAMP WITH TIME ZONE for Postgres but not for H2/MySQL. :shrug:
-                               :postgres    (t/offset-date-time "2022-10-13T19:21:00Z")
-                               (:h2 :mysql) (t/local-date-time "2022-10-13T19:21:00"))]
+          expected-timestamp (t/offset-date-time "2022-10-13T19:21:00Z")]
       (testing "Explicitly specify :created_at"
         (t2.with-temp/with-temp [Field field {:created_at t}]
           (is (=? {:created_at expected-timestamp

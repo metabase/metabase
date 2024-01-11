@@ -131,11 +131,7 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  return (
-    question.canWrite() &&
-    question.query() != null &&
-    question.query().isEditable()
-  );
+  return question.canWrite() && question.isQueryEditable();
 };
 
 const canDownloadResults = (result?: Dataset) => {
@@ -154,7 +150,8 @@ DashCardMenu.shouldRender = ({
   isPublic,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
-  const isInternalQuery = question.query() instanceof InternalQuery;
+  const isInternalQuery =
+    question.legacyQuery({ useStructuredQuery: true }) instanceof InternalQuery;
   if (isEmbed) {
     return isEmbed;
   }

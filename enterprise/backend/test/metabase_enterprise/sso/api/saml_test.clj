@@ -1,18 +1,17 @@
 (ns metabase-enterprise.sso.api.saml-test
   (:require
    [clojure.test :refer :all]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]))
 
 (deftest saml-settings-test
   (testing "PUT /api/saml/settings"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (testing "SAML settings cannot be saved without SAML feature flag enabled"
         (is (= "SAML-based authentication is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                (mt/user-http-request :crowberto :put 402 "saml/settings" {:saml-keystore-path "test_resources/keystore.jks"
                                                                           :saml-keystore-password "123456"
                                                                           :saml-keystore-alias "sp"})))))
-    (premium-features-test/with-premium-features #{:sso-saml}
+    (mt/with-premium-features #{:sso-saml}
       (testing "Valid SAML settings can be saved via an API call"
         (mt/user-http-request :crowberto :put 200 "saml/settings" {:saml-keystore-path "test_resources/keystore.jks"
                                                                    :saml-keystore-password "123456"

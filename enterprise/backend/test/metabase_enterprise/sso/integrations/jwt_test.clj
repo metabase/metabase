@@ -13,8 +13,6 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -34,20 +32,20 @@
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (defmacro with-sso-jwt-token
-  "Stubs the `premium-features/token-features` function to simulate a premium token with the `:sso-jwt` feature.
+  "Stubs the [[premium-features/*token-features*]] function to simulate a premium token with the `:sso-jwt` feature.
    This needs to be included to test any of the JWT features."
   [& body]
-  `(premium-features-test/with-additional-premium-features #{:sso-jwt}
+  `(mt/with-additional-premium-features #{:sso-jwt}
      ~@body))
 
 (defn- call-with-default-jwt-config [f]
-  (let [current-features (premium-features/token-features)]
-    (premium-features-test/with-additional-premium-features #{:sso-jwt}
+  (let [current-features (premium-features/*token-features*)]
+    (mt/with-additional-premium-features #{:sso-jwt}
       (mt/with-temporary-setting-values [jwt-enabled               true
                                          jwt-identity-provider-uri default-idp-uri
                                          jwt-shared-secret         default-jwt-secret
                                          site-url                  (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
-        (premium-features-test/with-premium-features current-features
+        (mt/with-premium-features current-features
           (f))))))
 
 (defmacro with-default-jwt-config [& body]
@@ -56,8 +54,8 @@
       ~@body)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
-  `(mt/with-ensure-with-temp-no-transaction!
-     (premium-features-test/with-premium-features #{:audit-app}
+  `(mt/test-helpers-set-global-values!
+     (mt/with-premium-features #{:audit-app}
        (disable-other-sso-types
         (fn []
           (with-sso-jwt-token
@@ -78,7 +76,7 @@
 
         (testing "SSO requests fail if they don't have a valid premium-features token"
           (with-default-jwt-config
-            (premium-features-test/with-premium-features #{}
+            (mt/with-premium-features #{}
               (is (= "SSO has not been enabled and/or configured"
                      (saml-test/client :get 400 "/auth/sso"))))))))
 
