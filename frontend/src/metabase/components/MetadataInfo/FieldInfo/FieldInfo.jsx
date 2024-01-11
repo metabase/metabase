@@ -1,23 +1,20 @@
 import PropTypes from "prop-types";
 import { t } from "ttag";
-
-import Dimension from "metabase-lib/Dimension";
-
+import Field from "metabase-lib/metadata/Field";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
   InfoContainer,
-  DimensionSemanticTypeLabel,
+  FieldSemanticTypeLabel,
   FieldFingerprintInfo,
 } from "./FieldInfo.styled";
 
 FieldInfo.propTypes = {
   className: PropTypes.string,
-  dimension: PropTypes.instanceOf(Dimension).isRequired,
+  field: PropTypes.instanceOf(Field),
   showAllFieldValues: PropTypes.bool,
 };
 
-export function FieldInfo({ className, dimension, showAllFieldValues }) {
-  const field = dimension.field();
+export function FieldInfo({ className, field, showAllFieldValues }) {
   const description = field?.description;
   return (
     <InfoContainer className={className}>
@@ -26,7 +23,7 @@ export function FieldInfo({ className, dimension, showAllFieldValues }) {
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
-      <DimensionSemanticTypeLabel dimension={dimension} />
+      <FieldSemanticTypeLabel field={field} />
       <FieldFingerprintInfo
         field={field}
         showAllFieldValues={showAllFieldValues}

@@ -1,2 +1,2 @@
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./DimensionSemanticTypeLabel";
+export { default } from "./FieldSemanticTypeLabel";

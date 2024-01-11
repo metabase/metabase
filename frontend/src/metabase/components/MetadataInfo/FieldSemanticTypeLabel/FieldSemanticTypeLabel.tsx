@@ -5,7 +5,7 @@ import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import Dimension from "metabase-lib/Dimension";
+import Field from "metabase-lib/metadata/Field";
 
 import {
   LabelContainer,
@@ -13,22 +13,18 @@ import {
   InvertedColorRelativeSizeIcon,
 } from "../MetadataInfo.styled";
 
-DimensionSemanticTypeLabel.propTypes = {
+FieldSemanticTypeLabel.propTypes = {
   className: PropTypes.string,
-  dimension: PropTypes.instanceOf(Dimension).isRequired,
+  field: PropTypes.instanceOf(Field).isRequired,
 };
 
 type Props = {
   className?: string;
-  dimension: Dimension;
+  field: Field;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function DimensionSemanticTypeLabel({
-  className,
-  dimension,
-}: Props) {
-  const field = dimension.field();
+export default function FieldSemanticTypeLabel({ className, field }: Props) {
   const semanticType = field.semantic_type;
   const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =

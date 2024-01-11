@@ -8,7 +8,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import Dimension from "metabase-lib/Dimension";
-import DimensionSemanticTypeLabel from "./DimensionSemanticTypeLabel";
+import FieldSemanticTypeLabel from "./FieldSemanticTypeLabel";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -18,9 +18,7 @@ const state = createMockState({
 const metadata = getMetadata(state);
 
 function setup(dimension) {
-  return renderWithProviders(
-    <DimensionSemanticTypeLabel dimension={dimension} />,
-  );
+  return renderWithProviders(<FieldSemanticTypeLabel dimension={dimension} />);
 }
 
 describe("DimensionSemanticTypeLabel", () => {
