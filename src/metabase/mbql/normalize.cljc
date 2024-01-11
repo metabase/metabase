@@ -36,9 +36,7 @@
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
-  (:import
-   (clojure.lang IRecord)))
+   [metabase.util.malli :as mu]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -643,8 +641,8 @@
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
   [form]
   (cond
-    (instance? IRecord form)
-    (reduce (fn [r x] (conj r (canonicalize-mbql-clauses x))) form form)
+    (record? form)
+    (reduce-kv (fn [r k x] (assoc r k (canonicalize-mbql-clauses x))) form form)
 
     (map? form)
     (m/map-vals canonicalize-mbql-clauses form)
