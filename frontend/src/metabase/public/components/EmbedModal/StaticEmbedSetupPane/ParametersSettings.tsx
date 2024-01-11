@@ -7,7 +7,6 @@ import Select, { Option } from "metabase/core/components/Select";
 import { Box, Divider, Stack, Text } from "metabase/ui";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
-import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
@@ -16,11 +15,12 @@ import type {
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
+import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
 import type {
   ActivePreviewPane,
   EmbedResourceParameterWithValue,
-} from "../types";
+} from "./types";
 import { EmbedCodePane } from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
@@ -33,7 +33,6 @@ export interface ParametersSettingsProps {
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
-  initialEmbeddingParams: EmbeddingParameters | undefined;
   embeddingParams: EmbeddingParameters;
   lockedParameters: EmbedResourceParameter[];
   parameterValues: EmbeddingParametersValues;
@@ -42,6 +41,7 @@ export interface ParametersSettingsProps {
   siteUrl: string;
   secretKey: string;
   params: EmbeddingParameters;
+  initialPreviewParameters: EmbeddingParameters;
   displayOptions: EmbeddingDisplayOptions;
 
   onChangeEmbeddingParameters: (parameters: EmbeddingParameters) => void;
@@ -55,7 +55,7 @@ export const ParametersSettings = ({
   resource,
   resourceType,
   resourceParameters,
-  initialEmbeddingParams,
+  initialPreviewParameters,
   embeddingParams,
   lockedParameters,
   parameterValues,
@@ -139,11 +139,11 @@ export const ParametersSettings = ({
                         parameter={parameter}
                         parameters={valuePopulatedLockedParameters}
                         setValue={(value: string) => {
-                            onChangeParameterValue(parameter.id, value);
+                          onChangeParameterValue(parameter.id, value);
 
-                            if (!parameter.value && value) {
-                                onChangePane("preview");
-                            }
+                          if (!parameter.value && value) {
+                            onChangePane("preview");
+                          }
                         }}
                       />
                     ))}
@@ -180,7 +180,7 @@ export const ParametersSettings = ({
               resourceType={resourceType}
               siteUrl={siteUrl}
               secretKey={secretKey}
-              initialEmbeddingParams={initialEmbeddingParams}
+              initialPreviewParameters={initialPreviewParameters}
               params={params}
               displayOptions={displayOptions}
             />

@@ -40,12 +40,12 @@ type EmbedCodePaneProps = {
   | {
       showDiff?: false;
       variant?: undefined;
-      initialEmbeddingParams?: undefined;
+      initialPreviewParameters?: undefined;
     }
   | {
       showDiff: true;
       variant: "parameters" | "appearance";
-      initialEmbeddingParams: EmbeddingParameters | undefined;
+      initialPreviewParameters: EmbeddingParameters;
     }
 );
 
@@ -55,10 +55,10 @@ export const EmbedCodePane = ({
   resource,
   resourceType,
   params,
+  initialPreviewParameters,
   displayOptions,
   showDiff,
   variant,
-  initialEmbeddingParams,
   withExamplesLink,
 
   className,
@@ -96,10 +96,23 @@ export const EmbedCodePane = ({
     const isParametersView = variant === "parameters";
     const isAppearanceView = variant === "appearance";
 
+    const hasCodeDiff =
+      !_.isEqual(initialPreviewParameters, params) &&
+      selectedServerCodeOption.parametersSource !==
+        getEmbedServerCodeExampleOptions({
+          siteUrl,
+          secretKey,
+          resourceType,
+          resourceId: resource.id,
+          params: initialPreviewParameters,
+          displayOptions,
+        }).find(({ name }) => name === selectedServerCodeOptionName)
+          ?.parametersSource;
+
     return (
       <div className={className}>
         {isParametersView &&
-          (!_.isEqual(initialEmbeddingParams, params) ? (
+          (hasCodeDiff ? (
             <CodeSample
               dataTestId="embed-backend"
               title={t`In addition to publishing changes, update the params in the payload, like this:`}

@@ -16,7 +16,7 @@ import type {
   EmbedResourceType,
 } from "metabase/public/lib/types";
 
-import type { ActivePreviewPane } from "../types";
+import type { ActivePreviewPane } from "./types";
 import { EmbedCodePane } from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import {
@@ -41,8 +41,8 @@ export interface AppearanceSettingsProps {
   siteUrl: string;
   secretKey: string;
   params: EmbeddingParameters;
+  initialPreviewParameters: EmbeddingParameters;
   displayOptions: EmbeddingDisplayOptions;
-  initialEmbeddingParams: EmbeddingParameters | undefined;
 
   onChangePane: (pane: ActivePreviewPane) => void;
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
@@ -57,7 +57,7 @@ export const AppearanceSettings = ({
   secretKey,
   params,
   displayOptions,
-  initialEmbeddingParams,
+  initialPreviewParameters,
 
   onChangePane,
   onChangeDisplayOptions,
@@ -229,7 +229,7 @@ export const AppearanceSettings = ({
               secretKey={secretKey}
               params={params}
               displayOptions={displayOptions}
-              initialEmbeddingParams={initialEmbeddingParams}
+              initialPreviewParameters={initialPreviewParameters}
             />
           ) : null}
         </>
