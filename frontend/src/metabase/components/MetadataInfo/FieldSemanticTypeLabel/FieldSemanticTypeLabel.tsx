@@ -15,17 +15,17 @@ import {
 
 FieldSemanticTypeLabel.propTypes = {
   className: PropTypes.string,
-  field: PropTypes.instanceOf(Field).isRequired,
+  field: PropTypes.instanceOf(Field),
 };
 
 type Props = {
   className?: string;
-  field: Field;
+  field?: Field;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FieldSemanticTypeLabel({ className, field }: Props) {
-  const semanticType = field.semantic_type;
+  const semanticType = field?.semantic_type;
   const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =
     getSemanticTypeName(semanticType) || t`No special type`;

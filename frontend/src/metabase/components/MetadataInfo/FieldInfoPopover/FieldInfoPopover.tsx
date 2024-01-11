@@ -3,20 +3,20 @@ import { hideAll } from "tippy.js";
 
 import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Dimension from "metabase-lib/Dimension";
+import Field from "metabase-lib/metadata/Field";
 
 import { WidthBoundFieldInfo } from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
 const propTypes = {
-  dimension: PropTypes.instanceOf(Dimension),
+  field: PropTypes.instanceOf(Field),
   children: PropTypes.node,
   placement: PropTypes.string,
   disabled: PropTypes.bool,
 };
 
-type Props = { dimension: Dimension } & Pick<
+type Props = { field?: Field } & Pick<
   ITippyPopoverProps,
   "children" | "placement" | "disabled" | "delay"
 >;
@@ -24,23 +24,19 @@ type Props = { dimension: Dimension } & Pick<
 const className = "dimension-info-popover";
 
 function FieldInfoPopover({
-  dimension,
+  field,
   children,
   placement,
   disabled,
   delay = POPOVER_DELAY,
 }: Props) {
-  // avoid a scenario where we may have a Dimension instance but not enough metadata
-  // to even show a display name (probably indicative of a bug)
-  const hasMetadata = !!(dimension && dimension.displayName());
-
-  return hasMetadata ? (
+  return (
     <TippyPopover
       className={className}
       delay={delay}
       placement={placement || "left-start"}
       disabled={disabled}
-      content={<WidthBoundFieldInfo dimension={dimension} />}
+      content={<WidthBoundFieldInfo field={field} />}
       onTrigger={instance => {
         const fieldInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,
@@ -57,8 +53,6 @@ function FieldInfoPopover({
     >
       {children}
     </TippyPopover>
-  ) : (
-    children
   );
 }
 
