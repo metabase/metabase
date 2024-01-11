@@ -13,6 +13,6 @@ export function availableSegments(
 export function segment(
   query: Query,
   segmentId: SegmentId,
-): SegmentMetadata | undefined {
+): SegmentMetadata | null {
   return ML.segment(query, segmentId);
 }

@@ -10,6 +10,6 @@ export function availableMetrics(query: Query): MetricMetadata[] {
 export function metric(
   query: Query,
   metricId: MetricId,
-): MetricMetadata | undefined {
+): MetricMetadata | null {
   return ML.metric(query, metricId);
 }
