@@ -1100,7 +1100,7 @@
     (let [legacy-expr (-> an-expression-clause lib.convert/->legacy-MBQL)]
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
-                      (= (first legacy-expr) :aggregation-options))
+                      (#{:aggregation-options :value} (first legacy-expr)))
                  (get 1))))))
 
 (defn ^:export field-values-search-info

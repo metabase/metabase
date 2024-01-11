@@ -1,5 +1,5 @@
 import type { SearchModelType } from "metabase-types/api";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import type { WrappedResult } from "metabase/search/types";
 import type { WrappedRecentItem } from "metabase/nav/components/search/RecentsList";
 import { CollectionIcon } from "./CollectionIcon";

@@ -1,7 +1,7 @@
 import { updateIn } from "icepick";
 import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { COLLAPSED_ROWS_SETTING } from "metabase/lib/data_grid";
 

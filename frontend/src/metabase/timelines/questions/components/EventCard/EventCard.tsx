@@ -8,7 +8,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
 import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import {
   CardAside,
   CardBody,

@@ -145,7 +145,9 @@ describe("issue 31628", () => {
          */
         cy.findByTestId("scalar-title-icon").realHover();
 
-        popover().findByText(SCALAR_QUESTION.name).should("exist");
+        cy.findByRole("tooltip")
+          .findByText(SCALAR_QUESTION.name)
+          .should("exist");
 
         /**
          * should not show description

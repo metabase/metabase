@@ -1,10 +1,10 @@
 import { t } from "ttag";
 import type { ChangeEvent } from "react";
 import { useMemo } from "react";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
+import { Icon, Box, Divider, Stack, Text } from "metabase/ui";
 import Select, { Option } from "metabase/core/components/Select";
-import { Box, Divider, Stack, Text } from "metabase/ui";
+
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {

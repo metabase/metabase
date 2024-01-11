@@ -17,7 +17,7 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type { WrappedResult } from "metabase/search/types";
 import { InfoText } from "./InfoText";
 

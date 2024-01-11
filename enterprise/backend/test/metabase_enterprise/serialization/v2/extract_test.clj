@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.extract-test
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -1498,14 +1499,23 @@
                                       clickdash-eid :entity_id} {:name          "Dashboard with click behavior"
                                                                  :collection_id coll5-id
                                                                  :creator_id    mark-id}
-                       DashboardCard _                          {:card_id c3-1-id
+                       DashboardCard _                          {:card_id      c3-1-id
                                                                  :dashboard_id clickdash-id
                                                                  :visualization_settings
                                                                  ;; Top-level click behavior for the card.
-                                                                 {:click_behavior {:type "link"
-                                                                                   :linkType "question"
-                                                                                   :targetId c3-2-id
-                                                                                   :parameterMappings {}}}}
+                                                                 (let [dimension  [:dimension [:field "something" {:base-type "type/Text"}]]
+                                                                       mapping-id (json/generate-string dimension)]
+                                                                   {:click_behavior {:type     "link"
+                                                                                     :linkType "question"
+                                                                                     :targetId c3-2-id
+                                                                                     :parameterMapping
+                                                                                     {mapping-id {:id     mapping-id
+                                                                                                  :source {:type "column"
+                                                                                                           :id   "whatever"
+                                                                                                           :name "Just to serialize"}
+                                                                                                  :target {:type      "dimension"
+                                                                                                           :id        mapping-id
+                                                                                                           :dimension dimension}}}}})}
                        ;;; stress-test that exporting various visualization_settings does not break
                        DashboardCard _                          {:card_id c3-1-id
                                                                  :dashboard_id clickdash-id

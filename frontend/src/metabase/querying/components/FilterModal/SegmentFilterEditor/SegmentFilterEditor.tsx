@@ -1,6 +1,6 @@
 import { t } from "ttag";
-import { Flex, Grid, MultiSelect, Text } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, Grid, MultiSelect, Text, Icon } from "metabase/ui";
+
 import type { SegmentItem } from "../types";
 
 interface SegmentFilterEditorProps {

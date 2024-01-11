@@ -8,9 +8,9 @@ import type {
   SearchFilterDropdown,
   SearchFilterPropTypes,
 } from "metabase/search/types";
-import { Text, Box, Center, Button, Stack } from "metabase/ui";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icon } from "metabase/core/components/Icon";
+import { Text, Box, Center, Button, Stack, Icon } from "metabase/ui";
+import type { IconName } from "metabase/ui";
+
 import Popover from "metabase/components/Popover";
 import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
