@@ -1190,10 +1190,7 @@
   [a-query temporal-column stage-number start end]
   (lib.core/update-temporal-filter a-query temporal-column stage-number start end))
 
-(defn ^:export assignable?
-  "Given two CLJS `:metadata/columns` returns true if the first column's type `[[lib.types.isa/isa?]]` subtype of the
-  second column's type.
-
-  That is, that a value from `src-column` is assignable to `dst-column`."
+(defn ^:export valid-filter-for?
+  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."
   [src-column dst-column]
-  (lib.types.isa/assignable? src-column dst-column))
+  (lib.types.isa/valid-filter-for? src-column dst-column))
