@@ -96,13 +96,7 @@ function getCardForBlankQuestion(
 function filterBySegmentId(question: Question, segmentId: SegmentId) {
   const stageIndex = -1;
   const query = question.query();
-  const segmentName = question.metadata().segment(segmentId)?.displayName();
-  const segmentMetadata = Lib.availableSegments(query, stageIndex).find(
-    segment => {
-      const info = Lib.displayInfo(query, stageIndex, segment);
-      return info.displayName === segmentName;
-    },
-  );
+  const segmentMetadata = Lib.segment(query, segmentId);
 
   if (!segmentMetadata) {
     return question;

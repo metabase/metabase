@@ -889,6 +889,11 @@
   [a-query]
   (name (lib.core/engine a-query)))
 
+(defn ^:export segment
+  "Get metadata for the Segment with `segment-id`, if it can be found."
+  [metadata-providerable segment-id]
+  (lib.metadata/segment metadata-providerable segment-id))
+
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
   metadata objects."
