@@ -1295,7 +1295,6 @@
              " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
 
-
 (deftest valid-csv-setting-test
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-csv-parse-exception "1, 2")))))
