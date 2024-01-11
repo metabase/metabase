@@ -333,7 +333,31 @@ function updateSnippetsWithIds(
   query: Lib.Query,
   snippets: NativeQuerySnippet[],
 ): Lib.Query {
-  return query;
+  const snippetTemplateTags = getSnippetTemplateTags(query).filter(
+    tag => tag["snippet-id"] == null,
+  );
+  const tagsBySnippetName = _.groupBy(
+    snippetTemplateTags,
+    tag => tag["snippet-name"],
+  );
+
+  if (Object.keys(tagsBySnippetName).length === 0) {
+    // no need to check if there are no tags
+    return query;
+  }
+
+  const templateTags = Lib.templateTags(query);
+
+  for (const snippet of snippets) {
+    for (const tag of tagsBySnippetName[snippet.name] || []) {
+      templateTags[tag.name] = {
+        ...tag,
+        "snippet-id": snippet.id,
+      };
+    }
+  }
+
+  return Lib.withTemplateTags(query, templateTags);
 }
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
