@@ -1,16 +1,9 @@
-import {
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  forwardRef,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Flex } from "metabase/ui";
 
 import type { SearchResult } from "metabase-types/api";
 import type { PickerState } from "../../types";
-import { ItemList } from "../ItemList";
 import { HorizontalScrollBox, ListBox } from "./NestedItemPicker.styled";
 
 interface NestedItemPickerProps<T> {
@@ -21,28 +14,14 @@ interface NestedItemPickerProps<T> {
   initialState?: PickerState<T>;
 }
 
-export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
-  {
-    onFolderSelect,
-    onItemSelect,
-    folderModel,
-    initialState = [],
-  }: NestedItemPickerProps<SearchResult>,
-  ref,
-) {
+export const NestedItemPicker = ({
+  onFolderSelect,
+  onItemSelect,
+  folderModel,
+  initialState = [],
+}: NestedItemPickerProps<SearchResult>) => {
   const [stack, setStack] = useState(initialState ?? []);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useImperativeHandle(ref, () => {
-    return {
-      refreshCurrentFolder: async () => {
-        const folder = stack[stack.length - 2].selectedItem;
-        if (folder) {
-          await handleFolderSelect(folder, stack.length - 2);
-        }
-      },
-    };
-  });
 
   const handleFolderSelect = async (
     folder: SearchResult,
@@ -99,7 +78,6 @@ export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
     <HorizontalScrollBox h="100%" ref={containerRef}>
       <Flex h="100%" w="fit-content">
         {stack.map((level, levelIndex) => {
-          console.log(level);
           const { listComponent: ListComponent, ...rest } = level;
 
           return (
@@ -122,4 +100,4 @@ export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
       </Flex>
     </HorizontalScrollBox>
   );
-});
+};

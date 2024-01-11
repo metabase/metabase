@@ -64,8 +64,6 @@ export function EntityPickerModal({
 
   const { open } = useModalOpen();
 
-  const nestedPickerRef = useRef<{ refreshCurrentFolder: () => void }>(null);
-
   const handleItemSelect = useCallback(
     (item: SearchResult) => {
       if (options.hasConfirmButtons) {
@@ -87,7 +85,6 @@ export function EntityPickerModal({
     await dispatch(
       Collections.actions.create({ name, parent_id: selectedItem?.id }),
     );
-    nestedPickerRef?.current?.refreshCurrentFolder();
     setCreateModalOpen(false);
   };
 
@@ -129,7 +126,6 @@ export function EntityPickerModal({
                 onItemSelect={handleItemSelect}
                 value={value}
                 options={options}
-                ref={nestedPickerRef}
               />
             )}
             {!!options.hasConfirmButtons && (

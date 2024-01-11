@@ -1,13 +1,11 @@
-import { useEffect, useState, useCallback, forwardRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import type { Collection, SearchResult } from "metabase-types/api";
 import { CollectionsApi, UserApi } from "metabase/services";
-import Search from "metabase/entities/search";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { isRootCollection } from "metabase/collections/utils";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
 import { ItemList } from "../components/ItemList";
@@ -48,10 +46,11 @@ function getCollectionIdPath(collection: Collection) {
   return path;
 }
 
-export const CollectionPicker = forwardRef(function CollectionPickerInner(
-  { onItemSelect, value, options = defaultOptions }: CollectionPickerProps,
-  ref,
-) {
+export const CollectionPicker = ({
+  onItemSelect,
+  value,
+  options = defaultOptions,
+}: CollectionPickerProps) => {
   const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -210,7 +209,6 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
       onFolderSelect={onFolderSelect}
       onItemSelect={onItemSelect}
       initialState={initialState}
-      ref={ref}
     />
   );
-});
+};
