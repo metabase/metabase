@@ -1,14 +1,15 @@
-import { Component } from "react";
+import { Component, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import Schemas from "metabase/entities/schemas";
-import Toggle from "metabase/core/components/Toggle";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
+// import InputBlurChange from "metabase/components/InputBlurChange";
+// import type { SelectChangeEvent } from "metabase/core/components/Select";
+// import DeprecatedSelect, {
+//   Option as DeprecatedOption,
+// } from "metabase/core/components/Select";
 
 import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
 
@@ -16,6 +17,8 @@ import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
+
+import { Switch, Select, TextInputBlurChange } from "metabase/ui";
 
 import type {
   DimensionReference,
@@ -83,7 +86,7 @@ class TagEditorParamInner extends Component<Props> {
     }
   }
 
-  setType(type: TemplateTagType) {
+  setType = (type: TemplateTagType) => {
     const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag.type !== type) {
@@ -97,9 +100,9 @@ class TagEditorParamInner extends Component<Props> {
 
       setParameterValue(tag.id, null);
     }
-  }
+  };
 
-  setWidgetType(widgetType: string) {
+  setWidgetType = (widgetType: string) => {
     const { tag, setTemplateTag, setParameterValue } = this.props;
 
     if (tag["widget-type"] !== widgetType) {
@@ -115,7 +118,7 @@ class TagEditorParamInner extends Component<Props> {
 
       setParameterValue(tag.id, null);
     }
-  }
+  };
 
   setRequired(required: boolean) {
     const { tag, setTemplateTag } = this.props;
@@ -225,7 +228,14 @@ class TagEditorParamInner extends Component<Props> {
 
         <InputContainer>
           <ContainerLabel>{t`Variable type`}</ContainerLabel>
-          <Select
+
+          <VariableTypeSelect
+            isInitiallyOpen={!tag.type}
+            value={tag.type}
+            onChange={this.setType}
+          />
+
+          {/* <Select
             value={tag.type}
             onChange={(e: SelectChangeEvent<TemplateTagType>) =>
               this.setType(e.target.value)
@@ -238,7 +248,7 @@ class TagEditorParamInner extends Component<Props> {
             <Option value="number">{t`Number`}</Option>
             <Option value="date">{t`Date`}</Option>
             <Option value="dimension">{t`Field Filter`}</Option>
-          </Select>
+          </Select> */}
         </InputContainer>
 
         {tag.type === "dimension" && (
@@ -282,7 +292,19 @@ class TagEditorParamInner extends Component<Props> {
               {t`Filter widget type`}
               {hasNoWidgetType && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
-            <Select
+
+            <FilterWidgetTypeSelect
+              value={this.getFilterWidgetTypeValue(tag)}
+              options={
+                hasWidgetOptions
+                  ? widgetOptions
+                  : [{ name: t`None`, type: "none" }]
+              }
+              onChange={this.setWidgetType}
+              isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
+            />
+
+            {/* <DeprecatedSelect
               className="block"
               value={this.getFilterWidgetTypeValue(tag)}
               onChange={(e: SelectChangeEvent<string>) =>
@@ -295,11 +317,14 @@ class TagEditorParamInner extends Component<Props> {
                 ? widgetOptions
                 : [{ name: t`None`, type: "none" }]
               ).map(widgetOption => (
-                <Option key={widgetOption.type} value={widgetOption.type}>
+                <DeprecatedOption
+                  key={widgetOption.type}
+                  value={widgetOption.type}
+                >
                   {widgetOption.name}
-                </Option>
+                </DeprecatedOption>
               ))}
-            </Select>
+            </DeprecatedSelect> */}
             {!hasWidgetOptions && (
               <p>
                 {t`There aren't any filter widgets for this type of field yet.`}{" "}
@@ -324,14 +349,23 @@ class TagEditorParamInner extends Component<Props> {
               {t`Filter widget label`}
               {hasNoWidgetLabel && <ErrorSpan>{t`(required)`}</ErrorSpan>}
             </ContainerLabel>
-            <InputBlurChange
+
+            <TextInputBlurChange
+              id="tag-editor-display-name"
+              value={tag["display-name"]}
+              onBlurChange={e =>
+                this.setParameterAttribute("display-name", e.target.value)
+              }
+            />
+
+            {/* <InputBlurChange
               id="tag-editor-display-name"
               type="text"
               value={tag["display-name"]}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
               }
-            />
+            /> */}
           </InputContainer>
         )}
 
@@ -348,10 +382,15 @@ class TagEditorParamInner extends Component<Props> {
 
         <InputContainer lessBottomPadding>
           <ContainerLabel>{t`Required?`}</ContainerLabel>
-          <Toggle
+          {/* <Toggle
             id="tag-editor-required"
             value={tag.required}
             onChange={value => this.setRequired(value)}
+          /> */}
+          <Switch
+            id="tag-editor-required"
+            checked={tag.required}
+            onChange={e => this.setRequired(e.target.checked)}
           />
         </InputContainer>
 
@@ -389,6 +428,64 @@ class TagEditorParamInner extends Component<Props> {
       </TagContainer>
     );
   }
+}
+
+interface VariableTypeSelectProps {
+  value: TemplateTagType;
+  onChange: (t: TemplateTagType) => void;
+  isInitiallyOpen: boolean;
+}
+
+function VariableTypeSelect(props: VariableTypeSelectProps) {
+  const data = useMemo(
+    () => [
+      { value: "text", label: t`Text` },
+      { value: "number", label: t`Number` },
+      { value: "date", label: t`Date` },
+      { value: "dimension", label: t`Field Filter` },
+    ],
+    [],
+  );
+  return (
+    <Select
+      data={data}
+      value={props.value}
+      onChange={props.onChange}
+      aria-label={t`Variable type`}
+      initiallyOpened={props.isInitiallyOpen}
+      placeholder={t`Select…`}
+    />
+  );
+}
+
+interface FilterWidgetTypeSelectProps {
+  value: string;
+  options: Array<{
+    name?: string;
+    type: string;
+  }>;
+  onChange: (t: string) => void;
+  isInitiallyOpen: boolean;
+}
+
+function FilterWidgetTypeSelect(props: FilterWidgetTypeSelectProps) {
+  const data = useMemo(
+    () =>
+      props.options.map(option => ({
+        value: option.type,
+        label: option.name,
+      })),
+    [props.options],
+  );
+  return (
+    <Select
+      data={data}
+      value={props.value}
+      onChange={props.onChange}
+      initiallyOpened={props.isInitiallyOpen}
+      placeholder={t`Select…`}
+    />
+  );
 }
 
 export const TagEditorParam = connect(
