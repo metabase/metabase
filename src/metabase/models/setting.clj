@@ -1383,16 +1383,17 @@
   "Test whether the value configured for a given setting can be parsed as the expected type.
    Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
   [setting]
-  (try
-    (get-value-of-type (:type setting) setting)
-    nil
-    (catch clojure.lang.ExceptionInfo e
-      (let [parse-error (or (ex-cause e) e)
-            parse-error (redact-sensitive-tokens parse-error setting)
-            env-var? (set-via-env-var? setting)]
-        (assoc (select-keys setting [:name :type])
-          :parse-error parse-error
-          :env-var? env-var?)))))
+  (when (= :json (:type setting))
+    (try
+      (get-value-of-type (:type setting) setting)
+      nil
+      (catch clojure.lang.ExceptionInfo e
+        (let [parse-error (or (ex-cause e) e)
+              parse-error (redact-sensitive-tokens parse-error setting)
+              env-var? (set-via-env-var? setting)]
+          (assoc (select-keys setting [:name :type])
+            :parse-error parse-error
+            :env-var? env-var?))))))
 
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
