@@ -378,7 +378,7 @@
   meaning there are no clauses such as filter, limit, breakout...
 
   The list of clauses should match with FE, which is defined in the
-  method `hasAnyClauses` of `metabase-lib/queries/StructuredQuery` class"
+  function `hasAnyClauses` of `metabase-lib/query-utils.ts` file"
   [{dataset-query :dataset_query :as _card}]
   (and (= :query (:type dataset-query))
        (every? #(nil? (get-in dataset-query [:query %]))
