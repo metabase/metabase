@@ -1,6 +1,8 @@
 import { t } from "ttag";
 import type { Location } from "history";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import Link from "metabase/core/components/Link/Link";
 import { trackDatabasePromptBannerClicked } from "metabase/nav/analytics";
 import { useShouldShowDatabasePromptBanner } from "metabase/nav/hooks";
@@ -27,12 +29,16 @@ export function DatabasePromptBanner({ location }: DatabasePromptBannerProps) {
     "/admin/databases/create",
   );
 
+  const adminEmail = MetabaseSettings.get("admin-email");
+  const siteURL = MetabaseSettings.get("site-url");
+  const helpURL = `https://metabase.com/help/connect?email=${adminEmail}&site_url=${siteURL}`;
+
   return (
     <DatabasePromptBannerRoot role="banner">
       <Prompt>{t`Connect to your database to get the most from Metabase.`}</Prompt>
       <CallToActions>
         <GetHelpButton
-          href="https://metabase.com/help/connect"
+          href={helpURL}
           onClickCapture={() => {
             trackDatabasePromptBannerClicked("help");
           }}
