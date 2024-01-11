@@ -251,13 +251,13 @@
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
-    (->> (concat
-           existing-columns
-           ;; add implicitly joinable columns if desired
-           (when (and include-implicitly-joinable?
-                      (or (not (:source-card (lib.util/query-stage query stage-number)))
-                          (:include-implicitly-joinable-for-source-card? options)))
-             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn))))))
+    (concat
+      existing-columns
+      ;; add implicitly joinable columns if desired
+      (when (and include-implicitly-joinable?
+                 (or (not (:source-card (lib.util/query-stage query stage-number)))
+                     (:include-implicitly-joinable-for-source-card? options)))
+        (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
