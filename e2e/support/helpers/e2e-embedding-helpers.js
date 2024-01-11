@@ -156,7 +156,7 @@ export function openEmbedModalFromMenu() {
  * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  */
-export function openStaticEmbeddingModal({ activeTab, previewMode }) {
+export function openStaticEmbeddingModal({ activeTab, previewMode } = {}) {
   openEmbedModalFromMenu();
 
   cy.findByTestId("sharing-pane-static-embed-button").click();
