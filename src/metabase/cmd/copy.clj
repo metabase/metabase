@@ -77,6 +77,7 @@
     :model/PermissionsGroup
     :model/PermissionsGroupMembership
     :model/Permissions
+    :model/PermissionsV2
     :model/PermissionsRevision
     :model/PersistedInfo
     :model/ApplicationPermissionsRevision
