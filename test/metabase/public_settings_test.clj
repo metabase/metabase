@@ -301,3 +301,21 @@
            (public-settings/help-link-custom-destination! "http://www.metabase.com")))
 
       (is (= nil (public-settings/help-link-custom-destination))))))
+
+(deftest show-metabase-links-test
+  (mt/with-premium-features #{:whitelabel}
+    (testing "When whitelabeling is enabled, show-metabase-links setting can be set to boolean"
+      (public-settings/show-metabase-links! true)
+      (is (= true (public-settings/show-metabase-links)))
+
+      (public-settings/show-metabase-links! false)
+      (is (= false (public-settings/show-metabase-links)))))
+
+  (mt/with-premium-features #{}
+    (testing "When whitelabeling is not enabled, show-metabase-links setting cannot be set, and always returns true"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting show-metabase-links is not enabled because feature :whitelabel is not available"
+           (public-settings/show-metabase-links! true)))
+
+      (is (= true (public-settings/show-metabase-links))))))
