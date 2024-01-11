@@ -35,6 +35,8 @@ import { EmotionCacheProvider } from "metabase/styled-components/components/Emot
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import Dimension from "metabase-lib/Dimension";
 import MiniBar from "../MiniBar";
 import {
   TableDraggable,
@@ -130,7 +132,7 @@ class TableInteractive extends Component {
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
-    this._showDetailShortcut(this.props.data, this.props.isPivoted);
+    this._showDetailShortcut(this.props.query, this.props.isPivoted);
   }
 
   componentWillUnmount() {
@@ -163,7 +165,7 @@ class TableInteractive extends Component {
 
     if (isDataChange) {
       this._findIDColumn(nextData, newProps.isPivoted);
-      this._showDetailShortcut(this.props.data, this.props.isPivoted);
+      this._showDetailShortcut(this.props.query, this.props.isPivoted);
     }
   }
 
@@ -180,10 +182,8 @@ class TableInteractive extends Component {
     document.addEventListener("keydown", this.onKeyDown);
   };
 
-  _showDetailShortcut = (data, isPivoted) => {
-    const hasAggregation = data.cols.some(
-      column => column.source === "aggregation",
-    );
+  _showDetailShortcut = (query, isPivoted) => {
+    const hasAggregation = !!query?.aggregations?.()?.length;
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
     const newShowDetailState = !(
       isPivoted ||
@@ -417,9 +417,9 @@ class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(data, columnIndex, isPivoted) {
+  getHeaderClickedObject(data, columnIndex, isPivoted, query) {
     try {
-      return getTableHeaderClickedObject(data, columnIndex, isPivoted);
+      return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
     } catch (e) {
       console.error(e);
     }
@@ -680,22 +680,38 @@ class TableInteractive extends Component {
   tableHeaderRenderer = ({ key, style, columnIndex, isVirtual = false }) => {
     const {
       data,
+      sort,
       isPivoted,
       hasMetadataPopovers,
       getColumnTitle,
       renderTableHeaderWrapper,
+      query,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
-    const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
+    const clicked = this.getHeaderClickedObject(
+      data,
+      columnIndex,
+      isPivoted,
+      query,
+    );
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
+
+    // TODO MBQL: use query lib to get the sort field
+    const fieldRef = fieldRefForColumn(column);
+    const sortIndex = _.findIndex(
+      sort,
+      sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),
+    );
+    const isSorted = sortIndex >= 0;
+    const isAscending = isSorted && sort[sortIndex][0] === "asc";
 
     return (
       <TableDraggable
@@ -765,6 +781,7 @@ class TableInteractive extends Component {
               "TableInteractive-cellWrapper--lastColumn":
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
+              "TableInteractive-headerCellData--sorted": isSorted,
               "cursor-pointer": isClickable,
               "justify-end": isRightAligned,
             },
@@ -787,11 +804,19 @@ class TableInteractive extends Component {
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
                 {isSortable && isRightAligned && (
-                  <Icon className="Icon mr1" name="chevrondown" size={10} />
+                  <Icon
+                    className="Icon mr1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={10}
+                  />
                 )}
                 {columnTitle}
                 {isSortable && !isRightAligned && (
-                  <Icon className="Icon ml1" name="chevrondown" size={10} />
+                  <Icon
+                    className="Icon ml1"
+                    name={isAscending ? "chevronup" : "chevrondown"}
+                    size={10}
+                  />
                 )}
               </Ellipsified>,
               column,
@@ -1120,7 +1145,6 @@ export default _.compose(
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",
-    "getField",
     "getHeaderClickedObject",
   ),
 )(TableInteractive);
