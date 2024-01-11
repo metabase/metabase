@@ -16,7 +16,7 @@ const propTypes = {
   disabled: PropTypes.bool,
 };
 
-type Props = { field?: Field } & Pick<
+type Props = { field?: Field; description?: string } & Pick<
   ITippyPopoverProps,
   "children" | "placement" | "disabled" | "delay"
 >;
@@ -25,6 +25,7 @@ const className = "dimension-info-popover";
 
 function FieldInfoPopover({
   field,
+  description,
   children,
   placement,
   disabled,
@@ -36,7 +37,7 @@ function FieldInfoPopover({
       delay={delay}
       placement={placement || "left-start"}
       disabled={disabled}
-      content={<WidthBoundFieldInfo field={field} />}
+      content={<WidthBoundFieldInfo field={field} description={description} />}
       onTrigger={instance => {
         const fieldInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,

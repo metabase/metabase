@@ -798,6 +798,7 @@ class TableInteractive extends Component {
           <FieldInfoPopover
             placement="bottom-start"
             field={this.getField(column, this.props.metadata)}
+            description={column.description}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
           >
             {renderTableHeaderWrapper(

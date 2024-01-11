@@ -10,15 +10,16 @@ import {
 interface FieldInfoProps {
   className?: string;
   field?: Field;
+  description?: string;
   showAllFieldValues?: boolean;
 }
 
 export function FieldInfo({
   className,
   field,
+  description = field?.description ?? undefined,
   showAllFieldValues,
 }: FieldInfoProps) {
-  const description = field?.description;
   return (
     <InfoContainer className={className}>
       {description ? (
