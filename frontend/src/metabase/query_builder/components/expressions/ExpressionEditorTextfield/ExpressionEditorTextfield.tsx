@@ -132,8 +132,6 @@ class ExpressionEditorTextfield extends React.Component<
     startRule: "expression",
   };
 
-  state: ExpressionEditorTextfieldState;
-
   constructor(props: ExpressionEditorTextfieldProps) {
     super(props);
 
