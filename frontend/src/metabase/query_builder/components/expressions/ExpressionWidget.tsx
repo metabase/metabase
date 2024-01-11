@@ -8,6 +8,9 @@ import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
 import type { Expression } from "metabase-types/api";
 import type * as Lib from "metabase-lib";
+import { useSelector } from "metabase/lib/redux";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Box } from "metabase/ui";
 import { isExpression } from "metabase-lib/expressions";
 
 import { ExpressionEditorTextfield } from "./ExpressionEditorTextfield";
@@ -123,25 +126,39 @@ export const ExpressionWidget = <Clause extends object = Lib.ExpressionClause>(
     setError(null);
   };
 
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
   return (
     <Container>
       {header}
       <ExpressionFieldWrapper>
         <FieldLabel htmlFor="expression-content">
           {t`Expression`}
-          <Tooltip
-            tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
-            placement="right"
-            maxWidth={332}
-          >
-            <InfoLink
-              target="_blank"
-              href={EXPRESSIONS_DOCUMENTATION_URL}
-              aria-label={t`Open expressions documentation`}
+          {showMetabaseLinks ? (
+            <Tooltip
+              tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]). Click for documentation.`}
+              placement="right"
+              maxWidth={332}
             >
-              <StyledFieldTitleIcon name="info" />
-            </InfoLink>
-          </Tooltip>
+              <InfoLink
+                target="_blank"
+                href={EXPRESSIONS_DOCUMENTATION_URL}
+                aria-label={t`Open expressions documentation`}
+              >
+                <StyledFieldTitleIcon name="info" />
+              </InfoLink>
+            </Tooltip>
+          ) : (
+            <Tooltip
+              tooltip={t`You can reference columns here in functions or equations, like: floor([Price] - [Discount]).`}
+              placement="right"
+              maxWidth={332}
+            >
+              <Box ml="0.25rem">
+                <StyledFieldTitleIcon name="info" />
+              </Box>
+            </Tooltip>
+          )}
         </FieldLabel>
         <div ref={helpTextTargetRef}>
           <ExpressionEditorTextfield
