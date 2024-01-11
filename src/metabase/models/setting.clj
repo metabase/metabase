@@ -213,9 +213,9 @@
      uploads-schema-name})
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value]} (admin-writable-site-wide-settings
+  (for [{:keys [key value] :as s} (admin-writable-site-wide-settings
                              :getter (partial get-value-of-type :string))
-        :when (contains? exported-settings (symbol key))]
+        :when (:export? (meta s))]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -1246,9 +1246,15 @@
 (defn- set-via-env-var? [setting]
   (some? (env-var-value setting)))
 
+(defn- export? [setting]
+  (or (:export? setting)
+      ;; deprecated, always set this explicitly
+      (contains? exported-settings (symbol (:name setting)))))
+
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
   (let [from-env? (set-via-env-var? setting)]
+    ^{:export? (export? setting)}
     {:key            k
      :value          (try
                        (m/mapply user-facing-value setting options)
