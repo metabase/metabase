@@ -33,8 +33,10 @@ function hasNewColumns(question: Question, queryResult: Dataset | null) {
   if (!queryResult) {
     return false;
   }
+
+  const queryResultColumns = queryResult.data.cols;
   if (question.isNative()) {
-    return queryResult.data.cols.length > 0;
+    return queryResultColumns.length > 0;
   }
 
   // NOTE: this assumes column names will change
@@ -42,7 +44,6 @@ function hasNewColumns(question: Question, queryResult: Dataset | null) {
   const query = question.query();
   const stageIndex = -1;
   const queryColumns = Lib.returnedColumns(query, stageIndex);
-  const queryResultColumns = queryResult.data.cols;
   return queryColumns.length > queryResultColumns.length;
 }
 
