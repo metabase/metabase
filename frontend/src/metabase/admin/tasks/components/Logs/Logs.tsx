@@ -6,6 +6,7 @@ import _ from "underscore";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
+import type { Log } from "metabase-types/api";
 
 import { UtilApi } from "metabase/services";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -14,15 +15,6 @@ import Select, { Option } from "metabase/core/components/Select";
 import { LogsContainer } from "./Logs.styled";
 
 const MAX_LOGS = 50000;
-
-interface Log {
-  timestamp: number;
-  process_uuid: string;
-  fqns: string;
-  msg: string;
-  level: string;
-  exception: any;
-}
 
 function logEventKey(ev: Log) {
   return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
@@ -39,7 +31,7 @@ function mergeLogs(...logArrays: Log[] | Log[][]) {
     .value();
 }
 
-type LogsProps = unknown;
+type LogsProps = Record<string, never>;
 
 interface LogsState {
   loaded: boolean;

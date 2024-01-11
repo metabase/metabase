@@ -25,7 +25,7 @@ describe("Logs", () => {
       });
     });
 
-    it("should display results if server responses with logs", async () => {
+    it("should display results if server responds with logs", async () => {
       fetchMock.get("path:/api/util/logs", [
         {
           timestamp: "2024-01-10T21:21:58.597Z",
