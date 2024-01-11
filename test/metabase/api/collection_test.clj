@@ -16,8 +16,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -232,6 +230,32 @@
                            :authority_level   nil}
                           (some #(when (= (:id %) (u/the-id personal-collection)) %)
                                 response)))))))))
+
+(deftest collections-tree-exclude-other-user-collections-test
+  (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
+    (with-collection-hierarchy [a b c d e f g]
+      (collection/move-collection! a (collection/children-location personal-collection))
+      (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
+            response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
+            response-lucky      (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)
+            expected-lucky-tree [{:name "Lucky Pigeon's Personal Collection",
+                                  :children
+                                  [{:name "A"
+                                    :children
+                                    [{:name "B" :children []}
+                                     {:name "C"
+                                      :children [{:name "D" :children [{:name "E" :children []}]} {:name "F" :children [{:name "G" :children []}]}]}]}]}]]
+        (testing "Make sure that user is not able to see other users personal collections"
+          (is (= []
+                 (collection-tree-view ids response-rasta))))
+        (testing "Make sure that user is able to see his own collections"
+          (is (= expected-lucky-tree
+                 (collection-tree-view ids response-lucky))))
+        (testing "Mocking having one user still returns a correct result"
+          (with-redefs [t2/select-fn-set (constantly nil)]
+            (let [response (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)]
+              (is (= expected-lucky-tree
+                     (collection-tree-view ids response))))))))))
 
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
@@ -679,60 +703,60 @@
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
     (mt/test-helpers-set-global-values!
-     (mt/with-temp
-       [Collection {collection-id :id}      {:name "Collection with Items"}
-        User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
-        User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
-        Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
-        Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
-        Card       _                        {:name "ZZ" :collection_id collection-id}
-        Card       _                        {:name "AA" :collection_id collection-id}
-        Revision   revision1                {:model    "Card"
-                                             :model_id card1-id
-                                             :user_id  user2-id
-                                             :object   (revision/serialize-instance card1 card1-id card1)}
-        Revision   _revision2               {:model    "Card"
-                                             :model_id card2-id
-                                             :user_id  user1-id
-                                             :object   (revision/serialize-instance card2 card2-id card2)}]
-       ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
-       (is (= 1
-              (t2/query-one {:update :revision
-                             ;; in the past
-                             :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
-                             :where  [:= :id (:id revision1)]})))
-       (testing "Results include last edited information from the `Revision` table"
-         (is (= [{:name "AA"}
-                 {:name "Card with history 1",
-                  :last-edit-info
-                  {:id         true,
-                   :email      "zzzz@example.com",
-                   :first_name "Test",
-                   :last_name  "ZZZZ",
-                   :timestamp  true}}
-                 {:name "Card with history 2",
-                  :last-edit-info
-                  {:id         true,
-                   :email      "aaaa@example.com",
-                   :first_name "Test",
-                   :last_name  "AAAA",
-                   ;; timestamp collapsed to true, ordinarily a OffsetDateTime
-                   :timestamp  true}}
-                 {:name "ZZ"}]
-                (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
-                     mt/boolean-ids-and-timestamps
-                     (map #(select-keys % [:name :last-edit-info]))))))
-       (testing "Results can be ordered by last-edited-at"
-         (testing "ascending"
-           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
-                       :data
-                       (map :name)))))
-         (testing "descending"
-           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
-                       :data
-                       (map :name))))))
+      (mt/with-temp
+        [Collection {collection-id :id}      {:name "Collection with Items"}
+         User       {user1-id :id}           {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}
+         User       {user2-id :id}           {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}
+         Card       {card1-id :id :as card1} {:name "Card with history 1" :collection_id collection-id}
+         Card       {card2-id :id :as card2} {:name "Card with history 2" :collection_id collection-id}
+         Card       _                        {:name "ZZ" :collection_id collection-id}
+         Card       _                        {:name "AA" :collection_id collection-id}
+         Revision   revision1                {:model    "Card"
+                                              :model_id card1-id
+                                              :user_id  user2-id
+                                              :object   (revision/serialize-instance card1 card1-id card1)}
+         Revision   _revision2               {:model    "Card"
+                                              :model_id card2-id
+                                              :user_id  user1-id
+                                              :object   (revision/serialize-instance card2 card2-id card2)}]
+        ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
+        (is (= 1
+               (t2/query-one {:update :revision
+                              ;; in the past
+                              :set    {:timestamp (.minusHours (ZonedDateTime/now (ZoneId/of "UTC")) 24)}
+                              :where  [:= :id (:id revision1)]})))
+        (testing "Results include last edited information from the `Revision` table"
+          (is (= [{:name "AA"}
+                  {:name "Card with history 1",
+                   :last-edit-info
+                   {:id         true,
+                    :email      "zzzz@example.com",
+                    :first_name "Test",
+                    :last_name  "ZZZZ",
+                    :timestamp  true}}
+                  {:name "Card with history 2",
+                   :last-edit-info
+                   {:id         true,
+                    :email      "aaaa@example.com",
+                    :first_name "Test",
+                    :last_name  "AAAA",
+                    ;; timestamp collapsed to true, ordinarily a OffsetDateTime
+                    :timestamp  true}}
+                  {:name "ZZ"}]
+                 (->> (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items")))
+                      mt/boolean-ids-and-timestamps
+                      (map #(select-keys % [:name :last-edit-info]))))))
+        (testing "Results can be ordered by last-edited-at"
+          (testing "ascending"
+            (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=asc"))
+                        :data
+                        (map :name)))))
+          (testing "descending"
+            (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
+                        :data
+                        (map :name))))))
        (testing "Results can be ordered by last-edited-by"
          (testing "ascending"
            ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
@@ -909,7 +933,7 @@
                         (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))
 
         (testing "Snippets in nested collections should be returned as a flat list on OSS"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (t2.with-temp/with-temp [:model/Collection  sub-collection {:namespace "snippets"
                                                                         :name      "Nested Snippet Collection"
                                                                         :location  (collection/location-path collection)}

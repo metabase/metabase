@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import { Checkbox, Flex, Grid, Group } from "metabase/ui";
+import { Icon, Checkbox, Flex, Grid, Group } from "metabase/ui";
+
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { useBooleanOperatorFilter } from "metabase/querying/hooks/use-boolean-operator-filter";
 import type * as Lib from "metabase-lib";

@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import {
   getParameterType,
@@ -20,6 +21,26 @@ export function fieldFilterForParameter(parameter) {
       return field => field.isNumber() && !field.isCoordinate();
     case "string":
       return field => field.isString() && !field.isLocation();
+  }
+
+  return () => false;
+}
+
+export function columnFilterForParameter(parameter) {
+  const type = getParameterType(parameter);
+  switch (type) {
+    case "date":
+      return column => Lib.isDate(column);
+    case "id":
+      return column => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
+    case "category":
+      return column => Lib.isCategory(column);
+    case "location":
+      return column => Lib.isLocation(column);
+    case "number":
+      return column => Lib.isNumber(column) && !Lib.isLocation(column);
+    case "string":
+      return column => Lib.isString(column) && !Lib.isLocation(column);
   }
 
   return () => false;

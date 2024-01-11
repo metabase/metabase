@@ -4,9 +4,6 @@
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as
-    premium-features.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))
@@ -220,7 +217,7 @@
                  (public-settings/start-of-week))))))))
 
 (deftest help-link-setting-test
-  (premium-features.test/with-premium-features #{:whitelabel}
+  (mt/with-premium-features #{:whitelabel}
     (testing "When whitelabeling is enabled, help-link setting can be set to any valid value"
       (public-settings/help-link! :metabase)
       (is (= :metabase (public-settings/help-link)))
@@ -236,7 +233,7 @@
            Exception #"Invalid help link option"
            (public-settings/help-link! :invalid)))))
 
-  (premium-features.test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (testing "When whitelabeling is not enabled, help-link setting cannot be set, and always returns :metabase"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
@@ -272,7 +269,7 @@
          (#'public-settings/validate-help-url "mailto:help@metabase")))))
 
 (deftest help-link-custom-destination-setting-test
-  (premium-features.test/with-premium-features #{:whitelabel}
+  (mt/with-premium-features #{:whitelabel}
     (testing "When whitelabeling is enabled, help-link-custom-destination can be set to valid URLs"
       (public-settings/help-link-custom-destination! "http://www.metabase.com")
       (is (= "http://www.metabase.com" (public-settings/help-link-custom-destination)))
@@ -296,7 +293,7 @@
            #"Please make sure this is a valid URL"
            (public-settings/help-link-custom-destination! "mailto:help@metabase")))))
 
-  (premium-features.test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (testing "When whitelabeling is not enabled, help-link-custom-destination cannot be set, and always returns its default"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo

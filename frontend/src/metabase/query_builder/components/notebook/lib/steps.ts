@@ -5,7 +5,6 @@ import { checkNotNull } from "metabase/lib/types";
 import type { Query } from "metabase-lib/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Question from "metabase-lib/Question";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type { NotebookStep, OpenSteps } from "../types";
 
@@ -191,11 +190,9 @@ export function getQuestionSteps(
 ) {
   const allSteps: NotebookStep[] = [];
 
-  let legacyQuery = question.legacyQuery() as StructuredQuery;
-  let query = question._getMLv2Query();
+  let query = question.query();
 
   // strip empty source queries
-  legacyQuery = legacyQuery.cleanNesting();
   query = Lib.dropEmptyStages(query);
 
   const database = metadata.database(Lib.databaseID(query));
@@ -204,17 +201,13 @@ export function getQuestionSteps(
 
   // add a level of nesting, if valid
   if (allowsNesting && hasBreakouts) {
-    legacyQuery = legacyQuery.nest();
     query = Lib.appendStage(query);
   }
 
-  const stagedQueries = legacyQuery.queries();
-
   for (let stageIndex = 0; stageIndex < Lib.stageCount(query); ++stageIndex) {
-    const stageQuery = stagedQueries[stageIndex];
     const { steps, actions } = getStageSteps(
+      question,
       query,
-      stageQuery,
       stageIndex,
       metadata,
       openSteps,
@@ -239,8 +232,8 @@ export function getQuestionSteps(
  * Returns an array of "steps" to be displayed in the notebook for one "stage" (nesting) of a query
  */
 function getStageSteps(
+  question: Question,
   query: Query,
-  legacyQuery: StructuredQuery,
   stageIndex: number,
   metadata: Metadata,
   openSteps: OpenSteps,
@@ -266,8 +259,8 @@ function getStageSteps(
       type: STEP.type,
       stageIndex: stageIndex,
       itemIndex: itemIndex,
-      topLevelQuery: query,
-      query: legacyQuery,
+      question,
+      query,
       valid: STEP.valid(query, stageIndex, metadata),
       active,
       visible:

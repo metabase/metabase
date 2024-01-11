@@ -9,6 +9,6 @@ export const MenuItemStyled = styled(Menu.Item)<MenuItemStyledProps>`
   ${({ theme, "aria-selected": isSelected }) =>
     isSelected &&
     `
-    color: ${theme.colors.brand[1]};
-    background-color: ${theme.colors.brand[0]};`}
+    color: ${theme.fn.themeColor("brand")};
+    background-color: ${theme.fn.themeColor("brand-lighter")};`}
 `;
