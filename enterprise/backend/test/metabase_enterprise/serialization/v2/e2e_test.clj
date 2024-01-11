@@ -20,7 +20,6 @@
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -491,34 +490,34 @@
 
                   (storage/store! (seq extraction) dump-dir)))
 
-              (testing "ingest and load"
-                (ts/with-dest-db
-                  ;; ingest
-                  (testing "doing ingestion"
-                    (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                        "successful"))
+             (testing "ingest and load"
+               (ts/with-dest-db
+                 ;; ingest
+                 (testing "doing ingestion"
+                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                       "successful"))
 
-                  (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
-                        card1d  (t2/select-one Card :name (:name card1s))
-                        card2d  (t2/select-one Card :name (:name card2s))
-                        field1d (t2/select-one Field :name (:name field1s))]
-                    (testing "parameter on dashboard is loaded correctly"
-                      (is (= {:card_id     (:id card1d),
-                              :value_field [:field (:id field1d) nil]}
-                             (-> dash1d
-                                 :parameters
-                                 first
-                                 :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                 (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
+                       card1d  (t2/select-one Card :name (:name card1s))
+                       card2d  (t2/select-one Card :name (:name card2s))
+                       field1d (t2/select-one Field :name (:name field1s))]
+                   (testing "parameter on dashboard is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> dash1d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                    (testing "parameter on card is loaded correctly"
-                      (is (= {:card_id     (:id card1d),
-                              :value_field [:field (:id field1d) nil]}
-                             (-> card2d
-                                 :parameters
-                                 first
-                                 :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                   (testing "parameter on card is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> card2d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -740,7 +739,7 @@
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{:serialization}
+      (mt/with-premium-features #{:serialization}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation
@@ -757,7 +756,7 @@
 
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation

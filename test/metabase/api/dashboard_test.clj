@@ -42,8 +42,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
@@ -1731,14 +1729,14 @@
                                   :col          3
                                   :series       [{:name "Series Card 1"}]}
               revisions-after    (get-revision-count)]
-          (is (=? [updated-card-1
-                   updated-card-2
-                   new-card]
-                  cards))
-          ;; dashcard 3 is deleted
-          (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
-          (testing "only one revision is created from the request"
-            (is (= 1 (- revisions-after revisions-before)))))))))
+         (is (=? [updated-card-1
+                  updated-card-2
+                  new-card]
+                 cards))
+;; dashcard 3 is deleted
+         (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))
+         (testing "only one revision is created from the request"
+           (is (= 1 (- revisions-after revisions-before)))))))))
 
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
@@ -3932,7 +3930,7 @@
                                          dashboard-id
                                          dashcard-id)]
                 (testing "with :advanced-permissions feature flag"
-                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                  (mt/with-premium-features #{:advanced-permissions}
                     (testing "for non-magic group"
                       (mt/with-temp [PermissionsGroup {group-id :id} {}
                                      PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)

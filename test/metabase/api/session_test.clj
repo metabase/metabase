@@ -13,7 +13,6 @@
             PulseChannel Session User]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -252,7 +251,7 @@
 
 (deftest forgot-password-event-test
   (reset-throttlers!)
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
                     (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
@@ -322,7 +321,7 @@
 
 (deftest reset-password-successful-event-test
   (reset-throttlers!)
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (testing "Test that a successful password reset creates the correct event"
       (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
         (mt/with-fake-inbox
@@ -498,7 +497,7 @@
         (is (malli= SessionResponse
                     (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
       (testing "...but not if password login is disabled"
-        (premium-features-test/with-premium-features #{:disable-password-login}
+        (mt/with-premium-features #{:disable-password-login}
           (mt/with-temporary-setting-values [enable-password-login false]
             (is (= "Password login is disabled for this instance."
                    (mt/client :post 401 "session" (mt/user->credentials :crowberto))))))))
@@ -600,7 +599,7 @@
 
 (deftest unsubscribe-event-test
   (reset-throttlers!)
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (mt/with-model-cleanup [:model/User]
       (testing "Valid hash and email returns event."
         (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}
@@ -647,7 +646,7 @@
 
 (deftest unsubscribe-undo-event-test
   (reset-throttlers!)
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (mt/with-model-cleanup [:model/User]
       (testing "Undoing valid hash and email returns event"
         (t2.with-temp/with-temp [Pulse        {pulse-id :id} {}

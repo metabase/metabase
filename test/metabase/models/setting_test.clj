@@ -8,8 +8,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -915,11 +913,11 @@
 
 (deftest feature-test
   (testing "Settings can be assigned an Enterprise feature flag, required for them to be enabled"
-    (premium-features-test/with-premium-features #{:test-feature}
+    (mt/with-premium-features #{:test-feature}
       (test-feature-setting! "custom")
       (is (= "custom" (test-feature-setting))))
 
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting test-feature-setting is not enabled because feature :test-feature is not available"
@@ -1112,7 +1110,7 @@
   :audit      :getter)
 
 (deftest setting-audit-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (let [last-audit-event-fn #(t2/select-one [:model/AuditLog :topic :user_id :model :details]
                                               :topic :setting-update
                                               {:order-by [[:id :desc]]})]
@@ -1171,7 +1169,7 @@
   :audit      :raw-value)
 
 (deftest user-local-settings-audit-test
-  (premium-features-test/with-premium-features #{:audit-app}
+  (mt/with-premium-features #{:audit-app}
     (testing "User-local settings are not audited by default"
       (mt/with-test-user :rasta
         (test-user-local-only-setting! "DON'T AUDIT"))

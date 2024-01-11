@@ -7,7 +7,6 @@
    [metabase.models :refer [PermissionsGroup PermissionsGroupMembership User]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]
@@ -46,7 +45,7 @@
                                             (format "permissions/group/%d" group-id))))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (get-groups user 403)
             (get-one-group user 403 group)
             (update-group user 403 group)
@@ -57,7 +56,7 @@
             (delete-group :crowberto 204 false)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "still fails if user is not a manager"
               (get-groups user 403)
               (get-one-group user 403 group)
@@ -134,7 +133,7 @@
       [group  {:name "New Group"}
        user   [group]]
       (testing "if `advanced-permissions` is disabled, require admins"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (get-membership user 403)
           (add-membership! user 403 group false)
           (update-membership! user 402 group false)
@@ -151,7 +150,7 @@
       [group  {:name "New Group"}
        user   [group]]
       (testing "if `advanced-permissions` is enabled"
-        (premium-features-test/with-premium-features #{:advanced-permissions}
+        (mt/with-premium-features #{:advanced-permissions}
           (testing "requires Group Manager or admins"
             (get-membership user 403)
             (add-membership! user 403 group false)
@@ -184,12 +183,12 @@
        user  [group]]
 
       (testing "if `advanced-permissions` is disabled"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (testing "fail when try to set is_group_manager=true"
             (add-membership! :crowberto 402 group true))))
 
       (testing "if advanced-permissions is enabled, "
-        (premium-features-test/with-premium-features #{:advanced-permissions}
+        (mt/with-premium-features #{:advanced-permissions}
           (testing "succeed if users access group that they are manager of,"
             (t2/update! PermissionsGroupMembership {:user_id  (:id user)
                                                     :group_id (:id group)}
@@ -225,12 +224,12 @@
                 (testing (format "- get users with %s user" (mt/user-descriptor user))
                   (mt/user-http-request req-user :get status "/user?status=all")))]
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (get-users user 403)
             (get-users :crowberto 200)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "requires Group Manager or admins"
               (get-users user 403)
               (get-users :crowberto 200))
@@ -280,12 +279,12 @@
                     (mt/user-http-request req-user :get status (format "user/%d" (:id new-user))))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (get-user user 403)
             (get-user :crowberto 200)))
 
         (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "requires Group Manager or admins"
               (get-user user 403)
               (get-user :crowberto 200))
@@ -335,7 +334,7 @@
                         (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
                                               {:user_group_memberships new-user-group-membership}))))]
             (testing "if `advanced-permissions` is disabled, requires admins"
-              (premium-features-test/with-premium-features #{}
+              (mt/with-premium-features #{}
                 (update-user-firstname! user 403)
                 (add-user-to-group! user 403 group)
                 (remove-user-from-group! user 403 group)
@@ -344,7 +343,7 @@
                 (remove-user-from-group! :crowberto 200 group)))
 
             (testing "if `advanced-permissions` is enabled"
-              (premium-features-test/with-premium-features #{:advanced-permissions}
+              (mt/with-premium-features #{:advanced-permissions}
                 (testing "Group Managers"
                   (t2/update! PermissionsGroupMembership {:user_id  (:id user)
                                                           :group_id (:id group)}
