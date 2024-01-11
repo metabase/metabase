@@ -8,9 +8,7 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
-import NativeQuery, {
-  updateCardTemplateTagNames,
-} from "metabase-lib/queries/NativeQuery";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
 
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;
 
@@ -374,23 +372,6 @@ describe("NativeQuery", () => {
           id: PRODUCTS.CATEGORY,
         },
       ]);
-    });
-  });
-
-  describe("updateCardTemplateTagNames", () => {
-    it("should update the query text with new tag names", () => {
-      const query = makeQuery().setQueryText("{{#123-foo}} {{#1234-bar}}");
-      const newCards = [{ id: 123, name: "Foo New" }]; // newCards is deliberately missing a the bar card
-      const templateTagsMap = updateCardTemplateTagNames(
-        query,
-        newCards,
-      ).templateTagsMap();
-      const fooTag = templateTagsMap["#123-foo-new"]; // foo's templateTagsMap key is updated
-      const barTag = templateTagsMap["#1234-bar"]; // bar's key isn't updated
-      expect(fooTag["card-id"]).toEqual(123); // foo's card-id is the same
-      expect(fooTag["name"]).toEqual("#123-foo-new"); // foo's name is updated
-      expect(barTag["card-id"]).toEqual(1234); // bar's card-id is the same
-      expect(barTag["name"]).toEqual("#1234-bar"); // bar's name is the same
     });
   });
 });

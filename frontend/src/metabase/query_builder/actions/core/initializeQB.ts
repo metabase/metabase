@@ -1,5 +1,6 @@
 import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
+import slugg from "slugg";
 import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -16,21 +17,24 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
-import type { Card, MetricId, SegmentId } from "metabase-types/api";
+import type {
+  Card,
+  MetricId,
+  NativeQuerySnippet,
+  SegmentId,
+} from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
@@ -223,6 +227,160 @@ function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
+function referencedQuestionIds(query: Lib.Query): number[] {
+  const cardTemplateTags = getCardTemplateTags(query);
+  const cardIds = cardTemplateTags.flatMap(tag => {
+    const cardId = tag["card-id"];
+    return typeof cardId === "number" ? [cardId] : [];
+  });
+  return cardIds;
+}
+
+function getCardTemplateTags(query: Lib.Query) {
+  const templateTagsMap = Lib.templateTags(query);
+  const templateTags = Object.values(templateTagsMap);
+  const cardTemplateTags = templateTags.flatMap(tag =>
+    tag.type === "card" ? [tag] : [],
+  );
+  return cardTemplateTags;
+}
+
+function getSnippetTemplateTags(query: Lib.Query) {
+  const templateTagsMap = Lib.templateTags(query);
+  const templateTags = Object.values(templateTagsMap);
+  const snippetTemplateTags = templateTags.flatMap(tag =>
+    tag.type === "snippet" ? [tag] : [],
+  );
+  return snippetTemplateTags;
+}
+
+export function updateCardTemplateTagNames(
+  query: Lib.Query,
+  cards: Card[],
+): Lib.Query {
+  const cardById = _.indexBy(cards, "id");
+  const cardTemplateTags = getCardTemplateTags(query); // only tags for cards
+  // only tags for given cards
+  const tags = cardTemplateTags.filter(tag => {
+    const cardId = tag["card-id"];
+
+    if (typeof cardId !== "number") {
+      return false;
+    }
+
+    return cardById[cardId];
+  });
+
+  // reduce over each tag, updating query text with the new tag name
+  return tags.reduce((query, tag) => {
+    const cardId = tag["card-id"];
+
+    if (typeof cardId !== "number") {
+      return query;
+    }
+
+    const card = cardById[cardId];
+    const newTagName = `#${card.id}-${slugg(card.name)}`;
+    return replaceTagName(query, tag.name, newTagName);
+  }, query);
+}
+
+function replaceTagName(
+  query: Lib.Query,
+  oldTagName: string,
+  newTagName: string,
+): Lib.Query {
+  const rawNativeQuery = Lib.rawNativeQuery(query);
+  const queryText = rawNativeQuery.replace(
+    tagRegex(oldTagName),
+    `{{${newTagName}}}`,
+  );
+  return Lib.withNativeQuery(query, queryText);
+}
+
+function tagRegex(tagName: string): RegExp {
+  return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
+}
+
+function hasSnippets(query: Lib.Query): boolean {
+  return getSnippetTemplateTags(query).length > 0;
+}
+
+function updateSnippetNames(
+  query: Lib.Query,
+  snippets: NativeQuerySnippet[],
+): Lib.Query {
+  const snippetTemplateTags = getSnippetTemplateTags(query).filter(tag => {
+    return typeof tag["snippet-id"] === "number";
+  });
+  const tagsBySnippetId = _.groupBy(snippetTemplateTags, tag => {
+    return checkNotNull(tag["snippet-id"]);
+  });
+
+  if (Object.keys(tagsBySnippetId).length === 0) {
+    // no need to check if there are no tags
+    return query;
+  }
+
+  const originalQueryText = Lib.rawNativeQuery(query);
+  let queryText = originalQueryText;
+
+  for (const snippet of snippets) {
+    const tags = tagsBySnippetId[snippet.id] || [];
+
+    for (const tag of tags) {
+      if (tag["snippet-name"] !== snippet.name) {
+        queryText = queryText.replace(
+          tagRegex(tag.name),
+          `{{snippet: ${snippet.name}}}`,
+        );
+      }
+    }
+  }
+
+  if (queryText === originalQueryText) {
+    return query;
+  }
+
+  const newQuery = Lib.withNativeQuery(query, queryText);
+  return updateSnippetsWithIds(newQuery, snippets);
+}
+
+function updateSnippetsWithIds(
+  query: Lib.Query,
+  snippets: NativeQuerySnippet[],
+): Lib.Query {
+  const snippetTemplateTags = getSnippetTemplateTags(query).filter(tag => {
+    return (
+      typeof tag["snippet-id"] !== "number" &&
+      typeof tag["snippet-name"] === "string"
+    );
+  });
+  const tagsBySnippetName = _.groupBy(snippetTemplateTags, tag => {
+    return checkNotNull(tag["snippet-name"]);
+  });
+
+  if (Object.keys(tagsBySnippetName).length === 0) {
+    // no need to check if there are no tags
+    return query;
+  }
+
+  const templateTags = Lib.templateTags(query);
+
+  for (const snippet of snippets) {
+    const tags = tagsBySnippetName[snippet.name] || [];
+
+    for (const tag of tags) {
+      templateTags[tag.name] = {
+        ...tag,
+        "snippet-id": snippet.id,
+      };
+    }
+  }
+
+  return Lib.withTemplateTags(query, templateTags);
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
 /**
@@ -231,13 +389,13 @@ export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
  * they might have changed since the query was last opened.
  */
 export async function updateTemplateTagNames(
-  query: NativeQuery,
+  query: Lib.Query,
   getState: GetState,
   dispatch: Dispatch,
-): Promise<NativeQuery> {
+): Promise<Lib.Query> {
   const referencedCards = (
     await Promise.all(
-      query.referencedQuestionIds().map(async id => {
+      referencedQuestionIds(query).map(async id => {
         try {
           const actionResult = await dispatch(
             Questions.actions.fetch({ id }, { noEvent: true }),
@@ -251,10 +409,10 @@ export async function updateTemplateTagNames(
   ).filter(isNotNull);
 
   query = updateCardTemplateTagNames(query, referencedCards);
-  if (query.hasSnippets()) {
+  if (hasSnippets(query)) {
     await dispatch(Snippets.actions.fetchList());
     const snippets = Snippets.selectors.getList(getState());
-    query = query.updateSnippetNames(snippets);
+    query = updateSnippetNames(query, snippets);
   }
   return query;
 }
@@ -348,9 +506,9 @@ async function handleQBInit(
   }
 
   if (question.isNative() && question.isQueryEditable()) {
-    const query = question.legacyQuery() as NativeQuery;
+    const query = question.query();
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setLegacyQuery(newQuery);
+    question = question.setQuery(newQuery);
   }
 
   const finalCard = question.card();
