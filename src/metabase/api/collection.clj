@@ -103,27 +103,36 @@
   `?archived=true`.
 
   By default, admin users will see all collections. To hide other user's collections pass in
-  `?exclude-other-user-collections=true`."
-  [archived exclude-other-user-collections namespace]
+  `?exclude-other-user-collections=true`.
+
+  If personal-only is true, then return only peronsal collections."
+  [archived exclude-other-user-collections namespace personal-only]
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
-   namespace                      [:maybe ms/NonBlankString]}
-  (as->
-   (select-collections archived exclude-other-user-collections namespace false nil) collections
-    ;; include Root Collection at beginning or results if archived isn't `true`
-    (if archived
-      collections
-      (let [root (root-collection namespace)]
-        (cond->> collections
-          (mi/can-read? root)
-          (cons root))))
-    (t2/hydrate collections :can_write :is_personal)
-    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
-    ;; and for personal collections we translate the name to user's locale
-    (for [collection collections]
-      (-> collection
-          (dissoc ::collection.root/is-root?)
-          collection/personal-collection-with-ui-details))))
+   namespace                      [:maybe ms/NonBlankString]
+   personal-only                  [:maybe ms/BooleanValue]}
+  (if personal-only
+    (t2/select :model/Collection {:where [:and
+                                          [:!= :personal_owner_id nil]
+                                          (collection/visible-collection-ids->honeysql-filter-clause
+                                           :id
+                                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+    (as->
+     (select-collections archived exclude-other-user-collections namespace false nil) collections
+     ;; include Root Collection at beginning or results if archived isn't `true`
+      (if archived
+        collections
+        (let [root (root-collection namespace)]
+          (cond->> collections
+            (mi/can-read? root)
+            (cons root))))
+      (t2/hydrate collections :can_write :is_personal)
+      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+      ;; and for personal collections we translate the name to user's locale
+      (for [collection collections]
+        (-> collection
+            (dissoc ::collection.root/is-root?)
+            collection/personal-collection-with-ui-details)))))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.

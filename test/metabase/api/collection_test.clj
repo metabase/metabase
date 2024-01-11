@@ -127,6 +127,32 @@
                                     (str/includes? collection-name "Personal Collection"))))
                       (map :name)))))))))
 
+(deftest list-collections-personal-only-test
+  (testing "GET /api/collection?personal-only=true"
+    (testing "check that we don't see collections that you don't have access to or aren't personal."
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (t2.with-temp/with-temp [Collection collection-1 {:name "Collection 1"}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+          (is (= ["Rasta Toucan's Personal Collection"]
+                 (->> (mt/user-http-request :rasta :get 200 "collection" :personal-only true)
+                      (filter (fn [{collection-name :name}]
+                                (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
+                                    (str/includes? collection-name "Personal Collection"))))
+                      (map :name)))))))
+
+    (testing "check that we see all personal collections if you are an admin."
+      (t2.with-temp/with-temp [Collection collection-1 {:name "Collection 1"}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
+        (is (= (->> (t2/select :model/Collection {:where [:!= :personal_owner_id nil]})
+                    (map :name)
+                    (into #{}))
+               (->> (mt/user-http-request :crowberto :get 200 "collection" :personal-only true)
+                    (filter (fn [{collection-name :name}]
+                              (or (#{"Our analytics" "Collection 1" "Collection 2"} collection-name)
+                                  (str/includes? collection-name "Personal Collection"))))
+                    (map :name)
+                    (into #{}))))))))
+
 (deftest list-collections-archived-test
   (testing "GET /api/collection"
     (t2.with-temp/with-temp [Collection _ {:name "Archived Collection", :archived true}
