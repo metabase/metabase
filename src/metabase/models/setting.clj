@@ -96,9 +96,11 @@
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang Keyword Symbol)
-   (java.io StringWriter)
-   (java.time.temporal Temporal)))
+    (clojure.lang Keyword Symbol)
+    (com.fasterxml.jackson.core JsonParseException)
+    (com.fasterxml.jackson.core.io JsonEOFException)
+    (java.io StringWriter)
+    (java.time.temporal Temporal)))
 
 ;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
 ;;; other things we need for `:json` settings
@@ -530,6 +532,13 @@
                       (core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
+(defn- realize
+  "Parsing a setting may result in a lazy value. Use this to ensure we finish parsing."
+  [value]
+  (when (coll? value)
+    (dorun (map realize value)))
+  value)
+
 (defn default-value
   "Get the `:default` value of `setting-definition-or-name` if one was specified."
   [setting-definition-or-name]
@@ -570,7 +579,7 @@
   ([setting-definition-or-name pred parse-fn]
    (let [parse     (fn [v]
                      (try
-                       (parse-fn v)
+                       (realize (parse-fn v))
                        (catch Throwable e
                          (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
                            (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
@@ -634,7 +643,7 @@
 
 (defmethod get-value-of-type :json
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? #(json/parse-string % true)))
+  (get-raw-value setting-definition-or-name coll? #(json/parse-string-strict % true)))
 
 (defmethod get-value-of-type :csv
   [_setting-type setting-definition-or-name]
@@ -1220,18 +1229,21 @@
       :else
       parsed-value)))
 
+(defn- set-via-env-var? [setting]
+  (some? (env-var-value setting)))
+
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
-  (let [set-via-env-var? (boolean (env-var-value setting))]
+  (let [from-env? (set-via-env-var? setting)]
     {:key            k
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
                          (log/error e (trs "Error fetching value of Setting"))))
-     :is_env_setting set-via-env-var?
+     :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
-     :default        (if set-via-env-var?
+     :default        (if from-env?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
@@ -1328,3 +1340,58 @@
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))
+
+(defn- redact-parse-ex
+  "Substitute an opaque exception to ensure no sensitive information in the raw value is exposed"
+  [ex]
+  (ex-info (trs "Error of type {0} thrown while parsing a setting" (type ex))
+           {:ex-type (type ex)}))
+
+(defn- may-contain-raw-token? [ex setting]
+  (case (:type setting)
+    :json
+    (cond
+      (instance? JsonEOFException ex) false
+      (instance? JsonParseException ex) true
+      :else (do (log/warn ex "Unexpected exception while parsing JSON")
+                ;; err on the side of caution
+                true))
+
+    ;; TODO: handle the remaining formats explicitly
+    true))
+
+(defn- redact-sensitive-tokens [ex raw-value]
+  (if (may-contain-raw-token? ex raw-value)
+    (redact-parse-ex ex)
+    ex))
+
+(defn- validate-setting
+  "Test whether the value configured for a given setting can be parsed as the expected type.
+   Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
+  [setting]
+  (when (= :json (:type setting))
+    (try
+      (get-value-of-type (:type setting) setting)
+      nil
+      (catch clojure.lang.ExceptionInfo e
+        (let [parse-error (or (ex-cause e) e)
+              parse-error (redact-sensitive-tokens parse-error setting)
+              env-var? (set-via-env-var? setting)]
+          (assoc (select-keys setting [:name :type])
+            :parse-error parse-error
+            :env-var? env-var?))))))
+
+(defn validate-settings-formatting!
+  "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
+
+   Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
+  []
+  (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
+    (if (:env-var? invalid-setting)
+      (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
+                           #_:clj-kondo/ignore (str/upper-case (name (:type invalid-setting)))
+                           (name (:name invalid-setting)))
+                      (dissoc invalid-setting :parse-error)
+                      (:parse-error invalid-setting)))
+      (log/warn (:parse-error invalid-setting)
+                (format "Unable to parse setting %s" (:name invalid-setting))))))
