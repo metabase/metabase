@@ -1223,6 +1223,9 @@
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
   (into {} (for [[kw-key mapping] mappings
+                 ;; Mapping keyword shouldn't been a keyword in the first place, it's just how it's processed after
+                 ;; being selected from db. In an ideal world we'd either have different data layout for
+                 ;; click_behavior or not convert it's keys to a keywords. We need its full content here.
                  :let [k (u/qualified-name kw-key)]]
              (if (mb.viz/dimension-param-mapping? mapping)
                [(json-ids->fully-qualified-names k)
