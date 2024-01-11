@@ -18,7 +18,10 @@ export const getSegmentedControlOverrides =
         return {
           label: {
             color: theme.fn.themeColor("text-dark"),
-            padding: fullWidth ? `${rem(8)} ${rem(16)}` : rem(8),
+            padding: fullWidth
+              ? `${theme.spacing.sm} ${theme.spacing.md}`
+              : theme.spacing.sm,
+            fontSize: theme.fontSizes.md,
             fontWeight: "normal",
             lineHeight: "1rem",
             "&:hover": {
