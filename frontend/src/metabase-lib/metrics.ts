@@ -7,9 +7,9 @@ export function availableMetrics(query: Query): MetricMetadata[] {
   return ML.available_metrics(query);
 }
 
-export function metric(
+export function metricMetadata(
   query: Query,
   metricId: MetricId,
 ): MetricMetadata | null {
-  return ML.metric(query, metricId);
+  return ML.metric_metadata(query, metricId);
 }

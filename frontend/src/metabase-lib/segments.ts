@@ -10,9 +10,9 @@ export function availableSegments(
   return ML.available_segments(query, stageIndex);
 }
 
-export function segment(
+export function segmentMetadata(
   query: Query,
   segmentId: SegmentId,
 ): SegmentMetadata | null {
-  return ML.segment(query, segmentId);
+  return ML.segment_metadata(query, segmentId);
 }

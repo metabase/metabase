@@ -97,7 +97,7 @@ function getCardForBlankQuestion(
 function filterBySegmentId(question: Question, segmentId: SegmentId) {
   const stageIndex = -1;
   const query = question.query();
-  const segmentMetadata = Lib.segment(query, segmentId);
+  const segmentMetadata = Lib.segmentMetadata(query, segmentId);
 
   if (!segmentMetadata) {
     return question;
@@ -110,7 +110,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
 function aggregateByMetricId(question: Question, metricId: MetricId) {
   const stageIndex = -1;
   const query = question.query();
-  const metricMetadata = Lib.metric(query, metricId);
+  const metricMetadata = Lib.metricMetadata(query, metricId);
 
   if (!metricMetadata) {
     return question;
