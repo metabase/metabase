@@ -26,7 +26,6 @@ export default class PreviewPane extends Component {
       <PreviewPaneContainer
         isTransparent={isTransparent}
         className={cx(className, "flex relative")}
-        style={{ minHeight: 280 }}
       >
         <iframe
           className="flex-full"

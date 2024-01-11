@@ -1,9 +1,10 @@
 import type { MouseEvent, MouseEventHandler, ReactNode } from "react";
+import { Box, Center, Stack, Text } from "metabase/ui";
+
 import {
   SharingPaneButtonContent,
   SharingPaneButtonTitle,
-} from "metabase/public/components/widgets/SharingPane/SharingPaneButton/SharingPaneButton.styled";
-import { Box, Center, Stack, Text } from "metabase/ui";
+} from "./SharingPaneButton.styled";
 
 type SharingOptionProps = {
   illustration: JSX.Element;

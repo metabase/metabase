@@ -4,8 +4,6 @@
    [java-time.api :as t]
    [metabase.models.setting :as setting]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor.util :as qp.util]
    [metabase.task.truncate-audit-tables :as task.truncate-audit-tables]
    [metabase.test :as mt]
@@ -46,7 +44,7 @@
 
 (deftest truncate-table-test
   (testing "truncate-table accurately truncates a table according to the value of the audit-max-retention-days env var"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (t2.with-temp/with-temp
         [:model/QueryExecution {qe1-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/offset-date-time)})
