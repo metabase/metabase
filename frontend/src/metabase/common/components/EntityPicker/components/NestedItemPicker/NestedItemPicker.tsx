@@ -48,13 +48,14 @@ export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
     folder: SearchResult,
     levelIndex: number,
   ) => {
-    const children = await onFolderSelect(folder);
+    const nextLevel = await onFolderSelect(folder);
 
     // FIXME do better
     const restOfStack = stack.slice(0, levelIndex + 1);
     restOfStack[restOfStack.length - 1].selectedItem = folder;
 
-    setStack([...restOfStack, { items: children, selectedItem: null }]);
+    setStack([...restOfStack, nextLevel]);
+
     const intervalId = setInterval(() => {
       if (
         containerRef.current !== null &&
@@ -97,16 +98,27 @@ export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
   return (
     <HorizontalScrollBox h="100%" ref={containerRef}>
       <Flex h="100%" w="fit-content">
-        {stack.map((level, levelIndex) => (
-          <ListBox key={JSON.stringify(level).slice(0, 255)}>
-            <ItemList
+        {stack.map((level, levelIndex) => {
+          console.log(level);
+          const { listComponent: ListComponent, ...rest } = level;
+
+          return (
+            <ListBox key={JSON.stringify(level).slice(0, 255)}>
+              {/* <ItemList
               items={level?.items}
               onClick={item => handleClick(item, levelIndex)}
               selectedItem={level?.selectedItem}
               folderModel={folderModel}
-            />
-          </ListBox>
-        ))}
+            /> */}
+              <ListComponent
+                {...rest}
+                onClick={item => handleClick(item, levelIndex)}
+                selectedItem={level?.selectedItem}
+                folderModel={folderModel}
+              />
+            </ListBox>
+          );
+        })}
       </Flex>
     </HorizontalScrollBox>
   );

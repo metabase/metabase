@@ -1,24 +1,27 @@
-import { Text, Box, ScrollArea, NavLink, Loader } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
 import type { SearchResult } from "metabase-types/api";
-import { getIcon, isSelectedItem } from "../../utils";
-import { PickerColumn } from "./ItemList.styled";
-import { useAsync } from "react-use";
+import { useSearchListQuery } from "metabase/common/hooks";
+import { Loader, Box, Text, ScrollArea, NavLink } from "metabase/ui";
+import { Icon } from "metabase/core/components/Icon";
 
-export const ItemList = ({
-  dataFn,
+import { getIcon, isSelectedItem } from "../../utils";
+import { PickerColumn } from "../ItemList/ItemList.styled";
+
+interface EntityItemListProps {
+  query: any;
+  onClick: (val: any) => void;
+  selectedItem: SearchResult | null;
+  folderModel: string;
+}
+
+export const EntityItemList = ({
+  query,
   onClick,
   selectedItem,
   folderModel,
-}: {
-  dataFn: () => Promise<any[]>;
-  onClick: (item: SearchResult) => void;
-  selectedItem: SearchResult | null;
-  folderModel: string;
-}) => {
-  const { value: items, loading: isLoading } = useAsync(dataFn);
+}: EntityItemListProps) => {
+  const { data, isLoading } = useSearchListQuery({ query });
 
-  if (isLoading) {
+  if (isLoading || !data) {
     return (
       <Box miw={310}>
         <Text align="center" p="lg">
@@ -28,11 +31,7 @@ export const ItemList = ({
     );
   }
 
-  if (!items) {
-    return null;
-  }
-
-  if (!items.length) {
+  if (data.length === 0) {
     return (
       <Box miw={310}>
         <Text align="center" p="lg">
@@ -45,7 +44,7 @@ export const ItemList = ({
   return (
     <ScrollArea h="100%">
       <PickerColumn>
-        {items.map(item => {
+        {data.map(item => {
           const isFolder = folderModel.includes(item.model);
           const isSelected = isSelectedItem(item, selectedItem);
           return (

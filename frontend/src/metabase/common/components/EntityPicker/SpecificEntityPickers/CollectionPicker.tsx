@@ -10,6 +10,9 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { isRootCollection } from "metabase/collections/utils";
 import { LoadingSpinner, NestedItemPicker } from "../components";
 import type { PickerState } from "../types";
+import { ItemList } from "../components/ItemList";
+import { EntityItemList } from "../components/EntityItemList";
+import { useCollectionQuery } from "metabase/common/hooks";
 
 export type CollectionPickerOptions = {
   showPersonalCollections?: boolean;
@@ -52,66 +55,86 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
   const [initialState, setInitialState] = useState<PickerState<SearchResult>>();
   const isAdmin = useSelector(getUserIsAdmin);
 
+  const { data: rootCollection, isLoading: loadingRootCollection } =
+    useCollectionQuery({ id: "root" });
+  const { data: currentCollection, isLoading: loadingCurrentCollection } =
+    useCollectionQuery({ id: value?.id, enabled: !!value?.id });
+
   const onFolderSelect = useCallback(
-    async (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
+    (folder?: Partial<SearchResult>): Promise<SearchResult[]> => {
       if (!folder?.id) {
-        const collectionsData = [];
+        console.log("No Folder ID");
+        const dataFn = async () => {
+          const collectionsData = [];
 
-        if (options.showRootCollection || options.namespace === "snippets") {
-          const ourAnalytics = await CollectionsApi.getRoot({
-            namespace: options.namespace,
-          });
-          collectionsData.push({
-            ...ourAnalytics,
-            model: "collection",
-            id: "root",
-          });
+          if (options.showRootCollection || options.namespace === "snippets") {
+            const ourAnalytics = await CollectionsApi.getRoot({
+              namespace: options.namespace,
+            });
+            collectionsData.push({
+              ...ourAnalytics,
+              model: "collection",
+              id: "root",
+            });
 
-          // default to selecting our analytics
-          onItemSelect(ourAnalytics);
-        }
-
-        if (
-          options.showPersonalCollections &&
-          options.namespace !== "snippets"
-        ) {
-          const currentUser = await UserApi.current();
-          const personalCollection = await CollectionsApi.get({
-            id: currentUser.personal_collection_id,
-          });
-          collectionsData.push({
-            ...personalCollection,
-            model: "collection",
-          });
-
-          if (isAdmin) {
-            collectionsData.push(personalCollectionsRoot);
+            // default to selecting our analytics
+            onItemSelect(ourAnalytics);
           }
-        }
 
-        return collectionsData;
+          if (
+            options.showPersonalCollections &&
+            options.namespace !== "snippets"
+          ) {
+            const currentUser = await UserApi.current();
+            const personalCollection = await CollectionsApi.get({
+              id: currentUser.personal_collection_id,
+            });
+            collectionsData.push({
+              ...personalCollection,
+              model: "collection",
+            });
+
+            if (isAdmin) {
+              collectionsData.push(personalCollectionsRoot);
+            }
+          }
+
+          return collectionsData;
+        };
+
+        return {
+          listComponent: ItemList,
+          dataFn,
+        };
       }
 
       if (
         isAdmin &&
         folder.id === (PERSONAL_COLLECTIONS.id as unknown as number)
       ) {
-        // 🙄
-        const allCollections = await CollectionsApi.list();
+        console.log("Personal Collections");
+        const dataFn = async () => {
+          const allCollections = await CollectionsApi.list();
 
-        const allRootPersonalCollections = allCollections
-          .filter(
-            (collection: Collection) =>
-              collection?.is_personal && collection?.location === "/",
-          )
-          .map((collection: Collection) => ({
-            ...collection,
-            model: "collection",
-          }));
+          const allRootPersonalCollections = allCollections
+            .filter(
+              (collection: Collection) =>
+                collection?.is_personal && collection?.location === "/",
+            )
+            .map((collection: Collection) => ({
+              ...collection,
+              model: "collection",
+            }));
 
-        onItemSelect(personalCollectionsRoot);
+          onItemSelect(personalCollectionsRoot);
 
-        return allRootPersonalCollections;
+          return allRootPersonalCollections;
+        };
+
+        return {
+          listComponent: ItemList,
+          dataFn,
+        };
       }
 
       // because folders are also selectable items in the collection picker, we always select the folder
@@ -119,56 +142,62 @@ export const CollectionPicker = forwardRef(function CollectionPickerInner(
         onItemSelect(folder as SearchResult);
       }
 
-      const items = await Search.api.list({
-        collection: folder.id,
-        models: ["collection"],
-        namespace: options.namespace,
-      });
-
-      return items.data;
+      console.log("got a folder", folder);
+      return {
+        listComponent: EntityItemList,
+        query: {
+          collection: folder.id,
+          models: ["collection"],
+          namespace: options.namespace,
+        },
+      };
     },
     [onItemSelect, isAdmin, options],
   );
 
   useEffect(() => {
-    if (value?.id) {
-      CollectionsApi.get({ id: value.id }).then(async collection => {
-        const path = getCollectionIdPath(collection);
+    if (value?.id && currentCollection) {
+      const [firstStep, ...path] = getCollectionIdPath(currentCollection);
+      console.log(firstStep, path);
 
-        const stack = await Promise.all(
-          path.map(async (id, index) => {
-            const items = await onFolderSelect({
-              id: id as unknown as number,
-              model: "collection",
-            });
-            const selectedItem =
-              items.find(item => item.id === path[index + 1]) ?? null;
-            return {
-              items,
-              selectedItem,
-            };
-          }),
-        );
-
-        setInitialState(stack);
-      });
+      setInitialState([
+        {
+          ...onFolderSelect(),
+          selectedItem: {
+            model: "collection",
+            id: path[0],
+          },
+        },
+        ...path.map((step, index, arr) => ({
+          listComponent: EntityItemList,
+          query: {
+            collection: step,
+            models: ["collection"],
+            namespace: options.namespace,
+          },
+          selectedItem: {
+            model: "collection",
+            id: index + 1 < arr.length ? arr[index + 1] : undefined,
+          },
+        })),
+      ]);
     } else {
       // default to showing our analytics selected
-      onFolderSelect().then(async items => {
-        const ourAnalytics = items.find(isRootCollection);
-        setInitialState([
-          {
-            items,
-            selectedItem: ourAnalytics ?? null,
-          },
-          {
-            items: await onFolderSelect(ourAnalytics),
-            selectedItem: null,
-          },
-        ]);
-      });
+      setInitialState([
+        {
+          ...onFolderSelect(),
+          selectedItem: { model: "collection", id: "root" },
+        },
+        { ...onFolderSelect(rootCollection) },
+      ]);
     }
-  }, [value?.id, onFolderSelect, onItemSelect, options.namespace]);
+  }, [
+    currentCollection,
+    rootCollection,
+    onFolderSelect,
+    onItemSelect,
+    options.namespace,
+  ]);
 
   if (!initialState) {
     return <LoadingSpinner />;
