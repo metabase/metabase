@@ -1,5 +1,7 @@
-import querystring from "querystring";
 import type { LocationDescriptorObject } from "history";
+import querystring from "querystring";
+import slugg from "slugg";
+import _ from "underscore";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
@@ -15,7 +17,12 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
 
-import type { Card, MetricId, SegmentId } from "metabase-types/api";
+import type {
+  Card,
+  MetricId,
+  NativeQuerySnippet,
+  SegmentId,
+} from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -222,7 +229,103 @@ function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
+function referencedQuestionIds(query: Lib.Query): number[] {
+  const cardTemplateTags = getCardTemplateTags(query);
+  const cardIds = cardTemplateTags.flatMap(tag => {
+    const cardId = tag["card-id"];
+    return typeof cardId === "number" ? [cardId] : [];
+  });
+  return cardIds;
+}
+
+function getCardTemplateTags(query: Lib.Query) {
+  const templateTagsMap = Lib.templateTags(query);
+  const templateTags = Object.values(templateTagsMap);
+  const cardTemplateTags = templateTags.flatMap(tag =>
+    tag.type === "card" ? [tag] : [],
+  );
+  return cardTemplateTags;
+}
+
+function updateCardTemplateTagNames2(
+  query: Lib.Query,
+  cards: Card[],
+): Lib.Query {
+  const cardById = _.indexBy(cards, "id");
+  const cardTemplateTags = getCardTemplateTags(query); // only tags for cards
+  const tags = cardTemplateTags.filter(tag => cardById[tag["card-id"]]); // only tags for given cards
+
+  // reduce over each tag, updating query text with the new tag name
+  return tags.reduce((query, tag) => {
+    const card = cardById[tag["card-id"]];
+    const newTagName = `#${card.id}-${slugg(card.name)}`;
+    return replaceTagName(query, tag.name, newTagName);
+  }, query);
+}
+
+function replaceTagName(
+  query: Lib.Query,
+  oldTagName: string,
+  newTagName: string,
+): Lib.Query {
+  const rawNativeQuery = Lib.rawNativeQuery(query);
+  const queryText = rawNativeQuery.replace(
+    tagRegex(oldTagName),
+    `{{${newTagName}}}`,
+  );
+  return Lib.withNativeQuery(query, queryText);
+}
+
+function tagRegex(tagName: string): RegExp {
+  return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
+}
+
+function hasSnippets(query: Lib.Query): boolean {
+  return false;
+}
+
+function updateSnippetNames(
+  query: Lib.Query,
+  snippets: NativeQuerySnippet[],
+): Lib.Query {
+  return query;
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
+
+/**
+ * Updates the template tag names in the query
+ * to match the latest on the backend, because
+ * they might have changed since the query was last opened.
+ */
+export async function updateTemplateTagNames2(
+  query: Lib.Query,
+  getState: GetState,
+  dispatch: Dispatch,
+): Promise<Lib.Query> {
+  const referencedCards = (
+    await Promise.all(
+      referencedQuestionIds(query).map(async id => {
+        try {
+          const actionResult = await dispatch(
+            Questions.actions.fetch({ id }, { noEvent: true }),
+          );
+          return Questions.HACK_getObjectFromAction(actionResult);
+        } catch {
+          return null;
+        }
+      }),
+    )
+  ).filter(isNotNull);
+
+  query = updateCardTemplateTagNames2(query, referencedCards);
+  if (hasSnippets(query)) {
+    await dispatch(Snippets.actions.fetchList());
+    const snippets = Snippets.selectors.getList(getState());
+    query = updateSnippetNames(query, snippets);
+  }
+  return query;
+}
 
 /**
  * Updates the template tag names in the query
@@ -346,9 +449,17 @@ async function handleQBInit(
   }
 
   if (question.isNative() && question.isQueryEditable()) {
-    const query = question.legacyQuery() as NativeQuery;
-    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setLegacyQuery(newQuery);
+    // const query = question.query();
+    // const newQuery = await updateTemplateTagNames2(query, getState, dispatch);
+    // question = question.setQuery(newQuery);
+
+    const legacyQuery = question.legacyQuery() as NativeQuery;
+    const newLegacyQuery = await updateTemplateTagNames(
+      legacyQuery,
+      getState,
+      dispatch,
+    );
+    question = question.setLegacyQuery(newLegacyQuery);
   }
 
   const finalCard = question.card();
