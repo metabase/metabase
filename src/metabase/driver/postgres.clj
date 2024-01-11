@@ -56,29 +56,29 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:convert-timezone         true
-                              :datetime-diff            true
-                              :now                      true
-                              :persist-models           true
-                              :schemas                  true
-                              :connection-impersonation true
-                              :uploads                  true}]
-  (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
+(doseq [[feature support] {;; Features that are supported by Postgres and all of its child drivers like Redshift
+                           :convert-timezone         :postgres-and-children
+                           :datetime-diff            :postgres-and-children
+                           :now                      :postgres-and-children
+                           :persist-models           :postgres-and-children
+                           :schemas                  :postgres-and-children
+                           :connection-impersonation :postgres-and-children
+                           :uploads                  :postgres-and-children
+                           ;; Features that are supported by postgres only, and not redshift
+                           :actions                  :postgres-only
+                           :actions/custom           :postgres-only
+                           :table-privileges         :postgres-only
+                           :index-info               :postgres-only}]
+  (defmethod driver/database-supports? [:postgres feature]
+    [driver _feature _db]
+    (case support
+      :postgres-and-children true
+      :postgres-only (= driver :postgres))))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
   [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-;; Features that are supported by postgres only
-(doseq [feature [:actions
-                 :actions/custom
-                 :table-privileges
-                 :uploads
-                 :index-info]]
-  (defmethod driver/database-supports? [:postgres feature]
-    [driver _feat _db]
-    (= driver :postgres)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
