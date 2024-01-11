@@ -1,5 +1,6 @@
 (ns metabase.lib.metadata.calculation
   (:require
+   #?(:clj [metabase.config :as config])
    [clojure.string :as str]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -97,11 +98,16 @@
 
 (defmethod display-name-method :default
   [_query _stage-number x _stage]
+  ;; This was suspected as hurting performance, going to skip it in prod for now
   ;; hopefully this is dev-facing only, so not i18n'ed.
-  (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-             (pr-str x)
-             `display-name-method
-             (lib.dispatch/dispatch-value x))
+  (when #?(:clj          (not config/is-prod?)
+           :cljs         true ;; the linter complains when :cljs is not here(?)
+           :cljs-dev     true
+           :cljs-release false)
+    (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
+               (pr-str x)
+               `display-name-method
+               (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
            (keyword? (first x)))
     ;; MBQL clause: just use the name of the clause.
