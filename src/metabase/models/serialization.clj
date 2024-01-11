@@ -1218,7 +1218,7 @@
       (m/update-existing-in [:target :dimension] mbql-fully-qualified-names->ids)))
 
 (defn- export-viz-click-behavior-mappings
-  "The `:parameterMappings` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
+  "The `:parameterMapping` on a `:click_behavior` viz settings is a map of... IDs turned into JSON strings which have
   been keywordized. Therefore the keys must be converted to strings, parsed, exported, and JSONified. The values are
   ported by [[export-viz-click-behavior-mapping]]."
   [mappings]
@@ -1230,7 +1230,7 @@
                [k mapping]))))
 
 (defn- import-viz-click-behavior-mappings
-  "The exported form of `:parameterMappings` on a `:click_behavior` viz settings is a map of JSON strings which contain
+  "The exported form of `:parameterMapping` on a `:click_behavior` viz settings is a map of JSON strings which contain
   fully qualified names. These must be parsed, imported, JSONified and then turned back into keywords, since that's the
   form used internally."
   [mappings]
