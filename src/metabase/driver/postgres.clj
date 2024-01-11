@@ -18,10 +18,12 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.driver.sync :as driver.s]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -851,23 +853,33 @@
    database
    nil
    (fn [^Connection conn]
-     (let [current-user-roles (->> (jdbc/query {:connection conn}
-                                               "SELECT DISTINCT(rolname) FROM pg_roles WHERE pg_has_role (current_user, oid, 'member');")
-                                   (map :rolname)
-                                   set)]
-       (->> (jdbc/result-set-seq
-             (.getTablePrivileges (.getMetaData conn) (:name database) nil "%"))
+     (let [[inclusion-patterns
+            exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)
+           syncable-schemas     (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas
+                                           driver conn (.getMetaData conn)
+                                           inclusion-patterns exclusion-patterns))
+           current-user-roles   (->> (jdbc/query {:connection conn}
+                                                 "SELECT DISTINCT(rolname) FROM pg_roles WHERE pg_has_role (current_user, oid, 'member');")
+                                     (map :rolname)
+                                     set)]
+       (->> (jdbc/result-set-seq (.getTablePrivileges (.getMetaData conn) (:name database) nil "%"))
             ;; need to filter out the schema that we dont' want too
-            (filter #(and (contains? current-user-roles (:grantee %))
-                          (#{"SELECT" "UPDATE" "INSERT" "DELETE"} (:privilege %))))
+            (filter (fn [{:keys [table_schem grantee privilege]}]
+                      (and
+                       (contains? syncable-schemas table_schem)
+                       (contains? current-user-roles grantee)
+                       (#{"SELECT" "UPDATE" "INSERT" "DELETE"} privilege))))
             (map (fn [{:keys [table_schem table_name privilege]}]
                    {:role   nil
                     :schema table_schem
                     :table  table_name
                     :select (= "SELECT" privilege)
-                    :update (= "UDPATE" privilege)
+                    :update (= "UPDATE" privilege)
                     :insert (= "INSERT" privilege)
-                    :delete (= "DELETE" privilege)})))))))
+                    :delete (= "DELETE" privilege)}))
+            (group-by (juxt :schema :table))
+            vals
+            (map (fn [values] (apply merge-with (fn [x y ] (or x y)) values))))))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
