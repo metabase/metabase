@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { Button, Menu } from "metabase/ui";
+import { Button, Menu, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { Icon } from "metabase/core/components/Icon";
+
 import { getAvailableItems, getSelectedItem } from "./utils";
 
 interface TimeseriesBucketPickerProps {

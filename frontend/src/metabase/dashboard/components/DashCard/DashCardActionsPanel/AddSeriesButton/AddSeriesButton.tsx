@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import visualizations from "metabase/visualizations";
 import type { Series } from "metabase-types/api";

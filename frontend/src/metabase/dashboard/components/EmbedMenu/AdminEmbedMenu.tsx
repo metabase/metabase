@@ -11,8 +11,8 @@ import {
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Menu, Title, Text, Stack, Center } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Menu, Title, Text, Stack, Center, Icon } from "metabase/ui";
+
 import { AdminEmbedMenuContainer } from "./AdminEmbedMenu.styled";
 
 export const AdminEmbedMenu = ({
