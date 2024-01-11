@@ -8,6 +8,7 @@ import {
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import { ArrowDown, ArrowUp } from "./icons";
+import { computeSmartScalarSettings } from "./settings";
 
 export function SmartScalar({
   rawSeries,
@@ -18,10 +19,7 @@ export function SmartScalar({
   const [{ card, data }] = rawSeries;
   const { insights } = data;
 
-  const settings = {
-    ...card.visualization_settings,
-    ...dashcardSettings,
-  };
+  const settings = computeSmartScalarSettings(rawSeries, dashcardSettings);
 
   const trend = computeTrend(rawSeries, insights, settings, {
     formatValue,

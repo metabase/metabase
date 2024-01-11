@@ -34,9 +34,7 @@ type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (
-    col: RemappingHydratedDatasetColumn,
-  ) => RemappingHydratedDatasetColumn;
+  column?: (col: RemappingHydratedDatasetColumn) => OptionsType;
 };
 
 export interface StaticVisualizationProps {
