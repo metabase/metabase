@@ -8,7 +8,7 @@ import { jt, t } from "ttag";
 import { useAsync } from "react-use";
 import Link from "metabase/core/components/Link";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { Stack, Text, Group, Button } from "metabase/ui";
+import { Stack, Text, Group, Button, Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import {
   isDefaultGroup,
@@ -18,7 +18,6 @@ import {
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 import { ApiKeysApi } from "metabase/services";
 
-import { Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import ModalContent from "metabase/components/ModalContent";
 import Alert from "metabase/components/Alert";

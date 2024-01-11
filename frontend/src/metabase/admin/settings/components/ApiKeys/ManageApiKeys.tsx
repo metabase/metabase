@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 
-import { Stack, Title, Text, Button, Group } from "metabase/ui";
+import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 const { fontFamilyMonospace } = getThemeOverrides();
 
@@ -10,7 +10,6 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { ApiKeysApi } from "metabase/services";
-import { Icon } from "metabase/core/components/Icon";
 
 import type { ApiKey } from "metabase-types/api";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";

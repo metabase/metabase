@@ -2,10 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useAsync } from "react-use";
-import { Tooltip, Text } from "metabase/ui";
+import { Tooltip, Text, Icon } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { getFullName } from "metabase/lib/user";
-import { Icon } from "metabase/ui";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import PaginationControls from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
