@@ -905,8 +905,7 @@
         dashcard-viz-settings  (get dashcard :visualization_settings)
         {rendered-type :type content :content} (js-svg/javascript-visualization cards-with-data dashcard-viz-settings)]
     (case rendered-type
-      ;; TODO: ensure keyword matching works
-      (:svg "svg")
+      :svg
       (let [image-bundle (image-bundle/make-image-bundle
                            render-type
                            (js-svg/svg-string->bytes content))]
@@ -918,7 +917,7 @@
          [:div
           [:img {:style (style/style {:display :block :width :100%})
                  :src   (:image-src image-bundle)}]]})
-      (:html "html")
+      :html
       {:content [:div content] :attachments nil})))
 
 (s/defmethod render :smartscalar :- formatter/RenderedPulseCard

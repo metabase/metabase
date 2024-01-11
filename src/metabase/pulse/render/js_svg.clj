@@ -139,7 +139,7 @@
                                                 (json/generate-string cards-with-data)
                                                 (json/generate-string dashcard-viz-settings)
                                                 (json/generate-string (public-settings/application-colors))))]
-    (json/parse-string response true)))
+    (update (json/parse-string response true) :type (fnil keyword "unknown"))))
 
 (defn combo-chart
   "Clojure entrypoint to render a combo or multiple chart.
