@@ -6,6 +6,7 @@ import _ from "underscore";
 import { merge } from "icepick";
 import { usePrevious } from "react-use";
 
+import * as Lib from "metabase-lib";
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
@@ -411,7 +412,11 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    if (dataset.legacyQuery({ useStructuredQuery: true }).isEmpty()) {
+    const isEmpty = dataset.isStructured()
+      ? Lib.databaseID(dataset.query()) == null
+      : dataset.legacyQuery().isEmpty();
+
+    if (isEmpty) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);
