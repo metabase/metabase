@@ -1216,44 +1216,12 @@
 ;; Create stub settings for the remaining types that weren't used by any previous tests
 (define-settings-for-types :double :keyword :integer :positive-integer :timestamp)
 
-(defn- get-formatting-exception []
-  (try
+(defmacro get-parse-exception [format raw-value]
+  `(mt/with-temp-env-var-value [~(symbol (str "mb-test-" (name format) "-setting")) ~raw-value]
+    (try
     (setting/validate-settings-formatting!)
     nil
-    (catch java.lang.Exception e e)) )
-
-(defn- get-json-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-json-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-csv-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-csv-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-boolean-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-boolean-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-double-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-double-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-keyword-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-keyword-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-integer-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-integer-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-positive-integer-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-positive-integer-setting raw-value]
-    (get-formatting-exception)))
-
-(defn- get-timestamp-parse-exception [raw-value]
-  (mt/with-temp-env-var-value [mb-test-timestamp-setting raw-value]
-    (get-formatting-exception)))
-
+    (catch java.lang.Exception e# e#))))
 
 (defn- assert-parser-exception! [format-type ex cause-message]
   (is (= (format "Invalid %s configuration for setting: test-%s-setting"
@@ -1264,11 +1232,11 @@
 
 (deftest valid-json-setting-test
   (testing "Validation is a no-op if the JSON is valid"
-    (is (nil? (get-json-parse-exception "[1, 2]")))))
+    (is (nil? (get-parse-exception :json "[1, 2]")))))
 
 (deftest invalid-json-setting-test
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
-    (let [ex (get-json-parse-exception "[1, 2,")]
+    (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
         :json ex
         ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
@@ -1279,7 +1247,7 @@
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
     (let [password "$ekr3t"
-          ex (get-json-parse-exception (str "[" password))]
+          ex (get-parse-exception :json (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
         :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
@@ -1287,7 +1255,7 @@
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
     (let [password "123abc"
-          ex (get-json-parse-exception "{\"a\": \"123abc\", \"b\": 2")]
+          ex (get-parse-exception :json "{\"a\": \"123abc\", \"b\": 2")]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
         :json ex
@@ -1297,17 +1265,17 @@
 
 (deftest valid-csv-setting-test
   (testing "Validation is a no-op if the CSV is valid"
-    (is (nil? (get-csv-parse-exception "1, 2")))))
+    (is (nil? (get-parse-exception :csv "1, 2")))))
 
 (deftest invalid-csv-setting-eof-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
-    (let [ex (get-csv-parse-exception "1,2,2,\",,")]
+    (let [ex (get-parse-exception :csv "1,2,2,\",,")]
       (assert-parser-exception!
         :csv ex "CSV error (unexpected end of file)"))))
 
 (deftest invalid-csv-setting-char-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
-    (let [ex (get-csv-parse-exception "\"1\"$ekr3t")]
+    (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
       (assert-parser-exception!
         :csv ex
         ;; we don't expose the raw exception here, as it would give away the first character of the secret
@@ -1316,76 +1284,76 @@
 
 (deftest valid-boolean-setting-test
   (testing "Validation is a no-op if the string represents a boolean"
-    (is (nil? (get-boolean-parse-exception "")))
-    (is (nil? (get-boolean-parse-exception "true")))
-    (is (nil? (get-boolean-parse-exception "false")))))
+    (is (nil? (get-parse-exception :boolean "")))
+    (is (nil? (get-parse-exception :boolean "true")))
+    (is (nil? (get-parse-exception :boolean "false")))))
 
 (deftest invalid-boolean-setting-test
   (doseq [raw-value ["0" "1" "2" "a" ":b" "[true]"]]
     (testing (format "Validation will throw an exception when trying to parse %s as a boolean" raw-value)
-      (let [ex (get-boolean-parse-exception raw-value)]
+      (let [ex (get-parse-exception :boolean raw-value)]
         (assert-parser-exception!
           :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
 
 (deftest valid-double-setting-test
   (testing "Validation is a no-op if the string represents a double"
-    (is (nil? (get-double-parse-exception "1")))
-    (is (nil? (get-double-parse-exception "-1")))
-    (is (nil? (get-double-parse-exception "2.4")))
-    (is (nil? (get-double-parse-exception "1e9")))))
+    (is (nil? (get-parse-exception :double "1")))
+    (is (nil? (get-parse-exception :double "-1")))
+    (is (nil? (get-parse-exception :double "2.4")))
+    (is (nil? (get-parse-exception :double "1e9")))))
 
 (deftest invalid-double-setting-test
   (doseq [raw-value ["a" "1.2.3" "0x3" "[2]"]]
     (testing (format "Validation will throw an exception when trying to parse %s as a double" raw-value)
-      (let [ex (get-double-parse-exception raw-value)]
+      (let [ex (get-parse-exception :double raw-value)]
         (assert-parser-exception!
           #_"For input string: \"{raw-value}\""
           :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (deftest valid-keyword-setting-test
   (testing "Validation is a no-op if the string represents a keyword"
-    (is (nil? (get-keyword-parse-exception "1")))
-    (is (nil? (get-keyword-parse-exception "a")))
-    (is (nil? (get-keyword-parse-exception "a/b")))
+    (is (nil? (get-parse-exception :keyword "1")))
+    (is (nil? (get-parse-exception :keyword "a")))
+    (is (nil? (get-parse-exception :keyword "a/b")))
     ;; [[keyword]] actually accepts any string without complaint, there is no way to have a parse failure
-    (is (nil? (get-keyword-parse-exception ":a/b")))
-    (is (nil? (get-keyword-parse-exception "a/b/c")))
-    (is (nil? (get-keyword-parse-exception "\"")))))
+    (is (nil? (get-parse-exception :keyword ":a/b")))
+    (is (nil? (get-parse-exception :keyword "a/b/c")))
+    (is (nil? (get-parse-exception :keyword "\"")))))
 
 (deftest valid-integer-setting-test
   (testing "Validation is a no-op if the string represents a integer"
-    (is (nil? (get-integer-parse-exception "1")))
-    (is (nil? (get-integer-parse-exception "-1")))))
+    (is (nil? (get-parse-exception :integer "1")))
+    (is (nil? (get-parse-exception :integer "-1")))))
 
 (deftest invalid-integer-setting-test
   (doseq [raw-value ["a" "2.4" "1e9" "1.2.3" "0x3" "[2]"]]
     (testing (format "Validation will throw an exception when trying to parse %s as a integer" raw-value)
-      (let [ex (get-integer-parse-exception raw-value)]
+      (let [ex (get-parse-exception :integer raw-value)]
         (assert-parser-exception!
           #_"For input string: \"{raw-value}\""
           :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (deftest valid-positive-integer-setting-test
   (testing "Validation is a no-op if the string represents a positive-integer"
-    (is (nil? (get-positive-integer-parse-exception "1")))
+    (is (nil? (get-parse-exception :positive-integer "1")))
     ;; somewhat un-intuitively this is legal input, and parses to nil
-    (is (nil? (get-positive-integer-parse-exception "-1")))))
+    (is (nil? (get-parse-exception :positive-integer "-1")))))
 
 (deftest invalid-positive-integer-setting-test
   (doseq [raw-value ["a" "2.4" "1e9" "1.2.3" "0x3" "[2]"]]
     (testing (format "Validation will throw an exception when trying to parse %s as a positive-integer" raw-value)
-      (let [ex (get-positive-integer-parse-exception raw-value)]
+      (let [ex (get-parse-exception :positive-integer raw-value)]
         (assert-parser-exception!
           #_"For input string: \"{raw-value}\""
           :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (deftest valid-timestamp-setting-test
   (testing "Validation is a no-op if the string represents a timestamp"
-    (is (nil? (get-timestamp-parse-exception "2024-01-01")))))
+    (is (nil? (get-parse-exception :timestamp "2024-01-01")))))
 
 (deftest invalid-timestamp-setting-test
   (testing "Validation will throw an exception when trying to parse an invalid timestamp"
-    (let [ex (get-timestamp-parse-exception "2024-01-48")]
+    (let [ex (get-parse-exception :timestamp "2024-01-48")]
       (assert-parser-exception!
         #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
         :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
