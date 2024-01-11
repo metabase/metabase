@@ -643,11 +643,11 @@
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
   [form]
   (cond
-    (map? form)
-    (m/map-vals canonicalize-mbql-clauses form)
-
     (instance? IRecord form)
     (reduce (fn [r x] (conj r (canonicalize-mbql-clauses x))) form form)
+
+    (map? form)
+    (m/map-vals canonicalize-mbql-clauses form)
 
     (mbql-clause? form)
     (let [top-canonical
