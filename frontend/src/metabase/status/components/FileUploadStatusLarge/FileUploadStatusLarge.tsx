@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { Box, Stack } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import Button from "metabase/core/components/Button";
-import type { Collection, Table } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
 
 import {
@@ -12,6 +11,8 @@ import {
   isUploadCompleted,
   isUploadAborted,
 } from "metabase/lib/uploads";
+import type { Collection } from "metabase-types/api";
+import type Table from "metabase-lib/metadata/Table";
 
 import StatusLarge from "../StatusLarge";
 import { FileUploadErrorModal } from "./FileUploadErrorModal";

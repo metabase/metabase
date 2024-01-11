@@ -13,7 +13,6 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import { softReloadCard } from "metabase/query_builder/actions";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import Databases from "metabase/entities/databases";
 import { uploadFile } from "metabase/redux/uploads";
 
 import { color } from "metabase/lib/colors";
@@ -29,6 +28,7 @@ import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
 } from "metabase-lib/metadata/utils/models";
+import { canUploadToQuestion } from "../selectors";
 import {
   QuestionActionsDivider,
   StrengthIndicator,
@@ -74,21 +74,7 @@ const QuestionActions = ({
     getSetting(state, "is-metabot-enabled"),
   );
 
-  const canUpload = useSelector(state => {
-    const uploadsEnabled = getSetting(state, "uploads-enabled");
-    if (!uploadsEnabled) {
-      return false;
-    }
-    const uploadsDbId = getSetting(state, "uploads-database-id");
-    const canUploadToDb =
-      uploadsDbId === question.databaseId() &&
-      Databases.selectors
-        .getObject(state, {
-          entityId: uploadsDbId,
-        })
-        ?.canUpload();
-    return canUploadToDb;
-  });
+  const canUpload = useSelector(canUploadToQuestion(question));
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
@@ -253,11 +239,8 @@ const QuestionActions = ({
       })(dispatch);
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler
-      const fileInput = document.getElementById(
-        "append-file-input",
-      ) as HTMLInputElement;
-      if (fileInput.value) {
-        fileInput.value = "";
+      if (fileInputRef.current?.value) {
+        fileInputRef.current.value = "";
       }
     }
   };

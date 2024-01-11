@@ -1,14 +1,14 @@
 import _ from "underscore";
 
-import { useAsync } from "react-use";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import { getAllUploads, clearAllUploads } from "metabase/redux/uploads";
 import type { CollectionId, TableId } from "metabase-types/api";
 import type { FileUpload } from "metabase-types/store/upload";
 import { isUploadAborted, isUploadInProgress } from "metabase/lib/uploads";
-import { MetabaseApi, CollectionsApi } from "metabase/services";
+import { isEmpty } from "metabase/lib/validate";
 
+import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
 
@@ -71,19 +71,21 @@ const FileUploadStatusContent = ({
   );
   const isVisible = useStatusVisibility(isActive);
 
-  const { value: entityInfo, loading } = useAsync(async () => {
-    if (tableId) {
-      const table = await MetabaseApi.table_get({ tableId: tableId });
-      return table;
-    }
-
-    if (collectionId) {
-      const collection = await CollectionsApi.get({ id: collectionId });
-      return collection;
-    }
+  const { isLoading: tableLoading, data: table } = useTableQuery({
+    id: tableId,
+    enabled: !isEmpty(tableId),
   });
+  const { isLoading: collectionLoading, data: collection } = useCollectionQuery(
+    { id: collectionId, enabled: !isEmpty(collectionId) },
+  );
 
-  if (!isVisible || loading || !entityInfo) {
+  if (!isVisible || tableLoading || collectionLoading) {
+    return null;
+  }
+
+  const uploadDestination = table ?? collection;
+
+  if (!uploadDestination) {
     return null;
   }
 
@@ -92,7 +94,7 @@ const FileUploadStatusContent = ({
       <FileUploadStatusLarge
         uploads={uploads}
         resetUploads={resetUploads}
-        uploadDestination={entityInfo}
+        uploadDestination={uploadDestination}
       />
     </ErrorBoundary>
   );
