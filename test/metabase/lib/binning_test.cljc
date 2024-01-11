@@ -1,11 +1,11 @@
 (ns metabase.lib.binning-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
-   [metabase.lib.test-metadata :as meta]
-   metabase.test-runner.assert-exprs.approximately-equal))
+   [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel binning-display-name-for-coordinate-columns-test
   (testing "Include little degree symbols in display names for coordinate columns"
