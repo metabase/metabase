@@ -47,7 +47,6 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { filter } from "metabase-lib/queries/utils/actions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
@@ -190,7 +189,13 @@ class Question {
       console.warn("Unknown query type: " + datasetQuery?.type);
   });
 
-  legacyQuery({ useStructuredQuery }: { useStructuredQuery?: boolean } = {}) {
+  legacyQuery<UseStructuredQuery extends boolean>({
+    useStructuredQuery,
+  }: {
+    useStructuredQuery?: UseStructuredQuery;
+  } = {}): UseStructuredQuery extends true
+    ? StructuredQuery
+    : AtomicQuery | StructuredQuery {
     const query = this._legacyQuery();
     if (query instanceof StructuredQuery && !useStructuredQuery) {
       throw new Error("StructuredQuery usage is forbidden. Use MLv2");
@@ -555,10 +560,6 @@ class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  filter(operator, column, value): Question {
-    return filter(this, operator, column, value) || this;
-  }
-
   usesMetric(metricId): boolean {
     return (
       this.isStructured() &&
