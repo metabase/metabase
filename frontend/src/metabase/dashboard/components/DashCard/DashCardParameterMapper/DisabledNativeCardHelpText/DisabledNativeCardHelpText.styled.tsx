@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const NativeCardDefault = styled.div`

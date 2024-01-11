@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { MouseEvent } from "react";
 import { useState } from "react";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 

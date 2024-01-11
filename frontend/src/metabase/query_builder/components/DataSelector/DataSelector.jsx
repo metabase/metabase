@@ -8,7 +8,7 @@ import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { DATA_BUCKET, getDataTypes } from "metabase/containers/DataPicker";

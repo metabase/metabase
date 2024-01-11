@@ -2,10 +2,9 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { useDashboardQuery } from "metabase/common/hooks";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, Select } from "metabase/ui";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { Select } from "metabase/ui";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";

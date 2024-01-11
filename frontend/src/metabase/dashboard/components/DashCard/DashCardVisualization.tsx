@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
-import { Flex, TextInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Flex, TextInput, Icon } from "metabase/ui";
+
 import { isSearchActive } from "../utils";
 
 const SEARCH_TIMEOUT = 200;
