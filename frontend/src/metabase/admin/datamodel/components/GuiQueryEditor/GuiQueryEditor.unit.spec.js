@@ -33,7 +33,7 @@ describe("GuiQueryEditor", () => {
       tableId: ORDERS_ID,
       metadata,
     })
-      .legacyQuery()
+      .legacyQuery({ useStructuredQuery: true })
       .aggregate(["count"]);
 
     render(getGuiQueryEditor(legacyQuery));
@@ -50,7 +50,7 @@ describe("GuiQueryEditor", () => {
       tableId: ORDERS_ID,
       metadata,
     })
-      .legacyQuery()
+      .legacyQuery({ useStructuredQuery: true })
       .aggregate(["count"])
       .breakout(["field", ORDERS.TOTAL, null]);
 

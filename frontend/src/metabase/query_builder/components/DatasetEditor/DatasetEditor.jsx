@@ -149,7 +149,13 @@ function getSidebar(
   }
 
   if (isShowingTemplateTagsEditor) {
-    return <TagEditorSidebar {...props} onClose={toggleTemplateTagsEditor} />;
+    return (
+      <TagEditorSidebar
+        {...props}
+        query={dataset.legacyQuery()}
+        onClose={toggleTemplateTagsEditor}
+      />
+    );
   }
   if (isShowingDataReference) {
     return <DataReference {...props} onClose={toggleDataReference} />;
@@ -405,7 +411,7 @@ function DatasetEditor(props) {
   );
 
   const canSaveChanges = useMemo(() => {
-    if (dataset.legacyQuery().isEmpty()) {
+    if (dataset.legacyQuery({ useStructuredQuery: true }).isEmpty()) {
       return false;
     }
     const everyFieldHasDisplayName = fields.every(field => field.display_name);

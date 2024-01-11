@@ -153,7 +153,11 @@ class View extends Component {
 
     if (isShowingTemplateTagsEditor) {
       return (
-        <TagEditorSidebar {...this.props} onClose={toggleTemplateTagsEditor} />
+        <TagEditorSidebar
+          {...this.props}
+          query={question.legacyQuery()}
+          onClose={toggleTemplateTagsEditor}
+        />
       );
     }
 
@@ -195,8 +199,9 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { query: legacyQuery, question } = this.props;
+    const { question } = this.props;
     const query = question.query();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
 
     const isNewQuestion =
       question.isStructured() &&
@@ -224,8 +229,8 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, query, card, height, isDirty, isNativeEditorOpen } =
-      this.props;
+    const { question, card, height, isDirty, isNativeEditorOpen } = this.props;
+    const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
@@ -242,8 +247,9 @@ class View extends Component {
       <NativeQueryEditorContainer>
         <NativeQueryEditor
           {...this.props}
+          query={legacyQuery}
           viewHeight={height}
-          isOpen={query.isEmpty() || isDirty}
+          isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
         />
@@ -252,12 +258,13 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { query, mode, parameters, isLiveResizable, setParameterValue } =
+    const { question, mode, parameters, isLiveResizable, setParameterValue } =
       this.props;
 
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const queryMode = mode && mode.queryMode();
-    const isNative = query instanceof NativeQuery;
-    const validationError = _.first(query.validate?.());
+    const isNative = legacyQuery instanceof NativeQuery;
+    const validationError = _.first(legacyQuery.validate?.());
     const isSidebarOpen = leftSidebar || rightSidebar;
 
     return (
@@ -296,7 +303,6 @@ class View extends Component {
   render() {
     const {
       question,
-      query: legacyQuery,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -315,6 +321,7 @@ class View extends Component {
     }
 
     const query = question.query();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
 
     const isNewQuestion =
       question.isStructured() &&

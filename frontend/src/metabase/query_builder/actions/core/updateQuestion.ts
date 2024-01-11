@@ -39,7 +39,7 @@ function hasNewColumns(question: Question, queryResult: Dataset | null) {
 
   // NOTE: this assumes column names will change
   // technically this is wrong because you could add and remove two columns with the same name
-  const query = question.query();
+  const query = question.query({ useStructuredQuery: true });
   const stageIndex = -1;
   const nextColumnNames = Lib.returnedColumns(query, stageIndex).map(
     column => Lib.displayInfo(query, stageIndex, column).name,
@@ -240,12 +240,16 @@ export const updateQuestion = (
     const currentDependencies = currentQuestion
       ? [
           ...currentQuestion.dependentMetadata(),
-          ...currentQuestion.legacyQuery().dependentMetadata(),
+          ...currentQuestion
+            .legacyQuery({ useStructuredQuery: true })
+            .dependentMetadata(),
         ]
       : [];
     const nextDependencies = [
       ...newQuestion.dependentMetadata(),
-      ...newQuestion.legacyQuery().dependentMetadata(),
+      ...newQuestion
+        .legacyQuery({ useStructuredQuery: true })
+        .dependentMetadata(),
     ];
     try {
       if (!_.isEqual(currentDependencies, nextDependencies)) {
