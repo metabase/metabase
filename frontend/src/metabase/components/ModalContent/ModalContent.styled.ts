@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 
 export const HeaderContainer = styled.div`
@@ -12,13 +12,16 @@ export const HeaderContainer = styled.div`
   flex-direction: row;
   gap: 0.5rem;
 
-  align-items: flex-start;
+  align-items: center;
 `;
 
 export const HeaderText = styled.h2`
   font-weight: 700;
 
   flex-grow: 1;
+
+  display: flex;
+  align-items: center;
 `;
 
 export const ActionsWrapper = styled.div`
@@ -26,8 +29,7 @@ export const ActionsWrapper = styled.div`
   flex-direction: row;
   gap: 0.5rem;
 
-  margin-top: -0.5rem;
-  margin-right: -0.5rem;
+  margin: -0.5rem -0.5rem -0.5rem 0;
 `;
 
 export const ModalContentActionIcon = styled(Icon)`

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { IconName } from "../Icon";
+import type { IconName } from "metabase/ui";
 import { AlertIcon, AlertRoot } from "./Alert.styled";
 
 export type AlertVariant = "info" | "warning" | "error";

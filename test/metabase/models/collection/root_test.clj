@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.public-settings.premium-features-test :as premium-features-test]))
+   [metabase.test :as mt]))
 
 (deftest perms-test
   (doseq [[perms expected]    {nil                    false
@@ -16,7 +16,7 @@
           f                   [#'mi/can-read? #'mi/can-write?]]
     (testing (format "%s with perms %s and features %s"
                      f (pr-str perms) (pr-str premium-feature-set))
-      (premium-features-test/with-premium-features premium-feature-set
+      (mt/with-premium-features premium-feature-set
         (binding [api/*current-user-permissions-set* (atom perms)]
           (is (= expected
                  (f collection.root/root-collection))))))))

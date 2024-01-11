@@ -5,6 +5,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";
 
+import * as Lib from "metabase-lib";
+
 // Needed due to wrong dependency resolution order
 import {
   extractRemappings,
@@ -30,14 +32,12 @@ import {
 } from "metabase/visualizations/lib/renderer_utils";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import * as ML from "metabase-lib/v2";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 
@@ -354,7 +354,7 @@ function isQuestionEditable(question) {
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
-  return ML.areLegacyQueriesEqual(
+  return Lib.areLegacyQueriesEqual(
     queryA,
     queryB,
     tableMetadata?.fields.map(({ id }) => id),
@@ -570,11 +570,6 @@ export const getIsSavedQuestionChanged = createSelector(
   },
 );
 
-export const getQuery = createSelector(
-  [getQuestion],
-  question => question && question.legacyQuery(),
-);
-
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
   (question, isDirty) => {
@@ -715,7 +710,7 @@ export const getVisualizationSettings = createSelector(
  */
 export const getIsNative = createSelector(
   [getQuestion],
-  question => question && question.legacyQuery() instanceof NativeQuery,
+  question => question && question.isNative(),
 );
 
 /**

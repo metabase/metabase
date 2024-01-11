@@ -97,23 +97,35 @@ class Join extends MBQLObjectClause {
     const sourceTableId = this["source-table"];
     const sourceQuery = this["source-query"];
     return sourceTableId
-      ? new StructuredQuery(this.legacyQuery().question().setDataset(false), {
-          type: "query",
-          query: {
-            "source-table": sourceTableId,
+      ? new StructuredQuery(
+          this.legacyQuery({ useStructuredQuery: true })
+            .question()
+            .setDataset(false),
+          {
+            type: "query",
+            query: {
+              "source-table": sourceTableId,
+            },
           },
-        })
+        )
       : sourceQuery
-      ? new StructuredQuery(this.legacyQuery().question().setDataset(false), {
-          type: "query",
-          query: sourceQuery,
-        })
+      ? new StructuredQuery(
+          this.legacyQuery({ useStructuredQuery: true })
+            .question()
+            .setDataset(false),
+          {
+            type: "query",
+            query: sourceQuery,
+          },
+        )
       : null;
   }
 
   private joinedDimension(dimension: Dimension) {
     if (dimension instanceof FieldDimension) {
-      return dimension.withJoinAlias(this.alias).setQuery(this.legacyQuery());
+      return dimension
+        .withJoinAlias(this.alias)
+        .setQuery(this.legacyQuery({ useStructuredQuery: true }));
     }
 
     console.warn("Don't know how to create joined dimension with:", dimension);
@@ -136,10 +148,14 @@ class Join extends MBQLObjectClause {
       const [, parentDimension, joinDimension] = condition;
       return [
         parentDimension
-          ? this.legacyQuery().parseFieldReference(parentDimension)
+          ? this.legacyQuery({ useStructuredQuery: true }).parseFieldReference(
+              parentDimension,
+            )
           : null,
         joinDimension
-          ? this.legacyQuery().parseFieldReference(joinDimension)
+          ? this.legacyQuery({ useStructuredQuery: true }).parseFieldReference(
+              joinDimension,
+            )
           : null,
       ];
     });
@@ -162,7 +178,9 @@ class Join extends MBQLObjectClause {
     if (this.fields === "all") {
       return this.joinedDimensions();
     } else if (Array.isArray(this.fields)) {
-      return this.fields.map(f => this.legacyQuery().parseFieldReference(f));
+      return this.fields.map(f =>
+        this.legacyQuery({ useStructuredQuery: true }).parseFieldReference(f),
+      );
     } else {
       return [];
     }

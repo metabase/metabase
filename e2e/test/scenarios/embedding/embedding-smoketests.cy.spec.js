@@ -15,7 +15,7 @@ import {
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
 const standalonePath =
   "/admin/settings/embedding-in-other-applications/standalone";
-const pricingUrl = "https://www.metabase.com/pricing";
+const upgradeUrl = "https://www.metabase.com/upgrade";
 const embeddingDescription =
   "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
 
@@ -74,7 +74,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByTestId("-static-embedding-setting").within(() => {
         // FE unit tests are making sure this section doesn't exist when a valid token is provided,
         // so we don't have to do it here usign a conditional logic
-        assertLinkMatchesUrl("upgrade to a paid plan", pricingUrl);
+        assertLinkMatchesUrl("upgrade to a paid plan", upgradeUrl);
 
         cy.findByRole("link", { name: "Manage" })
           .should("have.attr", "href")
@@ -115,7 +115,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-settings-oss-cta",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
           );
       });
     });
@@ -154,27 +154,31 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
           visitAndEnableSharing(object);
 
-          cy.findByTestId("embedding-settings").within(() => {
-            cy.findByRole("heading", { name: "Style" });
-            cy.findByRole("heading", { name: "Appearance" });
-            cy.findByRole("heading", { name: "Font" }).should("not.exist");
-            cy.findByRole("heading", { name: "Download data" }).should(
-              "not.exist",
-            );
+          modal().within(() => {
+            cy.findByRole("tab", { name: "Appearance" }).click();
 
-            cy.findByText("Parameters");
+            cy.findByText("Background");
+            cy.findByText("Dashboard title");
+            cy.findByText("Border");
             cy.findByText(
-              /This (question|dashboard) doesn't have any parameters to configure yet./,
+              (_, element) =>
+                element.textContent ===
+                "You can change the font with a paid plan.",
             );
-            cy.findByText("Parameters");
-          });
+            cy.findByText("Download data").should("not.exist");
 
-          cy.findByTestId("embedding-preview").within(() => {
+            cy.findByRole("tab", { name: "Parameters" }).click();
+
             cy.findByText(
-              /You will need to publish this (question|dashboard) before you can embed it in another application./,
+              `This ${object} doesn't have any parameters to configure yet.`,
             );
 
-            cy.button("Publish").click();
+            cy.findByText(
+              `You will need to publish this ${object} before you can embed it in another application.`,
+            );
+
+            cy.button("Publish changes").click();
+
             cy.wait("@embedObject");
           });
 
@@ -212,14 +216,19 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
           cy.log(`Unpublish ${object}`);
           visitAndEnableSharing(object);
 
-          cy.findByTestId("embedding-settings").within(() => {
-            cy.findByRole("heading", { name: "Danger zone" });
-            cy.findByText(`This will disable embedding for this ${object}.`);
+          modal().within(() => {
+            cy.findByText(
+              `This ${object} is published and ready to be embedded.`,
+            );
             cy.button("Unpublish").click();
+
             cy.wait("@embedObject");
+
+            cy.findByRole("tab", { name: "Parameters" }).click();
           });
 
           visitIframe();
+
           cy.findByTestId("embed-frame").findByText(
             "Embedding is not enabled for this object.",
           );
@@ -240,6 +249,12 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         enable_embedding: true,
       });
       visitAndEnableSharing("question");
+
+      modal().within(() => {
+        cy.findByRole("tab", { name: "Parameters" }).click();
+
+        cy.findByText("Preview").click();
+      });
 
       cy.document().then(doc => {
         const iframe = doc.querySelector("iframe");

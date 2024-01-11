@@ -4,10 +4,10 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, Box } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
-import { Box } from "metabase/ui";
+
 import { FieldDimension } from "metabase-lib/Dimension";
 
 import { DimensionPicker } from "../DimensionPicker";

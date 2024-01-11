@@ -5,9 +5,9 @@ export const getAnchorOverrides = (): MantineThemeOverride["components"] => ({
     styles: theme => {
       return {
         root: {
-          color: theme.colors.brand[1],
+          color: theme.fn.themeColor("brand"),
           "&:active": {
-            color: theme.colors.text[2],
+            color: theme.fn.themeColor("text-dark"),
             textDecoration: "underline",
           },
         },

@@ -44,7 +44,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
     it(
       "should default to saving audit content in custom reports collection",
-      { tags: "@flaky" },
+      { requestTimeout: 15000 },
       () => {
         cy.log("saving edited question");
         getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
