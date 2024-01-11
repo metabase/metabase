@@ -30,7 +30,7 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
@@ -799,7 +799,7 @@ class TableInteractive extends Component {
               : undefined
           }
         >
-          <DimensionInfoPopover
+          <FieldInfoPopover
             placement="bottom-start"
             dimension={
               hasMetadataPopovers
@@ -829,7 +829,7 @@ class TableInteractive extends Component {
               column,
               columnIndex,
             )}
-          </DimensionInfoPopover>
+          </FieldInfoPopover>
           <TableDraggable
             enableUserSelectHack={false}
             enableCustomUserSelectHack={!isVirtual}

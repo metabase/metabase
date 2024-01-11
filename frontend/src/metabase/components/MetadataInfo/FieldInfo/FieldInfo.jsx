@@ -8,15 +8,15 @@ import {
   InfoContainer,
   DimensionSemanticTypeLabel,
   FieldFingerprintInfo,
-} from "./DimensionInfo.styled";
+} from "./FieldInfo.styled";
 
-DimensionInfo.propTypes = {
+FieldInfo.propTypes = {
   className: PropTypes.string,
   dimension: PropTypes.instanceOf(Dimension).isRequired,
   showAllFieldValues: PropTypes.bool,
 };
 
-export function DimensionInfo({ className, dimension, showAllFieldValues }) {
+export function FieldInfo({ className, dimension, showAllFieldValues }) {
   const field = dimension.field();
   const description = field?.description;
   return (
@@ -35,4 +35,4 @@ export function DimensionInfo({ className, dimension, showAllFieldValues }) {
   );
 }
 
-export default DimensionInfo;
+export default FieldInfo;

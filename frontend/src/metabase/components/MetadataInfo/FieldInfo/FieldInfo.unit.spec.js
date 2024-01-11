@@ -10,7 +10,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 import Dimension from "metabase-lib/Dimension";
 
-import { DimensionInfo } from "./DimensionInfo";
+import { FieldInfo } from "./FieldInfo";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -32,7 +32,7 @@ const expressionDimension = Dimension.parseMBQL(
 
 function setup(dimension) {
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
-  return renderWithProviders(<DimensionInfo dimension={dimension} />, {
+  return renderWithProviders(<FieldInfo dimension={dimension} />, {
     storeInitialState: state,
   });
 }

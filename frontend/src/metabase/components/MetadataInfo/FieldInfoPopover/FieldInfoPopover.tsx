@@ -5,7 +5,7 @@ import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopove
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Dimension from "metabase-lib/Dimension";
 
-import { WidthBoundDimensionInfo } from "./DimensionInfoPopover.styled";
+import { WidthBoundFieldInfo } from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
@@ -23,7 +23,7 @@ type Props = { dimension: Dimension } & Pick<
 
 const className = "dimension-info-popover";
 
-function DimensionInfoPopover({
+function FieldInfoPopover({
   dimension,
   children,
   placement,
@@ -40,14 +40,14 @@ function DimensionInfoPopover({
       delay={delay}
       placement={placement || "left-start"}
       disabled={disabled}
-      content={<WidthBoundDimensionInfo dimension={dimension} />}
+      content={<WidthBoundFieldInfo dimension={dimension} />}
       onTrigger={instance => {
-        const dimensionInfoPopovers = document.querySelectorAll(
+        const fieldInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,
         );
 
         // if a dimension info popovers are already visible, hide them and show this popover immediately
-        if (dimensionInfoPopovers.length > 0) {
+        if (fieldInfoPopovers.length > 0) {
           hideAll({
             exclude: instance,
           });
@@ -62,7 +62,7 @@ function DimensionInfoPopover({
   );
 }
 
-DimensionInfoPopover.propTypes = propTypes;
+FieldInfoPopover.propTypes = propTypes;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DimensionInfoPopover;
+export default FieldInfoPopover;
