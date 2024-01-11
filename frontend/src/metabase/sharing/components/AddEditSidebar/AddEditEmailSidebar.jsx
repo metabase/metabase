@@ -14,7 +14,7 @@ import RecipientPicker from "metabase/pulse/components/RecipientPicker";
 import SendTestPulse from "metabase/components/SendTestPulse";
 import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
 import DefaultParametersSection from "./DefaultParametersSection";
-import CaveatMessage from "./CaveatMessage";
+import { CaveatMessage } from "./CaveatMessage";
 import Heading from "./Heading";
 import { CHANNEL_NOUN_PLURAL } from "./constants";
 
