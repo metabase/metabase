@@ -4,8 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.audit-db :as audit-db]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
+   [metabase.core :as mbc]
    [metabase.models
     :refer [Action
             Card
@@ -1711,3 +1713,14 @@
                (by-model "Collection" ser)))
         (is (= #{ncard-eid}
                (by-model "Card" ser)))))))
+
+(deftest skip-analytics-collections-test
+  (testing "Collections in 'analytics' namespace should not be extracted, see #37453"
+    (mt/with-empty-h2-app-db
+      (mbc/ensure-audit-db-installed!)
+      (testing "sanity check that the audit collection exists"
+        (is (some? (audit-db/default-audit-collection)))
+        (is (some? (audit-db/default-custom-reports-collection))))
+      (let [ser (extract/extract {:no-settings   true
+                                  :no-data-model true})]
+        (is (= #{} (by-model "Collection" ser)))))))
