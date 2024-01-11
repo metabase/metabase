@@ -47,7 +47,7 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { breakout, filter } from "metabase-lib/queries/utils/actions";
+import { filter } from "metabase-lib/queries/utils/actions";
 import { isTransientId } from "metabase-lib/queries/utils/card";
 import {
   findColumnIndexForColumnSetting,
@@ -555,10 +555,6 @@ class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  breakout(b): Question | null | undefined {
-    return breakout(this, b) || this;
-  }
-
   filter(operator, column, value): Question {
     return filter(this, operator, column, value) || this;
   }
