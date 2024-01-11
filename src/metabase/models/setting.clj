@@ -1379,8 +1379,8 @@
     :positive-integer true
     :timestamp true
 
-    (do (log/warn "Redaction criteria not defined for type and obtain an exception of type" (:type setting) (type ex))
-        true)))
+    ;; fallback to redaction if we have not defined behaviour for a given format
+    true))
 
 (defn- redact-sensitive-tokens [ex raw-value]
   (if (may-contain-raw-token? ex raw-value)
