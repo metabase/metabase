@@ -1,5 +1,6 @@
 (ns metabase.public-settings
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -257,12 +258,29 @@
   :visibility :public
   :audit      :getter)
 
+(defn- coerce-to-relative-url
+  "Get the path of a given URL if the URL contains an origin.
+   Otherwise make the landing-page a relative path."
+  [landing-page]
+  (cond
+    (u/url? landing-page) (-> landing-page io/as-url .getPath)
+    (empty? landing-page) ""
+    (not (str/starts-with? landing-page "/")) (str "/" landing-page)
+    :else landing-page))
+
 (defsetting landing-page
   (deferred-tru "Default page to show people when they log in.")
   :visibility :public
   :type       :string
   :default    ""
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-landing-page]
+                (when new-landing-page
+                  ;; If the landing page is a valid URL or mailito, sms, or file, then check with if site-url has the same origin.
+                  (when (and (or (re-matches #"^(mailto|sms|file):(.*)" new-landing-page) (u/url? new-landing-page))
+                             (not (str/starts-with? new-landing-page (site-url))))
+                    (throw (ex-info (tru "This field must be a relative URL.") {:status-code 400}))))
+                (setting/set-value-of-type! :string :landing-page (coerce-to-relative-url new-landing-page))))
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
