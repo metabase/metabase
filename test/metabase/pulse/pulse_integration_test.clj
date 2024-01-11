@@ -163,3 +163,111 @@
           ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
           (is (= ["2.07" "2.07"]
                  (run-pulse-and-return-scalars pulse))))))))
+
+(defn- run-pulse-and-return-data-tables
+  "Run the pulse and return the sequence of inlined html tables as data. Empty tables will be [].
+  If not pulse is sent, return `nil`."
+  [pulse]
+  (mt/with-fake-inbox
+    (with-redefs [email/bcc-enabled? (constantly false)]
+      (mt/with-test-user nil
+        (metabase.pulse/send-pulse! pulse)))
+    (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+      (let [doc         (-> html-body hik/parse hik/as-hickory)
+            data-tables (hik.s/select
+                          (hik.s/class "pulse-body")
+                          doc)]
+        (mapv
+          (fn [data-table]
+            (->> (hik.s/select
+                   (hik.s/child
+                     (hik.s/tag :tbody)
+                     (hik.s/tag :tr))
+                   data-table)
+                 (mapv (comp (partial mapv (comp first :content)) :content))))
+          data-tables)))))
+
+(defmacro with-skip-if-empty-pulse-result
+  "Provide a fixture that runs body using the provided pulse results (symbol), the value of `:skip_if_empty` for the
+  pulse, and the queries for two cards. This enables a variety of cases to test the behavior of `:skip_if_empty` based
+  on the presence or absence of card data."
+  [[result skip-if-empty? query1 query2] & body]
+  `(mt/dataset ~'test-data
+     (mt/with-temp [Card {~'base-card-id :id} {:name          "Card1"
+                                               :dataset_query {:database (mt/id)
+                                                               :type     :query
+                                                               :query    ~query1}}
+                    Card {~'empty-card-id :id} {:name          "Card2"
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    ~query2}}
+                    Dashboard {~'dash-id :id} {:name "The Dashboard"}
+                    DashboardCard {~'base-dash-card-id :id} {:dashboard_id ~'dash-id
+                                                             :card_id      ~'base-card-id}
+                    DashboardCard {~'empty-dash-card-id :id} {:dashboard_id ~'dash-id
+                                                              :card_id      ~'empty-card-id}
+                    Pulse {~'pulse-id :id :as ~'pulse} {:name          "Only populated pulse"
+                                                        :dashboard_id  ~'dash-id
+                                                        :skip_if_empty ~skip-if-empty?}
+                    PulseCard ~'_ {:pulse_id          ~'pulse-id
+                                   :card_id           ~'base-card-id
+                                   :dashboard_card_id ~'base-dash-card-id
+                                   :include_csv       true}
+                    PulseCard ~'_ {:pulse_id          ~'pulse-id
+                                   :card_id           ~'empty-card-id
+                                   :dashboard_card_id ~'empty-dash-card-id
+                                   :include_csv       true}
+                    PulseChannel {~'pulse-channel-id :id} {:channel_type :email
+                                                           :pulse_id     ~'pulse-id
+                                                           :enabled      true}
+                    PulseChannelRecipient ~'_ {:pulse_channel_id ~'pulse-channel-id
+                                               :user_id          (mt/user->id :rasta)}]
+       (let [~result (run-pulse-and-return-data-tables ~'pulse)]
+         ~@body))))
+
+(deftest skip-if-empty-test
+  #_{:clj-kondo/ignore [:unresolved-symbol]}
+  (testing "Only send non-empty cards when 'Don't send if there aren't results is enabled' (#34777)"
+    (let [query       {:source-table (mt/id :orders)
+                       :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                      [:field (mt/id :orders :tax) {:base-type :type/Float}]]
+                       :limit        2}
+          query2      (merge query {:limit 3})
+          empty-query (merge query
+                             {:filter [:= [:field (mt/id :orders :tax) {:base-type :type/Float}] -1]})]
+      (testing "Cases for when 'Don't send if there aren't results is enabled' is false"
+        (let [skip-if-empty? false]
+          (testing "Everything has results"
+            (with-skip-if-empty-pulse-result [result skip-if-empty? query query2]
+              (testing "Show all the data"
+                (is (= [[["1" "2.07"] ["2" "6.1"]]
+                        [["1" "2.07"] ["2" "6.1"] ["3" "2.9"]]]
+                       result)))))
+          (testing "Not everything has results"
+            (with-skip-if-empty-pulse-result [result skip-if-empty? query empty-query]
+              (testing "The second table is empty since there are no results"
+                (is (= [[["1" "2.07"] ["2" "6.1"]] []] result)))))
+          (testing "No results"
+            (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
+              (testing "We send the email anyways, despite everything being empty due to no results"
+                (is (= [[] []] result)))))))
+      (testing "Cases for when 'Don't send if there aren't results is enabled' is true"
+        (let [skip-if-empty? true]
+          (testing "Everything has results"
+            (with-skip-if-empty-pulse-result [result skip-if-empty? query query2]
+              (testing "When everything has results, we see everything"
+                (is (= 2 (count result))))
+              (testing "Show all the data"
+                (is (= [[["1" "2.07"] ["2" "6.1"]]
+                        [["1" "2.07"] ["2" "6.1"] ["3" "2.9"]]]
+                       result)))))
+          (testing "Not everything has results"
+            (with-skip-if-empty-pulse-result [result skip-if-empty? query empty-query]
+              (testing "We should only see a single data table in the result"
+                (is (= 1 (count result))))
+              (testing "The single result should contain the card with data in it"
+                (is (= [[["1" "2.07"] ["2" "6.1"]]] result)))))
+          (testing "No results"
+            (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
+              (testing "Don't send a pulse if no results at all"
+                (is (nil? result))))))))))
