@@ -29,7 +29,7 @@
     (is (= {:bin-width 12.5, :min-value 15, :max-value 27.5}
            (lib.binning/resolve-bin-width query col-quantity 15)))))
 
-(deftest ^:parallel binning-and-bucketing-only-show-up-for-breakoutable-columns
+(deftest ^:parallel binning-and-bucketing-only-show-up-for-returned-and-breakoutable-columns
   (testing "Within the stage, binning and bucketing at breakout should be invisible, outside the stage it should be visible"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/count)))
