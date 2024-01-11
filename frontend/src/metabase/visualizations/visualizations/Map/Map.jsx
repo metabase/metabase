@@ -1,13 +1,8 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-
-import Link from "metabase/core/components/Link";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { Icon } from "metabase/core/components/Icon";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {
@@ -18,7 +13,6 @@ import {
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { getUserIsAdmin } from "metabase/selectors/user";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
@@ -37,15 +31,14 @@ import {
   isState,
   isCountry,
 } from "metabase-lib/types/utils/isa";
-import LeafletGridHeatMap from "../components/LeafletGridHeatMap";
-import PinMap from "../components/PinMap";
+import LeafletGridHeatMap from "../../components/LeafletGridHeatMap";
+import PinMap from "../../components/PinMap";
 import ChoroplethMap, {
   getColorplethColorScale,
-} from "../components/ChoroplethMap";
+} from "../../components/ChoroplethMap";
+import { CustomMapFooter } from "./CustomMapFooter";
 
-import { CustomMapContent } from "./Maps.styled";
-
-export default class Map extends Component {
+export class Map extends Component {
   static uiName = t`Map`;
   static identifier = "map";
   static iconName = "pinmap";
@@ -357,28 +350,3 @@ export default class Map extends Component {
     }
   }
 }
-
-const mapStateToProps = (state, props) => {
-  return {
-    isAdmin: getUserIsAdmin(state, props),
-  };
-};
-
-const CustomMapFooter = connect(mapStateToProps)(function CustomMapFooter({
-  isAdmin,
-}) {
-  const content = (
-    <CustomMapContent>
-      {t`Custom map`}
-      <Icon name="share" />
-    </CustomMapContent>
-  );
-
-  return isAdmin ? (
-    <Link to="/admin/settings/maps">{content}</Link>
-  ) : (
-    <ExternalLink href="https://www.metabase.com/docs/latest/configuring-metabase/custom-maps">
-      {content}
-    </ExternalLink>
-  );
-});
