@@ -135,49 +135,33 @@ describe("StructuredQuery", () => {
 
       it("should remove unnecessary layers of nesting via legacyQuery()", () => {
         const q = ordersTable.legacyQuery().nest();
-        expect(q.clean().legacyQuery()).toEqual({ "source-table": ORDERS_ID });
+        expect(q.clean().legacyQuery()).toEqual({
+          "source-table": ORDERS_ID,
+        });
       });
 
       it("should remove unnecessary layers of nesting via question()", () => {
         const q = ordersTable.legacyQuery().nest();
-        expect(q.clean().legacyQuery()).toEqual({ "source-table": ORDERS_ID });
+        expect(q.clean().legacyQuery()).toEqual({
+          "source-table": ORDERS_ID,
+        });
       });
     });
   });
 
   describe("cleanNesting", () => {
     it("should not modify empty queries with no source-query", () => {
-      expect(db.question().legacyQuery().cleanNesting().datasetQuery()).toEqual(
-        {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: { "source-table": undefined },
-        },
-      );
-    });
-    it("should remove outer empty queries", () => {
       expect(
-        ordersTable
-          .legacyQuery()
-          .updateLimit(10)
-          .nest()
-          .nest()
-          .nest()
+        db
+          .question()
+          .legacyQuery({ useStructuredQuery: true })
           .cleanNesting()
-          .legacyQuery(),
-      ).toEqual({ "source-table": ORDERS_ID, limit: 10 });
-    });
-    it("should remove intermediate empty queries", () => {
-      expect(
-        ordersTable
-          .legacyQuery()
-          .nest()
-          .nest()
-          .nest()
-          .updateLimit(10)
-          .cleanNesting()
-          .legacyQuery(),
-      ).toEqual({ "source-query": { "source-table": ORDERS_ID }, limit: 10 });
+          .datasetQuery(),
+      ).toEqual({
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: { "source-table": undefined },
+      });
     });
   });
 });

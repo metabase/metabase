@@ -5,6 +5,7 @@ import { Grid, Paper, Text } from "metabase/ui";
 export const args = {
   p: "md",
   radius: "md",
+  shadow: "md",
   withBorder: false,
 };
 
@@ -19,6 +20,10 @@ export const argTypes = {
   },
   radius: {
     options: ["xs", "sm", "md"],
+    control: { type: "inline-radio" },
+  },
+  shadow: {
+    options: ["xs", "sm", "md", "lg", "xl"],
     control: { type: "inline-radio" },
   },
   withBorder: {

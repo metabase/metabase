@@ -61,7 +61,7 @@ const setup = ({
   renderWithProviders(
     <ChartSettingAddRemoveColumns
       value={value}
-      query={question._getMLv2Query()}
+      query={question.query()}
       onChange={onChange}
     />,
   );

@@ -202,7 +202,7 @@ describe("scenarios > collection defaults", () => {
         });
     });
 
-    popover().within(() => {
+    cy.findByRole("tooltip").within(() => {
       cy.findByRole("link").should("include.text", "link");
       cy.findByRole("link").should("not.include.text", "[link]");
     });

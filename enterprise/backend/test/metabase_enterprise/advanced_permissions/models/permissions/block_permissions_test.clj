@@ -7,7 +7,6 @@
    [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
@@ -64,7 +63,7 @@
 (defn- api-grant-block-perms! [group-id]
   (let [current-graph (perms/data-perms-graph)
         new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
-        result        (premium-features-test/with-premium-features #{:advanced-permissions}
+        result        (mt/with-premium-features #{:advanced-permissions}
                         (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))]
     (is (= "block"
            (get-in result [:groups group-id (mt/id) :data :schemas])))))
@@ -76,7 +75,7 @@
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
         (let [current-graph (perms/data-perms-graph)
               new-graph     (assoc-in current-graph [:groups group-id (mt/id) :data] {:schemas :block})
-              result        (premium-features-test/with-premium-features #{} ; disable premium features
+              result        (mt/with-premium-features #{} ; disable premium features
                               (mt/user-http-request :crowberto :put 402 "permissions/graph" new-graph))]
           (is (= "The block permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                  result)))))))
@@ -85,7 +84,7 @@
   (testing "Should be able to set block permissions with"
     (doseq [[description grant!] {"the graph update function"
                                   (fn [group-id]
-                                    (premium-features-test/with-premium-features #{:advanced-permissions}
+                                    (mt/with-premium-features #{:advanced-permissions}
                                       (grant-block-perms! group-id)))
 
                                   "the perms graph API endpoint"
@@ -115,7 +114,7 @@
 
 (deftest update-graph-delete-sandboxes-test
   (testing "When setting `:block` permissions any GTAP rows for that Group/Database should get deleted."
-    (premium-features-test/with-premium-features #{:sandboxes :advanced-permissions}
+    (mt/with-premium-features #{:sandboxes :advanced-permissions}
       (mt/with-model-cleanup [Permissions]
         (mt/with-temp [PermissionsGroup       {group-id :id} {}
                        GroupTableAccessPolicy _ {:table_id (mt/id :venues)
@@ -153,7 +152,7 @@
                                       [:groups group-id (mt/id) :data]
                                       {:schemas :block, :native :write})]
           (is (=? {:message  #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
-                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                  (mt/with-premium-features #{:advanced-permissions}
                     (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
@@ -182,7 +181,7 @@
                      Card                       {card-id :id} {:collection_id collection-id
                                                                :dataset_query query}
                      Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
-        (premium-features-test/with-premium-features #{:advanced-permissions}
+        (mt/with-premium-features #{:advanced-permissions}
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (perms/revoke-data-perms! group-id (mt/id))
           (letfn [(run-ad-hoc-query []
@@ -208,7 +207,7 @@
             ;; 'grant' the block permissions.
             (t2.with-temp/with-temp [Permissions _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
               (testing "if EE token does not have the `:advanced-permissions` feature: should not do check"
-                (premium-features-test/with-premium-features #{}
+                (mt/with-premium-features #{}
                   (is (= ::block-perms/advanced-permissions-not-enabled
                          (check-block-perms)))))
               (testing "disallow running the query"
@@ -233,7 +232,7 @@
                             (is (=? {:status :completed}
                                     (thunk))))))))
                   (testing "\nSandboxed permissions"
-                    (premium-features-test/with-premium-features #{:advanced-permissions :sandboxes}
+                    (mt/with-premium-features #{:advanced-permissions :sandboxes}
                       (mt/with-temp [Permissions            _ {:group_id group-2-id
                                                                :object   (perms/table-sandboxed-query-path (mt/id :venues))}
                                      GroupTableAccessPolicy _ {:table_id (mt/id :venues) :group_id group-id}]

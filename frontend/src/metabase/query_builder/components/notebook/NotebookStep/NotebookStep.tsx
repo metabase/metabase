@@ -5,7 +5,7 @@ import cx from "classnames";
 import { color as c } from "metabase/lib/colors";
 import { useToggle } from "metabase/hooks/use-toggle";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
@@ -76,7 +76,7 @@ function NotebookStep({
               large={hasLargeActionButtons}
               {...stepUi}
               aria-label={stepUi.title}
-              onClick={() => action.action({ query: step.query, openStep })}
+              onClick={() => action.action({ openStep })}
             />
           ),
         };
@@ -86,12 +86,12 @@ function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.query, step.actions, isLastStep, openStep]);
+  }, [step.actions, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
       const reverted = step.revert(
-        step.topLevelQuery,
+        step.query,
         step.stageIndex,
         step.itemIndex ?? undefined,
       );
@@ -138,7 +138,6 @@ function NotebookStep({
               <NotebookStepComponent
                 color={color}
                 step={step}
-                topLevelQuery={step.topLevelQuery}
                 query={step.query}
                 stageIndex={step.stageIndex}
                 sourceQuestion={sourceQuestion}

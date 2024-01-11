@@ -25,15 +25,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
  *
  *        { // link to a new question created by adding a filter }
  *        <Link
- *          to={
- *            question.legacyQuery()
- *                    .filter([
- *                      "segment",
- *                      question.legacyQuery().filterSegmentOptions()[0]
- *                    ])
- *                    .question()
- *                    .getUrl()
- *          }
+ *          to={question.getUrl()}
  *        >
  *          View this ad-hoc exploration
  *        </Link>

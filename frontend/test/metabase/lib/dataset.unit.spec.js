@@ -40,7 +40,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .legacyQuery()
+        .legacyQuery({ useStructuredQuery: true })
         .aggregate(["sum", ["field", PRODUCTS.PRICE, null]])
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -63,7 +63,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .legacyQuery()
+        .legacyQuery({ useStructuredQuery: true })
         .removeAggregation(1)
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -83,7 +83,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .legacyQuery()
+        .legacyQuery({ useStructuredQuery: true })
         .breakout(["field", PRODUCTS.VENDOR, null])
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -92,7 +92,9 @@ describe("metabase/util/dataset", () => {
         "count",
         "sum",
       ]);
-      expect(newQuestion.legacyQuery().columns()).toHaveLength(4);
+      expect(
+        newQuestion.legacyQuery({ useStructuredQuery: true }).columns(),
+      ).toHaveLength(4);
     });
 
     it("removes columns from table.columns when a column is removed from a query", () => {
@@ -126,7 +128,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .legacyQuery()
+        .legacyQuery({ useStructuredQuery: true })
         .removeField(2)
         .question()
         .syncColumnsAndSettings(prevQuestion);
@@ -162,7 +164,7 @@ describe("metabase/util/dataset", () => {
         });
 
       const newQuestion = prevQuestion
-        .legacyQuery()
+        .legacyQuery({ useStructuredQuery: true })
         .addField(["field", PRODUCTS.VENDOR, null])
         .question()
         .syncColumnsAndSettings(prevQuestion);

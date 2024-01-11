@@ -26,6 +26,7 @@ import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
 import type Table from "metabase-lib/metadata/Table";
 
@@ -98,10 +99,16 @@ function ModelDetailPage({
   const supportsNestedQueries =
     database != null && database.hasFeature("nested-queries");
 
-  const mainTable = useMemo(
-    () => (model.isStructured() ? model.legacyQuery().sourceTable() : null),
-    [model],
-  );
+  const mainTable = useMemo(() => {
+    if (model.isNative()) {
+      return null;
+    }
+
+    const query = model.query();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    const table = model.metadata().table(sourceTableId);
+    return table;
+  }, [model]);
 
   const tab = useMemo(() => {
     const pathname = location.pathname;

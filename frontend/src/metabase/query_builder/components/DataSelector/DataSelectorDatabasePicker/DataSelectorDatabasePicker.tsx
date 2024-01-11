@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import AccordionList from "metabase/core/components/AccordionList";
 
 import type Database from "metabase-lib/metadata/Database";

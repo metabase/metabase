@@ -6,7 +6,7 @@
 
 Examples:
 
-- `question().legacyQuery().aggregation()[0].setDimension(dimension)`
+- `question().legacyQuery({ useStructuredQuery: true }) .aggregation()[0].setDimension(dimension)`
 
 Exceptions:
 

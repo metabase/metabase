@@ -1,8 +1,15 @@
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
-import { Checkbox, MultiSelect, Stack, Text, TextInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import {
+  Checkbox,
+  MultiSelect,
+  Stack,
+  Text,
+  TextInput,
+  Icon,
+} from "metabase/ui";
+
 import type { FieldValue } from "metabase-types/api";
 import { getEffectiveOptions } from "../utils";
 import { LONG_OPTION_LENGTH, MAX_INLINE_OPTIONS } from "./constants";
@@ -94,9 +101,9 @@ function DefaultValuePicker({
             ))}
           </Stack>
         ) : (
-          <Stack c="text.0" justify="center" align="center">
+          <Stack c="text-light" justify="center" align="center">
             <Icon name="search" size={40} />
-            <Text c="text.1" fw="bold">{t`Didn't find anything`}</Text>
+            <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
           </Stack>
         )}
       </Checkbox.Group>
