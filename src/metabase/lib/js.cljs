@@ -889,7 +889,7 @@
   [a-query]
   (name (lib.core/engine a-query)))
 
-(defn ^:export segment
+(defn ^:export segment-metadata
   "Get metadata for the Segment with `segment-id`, if it can be found."
   [metadata-providerable segment-id]
   (lib.metadata/segment metadata-providerable segment-id))
@@ -900,7 +900,7 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
-(defn ^:export metric
+(defn ^:export metric-metadata
   "Get metadata for the Metric with `metric-id`, if it can be found."
   [metadata-providerable metric-id]
   (lib.metadata/metric metadata-providerable metric-id))
