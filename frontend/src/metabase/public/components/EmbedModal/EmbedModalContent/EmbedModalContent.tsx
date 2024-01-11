@@ -1,6 +1,11 @@
 import { useState } from "react";
 import _ from "underscore";
 import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
+import {
+  trackStaticEmbedDiscarded,
+  trackStaticEmbedPublished,
+  trackStaticEmbedUnpublished,
+} from "metabase/public/lib/analytics";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
@@ -20,6 +25,15 @@ import type {
 } from "../types";
 import { SelectEmbedTypePane } from "../SelectEmbedTypePane";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
+
+const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
+  Object.values(embeddingParams).reduce(
+    (acc, value) => {
+      acc[value] += 1;
+      return acc;
+    },
+    { disabled: 0, locked: 0, editable: 0 } as Record<string, number>,
+  );
 
 export interface EmbedModalContentProps {
   embedType: EmbedModalStep;
@@ -82,6 +96,11 @@ export const EmbedModalContent = (
           await onUpdateEnableEmbedding(true);
         }
         await onUpdateEmbeddingParams(embeddingParams);
+        trackStaticEmbedPublished({
+          artifact: resourceType,
+          new_embed: !resource.enable_embedding,
+          params: countEmbeddingParameterOptions(embeddingParams),
+        });
       } else {
         if (!resource.public_uuid) {
           await onCreatePublicLink();
@@ -95,6 +114,10 @@ export const EmbedModalContent = (
 
   const handleUnpublish = async () => {
     try {
+      trackStaticEmbedUnpublished({
+        artifact: resourceType,
+        first_published_at: resource.first_published_at,
+      });
       await onUpdateEnableEmbedding(false);
     } catch (e) {
       console.error(e);
@@ -104,6 +127,9 @@ export const EmbedModalContent = (
 
   const handleDiscard = () => {
     setEmbeddingParams(getDefaultEmbeddingParams(resource, resourceParameters));
+    trackStaticEmbedDiscarded({
+      artifact: resourceType,
+    });
   };
 
   const getPreviewParamsBySlug = () => {

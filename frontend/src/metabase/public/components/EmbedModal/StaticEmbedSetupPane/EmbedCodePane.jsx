@@ -7,13 +7,26 @@ import {
   getSignTokenOptions,
 } from "metabase/public/lib/code";
 
-import CodeSample from "./CodeSample";
-
 import "ace/mode-clojure";
 import "ace/mode-javascript";
 import "ace/mode-ruby";
 import "ace/mode-html";
 import "ace/mode-jsx";
+import { trackStaticEmbedCodeCopied } from "metabase/public/lib/analytics";
+import CodeSample from "./CodeSample";
+import { EMBED_MODAL_TABS } from "./tabs";
+
+const getEmbedModalTabLocation = tab => {
+  if (tab === EMBED_MODAL_TABS.Overview) {
+    return "code_overview";
+  }
+  if (tab === EMBED_MODAL_TABS.Appearance) {
+    return "code_appearance";
+  }
+  if (tab === EMBED_MODAL_TABS.Parameters) {
+    return "code_params";
+  }
+};
 
 export default class EmbedCodePane extends Component {
   render() {
@@ -27,6 +40,7 @@ export default class EmbedCodePane extends Component {
       params,
       displayOptions,
       withExamplesLink,
+      embedModalLocation,
     } = this.props;
     return (
       <div className={className}>
@@ -49,6 +63,19 @@ export default class EmbedCodePane extends Component {
             ) {
               this._embedSample.setOption(option.embedOption);
             }
+          }}
+          onCopy={({ name: codeLanguage }) => {
+            trackStaticEmbedCodeCopied({
+              artifact: resourceType,
+              language: codeLanguage,
+              location: getEmbedModalTabLocation(embedModalLocation),
+              appearance: {
+                border: displayOptions.bordered,
+                title: displayOptions.titled,
+                font: displayOptions.font ? "custom" : "instance",
+                theme: displayOptions.theme ?? "light",
+              },
+            });
           }}
           dataTestId="embed-backend"
         />

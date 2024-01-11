@@ -28,6 +28,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
+   [metabase.util.embed :refer [maybe-populate-first-published-at]]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -97,7 +98,8 @@
   (u/prog1 dashboard
     (params/assert-valid-parameters dashboard)
     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
+    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
+  (maybe-populate-first-published-at dashboard))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"

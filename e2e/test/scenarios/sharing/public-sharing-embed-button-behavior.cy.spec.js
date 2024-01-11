@@ -3,15 +3,20 @@ import {
   createPublicDashboardLink,
   createPublicQuestionLink,
   describeEE,
+  describeWithSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
   openEmbedModalFromMenu,
   openPublicLinkPopoverFromMenu,
+  openStaticEmbeddingModal,
+  resetSnowplow,
   restore,
   setTokenFeatures,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
-
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
 ["dashboard", "card"].forEach(resource => {
@@ -254,6 +259,158 @@ describe("embed modal display", () => {
   });
 });
 
+["dashboard", "question"].forEach(resource => {
+  describeWithSnowplow("public sharing snowplow events", () => {
+    beforeEach(() => {
+      restore();
+      resetSnowplow();
+      cy.signInAsAdmin();
+      enableTracking();
+
+      createResource(resource).then(({ body: { id } }) => {
+        cy.wrap(id).as("resourceId");
+      });
+    });
+
+    afterEach(() => {
+      expectNoBadSnowplowEvents();
+    });
+
+    describe(`when embedding ${resource}`, () => {
+      describe("when interacting with public link popover", () => {
+        it("should send `public_link_copied` event when copying public link", () => {
+          cy.get("@resourceId").then(id => {
+            visitResource(resource, id);
+          });
+
+          openPublicLinkPopoverFromMenu();
+          cy.findByTestId("copy-button").realClick();
+          expectGoodSnowplowEvent({
+            event: "public_link_copied",
+            artifact: resource,
+            format: null,
+          });
+        });
+
+        it("should send `public_link_removed` when removing the public link", () => {
+          cy.get("@resourceId").then(id => {
+            visitResource(resource, id);
+          });
+
+          openPublicLinkPopoverFromMenu();
+          cy.findByTestId("remove-link-button").click();
+          expectGoodSnowplowEvent({
+            event: "public_link_removed",
+            artifact: resource,
+            source: "public-share",
+          });
+        });
+      });
+
+      describe("when interacting with public embedding", () => {
+        it("should send `public_embed_code_copied` event when copying the public embed iframe", () => {
+          cy.get("@resourceId").then(id => {
+            visitResource(resource, id);
+          });
+
+          openEmbedModalFromMenu();
+          cy.findByTestId("sharing-pane-public-embed-button").within(() => {
+            cy.findByText("Get an embed link").click();
+          });
+          cy.findByTestId("copy-button").realClick();
+          expectGoodSnowplowEvent({
+            event: "public_embed_code_copied",
+            artifact: resource,
+            source: "public-embed",
+          });
+        });
+      });
+
+      describe("when interacting with static embedding", () => {
+        it("should send `static_embed_code_copied` when copying the static embed code", () => {
+          cy.get("@resourceId").then(id => {
+            visitResource(resource, id);
+          });
+          openStaticEmbeddingModal();
+          cy.findByTestId("embed-backend-code-sample").within(() => {
+            cy.findByTestId("copy-button").realClick();
+          });
+          expectGoodSnowplowEvent({
+            event: "static_embed_code_copied",
+            artifact: resource,
+            language: "Node.js",
+            location: "code_overview",
+            // appearance: {
+            //   "border": true,
+            //   "title": true,
+            //   "font": "instance",
+            //   "theme": "light"
+            // }
+          });
+        });
+
+        it("should send `static_embed_discarded` when discarding changes in the static embed modal", () => {
+          cy.get("@resourceId").then(id => {
+            enableEmbeddingForResource({ resource, id, isDirty: true });
+            visitResource(resource, id);
+          });
+
+          openStaticEmbeddingModal();
+
+          cy.findByTestId("embed-modal-content-status-bar").within(() => {
+            cy.findByText("Discard changes").click();
+          });
+
+          expectGoodSnowplowEvent({
+            event: "static_embed_discarded",
+            artifact: resource,
+          });
+        });
+
+        it("should send `static_embed_published` when publishing changes in the static embed modal", () => {
+          cy.get("@resourceId").then(id => {
+            visitResource(resource, id);
+          });
+          openStaticEmbeddingModal();
+
+          cy.findByTestId("embed-modal-content-status-bar").within(() => {
+            cy.findByText("Publish changes").click();
+          });
+
+          expectGoodSnowplowEvent({
+            event: "static_embed_published",
+            artifact: resource,
+            new_embed: true,
+            // params: {
+            //   disabled: 0,
+            //   locked: 0,
+            //   editable: 0,
+            // },
+          });
+        });
+
+        it("should send `static_embed_unpublished` when unpublishing changes in the static embed modal", () => {
+          cy.get("@resourceId").then(id => {
+            enableEmbeddingForResource({ resource, id });
+            visitResource(resource, id);
+          });
+          openStaticEmbeddingModal();
+
+          cy.findByTestId("embed-modal-content-status-bar").within(() => {
+            cy.findByText("Unpublish").click();
+          });
+
+          expectGoodSnowplowEvent({
+            event: "static_embed_unpublished",
+            artifact: resource,
+            first_published_at: "2021-01-01T00:00:00.000Z",
+          });
+        });
+      });
+    });
+  });
+});
+
 function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
   cy.findByTestId("dashboard-embed-button").should("be.disabled");
   cy.findByTestId("dashboard-embed-button").realHover();
@@ -261,7 +418,7 @@ function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
 }
 
 function createResource(resource) {
-  if (resource === "card") {
+  if (resource === "card" || resource === "question") {
     return cy.createQuestion({
       name: "Question",
       query: { "source-table": PRODUCTS_ID },
@@ -284,11 +441,24 @@ function createPublicResourceLink(resource, id) {
 }
 
 function visitResource(resource, id) {
-  if (resource === "card") {
+  if (resource === "card" || resource === "question") {
     visitQuestion(id);
   }
 
   if (resource === "dashboard") {
     visitDashboard(id);
   }
+}
+
+function enableEmbeddingForResource({ resource, id, isDirty = false }) {
+  const endpoint = resource === "question" ? "card" : "dashboard";
+  cy.request("PUT", `/api/${endpoint}/${id}`, {
+    enable_embedding: true,
+    embedding_params: isDirty
+      ? {
+          test: "locked",
+        }
+      : {},
+    first_published_at: "2021-01-01T00:00:00.000Z",
+  });
 }

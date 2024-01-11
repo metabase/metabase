@@ -1,6 +1,10 @@
 import type { MouseEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
+import {
+  trackPublicEmbedCodeCopied,
+  trackPublicLinkRemoved,
+} from "metabase/public/lib/analytics";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -64,6 +68,12 @@ export function SelectEmbedTypePane({
         "Public Link Disabled",
         resourceType,
       );
+
+      trackPublicLinkRemoved({
+        artifact: resourceType,
+        source: "public-embed",
+      });
+
       await onDeletePublicLink();
       setIsLoadingLink(false);
     }
@@ -93,6 +103,12 @@ export function SelectEmbedTypePane({
       return (
         <PublicLinkCopyPanel
           url={iframeSource}
+          onCopy={() =>
+            trackPublicEmbedCodeCopied({
+              artifact: resourceType,
+              source: "public-embed",
+            })
+          }
           onRemoveLink={deletePublicLink}
           removeButtonLabel={t`Remove public URL`}
           removeTooltipLabel={t`Affects both embed URL and public link for this dashboard`}
@@ -143,6 +159,7 @@ export function SelectEmbedTypePane({
           }
           disabled={!isPublicSharingEnabled}
           onClick={createPublicLink}
+          data-testid="sharing-pane-public-embed-button"
           illustration={<PublicEmbedIcon disabled={!isPublicSharingEnabled} />}
         >
           {getPublicLinkElement()}

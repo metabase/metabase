@@ -7,6 +7,8 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [metabase.config :as config]
+   [metabase.models.interface :refer [now]]
+   [metabase.models.setting :as setting]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -107,6 +109,19 @@
   [unsigned-token keyseq]
   (or (get-in unsigned-token keyseq)
       (throw (ex-info (tru "Token is missing value for keypath {0}" keyseq) {:status-code 400}))))
+
+(defn maybe-populate-first-published-at
+  "Populate `first_published_at` if embedding is set to true"
+  [{:keys [enable_embedding first_published_at] :as card}]
+  (cond
+    (and (true? enable_embedding) (nil? first_published_at))
+    (assoc card :first_published_at (now))
+
+    (false? enable_embedding)
+    (assoc card :first_published_at nil)
+
+    :else
+    card))
 
 (defsetting show-static-embed-terms
   (deferred-tru "Check if the static embedding licensing should be hidden in the static embedding flow")

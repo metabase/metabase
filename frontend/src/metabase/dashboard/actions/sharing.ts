@@ -29,7 +29,10 @@ export const UPDATE_ENABLE_EMBEDDING =
 export const updateEnableEmbedding = createAction(
   UPDATE_ENABLE_EMBEDDING,
   ({ id }: DashboardIdPayload, enable_embedding: boolean) =>
-    DashboardApi.update({ id, enable_embedding }),
+    DashboardApi.update({
+      id,
+      enable_embedding,
+    }),
 );
 
 export const UPDATE_EMBEDDING_PARAMS =

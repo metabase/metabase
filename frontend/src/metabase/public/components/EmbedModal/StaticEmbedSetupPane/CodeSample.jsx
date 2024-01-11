@@ -37,7 +37,7 @@ export default class CodeSample extends Component {
     const selected = _.findWhere(options, { name });
     const source = selected && selected.source();
     return (
-      <div className={className}>
+      <div className={className} data-testid={`${dataTestId}-code-sample`}>
         {(title || (options && options.length > 1)) && (
           <div className="flex align-center">
             <h4>{title}</h4>
@@ -70,7 +70,11 @@ export default class CodeSample extends Component {
           />
           {source && (
             <CopyButtonContainer>
-              <CopyButton className="p1" value={source} />
+              <CopyButton
+                className="p1"
+                value={source}
+                onCopy={() => this.props.onCopy({ name: this.state.name })}
+              />
             </CopyButtonContainer>
           )}
         </div>

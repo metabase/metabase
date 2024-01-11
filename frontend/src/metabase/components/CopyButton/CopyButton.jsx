@@ -16,6 +16,7 @@ export default class CopyWidget extends Component {
   onCopy = () => {
     this.setState({ copied: true });
     setTimeout(() => this.setState({ copied: false }), 2000);
+    this.props.onCopy();
   };
 
   render() {

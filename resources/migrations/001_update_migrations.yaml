@@ -5205,6 +5205,38 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.2024-01-16T22:32:54
+      author: oisincoveney
+      comment: >-
+        Add report_card.first_published_at
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: first_published_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+                  remarks: The timestamp when the card was first published in a static embed
+
+  - changeSet:
+        id: v49.2024-01-16T23:27:28
+        author: oisincoveney
+        comment: >-
+          Add report_dashboard.first_published_at
+        changes:
+          - addColumn:
+              tableName: report_dashboard
+              columns:
+                - column:
+                    name: first_published_at
+                    type: ${timestamp_type}
+                    constraints:
+                      nullable: true
+                    remarks: The timestamp when the dashboard was first published in a static embed
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

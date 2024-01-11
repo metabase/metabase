@@ -19,6 +19,7 @@ import type {
   EmbedModalStep,
   EmbedResourceParameterWithValue,
 } from "../types";
+import { EMBED_MODAL_TABS } from "./tabs";
 import EmbedCodePane from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
@@ -180,6 +181,7 @@ export const ParametersSettings = ({
               secretKey={secretKey}
               params={params}
               displayOptions={displayOptions}
+              embedModalLocation={EMBED_MODAL_TABS.Parameters}
             />
           ) : null}
         </>

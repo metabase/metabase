@@ -16,6 +16,7 @@ export type PublicLinkPopoverProps = {
   extensions?: ExportFormatType[];
   selectedExtension?: ExportFormatType | null;
   setSelectedExtension?: (extension: ExportFormatType) => void;
+  onCopyLink?: () => void;
 };
 
 export const PublicLinkPopover = ({
@@ -28,6 +29,7 @@ export const PublicLinkPopover = ({
   extensions = [],
   selectedExtension,
   setSelectedExtension,
+  onCopyLink,
 }: PublicLinkPopoverProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
 
@@ -78,6 +80,7 @@ export const PublicLinkPopover = ({
             onChangeExtension={setSelectedExtension}
             removeButtonLabel={t`Remove public link`}
             removeTooltipLabel={t`Affects both public link and embed URL for this dashboard`}
+            onCopy={onCopyLink}
           />
         </Box>
       </Popover.Dropdown>

@@ -1,18 +1,13 @@
 import { t } from "ttag";
 import { Tabs } from "metabase/ui";
-
-import type { ParametersSettingsProps } from "./ParametersSettings";
-import { ParametersSettings } from "./ParametersSettings";
+import { EMBED_MODAL_TABS } from "./tabs";
 import type { AppearanceSettingsProps } from "./AppearanceSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import type { OverviewSettingsProps } from "./OverviewSettings";
 import { OverviewSettings } from "./OverviewSettings";
 
-const TABS = {
-  Overview: "overview",
-  Parameters: "parameters",
-  Appearance: "appearance",
-};
+import type { ParametersSettingsProps } from "./ParametersSettings";
+import { ParametersSettings } from "./ParametersSettings";
 
 type StaticEmbedSetupPaneProps = OverviewSettingsProps &
   ParametersSettingsProps &
@@ -39,13 +34,16 @@ export const StaticEmbedSetupPane = ({
   onChangePane,
 }: StaticEmbedSetupPaneProps): JSX.Element => {
   return (
-    <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
+    <Tabs
+      defaultValue={EMBED_MODAL_TABS.Overview}
+      data-testid="embedding-preview"
+    >
       <Tabs.List p="0 1.5rem">
-        <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
-        <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
-        <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
+        <Tabs.Tab value={EMBED_MODAL_TABS.Overview}>{t`Overview`}</Tabs.Tab>
+        <Tabs.Tab value={EMBED_MODAL_TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
+        <Tabs.Tab value={EMBED_MODAL_TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
       </Tabs.List>
-      <Tabs.Panel value={TABS.Overview}>
+      <Tabs.Panel value={EMBED_MODAL_TABS.Overview}>
         <OverviewSettings
           embedType={embedType}
           resource={resource}
@@ -58,7 +56,7 @@ export const StaticEmbedSetupPane = ({
           displayOptions={displayOptions}
         />
       </Tabs.Panel>
-      <Tabs.Panel value={TABS.Parameters}>
+      <Tabs.Panel value={EMBED_MODAL_TABS.Parameters}>
         <ParametersSettings
           activePane={activePane}
           resource={resource}
@@ -79,7 +77,7 @@ export const StaticEmbedSetupPane = ({
           onChangePane={onChangePane}
         />
       </Tabs.Panel>
-      <Tabs.Panel value={TABS.Appearance}>
+      <Tabs.Panel value={EMBED_MODAL_TABS.Appearance}>
         <AppearanceSettings
           activePane={activePane}
           embedType={embedType}

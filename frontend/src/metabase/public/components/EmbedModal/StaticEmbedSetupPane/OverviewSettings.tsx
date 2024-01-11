@@ -11,6 +11,7 @@ import type {
   EmbedModalStep,
   EmbeddingDisplayOptions,
 } from "../types";
+import { EMBED_MODAL_TABS } from "./tabs";
 import EmbedCodePane from "./EmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
@@ -72,6 +73,7 @@ export const OverviewSettings = ({
           params={params}
           displayOptions={displayOptions}
           withExamplesLink
+          embedModalLocation={EMBED_MODAL_TABS.Overview}
         />
       }
     />

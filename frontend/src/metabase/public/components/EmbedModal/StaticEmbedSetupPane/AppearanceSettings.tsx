@@ -17,6 +17,7 @@ import type {
   EmbedResourceType,
   EmbedModalStep,
 } from "../types";
+import { EMBED_MODAL_TABS } from "./tabs";
 import EmbedCodePane from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import {
@@ -60,7 +61,6 @@ export const AppearanceSettings = ({
   secretKey,
   params,
   displayOptions,
-
   onChangePane,
   onChangeDisplayOptions,
 }: AppearanceSettingsProps): JSX.Element => {
@@ -232,6 +232,7 @@ export const AppearanceSettings = ({
               secretKey={secretKey}
               params={params}
               displayOptions={displayOptions}
+              embedModalLocation={EMBED_MODAL_TABS.Appearance}
             />
           ) : null}
         </>

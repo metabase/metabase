@@ -32,7 +32,10 @@ export const UPDATE_ENABLE_EMBEDDING = "metabase/card/UPDATE_ENABLE_EMBEDDING";
 export const updateEnableEmbedding = createAction(
   UPDATE_ENABLE_EMBEDDING,
   ({ id }: CardIdPayload, enable_embedding: boolean) =>
-    CardApi.update({ id, enable_embedding }),
+    CardApi.update({
+      id,
+      enable_embedding,
+    }),
 );
 
 export const UPDATE_EMBEDDING_PARAMS = "metabase/card/UPDATE_EMBEDDING_PARAMS";
