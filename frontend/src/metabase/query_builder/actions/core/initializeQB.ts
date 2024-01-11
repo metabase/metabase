@@ -244,6 +244,15 @@ function getCardTemplateTags(query: Lib.Query) {
   return cardTemplateTags;
 }
 
+function getSnippetTemplateTags(query: Lib.Query) {
+  const templateTagsMap = Lib.templateTags(query);
+  const templateTags = Object.values(templateTagsMap);
+  const snippetTemplateTags = templateTags.flatMap(tag =>
+    tag.type === "snippet" ? [tag] : [],
+  );
+  return snippetTemplateTags;
+}
+
 function updateCardTemplateTagNames2(
   query: Lib.Query,
   cards: Card[],
@@ -278,12 +287,49 @@ function tagRegex(tagName: string): RegExp {
 }
 
 function hasSnippets(query: Lib.Query): boolean {
-  const templateTagsMap = Lib.templateTags(query);
-  const templateTags = Object.values(templateTagsMap);
-  return templateTags.some(tag => tag.type === "snippet");
+  return getSnippetTemplateTags(query).length > 0;
 }
 
 function updateSnippetNames(
+  query: Lib.Query,
+  snippets: NativeQuerySnippet[],
+): Lib.Query {
+  const snippetTemplateTags = getSnippetTemplateTags(query);
+  const tagsBySnippetId = _.groupBy(
+    snippetTemplateTags,
+    tag => tag["snippet-id"],
+  );
+
+  if (Object.keys(tagsBySnippetId).length === 0) {
+    // no need to check if there are no tags
+    return query;
+  }
+
+  const originalQueryText = Lib.rawNativeQuery(query);
+  let queryText = originalQueryText;
+
+  for (const snippet of snippets) {
+    const tags = tagsBySnippetId[snippet.id] || [];
+
+    for (const tag of tags) {
+      if (tag["snippet-name"] !== snippet.name) {
+        queryText = queryText.replace(
+          tagRegex(tag.name),
+          `{{snippet: ${snippet.name}}}`,
+        );
+      }
+    }
+  }
+
+  if (queryText === originalQueryText) {
+    return query;
+  }
+
+  const newQuery = Lib.withNativeQuery(query, queryText);
+  return updateSnippetsWithIds(newQuery, snippets);
+}
+
+function updateSnippetsWithIds(
   query: Lib.Query,
   snippets: NativeQuerySnippet[],
 ): Lib.Query {
