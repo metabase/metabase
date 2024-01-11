@@ -35,8 +35,6 @@ import type Metadata from "metabase-lib/metadata/Metadata";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { updateUrl } from "../navigation";
@@ -253,7 +251,7 @@ function getSnippetTemplateTags(query: Lib.Query) {
   return snippetTemplateTags;
 }
 
-function updateCardTemplateTagNames2(
+function updateCardTemplateTagNames(
   query: Lib.Query,
   cards: Card[],
 ): Lib.Query {
@@ -369,7 +367,7 @@ export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
  * to match the latest on the backend, because
  * they might have changed since the query was last opened.
  */
-export async function updateTemplateTagNames2(
+export async function updateTemplateTagNames(
   query: Lib.Query,
   getState: GetState,
   dispatch: Dispatch,
@@ -389,44 +387,11 @@ export async function updateTemplateTagNames2(
     )
   ).filter(isNotNull);
 
-  query = updateCardTemplateTagNames2(query, referencedCards);
+  query = updateCardTemplateTagNames(query, referencedCards);
   if (hasSnippets(query)) {
     await dispatch(Snippets.actions.fetchList());
     const snippets = Snippets.selectors.getList(getState());
     query = updateSnippetNames(query, snippets);
-  }
-  return query;
-}
-
-/**
- * Updates the template tag names in the query
- * to match the latest on the backend, because
- * they might have changed since the query was last opened.
- */
-export async function updateTemplateTagNames(
-  query: NativeQuery,
-  getState: GetState,
-  dispatch: Dispatch,
-): Promise<NativeQuery> {
-  const referencedCards = (
-    await Promise.all(
-      query.referencedQuestionIds().map(async id => {
-        try {
-          const actionResult = await dispatch(
-            Questions.actions.fetch({ id }, { noEvent: true }),
-          );
-          return Questions.HACK_getObjectFromAction(actionResult);
-        } catch {
-          return null;
-        }
-      }),
-    )
-  ).filter(isNotNull);
-  query = updateCardTemplateTagNames(query, referencedCards);
-  if (query.hasSnippets()) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
-    query = query.updateSnippetNames(snippets);
   }
   return query;
 }
@@ -520,17 +485,9 @@ async function handleQBInit(
   }
 
   if (question.isNative() && question.isQueryEditable()) {
-    // const query = question.query();
-    // const newQuery = await updateTemplateTagNames2(query, getState, dispatch);
-    // question = question.setQuery(newQuery);
-
-    const legacyQuery = question.legacyQuery() as NativeQuery;
-    const newLegacyQuery = await updateTemplateTagNames(
-      legacyQuery,
-      getState,
-      dispatch,
-    );
-    question = question.setLegacyQuery(newLegacyQuery);
+    const query = question.query();
+    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
+    question = question.setQuery(newQuery);
   }
 
   const finalCard = question.card();
