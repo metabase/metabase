@@ -1245,6 +1245,5 @@
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
         ex
-        (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
-             " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
-             " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
+        (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: (StringReader); "
+             "line: 1, column: 1])\n at [Source: (StringReader); line: 1, column: 23]")))))
