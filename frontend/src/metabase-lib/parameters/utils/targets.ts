@@ -27,7 +27,9 @@ export function getParameterTargetField(
   question: Question,
 ) {
   if (isDimensionTarget(target)) {
-    const query = question.legacyQuery() as NativeQuery | StructuredQuery;
+    const query = question.legacyQuery({ useStructuredQuery: true }) as
+      | NativeQuery
+      | StructuredQuery;
     const dimension = Dimension.parseMBQL(target[1], metadata, query);
 
     return dimension?.field();
