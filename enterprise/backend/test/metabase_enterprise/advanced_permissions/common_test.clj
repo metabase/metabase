@@ -709,7 +709,7 @@
             (doseq [stmt ["CREATE SCHEMA IF NOT EXISTS \"not_public\";"
                           (format "CREATE TABLE \"not_public\".\"%s\" (id INTEGER);" table-name)]]
               (jdbc/execute! conn-spec stmt)))
-          (sync/sync-database! (mt/db))
+          (upload-test/sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name "not_public")
           (let [db-id    (u/the-id (mt/db))
                 table-id (t2/select-one-pk :model/Table :db_id db-id :name table-name)
                 upload-csv! (fn []

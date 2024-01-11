@@ -96,13 +96,15 @@
   [& body]
   `(do-with-mysql-local-infile-off (fn [] ~@body)))
 
-(defn- sync-upload-test-table!
-  "Creates a table in the app db and syncs it synchronously. The result is identical to if the DB were synced with
-  [[metabase.sync/sync-database!]], but faster."
+(defn sync-upload-test-table!
+  "Creates a table in the app db and syncs it synchronously, setting is_upload=true. Returns the table instance.
+  The result is identical to if the table was synced with [[metabase.sync/sync-database!]], but faster."
   [& {:keys [database table-name schema-name]}]
   (let [table (sync-tables/create-or-reactivate-table! database {:name table-name :schema (not-empty schema-name)})]
+    (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*sync-synchronously?* true]
-      (#'upload/scan-and-sync-table! database table))))
+      (#'upload/scan-and-sync-table! database table))
+    (t2/select-one Table (:id table))))
 
 (deftest type-detection-and-parse-test
   (doseq [[string-value  expected-value expected-type seps]
@@ -450,8 +452,7 @@
                              "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
                              "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (is (=? {:name          #"(?i)_mb_row_id"
                          :semantic_type :type/PK
                          :base_type     :type/BigInteger}
@@ -498,8 +499,7 @@
                              "2022-01-01T00:00:00"
                              "2022-01-01T00:00"]))
             (testing "Fields exists after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the datetime column the correct base_type"
                   (is (=? {:name      #"(?i)datetime"
                            :base_type :type/DateTime}
@@ -529,8 +529,7 @@
                table-name
                (csv-file-with (into ["offset_datetime"] (map first datetime-pairs))))
               (testing "Fields exists after sync"
-                (sync-upload-test-table! :database (mt/db) :table-name table-name)
-                (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+                (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                   (testing "Check the offset datetime column the correct base_type"
                     (is (=? {:name      #"(?i)offset_datetime"
                              :base_type :type/DateTimeWithLocalTZ}
@@ -569,8 +568,7 @@
                              "17,1"
                              "18,0"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the boolean column has a boolean base_type"
                   (is (=? {:name      #"(?i)bool"
                            :base_type :type/Boolean}
@@ -598,8 +596,7 @@
                              "1,true"
                              "2,false"
                              (format "%d,true" Long/MAX_VALUE)]))
-            (sync-upload-test-table! :database (mt/db) :table-name table-name)
-            (let [table    (t2/select-one Table :db_id (mt/id) :%lower.name [:like (str short-name "%")])
+            (let [table    (sync-upload-test-table! :database (mt/db) :table-name table-name)
                   table-re (re-pattern (str "(?i)" short-name "_\\d{14}"))]
               (testing "It truncates it to the right number of characters, allowing for the timestamp"
                 (is (re-matches table-re (:name table))))
@@ -622,8 +619,7 @@
                            "1,Serenity,Malcolm Reynolds"
                            "2,Millennium Falcon, Han Solo"]))
           (testing "Table and Fields exist after sync"
-            (sync-upload-test-table! :database (mt/db) :table-name table-name)
-            (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+            (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
               (testing "Check the data was uploaded into the table correctly"
                 (is (= [@#'upload/auto-pk-column-name "unnamed_column" "ship_name" "unnamed_column_2"]
                        (column-names-for-table table)))))))))))
@@ -642,8 +638,7 @@
                              "1,Serenity,Malcolm Reynolds,Pistol"
                              "2,Millennium Falcon, Han Solo,Blaster"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name "unknown" "unknown_2" "unknown_3" "unknown_2_2"]
                          (column-names-for-table table))))))))))))
@@ -664,8 +659,7 @@
                              "    2,   0,          0,  0"
                              "   no,  no,          1,  2"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [[1 " true"  true true  1]
                           [2 "    1"  true false 0]
@@ -689,8 +683,7 @@
                              ;; A huge ID to make extra sure we're using bigints
                              "9000000000,Razor Crest,Din Djarin,Spear"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
                          (column-names-for-table table)))
@@ -714,8 +707,7 @@
                              "a,Serenity,Malcolm Reynolds,Pistol"
                              "b,Millennium Falcon,Han Solo,Blaster"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name "id" "ship" "name" "weapon"]
                          (column-names-for-table table)))
@@ -740,8 +732,7 @@
                                "100,Serenity,Malcolm Reynolds"
                                "3,Millennium Falcon, Han Solo"]))
               (testing "Table and Fields exist after sync"
-                (sync-upload-test-table! :database (mt/db) :table-name table-name)
-                (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+                (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                   (testing "Check the data was uploaded into the table correctly"
                     (is (= ["_mb_row_id", "ship", "captain"]
                            (column-names-for-table table)))
@@ -761,8 +752,7 @@
                                "100,Serenity,Malcolm Reynolds,200"
                                "3,Millennium Falcon, Han Solo,4"]))
               (testing "Table and Fields exist after sync"
-                (sync-upload-test-table! :database (mt/db) :table-name table-name)
-                (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+                (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                   (testing "Check the data was uploaded into the table correctly"
                     (is (= ["_mb_row_id", "ship", "captain"]
                            (column-names-for-table table)))
@@ -782,8 +772,7 @@
                                "100,Serenity,Malcolm Reynolds,200"
                                "3,Millennium Falcon, Han Solo,4"]))
               (testing "Table and Fields exist after sync"
-                (sync-upload-test-table! :database (mt/db) :table-name table-name)
-                (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+                (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                   (testing "Check the data was uploaded into the table correctly"
                     (is (= ["_mb_row_id", "ship", "captain"]
                            (column-names-for-table table)))
@@ -805,8 +794,7 @@
                              "2"
                              "  ,\n"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name "column_that_has_one_value", "column_that_doesnt_have_a_value"]
                          (column-names-for-table table)))
@@ -828,8 +816,7 @@
                              "Serenity,Malcolm\tReynolds"
                              "Millennium\tFalcon,Han\tSolo"]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name "ship", "captain"]
                          (column-names-for-table table)))
@@ -851,8 +838,7 @@
                              "Serenity,\"Malcolm\rReynolds\""
                              "\"Millennium\rFalcon\",\"Han\rSolo\""]))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                          (column-names-for-table table)))
@@ -876,8 +862,7 @@
                             "star-wars"
                             (partial bom/bom-writer "UTF-8")))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name, "ship", "captain"]
                          (column-names-for-table table))))))))))))
@@ -897,8 +882,7 @@
                              "2,;Millennium Falcon,Han Solo\""]
                             "\"; -- Very rude filename"))
             (testing "Table and Fields exist after sync"
-              (sync-upload-test-table! :database (mt/db) :table-name table-name)
-              (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+              (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
                 (testing "Check the data was uploaded into the table correctly"
                   (is (= [@#'upload/auto-pk-column-name "id_integer_____" "ship" "captain"]
                          (column-names-for-table table)))
@@ -920,8 +904,7 @@
                            "\\."
                            "Han"]))
           (testing "Table and Fields exist after sync"
-            (sync-upload-test-table! :database (mt/db) :table-name table-name)
-            (let [table (t2/select-one Table :db_id (mt/id) :name table-name)]
+            (let [table (sync-upload-test-table! :database (mt/db) :table-name table-name)]
               (testing "Check the data was uploaded into the table correctly"
                 (is (= [[1 "Malcolm"] [2 "\\."] [3 "Han"]]
                        (rows-for-table table)))))))))))
@@ -1179,12 +1162,8 @@
         insert-col-names (remove #{(keyword upload/auto-pk-column-name)} (keys col->upload-type))
         col->database-type (#'upload/upload-type->col-specs driver col->upload-type)
         _ (driver/create-table! driver db-id schema+table-name col->database-type)
-        _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
-        table (sync-tables/create-or-reactivate-table! (mt/db) {:name table-name :schema schema-name})]
-    (t2/update! :model/Table (:id table) {:is_upload true})
-    (binding [upload/*sync-synchronously?* true]
-      (#'upload/scan-and-sync-table! (mt/db) table))
-    table))
+        _ (driver/insert-into! driver db-id schema+table-name insert-col-names rows)]
+    (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 
 (defn append-csv-with-defaults!
   "Upload a small CSV file to a newly created default table, or an existing table if `table-id` is provided. Default args can be overridden"
@@ -1372,19 +1351,30 @@
             (is (= {:row-count 1}
                    (append-csv! {:file     file
                                  :table-id (:id table)})))
-            (testing "Check a _mb_row_id column was created"
-              (is (= ["name" "_mb_row_id"]
-                     (column-names-for-table table))))
-            (testing "Check a _mb_row_id column was sync'd"
-              (is (=? {:semantic_type :type/PK
-                       :base_type     :type/BigInteger
-                       :name          "_mb_row_id"
-                       :display_name  "_mb_row_id"}
-                      (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
-            (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
-              (is (= [["Obi-Wan Kenobi" 1]
-                      ["Luke Skywalker" 2]]
-                     (rows-for-table table))))
+            ;; Redshift doesn't support adding auto-incrementing columns to an existing table
+            (if (= driver/*driver* :redshift)
+              (do
+                (testing "Check a _mb_row_id column wasn't created"
+                  (is (= ["name"]
+                         (column-names-for-table table))))
+                (testing "Check the data was uploaded into the table"
+                  (is (= [["Obi-Wan Kenobi"]
+                          ["Luke Skywalker"]]
+                         (rows-for-table table)))))
+              (do
+                (testing "Check a _mb_row_id column was created"
+                  (is (= ["name" "_mb_row_id"]
+                         (column-names-for-table table))))
+                (testing "Check a _mb_row_id column was sync'd"
+                  (is (=? {:semantic_type :type/PK
+                           :base_type     :type/BigInteger
+                           :name          "_mb_row_id"
+                           :display_name  "_mb_row_id"}
+                          (t2/select-one :model/Field :table_id (:id table) :name upload/auto-pk-column-name))))
+                (testing "Check the data was uploaded into the table, but the _mb_row_id column values were ignored"
+                  (is (= [["Obi-Wan Kenobi" 1]
+                          ["Luke Skywalker" 2]]
+                         (rows-for-table table))))))
             (io/delete-file file)))))))
 
 (deftest append-no-mb-row-id-failure-test
