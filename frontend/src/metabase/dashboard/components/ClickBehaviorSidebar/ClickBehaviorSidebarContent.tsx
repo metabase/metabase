@@ -66,7 +66,7 @@ export function ClickBehaviorSidebarContent({
     );
   }
 
-  if (isTypeSelectorVisible || !clickBehavior) {
+  if (isTypeSelectorVisible || finalClickBehavior.type === "actionMenu") {
     return (
       <SidebarContent>
         <TypeSelector
