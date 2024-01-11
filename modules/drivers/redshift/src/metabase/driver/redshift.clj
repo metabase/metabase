@@ -375,7 +375,7 @@
     ::upload/varchar-255              [[:varchar 255]]
     ::upload/text                     [:text]
     ::upload/int                      [:bigint]
-    ::upload/auto-incrementing-int-pk [:bigint [:identity 0 1]]
+    ::upload/auto-incrementing-int-pk [:bigint [:identity 1 1]]
     ::upload/float                    [:float]
     ::upload/boolean                  [:boolean]
     ::upload/date                     [:date]
