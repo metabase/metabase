@@ -20,7 +20,7 @@ import type {
   UnsavedCard,
   User,
 } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockNativeCard, createMockUser } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createAdHocCard,
@@ -39,11 +39,12 @@ import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 
 import * as querying from "../querying";
 
 import * as core from "./core";
-import { initializeQB } from "./initializeQB";
+import { initializeQB, updateCardTemplateTagNames } from "./initializeQB";
 
 type DisplayLock = { displayIsLocked?: boolean };
 type TestCard = (Card & DisplayLock) | (UnsavedCard & DisplayLock);
@@ -117,6 +118,31 @@ type SetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
   location?: LocationDescriptorObject;
   params?: Record<string, unknown>;
 };
+
+describe("updateCardTemplateTagNames", () => {
+  it("should update the query text with new tag names", () => {
+    const metadataProvider = Lib.metadataProvider(
+      SAMPLE_DB_ID,
+      SAMPLE_METADATA,
+    );
+    const query = Lib.nativeQuery(
+      SAMPLE_DB_ID,
+      metadataProvider,
+      "{{#123-foo}} {{#1234-bar}}",
+    );
+
+    // newCards is deliberately missing the bar card
+    const newCards = [createMockNativeCard({ id: 123, name: "Foo New" })];
+    const updatedQuery = updateCardTemplateTagNames(query, newCards);
+    const templateTagsMap = Lib.templateTags(updatedQuery);
+    const fooTag = templateTagsMap["#123-foo-new"]; // foo's templateTagsMap key is updated
+    const barTag = templateTagsMap["#1234-bar"]; // bar's key isn't updated
+    expect(fooTag["card-id"]).toEqual(123); // foo's card-id is the same
+    expect(fooTag["name"]).toEqual("#123-foo-new"); // foo's name is updated
+    expect(barTag["card-id"]).toEqual(1234); // bar's card-id is the same
+    expect(barTag["name"]).toEqual("#1234-bar"); // bar's name is the same
+  });
+});
 
 async function setup({
   card,

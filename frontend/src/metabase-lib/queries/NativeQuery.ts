@@ -3,10 +3,8 @@
 import { t } from "ttag";
 import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
-import slugg from "slugg";
 import * as Lib from "metabase-lib";
 import type {
-  Card,
   DatabaseId,
   DatasetQuery,
   DependentMetadataItem,
@@ -49,36 +47,6 @@ export const CARD_TAG_REGEX: RegExp =
 
 function tagRegex(tagName: string): RegExp {
   return new RegExp(`{{\\s*${tagName}\\s*}}`, "g");
-}
-
-function replaceTagName(
-  query: NativeQuery,
-  oldTagName: string,
-  newTagName: string,
-): NativeQuery {
-  const queryText = query
-    .queryText()
-    .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
-  return query.setQueryText(queryText);
-}
-
-export function updateCardTemplateTagNames(
-  query: NativeQuery,
-  cards: Card[],
-): NativeQuery {
-  const cardById = _.indexBy(cards, "id");
-  const tags = query
-    .templateTags()
-    // only tags for cards
-    .filter(tag => tag.type === "card")
-    // only tags for given cards
-    .filter(tag => cardById[tag["card-id"]]);
-  // reduce over each tag, updating query text with the new tag name
-  return tags.reduce((query, tag) => {
-    const card = cardById[tag["card-id"]];
-    const newTagName = `#${card.id}-${slugg(card.name)}`;
-    return replaceTagName(query, tag.name, newTagName);
-  }, query);
 }
 
 // QUERY TEXT TAG UTILS END

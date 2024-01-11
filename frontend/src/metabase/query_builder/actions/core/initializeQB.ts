@@ -251,7 +251,7 @@ function getSnippetTemplateTags(query: Lib.Query) {
   return snippetTemplateTags;
 }
 
-function updateCardTemplateTagNames(
+export function updateCardTemplateTagNames(
   query: Lib.Query,
   cards: Card[],
 ): Lib.Query {
