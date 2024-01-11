@@ -29,7 +29,7 @@ import type {
   QueryBuilderUIControls,
 } from "metabase-types/store";
 import { isSavedCard } from "metabase-types/guards";
-import { isNotNull } from "metabase/lib/types";
+import { checkNotNull, isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
@@ -229,7 +229,10 @@ function parseHash(hash?: string) {
 
 function referencedQuestionIds(query: Lib.Query): number[] {
   const cardTemplateTags = getCardTemplateTags(query);
-  const cardIds = cardTemplateTags.map(tag => tag["card-id"]);
+  const cardIds = cardTemplateTags.flatMap(tag => {
+    const cardId = tag["card-id"];
+    return typeof cardId === "number" ? [cardId] : [];
+  });
   return cardIds;
 }
 
@@ -257,11 +260,26 @@ export function updateCardTemplateTagNames(
 ): Lib.Query {
   const cardById = _.indexBy(cards, "id");
   const cardTemplateTags = getCardTemplateTags(query); // only tags for cards
-  const tags = cardTemplateTags.filter(tag => cardById[tag["card-id"]]); // only tags for given cards
+  // only tags for given cards
+  const tags = cardTemplateTags.filter(tag => {
+    const cardId = tag["card-id"];
+
+    if (typeof cardId !== "number") {
+      return false;
+    }
+
+    return cardById[cardId];
+  });
 
   // reduce over each tag, updating query text with the new tag name
   return tags.reduce((query, tag) => {
-    const card = cardById[tag["card-id"]];
+    const cardId = tag["card-id"];
+
+    if (typeof cardId !== "number") {
+      return query;
+    }
+
+    const card = cardById[cardId];
     const newTagName = `#${card.id}-${slugg(card.name)}`;
     return replaceTagName(query, tag.name, newTagName);
   }, query);
@@ -292,11 +310,12 @@ function updateSnippetNames(
   query: Lib.Query,
   snippets: NativeQuerySnippet[],
 ): Lib.Query {
-  const snippetTemplateTags = getSnippetTemplateTags(query);
-  const tagsBySnippetId = _.groupBy(
-    snippetTemplateTags,
-    tag => tag["snippet-id"],
-  );
+  const snippetTemplateTags = getSnippetTemplateTags(query).filter(tag => {
+    return typeof tag["snippet-id"] === "number";
+  });
+  const tagsBySnippetId = _.groupBy(snippetTemplateTags, tag => {
+    return checkNotNull(tag["snippet-id"]);
+  });
 
   if (Object.keys(tagsBySnippetId).length === 0) {
     // no need to check if there are no tags
@@ -331,13 +350,15 @@ function updateSnippetsWithIds(
   query: Lib.Query,
   snippets: NativeQuerySnippet[],
 ): Lib.Query {
-  const snippetTemplateTags = getSnippetTemplateTags(query).filter(
-    tag => tag["snippet-id"] == null,
-  );
-  const tagsBySnippetName = _.groupBy(
-    snippetTemplateTags,
-    tag => tag["snippet-name"],
-  );
+  const snippetTemplateTags = getSnippetTemplateTags(query).filter(tag => {
+    return (
+      typeof tag["snippet-id"] !== "number" &&
+      typeof tag["snippet-name"] === "string"
+    );
+  });
+  const tagsBySnippetName = _.groupBy(snippetTemplateTags, tag => {
+    return checkNotNull(tag["snippet-name"]);
+  });
 
   if (Object.keys(tagsBySnippetName).length === 0) {
     // no need to check if there are no tags
