@@ -553,8 +553,7 @@
     :time_style
     (assoc m ::time-style (db->norm-time-style v))
 
-    (assoc m (or (db->norm-column-settings-keys k)
-                 (keyword "unknown" (name k))) v)))
+    (assoc m (db->norm-column-settings-keys k) v)))
 
 (defn db->norm-column-settings-entries
   "Converts the DB form of a map of :column_settings entries to its normalized form."
@@ -627,8 +626,7 @@
   [m k v]
   (case k
     ::click-behavior (assoc m :click_behavior (norm->db-click-behavior v))
-    (assoc m (or (norm->db-column-settings-keys k)
-                 (keyword (name k))) v)))
+    (assoc m (norm->db-column-settings-keys k) v)))
 
 (defn norm->db-column-ref
   "Creates the DB form of a column ref (i.e. the key in the column settings map) for the given normalized args. Either

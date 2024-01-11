@@ -215,20 +215,3 @@
       ;; make sure all keywords have the right namespace in normalized form
       (t/is (empty? (filter #(some? (namespace %)) (all-keywords to-db))))
       (t/is (= db-form to-db)))))
-
-(t/deftest unknown-column-settings-keys-test
-  (t/testing "Unknown column-settings keys are namespaced with `:unknown`."
-    (let [db-form {:column_settings
-                   {"[\"ref\",[\"field\",69,{\"base-type\":\"type/DateTime\"}]]"
-                    {:pivot_table.column_sort_order "ascending"
-                     :some_weird_key                "yea, it's weird."}}}
-          norm-form (mb.viz/db->norm db-form)]
-      (t/is (= #{"metabase.shared.models.visualization-settings" "unknown"}
-               (set (map namespace (all-keywords norm-form))))))))
-
-(t/deftest unknown-column-settings-keys-roundtrip-test
-  (t/testing "The viz-settings db->norm and norm->db fns roundtrip properly with unknown column settings keys."
-    (let [db-form {:column_settings
-                   {"[\"ref\",[\"field\",69,{\"base-type\":\"type/DateTime\"}]]"
-                    {:pivot_table.column_sort_order "ascending"}}}]
-      (t/is (= db-form (-> db-form mb.viz/db->norm mb.viz/norm->db))))))
