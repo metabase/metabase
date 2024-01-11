@@ -417,9 +417,10 @@ function ViewTitleHeaderRightSide(props) {
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");
 
-  const isNewQuery = !question
-    .legacyQuery({ useStructuredQuery: true })
-    .hasData();
+  const isNewQuery = question.isStructured()
+    ? Lib.sourceTableOrCardId(question.query()) == null
+    : !question.legacyQuery().hasData();
+
   const hasSaveButton =
     !isDataset &&
     !!isDirty &&
