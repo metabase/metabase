@@ -69,15 +69,13 @@ export const AdminEmbedMenu = ({
           onClick={() => setMenuMode("public-link-popover")}
         >
           {isPublicSharingEnabled ? (
-            <Title c="inherit" order={4}>
+            <Title order={4}>
               {hasPublicLink ? t`Public link` : t`Create a public link`}
             </Title>
           ) : (
             <Stack spacing="xs">
-              <Title c="inherit" order={4}>
-                {t`Public links are off`}
-              </Title>
-              <Text size="sm" c="inherit">{t`Enable them in settings`}</Text>
+              <Title order={4}>{t`Public links are off`}</Title>
+              <Text size="sm">{t`Enable them in settings`}</Text>
             </Stack>
           )}
         </Menu.Item>
@@ -94,15 +92,11 @@ export const AdminEmbedMenu = ({
           onClick={onModalOpen}
         >
           {isEmbeddingEnabled ? (
-            <Title c="inherit" order={4}>
-              {t`Embed`}
-            </Title>
+            <Title order={4}>{t`Embed`}</Title>
           ) : (
             <Stack spacing="xs">
-              <Title c="inherit" order={4}>
-                {t`Embedding is off`}
-              </Title>
-              <Text size="sm" c="inherit">{t`Enable it in settings`}</Text>
+              <Title order={4}>{t`Embedding is off`}</Title>
+              <Text size="sm">{t`Enable it in settings`}</Text>
             </Stack>
           )}
         </Menu.Item>

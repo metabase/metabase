@@ -38,7 +38,10 @@ describeEE("issue 30535", () => {
   });
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+    });
 
     cy.document().then(doc => {
       const iframe = doc.querySelector("iframe");
