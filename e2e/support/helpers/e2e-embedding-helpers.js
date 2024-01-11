@@ -152,21 +152,33 @@ export function openEmbedModalFromMenu() {
 
 /**
  * Open Static Embedding setup modal
- * @param {("Overview"|"Parameters"|"Appearance")} [activeTab] - modal tab to open
- * @param {("Code"|"Preview")} [previewMode] - preview mode type to activate
+ * @param {object} params
+ * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
+ * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  */
-export function openStaticEmbeddingModal(activeTab, previewMode) {
+export function openStaticEmbeddingModal({ activeTab, previewMode }) {
   openEmbedModalFromMenu();
 
   cy.findByTestId("sharing-pane-static-embed-button").click();
 
   modal().within(() => {
     if (activeTab) {
-      cy.findByRole("tab", { name: activeTab }).click();
+      const tabKeyToNameMap = {
+        overview: "Overview",
+        parameters: "Parameters",
+        appearance: "Appearance",
+      };
+
+      cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
     }
 
     if (previewMode) {
-      cy.findByText(previewMode).click();
+      const previewModeToKeyMap = {
+        code: "Code",
+        preview: "Preview",
+      };
+
+      cy.findByText(previewModeToKeyMap[previewMode]).click();
     }
   });
 }

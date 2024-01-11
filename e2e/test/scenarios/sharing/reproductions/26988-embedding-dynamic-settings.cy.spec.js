@@ -34,7 +34,10 @@ describeEE("issue 26988", () => {
       visitDashboard(card.dashboard_id);
     });
 
-    openStaticEmbeddingModal("Appearance", "Preview");
+    openStaticEmbeddingModal({
+      activeTab: "appearance",
+      previewMode: "preview",
+    });
 
     cy.wait("@dashboard");
     getIframeBody().should("have.css", "font-family", `Lato, sans-serif`);

@@ -700,7 +700,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
-          openStaticEmbeddingModal("Parameters");
+          openStaticEmbeddingModal({ activeTab: "parameters" });
 
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Publish changes").click();
