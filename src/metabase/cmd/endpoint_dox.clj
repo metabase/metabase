@@ -190,14 +190,16 @@
   [endpoints]
   (str/join "\n" (map (fn [[ep ep-data]] (build-endpoint-link ep ep-data)) endpoints)))
 
-(defn map-endpoints
+(defn- map-endpoints
   "Creates a sorted map of API endpoints. Currently includes some
   endpoints for paid features."
   []
   (->> (collect-endpoints)
        (map process-endpoint)
        (group-by :ns-name)
-       (into (sorted-map-by (fn [a b] (compare (str/lower-case a) (str/lower-case b)))))))
+       (into (sorted-map-by (fn [a b] (compare
+                                       (str/lower-case a)
+                                       (str/lower-case b)))))))
 
 ;;;; Page generators
 
