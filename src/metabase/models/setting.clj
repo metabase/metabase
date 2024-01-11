@@ -1281,6 +1281,15 @@
                (when api/*is-superuser?*
                  [:admin]))))
 
+(defn- filtered-user-facing-settings
+  "Docstrings are hard"
+  [pred options]
+  (into
+    []
+    (comp (filter pred)
+          (map #(m/mapply user-facing-info % options)))
+    (sort-by :name (vals @registered-settings))))
+
 (defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
@@ -1297,13 +1306,11 @@
   ;; ignore Database-local values, but not User-local values
   (let [writable-visibilities (current-user-writable-visibilities)]
     (binding [*database-local-values* nil]
-      (into
-       []
-       (comp (filter (fn [setting]
-                       (and (contains? writable-visibilities (:visibility setting))
-                            (not= (:database-local setting) :only))))
-             (map #(m/mapply user-facing-info % options)))
-       (sort-by :name (vals @registered-settings))))))
+      (filtered-user-facing-settings
+        (fn [setting]
+          (and (contains? writable-visibilities (:visibility setting))
+               (not= (:database-local setting) :only)))
+        options))))
 
 (defn admin-writable-site-wide-settings
   "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
@@ -1317,13 +1324,11 @@
   ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
-    (into
-     []
-     (comp (filter (fn [setting]
-                     (and (not= (:visibility setting) :internal)
-                          (allows-site-wide-values? setting))))
-           (map #(m/mapply user-facing-info % options)))
-     (sort-by :name (vals @registered-settings)))))
+    (filtered-user-facing-settings
+      (fn [setting]
+        (and (not= (:visibility setting) :internal)
+             (allows-site-wide-values? setting)))
+      options)))
 
 (defn can-read-setting?
   "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
