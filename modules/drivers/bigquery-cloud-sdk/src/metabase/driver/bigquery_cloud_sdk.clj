@@ -298,7 +298,7 @@
                ;; to make sure we don't break existing instances.
                TableDefinition$Type/EXTERNAL TableDefinition$Type/SNAPSHOT}
              (.. bq-table getDefinition getType))
-            ;; if the table is partitioned by ingestion time, using .list or .listTableData won't return values for this
+            ;; if the table is partitioned by ingestion time, using .list or .listTableData won't return values for
             ;; the _PARTITIONTIME field, so we need to fall back to using sql
             (ingestion-time-partitioned-table? (:id table)))
       (do (log/debugf "%s.%s is a view or a table partitioned by ingestion time, so we cannot use the list API; falling back to regular query"
