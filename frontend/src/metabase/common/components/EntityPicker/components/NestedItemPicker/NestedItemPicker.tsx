@@ -95,10 +95,10 @@ export const NestedItemPicker = forwardRef(function NestedItemPickerInner(
   };
 
   return (
-    <HorizontalScrollBox h="100%" ref={containerRef}>
+    <HorizontalScrollBox h="100%" ref={containerRef} data-testid="nested-item-picker">
       <Flex h="100%" w="fit-content">
         {stack.map((level, levelIndex) => (
-          <ListBox key={JSON.stringify(level).slice(0, 255)}>
+          <ListBox key={JSON.stringify(level).slice(0, 255)} data-testid={`item-picker-level-${levelIndex}`}>
             <ItemList
               items={level?.items}
               onClick={item => handleClick(item, levelIndex)}

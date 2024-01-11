@@ -94,7 +94,7 @@ export function EntityPickerModal({
   const hasTabs = validTabs.length > 1 || searchQuery;
 
   return (
-    <Modal.Root opened={open} onClose={onClose}>
+    <Modal.Root opened={open} onClose={onClose} data-testid="entity-picker-modal">
       <Modal.Overlay />
       <ModalContent h="100%">
         <Modal.Header px="2rem" pt="1rem" pb={hasTabs ? "1rem" : "1.5rem"}>

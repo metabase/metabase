@@ -83,3 +83,19 @@ export const moveOpenedCollectionTo = newParent => {
   // Make sure modal closed
   modal().should("not.exist");
 };
+
+export function pickEntity({ path, select }) {
+  cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
+  if (path) {
+    cy.findByTestId("nested-item-picker").within(() => {
+      for (const [index, name] of path.entries()) {
+        cy.findByTestId(`item-picker-level-${index}`).findByText(name).click();
+        cy.wait("@getCollectionItems");
+      }
+    });
+  }
+
+  if (select) {
+    cy.findByTestId('entity-picker-modal').button('Select').click();
+  }
+}

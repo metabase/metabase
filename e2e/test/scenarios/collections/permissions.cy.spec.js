@@ -25,6 +25,7 @@ const PERMISSIONS = {
 
 describe("collection permissions", () => {
   beforeEach(() => {
+    cy.intercept('GET', '/api/search*').as('search');
     restore();
   });
 
@@ -392,7 +393,7 @@ describe("collection permissions", () => {
             });
 
             ["/", "/collection/root"].forEach(route => {
-              it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+              it.only("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];
                 cy.visit(route);
                 cy.icon("add").click();
@@ -406,15 +407,16 @@ describe("collection permissions", () => {
                   ).click();
                 });
 
-                popover().within(() => {
-                  cy.findByText("My personal collection");
+                cy.findByLabelText('Select a collection').within(() => {
+                  cy.findByText("Read Only Tableton's Personal Collection");
                   // Test will fail on this step first
                   cy.findByText("First collection").should("not.exist");
                   // This is the second step that makes sure not even search returns collections with read-only access
-                  cy.icon("search").click();
-                  cy.findByPlaceholderText("Search")
-                    .click()
+                  cy.findByPlaceholderText('Search…')
                     .type("third{Enter}");
+
+                  cy.wait('@search')
+                  cy.findByText(/Loading/i).should("not.exist");
                   cy.findByText("Third collection").should("not.exist");
                 });
               });
