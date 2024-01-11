@@ -97,6 +97,7 @@ function CollectionContent({
   uploadsEnabled,
   canUploadToDb,
 }) {
+
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
@@ -225,6 +226,7 @@ function CollectionContent({
     sort_direction: "asc",
   };
 
+  console.log('pinnedQuery', pinnedQuery);
   return (
     <Search.ListLoader
       query={pinnedQuery}
