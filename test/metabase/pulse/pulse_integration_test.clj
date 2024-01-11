@@ -682,6 +682,7 @@
          ~@body))))
 
 (deftest skip-if-empty-test
+  #_{:clj-kondo/ignore [:unresolved-symbol]}
   (testing "Only send non-empty cards when 'Don't send if there aren't results is enabled' (#34777)"
     (let [query       {:source-table (mt/id :orders)
                        :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
