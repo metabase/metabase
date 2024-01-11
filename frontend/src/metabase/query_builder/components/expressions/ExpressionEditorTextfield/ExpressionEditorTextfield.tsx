@@ -120,6 +120,8 @@ const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
+const CURSOR_DEBOUNCE_INTERVAL = 10;
+
 class ExpressionEditorTextfield extends React.Component<
   ExpressionEditorTextfieldProps,
   ExpressionEditorTextfieldState
@@ -451,7 +453,7 @@ class ExpressionEditorTextfield extends React.Component<
     this.handleExpressionChange(this.state.source);
   };
 
-  handleExpressionChange(source: string) {
+  handleExpressionChange = (source: string) => {
     if (source) {
       this.setState({ hasChanges: true });
     }
@@ -460,9 +462,9 @@ class ExpressionEditorTextfield extends React.Component<
     if (this.props.onBlankChange) {
       this.props.onBlankChange(source.length === 0);
     }
-  }
+  };
 
-  handleCursorChange(selection: Ace.Selection) {
+  handleCursorChange = _.debounce((selection: Ace.Selection) => {
     const cursor = selection.getCursor();
 
     const {
@@ -488,7 +490,7 @@ class ExpressionEditorTextfield extends React.Component<
     if (this.state.isFocused) {
       this.updateSuggestions(suggestions);
     }
-  }
+  }, CURSOR_DEBOUNCE_INTERVAL);
 
   errorAsMarkers(errorMessage: ErrorWithMessage | null = null): IMarker[] {
     if (errorMessage) {
@@ -584,8 +586,8 @@ class ExpressionEditorTextfield extends React.Component<
             onBlur={this.handleInputBlur}
             onFocus={this.handleFocus}
             setOptions={ACE_OPTIONS}
-            onChange={source => this.handleExpressionChange(source)}
-            onCursorChange={selection => this.handleCursorChange(selection)}
+            onChange={this.handleExpressionChange}
+            onCursorChange={this.handleCursorChange}
             width="100%"
           />
           <ExpressionEditorSuggestions
