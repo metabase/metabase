@@ -900,6 +900,11 @@
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
 
+(defn ^:export metric
+  "Get metadata for the Metric with `metric-id`, if it can be found."
+  [metadata-providerable metric-id]
+  (lib.metadata/metric metadata-providerable metric-id))
+
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric
   metadata objects."

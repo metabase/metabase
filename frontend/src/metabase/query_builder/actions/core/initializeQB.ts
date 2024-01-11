@@ -109,11 +109,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
 function aggregateByMetricId(question: Question, metricId: MetricId) {
   const stageIndex = -1;
   const query = question.query();
-  const metricName = question.metadata().metric(metricId)?.displayName();
-  const metricMetadata = Lib.availableMetrics(query).find(metric => {
-    const info = Lib.displayInfo(query, stageIndex, metric);
-    return info.displayName === metricName;
-  });
+  const metricMetadata = Lib.metric(query, metricId);
 
   if (!metricMetadata) {
     return question;
