@@ -275,7 +275,7 @@ Object.assign(SmartScalar, {
   uiName: t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
-  canSavePng: false,
+  canSavePng: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
