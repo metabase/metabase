@@ -584,7 +584,7 @@
   (testing "Upload a CSV file with large names and numbers"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [length-limit (driver/table-name-length-limit driver/*driver*)
-            long-name    (apply str (repeat 33 (seq "abcdefgh"))) ; 33×8 = 264. Max is H2 at 256
+            long-name    (apply str (shuffle (apply concat (repeat 33 (seq "abcdefgh"))))) ; 33×8 = 264. Max is H2 at 256
             short-name   (subs long-name 0 (- length-limit (count "_yyyyMMddHHmmss")))
             table-name   (u/upper-case-en (@#'upload/unique-table-name driver/*driver* long-name))]
         (is (pos? length-limit) "driver/table-name-length-limit has been set")
