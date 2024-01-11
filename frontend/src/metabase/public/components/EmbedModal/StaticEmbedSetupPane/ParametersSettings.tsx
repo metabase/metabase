@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import { useMemo } from "react";
 import type { IconName } from "metabase/ui";
-import { Icon , Box, Divider, Stack, Text } from "metabase/ui";
+import { Icon, Box, Divider, Stack, Text } from "metabase/ui";
 import Select, { Option } from "metabase/core/components/Select";
 
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
