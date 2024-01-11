@@ -1,8 +1,8 @@
 import type { LineSeriesOption } from "echarts";
 import type { MarkLine1DDataItemOption } from "echarts/types/src/component/marker/MarkLineModel";
 import type { RenderingContext } from "metabase/visualizations/types";
-import type { IconName } from "metabase/core/components/Icon";
-import { Icons } from "metabase/core/components/Icon/icons";
+import type { IconName } from "metabase/ui";
+import { Icons } from "metabase/ui";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type { TimelineEventId } from "metabase-types/api";
