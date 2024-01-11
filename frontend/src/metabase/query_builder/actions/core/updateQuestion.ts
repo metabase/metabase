@@ -39,13 +39,11 @@ function hasNewColumns(question: Question, queryResult: Dataset | null) {
 
   // NOTE: this assumes column names will change
   // technically this is wrong because you could add and remove two columns with the same name
-  const query = question.query({ useStructuredQuery: true });
+  const query = question.query();
   const stageIndex = -1;
-  const nextColumnNames = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).name,
-  );
-  const previousColumnNames = queryResult.data.cols.map(column => column.name);
-  return _.difference(nextColumnNames, previousColumnNames).length > 0;
+  const queryColumns = Lib.returnedColumns(query, stageIndex);
+  const queryResultColumns = queryResult.data.cols;
+  return queryColumns.length > queryResultColumns.length;
 }
 
 function checkShouldRerunPivotTableQuestion({
