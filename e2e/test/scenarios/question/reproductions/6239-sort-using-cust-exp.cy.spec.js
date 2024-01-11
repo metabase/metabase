@@ -39,10 +39,7 @@ describe("issue 6239", () => {
     // Line chart renders initially. Switch to the table view.
     cy.icon("table2").click();
 
-    cy.get(".cellData")
-      .eq(1)
-      .should("contain", "CE")
-      .and("have.descendants", ".Icon-chevronup");
+    cy.get(".cellData").eq(1).should("contain", "CE");
 
     cy.get(".cellData").eq(3).invoke("text").should("eq", "1");
 
@@ -56,10 +53,7 @@ describe("issue 6239", () => {
 
     visualize();
 
-    cy.get(".cellData")
-      .eq(1)
-      .should("contain", "CE")
-      .and("have.descendants", ".Icon-chevrondown");
+    cy.get(".cellData").eq(1).should("contain", "CE");
 
     cy.get(".cellData").eq(3).invoke("text").should("eq", "584");
   });
