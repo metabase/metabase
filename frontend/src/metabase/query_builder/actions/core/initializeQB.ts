@@ -281,7 +281,9 @@ function tagRegex(tagName: string): RegExp {
 }
 
 function hasSnippets(query: Lib.Query): boolean {
-  return false;
+  const templateTagsMap = Lib.templateTags(query);
+  const templateTags = Object.values(templateTagsMap);
+  return templateTags.some(tag => tag.type === "snippet");
 }
 
 function updateSnippetNames(
