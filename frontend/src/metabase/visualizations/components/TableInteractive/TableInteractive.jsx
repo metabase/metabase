@@ -419,9 +419,9 @@ class TableInteractive extends Component {
     );
   }
 
-  getHeaderClickedObject(data, columnIndex, isPivoted, query) {
+  getHeaderClickedObject(data, columnIndex, isPivoted) {
     try {
-      return getTableHeaderClickedObject(data, columnIndex, isPivoted, query);
+      return getTableHeaderClickedObject(data, columnIndex, isPivoted);
     } catch (e) {
       console.error(e);
     }
@@ -687,19 +687,13 @@ class TableInteractive extends Component {
       hasMetadataPopovers,
       getColumnTitle,
       renderTableHeaderWrapper,
-      query,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
-    const clicked = this.getHeaderClickedObject(
-      data,
-      columnIndex,
-      isPivoted,
-      query,
-    );
+    const clicked = this.getHeaderClickedObject(data, columnIndex, isPivoted);
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
