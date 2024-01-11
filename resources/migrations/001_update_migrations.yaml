@@ -5205,6 +5205,123 @@ databaseChangeLog:
         - dbms:
             type: mysql,mariadb
 
+  - changeSet:
+      id: v49.2024-01-04T13:52:51
+      author: noahmoss
+      comment: >-
+        Permissions v2 schema (proof of concept)
+      changes:
+        - createTable:
+            tableName: permissions_v2
+            remarks: A table to store permissions in a v2 format
+            columns:
+              - column:
+                  remarks: The ID of the permission
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The ID of the associated permission group
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_v2_ref_permissions_group
+                    deleteCascade: true
+              - column:
+                  remarks: The type of the permission (e.g. "data", "collection", "download"...)
+                  name: type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: A database ID, for DB and table-level permissions
+                  name: db_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_v2_ref_db_id
+                    deleteCascade: true
+              - column:
+                  remarks: A schema name, for table-level permissions
+                  name: schema
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: A table ID
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_v2_ref_table_id
+                    deleteCascade: true
+              - column:
+                  remarks: >-
+                    The ID of the object this permission is assocaited with, for non-DB and Table permissions.
+                    The table this ID references is inferred based on the permission type.
+                  name: object_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: >-
+                    The value this permission is set to. I wanted to call this 'value' but that's a reserved word
+                    in H2 which makes migrations a little more difficult.
+                  name: perm_value
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v49.2024-01-09T13:52:21
+      author: noahmoss
+      comment: Index on permissions_v2.table_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: permissions_v2
+            columns:
+              - column:
+                  name: table_id
+            indexName: idx_permissions_v2_table_id
+
+  - changeSet:
+      id: v49.2024-01-09T13:53:50
+      author: noahmoss
+      comment: Index on permissions_v2.db_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: permissions_v2
+            columns:
+              - column:
+                  name: db_id
+            indexName: idx_permissions_v2_db_id
+
+  - changeSet:
+      id: v49.2024-01-09T13:53:54
+      author: noahmoss
+      comment: Index on permissions_v2.group_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: permissions_v2
+            columns:
+              - column:
+                  name: group_id
+            indexName: idx_permissions_v2_group_id
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
