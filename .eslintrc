@@ -197,6 +197,34 @@
       "rules": {
         "jest/valid-title": ["error", { "ignoreTypeOfDescribeName": true }]
       }
-    }
+    },
+    {
+      "files": [
+        "premium.*.spec.ts"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Literal[value=/EE without token/]",
+            "message": "premium.* should test the scenario with the token"
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "enterprise.*.spec.ts"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Literal[value=/EE with token/]",
+            "message": "enterprise.* test files should test the scenario without the token"
+          }
+        ]
+      }
+    },
   ]
 }
