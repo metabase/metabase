@@ -2,14 +2,18 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
-import Field from "metabase-lib/metadata/Field";
-
+import {
+  isCategory,
+  isDate,
+  isID,
+  isNumber,
+} from "metabase-lib/types/utils/isa";
 import { Table } from "../MetadataInfo.styled";
 import CategoryFingerprint from "./CategoryFingerprint";
 
 const propTypes = {
   className: PropTypes.string,
-  field: PropTypes.instanceOf(Field),
+  field: PropTypes.object,
   showAllFieldValues: PropTypes.bool,
 };
 
@@ -18,11 +22,11 @@ function FieldFingerprintInfo({ className, field, showAllFieldValues }) {
     return null;
   }
 
-  if (field.isDate()) {
+  if (isDate(field)) {
     return <DateTimeFingerprint className={className} field={field} />;
-  } else if (field.isNumber() && !field.isID()) {
+  } else if (isNumber(field) && !isID(field)) {
     return <NumberFingerprint className={className} field={field} />;
-  } else if (field.isCategory()) {
+  } else if (isCategory(field)) {
     return (
       <CategoryFingerprint
         className={className}
@@ -53,10 +57,12 @@ function DateTimeFingerprint({ className, field }) {
   return (
     <Table className={className}>
       <tbody>
-        <tr>
-          <th>{t`Timezone`}</th>
-          <td>{timezone}</td>
-        </tr>
+        {timezone && (
+          <tr>
+            <th>{t`Timezone`}</th>
+            <td>{timezone}</td>
+          </tr>
+        )}
         <tr>
           <th>{t`Earliest date`}</th>
           <td>{formattedEarliest}</td>

@@ -665,10 +665,6 @@ class TableInteractive extends Component {
     return style.left;
   }
 
-  getField(column, metadata) {
-    return metadata?.field(column.id) ?? undefined;
-  }
-
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
   // After the measurements are done, invisible columns get unmounted.
   // Because table headers are wrapped into react-draggable, it can trigger
@@ -797,8 +793,7 @@ class TableInteractive extends Component {
         >
           <FieldInfoPopover
             placement="bottom-start"
-            field={this.getField(column, this.props.metadata)}
-            description={column.description}
+            field={column}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
           >
             {renderTableHeaderWrapper(

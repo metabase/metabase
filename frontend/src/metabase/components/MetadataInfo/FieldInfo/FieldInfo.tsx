@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import type { DatasetColumn } from "metabase-types/api";
 import type Field from "metabase-lib/metadata/Field";
 import { Description, EmptyDescription } from "../MetadataInfo.styled";
 import {
@@ -9,21 +10,19 @@ import {
 
 interface FieldInfoProps {
   className?: string;
-  field?: Field;
-  description?: string;
+  field?: Field | DatasetColumn;
   showAllFieldValues?: boolean;
 }
 
 export function FieldInfo({
   className,
   field,
-  description = field?.description ?? undefined,
   showAllFieldValues,
 }: FieldInfoProps) {
   return (
     <InfoContainer className={className}>
-      {description ? (
-        <Description>{description}</Description>
+      {field?.description ? (
+        <Description>{field.description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}

@@ -1,11 +1,11 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import Field from "metabase-lib/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 
 import {
   LabelContainer,
@@ -13,14 +13,9 @@ import {
   InvertedColorRelativeSizeIcon,
 } from "../MetadataInfo.styled";
 
-FieldSemanticTypeLabel.propTypes = {
-  className: PropTypes.string,
-  field: PropTypes.instanceOf(Field),
-};
-
 type Props = {
   className?: string;
-  field?: Field;
+  field?: Field | DatasetColumn;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

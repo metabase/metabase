@@ -6,7 +6,6 @@ import { t, ngettext, msgid } from "ttag";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Fields from "metabase/entities/fields";
 import { formatNumber } from "metabase/lib/formatting";
-import Field from "metabase-lib/metadata/Field";
 
 import {
   NoWrap,
@@ -20,7 +19,7 @@ import {
 
 const propTypes = {
   className: PropTypes.string,
-  field: PropTypes.instanceOf(Field).isRequired,
+  field: PropTypes.object.isRequired,
   fieldValues: PropTypes.array,
   fetchFieldValues: PropTypes.func.isRequired,
   showAllFieldValues: PropTypes.bool,

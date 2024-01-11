@@ -3,20 +3,21 @@ import { hideAll } from "tippy.js";
 
 import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Field from "metabase-lib/metadata/Field";
+import type { DatasetColumn } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 
 import { WidthBoundFieldInfo } from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
 const propTypes = {
-  field: PropTypes.instanceOf(Field),
+  field: PropTypes.object,
   children: PropTypes.node,
   placement: PropTypes.string,
   disabled: PropTypes.bool,
 };
 
-type Props = { field?: Field; description?: string } & Pick<
+type Props = { field?: Field | DatasetColumn } & Pick<
   ITippyPopoverProps,
   "children" | "placement" | "disabled" | "delay"
 >;
@@ -25,7 +26,6 @@ const className = "dimension-info-popover";
 
 function FieldInfoPopover({
   field,
-  description,
   children,
   placement,
   disabled,
@@ -37,7 +37,7 @@ function FieldInfoPopover({
       delay={delay}
       placement={placement || "left-start"}
       disabled={disabled}
-      content={<WidthBoundFieldInfo field={field} description={description} />}
+      content={<WidthBoundFieldInfo field={field} />}
       onTrigger={instance => {
         const fieldInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,
