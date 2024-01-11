@@ -276,7 +276,7 @@
   :audit      :getter
   :setter     (fn [new-landing-page]
                 (when new-landing-page
-                  ;; If the landing page is a valid URL or mailito, sms, or file, then check with if site-url has the same origin.
+                  ;; If the landing page is a valid URL or mailto, sms, or file, then check with if site-url has the same origin.
                   (when (and (or (re-matches #"^(mailto|sms|file):(.*)" new-landing-page) (u/url? new-landing-page))
                              (not (str/starts-with? new-landing-page (site-url))))
                     (throw (ex-info (tru "This field must be a relative URL.") {:status-code 400}))))

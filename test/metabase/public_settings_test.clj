@@ -344,7 +344,6 @@
            #"This field must be a relative URL."
            (public-settings/landing-page! "https://localhost/test")))
 
-
       (is (thrown-with-msg?
            Exception
            #"This field must be a relative URL."
