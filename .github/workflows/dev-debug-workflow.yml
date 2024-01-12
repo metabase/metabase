@@ -2,9 +2,9 @@ name: Dev Debug
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 
 on:
-  push:
-    branches:
-      - "*"
+#  push:
+#    branches:
+#      - "*"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, edited, converted_to_draft]
 
