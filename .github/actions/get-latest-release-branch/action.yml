@@ -2,7 +2,11 @@ name: Get latest release branch
 
 outputs:
   branch-name:
-    value: ${{ steps.get-latest-release-branch.outputs.result }}
+    description: The name of the release branch, with
+    value: ${{ steps.get-latest-release-branch.outputs.branch-name }}
+  branch-version:
+    description:
+    value: ${{ steps.get-latest-release-branch.outputs.branch-version }}
 
 runs:
   using: "composite"
@@ -38,4 +42,7 @@ runs:
 
           console.log(`Latest release branch: ${latestReleaseBranchName}`);
 
-          return latestReleaseBranchName;
+          return {
+            'branch-name': latestReleaseBranchName,
+            'branch-version': latestReleaseBranchVersion,
+          };
