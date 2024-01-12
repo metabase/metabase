@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
 
 import S from "metabase/components/List/List.css";
 
@@ -12,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getDocsUrl } from "metabase/selectors/settings";
 import ReferenceHeader from "../../components/ReferenceHeader";
 
 import { getSegments, getError, getLoading } from "../../selectors";
@@ -22,10 +22,6 @@ const emptyStateData = {
   message: t`Segments will appear here once your admins have created some`,
   image: "app/assets/img/segments-list",
   adminAction: t`Learn how to create segments`,
-  adminLink: MetabaseSettings.docsUrl(
-    "data-modeling/segments-and-metrics",
-    "creating-a-segment",
-  ),
 };
 
 interface SegmentListProps {
@@ -36,6 +32,12 @@ export function SegmentList({ style }: SegmentListProps) {
   const entities = useSelector(getSegments);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
+  const adminLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "data-modeling/segments-and-metrics",
+      anchor: "creating-a-segment",
+    }),
+  );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   return (
     <div style={style} className="full">
@@ -68,7 +70,7 @@ export function SegmentList({ style }: SegmentListProps) {
             <div className={S.empty}>
               <AdminAwareEmptyState
                 {...emptyStateData}
-                {...(showMetabaseLinks ? {} : { adminLink: undefined })}
+                adminLink={showMetabaseLinks ? adminLink : undefined}
               />
             </div>
           )

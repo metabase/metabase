@@ -9,9 +9,9 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { getDocsUrl } from "metabase/selectors/settings";
 import ReferenceHeader from "../../components/ReferenceHeader";
 
 import { getMetrics, getError, getLoading } from "../../selectors";
@@ -22,10 +22,6 @@ const emptyStateData = {
   message: t`Metrics will appear here once your admins have created some`,
   image: "app/assets/img/metrics-list",
   adminAction: t`Learn how to create metrics`,
-  adminLink: MetabaseSettings.docsUrl(
-    "data-modeling/segments-and-metrics",
-    "creating-a-metric",
-  ),
 };
 
 interface MetricListProps {
@@ -36,6 +32,12 @@ export function MetricList({ style }: MetricListProps) {
   const entities = useSelector(getMetrics);
   const loading = useSelector(getLoading);
   const loadingError = useSelector(getError);
+  const adminLink = useSelector(state =>
+    getDocsUrl(state, {
+      page: "data-modeling/segments-and-metrics",
+      anchor: "creating-a-metric",
+    }),
+  );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   return (
     <div style={style} className="full">
@@ -68,7 +70,7 @@ export function MetricList({ style }: MetricListProps) {
             <div className={S.empty}>
               <AdminAwareEmptyState
                 {...emptyStateData}
-                {...(showMetabaseLinks ? {} : { adminLink: undefined })}
+                adminLink={showMetabaseLinks ? adminLink : undefined}
               />
             </div>
           )
