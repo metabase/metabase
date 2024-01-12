@@ -10,7 +10,7 @@ function setup(opts: SetupOpts) {
   });
 }
 
-describe("ExplainerText (EE without token)", () => {
+describe("ExplainerText (EE with token)", () => {
   it("should render help link when `show-metabase-links: true`", () => {
     setup({ showMetabaseLinks: true });
 

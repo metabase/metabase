@@ -66,7 +66,7 @@ describe("getApplicationName (EE with token)", () => {
   });
 });
 
-describe("getCanWhitelabel (EE without token)", () => {
+describe("getCanWhitelabel (EE with token)", () => {
   it("should return true", () => {
     const { getState } = setup();
 

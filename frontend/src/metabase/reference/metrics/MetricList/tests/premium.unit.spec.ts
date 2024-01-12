@@ -11,7 +11,7 @@ function setup(opts: SetupOpts) {
   });
 }
 
-describe("MetricList (EE without token)", () => {
+describe("MetricList (EE with token)", () => {
   describe("Admins", () => {
     const adminUser = createMockUser({
       is_superuser: true,

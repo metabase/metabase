@@ -12,7 +12,7 @@ function setup(opts: SetupOpts) {
   });
 }
 
-describe("NewModelOptions (EE without token)", () => {
+describe("NewModelOptions (EE with token)", () => {
   it("should render no data access notice when instance have no database access", async () => {
     setup({ databases: [] });
 
