@@ -946,6 +946,16 @@
     ;; We have the UUID for the aggregation in its ref, so use that here.
     (some-> a-ref first (= :aggregation)) (assoc :lib/source-uuid (last a-ref))))
 
+(defn ^:export legacy-column->metadata
+  "Given a JS `DatasetColumn`, return a CLJS `:metadata/column` for the same.
+
+  This properly handles fields, expressions and aggregations."
+  [a-query stage-number ^js js-column]
+  (lib.convert/with-aggregation-list (lib.core/aggregations a-query stage-number)
+    (let [column-ref (when-let [a-ref (.-field_ref js-column)]
+                       (legacy-ref->pMBQL a-ref))]
+      (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
+
 (defn- js-cells-by
   "Given a `col-fn`, returns a function that will extract a JS object like
   `{col: {name: \"ID\", ...}, value: 12}` into a CLJS map like
