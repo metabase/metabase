@@ -641,11 +641,14 @@
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
   [form]
   (cond
+    ;; Special handling for records so that they are not converted into plain maps.
+    ;; Only the values are canonicalized.
     (record? form)
     (reduce-kv (fn [r k x] (assoc r k (canonicalize-mbql-clauses x))) form form)
 
+    ;; Only the values are canonicalized.
     (map? form)
-    (m/map-vals canonicalize-mbql-clauses form)
+    (update-vals form canonicalize-mbql-clauses)
 
     (mbql-clause? form)
     (let [top-canonical
@@ -656,18 +659,20 @@
               (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                               {:clause form}
                               e))))]
+      ;; Canonical clauses are assumed to be sequential things conj'd at the end.
+      ;; In fact, they should better be vectors.
       (if (seq top-canonical)
         (into (conj (empty top-canonical) (first top-canonical))
               (map canonicalize-mbql-clauses)
               (rest top-canonical))
         top-canonical))
 
-    (list? form)
-    (apply list (map canonicalize-mbql-clauses form))
-
+    ;; ISeq instances (e.g., list and lazy sequences) are converted to vectors.
     (seq? form)
-    (doall (map canonicalize-mbql-clauses form))
+    (mapv canonicalize-mbql-clauses form)
 
+    ;; Other collections (e.g., vectors, sets, and queues) are assumed to be conj'd at the end
+    ;; and we keep their types.
     (coll? form)
     (into (empty form) (map canonicalize-mbql-clauses) form)
 
