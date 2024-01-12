@@ -46,6 +46,9 @@ runs:
           
           console.log(`Latest major release version: ${latestReleaseBranchVersion}`);
           
+          const branchName = context.ref.split('/').pop();
+          console.log(`Current Branch: ${branchName}`);
+          
           return {
             'branch-name': latestReleaseBranchName,
             'branch-version': latestReleaseBranchVersion,
