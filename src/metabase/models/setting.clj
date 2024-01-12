@@ -167,7 +167,7 @@
   [_setting]
   [:key])
 
-(def ^:private exported-settings
+(def ^:private ^:dynamic *exported-settings*
   '#{#_application-colors
      application-favicon-url
      application-font
@@ -1253,9 +1253,10 @@
   (some? (env-var-value setting)))
 
 (defn- export? [setting-name]
-  (or (:export? (core/get @registered-settings (keyword setting-name)))
-      ;; deprecated, we want to move to always setting this explicitly in the defsetting declaration
-      (contains? exported-settings (symbol setting-name))))
+  (u/or-with some?
+    (:export? (core/get @registered-settings (keyword setting-name)))
+    ;; deprecated, we want to move to always setting this explicitly in the defsetting declaration
+    (contains? *exported-settings* (symbol setting-name))))
 
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
