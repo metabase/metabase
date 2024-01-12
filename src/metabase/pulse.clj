@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -14,7 +13,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.pulse.markdown :as markdown]
    [metabase.pulse.parameters :as pulse-params]
@@ -26,7 +24,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.shared.parameters.parameters :as shared.params]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.retry :as retry]
@@ -542,85 +540,16 @@
 (defmethod send-notification! :email
   [emails]
   (doseq [{:keys [subject recipients message-type message]} emails]
-    (try
-      (email/send-message-or-throw! {:subject      subject
-                                     :recipients   recipients
-                                     :message-type message-type
-                                     :message      message
-                                     :bcc?         (email/bcc-enabled?)})
-      (catch ExceptionInfo e
-        (when (not= :smtp-host-not-set (:cause (ex-data e)))
-          (throw e))))))
-
-(declare ^:private reconfigure-retrying)
-
-(defsetting notification-retry-max-attempts
-  (deferred-tru "The maximum number of attempts for delivering a single notification.")
-  :type :integer
-  :default 7
-  :on-change reconfigure-retrying)
-
-(defsetting notification-retry-initial-interval
-  (deferred-tru "The initial retry delay in milliseconds when delivering notifications.")
-  :type :integer
-  :default 500
-  :on-change reconfigure-retrying)
-
-(defsetting notification-retry-multiplier
-  (deferred-tru "The delay multiplier between attempts to deliver a single notification.")
-  :type :double
-  :default 2.0
-  :on-change reconfigure-retrying)
-
-(defsetting notification-retry-randomization-factor
-  (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
-  :type :double
-  :default 0.1
-  :on-change reconfigure-retrying)
-
-(defsetting notification-retry-max-interval-millis
-  (deferred-tru "The maximum delay between attempts to deliver a single notification.")
-  :type :integer
-  :default 30000
-  :on-change reconfigure-retrying)
-
-(defn- retry-configuration []
-  (cond-> {:max-attempts (notification-retry-max-attempts)
-           :initial-interval-millis (notification-retry-initial-interval)
-           :multiplier (notification-retry-multiplier)
-           :randomization-factor (notification-retry-randomization-factor)
-           :max-interval-millis (notification-retry-max-interval-millis)}
-    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
-
-(defn- make-retry-state
-  "Returns a notification sender wrapping [[send-notifications!]] retrying
-  according to `retry-configuration`."
-  []
-  (let [retry (retry/random-exponential-backoff-retry "send-notification-retry"
-                                                      (retry-configuration))]
-    {:retry retry
-     :sender (retry/decorate send-notification! retry)}))
-
-(defonce
-  ^{:private true
-    :doc "Stores the current retry state. Updated whenever the notification
-  retry settings change.
-  It starts with value `nil` but is set whenever the settings change or when
-  the first call with retry is made. (See #22790 for more details.)"}
-  retry-state
-  (atom nil))
-
-(defn- reconfigure-retrying [_old-value _new-value]
-  (log/info (trs "Reconfiguring notification sender"))
-  (reset! retry-state (make-retry-state)))
+    (email/send-message-or-throw! {:subject      subject
+                                   :recipients   recipients
+                                   :message-type message-type
+                                   :message      message
+                                   :bcc?         (email/bcc-enabled?)})))
 
 (defn- send-notification-retrying!
-  "Like [[send-notification!]] but retries sending on errors according
-  to the retry settings."
+  "Like [[send-notification!]] but retries sending on errors according to the retry settings."
   [& args]
-  (when-not @retry-state
-    (compare-and-set! retry-state nil (make-retry-state)))
-  (apply (:sender @retry-state) args))
+  (apply (retry/decorate send-notification!) args))
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
