@@ -103,7 +103,7 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-reply-to": ["reply-to@metabase.test"],
       "email-smtp-host": "localhost",
       "email-smtp-password": null,
-      "email-smtp-port": "1234",
+      "email-smtp-port": null,
       "email-smtp-security": "none",
       "email-smtp-username": null,
     });
