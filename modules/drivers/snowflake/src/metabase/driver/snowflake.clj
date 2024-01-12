@@ -411,19 +411,21 @@
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-metadata-provider (u/the-id database)
-      (let [schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
+      (let [sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
+            schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
         (sql-jdbc.execute/do-with-connection-with-options
          driver
          database
          nil
          (fn [^Connection conn]
+           (log/tracef "[Snowflake] %s" sql)
            ;; IMPORTANT: using the JDBC `.getTables` method is buggy -- it works sometimes but other times randomly
            ;; we have tried to use it but people reported that some schemas disappear on their instances.
            ;; See https://discourse.metabase.com/t/snowflake-broken-in-0-48-1/63849
-           {:tables  (into #{}
-                           (comp
-                            (filter (fn [{schema :schema table-name :name}]
+           {:tables  (into
+                      #{}
+                      (comp (filter (fn [{schema :schema_name, table-name :name}]
                                       (and (not (contains? excluded-schemas schema))
                                            (driver.s/include-schema? inclusion-patterns
                                                                      exclusion-patterns
@@ -433,7 +435,10 @@
                                    {:name        table-name
                                     :schema      schema
                                     :description (not-empty remark)})))
-                           (jdbc/reducible-query {:connection conn} (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)))}))))))
+                      (try
+                        (jdbc/reducible-query {:connection conn} sql)
+                        (catch Throwable e
+                          (throw (ex-info (trs "Error executing query: {0}" (ex-message e)) {:sql sql} e)))))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
