@@ -34,6 +34,7 @@ import {
   MAX_COMPARISONS,
   SPACING,
   TOOLTIP_ICON_SIZE,
+  VIZ_SETTINGS_DEFAULTS,
 } from "./constants";
 import {
   PreviousValueDetails,
@@ -309,13 +310,14 @@ Object.assign(SmartScalar, {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
+      default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
     },
     "scalar.compact_primary_number": {
       section: t`Display`,
       title: t`Compact number`,
       widget: "toggle",
       inline: true,
-      default: false,
+      default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
     },
     ...columnSettings({
       section: t`Display`,
