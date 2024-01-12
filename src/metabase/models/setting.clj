@@ -1361,26 +1361,36 @@
   (ex-info (trs "Error of type {0} thrown while parsing a setting" (type ex))
            {:ex-type (type ex)}))
 
-(defn- may-contain-raw-token? [ex setting]
-  (case (:type setting)
-    :json
-    (cond
-      (instance? JsonEOFException ex) false
-      (instance? JsonParseException ex) true
-      :else (do (log/warn ex "Unexpected exception while parsing JSON")
-                ;; err on the side of caution
-                true))
+(defmulti may-contain-raw-token?
+  "Indicate whether we must redact an exception to avoid leaking sensitive env vars"
+  (fn [_ex setting] (:type setting)))
 
-    :boolean false
-    :csv (not (instance? java.io.EOFException ex))
-    :double true
-    :keyword true
-    :integer true
-    :positive-integer true
-    :timestamp true
+;; fallback to redaction if we have not defined behaviour for a given format
+(defmethod may-contain-raw-token? :default [_ _] false)
 
-    ;; fallback to redaction if we have not defined behaviour for a given format
-    true))
+(defmethod may-contain-raw-token? :boolean [_ _] false)
+
+;; Non EOF exceptions will mention the next character
+(defmethod may-contain-raw-token? :csv [ex _] (not (instance? java.io.EOFException ex)))
+
+;; Number parsing exceptions will quote the entire input
+(defmethod may-contain-raw-token? :double [_ _] true)
+(defmethod may-contain-raw-token? :integer [_ _] true)
+(defmethod may-contain-raw-token? :positive-integer [_ _] true)
+
+;; Date parsing may quote the entire input, or a particular sub-portion, e.g. a misspelled month name
+(defmethod may-contain-raw-token? :timestamp [_ _] true)
+
+;; Keyword parsing can never fail, but let's be paranoid
+(defmethod may-contain-raw-token? :keyword [_ _] true)
+
+(defmethod may-contain-raw-token? :json [ex _]
+  (cond
+    (instance? JsonEOFException ex) false
+    (instance? JsonParseException ex) true
+    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+              ;; err on the side of caution
+              true)))
 
 (defn- redact-sensitive-tokens [ex raw-value]
   (if (may-contain-raw-token? ex raw-value)

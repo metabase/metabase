@@ -1374,9 +1374,16 @@
   (symbol "metabase.models.setting-test" (name (validation-setting-symbol format))))
 
 (deftest validation-completeness-test
-  (testing "Every settings format has tests for its validation"
-    (let [string-formats #{:string :metabase.public-settings/uuid-nonce}]
-      (doseq [format (remove string-formats (keys (methods setting/get-value-of-type)))]
+  (let [string-formats #{:string :metabase.public-settings/uuid-nonce}
+        formats-to-check (remove string-formats (keys (methods setting/get-value-of-type)))]
+
+    (testing "Every settings format has its redaction predicate defined"
+      (doseq [format formats-to-check]
+        (testing (format "We have defined a redaction multimethod for the %s format" format)
+          (is (some? (format (methods setting/may-contain-raw-token?)))))))
+
+    (testing "Every settings format has tests for its validation"
+      (doseq [format formats-to-check]
         ;; We operate on trust that tests are added along with this var
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
