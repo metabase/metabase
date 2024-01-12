@@ -859,7 +859,7 @@
                                            driver conn (.getMetaData conn)
                                            inclusion-patterns exclusion-patterns))
            current-user-roles   (->> (jdbc/query {:connection conn}
-                                                 "SELECT DISTINCT(rolname) FROM pg_roles WHERE pg_has_role (current_user, oid, 'member');")
+                                                 "SELECT rolname FROM pg_roles WHERE pg_has_role(current_user, oid, 'member');")
                                      (map :rolname)
                                      set)]
        (->> (jdbc/result-set-seq (.getTablePrivileges (.getMetaData conn) (:name database) nil "%"))
