@@ -40,7 +40,7 @@ export function SmartScalar({
     },
     value: {
       color: getColor("text-dark"),
-      fontSize: "70px",
+      fontSize: "24px",
       fontWeight: 700,
     },
     date: {
@@ -98,11 +98,14 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
   }
 
   const styles: Record<string, CSSProperties> = {
+    root: {
+      fontSize: "12px",
+    },
     icon: {
-      width: "14px",
-      height: "14px",
+      width: "12px",
+      height: "12px",
       fill: comparison.changeColor,
-      marginRight: "8px",
+      marginRight: "6px",
     },
     percentChange: {
       color: comparison.changeColor || getColor("text-light"),
@@ -111,7 +114,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
     separator: {
       color: getColor("text-light"),
       fontSize: "10px",
-      margin: "0 4px",
+      margin: "0 2px",
     },
     comparisonDescription: {
       color: getColor("text-medium"),
@@ -124,7 +127,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
   };
 
   return (
-    <span>
+    <span style={styles.root}>
       {!!Icon && <Icon style={styles.icon} />}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
