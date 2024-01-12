@@ -328,7 +328,9 @@
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
           (testing "Make sure we get the expected collections when collection-id is nil"
-            (let [collections (#'api.collection/select-collections false false nil true nil)]
+            (let [collections (#'api.collection/select-collections {:archived                       false
+                                                                    :exclude-other-user-collections false
+                                                                    :shallow                        true})]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -338,7 +340,10 @@
                           (map #(select-keys % [:name]))
                           (into #{}))))))
           (testing "Make sure we get the expected collections when collection-id is an integer"
-            (let [collections (#'api.collection/select-collections false false nil true (:id a))]
+            (let [collections (#'api.collection/select-collections {:archived                       false
+                                                                    :exclude-other-user-collections false
+                                                                    :shallow                        true
+                                                                    :collection-id                  (:id a)})]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -348,7 +353,10 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))
-            (let [collections (#'api.collection/select-collections false false nil true (:id b))]
+            (let [collections (#'api.collection/select-collections {:archived                       false
+                                                                    :exclude-other-user-collections false
+                                                                    :shallow                        true
+                                                                    :collection-id                  (:id b)})]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
