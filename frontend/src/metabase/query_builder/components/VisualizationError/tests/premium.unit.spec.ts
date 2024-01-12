@@ -17,7 +17,7 @@ describe("VisualizationError (EE with token)", () => {
       engine: "postgres",
     });
 
-    it("should show a help link when `show-metabase-links: true`", () => {
+    it("should show a SQL help link when `show-metabase-links: true`", () => {
       const card = createMockCard({
         dataset_query: {
           database: database.id,
@@ -34,7 +34,7 @@ describe("VisualizationError (EE with token)", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not show a help link when `show-metabase-links: false`", () => {
+    it("should not show a SQL help link when `show-metabase-links: false`", () => {
       const card = createMockCard({
         dataset_query: {
           database: database.id,
@@ -57,7 +57,7 @@ describe("VisualizationError (EE with token)", () => {
       engine: "mongo",
     });
 
-    it("should show a help link", () => {
+    it("should not show a SQL help link", () => {
       const card = createMockCard({
         dataset_query: {
           database: database.id,

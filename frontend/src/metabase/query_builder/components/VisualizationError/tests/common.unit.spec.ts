@@ -8,7 +8,7 @@ describe("VisualizationError (OSS)", () => {
       engine: "postgres",
     });
 
-    it("should show a help link when `show-metabase-links: true`", () => {
+    it("should show a SQL help link when `show-metabase-links: true`", () => {
       const card = createMockCard({
         dataset_query: {
           database: database.id,
@@ -25,7 +25,7 @@ describe("VisualizationError (OSS)", () => {
       ).toBeInTheDocument();
     });
 
-    it("should show a help link when `show-metabase-links: false`", () => {
+    it("should show a SQL help link when `show-metabase-links: false`", () => {
       const card = createMockCard({
         dataset_query: {
           database: database.id,
@@ -48,7 +48,7 @@ describe("VisualizationError (OSS)", () => {
       engine: "mongo",
     });
 
-    it("should show a help link", () => {
+    it("should not show a SQL help link", () => {
       const card = createMockCard({
         dataset_query: {
           database: database.id,
