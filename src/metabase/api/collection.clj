@@ -76,24 +76,31 @@
   is not necessary.
 
   For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
-  [archived exclude-other-user-collections namespace shallow collection-id]
-  (cond->>
-   (t2/select :model/Collection
-              {:where [:and
-                       (when (some? archived)
-                         [:= :archived archived])
-                       (when shallow
-                         (location-from-collection-id-clause collection-id))
-                       (when exclude-other-user-collections
-                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
-                       (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        :id
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-               ;; Order NULL collection types first so that audit collections are last
-               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
-                          [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
+  (if personal-only
+    (t2/select :model/Collection
+               {:where [:and
+                        [:!= :personal_owner_id nil]
+                        (collection/visible-collection-ids->honeysql-filter-clause
+                         :id
+                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+    (cond->>
+     (t2/select :model/Collection
+                {:where [:and
+                         (when (some? archived)
+                           [:= :archived archived])
+                         (when shallow
+                           (location-from-collection-id-clause collection-id))
+                         (when exclude-other-user-collections
+                           [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+                         (perms/audit-namespace-clause :namespace namespace)
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          :id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                   ;; Order NULL collection types first so that audit collections are last
+                 :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+                            [:%lower.name :asc]]})
+      exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*))))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -111,28 +118,26 @@
    exclude-other-user-collections [:maybe ms/BooleanValue]
    namespace                      [:maybe ms/NonBlankString]
    personal-only                  [:maybe ms/BooleanValue]}
-  (if personal-only
-    (t2/select :model/Collection {:where [:and
-                                          [:!= :personal_owner_id nil]
-                                          (collection/visible-collection-ids->honeysql-filter-clause
-                                           :id
-                                           (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-    (as->
-     (select-collections archived exclude-other-user-collections namespace false nil) collections
-     ;; include Root Collection at beginning or results if archived isn't `true`
-      (if archived
-        collections
-        (let [root (root-collection namespace)]
-          (cond->> collections
-            (mi/can-read? root)
-            (cons root))))
-      (t2/hydrate collections :can_write :is_personal)
-      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
-      ;; and for personal collections we translate the name to user's locale
-      (for [collection collections]
-        (-> collection
-            (dissoc ::collection.root/is-root?)
-            collection/personal-collection-with-ui-details)))))
+  (as->
+   (select-collections {:archived                       archived
+                        :exclude-other-user-collections exclude-other-user-collections
+                        :namespace                      namespace
+                        :shallow                        false
+                        :personal-only                  personal-only}) collections
+    ;; include Root Collection at beginning or results if archived isn't `true`
+    (if archived
+      collections
+      (let [root (root-collection namespace)]
+        (cond->> collections
+          (mi/can-read? root)
+          (cons root))))
+    (t2/hydrate collections :can_write :is_personal)
+    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+    ;; and for personal collections we translate the name to user's locale
+    (for [collection collections]
+      (-> collection
+          (dissoc ::collection.root/is-root?)
+          collection/personal-collection-with-ui-details))))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -182,7 +187,11 @@
    shallow                        [:maybe :boolean]
    collection-id                  [:maybe ms/PositiveInt]}
   (let [archived    (if exclude-archived false nil)
-        collections (select-collections archived exclude-other-user-collections namespace shallow collection-id)]
+        collections (select-collections {:archived archived
+                                         :exclude-other-user-collections exclude-other-user-collections
+                                         :namespace namespace
+                                         :shallow shallow
+                                         :collection-id collection-id})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
