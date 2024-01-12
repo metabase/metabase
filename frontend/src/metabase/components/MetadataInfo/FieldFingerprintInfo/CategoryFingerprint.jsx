@@ -23,6 +23,7 @@ const propTypes = {
   field: PropTypes.object.isRequired,
   fieldValues: PropTypes.array,
   fetchFieldValues: PropTypes.func.isRequired,
+  hasListValues: PropTypes.bool,
   showAllFieldValues: PropTypes.bool,
 };
 
@@ -31,6 +32,7 @@ const FIELD_VALUES_SHOW_LIMIT = 35;
 const mapStateToProps = (state, props) => {
   const fieldId = props.field.id;
   const metadata = getMetadata(state);
+  const medatataField = metadata.field(fieldId);
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -38,8 +40,8 @@ const mapStateToProps = (state, props) => {
         })
       : [];
   return {
-    field: metadata.field(fieldId) ?? props.field,
     fieldValues: fieldValues || [],
+    hasListValues: medatataField?.has_field_values === "list",
   };
 };
 
@@ -52,12 +54,12 @@ export function CategoryFingerprint({
   field,
   fieldValues = [],
   fetchFieldValues,
+  hasListValues,
   showAllFieldValues,
 }) {
   const fieldId = field.id;
-  const listsFieldValues = field.has_field_values === "list";
   const isMissingFieldValues = fieldValues.length === 0;
-  const shouldFetchFieldValues = listsFieldValues && isMissingFieldValues;
+  const shouldFetchFieldValues = hasListValues && isMissingFieldValues;
 
   const distinctCount = field.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount = formatNumber(distinctCount);
