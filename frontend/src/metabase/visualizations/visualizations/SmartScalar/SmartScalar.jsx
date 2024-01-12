@@ -23,7 +23,6 @@ import { isEmpty } from "metabase/lib/validate";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
-import { isNumeric } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 
@@ -57,6 +56,7 @@ import {
   getValueHeight,
   getValueWidth,
   isPeriodVisible,
+  isSuitableScalarColumn,
   validateComparisons,
 } from "./utils";
 import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
@@ -285,7 +285,7 @@ Object.assign(SmartScalar, {
     ...fieldSetting("scalar.field", {
       section: t`Data`,
       title: t`Primary number`,
-      fieldFilter: isNumeric,
+      fieldFilter: isSuitableScalarColumn,
     }),
     "scalar.comparisons": {
       section: t`Data`,

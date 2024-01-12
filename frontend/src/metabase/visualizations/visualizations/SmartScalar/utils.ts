@@ -136,6 +136,10 @@ export function getDefaultComparison(
   ];
 }
 
+export function isSuitableScalarColumn(column: DatasetColumn) {
+  return isNumeric(column);
+}
+
 export function getColumnsForComparison(
   columns: DatasetColumn[],
   settings: VisualizationSettings,

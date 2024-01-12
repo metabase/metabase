@@ -3,7 +3,10 @@ import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getDefaultColumn } from "metabase/visualizations/lib/settings/utils";
 import { VIZ_SETTINGS_DEFAULTS } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import { getDefaultComparison } from "metabase/visualizations/visualizations/SmartScalar/utils";
+import {
+  getDefaultComparison,
+  isSuitableScalarColumn,
+} from "metabase/visualizations/visualizations/SmartScalar/utils";
 
 export const computeSmartScalarSettings = (
   rawSeries: RawSeries,
@@ -11,7 +14,11 @@ export const computeSmartScalarSettings = (
 ): ComputedVisualizationSettings => {
   const settings = getCommonStaticVizSettings(rawSeries, dashcardSettings);
 
-  settings["scalar.field"] ??= getDefaultColumn(rawSeries, settings);
+  settings["scalar.field"] ??= getDefaultColumn(
+    rawSeries,
+    settings,
+    isSuitableScalarColumn,
+  );
 
   settings["scalar.comparisons"] ??= getDefaultComparison(rawSeries, settings);
 

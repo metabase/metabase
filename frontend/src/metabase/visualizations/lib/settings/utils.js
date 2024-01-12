@@ -29,7 +29,7 @@ export function dimensionSetting(id, def = {}) {
   });
 }
 
-const DEFAULT_FIELD_FILTER = () => true;
+const DEFAULT_FIELD_FILTER = column => true;
 
 export function getDefaultColumn(
   series,
