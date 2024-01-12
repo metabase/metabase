@@ -10,7 +10,7 @@ import {
 
 interface FieldInfoProps {
   className?: string;
-  field?: Field | DatasetColumn;
+  field: Field | DatasetColumn;
   timezone?: string;
   showAllFieldValues?: boolean;
 }
@@ -23,19 +23,17 @@ export function FieldInfo({
 }: FieldInfoProps) {
   return (
     <InfoContainer className={className}>
-      {field?.description ? (
+      {field.description ? (
         <Description>{field.description}</Description>
       ) : (
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
       <FieldSemanticTypeLabel field={field} />
-      {field && (
-        <FieldFingerprintInfo
-          field={field}
-          timezone={timezone}
-          showAllFieldValues={showAllFieldValues}
-        />
-      )}
+      <FieldFingerprintInfo
+        field={field}
+        timezone={timezone}
+        showAllFieldValues={showAllFieldValues}
+      />
     </InfoContainer>
   );
 }

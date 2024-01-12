@@ -15,12 +15,12 @@ import {
 
 type Props = {
   className?: string;
-  field?: Field | DatasetColumn;
+  field: Field | DatasetColumn;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FieldSemanticTypeLabel({ className, field }: Props) {
-  const semanticType = field?.semantic_type;
+  const semanticType = field.semantic_type;
   const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =
     getSemanticTypeName(semanticType) || t`No special type`;
