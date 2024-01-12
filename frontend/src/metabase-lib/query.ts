@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type LegacyMetadata from "./metadata/Metadata";
 import type {
   CardMetadata,
   Clause,
@@ -11,7 +12,6 @@ import type {
   SegmentMetadata,
   TableMetadata,
 } from "./types";
-import type LegacyMetadata from "./metadata/Metadata";
 
 export function fromLegacyQuery(
   databaseId: DatabaseId,
@@ -42,32 +42,6 @@ export function withDifferentTable(query: Query, tableId: TableId): Query {
 
 export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
-}
-
-export function stageCount(query: Query): number {
-  return ML.stage_count(query);
-}
-
-export function appendStage(query: Query): Query {
-  return ML.append_stage(query);
-}
-
-export function dropStage(query: Query, stageIndex: number): Query {
-  return ML.drop_stage(query, stageIndex);
-}
-
-export function dropStageIfEmpty(query: Query, stageIndex: number): Query {
-  return ML.drop_stage_if_empty(query, stageIndex);
-}
-
-export function dropEmptyStages(query: Query): Query {
-  const stageIndexes = Array.from({ length: stageCount(query) }).map(
-    (_, index) => index,
-  );
-
-  return stageIndexes.reduceRight((query, stageIndex) => {
-    return dropStageIfEmpty(query, stageIndex);
-  }, query);
 }
 
 export function removeClause(
