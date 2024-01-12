@@ -8,7 +8,6 @@ import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import Modal from "metabase/components/Modal";
-import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
 import { ALERT_TYPE_ROWS } from "metabase-lib/Alert";
 
@@ -43,28 +42,6 @@ export default class VisualizationResult extends Component {
         card: { ...series[0].card, display: "object" },
       },
     ];
-  };
-
-  getColumnSortDirection = legacyColumn => {
-    const { question } = this.props;
-    const query = question.query();
-    const stageIndex = -1;
-    const column = Lib.findMatchingColumn(
-      query,
-      stageIndex,
-      Lib.fromLegacyColumn(query, stageIndex, legacyColumn),
-      Lib.orderableColumns(query, stageIndex),
-    );
-
-    if (column != null) {
-      const columnInfo = Lib.displayInfo(query, stageIndex, column);
-      if (columnInfo.orderByPosition != null) {
-        const orderBys = Lib.orderBys(query, stageIndex);
-        const orderBy = orderBys[columnInfo.orderByPosition];
-        const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
-        return orderByInfo.direction;
-      }
-    }
   };
 
   render() {
@@ -148,7 +125,6 @@ export default class VisualizationResult extends Component {
             metadata={question.metadata()}
             timelineEvents={timelineEvents}
             selectedTimelineEventIds={selectedTimelineEventIds}
-            getColumnSortDirection={this.getColumnSortDirection}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}
             onSelectTimelineEvents={this.props.selectTimelineEvents}

@@ -694,7 +694,7 @@ class TableInteractive extends Component {
     const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
-    const sortDirection = getColumnSortDirection?.(column);
+    const sortDirection = getColumnSortDirection(columnIndex);
     const isSorted = sortDirection != null;
     const isAscending = sortDirection === "asc";
 
