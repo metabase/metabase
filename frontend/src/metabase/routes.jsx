@@ -24,7 +24,7 @@ import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/Au
 
 /* Browse data */
 import BrowseApp from "metabase/browse/components/BrowseApp";
-import BrowseData from "metabase/browse/containers/BrowseData";
+import { ConnectedBrowseDataPage } from "metabase/browse/containers/BrowseData";
 import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 
@@ -217,7 +217,7 @@ export const getRoutes = store => {
           </Route>
 
           <Route path="browse" component={BrowseApp}>
-            <IndexRoute component={BrowseData} />
+            <IndexRoute component={ConnectedBrowseDataPage} />
             <Route path=":slug" component={SchemaBrowser} />
             <Route path=":dbId/schema/:schemaName" component={TableBrowser} />
           </Route>

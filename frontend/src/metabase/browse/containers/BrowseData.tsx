@@ -1,8 +1,9 @@
 import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import Collection from "metabase/entities/collections";
-import Database from "metabase/entities/databases";
+import type { Card, Collection, SearchResult, User } from "metabase-types/api";
+import Databases from "metabase/entities/databases";
+import Search from "metabase/entities/search";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import { Divider, Flex, Tabs } from "metabase/ui";
 
@@ -22,31 +23,54 @@ import {
   ModelCard,
   ModelGridItem,
 } from "./BrowseData.styled";
-import type { CollectionItem } from "metabase-types/api";
+import type { WrappedEntity } from "metabase-types/entities";
+import Users from "metabase/entities/users";
+import Collections from "metabase/entities/collections/collections";
 
 interface BrowseDataTab {
   label: string;
   component: JSX.Element;
 }
 
-type Model = CollectionItem;
 
-const ModelsTab = ({ models }: { models: Model[] }) => {
+const ModelsTab = ({
+  models,
+  collections,
+  users,
+}: {
+  models: Card[];
+  collections: Collection[];
+  users?: User[];
+}) => {
+
+  console.log('models', models);
   return (
     <Grid>
-      {models.map((model: Model) => (
-        <ModelGridItem key={model.id}>
-          <Link
-            to={"TO BE DETERMINED"}
-            // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
-            data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
-          >
-            <ModelCard>
-              <h3 className="text-wrap">{model.name}</h3>
-            </ModelCard>
-          </Link>
-        </ModelGridItem>
-      ))}
+      {models.map((model: Card) => {
+        {/* console.log("model.creator", model.creator); */}
+        {/* const matchingUsers = users?.filter( */}
+        {/*   ({ id }) => id === model.creator?.id, */}
+        {/* ); */}
+        {/* console.log("matchingUsers", matchingUsers); */}
+        {/* const user = matchingUsers?.length ? matchingUsers[0] : null; */}
+        return (
+          <ModelGridItem key={model.id}>
+            <Link
+              to={Urls.modelDetail(model)}
+              // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
+              data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
+            >
+              <ModelCard>
+                <h3 className="text-wrap">{model.name}</h3>
+                {model.description && (
+                  <p className="text-wrap">{model.description} </p>
+                )}
+                {user && user.first_name}
+              </ModelCard>
+            </Link>
+          </ModelGridItem>
+        );
+      })}
     </Grid>
   );
 };
@@ -76,15 +100,32 @@ const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
   );
 };
 
-function BrowseData({ databases }: { databases: IDatabase[] }) {
+const BrowseDataPage = ({
+  models,
+  users,
+  databases,
+}: {
+  models: Card[];
+  users: User[];
+  databases: IDatabase[];
+}) => {
   const defaultTab = "Models";
   const [currentTab, setTab] = useState<string | null>(defaultTab);
-  const models: CollectionItem[] = [
-  ];
-  // Not sure what Tabs' prop value does
+
+  // const createExampleModel = (id: number): CollectionItem => ({
+  //   name: `Example model ${id}`,
+  //   id,
+  //   model: "dataset",
+  //   description: "This is an example model",
+  //   getIcon: () => ({ name: "model" }),
+  //   getUrl: () => "to be determined",
+  // });
+  // const exampleModels = Array.from(Array(20).keys()).map(createExampleModel);
+  console.log("users", users);
+
   const tabs: BrowseDataTab[] = [
+    { label: "Models", component: <ModelsTab models={models} users={users} /> },
     { label: "Databases", component: <DatabasesTab databases={databases} /> },
-    { label: "Models", component: <ModelsTab models={models} /> },
   ];
   // TODO: Fix font of BrowseHeader
   // TODO: Do we still need 'Learn about our data?'
@@ -110,7 +151,7 @@ function BrowseData({ databases }: { databases: IDatabase[] }) {
       </Tabs>
     </div>
   );
-}
+};
 
 // I think I need to do something like the following.
 // To get the models, I need to get the collections, and then get the items in each collection.
@@ -154,19 +195,21 @@ https://github.com/metabase/metabase/blob/be73bb2650729c2bae09b5b648443e2232687f
 
  */
 
-export default _.compose(
-  Database.loadList(),
-  Collection.loadList({
-    query: {
-      tree: true,
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    },
-    loadingAndErrorWrapper: false,
+export const ConnectedBrowseDataPage = _.compose(
+  Databases.loadList(),
+  Users.loadList(),
+  //Collections.loadList({
+  //  query: {
+  //    tree: true,
+  //    //"exclude-other-user-collections": true,
+  //    "exclude-archived": true,
+  //  },
+  //  loadingAndErrorWrapper: false,
+  //}),
+  Search.loadList({
+    query: () => ({
+      models: ["dataset"],
+    }),
+    listName: "models",
   }),
-  // Get the particular items within a collection
-  Collection.load({
-    id: (_, props) => props.collectionId,
-    reload: true,
-  }),
-)(BrowseData);
+)(BrowseDataPage);
