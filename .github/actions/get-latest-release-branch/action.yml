@@ -42,6 +42,10 @@ runs:
 
           console.log(`Latest release branch: ${latestReleaseBranchName}`);
 
+          const latestReleaseBranchVersion = parseInt(latestReleaseBranchName.split('.')[1]);
+          
+          console.log(`Latest major release version: ${latestReleaseBranchVersion}`);
+          
           return {
             'branch-name': latestReleaseBranchName,
             'branch-version': latestReleaseBranchVersion,
