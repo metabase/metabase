@@ -1178,3 +1178,35 @@
   "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
   [a-query temporal-column stage-number start end]
   (lib.core/update-temporal-filter a-query temporal-column stage-number start end))
+
+(defn- disambiguated?
+  "Is the (column) name `disambiguated` a disambiguated form of the name `original`?"
+  [original disambiguated]
+  (boolean
+   (and (string? original)
+        (string? disambiguated)
+        (str/starts-with? disambiguated original)
+        (re-matches #"_\d+" (subs disambiguated (count original))))))
+
+(defn- equal-columns?
+  [metadata-providerable col1 col2]
+  (let [convert (fn [col]
+                  (if (object? col)
+                    (->> col
+                         js.metadata/parse-column
+                         (lib.convert/legacy-result-column->mlv2-column metadata-providerable))
+                    col))
+        col-name (some-fn :lib/desired-column-alias :name)
+        col1 (convert col1)
+        col2 (convert col2)
+        nom1 (col-name col1)
+        nom2 (col-name col2)]
+    (or (= nom1 nom2)
+        (if (< (count nom1) (count nom2))
+          (disambiguated? nom1 nom2)
+          (disambiguated? nom2 nom1)))))
+
+(defn ^:export same-column-lists?
+  "True iff `cols1` and `cols2` are lists of columns and the columns at the same index have the same name."
+  [metadata-providerable cols1 cols2]
+  (every? true? (map (partial equal-columns? metadata-providerable) cols1 cols2)))

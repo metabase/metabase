@@ -8,9 +8,11 @@
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -564,3 +566,25 @@
   [inner-query]
   (js-legacy-query->pMBQL {:type  :query
                            :query (from-json inner-query)}))
+
+(mu/defn legacy-result-column->mlv2-column :- ::lib.schema.metadata/column
+  "Convert a column from legacy result metadata to an MLv2 column"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   col                   :- :map]
+  (let [col (-> col
+                (update-keys u/->kebab-case-en)
+                 ;; ignore `:field-ref`, it's very likely a legacy field ref, and it's probably wrong either way. We
+                 ;; can always calculate a new one.
+                (dissoc :field-ref))]
+    (merge
+     {:base-type :type/*}
+     (when-let [field-id (:id col)]
+       (try
+         (lib.metadata/field metadata-providerable field-id)
+         (catch #?(:clj Throwable :cljs :default) _
+           nil)))
+     col
+     {:lib/type                :metadata/column
+      :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)}
+     (when-let [legacy-join-alias (:source-alias col)]
+       {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))
