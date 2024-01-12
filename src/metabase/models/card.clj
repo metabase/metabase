@@ -375,10 +375,7 @@
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported if they are a raw table,
-  meaning there are no clauses such as filter, limit, breakout...
-
-  The list of clauses should match with FE, which is defined in the
-  function `hasAnyClauses` of `metabase-lib/stage.ts` file"
+  meaning there are no clauses such as filter, limit, breakout..."
   [{dataset-query :dataset_query :as _card}]
   (and (= :query (:type dataset-query))
        (every? #(nil? (get-in dataset-query [:query %]))
