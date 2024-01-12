@@ -487,6 +487,7 @@ class Question {
       database.hasActionsEnabled()
     );
   }
+
   supportsImplicitActions(): boolean {
     const query = this.query();
 
