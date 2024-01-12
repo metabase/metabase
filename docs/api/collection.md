@@ -166,6 +166,10 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
 *  **`namespace`** nullable value must be a non-blank string.
 
+*  **`shallow`** nullable boolean
+
+*  **`collection-id`** nullable value must be an integer greater than zero.
+
 ## `POST /api/collection/`
 
 Create a new Collection.

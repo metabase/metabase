@@ -5,11 +5,11 @@ export const getCardOverrides = (): MantineThemeOverride["components"] => ({
     styles: (theme: MantineTheme) => {
       return {
         cardSection: {
-          borderTopColor: theme.colors.border[0],
-          borderBottomColor: theme.colors.border[0],
+          borderTopColor: theme.fn.themeColor("border"),
+          borderBottomColor: theme.fn.themeColor("border"),
 
           "&[data-first]": {
-            borderBottomColor: theme.colors.border[0],
+            borderBottomColor: theme.fn.themeColor("border"),
           },
         },
       };

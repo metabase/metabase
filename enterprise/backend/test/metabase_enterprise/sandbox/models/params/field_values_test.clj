@@ -16,8 +16,6 @@
             User]]
    [metabase.models.field-values :as field-values]
    [metabase.models.params.field-values :as params.field-values]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -79,7 +77,7 @@
                            (t2/select-one Field :id (mt/id :categories :name)))))))))))
 
 (deftest advanced-field-values-hash-test
-  (premium-features-test/with-premium-features #{:sandboxes}
+  (mt/with-premium-features #{:sandboxes}
     ;; copy at top level so that `with-gtaps-for-user` does not have to create a new copy every time it gets called
     (mt/with-temp-copy-of-db
       (testing "gtap with remappings"

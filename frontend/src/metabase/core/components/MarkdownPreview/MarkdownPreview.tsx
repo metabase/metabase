@@ -5,8 +5,6 @@ import { useIsTruncated } from "metabase/hooks/use-is-truncated";
 import Markdown from "../Markdown";
 import Tooltip from "../Tooltip";
 
-import { TruncatedMarkdown } from "./MarkdownPreview.styled";
-
 interface Props {
   children: string;
   className?: string;
@@ -43,13 +41,14 @@ export const MarkdownPreview = ({
       }
     >
       <div ref={setReactMarkdownRef}>
-        <TruncatedMarkdown
+        <Markdown
           allowedElements={ALLOWED_ELEMENTS}
           className={className}
           unwrapDisallowed
+          lineClamp={1}
         >
           {children}
-        </TruncatedMarkdown>
+        </Markdown>
       </div>
     </Tooltip>
   );

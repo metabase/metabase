@@ -14,7 +14,6 @@
    [metabase.models.user :as user]
    [metabase.models.user-test :as user-test]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -90,7 +89,7 @@
 
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
-    (premium-features-test/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:advanced-permissions}
       (t2.with-temp/with-temp
           [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
            :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
@@ -198,7 +197,7 @@
                             (map :email))))))))))))
 
 (deftest user-recipients-list-ee-test
-  (premium-features-test/with-premium-features #{:email-restrict-recipients}
+  (mt/with-premium-features #{:email-restrict-recipients}
     (testing "GET /api/user/recipients"
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [crowberto "crowberto@metabase.com"
@@ -482,7 +481,7 @@
           (is (nil? (:custom_homepage (mt/user-http-request :rasta :get 200 "user/current")))))))))
 
 (deftest get-user-test
-  (premium-features-test/with-premium-features #{}
+  (mt/with-premium-features #{}
     (testing "GET /api/user/:id"
       (testing "should return a smaller set of fields"
         (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
@@ -530,7 +529,7 @@
 (deftest create-user-test
   (testing "POST /api/user"
     (testing "Test that we can create a new User"
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (let [user-name (mt/random-name)
               email     (mt/random-email)]
           (mt/with-model-cleanup [User]
@@ -1242,7 +1241,7 @@
 
 (deftest user-activate-deactivate-event-test
   (testing "User Deactivate/Reactivate events via the API are recorded in the audit log"
-    (premium-features-test/with-premium-features #{:audit-app}
+    (mt/with-premium-features #{:audit-app}
       (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
                                                   :last_name  "Cena"}]
         (testing "DELETE /api/user/:id and PUT /api/user/:id/reactivate"
@@ -1265,7 +1264,7 @@
   (testing "User Updates via the API are recorded in the audit log"
     (t2.with-temp/with-temp [User {:keys [id]} {:first_name "John"
                                                 :last_name  "Cena"}]
-      (premium-features-test/with-premium-features #{:audit-app}
+      (mt/with-premium-features #{:audit-app}
         (testing "PUT /api/user/:id"
           (mt/user-http-request :crowberto :put 200 (format "user/%s" id)
                                 {:first_name "Johnny" :last_name "Appleseed"})

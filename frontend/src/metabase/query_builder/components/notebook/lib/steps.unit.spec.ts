@@ -85,10 +85,10 @@ describe("filtered and summarized query", () => {
 
   describe("query", () => {
     it("should be the same for all steps", () => {
-      const { topLevelQuery } = dataStep;
+      const { query } = dataStep;
 
-      expect(filterStep.topLevelQuery).toBe(topLevelQuery);
-      expect(summarizeStep.topLevelQuery).toBe(topLevelQuery);
+      expect(filterStep.query).toBe(query);
+      expect(summarizeStep.query).toBe(query);
     });
   });
 
@@ -112,9 +112,7 @@ describe("filtered and summarized query", () => {
 
   describe("revert", () => {
     it("shouldn't remove summarize when removing filter", () => {
-      const newQuery = checkNotNull(
-        filterStep.revert?.(filterStep.topLevelQuery, 0),
-      );
+      const newQuery = checkNotNull(filterStep.revert?.(filterStep.query, 0));
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
@@ -123,7 +121,7 @@ describe("filtered and summarized query", () => {
 
     it("shouldn't remove filter when removing summarize", () => {
       const newQuery = checkNotNull(
-        summarizeStep.revert?.(summarizeStep.topLevelQuery, 0),
+        summarizeStep.revert?.(summarizeStep.query, 0),
       );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
@@ -151,11 +149,11 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("query", () => {
     it("should be the same for all steps", () => {
-      const { topLevelQuery } = dataStep;
+      const { query } = dataStep;
 
-      expect(filterStep.topLevelQuery).toBe(topLevelQuery);
-      expect(summarizeStep.topLevelQuery).toBe(topLevelQuery);
-      expect(postAggregationFilterStep.topLevelQuery).toBe(topLevelQuery);
+      expect(filterStep.query).toBe(query);
+      expect(summarizeStep.query).toBe(query);
+      expect(postAggregationFilterStep.query).toBe(query);
     });
   });
 
@@ -190,9 +188,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
   describe("revert", () => {
     it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
-      const newQuery = checkNotNull(
-        filterStep.revert?.(filterStep.topLevelQuery, 0),
-      );
+      const newQuery = checkNotNull(filterStep.revert?.(filterStep.query, 0));
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);
       expect(Lib.breakouts(newQuery, 0)).toHaveLength(1);
@@ -202,7 +198,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
     it("should remove post-aggregation filter when removing summarize", () => {
       const newQuery = checkNotNull(
-        summarizeStep.revert?.(summarizeStep.topLevelQuery, 0),
+        summarizeStep.revert?.(summarizeStep.query, 0),
       );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(0);
@@ -213,10 +209,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
 
     it("should not remove filter or summarize when removing post-aggregation filter", () => {
       const newQuery = checkNotNull(
-        postAggregationFilterStep.revert?.(
-          postAggregationFilterStep.topLevelQuery,
-          1,
-        ),
+        postAggregationFilterStep.revert?.(postAggregationFilterStep.query, 1),
       );
 
       expect(Lib.aggregations(newQuery, 0)).toHaveLength(1);

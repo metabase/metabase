@@ -24,13 +24,13 @@ export const ResultTitle = styled(Anchor)<
   font-weight: 700;
   font-size: ${({ theme }) => theme.fontSizes.md};
 
-  color: ${({ theme }) => theme.colors.text[2]};
+  color: ${({ theme }) => theme.fn.themeColor("text-dark")};
 
   &:hover,
   &:focus-visible,
   &:focus {
     text-decoration: none;
-    color: ${({ theme }) => theme.colors.brand[1]};
+    color: ${({ theme }) => theme.fn.themeColor("brand")};
     outline: 0;
   }
 `;
@@ -58,24 +58,24 @@ export const SearchResultContainer = styled(Box, {
     isActive &&
     css`
       border-radius: ${theme.radius.md};
-      color: ${isSelected && theme.colors.brand[1]};
-      background-color: ${isSelected && theme.colors.brand[0]};
+      color: ${isSelected && theme.fn.themeColor("brand")};
+      background-color: ${isSelected && theme.fn.themeColor("brand-lighter")};
 
       ${ResultTitle} {
-        color: ${isSelected && theme.colors.brand[1]};
+        color: ${isSelected && theme.fn.themeColor("brand")};
       }
 
       &:hover {
-        background-color: ${theme.colors.brand[0]};
+        background-color: ${theme.fn.themeColor("brand-lighter")};
         cursor: pointer;
 
         ${ResultTitle} {
-          color: ${theme.colors.brand[1]};
+          color: ${theme.fn.themeColor("brand")};
         }
       }
 
       &:focus-within {
-        background-color: ${theme.colors.brand[0]};
+        background-color: ${theme.fn.themeColor("brand-lighter")};
       }
     `}
 `;

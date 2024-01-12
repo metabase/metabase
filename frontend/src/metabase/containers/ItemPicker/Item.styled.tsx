@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
 

@@ -1,5 +1,6 @@
 import type { Card, ParameterTarget } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
+import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
@@ -26,7 +27,9 @@ export function getParameterTargetField(
   question: Question,
 ) {
   if (isDimensionTarget(target)) {
-    const query = question.legacyQuery() as NativeQuery | StructuredQuery;
+    const query = question.legacyQuery({ useStructuredQuery: true }) as
+      | NativeQuery
+      | StructuredQuery;
     const dimension = Dimension.parseMBQL(target[1], metadata, query);
 
     return dimension?.field();
@@ -37,6 +40,10 @@ export function getParameterTargetField(
 
 export function buildDimensionTarget(dimension: Dimension) {
   return ["dimension", dimension.mbql()];
+}
+
+export function buildColumnTarget(column: Lib.ColumnMetadata) {
+  return ["dimension", Lib.legacyRef(column)];
 }
 
 export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {

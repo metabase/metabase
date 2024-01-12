@@ -1,7 +1,7 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import ObjectActionSelect from "./ObjectActionSelect";
 
 export default class SegmentItem extends Component {

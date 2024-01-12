@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";

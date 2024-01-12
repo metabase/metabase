@@ -34,8 +34,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
@@ -2858,29 +2856,29 @@
       [:model/Card          model     {:database_id (u/the-id db), :dataset true}
        :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
       (testing "Can't unpersist models without :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "card/%d/unpersist" (u/the-id model)))
           (is (= "persisted"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
       (testing "Can unpersist models with the :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{:cache-granular-controls}
+        (mt/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id model)))
           (is (= "off"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
       (testing "Can't re-persist models with the :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (mt/user-http-request :crowberto :post 402 (format "card/%d/persist" (u/the-id model)))
           (is (= "off"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel))))))
       (testing "Can re-persist models with the :cache-granular-controls feature flag enabled"
-        (premium-features-test/with-premium-features #{:cache-granular-controls}
+        (mt/with-premium-features #{:cache-granular-controls}
           (mt/user-http-request :crowberto :post 204 (format "card/%d/persist" (u/the-id model)))
           (is (= "creating"
                  (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id pmodel)))))))
     (t2.with-temp/with-temp
       [:model/Card          notmodel  {:database_id (u/the-id db), :dataset false}
        :model/PersistedInfo pnotmodel {:database_id (u/the-id db), :card_id (u/the-id notmodel)}]
-      (premium-features-test/with-premium-features #{:cache-granular-controls}
+      (mt/with-premium-features #{:cache-granular-controls}
         (testing "Allows unpersisting non-model cards"
           (mt/user-http-request :crowberto :post 204 (format "card/%d/unpersist" (u/the-id notmodel)))
           (is (= "off"
@@ -3181,10 +3179,10 @@
                                            uploads-table-prefix nil
                                            uploads-schema-name "PUBLIC"]
           (let [{:keys [status body]} (upload-example-csv-via-api!)]
-           (is (= 200
-                  status))
-           (is (= body
-                  (t2/select-one-pk :model/Card :database_id (mt/id)))))))
+            (is (= 200
+                   status))
+            (is (= body
+                   (t2/select-one-pk :model/Card :database_id (mt/id)))))))
       (testing "Failure paths return an appropriate status code and a message in the body"
         (mt/with-temporary-setting-values [uploads-enabled true
                                            uploads-database-id nil

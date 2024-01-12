@@ -78,6 +78,16 @@ Return metadata for the 'virtual' table for a Card.
 
 *  **`id`** value must be an integer greater than zero.
 
+## `POST /api/table/:id/append-csv`
+
+Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
+
+*  **`raw-params`**
+
 ## `POST /api/table/:id/discard_values`
 
 Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If

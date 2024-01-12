@@ -2,7 +2,7 @@
 import PropTypes from "prop-types";
 
 import cx from "classnames";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import S from "./LabelIcon.css";
 
 const LabelIcon = ({ icon, size = 16, className, style }) =>

@@ -10,7 +10,7 @@ import { getFullName } from "metabase/lib/user";
 import * as Urls from "metabase/lib/urls";
 import { useSelector } from "metabase/lib/redux";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import UserAvatar from "metabase/components/UserAvatar";
 import LoadingSpinner from "metabase/components/LoadingSpinner";

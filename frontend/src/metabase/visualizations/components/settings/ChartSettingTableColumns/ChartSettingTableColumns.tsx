@@ -31,7 +31,7 @@ export const ChartSettingTableColumns = ({
   const handleChange = useCallback(
     (newValue: TableColumnOrderSetting[], newQuery?: Lib.Query) => {
       if (newQuery) {
-        onChange(newValue, question?._setMLv2Query(newQuery));
+        onChange(newValue, question?.setQuery(newQuery));
       } else {
         onChange(newValue);
       }
