@@ -17,7 +17,7 @@ import {
   FunctionHelpCode,
   FunctionHelpCodeArgument,
   LearnMoreIcon,
-} from "../ExpressionEditorHelpText/ExpressionEditorHelpText.styled";
+} from "./ExpressionEditorHelpText.styled";
 
 export interface ExpressionEditorHelpTextProps {
   helpText: HelpText | null | undefined;
