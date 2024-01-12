@@ -40,10 +40,9 @@ export const InputContainer = styled.label<InputContainerProps>`
 `;
 
 export const DefaultParameterValueWidget = styled(ParameterValueWidget)`
-  padding: 0.5rem;
-  font-weight: 700;
+  padding: 0.6875rem;
   color: ${color("text-medium")};
-  border-radius: 0.5rem;
+  border-radius: 4px;
   background-color: ${color("white")};
-  border: 2px solid ${color("border")};
+  border: 1px solid ${color("border")};
 `;

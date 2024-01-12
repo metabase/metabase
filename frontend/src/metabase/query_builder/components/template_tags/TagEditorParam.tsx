@@ -160,7 +160,7 @@ class TagEditorParamInner extends Component<Props> {
     }
   }
 
-  setDimension(fieldId: FieldId) {
+  setDimension = (fieldId: FieldId) => {
     const { tag, setTemplateTag, metadata } = this.props;
 
     // TODO Fix raw MBQL usage
@@ -183,7 +183,7 @@ class TagEditorParamInner extends Component<Props> {
         options: getDefaultParameterOptions(newTag),
       });
     }
-  }
+  };
 
   getFilterWidgetTypeValue = (tag: TemplateTag) => {
     // avoid `undefined` value because it makes the component "uncontrollable"
@@ -272,9 +272,7 @@ class TagEditorParamInner extends Component<Props> {
                     selectedFieldId={
                       hasSelectedDimensionField ? tag?.dimension?.[1] : null
                     }
-                    setFieldFn={(fieldId: FieldId) =>
-                      this.setDimension(fieldId)
-                    }
+                    setFieldFn={this.setDimension}
                     className="AdminSelect flex align-center"
                     isInitiallyOpen={!tag.dimension}
                     triggerIconSize={12}
@@ -351,7 +349,7 @@ class TagEditorParamInner extends Component<Props> {
             </ContainerLabel>
 
             <TextInputBlurChange
-              id="tag-editor-display-name"
+              id={`tag-editor-display-name_${tag.name}`}
               value={tag["display-name"]}
               onBlurChange={e =>
                 this.setParameterAttribute("display-name", e.target.value)
@@ -423,6 +421,7 @@ class TagEditorParamInner extends Component<Props> {
               }}
               isEditing
               commitImmediately
+              className="fontNormal"
             />
           </InputContainer>
         )}

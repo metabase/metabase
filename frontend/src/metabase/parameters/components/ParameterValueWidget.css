@@ -4,6 +4,10 @@
   min-height: 30px;
   min-width: 150px;
   color: var(--color-text-medium);
+
+  &.fontNormal {
+    font-weight: 400;
+  }
 }
 
 :local(.nameInput) {
@@ -35,6 +39,10 @@
   font-weight: bold;
   color: var(--color-brand);
   border-color: var(--color-brand);
+
+  &.fontNormal {
+    font-weight: 400;
+  }
 }
 
 :local(.parameter) input {
@@ -54,11 +62,19 @@
       padding: 0;
     }
   }
+
+  &.fontNormal {
+    font-weight: 400;
+  }
 }
 
 :local(.parameter.noPopover.selected) input {
   font-weight: bold;
   color: var(--color-brand);
+
+  &.fontNormal {
+    font-weight: 400;
+  }
 }
 
 :local(.parameter.noPopover) input:focus {
