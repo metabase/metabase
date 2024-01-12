@@ -58,11 +58,12 @@ runs:
 
           branchDelta = 0;
           const match = currentBranchName.match(regexPattern);
+          
           if (match) {
             branchReleaseVersion = parseInt(match[2]);
             console.log(`Current Branch ${currentBranchName} release version is ${branchReleaseVersion}.`);
             branchDelta = latestReleaseBranchVersion - branchReleaseVersion
-          console.log(`Current Branch is ${branchDelta} versions behind current release.`);
+            console.log(`Current Branch is ${branchDelta} versions behind current release.`);
           } else {
             console.log(`Current Branch ${currentBranchName} is not a release branch.`);
           }
