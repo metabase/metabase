@@ -167,51 +167,6 @@
   [_setting]
   [:key])
 
-(def ^:private ^:dynamic *exported-settings*
-  '#{#_application-colors
-     application-favicon-url
-     application-font
-     application-font-files
-     application-logo-url
-     application-name
-     available-fonts
-     available-locales
-     available-timezones
-     breakout-bins-num
-     custom-formatting
-     custom-geojson
-     custom-geojson-enabled
-     enable-embedding
-     enable-nested-queries
-     enable-sandboxes?
-     enable-whitelabeling?
-     enable-xrays
-     hide-embed-branding?
-     humanization-strategy
-     landing-page
-     loading-message
-     aggregated-query-row-limit
-     unaggregated-query-row-limit
-     native-query-autocomplete-match-style
-     persisted-models-enabled
-     report-timezone
-     report-timezone-long
-     report-timezone-short
-     search-typeahead-enabled
-     show-homepage-data
-     show-homepage-pin-message
-     show-homepage-xrays
-     show-lighthouse-illustration
-     show-metabot
-     site-locale
-     site-name
-     source-address-header
-     start-of-week
-     subscription-allowed-domains
-     uploads-enabled
-     uploads-database-id
-     uploads-schema-name})
-
 (declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
@@ -1253,10 +1208,7 @@
   (some? (env-var-value setting)))
 
 (defn- export? [setting-name]
-  (u/or-with some?
-    (:export? (core/get @registered-settings (keyword setting-name)))
-    ;; deprecated, we want to move to always setting this explicitly in the defsetting declaration
-    (contains? *exported-settings* (symbol setting-name))))
+  (:export? (core/get @registered-settings (keyword setting-name))))
 
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
