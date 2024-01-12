@@ -5,8 +5,8 @@ import { t, ngettext, msgid } from "ttag";
 
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Fields from "metabase/entities/fields";
+import { getMetadata } from "metabase/selectors/metadata";
 import { formatNumber } from "metabase/lib/formatting";
-import Field from "metabase-lib/metadata/Field";
 
 import {
   NoWrap,
@@ -20,9 +20,10 @@ import {
 
 const propTypes = {
   className: PropTypes.string,
-  field: PropTypes.instanceOf(Field).isRequired,
+  field: PropTypes.object.isRequired,
   fieldValues: PropTypes.array,
   fetchFieldValues: PropTypes.func.isRequired,
+  hasListValues: PropTypes.bool,
   showAllFieldValues: PropTypes.bool,
 };
 
@@ -30,6 +31,8 @@ const FIELD_VALUES_SHOW_LIMIT = 35;
 
 const mapStateToProps = (state, props) => {
   const fieldId = props.field.id;
+  const metadata = getMetadata(state);
+  const field = metadata.field(fieldId);
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -38,6 +41,7 @@ const mapStateToProps = (state, props) => {
       : [];
   return {
     fieldValues: fieldValues || [],
+    hasListValues: field?.has_field_values === "list",
   };
 };
 
@@ -50,12 +54,12 @@ export function CategoryFingerprint({
   field,
   fieldValues = [],
   fetchFieldValues,
+  hasListValues,
   showAllFieldValues,
 }) {
   const fieldId = field.id;
-  const listsFieldValues = field.has_field_values === "list";
   const isMissingFieldValues = fieldValues.length === 0;
-  const shouldFetchFieldValues = listsFieldValues && isMissingFieldValues;
+  const shouldFetchFieldValues = hasListValues && isMissingFieldValues;
 
   const distinctCount = field.fingerprint?.global?.["distinct-count"];
   const formattedDistinctCount = formatNumber(distinctCount);
@@ -86,10 +90,12 @@ export function CategoryFingerprint({
               distinctCount || 0,
             )}
           </Fade>
-          <Fade
-            aria-hidden={!isLoading}
-            visible={isLoading}
-          >{t`Getting distinct values...`}</Fade>
+          {hasListValues && (
+            <Fade
+              aria-hidden={!isLoading}
+              visible={isLoading}
+            >{t`Getting distinct values...`}</Fade>
+          )}
         </RelativeContainer>
       )}
       {showFieldValuesBlock &&

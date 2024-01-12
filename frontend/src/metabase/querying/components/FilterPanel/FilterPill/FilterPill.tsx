@@ -1,7 +1,7 @@
 import type { HTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { FilterPillRoot } from "./FilterPill.styled";
 
 interface FilterPillProps extends HTMLAttributes<HTMLDivElement> {

@@ -69,7 +69,7 @@ const segment = checkNotNull(metadata.segment(SEGMENT_ID)).filterClause();
 const metric = checkNotNull(metadata.metric(METRIC_ID)).aggregationClause();
 
 const legacyQuery = checkNotNull(metadata.table(ORDERS_ID))
-  .legacyQuery()
+  .legacyQuery({ useStructuredQuery: true })
   .addExpression("foo", 42);
 
 // shared test cases used in compile, formatter, and syntax tests:

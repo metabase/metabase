@@ -5,7 +5,7 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 import {

@@ -22,7 +22,6 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.test]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -288,8 +287,8 @@
   (mt/test-driver :redshift
     (testing "Should filter out schemas for which the user has no perms"
       ;; create a random username and random schema name, and grant the user USAGE permission for it
-      (let [temp-username (u/lower-case-en (tu.random/random-name))
-            random-schema (u/lower-case-en (tu.random/random-name))
+      (let [temp-username (u/lower-case-en (mt/random-name))
+            random-schema (u/lower-case-en (mt/random-name))
             user-pw       "Password1234"
             db-det        (:details (mt/db))]
         (execute! (str "CREATE SCHEMA %s;"

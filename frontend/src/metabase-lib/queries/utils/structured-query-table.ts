@@ -1,35 +1,40 @@
 import type { FieldReference } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
+import type Question from "metabase-lib/Question";
 
 import type StructuredQuery from "../StructuredQuery";
 import { createVirtualTable, createVirtualField } from "./virtual-table";
 import { getDatasetTable, getNestedCardTable } from "./nested-card-query-table";
 
-export function getStructuredQueryTable(query: StructuredQuery): Table | null {
-  const sourceQuery = query.sourceQuery();
+export function getStructuredQueryTable(
+  question: Question,
+  legacyQuery: StructuredQuery,
+): Table | null {
+  const sourceQuery = legacyQuery.sourceQuery();
   // 1. Query has a source query. Use the source query as a table.
   if (sourceQuery) {
-    return getSourceQueryTable(query);
+    return getSourceQueryTable(question, legacyQuery);
   }
 
   // 2. Query has a source table that is a nested card.
-  const sourceTableId = query.sourceTableId();
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
   if (isVirtualCardId(sourceTableId)) {
-    return getNestedCardTable(query);
+    return getNestedCardTable(question);
   }
 
   // 3. The query's question is a saved dataset.
-  const question = query.question();
-  const isDataset = question?.isDataset() && question.isSaved();
+  const isDataset = question.isDataset() && question.isSaved();
   if (isDataset) {
-    return getDatasetTable(query);
+    return getDatasetTable(legacyQuery);
   }
 
   // 4. The query's table is a concrete table, assuming one exists in `metadata`.
   // Failure to find a table at this point indicates that there is a bug.
-  return query.metadata().table(sourceTableId);
+  return legacyQuery.metadata().table(sourceTableId);
 }
 
 function getFieldsForSourceQueryTable(
@@ -59,14 +64,22 @@ function getFieldsForSourceQueryTable(
   });
 }
 
-function getSourceQueryTable(query: StructuredQuery): Table {
-  const sourceQuery = query.sourceQuery() as StructuredQuery;
-  const fields = getFieldsForSourceQueryTable(query, sourceQuery);
-  const sourceTableId = sourceQuery.sourceTableId() as Table["id"];
+function getSourceQueryTable(
+  question: Question,
+  legacyQuery: StructuredQuery,
+): Table | null {
+  const sourceQuery = legacyQuery.sourceQuery() as StructuredQuery;
+  const fields = getFieldsForSourceQueryTable(legacyQuery, sourceQuery);
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+
+  if (!sourceTableId) {
+    return null;
+  }
 
   return createVirtualTable({
     id: sourceTableId,
-    db: sourceQuery.database() ?? undefined,
+    db: question.database() ?? undefined,
     fields,
     metadata: sourceQuery.metadata(),
     // intentionally set these to "" so that we fallback to a title of "Previous results" in join steps

@@ -16,8 +16,6 @@
             User]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -342,7 +340,7 @@
 
       (when config/ee-available?
         (testing "with :advanced-permissions feature flag"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
+          (mt/with-premium-features #{:advanced-permissions}
             (testing "for All Users"
               (let [group-id (:id (perms-group/all-users))]
                 (mt/user-http-request
@@ -376,7 +374,7 @@
 
         (when config/ee-available?
           (testing "with :advanced-permissions feature flag"
-            (premium-features-test/with-premium-features #{:advanced-permissions}
+            (mt/with-premium-features #{:advanced-permissions}
               (testing "for All Users"
                 (mt/user-http-request
                  :crowberto :put 200 "permissions/execution/graph"

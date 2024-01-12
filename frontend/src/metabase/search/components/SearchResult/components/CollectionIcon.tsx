@@ -1,4 +1,4 @@
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { DEFAULT_ICON_SIZE } from "metabase/search/components/SearchResult/components";

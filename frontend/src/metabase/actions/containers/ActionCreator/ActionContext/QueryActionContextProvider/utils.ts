@@ -62,7 +62,7 @@ export const setTemplateTagTypesFromFieldSettings = (
       ...tag,
       type: getTagTypeFromFieldSettings(fieldType),
     };
-    tempQuestion = tempQuestion.setQuery(
+    tempQuestion = tempQuestion.setLegacyQuery(
       currentQuery.setTemplateTag(tag.name, nextTag),
     );
   });
