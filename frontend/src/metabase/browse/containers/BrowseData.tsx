@@ -1,58 +1,40 @@
 import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import type { Card, Collection, SearchResult, User } from "metabase-types/api";
+import type { Card, User } from "metabase-types/api";
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
-import type { default as IDatabase } from "metabase-lib/metadata/Database";
-import { Divider, Flex, Tabs } from "metabase/ui";
+import { Divider, Flex, Tabs, Icon } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import { Grid } from "metabase/components/Grid";
-import { Icon } from "metabase/ui";
+
 import Link from "metabase/core/components/Link";
 
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+import Users from "metabase/entities/users";
+import { getFullName } from "metabase/lib/user";
+import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
   DatabaseGridItem,
   ModelCard,
   ModelGridItem,
 } from "./BrowseData.styled";
-import type { WrappedEntity } from "metabase-types/entities";
-import Users from "metabase/entities/users";
-import Collections from "metabase/entities/collections/collections";
 
 interface BrowseDataTab {
   label: string;
   component: JSX.Element;
 }
 
-
-const ModelsTab = ({
-  models,
-  collections,
-  users,
-}: {
-  models: Card[];
-  collections: Collection[];
-  users?: User[];
-}) => {
-
-  console.log('models', models);
+const ModelsTab = ({ models }: { models: Card[] }) => {
   return (
     <Grid>
       {models.map((model: Card) => {
-        {/* console.log("model.creator", model.creator); */}
-        {/* const matchingUsers = users?.filter( */}
-        {/*   ({ id }) => id === model.creator?.id, */}
-        {/* ); */}
-        {/* console.log("matchingUsers", matchingUsers); */}
-        {/* const user = matchingUsers?.length ? matchingUsers[0] : null; */}
         return (
           <ModelGridItem key={model.id}>
             <Link
@@ -65,7 +47,9 @@ const ModelsTab = ({
                 {model.description && (
                   <p className="text-wrap">{model.description} </p>
                 )}
-                {user && user.first_name}
+                {model.creator && getFullName(model.creator)}
+                &nbsp;
+                {model.last_edited_at}
               </ModelCard>
             </Link>
           </ModelGridItem>
@@ -121,7 +105,6 @@ const BrowseDataPage = ({
   //   getUrl: () => "to be determined",
   // });
   // const exampleModels = Array.from(Array(20).keys()).map(createExampleModel);
-  console.log("users", users);
 
   const tabs: BrowseDataTab[] = [
     { label: "Models", component: <ModelsTab models={models} users={users} /> },
