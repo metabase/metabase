@@ -506,7 +506,6 @@
                  (validate-help-url new-value-string)
                  (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
 
-
 (defsetting show-metabase-links
   (deferred-tru
    (str
