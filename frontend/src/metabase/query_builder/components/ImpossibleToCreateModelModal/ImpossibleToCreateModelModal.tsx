@@ -21,7 +21,10 @@ function SQLSnippetsDocLink() {
 
 function ReferencingQuestionsDocLink() {
   const href = useSelector(state =>
-    getDocsUrl(state, { page: "questions/native-editor/sql-snippets" }),
+    getDocsUrl(state, {
+      page: "questions/native-editor/referencing-saved-questions-in-queries",
+      anchor: "referencing-models-and-saved-questions",
+    }),
   );
   return (
     <ExternalLink

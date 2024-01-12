@@ -16,11 +16,9 @@ describe("ImpossibleToCreateModelModal (OSS)", () => {
       name: "reference the results of another saved question",
     });
     expect(referenceLink).toBeInTheDocument();
-    // TODO: Change this link or remove this comment once the discussion is over.
-    // Discussion: https://metaboat.slack.com/archives/C01LQQ2UW03/p1704975076876289
     expect(referenceLink).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/native-editor/sql-snippets.html",
+      "https://www.metabase.com/docs/latest/questions/native-editor/referencing-saved-questions-in-queries.html#referencing-models-and-saved-questions",
     );
   });
 
@@ -38,11 +36,9 @@ describe("ImpossibleToCreateModelModal (OSS)", () => {
       name: "reference the results of another saved question",
     });
     expect(referenceLink).toBeInTheDocument();
-    // TODO: Change this link or remove this comment once the discussion is over.
-    // Discussion: https://metaboat.slack.com/archives/C01LQQ2UW03/p1704975076876289
     expect(referenceLink).toHaveProperty(
       "href",
-      "https://www.metabase.com/docs/latest/questions/native-editor/sql-snippets.html",
+      "https://www.metabase.com/docs/latest/questions/native-editor/referencing-saved-questions-in-queries.html#referencing-models-and-saved-questions",
     );
   });
 });
