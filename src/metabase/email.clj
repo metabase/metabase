@@ -162,9 +162,9 @@
     (catch Throwable e
       (prometheus/inc :metabase-email/message-errors)
       (when (not= :smtp-host-not-set (:cause (ex-data e)))
-        (throw e))))
+        (throw e)))
     (finally
-      (prometheus/inc :metabase-email/messages)))
+      (prometheus/inc :metabase-email/messages))))
 
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
