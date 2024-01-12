@@ -5,6 +5,7 @@ import { t } from "ttag";
 import * as Lib from "metabase-lib";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
@@ -553,16 +554,6 @@ export const CHANGE_ARROW_ICONS = {
   ARROW_DOWN: "arrow_down",
 };
 
-const formatChange = (
-  change,
-  { formatValue, maximumFractionDigits = 2 } = {},
-) => {
-  const n = Math.abs(change);
-  return n === Infinity
-    ? "∞%"
-    : formatValue(n, { number_style: "percent", maximumFractionDigits });
-};
-
 function computeChangeTypeWithOptions({
   comparisonValue,
   formatOptions,
@@ -591,7 +582,7 @@ function computeChangeTypeWithOptions({
       percentChange < 0
         ? CHANGE_ARROW_ICONS.ARROW_DOWN
         : CHANGE_ARROW_ICONS.ARROW_UP,
-    percentChangeStr: formatChange(percentChange, { formatValue }),
+    percentChangeStr: formatChange(percentChange),
     comparisonValueStr: formatValue(comparisonValue, formatOptions),
   };
 }
