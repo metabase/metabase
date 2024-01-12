@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase.models :refer [Card Collection Dashboard]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
@@ -54,10 +53,10 @@
   (testing "Serialization API export"
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
       (testing "Should require a token with `:serialization`"
-        (premium-features-test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))
-      (premium-features-test/with-premium-features #{:serialization}
+      (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/with-empty-h2-app-db
             (mt/with-temp [Collection    coll  {}
@@ -107,7 +106,7 @@
 (deftest export-import-test
   (testing "Serialization API e2e"
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
-      (premium-features-test/with-premium-features #{:serialization}
+      (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
           (mt/test-helpers-set-global-values!
             (mt/with-temp [Collection coll  {}
