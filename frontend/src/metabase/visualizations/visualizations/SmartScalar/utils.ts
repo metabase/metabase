@@ -108,7 +108,7 @@ export const COMPARISON_SELECTOR_OPTIONS = {
 export function getDefaultComparison(
   series: RawSeries,
   settings: VisualizationSettings,
-) {
+): SmartScalarComparison[] {
   const [
     {
       data: { insights },
@@ -123,9 +123,7 @@ export function getDefaultComparison(
     return [
       {
         id: uuid(),
-        ...createComparisonMenuOption({
-          type: COMPARISON_TYPES.PREVIOUS_VALUE,
-        }),
+        type: COMPARISON_TYPES.PREVIOUS_VALUE,
       },
     ];
   }
@@ -133,10 +131,7 @@ export function getDefaultComparison(
   return [
     {
       id: uuid(),
-      ...createComparisonMenuOption({
-        type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-        dateUnit,
-      }),
+      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
     },
   ];
 }
