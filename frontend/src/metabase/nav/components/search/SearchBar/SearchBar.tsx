@@ -138,11 +138,11 @@ function SearchBarView({ location, onSearchActive, onSearchInactive }: Props) {
   }, [previousLocation, location]);
 
   useEffect(() => {
-    if (previousLocation !== location) {
+    if (previousLocation?.pathname !== location.pathname) {
       // deactivate search when page changes
       setInactive();
     }
-  }, [previousLocation, location, setInactive]);
+  }, [previousLocation?.pathname, location.pathname, setInactive]);
 
   const goToSearchApp = useCallback(() => {
     const shouldPersistFilters = isSearchPageLocation(previousLocation);
