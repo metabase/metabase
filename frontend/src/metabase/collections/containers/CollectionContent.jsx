@@ -226,7 +226,6 @@ function CollectionContent({
     sort_direction: "asc",
   };
 
-  console.log('pinnedQuery', pinnedQuery);
   return (
     <Search.ListLoader
       query={pinnedQuery}
