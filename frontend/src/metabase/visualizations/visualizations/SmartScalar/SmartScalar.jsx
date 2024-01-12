@@ -78,7 +78,11 @@ export function SmartScalar({
 
   const insights = rawSeries?.[0].data?.insights;
   const trend = useMemo(
-    () => computeTrend(series, insights, settings, { color, formatValue }),
+    () =>
+      computeTrend(series, insights, settings, {
+        formatValue,
+        getColor: color,
+      }),
     [series, insights, settings],
   );
   if (trend == null) {

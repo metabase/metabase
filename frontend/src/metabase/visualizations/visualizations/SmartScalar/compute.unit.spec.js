@@ -16,7 +16,7 @@ import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
 
 const computeTrend = (...args) =>
-  _computeTrend(...args, { color, formatValue });
+  _computeTrend(...args, { formatValue, getColor: color });
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {

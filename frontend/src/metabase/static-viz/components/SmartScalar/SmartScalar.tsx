@@ -24,7 +24,7 @@ export function SmartScalar({
 
   const trend = computeTrend(rawSeries, insights, settings, {
     formatValue,
-    color: getColor,
+    getColor,
   });
 
   if (!trend) {

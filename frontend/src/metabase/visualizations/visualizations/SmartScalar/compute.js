@@ -13,7 +13,7 @@ export function computeTrend(
   series,
   insights,
   settings,
-  { formatValue, color },
+  { formatValue, getColor },
 ) {
   const comparisons = settings["scalar.comparisons"] || [];
   const currentMetricData = getCurrentMetricData({
@@ -47,7 +47,7 @@ export function computeTrend(
         series,
         settings,
         formatValue,
-        color,
+        getColor,
       }),
     ),
   };
@@ -59,7 +59,7 @@ function buildComparisonObject({
   series,
   settings,
   formatValue,
-  color,
+  getColor,
 }) {
   const { formatOptions, value } = currentMetricData;
 
@@ -91,7 +91,7 @@ function buildComparisonObject({
     ? getArrowColor(
         changeArrowIconName,
         settings["scalar.switch_positive_negative"],
-        { color },
+        { getColor },
       )
     : undefined;
 
@@ -590,16 +590,16 @@ function computeChangeTypeWithOptions({
 function getArrowColor(
   changeArrowIconName,
   shouldSwitchPositiveNegative,
-  { color },
+  { getColor },
 ) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: color("success"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: color("error"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: color("error"),
-        [CHANGE_ARROW_ICONS.ARROW_UP]: color("success"),
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
       };
 
   return arrowIconColorNames[changeArrowIconName];
