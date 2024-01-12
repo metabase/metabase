@@ -7,6 +7,7 @@ import {
   computeTrend,
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
+import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { ArrowDown, ArrowUp } from "./icons";
 import { computeSmartScalarSettings } from "./settings";
 
@@ -137,16 +138,4 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       </span>
     </span>
   );
-}
-
-function formatChange(change: number) {
-  const n = Math.abs(change);
-  if (n === Infinity) {
-    return "∞%";
-  }
-  const percent = n * 100;
-  const rounded = Number.isInteger(percent)
-    ? percent
-    : Number(percent.toFixed(2));
-  return `${rounded.toLocaleString()}%`;
 }
