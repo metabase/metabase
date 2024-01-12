@@ -139,7 +139,7 @@
   (when-not (and (email/email-smtp-port) (email/email-smtp-host))
     {:status 400
      :body   "Wrong host or port"})
-  (let [response (email/send-message!
+  (let [response (email/send-message-or-throw!
                   {:subject      "Metabase Test Email"
                    :recipients   [(:email @api/*current-user*)]
                    :message-type :text

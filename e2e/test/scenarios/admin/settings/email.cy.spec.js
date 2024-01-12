@@ -103,13 +103,13 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-reply-to": ["reply-to@metabase.test"],
       "email-smtp-host": "localhost",
       "email-smtp-password": null,
-      "email-smtp-port": null,
+      "email-smtp-port": "1234",
       "email-smtp-security": "none",
       "email-smtp-username": null,
     });
     cy.visit("/admin/settings/email/smtp");
     main().findByText("Send test email").click();
-    cy.findAllByText("Wrong host or port").should("have.length", 2);
+    cy.findAllByText("Couldn't connect to host, port").should("have.length", 1);
   });
 
   it(
