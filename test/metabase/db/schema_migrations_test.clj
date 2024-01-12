@@ -29,7 +29,6 @@
             User]]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util.random :as tu.random]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]))
 
@@ -60,8 +59,8 @@
   [email]
   (first (t2/insert-returning-instances! (t2/table-name User)
                                          :email        email
-                                         :first_name   (tu.random/random-name)
-                                         :last_name    (tu.random/random-name)
+                                         :first_name   (mt/random-name)
+                                         :last_name    (mt/random-name)
                                          :password     (str (random-uuid))
                                          :date_joined  :%now
                                          :is_active    true
@@ -367,7 +366,7 @@
 
 (deftest migrate-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-031" "v47.00-032"] [migrate!]
-    (let [user         (create-raw-user! (tu.random/random-email))
+    (let [user         (create-raw-user! (mt/random-email))
           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
                                                                           :creator_id (:id user)}))
           ;; this layout is from magic dashboard for order table
@@ -459,7 +458,7 @@
 (deftest add-revision-most-recent-test
   (testing "Migrations v48.00-008-v48.00-009: add `revision.most_recent`"
     (impl/test-migrations ["v48.00-007"] [migrate!]
-      (let [user-id          (:id (create-raw-user! (tu.random/random-email)))
+      (let [user-id          (:id (create-raw-user! (mt/random-email)))
             old              (t/minus (t/local-date-time) (t/hours 1))
             rev-dash-1-old (first (t2/insert-returning-pks! (t2/table-name :model/Revision)
                                                             {:model       "dashboard"
@@ -723,7 +722,7 @@
 (deftest remove-legacy-pulse-tests
   (testing "v49.00-000"
     (impl/test-migrations "v49.00-000" [migrate!]
-      (let [user-id (:id (create-raw-user! (tu.random/random-email)))
+      (let [user-id (:id (create-raw-user! (mt/random-email)))
             alert-id (first (t2/insert-returning-pks! :pulse {:name            "An Alert"
                                                               :creator_id      user-id
                                                               :dashboard_id    nil

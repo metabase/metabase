@@ -639,25 +639,45 @@
 
 (defn- canonicalize-mbql-clauses
   "Walk an `mbql-query` an canonicalize non-top-level clauses like `:fk->`."
-  [mbql-query]
-  (walk/prewalk
-   (fn [x]
-     (cond
-       (map? x)
-       (m/map-vals canonicalize-mbql-clauses x)
+  [form]
+  (cond
+    ;; Special handling for records so that they are not converted into plain maps.
+    ;; Only the values are canonicalized.
+    (record? form)
+    (reduce-kv (fn [r k x] (assoc r k (canonicalize-mbql-clauses x))) form form)
 
-       (not (mbql-clause? x))
-       x
+    ;; Only the values are canonicalized.
+    (map? form)
+    (update-vals form canonicalize-mbql-clauses)
 
-       :else
-       (try
-         (canonicalize-mbql-clause x)
-         (catch #?(:clj Throwable :cljs js/Error) e
-           (log/error (i18n/tru "Invalid clause:") x)
-           (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
-                           {:clause x}
-                           e))))))
-   mbql-query))
+    (mbql-clause? form)
+    (let [top-canonical
+          (try
+            (canonicalize-mbql-clause form)
+            (catch #?(:clj Throwable :cljs js/Error) e
+              (log/error (i18n/tru "Invalid clause:") form)
+              (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
+                              {:clause form}
+                              e))))]
+      ;; Canonical clauses are assumed to be sequential things conj'd at the end.
+      ;; In fact, they should better be vectors.
+      (if (seq top-canonical)
+        (into (conj (empty top-canonical) (first top-canonical))
+              (map canonicalize-mbql-clauses)
+              (rest top-canonical))
+        top-canonical))
+
+    ;; ISeq instances (e.g., list and lazy sequences) are converted to vectors.
+    (seq? form)
+    (mapv canonicalize-mbql-clauses form)
+
+    ;; Other collections (e.g., vectors, sets, and queues) are assumed to be conj'd at the end
+    ;; and we keep their types.
+    (coll? form)
+    (into (empty form) (map canonicalize-mbql-clauses) form)
+
+    :else
+    form))
 
 (defn- wrap-single-aggregations
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
@@ -764,6 +784,12 @@
       (dissoc :source-metadata)
       (assoc-in [:query :source-metadata] source-metadata)))
 
+(defn- canonicalize-mbql-clauses-excluding-native
+  [{:keys [native] :as outer-query}]
+  (if native
+    (-> outer-query (dissoc :native) canonicalize-mbql-clauses (assoc :native native))
+    (canonicalize-mbql-clauses outer-query)))
+
 (defn- canonicalize
   "Canonicalize a query [MBQL query], rewriting the query as if you perfectly followed the recommended style guides for
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
@@ -774,7 +800,7 @@
       query           (update :query canonicalize-inner-mbql-query)
       parameters      (update :parameters (partial mapv canonicalize-mbql-clauses))
       native          (update :native canonicalize-native-query)
-      true            canonicalize-mbql-clauses)
+      true            canonicalize-mbql-clauses-excluding-native)
     (catch #?(:clj Throwable :cljs js/Error) e
       (throw (ex-info (i18n/tru "Error canonicalizing query: {0}" (ex-message e))
                       {:query query}

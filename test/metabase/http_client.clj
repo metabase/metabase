@@ -22,10 +22,11 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.schema :as ms]
+   [peridot.multipart]
    [ring.util.codec :as codec])
   (:import
-   (metabase.async.streaming_response StreamingResponse)
-   (java.io InputStream)))
+   (java.io ByteArrayInputStream InputStream)
+   (metabase.async.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,6 +63,22 @@
          url
          (when (seq query-parameters)
            (str "?" (build-query-string query-parameters))))))
+
+(defn- build-body-params [http-body content-type]
+  (when http-body
+    (cond
+      (string? http-body)
+      {:body (ByteArrayInputStream. (.getBytes ^String http-body "UTF-8"))}
+
+      (= "application/json" content-type)
+      {:body (ByteArrayInputStream. (.getBytes (json/generate-string http-body) "UTF-8"))}
+
+      (= "multipart/form-data" content-type)
+      (peridot.multipart/build http-body)
+
+      :else
+      (throw (ex-info "If you want this content-type to work, improve me"
+                      {:content-type content-type})))))
 
 ;;; parse-response
 
@@ -153,18 +170,21 @@
 (defn build-request-map
   "Build the request map we ultimately pass to [[clj-http.client]]. Add user credential headers, specify JSON encoding,
   and encode body as JSON."
-  [credentials http-body]
-  (merge
-   {:accept       :json
-    :headers      {@#'mw.session/metabase-session-header
-                   (when credentials
-                     (if (map? credentials)
-                       (authenticate credentials)
-                       credentials))}
-    :cookie-policy :standard
-    :content-type :json}
-   (when (seq http-body)
-     {:body (json/generate-string http-body)})))
+  [credentials http-body request-options]
+  (let [content-type (or (get-in request-options [:headers "content-type"]) "application/json")]
+    (m/deep-merge
+     {:accept        :json
+      :headers       {"content-type" content-type
+                      @#'mw.session/metabase-session-header
+                      (when credentials
+                        (if (map? credentials)
+                          (authenticate credentials)
+                          credentials))}
+      :cookie-policy :standard}
+     request-options
+     (-> (build-body-params http-body content-type)
+         ;; IDK why but apache http throws on seeing content-length header
+         (m/update-existing :headers dissoc "content-length")))))
 
 (defn- check-status-code
   "If an `expected-status-code` was passed to the client, check that the actual status code matches, or throw an
@@ -210,7 +230,7 @@
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
   (let [http-body   (test-runner.assert-exprs/derecordize http-body)
-        request-map (merge (build-request-map credentials http-body) request-options)
+        request-map (build-request-map credentials http-body request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
         method-name (u/upper-case-en (name method))
@@ -248,7 +268,7 @@
   (update resp :body
           (fn [body]
             (cond
-             ;; read the text respone
+             ;; read the text response
              (instance? InputStream body)
              (with-open [r (io/reader body)]
                (slurp r))
@@ -266,7 +286,7 @@
 
 (defn- build-mock-request
   [{:keys [query-parameters url credentials http-body method request-options]}]
-  (let [http-body   (test-runner.assert-exprs/derecordize http-body)
+  (let [http-body        (test-runner.assert-exprs/derecordize http-body)
         query-parameters (merge
                           query-parameters
                           ;; sometimes we include the param in the URL(even though we shouldn't)
@@ -277,27 +297,22 @@
                                   (some-> (java.net.URI. url)
                                           .getRawQuery
                                           (str/split #"&"))))
-        url             (cond->> (first (str/split url #"\?")) ;; strip out the query param parts if any
-                          (not= (first url) \/)
-                          (str "/"))]
-    (-> (merge
-         {:accept         "json"
-          :headers        {"content-type" "application/json"
-                           @#'mw.session/metabase-session-header (when credentials
-                                                                   (if (map? credentials)
-                                                                     (authenticate credentials)
-                                                                     credentials))}
-          :query-string   (build-query-string query-parameters)
-          :request-method method
-          :uri            (str *url-prefix* url)}
-         (when (seq http-body)
-           {:body http-body})
-         request-options)
-        (m/update-existing :body (fn [http-body]
-                                   (java.io.ByteArrayInputStream.
-                                    (.getBytes (if (string? http-body)
-                                                 ^String http-body
-                                                 (json/generate-string http-body)))))))))
+        url              (cond->> (first (str/split url #"\?")) ;; strip out the query param parts if any
+                           (not= (first url) \/)
+                           (str "/"))
+        content-type     (get-in request-options [:headers "content-type"] "application/json")]
+    (m/deep-merge
+     {:accept         "json"
+      :headers        {"content-type"                        content-type
+                       @#'mw.session/metabase-session-header (when credentials
+                                                               (if (map? credentials)
+                                                                 (authenticate credentials)
+                                                                 credentials))}
+      :query-string   (build-query-string query-parameters)
+      :request-method method
+      :uri            (str *url-prefix* url)}
+     request-options
+     (build-body-params http-body content-type))))
 
 (mu/defn ^:private -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them

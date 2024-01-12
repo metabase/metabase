@@ -48,6 +48,7 @@ export function ClickBehaviorSidebarContent({
     if (clickBehavior) {
       return clickBehavior;
     }
+    // drill-through menu
     return { type: "actionMenu" };
   }, [clickBehavior]);
 
@@ -65,7 +66,7 @@ export function ClickBehaviorSidebarContent({
     );
   }
 
-  if (isTypeSelectorVisible) {
+  if (isTypeSelectorVisible || finalClickBehavior.type === "actionMenu") {
     return (
       <SidebarContent>
         <TypeSelector

@@ -4,13 +4,11 @@ import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   createSampleDatabase,
-  PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
+  PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import Dimension from "metabase-lib/Dimension";
-
-import { DimensionInfo } from "./DimensionInfo";
+import { FieldInfo } from "./FieldInfo";
 
 const state = createMockState({
   entities: createMockEntitiesState({
@@ -20,39 +18,31 @@ const state = createMockState({
 
 const metadata = getMetadata(state);
 
-const fieldDimension = Dimension.parseMBQL(
-  ["field", PRODUCTS.CATEGORY, null],
-  metadata,
-);
-
-const expressionDimension = Dimension.parseMBQL(
-  ["expression", "Hello World"],
-  metadata,
-);
-
-function setup(dimension) {
+function setup(field) {
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES]);
-  return renderWithProviders(<DimensionInfo dimension={dimension} />, {
+  return renderWithProviders(<FieldInfo field={field} />, {
     storeInitialState: state,
   });
 }
 
-describe("DimensionInfo", () => {
+describe("FieldInfo", () => {
   it("should show the given dimension's semantic type name", async () => {
-    setup(fieldDimension);
+    const field = metadata.field(PRODUCTS.CATEGORY);
+    setup(field);
 
     expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 
   it("should display the given dimension's description", async () => {
     const field = metadata.field(PRODUCTS.CATEGORY);
-    setup(fieldDimension);
+    setup(field);
 
     expect(await screen.findByText(field.description)).toBeInTheDocument();
   });
 
   it("should show a placeholder for a dimension with no description", () => {
-    setup(expressionDimension);
+    const field = metadata.field(PRODUCTS.CREATED_AT);
+    setup(field);
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });
