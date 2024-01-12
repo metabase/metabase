@@ -323,7 +323,11 @@
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))
+
+   ;; TODO: make this required and deprecate setting/exported-setting
+   (s/optional-key :export?)     s/Bool ; should this setting be serialized?
+   })
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
