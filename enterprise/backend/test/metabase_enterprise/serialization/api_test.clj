@@ -116,7 +116,7 @@
                     files* (atom [])
                     ;; to avoid input stream closure
                     ba     (#'api.serialization/ba-copy (io/input-stream res))]
-                (log/warn "got some byte array" (count ba) ba)
+                (throw (ex-info  "Wtf is going on" {:ba (slurp ba)}))
                 (with-open [tar (open-tar ba)]
                   (doseq [^TarArchiveEntry e (u.compress/entries tar)]
                     (when (.isFile e)
