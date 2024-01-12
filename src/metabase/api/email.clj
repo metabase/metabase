@@ -136,6 +136,9 @@
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
   (validation/check-has-application-permission :setting)
+  (when-not (and (email/email-smtp-port) (email/email-smtp-host))
+    {:status 400
+     :body   "Wrong host or port"})
   (let [response (email/send-message!
                   {:subject      "Metabase Test Email"
                    :recipients   [(:email @api/*current-user*)]

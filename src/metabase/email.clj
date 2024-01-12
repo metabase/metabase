@@ -161,7 +161,8 @@
                       {:reply-to reply-to}))))
     (catch Throwable e
       (prometheus/inc :metabase-email/message-errors)
-      (throw e))
+      (when (not= :smtp-host-not-set (:cause (ex-data e)))
+        (throw e))))
     (finally
       (prometheus/inc :metabase-email/messages))))
 

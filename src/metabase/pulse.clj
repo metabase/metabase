@@ -540,15 +540,11 @@
 (defmethod send-notification! :email
   [emails]
   (doseq [{:keys [subject recipients message-type message]} emails]
-    (try
-      (email/send-message-or-throw! {:subject      subject
-                                     :recipients   recipients
-                                     :message-type message-type
-                                     :message      message
-                                     :bcc?         (email/bcc-enabled?)})
-      (catch ExceptionInfo e
-        (when (not= :smtp-host-not-set (:cause (ex-data e)))
-          (throw e))))))
+    (email/send-message-or-throw! {:subject      subject
+                                   :recipients   recipients
+                                   :message-type message-type
+                                   :message      message
+                                   :bcc?         (email/bcc-enabled?)})))
 
 (defn- send-notification-retrying!
   "Like [[send-notification!]] but retries sending on errors according to the retry settings."
