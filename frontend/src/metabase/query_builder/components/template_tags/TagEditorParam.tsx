@@ -235,7 +235,7 @@ class TagEditorParamInner extends Component<Props> {
             onChange={this.setType}
           />
 
-          {/* <Select
+          {/* <DeprecatedSelect
             value={tag.type}
             onChange={(e: SelectChangeEvent<TemplateTagType>) =>
               this.setType(e.target.value)
@@ -244,11 +244,11 @@ class TagEditorParamInner extends Component<Props> {
             placeholder={t`Select…`}
             height={300}
           >
-            <Option value="text">{t`Text`}</Option>
-            <Option value="number">{t`Number`}</Option>
-            <Option value="date">{t`Date`}</Option>
-            <Option value="dimension">{t`Field Filter`}</Option>
-          </Select> */}
+            <DeprecatedOption value="text">{t`Text`}</DeprecatedOption>
+            <DeprecatedOption value="number">{t`Number`}</DeprecatedOption>
+            <DeprecatedOption value="date">{t`Date`}</DeprecatedOption>
+            <DeprecatedOption value="dimension">{t`Field Filter`}</DeprecatedOption>
+          </DeprecatedSelect> */}
         </InputContainer>
 
         {tag.type === "dimension" && (
@@ -455,6 +455,7 @@ function VariableTypeSelect(props: VariableTypeSelectProps) {
       aria-label={t`Variable type`}
       initiallyOpened={props.isInitiallyOpen}
       placeholder={t`Select…`}
+      data-testid="variable-type-select"
     />
   );
 }
@@ -485,6 +486,7 @@ function FilterWidgetTypeSelect(props: FilterWidgetTypeSelectProps) {
       onChange={props.onChange}
       initiallyOpened={props.isInitiallyOpen}
       placeholder={t`Select…`}
+      data-testid="filter-widget-type-select"
     />
   );
 }

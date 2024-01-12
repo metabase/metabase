@@ -99,7 +99,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
+      userEvent.click(screen.getByTestId("variable-type-select"));
       userEvent.click(screen.getByText("Field Filter"));
+      userEvent.click(screen.getByTestId("variable-type-select"));
       userEvent.click(screen.getByText("Number"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -216,7 +218,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String"));
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String contains"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -235,7 +239,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String starts with"));
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       userEvent.click(screen.getByText("String"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -253,6 +259,7 @@ describe("TagEditorParam", () => {
       });
       setup({ tag });
 
+      userEvent.click(screen.getByTestId("filter-widget-type-select"));
       expect(screen.getByText("String")).toBeInTheDocument();
     });
   });
