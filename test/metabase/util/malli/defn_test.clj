@@ -172,12 +172,12 @@
       (binding [mu.fn/*skip-ns-decision-fn* (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
-           "Inputs: []\n  Return: :int"
-           (clojure.core/let
-            [&f (clojure.core/fn [] "foo")]
-            (clojure.core/fn
-             ([]
-              (try
-               (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'user/f} :int))
-               (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
+                    "Inputs: []\n  Return: :int"
+                    (clojure.core/let
+                        [&f (clojure.core/fn [] "foo")]
+                      (clojure.core/fn
+                        ([]
+                         (try
+                           (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
+                           (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
                  expansion)))))))

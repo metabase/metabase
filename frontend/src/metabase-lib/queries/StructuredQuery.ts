@@ -129,13 +129,6 @@ class StructuredQuery extends AtomicQuery {
   /* Query superclass methods */
 
   /**
-   * @returns true if this is new query that hasn't been modified yet.
-   */
-  isEmpty() {
-    return !this._databaseId();
-  }
-
-  /**
    * @returns true if this query is in a state where it can be run.
    */
   canRun() {
@@ -278,11 +271,14 @@ class StructuredQuery extends AtomicQuery {
   setDefaultQuery(): StructuredQuery {
     const table = this.table();
 
+    const query = this.getMLv2Query();
+    const isEmpty = Lib.databaseID(query) == null;
+
     // NOTE: special case for Google Analytics which doesn't allow raw queries:
     if (
       table &&
       table.entity_type === "entity/GoogleAnalyticsTable" &&
-      !this.isEmpty() &&
+      !isEmpty &&
       !this.hasAnyClauses()
     ) {
       // NOTE: shold we check that a
