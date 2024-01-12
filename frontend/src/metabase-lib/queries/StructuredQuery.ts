@@ -266,49 +266,6 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   *
-   */
-  setDefaultQuery(): StructuredQuery {
-    const table = this.table();
-
-    const query = this.getMLv2Query();
-    const isEmpty = Lib.databaseID(query) == null;
-
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (
-      table &&
-      table.entity_type === "entity/GoogleAnalyticsTable" &&
-      !isEmpty &&
-      !this.hasAnyClauses()
-    ) {
-      // NOTE: shold we check that a
-      const dateField = _.findWhere(table.fields, {
-        name: "ga:date",
-      });
-
-      if (dateField) {
-        return this.filter([
-          "time-interval",
-          ["field", dateField.id, null],
-          -365,
-          "day",
-        ])
-          .aggregate(["metric", "ga:users"])
-          .aggregate(["metric", "ga:pageviews"])
-          .breakout([
-            "field",
-            dateField.id,
-            {
-              "temporal-unit": "week",
-            },
-          ]);
-      }
-    }
-
-    return this;
-  }
-
-  /**
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {

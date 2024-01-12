@@ -42,10 +42,7 @@ const PinnedQuestionLoader = ({
   return (
     <Questions.Loader id={id} loadingAndErrorWrapper={false}>
       {({ loading, question: loadedQuestion }: QuestionLoaderProps) => {
-        if (
-          loading !== false ||
-          !loadedQuestion.legacyQuery({ useStructuredQuery: true })
-        ) {
+        if (loading !== false) {
           return children({ loading: true });
         }
 
