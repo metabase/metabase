@@ -27,10 +27,12 @@ export function FieldInfo({
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
       <FieldSemanticTypeLabel field={field} />
-      <FieldFingerprintInfo
-        field={field}
-        showAllFieldValues={showAllFieldValues}
-      />
+      {field && (
+        <FieldFingerprintInfo
+          field={field}
+          showAllFieldValues={showAllFieldValues}
+        />
+      )}
     </InfoContainer>
   );
 }

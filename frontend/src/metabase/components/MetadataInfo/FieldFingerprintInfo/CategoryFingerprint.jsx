@@ -5,6 +5,7 @@ import { t, ngettext, msgid } from "ttag";
 
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Fields from "metabase/entities/fields";
+import { getMetadata } from "metabase/selectors/metadata";
 import { formatNumber } from "metabase/lib/formatting";
 
 import {
@@ -29,6 +30,7 @@ const FIELD_VALUES_SHOW_LIMIT = 35;
 
 const mapStateToProps = (state, props) => {
   const fieldId = props.field.id;
+  const metadata = getMetadata(state);
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -36,6 +38,7 @@ const mapStateToProps = (state, props) => {
         })
       : [];
   return {
+    field: metadata.field(fieldId) ?? props.field,
     fieldValues: fieldValues || [],
   };
 };
