@@ -90,7 +90,9 @@
   untrack!
   untrack-all!
   reset-changes!
-  changes])
+  changes]
+ [mt
+  set-ns-log-level!])
 
 (def initialized?
   "Was Metabase already initialized? Used in `init!` to prevent calling `core/init!`
@@ -317,13 +319,6 @@
      (mt/with-driver (:engine db#)
        (mt/with-db db#
          ~@body))))
-
-(defn set-log-level!
-  "Set logging level for a namespace you're in right now."
-  ([level]
-   (set-log-level! (ns-name *ns*) level))
-  ([ns level]
-   (mt/set-ns-log-level! ns level)))
 
 (defmacro p
   "#p, but to use in pipelines like `(-> 1 inc dev/p inc)`.

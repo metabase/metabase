@@ -35,7 +35,7 @@
 ;;; Request callbacks
 
 (defn- ba-copy [f]
-  (let [baos (ByteArrayOutputStream.)]
+  (with-open [baos (ByteArrayOutputStream.)]
     (io/copy f baos)
     (.toByteArray baos)))
 
