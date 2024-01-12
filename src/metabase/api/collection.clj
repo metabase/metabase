@@ -75,7 +75,10 @@
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
   is not necessary.
 
-  For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
+  For `archived`, we can either include all values (when `archived` is `nil`),
+  or to include when `archived` is `true` or `false`.
+
+  To select only personal collections, pass in `personal-only` as `true`. This is disregard other parameters."
   [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
   (if personal-only
     (t2/select :model/Collection
@@ -124,8 +127,8 @@
                         :namespace                      namespace
                         :shallow                        false
                         :personal-only                  personal-only}) collections
-    ;; include Root Collection at beginning or results if archived isn't `true`
-    (if archived
+    ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
+    (if (or archived personal-only)
       collections
       (let [root (root-collection namespace)]
         (cond->> collections
