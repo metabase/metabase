@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { hideAll } from "tippy.js";
 
 import type { ITippyPopoverProps } from "metabase/components/Popover/TippyPopover";
@@ -10,14 +9,7 @@ import { WidthBoundFieldInfo } from "./FieldInfoPopover.styled";
 
 export const POPOVER_DELAY: [number, number] = [1000, 300];
 
-const propTypes = {
-  field: PropTypes.object,
-  children: PropTypes.node,
-  placement: PropTypes.string,
-  disabled: PropTypes.bool,
-};
-
-type Props = { field?: Field | DatasetColumn; timezone?: string } & Pick<
+type Props = { field: Field | DatasetColumn; timezone?: string } & Pick<
   ITippyPopoverProps,
   "children" | "placement" | "disabled" | "delay"
 >;
@@ -57,8 +49,6 @@ function FieldInfoPopover({
     </TippyPopover>
   );
 }
-
-FieldInfoPopover.propTypes = propTypes;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FieldInfoPopover;
