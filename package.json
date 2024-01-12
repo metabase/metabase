@@ -104,7 +104,7 @@
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "^1.0.0",
     "redux-promise": "^0.5.0",
-    "regenerator": "^0.14.1",
+    "regenerator": "^0.14.12",
     "rehype-external-links": "^2.0.1",
     "remark-gfm": "1.0.0",
     "screenfull": "^4.2.1",
