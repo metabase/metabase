@@ -7,6 +7,8 @@
    (clojure.lang ExceptionInfo)
    [io.github.resilience4j.retry Retry]))
 
+(set! *warn-on-reflection* true)
+
 (defn test-retry-decorate-fn
   "A function that can be used in place of `send-email!`.
    Put all messages into `inbox` instead of actually sending them."
