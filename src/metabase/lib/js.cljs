@@ -1080,6 +1080,11 @@
   [a-query stage-number a-ref columns]
   (lib.core/find-matching-column a-query stage-number a-ref columns))
 
+(defn ^:export is-stage-empty
+  "Is the given query stage empty of clauses?"
+  [a-query stage-number]
+  (lib.stage/is-stage-empty a-query stage-number))
+
 (defn ^:export stage-count
   "Returns the count of stages in query"
   [a-query]

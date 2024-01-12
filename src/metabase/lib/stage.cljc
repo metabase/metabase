@@ -354,6 +354,12 @@
                                               (lib.util/query-stage query previous-stage-number)
                                               style)))))
 
+(mu/defn is-stage-empty :- :boolean
+  "Is the given query stage empty of clauses?"
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (empty? (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table)))
+
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
   [query]
@@ -369,6 +375,6 @@
 (mu/defn drop-stage-if-empty :- ::lib.schema/query
   "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
   [query :- ::lib.schema/query]
-  (if (empty? (dissoc (lib.util/query-stage query -1) :lib/type))
+  (if (is-stage-empty query -1)
     (drop-stage query)
     query))
