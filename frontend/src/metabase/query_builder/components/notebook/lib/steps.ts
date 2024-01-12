@@ -121,7 +121,7 @@ const STEPS: NotebookStepDef[] = [
 
       return (
         hasData(query) &&
-        (stageIndex === 0 || Lib.hasAnyClauses(query, stageIndex))
+        (stageIndex === 0 || !Lib.isStageEmpty(query, stageIndex))
       );
     },
     active: (query, stageIndex) => {
@@ -143,7 +143,7 @@ const STEPS: NotebookStepDef[] = [
 
       return (
         hasData(query) &&
-        (stageIndex === 0 || Lib.hasAnyClauses(query, stageIndex))
+        (stageIndex === 0 || !Lib.isStageEmpty(query, stageIndex))
       );
     },
     active: (query, stageIndex) => {
