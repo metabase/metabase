@@ -10,7 +10,6 @@ import type {
   DashboardId,
   DatasetColumn,
   DatetimeUnit,
-  FieldReference,
   Parameter,
   ParameterValueOrArray,
   UserAttribute,
@@ -162,22 +161,11 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       target,
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: sourceColumn => {
-          if (!sourceColumn.field_ref) {
-            return false;
-          }
-
-          const [index] = Lib.findColumnIndexesFromLegacyRefs(
-            query,
-            stageIndex,
-            visibleColumns,
-            [sourceColumn.field_ref as FieldReference],
-          );
-
-          return index !== -1
-            ? Lib.isCompatibleType(visibleColumns[index], targetColumn)
-            : false;
-        },
+        column: sourceColumn =>
+          Lib.isCompatibleType(
+            Lib.fromLegacyColumn(query, stageIndex, sourceColumn),
+            targetColumn,
+          ),
         parameter: parameter =>
           columnFilterForParameter(parameter)(targetColumn),
         userAttribute: () => Lib.isString(targetColumn),
