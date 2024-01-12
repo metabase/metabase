@@ -326,6 +326,8 @@
    (mt/set-ns-log-level! ns level)))
 
 (defmacro p
-  "#p, but to use in pipelines like `(-> 1 inc dev/p inc)`"
+  "#p, but to use in pipelines like `(-> 1 inc dev/p inc)`.
+
+  See https://github.com/weavejester/hashp"
   [form]
   (hashp/p* form))
