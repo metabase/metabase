@@ -11,17 +11,17 @@ function setup(opts: SetupOpts = {}) {
 }
 
 describe("HomeHelpCard (EE with token)", () => {
-  it("should render correctly", () => {
-    setup();
-    expect(screen.getByText("Metabase tips")).toBeInTheDocument();
-  });
-
-  it("should show Metabase despite customizing the application name", () => {
+  it("should show the customized application name", () => {
     setup({ applicationName: "My app analytics" });
     expect(screen.getByText("My app analytics tips")).toBeInTheDocument();
   });
 
-  it("should render despite hiding the Metabase links", () => {
+  it("should render help link when `show-metabase-links: true`", () => {
+    setup({ showMetabaseLinks: true });
+    expect(screen.getByText("Metabase tips")).toBeInTheDocument();
+  });
+
+  it("should not render help link when `show-metabase-links: false`", () => {
     setup({ showMetabaseLinks: false });
     expect(screen.queryByText("Metabase tips")).not.toBeInTheDocument();
   });
