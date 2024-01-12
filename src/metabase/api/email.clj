@@ -136,7 +136,7 @@
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
   (validation/check-has-application-permission :setting)
-  (let [response (email/send-message!
+  (let [response (email/send-message-or-throw!
                    {:subject      "Metabase Test Email"
                     :recipients   [(:email @api/*current-user*)]
                     :message-type :text
