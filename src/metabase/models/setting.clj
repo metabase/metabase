@@ -168,7 +168,7 @@
   [:key])
 
 (def ^:private exported-settings
-  '#{application-colors
+  '#{#_application-colors
      application-favicon-url
      application-font
      application-font-files

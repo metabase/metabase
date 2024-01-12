@@ -377,6 +377,7 @@
          "You might need to refresh your browser to see your changes take effect.")
     (application-name-for-setting-descriptions))
   :visibility :public
+  :export?    true
   :type       :json
   :feature    :whitelabel
   :default    {}
