@@ -335,11 +335,6 @@ describe("StructuredQuery", () => {
         expect(q.isEditable()).toBe(false);
       });
     });
-    describe("isEmpty", () => {
-      it("tells that a non-empty query is not empty", () => {
-        expect(query.isEmpty()).toBe(false);
-      });
-    });
   });
 
   describe("AGGREGATION METHODS", () => {

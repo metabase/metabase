@@ -889,11 +889,21 @@
   [a-query]
   (name (lib.core/engine a-query)))
 
+(defn ^:export segment-metadata
+  "Get metadata for the Segment with `segment-id`, if it can be found."
+  [metadata-providerable segment-id]
+  (lib.metadata/segment metadata-providerable segment-id))
+
 (defn ^:export available-segments
   "Get a list of Segments that you may consider using as filters for a query. Returns JS array of opaque Segment
   metadata objects."
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
+
+(defn ^:export metric-metadata
+  "Get metadata for the Metric with `metric-id`, if it can be found."
+  [metadata-providerable metric-id]
+  (lib.metadata/metric metadata-providerable metric-id))
 
 (defn ^:export available-metrics
   "Get a list of Metrics that you may consider using as aggregations for a query. Returns JS array of opaque Metric

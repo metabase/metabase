@@ -427,9 +427,7 @@ class Question {
   }
 
   setDefaultQuery() {
-    return this.legacyQuery({ useStructuredQuery: true })
-      .setDefaultQuery()
-      .question();
+    return this.legacyQuery({ useStructuredQuery: true }).question();
   }
 
   settings(): VisualizationSettings {
@@ -1101,6 +1099,7 @@ class Question {
     if (process.env.NODE_ENV === "development") {
       window.__MLv2_metadata = metadata;
       window.__MLv2_query = this.__mlv2Query;
+      window.Lib = Lib;
     }
 
     return this.__mlv2Query;
