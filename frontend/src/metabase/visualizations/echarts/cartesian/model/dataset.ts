@@ -236,9 +236,33 @@ export const getTransformedDataset = (
   }
 
   if (settings["graph.x_axis.scale"] === "timeseries") {
-    transformedDataset = sortTimeSeriesDataset(
+    transformedDataset = sortByDimension(
       transformedDataset,
       dimensionModel.dataKey,
+      (left, right) => {
+        if (typeof left === "string" && typeof right === "string") {
+          return dayjs(left).valueOf() - dayjs(right).valueOf();
+        }
+        return 0;
+      },
+    );
+  }
+
+  const shouldSortNumericDimension =
+    settings["graph.x_axis.scale"] != null &&
+    ["linear", "histogram", "log", "pow"].includes(
+      settings["graph.x_axis.scale"],
+    );
+  if (shouldSortNumericDimension) {
+    transformedDataset = sortByDimension(
+      transformedDataset,
+      dimensionModel.dataKey,
+      (left, right) => {
+        if (typeof left === "number" && typeof right === "number") {
+          return left - right;
+        }
+        return 0;
+      },
     );
   }
   return transformedDataset;
@@ -248,21 +272,16 @@ export const getTransformedDataset = (
  * Sorts a dataset by the specified time-series dimension.
  * @param {Record<DataKey, RowValue>[]} dataset The dataset to be sorted.
  * @param {DataKey} dimensionKey The time-series dimension key.
+ * @param compareFn Sort compare function.
  * @returns A sorted dataset.
  */
-const sortTimeSeriesDataset = (
+const sortByDimension = (
   dataset: Record<DataKey, RowValue>[],
   dimensionKey: DataKey,
+  compareFn: (a: RowValue, b: RowValue) => number,
 ): Record<DataKey, RowValue>[] => {
   return dataset.sort((left, right) => {
-    const leftValue = left[dimensionKey];
-    const rightValue = right[dimensionKey];
-
-    if (typeof leftValue === "string" && typeof rightValue === "string") {
-      return dayjs(leftValue).valueOf() - dayjs(rightValue).valueOf();
-    }
-
-    return 0;
+    return compareFn(left[dimensionKey], right[dimensionKey]);
   });
 };
 
