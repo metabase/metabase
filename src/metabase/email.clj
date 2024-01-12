@@ -139,7 +139,7 @@
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
   {:style/indent 0}
-  [{:keys [subject recipients message-type message] :as email} :- EmailMessage]
+  [{:keys [subject recipients message-type message] :as email}]
   (try
     (when-not (email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
