@@ -407,8 +407,6 @@
             "   select schemaname, tablename from pg_catalog.pg_tables"
             "   union"
             "   select schemaname, viewname as tablename from pg_views"
-            "   union"
-            "   select schemaname, tablename from svv_external_tables"
             " ) t"
             " where t.schemaname !~ '^pg_'"
             "   and t.schemaname <> 'information_schema'"

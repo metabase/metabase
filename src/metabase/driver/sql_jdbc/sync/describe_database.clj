@@ -106,7 +106,8 @@
                           :schema      (.getString rset "TABLE_SCHEM")
                           :description (when-let [remarks (.getString rset "REMARKS")]
                                          (when-not (str/blank? remarks)
-                                           remarks))}))))))
+                                           remarks))
+                          :type        (.getString rset "TABLE_TYPE")}))))))
 
 (defn- schema+table-with-select-privileges
   [driver database]
@@ -127,8 +128,12 @@
   [driver database conn]
   (if (driver/database-supports? driver :table-privileges database)
     (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver database)]
-      (fn [{schema :schema table :name}]
-        (contains? schema+table-with-select-privileges [schema table])))
+      (fn [{schema :schema table :name ttype :type}]
+        ;; we can't get table privileges for redshift table due to permission error
+        ;; so we need to use the old way of checking privilege for them
+        (if (= [:redshift "EXTERNAL TABLE"] [driver ttype])
+          (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+          (contains? schema+table-with-select-privileges [schema table]))))
     (fn [{schema :schema table :name}]
       (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
 
@@ -146,7 +151,8 @@
         have-select-privilege-fn* (have-select-privilege-fn driver database conn)]
     (eduction (mapcat (fn [schema]
                         (->> (db-tables driver metadata schema db-name-or-nil)
-                             (filter have-select-privilege-fn*)))) syncable-schemas)))
+                             (filter have-select-privilege-fn*)
+                             (map #(dissoc % :type))))) syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
   [driver database connection schema-inclusion-filters schema-exclusion-filters]
@@ -164,7 +170,8 @@
                 (fn [{table-schema :schema :as table}]
                   (and (not (contains? excluded table-schema))
                        (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
-                       (have-select-privilege-fn* table))))))
+                       (have-select-privilege-fn* table)))))
+      (map #(dissoc % :type)))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn- db-or-id-or-spec->database [db-or-id-or-spec]

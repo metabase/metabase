@@ -418,6 +418,7 @@
                                                                   exclusion-patterns
                                                                   schema)
                                         (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                         (map #(dissoc % :type))
                          set)}))))))
 
 (defmethod driver/describe-table :snowflake
