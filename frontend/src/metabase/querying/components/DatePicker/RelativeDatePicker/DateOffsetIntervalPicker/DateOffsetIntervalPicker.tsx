@@ -1,7 +1,15 @@
 import type { FormEvent } from "react";
 import { t } from "ttag";
-import { Icon } from "metabase/core/components/Icon";
-import { Button, Divider, Group, NumberInput, Select, Text } from "metabase/ui";
+import {
+  Icon,
+  Button,
+  Divider,
+  Group,
+  NumberInput,
+  Select,
+  Text,
+} from "metabase/ui";
+
 import type { DateIntervalValue, DateOffsetIntervalValue } from "../types";
 import {
   formatDateRange,

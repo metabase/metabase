@@ -1,5 +1,5 @@
 import type { Collection } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 
 export type WrappedEntity<Entity> = {
   getName: () => string;

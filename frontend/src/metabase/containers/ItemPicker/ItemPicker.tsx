@@ -3,7 +3,7 @@ import type * as React from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import type { IconProps } from "metabase/core/components/Icon";
+import type { IconProps } from "metabase/ui";
 
 import { getCrumbs } from "metabase/lib/collections";
 

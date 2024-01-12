@@ -19,7 +19,6 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.revision :as revision]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
@@ -326,14 +325,14 @@
            :model/Card       {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}
            :model/Collection {_v-coll-id :id} {:name (format "%s Verified Collection" search-term) :authority_level "official"}]
           (testing "when has both :content-verification features"
-            (premium-features-test/with-premium-features #{:content-verification}
+            (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards [v-card-id v-model-id]
                 (is (= #{"card" "dataset"}
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
                                                   :q search-term
                                                   :verified true)))))))
           (testing "when has :content-verification feature only"
-            (premium-features-test/with-premium-features #{:content-verification}
+            (mt/with-premium-features #{:content-verification}
               (mt/with-verified-cards [v-card-id]
                 (is (= #{"card"}
                        (set (mt/user-http-request :crowberto :get 200 "search/models"
@@ -1143,7 +1142,7 @@
        :model/Card {_model-id :id}  {:name (format "%s Normal Model" search-term) :dataset true}
        :model/Card {v-model-id :id} {:name (format "%s Verified Model" search-term) :dataset true}]
       (mt/with-verified-cards [v-card-id v-model-id]
-        (premium-features-test/with-premium-features #{:content-verification}
+        (mt/with-premium-features #{:content-verification}
           (testing "Able to filter only verified items"
             (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
               (testing "do not returns duplicated verified cards"
@@ -1176,7 +1175,7 @@
                           (map :model)
                           set))))))
 
-        (premium-features-test/with-premium-features #{:content-verification}
+        (mt/with-premium-features #{:content-verification}
           (testing "Returns verified cards and models only if :content-verification is enabled"
             (let [resp (mt/user-http-request :crowberto :get 200 "search" :q search-term :verified true)]
 
@@ -1191,7 +1190,7 @@
                             set)))))))
 
         (testing "error if doesn't have premium-features"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (= "Content Management or Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (mt/user-http-request :crowberto :get 402 "search" :q search-term :verified true)))))))))
 

@@ -5,7 +5,6 @@
    [clojure.walk :as walk]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
@@ -14,7 +13,7 @@
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1.0, :max 1.999}]
-                        (premium-features-test/with-premium-features #{:config-text-file}
+                        (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (defn- re-quote [^String s]
@@ -182,7 +181,7 @@
 
 (deftest require-advanced-config-test
   (testing "Config files should require the `:config-text-file` token feature"
-    (premium-features-test/with-premium-features #{}
+    (mt/with-premium-features #{}
       (binding [advanced-config.file/*config* {:version 1.0, :config {:unknown-section {}}}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo

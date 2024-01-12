@@ -24,6 +24,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
 
 
+- [API key](api/api-key.md)
 - [Action](api/action.md)
 - [Activity](api/activity.md)
 - [Advanced config logs*](api/ee/advanced-config-logs.md)
