@@ -23,8 +23,7 @@ describe("issue 20963", () => {
 
     // Creat a snippet
     cy.icon("snippet").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(

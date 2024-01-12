@@ -144,8 +144,7 @@ describe("scenarios > public > question", () => {
 
     // Create a snippet
     cy.icon("snippet").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
     modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -188,7 +187,8 @@ describe("scenarios > public > question", () => {
         cy.request("POST", `/api/card/${id}/public_link`).then(
           ({ body: { uuid } }) => {
             cy.visit(`/public/question/${uuid}`);
-            cy.get(".cellData").contains("Winner");
+            // Check the name of the first person in the PEOPLE table
+            cy.get(".cellData").contains("Hudson Borer");
           },
         );
       });
