@@ -212,10 +212,12 @@
      uploads-database-id
      uploads-schema-name})
 
+(declare export?)
+
 (defmethod serdes/extract-all "Setting" [_model _opts]
-  (for [{:keys [key value] :as s} (admin-writable-site-wide-settings
+  (for [{:keys [key value]} (admin-writable-site-wide-settings
                              :getter (partial get-value-of-type :string))
-        :when (:export? (meta s))]
+        :when (export? key)]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -1250,15 +1252,14 @@
 (defn- set-via-env-var? [setting]
   (some? (env-var-value setting)))
 
-(defn- export? [setting]
-  (or (:export? setting)
-      ;; deprecated, always set this explicitly
-      (contains? exported-settings (symbol (:name setting)))))
+(defn- export? [setting-name]
+  (or (:export? (core/get @registered-settings (keyword setting-name)))
+      ;; deprecated, we want to move to always setting this explicitly in the defsetting declaration
+      (contains? exported-settings (symbol setting-name))))
 
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
   (let [from-env? (set-via-env-var? setting)]
-    ^{:export? (export? setting)}
     {:key            k
      :value          (try
                        (m/mapply user-facing-value setting options)
