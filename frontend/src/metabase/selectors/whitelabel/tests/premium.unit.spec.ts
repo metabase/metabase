@@ -81,7 +81,7 @@ describe("getShowMetabaseLinks (EE with token)", () => {
     expect(getShowMetabaseLinks(getState())).toBe(true);
   });
 
-  it("should return true when show-metabase-links is false", () => {
+  it("should return false when show-metabase-links is false", () => {
     const { getState } = setup({ showMetabaseLinks: false });
 
     expect(getShowMetabaseLinks(getState())).toBe(false);
