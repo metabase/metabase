@@ -30,3 +30,27 @@ export const DatabaseGridItem = styled(GridItem)`
     width: 33.33%;
   }
 `;
+
+export const ModelCard = styled(Card)`
+  padding: 1.5rem;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+`;
+
+export const ModelGridItem = styled(GridItem)`
+  width: 100%;
+
+  &:hover {
+    color: ${color("brand")};
+  }
+
+  ${breakpointMinSmall} {
+    width: 50%;
+  }
+
+  ${breakpointMinMedium} {
+    width: 33.33%;
+  }
+`;
