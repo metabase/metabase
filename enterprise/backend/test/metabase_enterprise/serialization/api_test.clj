@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream)
@@ -116,8 +117,9 @@
                                                  {:request-options {:as :byte-array}}
                                                  :collection (:id coll) :data_model false :settings false)
                     files* (atom [])
-                    ;; to avoid closing input stream
+                    ;; to avoid input stream closure
                     ba     (#'api.serialization/ba-copy (io/input-stream res))]
+                (log/info "got some byte array" (count ba) ba)
                 (with-open [tar (open-tar ba)]
                   (doseq [^TarArchiveEntry e (u.compress/entries tar)]
                     (when (.isFile e)
