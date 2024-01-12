@@ -32,7 +32,7 @@ const FIELD_VALUES_SHOW_LIMIT = 35;
 const mapStateToProps = (state, props) => {
   const fieldId = props.field.id;
   const metadata = getMetadata(state);
-  const medatataField = metadata.field(fieldId);
+  const field = metadata.field(fieldId);
   const fieldValues =
     fieldId != null
       ? Fields.selectors.getFieldValues(state, {
@@ -41,7 +41,7 @@ const mapStateToProps = (state, props) => {
       : [];
   return {
     fieldValues: fieldValues || [],
-    hasListValues: medatataField?.has_field_values === "list",
+    hasListValues: field?.has_field_values === "list",
   };
 };
 
@@ -90,10 +90,12 @@ export function CategoryFingerprint({
               distinctCount || 0,
             )}
           </Fade>
-          <Fade
-            aria-hidden={!isLoading}
-            visible={isLoading}
-          >{t`Getting distinct values...`}</Fade>
+          {hasListValues && (
+            <Fade
+              aria-hidden={!isLoading}
+              visible={isLoading}
+            >{t`Getting distinct values...`}</Fade>
+          )}
         </RelativeContainer>
       )}
       {showFieldValuesBlock &&

@@ -41,7 +41,8 @@ describe("FieldInfo", () => {
   });
 
   it("should show a placeholder for a dimension with no description", () => {
-    setup();
+    const field = metadata.field(PRODUCTS.CREATED_AT);
+    setup(field);
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });
