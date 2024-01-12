@@ -19,6 +19,6 @@ export * from "./native";
 export * from "./order_by";
 export * from "./query";
 export * from "./segments";
-export * from "./stages";
+export * from "./stage";
 export * from "./temporal_bucket";
 export * from "./types";
