@@ -18,7 +18,11 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
       onClose={onClose}
     >
       <PaneContent>
-        <FieldInfo field={field} showAllFieldValues />
+        <FieldInfo
+          field={field}
+          timezone={field.table?.database?.timezone}
+          showAllFieldValues
+        />
       </PaneContent>
     </SidebarContent>
   );
