@@ -23,9 +23,9 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.retry :as retry]
+   [metabase.util.retry-test :as rt]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import    [io.github.resilience4j.retry Retry]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -869,9 +869,9 @@
   (let [metrics (bean (.getMetrics retry))]
     (into {}
           (map (fn [field]
-                 (let [d (metrics field)]
-                   (when (pos? d)
-                     [field d]))))
+                 (let [n (metrics field)]
+                   (when (pos? n)
+                     [field n]))))
           [:numberOfFailedCallsWithRetryAttempt
            :numberOfFailedCallsWithoutRetryAttempt
            :numberOfSuccessfulCallsWithRetryAttempt
@@ -887,10 +887,7 @@
   (testing "send email succeeds w/o retry"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [email/send-email! mt/fake-inbox-email-fn
-                    retry/decorate    (fn [f]
-                                        (fn [& args]
-                                          (let [callable (reify Callable (call [_] (apply f args)))]
-                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -901,10 +898,7 @@
   (testing "send email succeeds hiding SMTP host not set error"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [email/send-email! (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))
-                    retry/decorate    (fn [f]
-                                        (fn [& args]
-                                          (let [callable (reify Callable (call [_] (apply f args)))]
-                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -913,12 +907,12 @@
                  (get-positive-retry-metrics test-retry)))
           (is (= 0 (count @mt/inbox)))))))
   (testing "send email fails b/c retry limit"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
+    (let [retry-config (assoc (#'retry/retry-configuration)
+                              :max-attempts 1
+                              :initial-interval-millis 1)
+          test-retry (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/decorate    (fn [f]
-                                        (fn [& args]
-                                          (let [callable (reify Callable (call [_] (apply f args)))]
-                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -932,10 +926,7 @@
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
         (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                      retry/decorate    (fn [f]
-                                          (fn [& args]
-                                            (let [callable (reify Callable (call [_] (apply f args)))]
-                                              (.call (Retry/decorateCallable test-retry callable)))))]
+                      retry/decorate    (rt/test-retry-decorate-fn test-retry)]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -953,10 +944,7 @@
   (testing "post slack message succeeds w/o retry"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [slack/post-chat-message! (constantly nil)
-                    retry/decorate           (fn [f]
-                                               (fn [& args]
-                                                 (let [callable (reify Callable (call [_] (apply f args)))]
-                                                   (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
         (#'metabase.pulse/send-notifications! [fake-slack-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
@@ -965,20 +953,14 @@
       (with-redefs [slack/post-chat-message! (fn [& _]
                                                (throw (ex-info "Invalid token"
                                                                {:errors {:slack-token "Invalid token"}})))
-                    retry/decorate           (fn [f]
-                                               (fn [& args]
-                                                 (let [callable (reify Callable (call [_] (apply f args)))]
-                                                   (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
         (#'metabase.pulse/send-notifications! [fake-slack-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
   (testing "post slack message fails b/c retry limit"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
-                    retry/decorate           (fn [f]
-                                               (fn [& args]
-                                                 (let [callable (reify Callable (call [_] (apply f args)))]
-                                                   (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
         (#'metabase.pulse/send-notifications! [fake-slack-notification])
         (is (= {:numberOfFailedCallsWithRetryAttempt 1}
                (get-positive-retry-metrics test-retry))))))
@@ -988,10 +970,7 @@
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
-                    retry/decorate           (fn [f]
-                                               (fn [& args]
-                                                 (let [callable (reify Callable (call [_] (apply f args)))]
-                                                   (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate           (rt/test-retry-decorate-fn test-retry)]
           (#'metabase.pulse/send-notifications! [fake-slack-notification])
           (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
                  (get-positive-retry-metrics test-retry)))))))

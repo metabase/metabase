@@ -134,10 +134,10 @@
         (and (sequential? message) (every? map? message))
         (string? message)))]])
 
-(mu/defn send-message-or-throw!
+(defn send-message-or-throw!
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
-  the function that calls this function has its own retry logic."
+  the caller has its own retry logic."
   {:style/indent 0}
   [{:keys [subject recipients message-type message] :as email} :- EmailMessage]
   (try
@@ -166,10 +166,10 @@
     (finally
       (prometheus/inc :metabase-email/messages))))
 
-(defn send-email-retrying!
+(mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
-  [& args]
-  (apply (retry/decorate send-message-or-throw!) args))
+  [email :- EmailMessage]
+  ((retry/decorate send-message-or-throw!) email))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
@@ -183,10 +183,10 @@
   either `:text` or `:html` or `:attachments`.
 
     (email/send-message!
-     :subject      \"[Metabase] Password Reset Request\"
-     :recipients   [\"cam@metabase.com\"]
-     :message-type :text
-     :message      \"How are you today?\")
+     {:subject      \"[Metabase] Password Reset Request\"
+      :recipients   [\"cam@metabase.com\"]
+      :message-type :text
+      :message      \"How are you today?\")}
 
   Upon success, this returns the `:message` that was just sent. (TODO -- confirm this.) This function will catch and
   log any exception, returning a [[SMTPStatus]]."

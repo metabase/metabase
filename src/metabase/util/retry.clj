@@ -1,8 +1,7 @@
 (ns metabase.util.retry
   "Support for in-memory, thread-blocking retrying."
-  (:require    [metabase.config :as config]
-               [metabase.models.setting :refer [defsetting]]
-               [metabase.util.i18n :refer [deferred-tru]])
+  (:require [metabase.models.setting :refer [defsetting]]
+            [metabase.util.i18n :refer [deferred-tru]])
   (:import
    (io.github.resilience4j.core IntervalFunction)
    (io.github.resilience4j.retry Retry RetryConfig)
@@ -36,12 +35,11 @@
   :default 30000)
 
 (defn- retry-configuration []
-  (cond-> {:max-attempts (retry-max-attempts)
-           :initial-interval-millis (retry-initial-interval)
-           :multiplier (retry-multiplier)
-           :randomization-factor (retry-randomization-factor)
-           :max-interval-millis (retry-max-interval-millis)}
-    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
+  {:max-attempts (retry-max-attempts)
+   :initial-interval-millis (retry-initial-interval)
+   :multiplier (retry-multiplier)
+   :randomization-factor (retry-randomization-factor)
+   :max-interval-millis (retry-max-interval-millis)})
 
 (defn- make-predicate [f]
   (reify Predicate (test [_ x] (f x))))
@@ -53,12 +51,7 @@
           {:keys [^long max-attempts ^long initial-interval-millis
                   ^double multiplier ^double randomization-factor
                   ^long max-interval-millis
-                  retry-on-result-pred retry-on-exception-pred]
-           :or {max-attempts 3
-                initial-interval-millis 500
-                multiplier 1.5
-                randomization-factor 0.5
-                max-interval-millis Long/MAX_VALUE}}]
+                  retry-on-result-pred retry-on-exception-pred]}]
   (let [interval-fn (IntervalFunction/ofExponentialRandomBackoff
                      initial-interval-millis multiplier
                      randomization-factor max-interval-millis)
@@ -78,7 +71,7 @@
   The calling thread is blocked during the retries. This function should be used to
   trigger retries across the BE, but keep in mind to not chain retries with this function."
   ([f]
-  (decorate f (random-exponential-backoff-retry (str (random-uuid)) (retry-configuration))))
+   (decorate f (random-exponential-backoff-retry (str (random-uuid)) (retry-configuration))))
   ([f ^Retry retry]
    (fn [& args]
      (let [callable (reify Callable (call [_] (apply f args)))]

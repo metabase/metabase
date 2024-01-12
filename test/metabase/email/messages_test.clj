@@ -7,9 +7,9 @@
    [metabase.email.messages :as messages]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
-   [metabase.util.retry :as retry])
+   [metabase.util.retry :as retry]
+   [metabase.util.retry-test :as rt])
   (:import
-   [io.github.resilience4j.retry Retry]
    (java.io IOException)))
 
 (set! *warn-on-reflection* true)
@@ -114,9 +114,9 @@
   (let [metrics (bean (.getMetrics retry))]
     (into {}
           (map (fn [field]
-                 (let [d (metrics field)]
-                   (when (pos? d)
-                     [field d]))))
+                 (let [n (metrics field)]
+                   (when (pos? n)
+                     [field n]))))
           [:numberOfFailedCallsWithRetryAttempt
            :numberOfFailedCallsWithoutRetryAttempt
            :numberOfSuccessfulCallsWithRetryAttempt
@@ -131,10 +131,7 @@
   (testing "send email succeeds w/o retry"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [email/send-email! mt/fake-inbox-email-fn
-                    retry/decorate    (fn [f]
-                                        (fn [& args]
-                                          (let [callable (reify Callable (call [_] (apply f args)))]
-                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -145,10 +142,7 @@
   (testing "send email fails b/c retry limit"
     (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
       (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/decorate    (fn [f]
-                                        (fn [& args]
-                                          (let [callable (reify Callable (call [_] (apply f args)))]
-                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                            email-smtp-port 587]
           (mt/reset-inbox!)
@@ -163,10 +157,7 @@
                               :initial-interval-millis 1)
           test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
-                    retry/decorate    (fn [f]
-                                        (fn [& args]
-                                          (let [callable (reify Callable (call [_] (apply f args)))]
-                                            (.call (Retry/decorateCallable test-retry callable)))))]
+                    retry/decorate    (rt/test-retry-decorate-fn test-retry)]
                   (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                      email-smtp-port 587]
                       (mt/reset-inbox!)

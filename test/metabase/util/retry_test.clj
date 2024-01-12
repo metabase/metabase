@@ -4,7 +4,17 @@
    [metabase.test.util :as tu]
    [metabase.util.retry :as retry])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   [io.github.resilience4j.retry Retry]))
+
+(defn test-retry-decorate-fn
+  "A function that can be used in place of `send-email!`.
+   Put all messages into `inbox` instead of actually sending them."
+  [retry]
+  (fn [f]
+    (fn [& args]
+      (let [callable (reify Callable (call [_] (apply f args)))]
+        (.call (Retry/decorateCallable retry callable))))))
 
 (deftest retrying-on-exception-test
   (testing "recovery possible"
