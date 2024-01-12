@@ -1,9 +1,8 @@
-/* eslint-disable react/prop-types */
+import { useState } from "react";
+import _ from "underscore";
 import { t } from "ttag";
-import type { Component } from "react";
-
+import Collection from "metabase/entities/collections";
 import Database from "metabase/entities/databases";
-import Model from "metabase/entities/models";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import { Divider, Flex, Tabs } from "metabase/ui";
 
@@ -17,70 +16,82 @@ import Link from "metabase/core/components/Link";
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
-import { DatabaseCard, DatabaseGridItem } from "./BrowseData.styled";
+import {
+  DatabaseCard,
+  DatabaseGridItem,
+  ModelCard,
+  ModelGridItem,
+} from "./BrowseData.styled";
+import type { CollectionItem } from "metabase-types/api";
 
 interface BrowseDataTab {
   label: string;
   component: JSX.Element;
 }
 
-const DatabaseBrowser = ({ databases }: { databases: IDatabase[] }) => (
-  <Grid>
-    {databases.map(database => (
-      <DatabaseGridItem key={database.id}>
-        <Link
-          to={Urls.browseDatabase(database)}
-          data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-        >
-          <DatabaseCard>
-            <Icon
-              name="database"
-              color={color("accent2")}
-              className="mb3"
-              size={32}
-            />
-            <h3 className="text-wrap">{database.name}</h3>
-          </DatabaseCard>
-        </Link>
-      </DatabaseGridItem>
-    ))}
-  </Grid>
-);
+type Model = CollectionItem;
 
-const ModelBrowser = ({ models }: { models: IModel[] }) => (
-  <Grid>
-    {databases.map(database => (
-      <DatabaseGridItem key={database.id}>
-        <Link
-          to={Urls.browseDatabase(database)}
-          data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-        >
-          <DatabaseCard>
-            <Icon
-              name="database"
-              color={color("accent2")}
-              className="mb3"
-              size={32}
-            />
-            <h3 className="text-wrap">{database.name}</h3>
-          </DatabaseCard>
-        </Link>
-      </DatabaseGridItem>
-    ))}
-  </Grid>
-);
+const ModelsTab = ({ models }: { models: Model[] }) => {
+  return (
+    <Grid>
+      {models.map((model: Model) => (
+        <ModelGridItem key={model.id}>
+          <Link
+            to={"TO BE DETERMINED"}
+            // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
+            data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
+          >
+            <ModelCard>
+              <h3 className="text-wrap">{model.name}</h3>
+            </ModelCard>
+          </Link>
+        </ModelGridItem>
+      ))}
+    </Grid>
+  );
+};
+
+const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
+  return (
+    <Grid>
+      {databases.map(database => (
+        <DatabaseGridItem key={database.id}>
+          <Link
+            to={Urls.browseDatabase(database)}
+            data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+          >
+            <DatabaseCard>
+              <Icon
+                name="database"
+                color={color("accent2")}
+                className="mb3"
+                size={32}
+              />
+              <h3 className="text-wrap">{database.name}</h3>
+            </DatabaseCard>
+          </Link>
+        </DatabaseGridItem>
+      ))}
+    </Grid>
+  );
+};
 
 function BrowseData({ databases }: { databases: IDatabase[] }) {
-  const models = [];
+  const defaultTab = "Models";
+  const [currentTab, setTab] = useState<string | null>(defaultTab);
+  const models: CollectionItem[] = [
+  ];
   // Not sure what Tabs' prop value does
   const tabs: BrowseDataTab[] = [
-    { label: "Models", component: <div>Models</div> },
-    { label: "Databases", component: <DatabaseBrowser databases={databases} /> },
+    { label: "Databases", component: <DatabasesTab databases={databases} /> },
+    { label: "Models", component: <ModelsTab models={models} /> },
   ];
+  // TODO: Fix font of BrowseHeader
+  // TODO: Do we still need 'Learn about our data?'
   return (
     <div data-testid="database-browser">
-      <BrowseHeader crumbs={[{ title: t`Our data!` }]} />
-      <Tabs value={"test"} onTabChange={() => {}}>
+      <BrowseHeader crumbs={[{ title: t`Browse data` }]} />
+      <Tabs value={currentTab} onTabChange={setTab}>
         <Flex>
           <Tabs.List>
             {tabs.map((tab: BrowseDataTab) => (
@@ -142,3 +153,20 @@ See here too:
 https://github.com/metabase/metabase/blob/be73bb2650729c2bae09b5b648443e2232687faf/frontend/src/metabase-types/api/collection.ts#L72
 
  */
+
+export default _.compose(
+  Database.loadList(),
+  Collection.loadList({
+    query: {
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    },
+    loadingAndErrorWrapper: false,
+  }),
+  // Get the particular items within a collection
+  Collection.load({
+    id: (_, props) => props.collectionId,
+    reload: true,
+  }),
+)(BrowseData);
