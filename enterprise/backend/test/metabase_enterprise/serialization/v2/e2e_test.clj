@@ -897,6 +897,7 @@
            show-homepage-xrays
            show-lighthouse-illustration
            show-metabot
+           show-static-embed-terms
            site-locale
            site-name
            source-address-header

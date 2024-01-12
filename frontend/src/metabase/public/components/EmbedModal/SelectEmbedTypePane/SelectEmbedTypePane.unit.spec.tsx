@@ -100,7 +100,7 @@ describe("SelectEmbedTypePane", () => {
 
         userEvent.click(screen.getByRole("button", { name: "Set this up" }));
 
-        expect(goToNextStep).toHaveBeenCalledWith();
+        expect(goToNextStep).toHaveBeenCalled();
       });
     });
   });
