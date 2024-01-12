@@ -49,7 +49,8 @@ runs:
           
           console.log(`Latest major release version: ${latestReleaseBranchVersion}`);
           
-          targetBranchName = github?.event?.pull_request?.base?.ref
+          const pullRequest = context.payload.pull_request;
+          const targetBranchName = pullRequest && pullRequest.base && pullRequest.base.ref;
           console.log(`Target branch name is ${targetBranchName}.`);
           
           const currentBranchName = context.ref.split('/').pop();
