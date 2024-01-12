@@ -358,7 +358,7 @@
   "Is the given query stage empty of clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (every? #(nil? ((lib.util/query-stage query stage-number) %))
+  (every? #(nil? (get (lib.util/query-stage query stage-number) %))
           [:expressions :filters :limit :breakout :aggregation :joins :order-by :fields]))
 
 (mu/defn append-stage :- ::lib.schema/query
