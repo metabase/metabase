@@ -18,7 +18,6 @@
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -419,14 +418,22 @@
          database
          nil
          (fn [^Connection conn]
-           {:tables (->> (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) nil db-name)
-                         (filter (fn [{schema :schema table-name :name}]
-                                   (and (not (contains? excluded-schemas schema))
-                                        (driver.s/include-schema? inclusion-patterns
-                                                                  exclusion-patterns
-                                                                  schema)
-                                        (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
-                         set)}))))))
+           ;; IMPORTANT: using the JDBC `.getTables` method is buggy -- it works sometimes but other times randomly
+           ;; we have tried to use it but people reported that some schemas disappear on their instances.
+           ;; See https://discourse.metabase.com/t/snowflake-broken-in-0-48-1/63849
+           {:tables  (into #{}
+                           (comp
+                            (filter (fn [{schema :schema table-name :name}]
+                                      (and (not (contains? excluded-schemas schema))
+                                           (driver.s/include-schema? inclusion-patterns
+                                                                     exclusion-patterns
+                                                                     schema)
+                                           (sql-jdbc.sync/have-select-privilege? driver conn schema table-name))))
+                            (map (fn [{schema :schema_name, table-name :name, remark :comment}]
+                                   {:name        table-name
+                                    :schema      schema
+                                    :description (not-empty remark)})))
+                           (jdbc/reducible-query {:connection conn} (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)))}))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
