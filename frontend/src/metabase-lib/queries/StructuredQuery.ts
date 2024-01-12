@@ -129,13 +129,6 @@ class StructuredQuery extends AtomicQuery {
   /* Query superclass methods */
 
   /**
-   * @returns true if this is new query that hasn't been modified yet.
-   */
-  isEmpty() {
-    return !this._databaseId();
-  }
-
-  /**
    * @returns true if this query is in a state where it can be run.
    */
   canRun() {
@@ -270,46 +263,6 @@ class StructuredQuery extends AtomicQuery {
     } else {
       return this;
     }
-  }
-
-  /**
-   *
-   */
-  setDefaultQuery(): StructuredQuery {
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (
-      table &&
-      table.entity_type === "entity/GoogleAnalyticsTable" &&
-      !this.isEmpty() &&
-      !this.hasAnyClauses()
-    ) {
-      // NOTE: shold we check that a
-      const dateField = _.findWhere(table.fields, {
-        name: "ga:date",
-      });
-
-      if (dateField) {
-        return this.filter([
-          "time-interval",
-          ["field", dateField.id, null],
-          -365,
-          "day",
-        ])
-          .aggregate(["metric", "ga:users"])
-          .aggregate(["metric", "ga:pageviews"])
-          .breakout([
-            "field",
-            dateField.id,
-            {
-              "temporal-unit": "week",
-            },
-          ]);
-      }
-    }
-
-    return this;
   }
 
   /**

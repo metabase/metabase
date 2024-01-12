@@ -1,9 +1,8 @@
-import type { SVGAttributes, MouseEvent } from "react";
-
 import { forwardRef } from "react";
+import type { SVGAttributes, MouseEvent } from "react";
 import isPropValid from "@emotion/is-prop-valid";
 import cx from "classnames";
-import Tooltip from "../Tooltip";
+import { Tooltip } from "../../overlays/Tooltip";
 import { Icons } from "./icons";
 import type { IconName } from "./icons";
 
@@ -38,5 +37,5 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
     />
   );
 
-  return tooltip ? <Tooltip tooltip={tooltip}>{icon}</Tooltip> : icon;
+  return tooltip ? <Tooltip label={tooltip}>{icon}</Tooltip> : icon;
 });

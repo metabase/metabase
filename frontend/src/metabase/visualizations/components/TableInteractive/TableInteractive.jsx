@@ -10,7 +10,7 @@ import { Grid, ScrollSync } from "react-virtualized";
 
 import "./TableInteractive.css";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -132,7 +132,7 @@ class TableInteractive extends Component {
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
-    this._showDetailShortcut(this.props.query, this.props.isPivoted);
+    this._showDetailShortcut(this.props.data, this.props.isPivoted);
   }
 
   componentWillUnmount() {
@@ -165,7 +165,7 @@ class TableInteractive extends Component {
 
     if (isDataChange) {
       this._findIDColumn(nextData, newProps.isPivoted);
-      this._showDetailShortcut(this.props.query, this.props.isPivoted);
+      this._showDetailShortcut(this.props.data, this.props.isPivoted);
     }
   }
 
@@ -182,8 +182,10 @@ class TableInteractive extends Component {
     document.addEventListener("keydown", this.onKeyDown);
   };
 
-  _showDetailShortcut = (query, isPivoted) => {
-    const hasAggregation = !!query?.aggregations?.()?.length;
+  _showDetailShortcut = (data, isPivoted) => {
+    const hasAggregation = data.cols.some(
+      column => column.source === "aggregation",
+    );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
     const newShowDetailState = !(
       isPivoted ||
