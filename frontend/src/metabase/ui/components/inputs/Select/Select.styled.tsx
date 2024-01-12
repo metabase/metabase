@@ -41,6 +41,7 @@ export const getSelectInputOverrides = (
       },
     },
     label: {
+      color: theme.fn.themeColor("text-medium"),
       ref: getStylesRef("label"),
     },
     description: {
