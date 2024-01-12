@@ -1204,31 +1204,29 @@
               #"^Surprise!$"
               (#'setting/realize x)))))))
 
+(defn- validation-setting-symbol [format]
+  (symbol (str "test-" (name format) "-validation-setting")))
 
 (defmacro define-setting-for-type [format]
-  `(defsetting ~(symbol (str "test-" (name format) "-setting"))
+  `(defsetting ~(validation-setting-symbol format)
      "Setting to test validation of this format - this only shows up in dev"
      :type ~(keyword (name format))))
 
-(defmacro define-settings-for-types [& formats]
-  (list 'dorun (cons 'list (for [f formats] `(define-setting-for-type ~f)))))
-
-;; Create stub settings for the remaining types that weren't used by any previous tests
-(define-settings-for-types :double :keyword :integer :positive-integer :timestamp)
-
 (defmacro get-parse-exception [format raw-value]
-  `(mt/with-temp-env-var-value [~(symbol (str "mb-test-" (name format) "-setting")) ~raw-value]
+  `(mt/with-temp-env-var-value [~(symbol (str "mb-" (validation-setting-symbol format))) ~raw-value]
     (try
     (setting/validate-settings-formatting!)
     nil
     (catch java.lang.Exception e# e#))))
 
 (defn- assert-parser-exception! [format-type ex cause-message]
-  (is (= (format "Invalid %s configuration for setting: test-%s-setting"
+  (is (= (format "Invalid %s configuration for setting: %s"
                  (u/upper-case-en (name format-type))
-                 (name format-type))
+                 (validation-setting-symbol format-type))
          (ex-message ex)))
   (is (= cause-message (ex-message (ex-cause ex)))))
+
+(define-setting-for-type :json)
 
 (deftest valid-json-setting-test
   (testing "Validation is a no-op if the JSON is valid"
@@ -1263,6 +1261,8 @@
              " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
 
+(define-setting-for-type :csv)
+
 (deftest valid-csv-setting-test
   (testing "Validation is a no-op if the CSV is valid"
     (is (nil? (get-parse-exception :csv "1, 2")))))
@@ -1282,6 +1282,8 @@
         #_"CSV error (unexpected character: $)"
         "Error of type class java.lang.Exception thrown while parsing a setting"))))
 
+(define-setting-for-type :boolean)
+
 (deftest valid-boolean-setting-test
   (testing "Validation is a no-op if the string represents a boolean"
     (is (nil? (get-parse-exception :boolean "")))
@@ -1294,6 +1296,8 @@
       (let [ex (get-parse-exception :boolean raw-value)]
         (assert-parser-exception!
           :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
+
+(define-setting-for-type :double)
 
 (deftest valid-double-setting-test
   (testing "Validation is a no-op if the string represents a double"
@@ -1310,6 +1314,8 @@
           #_"For input string: \"{raw-value}\""
           :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
+(define-setting-for-type :keyword)
+
 (deftest valid-keyword-setting-test
   (testing "Validation is a no-op if the string represents a keyword"
     (is (nil? (get-parse-exception :keyword "1")))
@@ -1319,6 +1325,8 @@
     (is (nil? (get-parse-exception :keyword ":a/b")))
     (is (nil? (get-parse-exception :keyword "a/b/c")))
     (is (nil? (get-parse-exception :keyword "\"")))))
+
+(define-setting-for-type :integer)
 
 (deftest valid-integer-setting-test
   (testing "Validation is a no-op if the string represents a integer"
@@ -1332,6 +1340,8 @@
         (assert-parser-exception!
           #_"For input string: \"{raw-value}\""
           :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+
+(define-setting-for-type :positive-integer)
 
 (deftest valid-positive-integer-setting-test
   (testing "Validation is a no-op if the string represents a positive-integer"
@@ -1347,6 +1357,8 @@
           #_"For input string: \"{raw-value}\""
           :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
+(define-setting-for-type :timestamp)
+
 (deftest valid-timestamp-setting-test
   (testing "Validation is a no-op if the string represents a timestamp"
     (is (nil? (get-parse-exception :timestamp "2024-01-01")))))
@@ -1357,3 +1369,14 @@
       (assert-parser-exception!
         #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
         :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
+
+(defn ns-validation-setting-symbol [format]
+  (symbol "metabase.models.setting-test" (name (validation-setting-symbol format))))
+
+(deftest validation-completeness-test
+  (testing "Every settings format has tests for its validation"
+    (let [string-formats #{:string :metabase.public-settings/uuid-nonce}]
+      (doseq [format (remove string-formats (keys (methods setting/get-value-of-type)))]
+        ;; We operate on trust that tests are added along with this var
+        (testing (format "We have defined a setting for the %s validation tests" format)
+          (is (var? (resolve (ns-validation-setting-symbol format)))))))))
