@@ -57,6 +57,7 @@ interface ExpressionEditorTextfieldProps {
   stageIndex: number;
   metadata: Metadata;
   startRule: string;
+  expressionPosition?: number;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -472,6 +473,7 @@ class ExpressionEditorTextfield extends React.Component<
       reportTimezone,
       stageIndex,
       metadata,
+      expressionPosition,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
     } = this.props;
     const { source } = this.state;
@@ -480,6 +482,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       source,
       targetOffset: cursor.column,
+      expressionPosition,
       query,
       stageIndex,
       metadata,
