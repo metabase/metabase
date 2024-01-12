@@ -1,4 +1,4 @@
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 const FieldSeparator = () => {
   return <Icon name="chevronright" size={12} className="mx2 text-medium" />;

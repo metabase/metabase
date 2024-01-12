@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,

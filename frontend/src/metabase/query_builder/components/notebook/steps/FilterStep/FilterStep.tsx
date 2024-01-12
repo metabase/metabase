@@ -13,7 +13,7 @@ const POPOVER_PROPS: PopoverBaseProps = {
 };
 
 export function FilterStep({
-  topLevelQuery,
+  query,
   step,
   color,
   isLastOpened,
@@ -23,14 +23,14 @@ export function FilterStep({
   const { stageIndex } = step;
 
   const filters = useMemo(
-    () => Lib.filters(topLevelQuery, stageIndex),
-    [topLevelQuery, stageIndex],
+    () => Lib.filters(query, stageIndex),
+    [query, stageIndex],
   );
 
   const handleAddFilter = (
     filter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
-    const nextQuery = Lib.filter(topLevelQuery, stageIndex, filter);
+    const nextQuery = Lib.filter(query, stageIndex, filter);
     updateQuery(nextQuery);
   };
 
@@ -39,7 +39,7 @@ export function FilterStep({
     nextFilter: Lib.ExpressionClause | Lib.FilterClause | Lib.SegmentMetadata,
   ) => {
     const nextQuery = Lib.replaceClause(
-      topLevelQuery,
+      query,
       stageIndex,
       targetFilter,
       nextFilter,
@@ -48,12 +48,12 @@ export function FilterStep({
   };
 
   const handleRemoveFilter = (filter: Lib.FilterClause) => {
-    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, filter);
+    const nextQuery = Lib.removeClause(query, stageIndex, filter);
     updateQuery(nextQuery);
   };
 
   const renderFilterName = (filter: Lib.FilterClause) =>
-    Lib.displayInfo(topLevelQuery, stageIndex, filter).longDisplayName;
+    Lib.displayInfo(query, stageIndex, filter).longDisplayName;
 
   return (
     <ErrorBoundary>
@@ -67,7 +67,7 @@ export function FilterStep({
         renderName={renderFilterName}
         renderPopover={({ item: filter, index, onClose }) => (
           <FilterPopover
-            query={topLevelQuery}
+            query={query}
             stageIndex={stageIndex}
             filter={filter}
             filterIndex={index}

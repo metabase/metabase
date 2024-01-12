@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import Tooltip from "metabase/core/components/Tooltip";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 const Warnings = ({ warnings, className = "", size = 16 }) => {
   if (!warnings || warnings.length === 0) {

@@ -81,12 +81,16 @@ function getCardForBlankQuestion({
 
   if (databaseId && tableId) {
     if (segment) {
-      question = (question.legacyQuery() as StructuredQuery)
+      question = (
+        question.legacyQuery({ useStructuredQuery: true }) as StructuredQuery
+      )
         .filter(["segment", parseInt(segment)])
         .question();
     }
     if (metric) {
-      question = (question.legacyQuery() as StructuredQuery)
+      question = (
+        question.legacyQuery({ useStructuredQuery: true }) as StructuredQuery
+      )
         .aggregate(["metric", parseInt(metric)])
         .question();
     }
@@ -322,7 +326,7 @@ async function handleQBInit(
   if (question.isNative() && question.isQueryEditable()) {
     const query = question.legacyQuery() as NativeQuery;
     const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setQuery(newQuery);
+    question = question.setLegacyQuery(newQuery);
   }
 
   const finalCard = question.card();

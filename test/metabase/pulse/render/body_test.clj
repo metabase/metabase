@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [hiccup.core :refer [html]]
+   [hickory.select :as hik.s]
    [metabase.formatter :as formatter]
    [metabase.models :refer [Card]]
    [metabase.pulse.render.body :as body]
@@ -562,6 +563,45 @@
            :rows         [[nil 1] [11.0 nil] [nil nil] [2.50 20] [1.25 30]]
            :viz-settings {}})))))
 
+(defn- render-error?
+  [pulse-body]
+  (let [content (get-in pulse-body [0 :content 0 :content])]
+    (str/includes? content "error occurred")))
+
+(deftest render-funnel-text-row-labels-test
+  (testing "Static-viz Funnel Chart with text keys in viz-settings renders without error (#26944)."
+    (mt/dataset test-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :orders)
+                           :aggregation  [[:count]]
+                           :breakout     [[:field (mt/id :orders :created_at)
+                                           {:base-type :type/DateTime :temporal-unit :month-of-year}]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings
+                          {:funnel.rows
+                           [{:key "December", :name "December", :enabled true}
+                            {:key "November", :name "November", :enabled true}
+                            {:key "October", :name "October", :enabled true}
+                            {:key "September", :name "September", :enabled true}
+                            {:key "August", :name "August", :enabled true}
+                            {:key "July", :name "July", :enabled true}
+                            {:key "June", :name "June", :enabled true}
+                            {:key "May", :name "May", :enabled true}
+                            {:key "April", :name "April", :enabled true}
+                            {:key "March", :name "March", :enabled true}
+                            {:key "February", :name "February", :enabled true}
+                            {:key "January", :name "January", :enabled true}],
+                           :funnel.order_dimension "CREATED_AT"}}]
+        (mt/with-temp [Card {card-id :id} funnel-card]
+          (let [doc        (render.tu/render-card-as-hickory card-id)
+                pulse-body (hik.s/select
+                            (hik.s/class "pulse-body")
+                            doc)]
+            (is (not (render-error? pulse-body)))))))))
+
 (deftest render-categorical-donut-test
   (let [columns [{:name          "category",
                   :display_name  "Category",
@@ -759,3 +799,28 @@
               {:keys [content]} (body/render :line :inline "UTC" card nil (:data query-results))]
           (testing "Content is generated (rather than an exception being thrown)"
             (is (= :div (first content)))))))))
+
+(deftest unknown-column-settings-test
+  (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
+    (mt/dataset test-data
+      (let [q   {:database (mt/id)
+                 :type     :query
+                 :query
+                 {:source-table (mt/id :reviews)
+                  :aggregation  [[:sum [:field (mt/id :reviews :rating) {:base-type :type/Integer}]]],
+                  :breakout     [[:field (mt/id :reviews :created_at) {:base-type :type/DateTime, :temporal-unit :week}]
+                                 [:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
+                  :filter       [:between [:field (mt/id :reviews :product_id) {:base-type :type/Integer}] 0 10]}}
+            viz {:pivot_table.column_split
+                 {:rows    [[:field (mt/id :reviews :reviewer) {:base-type :type/Text}]],
+                  :columns [[:field (mt/id :reviews :created_at) {:base-type :type/DateTime, :temporal-unit :week}]],
+                  :values  [[:aggregation 0]]}
+                 :column_settings
+                 {(format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/DateTime\"}]]" (mt/id :reviews :created_at))
+                  {:pivot_table.column_sort_order "ascending"}}}]
+        (mt/dataset test-data
+          (mt/with-temp [Card                 {card-id :id} {:display                :pivot
+                                                             :dataset_query          q
+                                                             :visualization_settings viz}]
+            (testing "the render succeeds with unknown column settings keys"
+              (is (seq (render.tu/render-card-as-hickory card-id))))))))))

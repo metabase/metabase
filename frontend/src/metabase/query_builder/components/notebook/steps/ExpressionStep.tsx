@@ -13,7 +13,7 @@ export const ExpressionStep = ({
   readOnly,
   step,
 }: NotebookStepUiComponentProps): JSX.Element => {
-  const { topLevelQuery: query, stageIndex } = step;
+  const { query, stageIndex } = step;
   const expressions = Lib.expressions(query, stageIndex);
 
   const renderExpressionName = (expression: Lib.ExpressionClause) =>

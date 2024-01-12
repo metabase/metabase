@@ -3,8 +3,7 @@ import { t } from "ttag";
 
 import type React from "react";
 import { useState } from "react";
-import { Button, TextInput } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Button, TextInput, Icon } from "metabase/ui";
 
 type DefaultRenderInputProps = {
   value: MappingValue;

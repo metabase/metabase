@@ -503,7 +503,9 @@ class FieldInner extends Base {
       return [];
     }
 
-    const { fks } = table.legacyQuery().fieldOptions();
+    const { fks } = table
+      .legacyQuery({ useStructuredQuery: true })
+      .fieldOptions();
     return fks
       .filter(({ field }) => field.id === this.id)
       .map(({ field, dimension, dimensions }) => ({

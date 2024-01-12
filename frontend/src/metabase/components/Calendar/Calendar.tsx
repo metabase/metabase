@@ -4,7 +4,7 @@ import cx from "classnames";
 import type { Moment } from "moment-timezone";
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import {
   getDayOfWeekOptions,
   getFirstDayOfWeekIndex,

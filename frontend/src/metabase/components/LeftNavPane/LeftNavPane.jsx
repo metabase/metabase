@@ -43,6 +43,7 @@ export function LeftNavPaneItemBack({ path }) {
 export function LeftNavPane({ children, fullHeight = true }) {
   return (
     <div
+      data-testid="admin-left-nav-pane"
       className={cx("MetadataEditor-table-list AdminList flex-no-shrink", {
         "full-height": fullHeight,
       })}
