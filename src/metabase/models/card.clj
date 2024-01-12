@@ -374,7 +374,7 @@
           (t2/update! model po-id {:parameters new-parameters}))))))
 
 (defn model-supports-implicit-actions?
-  "A model with implicit action supported iff they are a raw table,
+  "A model with implicit action supported if they are a raw table,
   meaning there are no clauses such as filter, limit, breakout...
 
   The list of clauses should match with FE, which is defined in the
