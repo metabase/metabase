@@ -37,9 +37,19 @@ export const ModelCard = styled(Card)`
   &:hover {
     color: ${color("brand")};
   }
+  height: 144px;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: space-between;
+  align-items: flex-start;
 `;
 
 export const ModelGridItem = styled(GridItem)`
+
+  // TODO: Not sure we're using magic numbers like this
+  height: 164px;
+  // TODO: Tweak padding
+
   width: 100%;
 
   &:hover {
@@ -54,3 +64,7 @@ export const ModelGridItem = styled(GridItem)`
     width: 33.33%;
   }
 `;
+
+export const LastEditedInfoSeparator = styled.span`
+  padding: 0 6px;
+`

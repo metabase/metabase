@@ -1,10 +1,8 @@
 import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import type { Card, User } from "metabase-types/api";
-import Databases from "metabase/entities/databases";
-import Search from "metabase/entities/search";
-import { Divider, Flex, Tabs, Icon } from "metabase/ui";
+import type { Card, CollectionItem, User } from "metabase-types/api";
+import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
@@ -16,25 +14,45 @@ import Link from "metabase/core/components/Link";
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
-import Users from "metabase/entities/users";
-import { getFullName } from "metabase/lib/user";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
   DatabaseGridItem,
+  LastEditedInfoSeparator,
   ModelCard,
   ModelGridItem,
 } from "./BrowseData.styled";
+import {
+  useDatabaseListQuery,
+  useSearchListQuery,
+} from "metabase/common/hooks";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 
 interface BrowseDataTab {
   label: string;
   component: JSX.Element;
 }
 
-const ModelsTab = ({ models }: { models: Card[] }) => {
+const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
   return (
     <Grid>
-      {models.map((model: Card) => {
+      {models.map((model: CollectionItem) => {
+        console.log("ModelsTab sees model", model);
+        // If there is no information about the last edit, use the timestamp of the creation
+        const lastEditInfo = model.last_edited_at
+          ? {
+              full_name: model.last_editor_common_name!,
+              timestamp: model.last_edited_at!,
+            }
+          : {
+              full_name: model.creator_common_name!,
+              timestamp: model.created_at!,
+            };
+        const item: CollectionItemWithLastEditedInfo = {
+          ...model,
+          "last-edit-info": lastEditInfo,
+        };
         return (
           <ModelGridItem key={model.id}>
             <Link
@@ -44,12 +62,36 @@ const ModelsTab = ({ models }: { models: Card[] }) => {
             >
               <ModelCard>
                 <h3 className="text-wrap">{model.name}</h3>
-                {model.description && (
-                  <p className="text-wrap">{model.description} </p>
-                )}
-                {model.creator && getFullName(model.creator)}
-                &nbsp;
-                {model.last_edited_at}
+                <Text
+                  size="xs"
+                  style={{
+                    height: "32px",
+                    textOverflow: "ellipsis",
+                    overflow: "hidden",
+                    width: "100%",
+                    whiteSpace: "normal",
+                    display: "block",
+                  }}
+                >
+                  {model.description}{" "}
+                </Text>
+                <LastEditInfoLabel
+                  prefix={null}
+                  item={item}
+                  fullName={lastEditInfo.full_name}
+                  formatLabel={(
+                    fullName: string | undefined = "",
+                    timeLabel: string | undefined = "",
+                  ) => (
+                    <>
+                      {fullName}
+                      {fullName && timeLabel ? (
+                        <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
+                      ) : null}
+                      {timeLabel}
+                    </>
+                  )}
+                />
               </ModelCard>
             </Link>
           </ModelGridItem>
@@ -84,17 +126,28 @@ const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
   );
 };
 
-const BrowseDataPage = ({
-  models,
-  users,
-  databases,
-}: {
-  models: Card[];
-  users: User[];
-  databases: IDatabase[];
-}) => {
+export const BrowseDataPage = () => {
   const defaultTab = "Models";
   const [currentTab, setTab] = useState<string | null>(defaultTab);
+
+  const {
+    data: models = [],
+    metadata: _metadataForModels,
+    isLoading: _isModelListLoading,
+  } = useSearchListQuery({
+    query: {
+      models: ["dataset"],
+    },
+    reload: true,
+  });
+
+  const {
+    data: databases = [],
+    metadata: _metadataForDatabases,
+    isLoading: _isDatabaseListLoading,
+  } = useDatabaseListQuery({
+    reload: true,
+  });
 
   // const createExampleModel = (id: number): CollectionItem => ({
   //   name: `Example model ${id}`,
@@ -107,7 +160,7 @@ const BrowseDataPage = ({
   // const exampleModels = Array.from(Array(20).keys()).map(createExampleModel);
 
   const tabs: BrowseDataTab[] = [
-    { label: "Models", component: <ModelsTab models={models} users={users} /> },
+    { label: "Models", component: <ModelsTab models={models} /> },
     { label: "Databases", component: <DatabasesTab databases={databases} /> },
   ];
   // TODO: Fix font of BrowseHeader
@@ -177,22 +230,3 @@ See here too:
 https://github.com/metabase/metabase/blob/be73bb2650729c2bae09b5b648443e2232687faf/frontend/src/metabase-types/api/collection.ts#L72
 
  */
-
-export const ConnectedBrowseDataPage = _.compose(
-  Databases.loadList(),
-  Users.loadList(),
-  //Collections.loadList({
-  //  query: {
-  //    tree: true,
-  //    //"exclude-other-user-collections": true,
-  //    "exclude-archived": true,
-  //  },
-  //  loadingAndErrorWrapper: false,
-  //}),
-  Search.loadList({
-    query: () => ({
-      models: ["dataset"],
-    }),
-    listName: "models",
-  }),
-)(BrowseDataPage);
