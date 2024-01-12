@@ -22,15 +22,21 @@ export function CustomMapFooter() {
     </CustomMapContent>
   );
 
-  return isAdmin ? (
-    <Link to="/admin/settings/maps" aria-label={t`Custom map`}>
-      {content}
-    </Link>
-  ) : (
-    showMetabaseLinks && (
+  if (isAdmin) {
+    return (
+      <Link to="/admin/settings/maps" aria-label={t`Custom map`}>
+        {content}
+      </Link>
+    );
+  }
+
+  if (showMetabaseLinks) {
+    return (
       <ExternalLink aria-label={t`Custom map`} href={docsUrl}>
         {content}
       </ExternalLink>
-    )
-  );
+    );
+  }
+
+  return null;
 }
