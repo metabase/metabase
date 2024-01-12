@@ -19,10 +19,10 @@ import { NotFound } from "metabase/containers/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
+import * as Lib from "metabase-lib";
 import { isPK } from "metabase-lib/types/utils/isa";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
@@ -152,14 +152,32 @@ export function ObjectDetailView({
   ]);
 
   useEffect(() => {
-    if (maybeLoading && pkIndex !== undefined) {
+    if (
+      maybeLoading &&
+      pkIndex !== undefined &&
+      typeof zoomedRowID !== "undefined"
+    ) {
       // if we don't have the row in the current data, try to fetch this single row
-      const pkField = passedData.cols[pkIndex];
-      const filteredQuestion = question
-        ?.legacyQuery({ useStructuredQuery: true })
-        .filter(["=", fieldRefForColumn(pkField), zoomedRowID ?? null])
-        .question();
-      MetabaseApi.dataset(filteredQuestion?._card.dataset_query)
+      const query = question?.query();
+      const stageIndex = -1;
+      const columns = query ? Lib.filterableColumns(query, stageIndex) : [];
+      const queryWithFilter = query
+        ? Lib.filter(
+            query,
+            stageIndex,
+            Lib.stringFilterClause({
+              operator: "=",
+              column: columns[pkIndex],
+              values: [String(zoomedRowID)],
+              options: {},
+            }),
+          )
+        : undefined;
+      const datasetQuery = queryWithFilter
+        ? Lib.toLegacyQuery(queryWithFilter)
+        : undefined;
+
+      MetabaseApi.dataset(datasetQuery)
         .then(result => {
           if (result?.data?.rows?.length > 0) {
             const newRow = result.data.rows[0];
