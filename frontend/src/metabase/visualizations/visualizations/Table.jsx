@@ -380,6 +380,10 @@ export default class Table extends Component {
 
   getColumnSortDirection = columnIndex => {
     const { question, data } = this.state;
+    if (!question || !data) {
+      return;
+    }
+
     const query = question.query();
     const stageIndex = -1;
     const column = Lib.findMatchingColumn(
