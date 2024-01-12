@@ -41,6 +41,7 @@
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend."
   [graph]
+  ;; 0. MaKe A bRaNcH
   ;; 1. Convert DB key names to API key names
   ;; 2. Nest table-level perms under :native and :schemas keys
   ;; 3. Walk tree and convert values to API values
