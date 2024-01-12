@@ -427,9 +427,7 @@ class Question {
   }
 
   setDefaultQuery() {
-    return this.legacyQuery({ useStructuredQuery: true })
-      .setDefaultQuery()
-      .question();
+    return this.legacyQuery({ useStructuredQuery: true }).question();
   }
 
   settings(): VisualizationSettings {
