@@ -12,7 +12,10 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { JS_CODE, JS_CODE_IFRAME_DIFF } from "./shared/embedding-snippets";
+import {
+  getEmbeddingJsCode,
+  getEmbeddingIframeAppearanceCodeDiff,
+} from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
@@ -42,7 +45,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
+            getEmbeddingJsCode({ type: "dashboard", id: ORDERS_DASHBOARD_ID }),
           );
 
         cy.findAllByTestId("embed-backend-select-button")
@@ -78,7 +81,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE_IFRAME_DIFF({
+            getEmbeddingIframeAppearanceCodeDiff({
               type: "dashboard",
               theme: "transparent",
             }),
@@ -103,7 +106,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE({ type: "question", id: ORDERS_QUESTION_ID }),
+            getEmbeddingJsCode({ type: "question", id: ORDERS_QUESTION_ID }),
           );
 
         cy.findByRole("tab", { name: "Appearance" }).click();
@@ -115,7 +118,7 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            JS_CODE_IFRAME_DIFF({
+            getEmbeddingIframeAppearanceCodeDiff({
               type: "question",
               theme: "transparent",
             }),
@@ -132,7 +135,7 @@ features.forEach(feature => {
             .invoke("text")
             .should(
               "match",
-              JS_CODE_IFRAME_DIFF({
+              getEmbeddingIframeAppearanceCodeDiff({
                 type: "question",
                 theme: "transparent",
                 hideDownloadButton: true,

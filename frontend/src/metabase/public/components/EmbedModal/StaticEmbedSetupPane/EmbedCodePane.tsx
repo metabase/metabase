@@ -2,20 +2,19 @@ import { useState } from "react";
 import _ from "underscore";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Text } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 import {
   getEmbedClientCodeExampleOptions,
   getEmbedServerCodeExampleOptions,
 } from "metabase/public/lib/code";
-import { Icon } from "metabase/core/components/Icon";
 import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-
 import { DEFAULT_DISPLAY_OPTIONS } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/config";
+
 import { NoCodeDiffContainer } from "./CodeSample.styled";
 import { CodeSample } from "./CodeSample";
 

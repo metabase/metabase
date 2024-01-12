@@ -33,8 +33,10 @@ export interface StaticEmbedSetupPaneProps {
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
-  onUpdateEnableEmbedding: (enableEmbedding: boolean) => void;
-  onUpdateEmbeddingParams: (embeddingParams: EmbeddingParameters) => void;
+  onUpdateEnableEmbedding: (enableEmbedding: boolean) => void | Promise<void>;
+  onUpdateEmbeddingParams: (
+    embeddingParams: EmbeddingParameters,
+  ) => void | Promise<void>;
 }
 
 export const StaticEmbedSetupPane = ({
@@ -93,21 +95,21 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
       if (!resource.enable_embedding) {
-        onUpdateEnableEmbedding(true);
+        await onUpdateEnableEmbedding(true);
       }
-      onUpdateEmbeddingParams(embeddingParams);
+      await onUpdateEmbeddingParams(embeddingParams);
     } catch (e) {
       console.error(e);
       throw e;
     }
   };
 
-  const handleUnpublish = () => {
+  const handleUnpublish = async () => {
     try {
-      onUpdateEnableEmbedding(false);
+      await onUpdateEnableEmbedding(false);
     } catch (e) {
       console.error(e);
       throw e;

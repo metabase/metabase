@@ -1,4 +1,4 @@
-export const JS_CODE = ({ type, id, hideDownloadButton, theme }) => {
+export const getEmbeddingJsCode = ({ type, id, hideDownloadButton, theme }) => {
   return new RegExp(
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
@@ -24,7 +24,11 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemePara
   );
 };
 
-export const JS_CODE_IFRAME_DIFF = ({ type, hideDownloadButton, theme }) => {
+export const getEmbeddingIframeAppearanceCodeDiff = ({
+  type,
+  hideDownloadButton,
+  theme,
+}) => {
   return new RegExp(
     `var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
       theme,
@@ -37,7 +41,7 @@ export const JS_CODE_IFRAME_DIFF = ({ type, hideDownloadButton, theme }) => {
   );
 };
 
-export const IFRAME_CODE = `<iframe
+export const getEmbeddingIframeCode = `<iframe
     src="{{iframeUrl}}"
     frameborder="0"
     width="800"
