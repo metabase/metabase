@@ -136,15 +136,14 @@
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
   (validation/check-has-application-permission :setting)
-  (try
-    (email/send-message-or-throw!
-     {:subject      "Metabase Test Email"
-      :recipients   [(:email @api/*current-user*)]
-      :message-type :text
-      :message      "Your Metabase emails are working — hooray!"})
-    {:ok true}
-    (catch Throwable e
+  (let [response (email/send-message!
+                  :subject      "Metabase Test Email"
+                  :recipients   [(:email @api/*current-user*)]
+                  :message-type :text
+                  :message      "Your Metabase emails are working — hooray!")]
+    (if-not (::email/error response)
+      {:ok true}
       {:status 400
-       :body   (humanize-error-messages e)})))
+       :body   (humanize-error-messages response)})))
 
 (api/define-routes)
