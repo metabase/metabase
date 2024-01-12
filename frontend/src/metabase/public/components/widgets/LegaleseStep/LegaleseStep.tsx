@@ -31,7 +31,7 @@ export const LegaleseStep = ({
           <Text fw={700}>
             {jt`By clicking "Agree and continue" you're agreeing to ${(
               <ExternalLink
-                  key="embed-license-link"
+                key="embed-license-link"
                 href="https://metabase.com/license/embedding"
                 target="_blank"
               >

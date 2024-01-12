@@ -1,6 +1,6 @@
 import { useState } from "react";
 import _ from "underscore";
-import {LegaleseStep} from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
+import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import { getSignedPreviewUrl, getSignedToken } from "metabase/public/lib/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";

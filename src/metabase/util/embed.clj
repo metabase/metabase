@@ -107,7 +107,6 @@
   (or (get-in unsigned-token keyseq)
       (throw (ex-info (tru "Token is missing value for keypath {0}" keyseq) {:status-code 400}))))
 
-
 (defsetting show-static-embed-terms
   (deferred-tru "Check if the static embedding licensing should be hidden in the static embedding flow")
   :type    :boolean

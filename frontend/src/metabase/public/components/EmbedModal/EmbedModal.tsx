@@ -47,7 +47,7 @@ const EmbedTitle = ({
 
 export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
   const shouldShowEmbedTerms = useSelector(state =>
-      getSetting(state, "show-static-embed-terms"),
+    getSetting(state, "show-static-embed-terms"),
   );
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
   const applicationName = useSelector(getApplicationName);

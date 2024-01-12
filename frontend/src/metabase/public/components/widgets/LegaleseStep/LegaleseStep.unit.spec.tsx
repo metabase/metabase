@@ -59,6 +59,9 @@ describe("LegaleseStep", () => {
     userEvent.click(screen.getByText("Agree and continue"));
 
     expect(settingPutCalls.calls().length).toBe(1);
+    expect(await settingPutCalls.lastCall()?.request?.json()).toEqual({
+      value: false,
+    });
     expect(goToNextStep).toHaveBeenCalled();
   });
 });

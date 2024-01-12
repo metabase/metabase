@@ -18,7 +18,9 @@ const TestEmbedModal = ({
       {({ embedType, goToNextStep, goBackToEmbedModal }) => (
         <Group data-testid="test-embed-modal-content">
           <Button onClick={goBackToEmbedModal}>Previous</Button>
-          <Text data-testid="test-embed-step">{embedType ?? "Embed Landing"}</Text>
+          <Text data-testid="test-embed-step">
+            {embedType ?? "Embed Landing"}
+          </Text>
           <Button onClick={goToNextStep}>Next</Button>
         </Group>
       )}
@@ -59,7 +61,9 @@ describe("EmbedModal", () => {
 
     expect(screen.getByTestId("test-embed-modal-content")).toBeInTheDocument();
 
-    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("Embed Landing");
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
+      "Embed Landing",
+    );
   });
 
   it("should go to the legalese step when `Next` is clicked", () => {
@@ -75,18 +79,22 @@ describe("EmbedModal", () => {
     userEvent.click(screen.getByText("Next"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
 
-    userEvent.click(screen.getByText("Next"))
-    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("application");
-  })
+    userEvent.click(screen.getByText("Next"));
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
+      "application",
+    );
+  });
 
   it("should immediately go to the static embedding step if the user has accepted the terms", async () => {
-    setup({ showStaticEmbedTerms: false});
+    setup({ showStaticEmbedTerms: false });
 
     userEvent.click(screen.getByText("Next"));
     expect(
       within(screen.getByTestId("modal-header")).getByText("Static embedding"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("application");
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
+      "application",
+    );
   });
 
   it("returns to the initial embed modal landing when the user clicks the modal title", () => {
@@ -96,7 +104,9 @@ describe("EmbedModal", () => {
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
 
     userEvent.click(screen.getByText("Static embedding"));
-    expect(screen.getByTestId("test-embed-step")).toHaveTextContent("Embed Landing");
+    expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
+      "Embed Landing",
+    );
   });
 
   it("calls onClose when the modal is closed", () => {

@@ -1,7 +1,7 @@
 (ns ^:mb/once metabase.util.embed-test
   (:require
    [buddy.sign.jwt :as jwt]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.config :as config]
    [metabase.test :as mt]
@@ -37,5 +37,4 @@
           (testing "should always return false for EE users"
             (is (= (embed/show-static-embed-terms) false))
             (embed/show-static-embed-terms! false)
-            (is (= (embed/show-static-embed-terms) false))
-            ))))))
+            (is (= (embed/show-static-embed-terms) false))))))))
