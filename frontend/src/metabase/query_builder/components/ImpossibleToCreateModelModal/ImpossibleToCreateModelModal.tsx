@@ -4,25 +4,30 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import ModalContent from "metabase/components/ModalContent";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { useSelector } from "metabase/lib/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
-const sqlSnippetLinkText = t`SQL snippets`;
-const referenceLinkText = t`reference the results of another saved question`;
+import { getDocsUrl } from "metabase/selectors/settings";
 
 type Props = {
   onClose: () => void;
 };
 
 function SQLSnippetsDocLink() {
-  const href = MetabaseSettings.docsUrl("questions/native-editor/sql-snippets");
-  return <ExternalLink href={href}>{sqlSnippetLinkText}</ExternalLink>;
+  const href = useSelector(state =>
+    getDocsUrl(state, { page: "questions/native-editor/sql-snippets" }),
+  );
+  return <ExternalLink href={href}>{t`SQL snippets`}</ExternalLink>;
 }
 
 function ReferencingQuestionsDocLink() {
-  const href = MetabaseSettings.docsUrl("questions/native-editor/sql-snippets");
-  return <ExternalLink href={href}>{referenceLinkText}</ExternalLink>;
+  const href = useSelector(state =>
+    getDocsUrl(state, { page: "questions/native-editor/sql-snippets" }),
+  );
+  return (
+    <ExternalLink
+      href={href}
+    >{t`reference the results of another saved question`}</ExternalLink>
+  );
 }
 
 export function ImpossibleToCreateModelModal({ onClose }: Props) {
