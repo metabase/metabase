@@ -2,11 +2,14 @@ name: Get latest release branch
 
 outputs:
   branch-name:
-    description: The name of the release branch, with
+    description: The name of the release branch
     value: ${{ steps.get-latest-release-branch.outputs.branch-name }}
   branch-version:
-    description:
+    description: The major version of the current release branch
     value: ${{ steps.get-latest-release-branch.outputs.branch-version }}
+  branch-delta:
+    description: Number of steps behind the current release branch the current branch is
+    value: ${{ steps.get-latest-release-branch.outputs.branch-delta }}
 
 runs:
   using: "composite"
@@ -46,10 +49,22 @@ runs:
           
           console.log(`Latest major release version: ${latestReleaseBranchVersion}`);
           
-          const branchName = context.ref.split('/').pop();
-          console.log(`Current Branch: ${branchName}`);
-          
+          const currentBranchName = context.ref.split('/').pop();
+          const regexPattern = /^release-([x\d]+)\.(\d+)\.([x\d]+)$/;
+
+          branchDelta = 0;
+          const match = currentBranchName.match(regexPattern);
+          if (match) {
+            branchReleaseVersion = parseInt(match[2]);
+            console.log(`Current Branch ${currentBranchName} release version is ${branchReleaseVersion}.`);
+            branchDelta = latestReleaseBranchVersion - branchReleaseVersion
+          console.log(`Current Branch is ${branchDelta} versions behind current release.`);
+          } else {
+            console.log(`Current Branch ${currentBranchName} is not a release branch.`);
+          }
+
           return {
             'branch-name': latestReleaseBranchName,
             'branch-version': latestReleaseBranchVersion,
+            'branch-delta': branchDelta
           };
