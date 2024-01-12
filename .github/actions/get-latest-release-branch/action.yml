@@ -49,7 +49,7 @@ runs:
           
           console.log(`Latest major release version: ${latestReleaseBranchVersion}`);
           
-          targetBranchName = context.payload.pull_request?.base?.ref
+          targetBranchName = github.event.pull_request?.base?.ref
           console.log(`Target branch name is ${targetBranchName}.`);
           
           const currentBranchName = context.ref.split('/').pop();
