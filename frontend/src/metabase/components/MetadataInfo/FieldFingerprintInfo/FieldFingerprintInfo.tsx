@@ -1,28 +1,41 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import { formatDateTimeWithUnit, formatNumber } from "metabase/lib/formatting";
-import Field from "metabase-lib/metadata/Field";
-
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import type { DatasetColumn } from "metabase-types/api";
+import {
+  isCategory,
+  isDate,
+  isID,
+  isNumber,
+} from "metabase-lib/types/utils/isa";
+import type Field from "metabase-lib/metadata/Field";
 import { Table } from "../MetadataInfo.styled";
 import CategoryFingerprint from "./CategoryFingerprint";
 
-const propTypes = {
-  className: PropTypes.string,
-  field: PropTypes.instanceOf(Field),
-  showAllFieldValues: PropTypes.bool,
-};
+interface FieldFingerprintInfoProps {
+  className?: string;
+  field: Field | DatasetColumn;
+  timezone?: string;
+  showAllFieldValues?: boolean;
+}
 
-function FieldFingerprintInfo({ className, field, showAllFieldValues }) {
-  if (!field?.fingerprint) {
-    return null;
-  }
-
-  if (field.isDate()) {
-    return <DateTimeFingerprint className={className} field={field} />;
-  } else if (field.isNumber() && !field.isID()) {
+function FieldFingerprintInfo({
+  className,
+  field,
+  timezone,
+  showAllFieldValues,
+}: FieldFingerprintInfoProps) {
+  if (isDate(field)) {
+    return (
+      <DateTimeFingerprint
+        className={className}
+        field={field}
+        timezone={timezone}
+      />
+    );
+  } else if (isNumber(field) && !isID(field)) {
     return <NumberFingerprint className={className} field={field} />;
-  } else if (field.isCategory()) {
+  } else if (isCategory(field)) {
     return (
       <CategoryFingerprint
         className={className}
@@ -35,17 +48,16 @@ function FieldFingerprintInfo({ className, field, showAllFieldValues }) {
   }
 }
 
-function getTimezone(field) {
-  return field.query?.database?.()?.timezone || field.table?.database?.timezone;
-}
-
-function DateTimeFingerprint({ className, field }) {
-  const dateTimeFingerprint = field.fingerprint.type?.["type/DateTime"];
+function DateTimeFingerprint({
+  className,
+  field,
+  timezone,
+}: FieldFingerprintInfoProps) {
+  const dateTimeFingerprint = field.fingerprint?.type?.["type/DateTime"];
   if (!dateTimeFingerprint) {
     return null;
   }
 
-  const timezone = getTimezone(field);
   const { earliest, latest } = dateTimeFingerprint;
   const formattedEarliest = formatDateTimeWithUnit(earliest, "minute");
   const formattedLatest = formatDateTimeWithUnit(latest, "minute");
@@ -53,10 +65,12 @@ function DateTimeFingerprint({ className, field }) {
   return (
     <Table className={className}>
       <tbody>
-        <tr>
-          <th>{t`Timezone`}</th>
-          <td>{timezone}</td>
-        </tr>
+        {timezone && (
+          <tr>
+            <th>{t`Timezone`}</th>
+            <td>{timezone}</td>
+          </tr>
+        )}
         <tr>
           <th>{t`Earliest date`}</th>
           <td>{formattedEarliest}</td>
@@ -74,16 +88,16 @@ function DateTimeFingerprint({ className, field }) {
  * @param {(number|null|undefined)} num - a number value from the type/Number fingerprint; might not be a number
  * @returns {[boolean, string]} - a tuple, [isFormattedNumber, formattedNumber]
  */
-function roundNumber(num) {
+function roundNumber(num: number | null) {
   if (num == null) {
     return [false, ""];
   }
 
-  return [true, formatNumber(Number.isInteger(num) ? num : num.toFixed(2))];
+  return [true, Number.isInteger(num) ? num : num.toFixed(2)];
 }
 
-function NumberFingerprint({ className, field }) {
-  const numberFingerprint = field.fingerprint.type?.["type/Number"];
+function NumberFingerprint({ className, field }: FieldFingerprintInfoProps) {
+  const numberFingerprint = field.fingerprint?.type?.["type/Number"];
   if (!numberFingerprint) {
     return null;
   }
@@ -115,8 +129,5 @@ function NumberFingerprint({ className, field }) {
   ) : null;
 }
 
-FieldFingerprintInfo.propTypes = propTypes;
-DateTimeFingerprint.propTypes = propTypes;
-NumberFingerprint.propTypes = propTypes;
-
+// eslint-disable-next-line import/no-default-export
 export default FieldFingerprintInfo;

@@ -118,7 +118,7 @@
 (defn normalize-keys
   "Update map keys to remove namespaces from keywords and convert from snake to kebab case."
   [m]
-  (update-keys m (fn [k] (-> k name (str/replace #"_" "-") keyword))))
+  (update-keys m (fn [k] (some-> k name (str/replace #"_" "-") keyword))))
 
 (def col-type
   "The dispatch function logic for format format-timestring.

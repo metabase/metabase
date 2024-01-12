@@ -1,4 +1,4 @@
-(ns metabase.test.util.random
+(ns metabase.util.random
   (:require
     [clojure.string :as str]
     [metabase.util :as u]))
