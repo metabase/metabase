@@ -140,7 +140,10 @@
                  (get-positive-retry-metrics test-retry)))
           (is (= 1 (count @mt/inbox)))))))
   (testing "send email fails b/c retry limit"
-    (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (#'retry/retry-configuration))]
+    (let [retry-config (assoc (#'retry/retry-configuration)
+                              :max-attempts 1
+                              :initial-interval-millis 1)
+          test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
       (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
                     retry/decorate    (rt/test-retry-decorate-fn test-retry)]
         (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
