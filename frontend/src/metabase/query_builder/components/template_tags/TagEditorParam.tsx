@@ -389,7 +389,7 @@ class TagEditorParamInner extends Component<Props> {
           /> */}
           <Switch
             role="switch"
-            id="tag-editor-required"
+            id={`tag-editor-required_${tag.name}`}
             checked={tag.required}
             onChange={e => this.setRequired(e.target.checked)}
           />
