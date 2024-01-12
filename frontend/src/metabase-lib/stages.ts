@@ -10,14 +10,7 @@ import { hasLimit } from "./limit";
 import { orderBys } from "./order_by";
 import type { Query } from "./types";
 
-export const hasAnyClauses = (query: Query): boolean => {
-  return stageCount(query) > 1 || hasAnyClausesAtStage(query, 0);
-};
-
-export const hasAnyClausesAtStage = (
-  query: Query,
-  stageIndex: number,
-): boolean => {
+export const hasAnyClauses = (query: Query, stageIndex: number): boolean => {
   const hasJoins = joins(query, stageIndex).length > 0;
   const hasExpressions = expressions(query, stageIndex).length > 0;
   const hasFilters = filters(query, stageIndex).length > 0;

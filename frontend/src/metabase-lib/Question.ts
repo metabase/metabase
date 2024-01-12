@@ -497,7 +497,7 @@ class Question {
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return this.isStructured() && !Lib.hasAnyClauses(query) && hasSinglePk;
+    return this.isStructured() && !Lib.hasAnyClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
