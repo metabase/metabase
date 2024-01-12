@@ -11,12 +11,14 @@ import {
 interface FieldInfoProps {
   className?: string;
   field?: Field | DatasetColumn;
+  timezone?: string;
   showAllFieldValues?: boolean;
 }
 
 export function FieldInfo({
   className,
   field,
+  timezone,
   showAllFieldValues,
 }: FieldInfoProps) {
   return (
@@ -30,6 +32,7 @@ export function FieldInfo({
       {field && (
         <FieldFingerprintInfo
           field={field}
+          timezone={timezone}
           showAllFieldValues={showAllFieldValues}
         />
       )}

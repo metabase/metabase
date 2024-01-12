@@ -17,7 +17,7 @@ const propTypes = {
   disabled: PropTypes.bool,
 };
 
-type Props = { field?: Field | DatasetColumn } & Pick<
+type Props = { field?: Field | DatasetColumn; timezone?: string } & Pick<
   ITippyPopoverProps,
   "children" | "placement" | "disabled" | "delay"
 >;
@@ -26,6 +26,7 @@ const className = "dimension-info-popover";
 
 function FieldInfoPopover({
   field,
+  timezone,
   children,
   placement,
   disabled,
@@ -37,7 +38,7 @@ function FieldInfoPopover({
       delay={delay}
       placement={placement || "left-start"}
       disabled={disabled}
-      content={<WidthBoundFieldInfo field={field} />}
+      content={<WidthBoundFieldInfo field={field} timezone={timezone} />}
       onTrigger={instance => {
         const fieldInfoPopovers = document.querySelectorAll(
           `.${className}[data-state~='visible']`,

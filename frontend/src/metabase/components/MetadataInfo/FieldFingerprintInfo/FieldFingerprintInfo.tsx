@@ -15,16 +15,24 @@ import CategoryFingerprint from "./CategoryFingerprint";
 interface FieldFingerprintInfoProps {
   className?: string;
   field: Field | DatasetColumn;
+  timezone?: string;
   showAllFieldValues?: boolean;
 }
 
 function FieldFingerprintInfo({
   className,
   field,
+  timezone,
   showAllFieldValues,
 }: FieldFingerprintInfoProps) {
   if (isDate(field)) {
-    return <DateTimeFingerprint className={className} field={field} />;
+    return (
+      <DateTimeFingerprint
+        className={className}
+        field={field}
+        timezone={timezone}
+      />
+    );
   } else if (isNumber(field) && !isID(field)) {
     return <NumberFingerprint className={className} field={field} />;
   } else if (isCategory(field)) {
@@ -40,7 +48,11 @@ function FieldFingerprintInfo({
   }
 }
 
-function DateTimeFingerprint({ className, field }: FieldFingerprintInfoProps) {
+function DateTimeFingerprint({
+  className,
+  field,
+  timezone,
+}: FieldFingerprintInfoProps) {
   const dateTimeFingerprint = field.fingerprint?.type?.["type/DateTime"];
   if (!dateTimeFingerprint) {
     return null;
@@ -53,6 +65,12 @@ function DateTimeFingerprint({ className, field }: FieldFingerprintInfoProps) {
   return (
     <Table className={className}>
       <tbody>
+        {timezone && (
+          <tr>
+            <th>{t`Timezone`}</th>
+            <td>{timezone}</td>
+          </tr>
+        )}
         <tr>
           <th>{t`Earliest date`}</th>
           <td>{formattedEarliest}</td>

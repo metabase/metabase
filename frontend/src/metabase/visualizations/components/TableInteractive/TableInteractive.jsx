@@ -794,6 +794,7 @@ class TableInteractive extends Component {
           <FieldInfoPopover
             placement="bottom-start"
             field={column}
+            timezone={data.results_timezone}
             disabled={this.props.clicked != null || !hasMetadataPopovers}
           >
             {renderTableHeaderWrapper(
