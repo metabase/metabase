@@ -23,7 +23,9 @@
     (let [f +
           retries-needed 3
           flaky-f (tu/works-after (* 2 retries-needed) f)
-          retry-opts {:max-attempts retries-needed, :max-interval-millis 1}
+          retry-opts (assoc (#'retry/retry-configuration)
+                            :max-attempts retries-needed
+                            :max-interval-millis 1)
           retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
           retrying-f (retry/decorate flaky-f retry)
           params (range 6)]
@@ -34,8 +36,10 @@
     (let [f +
           retries-needed 1
           flaky-f (tu/works-after retries-needed f)
-          retry-opts {:max-attempts retries-needed, :max-interval-millis 1
-                      :retry-on-exception-pred #(-> % ex-data :remaining nil?)}
+          retry-opts (assoc (#'retry/retry-configuration)
+                            :max-attempts retries-needed
+                            :max-interval-millis 1
+                            :retry-on-exception-pred #(-> % ex-data :remaining nil?))
           retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
           retrying-f (retry/decorate flaky-f retry)
           params (range 6)]
