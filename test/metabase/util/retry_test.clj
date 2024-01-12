@@ -45,14 +45,18 @@
   (testing "recovery possible"
     (let [a (atom 0)
           f #(swap! a inc)
-          retry-opts {:retry-on-result-pred odd?, :max-interval-millis 1}
+          retry-opts (assoc (#'retry/retry-configuration)
+                            :retry-on-result-pred odd?
+                            :max-interval-millis 1)
           retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
           retrying-f (retry/decorate f retry)]
       (is (= 2 (retrying-f)))))
 
   (testing "recovery impossible"
     (let [f (constantly 1)
-          retry-opts {:retry-on-result-pred odd?, :max-interval-millis 1}
+          retry-opts (assoc (#'retry/retry-configuration)
+                            :retry-on-result-pred odd?
+                            :max-interval-millis 1)
           retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
           retrying-f (retry/decorate f retry)]
       (is (= 1 (retrying-f))))))
