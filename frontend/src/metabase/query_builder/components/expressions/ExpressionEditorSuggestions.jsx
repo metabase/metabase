@@ -73,7 +73,7 @@ export default class ExpressionEditorSuggestions extends Component {
     this.props.onSuggestionMouseDown && this.props.onSuggestionMouseDown(index);
   }
 
-  onMouseDownCapture = _.memoize(i => {
+  createOnMouseDownHandler = _.memoize(i => {
     return event => this.onSuggestionMouseDown(event, i);
   });
 
@@ -103,7 +103,7 @@ export default class ExpressionEditorSuggestions extends Component {
                 <ExpressionEditorSuggestionsListItem
                   suggestion={suggestion}
                   isHighlighted={i === highlightedIndex}
-                  onMouseDownCapture={this.onMouseDownCapture(i)}
+                  onMouseDownCapture={this.createOnMouseDownHandler(i)}
                 />
               </Fragment>
             ))}
