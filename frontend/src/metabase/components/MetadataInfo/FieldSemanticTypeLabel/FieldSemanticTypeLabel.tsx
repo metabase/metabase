@@ -1,11 +1,11 @@
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import {
   getSemanticTypeIcon,
   getSemanticTypeName,
 } from "metabase/lib/schema_metadata";
-import Dimension from "metabase-lib/Dimension";
+import type { DatasetColumn } from "metabase-types/api";
+import type Field from "metabase-lib/metadata/Field";
 
 import {
   LabelContainer,
@@ -13,22 +13,13 @@ import {
   InvertedColorRelativeSizeIcon,
 } from "../MetadataInfo.styled";
 
-DimensionSemanticTypeLabel.propTypes = {
-  className: PropTypes.string,
-  dimension: PropTypes.instanceOf(Dimension).isRequired,
-};
-
 type Props = {
   className?: string;
-  dimension: Dimension;
+  field: Field | DatasetColumn;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function DimensionSemanticTypeLabel({
-  className,
-  dimension,
-}: Props) {
-  const field = dimension.field();
+export default function FieldSemanticTypeLabel({ className, field }: Props) {
   const semanticType = field.semantic_type;
   const semanticTypeIcon = getSemanticTypeIcon(semanticType) || "ellipsis";
   const semanticTypeName =
