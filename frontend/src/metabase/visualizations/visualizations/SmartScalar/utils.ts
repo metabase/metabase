@@ -264,6 +264,19 @@ export function validateComparisons(
   );
 }
 
+export function getComparisons(
+  series: RawSeries,
+  settings: VisualizationSettings,
+) {
+  const comparisons = settings["scalar.comparisons"] || [];
+  const filteredComparisons = comparisons.filter(comparison =>
+    isComparisonValid(comparison, series, settings),
+  );
+  return filteredComparisons.length > 0
+    ? filteredComparisons
+    : getDefaultComparison(series, settings);
+}
+
 type getMaxPeriodsAgoParameters = {
   cols: DatasetColumn[];
   rows: RowValues[];

@@ -6,6 +6,7 @@ import { VIZ_SETTINGS_DEFAULTS } from "metabase/visualizations/visualizations/Sm
 import {
   getDefaultComparison,
   isSuitableScalarColumn,
+  getComparisons,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 
 export const computeSmartScalarSettings = (
@@ -21,6 +22,7 @@ export const computeSmartScalarSettings = (
   );
 
   settings["scalar.comparisons"] ??= getDefaultComparison(rawSeries, settings);
+  settings["scalar.comparisons"] = getComparisons(rawSeries, settings);
 
   settings["scalar.switch_positive_negative"] ??=
     VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"];

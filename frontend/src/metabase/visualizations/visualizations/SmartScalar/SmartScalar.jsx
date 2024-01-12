@@ -52,6 +52,7 @@ import {
   getColumnsForComparison,
   getComparisonOptions,
   formatChangeAutoPrecision,
+  getComparisons,
   getChangeWidth,
   getValueHeight,
   getValueWidth,
@@ -295,6 +296,7 @@ Object.assign(SmartScalar, {
       section: t`Data`,
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
+      getValue: (series, vizSettings) => getComparisons(series, vizSettings),
       isValid: (series, vizSettings) =>
         validateComparisons(series, vizSettings),
       getDefault: (series, vizSettings) =>
