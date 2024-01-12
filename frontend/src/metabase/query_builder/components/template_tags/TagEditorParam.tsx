@@ -11,7 +11,7 @@ import Schemas from "metabase/entities/schemas";
 //   Option as DeprecatedOption,
 // } from "metabase/core/components/Select";
 
-import ValuesSourceSettings from "metabase/parameters/components/ValuesSourceSettings";
+import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 
 import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -388,6 +388,7 @@ class TagEditorParamInner extends Component<Props> {
             onChange={value => this.setRequired(value)}
           /> */}
           <Switch
+            role="switch"
             id="tag-editor-required"
             checked={tag.required}
             onChange={e => this.setRequired(e.target.checked)}
