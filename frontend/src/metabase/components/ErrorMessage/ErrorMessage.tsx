@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-// NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
 interface ErrorMessageProps {
   title: string;
   type: string;
@@ -10,6 +9,7 @@ interface ErrorMessageProps {
   className?: string;
 }
 
+// NOTE: currently relies on .QueryError CSS selectors residing in query_builder.css
 export const ErrorMessage = ({
   title,
   type,
