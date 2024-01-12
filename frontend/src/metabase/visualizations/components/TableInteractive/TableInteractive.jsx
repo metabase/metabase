@@ -679,8 +679,8 @@ class TableInteractive extends Component {
       isPivoted,
       hasMetadataPopovers,
       getColumnTitle,
-      renderTableHeaderWrapper,
       getColumnSortDirection,
+      renderTableHeaderWrapper,
     } = this.props;
     const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
