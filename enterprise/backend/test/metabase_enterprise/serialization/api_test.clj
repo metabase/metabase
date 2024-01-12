@@ -67,10 +67,7 @@
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                               :all_collections false :data_model false :settings true)]
                   (is (= #{:log :dir :settings}
-                         (with-open [tar (open-tar f)]
-                           (->> (u.compress/entries tar)
-                                (map (fn [^TarArchiveEntry e] (file-type (.getName e))))
-                                set))))))
+                         (tar-file-types f)))))
 
               (testing "We can export just a single collection"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
@@ -119,7 +116,7 @@
                     files* (atom [])
                     ;; to avoid input stream closure
                     ba     (#'api.serialization/ba-copy (io/input-stream res))]
-                (log/info "got some byte array" (count ba) ba)
+                (log/warn "got some byte array" (count ba) ba)
                 (with-open [tar (open-tar ba)]
                   (doseq [^TarArchiveEntry e (u.compress/entries tar)]
                     (when (.isFile e)
