@@ -228,9 +228,17 @@ describe("scenarios > visualizations > table", () => {
     cy.wait("@dataset");
 
     cy.get(".Visualization").within(() => {
-      // Make sure new table results loaded with Custom column and Count columns
-      cy.contains(ccName);
       cy.contains("Count").trigger("mouseenter");
+    });
+
+    popover().within(() => {
+      cy.contains("Quantity");
+      cy.findByText("No description");
+    });
+
+    cy.get(".Visualization").within(() => {
+      // Make sure new table results loaded with Custom column and Count columns
+      cy.contains(ccName).trigger("mouseenter");
     });
 
     popover().within(() => {
