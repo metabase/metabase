@@ -17,14 +17,12 @@ export function MetabaseLinksToggleWidget({
   onChange,
 }: MetabaseLinksToggleWidgetProps) {
   return (
-    <>
-      <Switch
-        checked={setting.value ?? setting.default}
-        onChange={e => onChange(e.target.checked)}
-        labelPosition="left"
-        label={t`Show links and references`}
-        size="sm"
-      />
-    </>
+    <Switch
+      checked={setting.value ?? setting.default}
+      onChange={e => onChange(e.target.checked)}
+      labelPosition="left"
+      label={t`Show links and references`}
+      size="sm"
+    />
   );
 }
