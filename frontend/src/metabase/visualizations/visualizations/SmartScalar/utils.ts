@@ -14,7 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { isEmpty } from "metabase/lib/validate";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { measureText } from "metabase/lib/measure-text";
 import { uuid } from "metabase/lib/utils";
 import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
