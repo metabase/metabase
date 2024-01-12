@@ -66,7 +66,7 @@ runs:
 
         if ${{ inputs.postgres }}; then
           echo -e "${Y}Starting postgres container..." &&
-          docker run -d -p 5404:5432 metabase/qa-databases:postgres-sample-12 &&
+          docker run -d -p 5404:5432 -e TZ='US/Pacific' metabase/qa-databases:postgres-sample-12 &&
           while ! nc -z localhost 5404; do sleep 1; done &&
           echo -e "${G}Postgres is up and running!"
         fi
