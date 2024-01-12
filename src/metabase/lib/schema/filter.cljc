@@ -8,6 +8,22 @@
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
+(defn- tuple-clause-of-comparables-schema
+  "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple` and ensure that
+  the elements of `args` at positions specified by the pairs in `compared-position-pairs` can be compared."
+  [compared-position-pairs]
+  (fn [tag & args]
+    {:pre [(simple-keyword? tag)]}
+    [:and
+     (apply mbql-clause/tuple-clause-schema tag args)
+     [:fn
+      {:error/message "arguments should be comparable"}
+      (fn [[_tag _opts & args]]
+        (let [argv (vec args)]
+          (every? true? (map (fn [[i j]]
+                               (expression/comparable-expressions? (get argv i) (get argv j)))
+                             compared-position-pairs))))]]))
+
 (doseq [op [:and :or]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
     [:args [:repeat {:min 2} [:schema [:ref ::expression/boolean]]]]))
@@ -20,21 +36,21 @@
     [:args [:repeat {:min 2} [:schema [:ref ::expression/equality-comparable]]]]))
 
 (doseq [op [:< :<= :> :>=]]
-  (mbql-clause/define-tuple-mbql-clause op :- :type/Boolean
+  (mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1]})
+    op :- :type/Boolean
     #_x [:ref ::expression/orderable]
     #_y [:ref ::expression/orderable]))
 
-(mbql-clause/define-tuple-mbql-clause :between :- :type/Boolean
-  ;; TODO -- we should probably enforce additional constraints that the various arg types have to agree, e.g. it makes
-  ;; no sense to say something like `[:between {} <date> <[:ref ::expression/string]> <integer>]`
-  ;;
+(mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1] [0 2]})
+  :between :- :type/Boolean
   ;; TODO -- should we enforce that min is <= max (for literal number values?)
   #_expr [:ref ::expression/orderable]
   #_min  [:ref ::expression/orderable]
   #_max  [:ref ::expression/orderable])
 
 ;; sugar: a pair of `:between` clauses
-(mbql-clause/define-tuple-mbql-clause :inside :- :type/Boolean
+(mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 2] [0 4] [1 3] [1 5]})
+  :inside :- :type/Boolean
   ;; TODO -- should we enforce that lat-min <= lat-max and lon-min <= lon-max? Should we enforce that -90 <= lat 90
   ;; and -180 <= lon 180 ?? (for literal number values)
   #_lat-expr [:ref ::expression/orderable]

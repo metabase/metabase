@@ -30,13 +30,13 @@ import { getQueryBuilderMode } from "metabase/query_builder/selectors";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import FieldInfoPopover from "metabase/components/MetadataInfo/FieldInfoPopover";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { isID, isPK, isFK } from "metabase-lib/types/utils/isa";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
-import Dimension from "metabase-lib/Dimension";
 import { memoizeClass } from "metabase-lib/utils";
 import { isAdHocModelQuestionCard } from "metabase-lib/metadata/utils/models";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
+import Dimension from "metabase-lib/Dimension";
 import MiniBar from "../MiniBar";
 import {
   TableDraggable,
@@ -667,14 +667,6 @@ class TableInteractive extends Component {
     return style.left;
   }
 
-  getDimension(column, query) {
-    if (!query) {
-      return undefined;
-    }
-
-    return query.parseFieldReference(column.field_ref);
-  }
-
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
   // After the measurements are done, invisible columns get unmounted.
   // Because table headers are wrapped into react-draggable, it can trigger
@@ -801,14 +793,11 @@ class TableInteractive extends Component {
               : undefined
           }
         >
-          <DimensionInfoPopover
+          <FieldInfoPopover
             placement="bottom-start"
-            dimension={
-              hasMetadataPopovers
-                ? this.getDimension(column, this.props.query)
-                : null
-            }
-            disabled={this.props.clicked != null}
+            field={column}
+            timezone={data.results_timezone}
+            disabled={this.props.clicked != null || !hasMetadataPopovers}
           >
             {renderTableHeaderWrapper(
               <Ellipsified tooltip={columnTitle}>
@@ -831,7 +820,7 @@ class TableInteractive extends Component {
               column,
               columnIndex,
             )}
-          </DimensionInfoPopover>
+          </FieldInfoPopover>
           <TableDraggable
             enableUserSelectHack={false}
             enableCustomUserSelectHack={!isVirtual}
@@ -1154,7 +1143,6 @@ export default _.compose(
     "_visualizationIsClickableCached",
     "getCellBackgroundColor",
     "getCellFormattedValue",
-    "getDimension",
     "getHeaderClickedObject",
   ),
 )(TableInteractive);

@@ -13,7 +13,6 @@
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
-   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -174,7 +173,7 @@
 
 (defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
   (driver/with-driver :bigquery-cloud-sdk
-    (let [obj-name (format name-fmt-str (tu.random/random-name))]
+    (let [obj-name (format name-fmt-str (mt/random-name))]
       ;; TODO: do we still need to make a copy of db everytime we use this helper?
       (mt/with-temp-copy-of-db
         (try

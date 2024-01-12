@@ -46,6 +46,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli :as mu]))
 
@@ -69,7 +70,9 @@
       (for [[op label] [[:<  "<"]
                         [:>  ">"]
                         [:=  "="]
-                        [:!= "≠"]]]
+                        [:!= "≠"]]
+            :when (or (not (#{:< :>} op))
+                      (lib.schema.expression/comparable-expressions? field-ref value))]
         {:name   label
          :filter (operator op field-ref value)})
 
