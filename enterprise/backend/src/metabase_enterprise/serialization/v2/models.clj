@@ -57,7 +57,6 @@
    "ModelIndexValue"
    "ModerationReview"
    "Permissions"
-   "PermissionsV2"
    "PermissionsGroup"
    "PermissionsGroupMembership"
    "PermissionsRevision"
