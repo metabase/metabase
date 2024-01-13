@@ -5208,12 +5208,11 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-01-04T13:52:51
       author: noahmoss
-      comment: >-
-        Permissions v2 schema (proof of concept)
+      comment: Data permissions table
       changes:
         - createTable:
-            tableName: permissions_v2
-            remarks: A table to store permissions in a v2 format
+            tableName: data_permissions
+            remarks: A table to store database and table permissions
             columns:
               - column:
                   remarks: The ID of the permission
@@ -5231,7 +5230,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: permissions_group
                     referencedColumnNames: id
-                    foreignKeyName: fk_permissions_v2_ref_permissions_group
+                    foreignKeyName: fk_data_permissions_ref_permissions_group
                     deleteCascade: true
               - column:
                   remarks: The type of the permission (e.g. "data", "collection", "download"...)
@@ -5244,10 +5243,10 @@ databaseChangeLog:
                   name: db_id
                   type: int
                   constraints:
-                    nullable: true
+                    nullable: false
                     referencedTableName: metabase_database
                     referencedColumnNames: id
-                    foreignKeyName: fk_permissions_v2_ref_db_id
+                    foreignKeyName: fk_data_permissions_ref_db_id
                     deleteCascade: true
               - column:
                   remarks: A schema name, for table-level permissions
@@ -5263,16 +5262,8 @@ databaseChangeLog:
                     nullable: true
                     referencedTableName: metabase_table
                     referencedColumnNames: id
-                    foreignKeyName: fk_permissions_v2_ref_table_id
+                    foreignKeyName: fk_data_permissions_ref_table_id
                     deleteCascade: true
-              - column:
-                  remarks: >-
-                    The ID of the object this permission is assocaited with, for non-DB and Table permissions.
-                    The table this ID references is inferred based on the permission type.
-                  name: object_id
-                  type: int
-                  constraints:
-                    nullable: true
               - column:
                   remarks: >-
                     The value this permission is set to. I wanted to call this 'value' but that's a reserved word
@@ -5285,41 +5276,41 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-01-09T13:52:21
       author: noahmoss
-      comment: Index on permissions_v2.table_id
+      comment: Index on data_permissions.table_id
       rollback: # not necessary, will be removed with the table
       changes:
         - createIndex:
-            tableName: permissions_v2
+            tableName: data_permissions
             columns:
               - column:
                   name: table_id
-            indexName: idx_permissions_v2_table_id
+            indexName: idx_data_permissions_table_id
 
   - changeSet:
       id: v49.2024-01-09T13:53:50
       author: noahmoss
-      comment: Index on permissions_v2.db_id
+      comment: Index on data_permissions.db_id
       rollback: # not necessary, will be removed with the table
       changes:
         - createIndex:
-            tableName: permissions_v2
+            tableName: data_permissions
             columns:
               - column:
                   name: db_id
-            indexName: idx_permissions_v2_db_id
+            indexName: idx_data_permissions_db_id
 
   - changeSet:
       id: v49.2024-01-09T13:53:54
       author: noahmoss
-      comment: Index on permissions_v2.group_id
+      comment: Index on data_permissions.group_id
       rollback: # not necessary, will be removed with the table
       changes:
         - createIndex:
-            tableName: permissions_v2
+            tableName: data_permissions
             columns:
               - column:
                   name: group_id
-            indexName: idx_permissions_v2_group_id
+            indexName: idx_data_permissions_group_id
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
