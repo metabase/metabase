@@ -54,6 +54,7 @@ export type CollectionItemWithLastEditedInfo = CollectionItem & {
 };
 
 // Long variable names give more context to translators
+// TODO: Long variable names might not be used in POEditor; see if there's a conventional way of providing context to translators
 // TODO: Should there be a fallback to a string like 'Edited 3 months ago' when there's no name?
 const defaultLabelFormatter = (
   fullNameOfPersonWhoLastEditedThisItem: string | undefined,
@@ -65,6 +66,8 @@ const defaultLabelFormatter = (
       : null}
   </>
 );
+
+// TODO: Maybe we can reuse the LastEditInfoLabel component as is without adding the separator; ask Kyle about this
 
 function LastEditInfoLabel({
   item,
@@ -88,6 +91,8 @@ function LastEditInfoLabel({
   const editorId = lastEditInfo?.id;
   const timestamp = lastEditInfo?.timestamp;
 
+  // TODO: use dayjs not moment
+  // Not sure how to localize this. Bracket this for now, says Ryan
   const momentTimestamp = moment(timestamp);
   const timeLabel =
     timestamp && momentTimestamp.isValid()
@@ -115,5 +120,8 @@ function LastEditInfoLabel({
     </Tooltip>
   ) : null;
 }
+// TODO: Make the tooltip look like the one on Figma (bottom left corner)
+// TODO: note that the header is meant to be truncated and ellipsified too
+// NOTE: Ryan says that the verified icon, both on the collection name and the models, is tricky. Verification of a question is an enterprise feature. Enterprise features are loaded through plugins.
 
 export default connect(mapStateToProps)(LastEditInfoLabel);

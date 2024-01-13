@@ -37,11 +37,13 @@ export const ModelCard = styled(Card)`
   &:hover {
     color: ${color("brand")};
   }
-  height: 144px;
+  // TODO: Use rem 1rem is 16px, so 144px is 9rem
+  height: 9rem;
   display: flex;
   flex-flow: column nowrap;
   justify-content: space-between;
   align-items: flex-start;
+  // TODO: Ask Kyle about the box-shadow on the card, which is different between the spec and the defaults for this Card component
 `;
 
 export const ModelGridItem = styled(GridItem)`

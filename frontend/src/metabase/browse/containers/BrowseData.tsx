@@ -1,3 +1,7 @@
+// ******************************************************************************************************
+// TODO: Implement quickly the grouping of models by collection and share the branch with Kyle along with my questions
+// ******************************************************************************************************
+
 import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -34,21 +38,20 @@ interface BrowseDataTab {
   component: JSX.Element;
 }
 
+// TODO:Use the Ellipsified component to ellipsify the model description. Note the parent component must
+
 const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
   return (
     <Grid>
       {models.map((model: CollectionItem) => {
-        console.log("ModelsTab sees model", model);
-        // If there is no information about the last edit, use the timestamp of the creation
-        const lastEditInfo = model.last_edited_at
-          ? {
-              full_name: model.last_editor_common_name!,
-              timestamp: model.last_edited_at!,
-            }
-          : {
-              full_name: model.creator_common_name!,
-              timestamp: model.created_at!,
-            };
+        console.log("model", model);
+        // If there is no information about the last edit,
+        // use the timestamp of the creation
+        const lastEditInfo = {
+          full_name:
+            model.last_editor_common_name! ?? model.creator_common_name!,
+          timestamp: model.last_edited_at! ?? model.created_at!,
+        };
         const item: CollectionItemWithLastEditedInfo = {
           ...model,
           "last-edit-info": lastEditInfo,
@@ -61,7 +64,7 @@ const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
               data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
             >
               <ModelCard>
-                <h3 className="text-wrap">{model.name}</h3>
+                <h4 className="text-wrap">{model.name}</h4>
                 <Text
                   size="xs"
                   style={{
@@ -79,6 +82,8 @@ const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
                   prefix={null}
                   item={item}
                   fullName={lastEditInfo.full_name}
+                  // TODO: This feels a little complicated.
+                  // Let me see if I can simplify it
                   formatLabel={(
                     fullName: string | undefined = "",
                     timeLabel: string | undefined = "",
@@ -100,6 +105,8 @@ const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
     </Grid>
   );
 };
+
+// TODO: Ping Kyle about how the grid should be made responsive (with flexbox or grid or what?)
 
 const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
   return (
@@ -130,6 +137,7 @@ export const BrowseDataPage = () => {
   const defaultTab = "Models";
   const [currentTab, setTab] = useState<string | null>(defaultTab);
 
+  // TODO: Ask the backend team, at what point does the search end point automatically paginate?
   const {
     data: models = [],
     metadata: _metadataForModels,
@@ -149,19 +157,9 @@ export const BrowseDataPage = () => {
     reload: true,
   });
 
-  // const createExampleModel = (id: number): CollectionItem => ({
-  //   name: `Example model ${id}`,
-  //   id,
-  //   model: "dataset",
-  //   description: "This is an example model",
-  //   getIcon: () => ({ name: "model" }),
-  //   getUrl: () => "to be determined",
-  // });
-  // const exampleModels = Array.from(Array(20).keys()).map(createExampleModel);
-
   const tabs: BrowseDataTab[] = [
-    { label: "Models", component: <ModelsTab models={models} /> },
-    { label: "Databases", component: <DatabasesTab databases={databases} /> },
+    { label: t`Models`, component: <ModelsTab models={models} /> },
+    { label: t`Databases`, component: <DatabasesTab databases={databases} /> },
   ];
   // TODO: Fix font of BrowseHeader
   // TODO: Do we still need 'Learn about our data?'
@@ -188,6 +186,9 @@ export const BrowseDataPage = () => {
     </div>
   );
 };
+
+// NOTE: The minimum mergeable version does not need to include the verified badges
+// NOTE: There's an EmptyState component
 
 // I think I need to do something like the following.
 // To get the models, I need to get the collections, and then get the items in each collection.
