@@ -145,6 +145,48 @@
           (least-permissive-value perm-type)))))
 
 
+;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
+
+(comment
+  ;; General hierarchy of the data access permissions graph
+  {#_:group-id 1
+   {#_:db-id 1
+    {#_:perm-type :data-access
+     {#_:schema-name "PUBLIC"
+      {#_:table-id 1 :unrestricted}}}}})
+
+(defn data-permissions-graph
+  "Returns a tree representation of all data permissions. Can be optionally filtered by group ID, database ID,
+  and/or permission type. This is intended to power the permissions editor in the admin panel, and should not be used
+  for permission enforcement, as it will read much more data than necessary."
+  [& {:keys [group-id db-id perm-type]}]
+  (let [data-perms (t2/select [:model/DataPermissions
+                               :type
+                               [:group_id :group-id]
+                               [:perm_value :value]
+                               [:db_id :db-id]
+                               :schema
+                               [:table_id :table-id]]
+                              {:where [:and
+                                       (when db-id [:= :db_id db-id])
+                                       (when group-id [:= :group_id group-id])
+                                       (when perm-type [:= :type (name perm-type)])]})]
+    (reduce
+     (fn [graph {group-id  :group-id
+                 perm-type :type
+                 value     :value
+                 db-id     :db-id
+                 schema    :schema
+                 table-id  :table-id}]
+       (let [schema   (or schema "")
+             path     (if table-id
+                        [group-id db-id perm-type schema table-id]
+                        [group-id db-id perm-type])]
+         (assoc-in graph path value)))
+     {}
+     data-perms)))
+
+
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 
 (defn- assert-valid-permission
