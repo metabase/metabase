@@ -64,6 +64,7 @@
     :model/Card
     :model/CardBookmark
     :model/DashboardBookmark
+    :model/DataPermissions
     :model/CollectionBookmark
     :model/BookmarkOrdering
     :model/DashboardCard
@@ -76,7 +77,6 @@
     :model/PermissionsGroup
     :model/PermissionsGroupMembership
     :model/Permissions
-    :model/PermissionsV2
     :model/PermissionsRevision
     :model/PersistedInfo
     :model/ApplicationPermissionsRevision
