@@ -54,7 +54,6 @@
     :model/ModerationReview
     :model/ParameterCard
     :model/Permissions
-    :model/PermissionsV2
     :model/PermissionsGroup
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
