@@ -47,10 +47,15 @@
                  :model/Database         {database-id :id} {}]
     (with-restored-perms-for-group! group-id
       (testing "`set-database-permission!` correctly updates an individual database's permissions"
-        (data-perms/set-database-permission! group-id database-id :native-query-editing :yes)
-        (is (= :yes (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil)))
         (data-perms/set-database-permission! group-id database-id :native-query-editing :no)
-        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil))))
+        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :native-query-editing)))
+        (data-perms/set-database-permission! group-id database-id :native-query-editing :yes)
+        (is (= :yes (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :native-query-editing))))
+
+      (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :block"
+        (data-perms/set-database-permission! group-id database-id :data-access :block)
+        (is (= :block (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :data-access)))
+        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :native-query-editing))))
 
       (testing "A database-level permission cannot be set to an invalid value"
         (is (thrown-with-msg?

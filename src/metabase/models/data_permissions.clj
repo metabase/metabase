@@ -94,7 +94,6 @@
 (defmethod coalesce :default
   [perm-type perm-values]
   (let [ordered-values (-> Permissions perm-type :values)]
-    (def ordered-values ordered-values)
     (first (filter (set perm-values) ordered-values))))
 
 (mu/defn database-permission-for-user :- PermissionValue
@@ -226,7 +225,9 @@
       (t2/insert! :model/DataPermissions {:type       perm-type
                                           :group_id   group-id
                                           :perm_value value
-                                          :db_id      db-id}))))
+                                          :db_id      db-id})
+      (when (= [:data-access :block] [perm-type value])
+        (set-database-permission! group-or-id db-or-id :native-query-editing :no)))))
 
 (mu/defn set-table-permission!
   "Sets a single permission to a specified value for a given group and DB or table. If a permission value already exists
@@ -279,7 +280,7 @@
                                         :perm_value existing-db-perm-value
                                         :db_id      db_id
                                         :table_id   (:id table)
-                                        :schema     schema})
+                                        :schema     (:schema table)})
                                      other-tables)]
             (t2/delete! :model/DataPermissions :id (:id existing-db-perm))
             (t2/insert! :model/DataPermissions (conj other-new-perms new-perm))))
@@ -296,7 +297,11 @@
             ;; If all tables would have the same permissions after we update this one, we can replace all of the table
             ;; perms with a DB-level perm instead.
             (do
-              (t2/delete! :model/DataPermissions {:where [:in id (conj (map :id existing-table-perms) id)]})
+              (t2/delete! :model/DataPermissions {:where [:and
+                                                          [:= :type      (name perm-type)]
+                                                          [:= :group_id  group-id]
+                                                          [:= :db_id     db_id]
+                                                          [:in :table_id (conj (map :table_id existing-table-perms) id)]]})
               (t2/insert! :model/DataPermissions {:type       perm-type
                                                   :group_id   group-id
                                                   :perm_value value

@@ -106,15 +106,15 @@
       (update-table-level-download-permissions! group-id db-id table-id schema table-perm))
     (let [tables (db/select :model/Table :db_id db-id :schema schema)]
       (doseq [table tables]
-       (case new-schema-perms
-         :full
-         (data-perms/set-table-permission! group-id table :download-results :one-million-rows)
+        (case new-schema-perms
+          :full
+          (data-perms/set-table-permission! group-id table :download-results :one-million-rows)
 
-         :limited
-         (data-perms/set-table-permission! group-id table :download-results :ten-thousand-rows)
+          :limited
+          (data-perms/set-table-permission! group-id table :download-results :ten-thousand-rows)
 
-         :none
-         (data-perms/set-table-permission! group-id table :download-results :no))))))
+          :none
+          (data-perms/set-table-permission! group-id table :download-results :no))))))
 
 ; ;; TODO: Make sure we update download perm enforcement to infer native download permissions, since
 ; ;; we'll no longer be setting them explicitly in the database.
@@ -162,7 +162,7 @@
   (if (map? new-schema-perms)
     (doseq [[table-id table-perm] new-schema-perms]
       (update-table-level-data-access-permissions! group-id db-id table-id schema table-perm))
-    (let [tables (db/select :model/Table :db_id db-id :schema schema)]
+    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
       (doseq [table tables]
        (case new-schema-perms
          :all
