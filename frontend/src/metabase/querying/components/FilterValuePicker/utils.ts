@@ -30,10 +30,12 @@ export function canSearchFieldValues(
 }
 
 function getFieldOptions(fieldValues: FieldValue[]): SelectItem[] {
-  return fieldValues.map(([value, label = value]) => ({
-    value: String(value),
-    label: String(label),
-  }));
+  return fieldValues
+    .filter(([value]) => value != null)
+    .map(([value, label = value]) => ({
+      value: String(value),
+      label: String(label),
+    }));
 }
 
 function getSelectedOptions(selectedValues: string[]): SelectItem[] {
