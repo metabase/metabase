@@ -23,7 +23,7 @@ export const ToggleSidebarFilter = ({
       data-testid="toggle-filter-switch"
       size="sm"
       labelPosition="left"
-      label={<Text color="text.2">{label()}</Text>}
+      label={<Text color="text-dark">{label()}</Text>}
       data-is-checked={value}
       checked={value}
       onChange={event => onChange(event.currentTarget.checked)}
