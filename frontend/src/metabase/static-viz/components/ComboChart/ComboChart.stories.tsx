@@ -36,7 +36,7 @@ LineLinearXScale.args = {
 };
 
 export const LineLinearXScaleUnsorted = Template.bind({});
-LineLinearXScale.args = {
+LineLinearXScaleUnsorted.args = {
   rawSeries: data.lineLinearXScaleUnsorted as any,
   dashcardSettings: {},
   renderingContext,

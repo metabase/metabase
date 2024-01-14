@@ -7,7 +7,7 @@ import type {
   DataKey,
   Datum,
   Extent,
-  GroupedDataset,
+  ChartDataset,
   SeriesModel,
 } from "../model/types";
 
@@ -34,7 +34,7 @@ function getBubbleSizeScale(
 export function buildEChartsScatterSeries(
   seriesModel: SeriesModel,
   bubbleSizeDomain: Extent | null,
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
   dimensionDataKey: DataKey,
   yAxisIndex: number,
   renderingContext: RenderingContext,
