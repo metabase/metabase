@@ -19,6 +19,7 @@ import {
   getNormalizedDataset,
   getDatasetExtents,
   getTransformedDataset,
+  applySquareRootScaling,
 } from "./dataset";
 import type { DataKey, DimensionModel, SeriesModel } from "./types";
 
@@ -399,5 +400,24 @@ describe("dataset transform functions", () => {
         ),
       ).not.toThrow();
     });
+  });
+});
+
+describe("applySquareRootScaling", () => {
+  it("should apply square root scaling to numeric values", () => {
+    expect(applySquareRootScaling(0)).toBe(0);
+    expect(applySquareRootScaling(1)).toBe(1);
+    expect(applySquareRootScaling(16)).toBe(4);
+  });
+
+  it("should preserve numeric values sign", () => {
+    expect(applySquareRootScaling(-1)).toBe(-1);
+    expect(applySquareRootScaling(-16)).toBe(-4);
+  });
+
+  it("should return other types unchanged", () => {
+    expect(applySquareRootScaling(null)).toBe(null);
+    expect(applySquareRootScaling("foo")).toBe("foo");
+    expect(applySquareRootScaling(true)).toBe(true);
   });
 });
