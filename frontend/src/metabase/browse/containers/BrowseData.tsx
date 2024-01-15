@@ -18,8 +18,6 @@ import { Grid } from "metabase/components/Grid";
 
 import Link from "metabase/core/components/Link";
 
-import BrowseHeader from "metabase/browse/components/BrowseHeader";
-
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import {
   useDatabaseListQuery,
@@ -28,13 +26,15 @@ import {
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import EmptyState from "metabase/components/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
   DatabaseGridItem,
+  EllipsifiedWithWrapping,
   LastEditedInfoSeparator,
   ModelCard,
-  ModelGridItem,
+  ModelGroupGrid,
 } from "./BrowseData.styled";
 
 interface BrowseDataTab {
@@ -43,8 +43,6 @@ interface BrowseDataTab {
 }
 
 type Model = CollectionItem;
-
-// TODO: Use the Ellipsified component to ellipsify the model description.
 
 const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
   // We build up a mapping of collection ids to names as we iterate through the models
@@ -126,14 +124,32 @@ const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
   );
 };
 
+export const BrowseDataTabWrapper = ({
+  isLoading,
+  error,
+  children,
+}: {
+  isLoading: boolean;
+  error: unknown;
+  children: JSX.Element;
+}) => {
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+  if (error) {
+    return <LoadingAndErrorWrapper error />;
+  }
+  return children;
+};
+
 export const BrowseDataPage = () => {
   const idOfInitialTab = "models";
   const [currentTabId, setTabId] = useState<string | null>(idOfInitialTab);
 
   const {
     data: models = [],
-    metadata: _metadataForModels,
-    isLoading: _isModelListLoading,
+    error: errorLoadingModels,
+    isLoading: isModelListLoading,
   } = useSearchListQuery({
     query: {
       models: ["dataset"],
@@ -144,16 +160,34 @@ export const BrowseDataPage = () => {
   const {
     data: databases = [],
     metadata: _metadataForDatabases,
-    isLoading: _isDatabaseListLoading,
+    error: errorLoadingDatabases,
+    isLoading: isDatabaseListLoading,
   } = useDatabaseListQuery({
     reload: true,
   });
 
   const tabs: Record<string, BrowseDataTab> = {
-    models: { label: t`Models`, component: <ModelsTab models={models} /> },
+    models: {
+      label: t`Models`,
+      component: (
+        <BrowseDataTabWrapper
+          isLoading={isModelListLoading}
+          error={errorLoadingModels}
+        >
+          <ModelsTab models={models} />
+        </BrowseDataTabWrapper>
+      ),
+    },
     databases: {
       label: t`Databases`,
-      component: <DatabasesTab databases={databases} />,
+      component: (
+        <BrowseDataTabWrapper
+          isLoading={isDatabaseListLoading}
+          error={errorLoadingDatabases}
+        >
+          <DatabasesTab databases={databases} />
+        </BrowseDataTabWrapper>
+      ),
     },
   };
   // TODO: Fix font of BrowseHeader
@@ -168,7 +202,10 @@ export const BrowseDataPage = () => {
         flexFlow: "column nowrap",
       }}
     >
-      <BrowseHeader crumbs={[{ title: t`Browse data` }]} />
+      <h2
+        className="text-dark"
+        style={{ marginBottom: ".35rem" }}
+      >{t`Browse data`}</h2>
       <Tabs
         value={currentTabId}
         onTabChange={setTabId}
@@ -225,7 +262,7 @@ const ModelGroup = ({
         }}
       >
         <h4 style={{ width: "100%" }}>{collectionName}</h4>
-        <Grid>
+        <ModelGroupGrid>
           {/* TODO: Type the `model` var*/}
           {models.map((model: any) => {
             // If there is no information about the last edit,
@@ -240,32 +277,27 @@ const ModelGroup = ({
               "last-edit-info": lastEditInfo,
             };
             return (
-              <ModelGridItem key={model.id}>
+              <div key={model.id}>
                 <Link
                   to={Urls.modelDetail(model)}
                   // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
                   data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
                 >
                   <ModelCard>
-                    <h4 className="text-wrap">{model.name}</h4>
-                    <Text
-                      size="xs"
-                      style={{
-                        height: "32px",
-                        textOverflow: "ellipsis",
-                        overflow: "hidden",
-                        width: "100%",
-                        whiteSpace: "normal",
-                        display: "block",
-                      }}
-                    >
-                      {model.description}{" "}
+                    <h4 className="text-wrap" style={{ lineHeight: "16px" }}>
+                      {model.name}
+                    </h4>
+                    <Text size="xs" style={{ height: "32px" }}>
+                      <EllipsifiedWithWrapping tooltipMaxWidth="100%">
+                        {model.description}{" "}
+                      </EllipsifiedWithWrapping>
                     </Text>
                     <LastEditInfoLabel
                       prefix={null}
                       item={item}
                       fullName={lastEditInfo.full_name}
-                      // TODO: Simplify this
+                      className={"last-edit-info-label-button"}
+                      // TODO: Simplify the formatLabel prop
                       formatLabel={(
                         fullName: string | undefined = "",
                         timeLabel: string | undefined = "",
@@ -281,10 +313,10 @@ const ModelGroup = ({
                     />
                   </ModelCard>
                 </Link>
-              </ModelGridItem>
+              </div>
             );
           })}
-        </Grid>
+        </ModelGroupGrid>
       </div>
     </>
   );
