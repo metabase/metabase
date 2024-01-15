@@ -229,7 +229,7 @@
   as
 
     (let [_ \"Description\"
-          _ {:type :boolean, :multi-think :key}]
+          _ {:type :boolean, :multi-thunk :key}]
       (defn my-setting \"Docstring.\" [])
       (defn my-setting! \"Docstring.\" [_value-or-nil]))
 
