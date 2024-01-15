@@ -36,9 +36,11 @@ class ClickMappings extends Component {
         sourceOptions: _.chain(sourceOptions)
           .mapObject((sources, sourceType) =>
             sources
-              .filter(source =>
-                target.sourceFilters[sourceType](source, question),
-              )
+              .filter(source => {
+                const sourceFilter = target.sourceFilters[sourceType];
+
+                return sourceFilter(source, question);
+              })
               .map(getSourceOption[sourceType]),
           )
           .pairs()
