@@ -1,7 +1,6 @@
-import { assoc, assocIn, chain } from "icepick";
+import { assoc } from "icepick";
 
 import { titleize, humanize } from "metabase/lib/formatting";
-import { startNewCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import { isTypePK } from "metabase-lib/types/utils/isa";
@@ -47,55 +46,6 @@ export const databaseToForeignKeys = database =>
         }))
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
-
-export const getQuestionOld = ({
-  dbId,
-  tableId,
-  fieldId,
-  metricId,
-  segmentId,
-  getCount,
-  visualization,
-  metadata,
-}) => {
-  const newQuestion = startNewCard(dbId, tableId);
-
-  // consider taking a look at Ramda as a possible underscore alternative?
-  // http://ramdajs.com/0.21.0/index.html
-  const question = chain(newQuestion)
-    .updateIn(["dataset_query", "query", "aggregation"], aggregation =>
-      getCount ? [["count"]] : aggregation,
-    )
-    .updateIn(["display"], display => visualization || display)
-    .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {
-      if (fieldId && metadata && metadata.field(fieldId)) {
-        return [metadata.field(fieldId).getDefaultBreakout()];
-      }
-      if (fieldId) {
-        return [["field", fieldId, null]];
-      }
-      return oldBreakout;
-    })
-    .value();
-
-  if (metricId) {
-    return assocIn(
-      question,
-      ["dataset_query", "query", "aggregation"],
-      [["metric", metricId]],
-    );
-  }
-
-  if (segmentId) {
-    return assocIn(
-      question,
-      ["dataset_query", "query", "filter"],
-      ["segment", segmentId],
-    );
-  }
-
-  return question;
-};
 
 export const getQuestion = ({
   dbId: databaseId,
