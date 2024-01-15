@@ -52,7 +52,7 @@ const AdminPaneLayout = ({
   buttonLink,
   headingContent,
 }) => (
-  <div className="wrapper">
+  <div>
     <AdminPaneTitle
       title={title}
       description={description}
