@@ -144,8 +144,8 @@
    :embedding_app_origin_set (boolean (embed.settings/embedding-app-origin))
    :appearance_site_name     (not= (public-settings/site-name) "Metabase")
    :appearance_help_link     (public-settings/help-link)
-   :appearance_logo          (public-settings/application-logo-url)
-   :appareance_favicon       (public-settings/application-favicon-url)})
+   :appearance_logo          (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
+   :appareance_favicon       (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")})
 
 (defn- user-metrics
   "Get metrics based on user records.

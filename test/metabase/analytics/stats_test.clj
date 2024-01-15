@@ -90,7 +90,8 @@
                          :embedding_app_origin_set false
                          :appearance_site_name     true
                          :appearance_help_link     :metabase
-                         :appearance_logo         false}
+                         :appearance_logo          false
+                         :appareance_favicon       false}
                         stats))
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
