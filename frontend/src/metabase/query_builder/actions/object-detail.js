@@ -60,8 +60,9 @@ export const followForeignKey = createThunkAction(
       const databaseId = card.dataset_query.database;
       const tableId = fk.origin.table.id;
       const metadata = getMetadata(getState());
-      const question = Question.create({ databaseId, tableId, metadata });
-      const query = question.query();
+      const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+      const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+      const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
       const stageIndex = -1;
       const column = Lib.fromLegacyColumn(query, stageIndex, fk.origin);
       const filterClause =
@@ -78,10 +79,12 @@ export const followForeignKey = createThunkAction(
               options: {},
             });
       const queryWithFilter = Lib.filter(query, stageIndex, filterClause);
-      const questionWithFilter = question.setQuery(queryWithFilter);
+      const question = Question.create({ databaseId, metadata }).setQuery(
+        queryWithFilter,
+      );
 
       dispatch(resetRowZoom());
-      dispatch(setCardAndRun(questionWithFilter.card()));
+      dispatch(setCardAndRun(question.card()));
     };
   },
 );
