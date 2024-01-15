@@ -44,7 +44,7 @@ interface BrowseDataTab {
 
 type Model = CollectionItem;
 
-// TODO:Use the Ellipsified component to ellipsify the model description. Note the parent component must
+// TODO: Use the Ellipsified component to ellipsify the model description.
 
 const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
   // We build up a mapping of collection ids to names as we iterate through the models
@@ -89,7 +89,7 @@ const ModelsTab = ({ models }: { models: Model[] }) => {
     <>
       {entries.map(([collectionId, models], index) => {
         return (
-          <CollectionOfModels
+          <ModelGroup
             key={collectionId}
             collectionName={collectionIdToName[collectionId]}
             models={models}
@@ -127,8 +127,8 @@ const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
 };
 
 export const BrowseDataPage = () => {
-  const defaultTabId = "models";
-  const [currentTabId, setTabId] = useState<string | null>(defaultTabId);
+  const idOfInitialTab = "models";
+  const [currentTabId, setTabId] = useState<string | null>(idOfInitialTab);
 
   const {
     data: models = [],
@@ -204,7 +204,7 @@ export const BrowseDataPage = () => {
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
-const CollectionOfModels = ({
+const ModelGroup = ({
   collectionName,
   models,
   includeDivider = true,
