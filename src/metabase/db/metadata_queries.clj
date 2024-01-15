@@ -62,7 +62,7 @@
     (assoc :source-table (:id table))
 
     ;; Some table requires a filter to be able to query the data
-    ;; Currently this only applied to Parittioned table in bigquery where the partition field
+    ;; Currently this only applied to Partitioned table in bigquery where the partition field
     ;; is required as a filter.
     ;; In the future we probably want this to be dispatched by database engine type
     (:database_require_filter table)
