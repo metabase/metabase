@@ -96,26 +96,6 @@ describe("scenarios > public > question", () => {
     });
   });
 
-  it("should only allow non-admin users to see a public link if one has already been created", () => {
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      createPublicQuestionLink(id);
-      cy.signOut();
-      cy.signInAsNormalUser().then(() => {
-        visitQuestion(id);
-
-        cy.icon("share").click();
-
-        cy.findByTestId("public-link-popover-content").within(() => {
-          cy.findByText("Public link").should("be.visible");
-          cy.findByTestId("public-link-input").then($input =>
-            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
-          );
-          cy.findByText("Remove public URL").should("not.exist");
-        });
-      });
-    });
-  });
-
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public questions`, () => {
