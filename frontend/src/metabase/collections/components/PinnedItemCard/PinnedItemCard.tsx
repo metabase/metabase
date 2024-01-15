@@ -54,7 +54,6 @@ function PinnedItemCard({
 }: Props) {
   const [showTitleTooltip, setShowTitleTooltip] = useState(false);
   const icon = item.getIcon().name;
-
   const { description, name, model } = item;
   const defaultedDescription = description || DEFAULT_DESCRIPTION[model] || "";
 
