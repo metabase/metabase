@@ -164,7 +164,7 @@ export function ObjectDetailView({
             Lib.stringFilterClause({
               operator: "=",
               column: Lib.fromLegacyColumn(query, stageIndex, pkField),
-              values: zoomedRowID ? [String(zoomedRowID)] : [],
+              values: zoomedRowID != null ? [String(zoomedRowID)] : [],
               options: {},
             }),
           )
