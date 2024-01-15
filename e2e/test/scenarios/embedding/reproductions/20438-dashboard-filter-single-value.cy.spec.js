@@ -84,7 +84,7 @@ describe("issue 20438", () => {
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
-    openStaticEmbeddingModal();
+    openStaticEmbeddingModal({ activeTab: "parameters" });
 
     visitIframe();
 

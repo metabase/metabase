@@ -24,7 +24,6 @@ export const DashboardEmbedAction = ({
         dashboard={dashboard}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        isLinkEnabled={true}
       />
     </>
   );

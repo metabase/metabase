@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase-enterprise.advanced-config.api.logs :as ee.api.logs]
    [metabase.models.query-execution :refer [QueryExecution]]
-   [metabase.public-settings.premium-features-test :as premium-features.test]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]))
 
@@ -32,7 +31,7 @@
                        QueryExecution qe-b (merge query-execution-defaults {}
                                                   {:executor_id user-id
                                                    :started_at  (t/minus now (t/days 32))})]
-          (premium-features.test/with-premium-features #{:audit-app}
+          (mt/with-premium-features #{:audit-app}
             (testing "Query Executions within `:yyyy-mm` are returned."
               (is (= [(select-keys qe-a [:started_at :id])]
                      ;; we're calling the function directly instead of calling the API
@@ -46,10 +45,12 @@
 
     (testing "permission tests"
       (testing "require admins"
-        (premium-features.test/with-premium-features #{:audit-app}
+        (mt/with-premium-features #{:audit-app}
           (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 "ee/logs/query_execution/2023-02")))))
+                 (mt/user-http-request :rasta :get 403 "ee/logs/query_execution/2023-02")))
+          (is (= []
+                 (mt/user-http-request :crowberto :get 200 "ee/logs/query_execution/2023-02")))))
       (testing "only works when `:audit-app` feature is available."
-        (premium-features.test/with-premium-features #{}
+        (mt/with-premium-features #{}
           (is (= "Audit app is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :get 402 "ee/logs/query_execution/2023-02"))))))))

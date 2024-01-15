@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
+import type NativeQuery from "metabase-lib/queries/NativeQuery";
 import { DEFAULT_TABLE_SETTINGS } from "./constants";
 
 export const getEntityId = (state: State) => {
@@ -57,8 +57,9 @@ export const getFeedbackType = (state: State) => {
 };
 
 export const getNativeQueryText = createSelector([getQuestion], question => {
-  const query = question?.legacyQuery();
-  return query instanceof NativeQuery ? query.queryText() : undefined;
+  return question?.isNative()
+    ? (question.legacyQuery() as NativeQuery).queryText()
+    : undefined;
 });
 
 export const getPromptTemplateVersions = (state: State) =>

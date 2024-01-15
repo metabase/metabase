@@ -1,4 +1,4 @@
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { Root } from "./ImplicitActionIcon.styled";
 

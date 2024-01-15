@@ -35,8 +35,4 @@ export default class AtomicQuery extends Query {
   engine(): string | null | undefined {
     return null;
   }
-
-  sourceTable(): Table | null | undefined {
-    return null;
-  }
 }

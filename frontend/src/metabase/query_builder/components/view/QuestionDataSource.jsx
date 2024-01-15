@@ -2,6 +2,7 @@ import { isValidElement } from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 
+import * as Lib from "metabase-lib";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
@@ -27,8 +28,9 @@ QuestionDataSource.propTypes = {
 };
 
 function isMaybeBasedOnDataset(question) {
-  const tableId = question.legacyQuery().sourceTableId();
-  return isVirtualCardId(tableId);
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  return isVirtualCardId(sourceTableId);
 }
 
 function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
@@ -44,8 +46,9 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
     );
   }
 
-  const sourceTable = question.legacyQuery().sourceTableId();
-  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTable);
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
 
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
@@ -162,7 +165,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
   const isStructuredQuery = question.isStructured();
   const query = isStructuredQuery
-    ? question.legacyQuery().rootQuery()
+    ? question.legacyQuery({ useStructuredQuery: true }).rootQuery()
     : question.legacyQuery();
 
   const hasDataPermission = question.isQueryEditable();

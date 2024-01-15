@@ -1,5 +1,5 @@
 import { t, ngettext, msgid } from "ttag";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import type Field from "metabase-lib/metadata/Field";
 import {
   NodeListItemLink,

@@ -9,7 +9,7 @@ import {
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 

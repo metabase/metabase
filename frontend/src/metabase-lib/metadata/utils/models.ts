@@ -97,8 +97,6 @@ export function checkDatabaseCanPersistDatasets(database?: Database | null) {
 }
 
 export function checkCanBeModel(question: Question) {
-  const query = question.legacyQuery();
-
   if (!checkDatabaseSupportsModels(question.database())) {
     return false;
   }
@@ -107,7 +105,7 @@ export function checkCanBeModel(question: Question) {
     return true;
   }
 
-  return (query as NativeQuery)
+  return (question.legacyQuery() as NativeQuery)
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }

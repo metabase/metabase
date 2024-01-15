@@ -18,8 +18,6 @@
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
@@ -342,7 +340,7 @@
         (t2/insert! Session {:id      (str test-uuid)
                              :user_id (:id user)})
         (testing "is `false` if advanced-permisison is disabled"
-          (premium-features-test/with-premium-features #{}
+          (mt/with-premium-features #{}
             (is (= false
                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
 
