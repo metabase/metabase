@@ -17,7 +17,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       itemComponent: SelectItem,
       maxDropdownHeight: 512,
       clearButtonProps: {
-        color: "text.2",
+        color: "text-dark",
       },
     }),
     styles: (theme, _, { size = "md" }) => ({

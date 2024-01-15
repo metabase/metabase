@@ -71,7 +71,7 @@ export function CoordinateFilterEditor({
   };
 
   return (
-    <Grid mih="4.5rem" grow>
+    <Grid grow>
       <Grid.Col span="auto">
         <Flex h="100%" align="center" gap="sm">
           <Icon name={columnIcon} />

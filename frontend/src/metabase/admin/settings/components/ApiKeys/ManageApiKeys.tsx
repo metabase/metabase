@@ -29,7 +29,7 @@ function EmptyTableWarning() {
   return (
     <Stack mt="xl" align="center" justify="center" spacing="sm">
       <Title>{t`No API keys here yet`}</Title>
-      <Text color="text.1">{t`You can create an API key to make API calls programatically.`}</Text>
+      <Text color="text-medium">{t`You can create an API key to make API calls programatically.`}</Text>
     </Stack>
   );
 }
@@ -145,7 +145,7 @@ export const ManageApiKeys = () => {
           <Stack>
             <Title>{t`Manage API Keys`}</Title>
             {!tableIsEmpty && (
-              <Text color="text.1">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
+              <Text color="text-medium">{t`Allow users to use the API keys to authenticate their API calls.`}</Text>
             )}
           </Stack>
           <Button
