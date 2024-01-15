@@ -64,7 +64,8 @@
           {:node
            (hooks/parse-string
              (with-out-str
-               ((resolve 'clojure.pprint/pprint)
+               #_{:clj-kondo/ignore [:unresolved-namespace]}
+               (clojure.pprint/pprint
                 form)))}))))
 
   (defn x []
