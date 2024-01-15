@@ -143,7 +143,8 @@
    :enable_embedding         (embed.settings/enable-embedding)
    :embedding_app_origin_set (boolean (embed.settings/embedding-app-origin))
    :appearance_site_name     (not= (public-settings/site-name) "Metabase")
-   :appearance_help_link     (public-settings/help-link)})
+   :appearance_help_link     (public-settings/help-link)
+   :appearance_logo          (public-settings/application-logo-url)})
 
 (defn- user-metrics
   "Get metrics based on user records.
