@@ -613,8 +613,6 @@ describe("scenarios > visualizations > table column settings", () => {
       _addColumn(testData);
     });
 
-    // TODO: This is currently broken by some subtleties of `:lib/source` in MLv2.
-    // This is still better than it used to be, so skip this test and fix it later. See #32373.
     it("should be able to show and hide fields from a nested query with joins and fields (metabase#32373)", () => {
       cy.createQuestion(tableQuestionWithJoinAndFields).then(
         ({ body: card }) => {
@@ -640,14 +638,7 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _addColumn(testData2);
 
-      // // TODO: Once #33972 is fixed in the QP, this test will start failing.
-      // // The correct display name is "Products -> Category", but the QP is incorrectly marking this column as coming
-      // // from the implicit join (so it's using PRODUCT_ID -> "Product", not the table name "Products").
-      _addColumn({
-        ...testData,
-        column: "Products → Category",
-        columnName: "Product → Category",
-      });
+      _addColumn(testData);
     });
 
     it("should be able to show and hide implicitly joinable fields for a nested query with joins and fields", () => {

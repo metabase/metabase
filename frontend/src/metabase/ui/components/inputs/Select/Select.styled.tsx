@@ -133,6 +133,10 @@ export const getSelectItemsOverrides = (
         color: theme.fn.themeColor("brand"),
         backgroundColor: theme.fn.themeColor("brand-lighter"),
       },
+      "&[data-selected]": {
+        color: theme.fn.themeColor("text-white"),
+        backgroundColor: theme.fn.themeColor("brand"),
+      },
       "&[data-disabled]": {
         color: theme.fn.themeColor("text-light"),
       },
