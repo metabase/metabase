@@ -115,6 +115,10 @@ export const getQuestion = ({
     query = aggregateByCount(query);
   }
 
+  if (fieldId) {
+    query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
+  }
+
   if (metricId) {
     query = aggregateByMetricId(query, metricId);
   }
@@ -138,6 +142,18 @@ function aggregateByCount(query) {
   });
   const aggregationclause = Lib.aggregationClause(countOperator);
   return Lib.aggregate(query, stageIndex, aggregationclause);
+}
+
+function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
+  const stageIndex = -1;
+  const field = metadata.field(fieldId);
+  const column = Lib.fromLegacyColumn(query, stageIndex, field);
+
+  if (!column) {
+    return query;
+  }
+
+  return Lib.withDefaultTemporalBucket(query, stageIndex, column);
 }
 
 function filterBySegmentId(query, segmentId) {
