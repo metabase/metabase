@@ -34,19 +34,11 @@ function hasNewColumns(question: Question, queryResult: Dataset | null) {
     return false;
   }
 
-  const queryResultColumns = queryResult.data.cols.map(column => column.name);
-  if (question.isNative()) {
-    return queryResultColumns.length > 0;
-  }
-
-  // NOTE: this assumes column names will change
-  // technically this is wrong because you could add and remove two columns with the same name
   const query = question.query();
   const stageIndex = -1;
-  const queryColumns = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).name,
-  );
-  return _.difference(queryColumns, queryResultColumns).length > 0;
+  const returnedColumns = Lib.returnedColumns(query, stageIndex);
+  const resultColumns = queryResult.data.cols;
+  return !Lib.isSameColumnList(query, returnedColumns, resultColumns);
 }
 
 function checkShouldRerunPivotTableQuestion({
