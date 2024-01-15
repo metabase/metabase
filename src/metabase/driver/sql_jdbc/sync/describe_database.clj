@@ -76,7 +76,7 @@
   [driver ^Connection conn table-schema table-name]
   ;; Query completes = we have SELECT privileges
   ;; Query throws some sort of no permissions exception = no SELECT privileges
-  (let [sql-args  (simple-select-probe-query driver table-schema table-name)]
+  (let [sql-args (simple-select-probe-query driver table-schema table-name)]
     (log/tracef "Checking for SELECT privileges for %s with query %s"
                 (str (when table-schema
                        (str (pr-str table-schema) \.))
@@ -118,20 +118,19 @@
        set))
 
 (defn- have-select-privilege-fn
-  "Return a function takes a map with 2 keys :schema and :name, return true if we can select against the table.
+  "Returns a function that take a map with 3 keys [:schema, :name, :type], return true if we can do a select query on the table.
 
-  This function should not be called each time a table need to check select privileges, instead use it as a cache funciton like so
+  This function shouldn't be called a `map` or anything alike, instead use it as a cache function like so:
 
-    (let [have-select-privilege-fn* (have-select-privilege-fn* driver database conn)
-          tables                    ...]
+    (let [have-select-privilege-fn* (have-select-privilege-fn driver database conn)
+          tables                   ...]
       (filter have-select-privilege-fn* tables))"
   [driver database conn]
   (if (driver/database-supports? driver :table-privileges database)
     (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver database)]
       (fn [{schema :schema table :name ttype :type}]
-        ;; we can't get table privileges for redshift table due to permission error
-        ;; so we need to use the old way of checking privilege for them
-        (if (= [:redshift "EXTERNAL TABLE"] [driver ttype])
+        (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
+             [driver ttype])
           (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
           (contains? schema+table-with-select-privileges [schema table]))))
     (fn [{schema :schema table :name}]

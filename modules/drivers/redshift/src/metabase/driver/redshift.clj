@@ -3,7 +3,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -386,32 +385,3 @@
 (defmethod driver/insert-into! :redshift
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
-
-(defmethod driver/current-user-table-privileges :redshift
-  [_driver database]
-  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (->> (jdbc/query
-          conn-spec
-          (str/join
-           "\n"
-           ["with table_privileges as ("
-            " select"
-            "   NULL as role,"
-            "   t.schemaname as schema,"
-            "   t.tablename as table,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'UPDATE') as update,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'SELECT') as select,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'INSERT') as insert,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'DELETE') as delete"
-            " from ("
-            "   select schemaname, tablename from pg_catalog.pg_tables"
-            "   union"
-            "   select schemaname, viewname as tablename from pg_views"
-            " ) t"
-            " where t.schemaname !~ '^pg_'"
-            "   and t.schemaname <> 'information_schema'"
-            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-            ")"
-            "select t.*"
-            "from table_privileges t"]))
-         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))
