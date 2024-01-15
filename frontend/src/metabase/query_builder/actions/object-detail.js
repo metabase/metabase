@@ -57,9 +57,9 @@ export const followForeignKey = createThunkAction(
         return false;
       }
 
-      const databaseId = card.dataset_query.database;
-      const tableId = fk.origin.table.id;
       const metadata = getMetadata(getState());
+      const databaseId = new Question(card, metadata).databaseId();
+      const tableId = fk.origin.table.id;
       const metadataProvider = Lib.metadataProvider(databaseId, metadata);
       const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
       const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
