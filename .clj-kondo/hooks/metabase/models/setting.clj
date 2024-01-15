@@ -236,7 +236,7 @@
   for linting purposes."
   [{:keys [node]}]
   (let [[setting-name docstring thunk & options] (rest (:children node))]
-    (defsetting-lint node setting-name docstring (concat options [:multi-thunk thunk]))))
+    (defsetting-lint node setting-name docstring (concat options [(hooks/token-node :multi-thunk) thunk]))))
 
 (comment
   (defn- defsetting* [form]
