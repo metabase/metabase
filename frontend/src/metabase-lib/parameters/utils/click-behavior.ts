@@ -44,7 +44,7 @@ interface Target {
 }
 
 interface SourceFilters {
-  column: (column: DatasetColumn) => boolean;
+  column: (column: DatasetColumn, question?: Question) => boolean;
   parameter: (parameter: Parameter) => boolean;
   userAttribute: (userAttribute: string) => boolean;
 }
@@ -161,8 +161,12 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       target,
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: (sourceColumn: DatasetColumn, question: Question) => {
-          const sourceQuery = question.query();
+        column: (sourceColumn, sourceQuestion) => {
+          if (!sourceQuestion) {
+            throw new Error("sourceQuestion is required");
+          }
+
+          const sourceQuery = sourceQuestion.query();
 
           return Lib.isCompatibleType(
             Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),
@@ -271,7 +275,8 @@ export function getTargetsForDashboard(
       name,
       target: { type: "parameter", id },
       sourceFilters: {
-        column: c => notRelativeDateOrRange(parameter) && filter(c.base_type),
+        column: (c: DatasetColumn) =>
+          notRelativeDateOrRange(parameter) && filter(c.base_type),
         parameter: sourceParam => {
           // parameter IDs are generated client-side, so they might not be unique
           // if dashboard is a clone, it will have identical parameter IDs to the original

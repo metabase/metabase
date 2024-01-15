@@ -302,7 +302,9 @@ describe("metabase/lib/click-behavior", () => {
           );
 
           const filteredSources = {
-            column: sources.column.filter(sourceFilters.column),
+            column: sources.column.filter(column =>
+              sourceFilters.column(column),
+            ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
               sourceFilters.userAttribute,
@@ -378,7 +380,9 @@ describe("metabase/lib/click-behavior", () => {
           );
 
           const filteredSources = {
-            column: sources.column.filter(sourceFilters.column),
+            column: sources.column.filter(column =>
+              sourceFilters.column(column),
+            ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
               sourceFilters.userAttribute,
@@ -465,7 +469,9 @@ describe("metabase/lib/click-behavior", () => {
           );
 
           const filteredSources = {
-            column: sources.column.filter(sourceFilters.column),
+            column: sources.column.filter(column =>
+              sourceFilters.column(column),
+            ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
               sourceFilters.userAttribute,
