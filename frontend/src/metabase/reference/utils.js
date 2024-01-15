@@ -117,18 +117,10 @@ export const getQuestion = ({
 
   if (metricId) {
     query = aggregateByMetricId(query, metricId);
-    return Question.create({ databaseId, metadata })
-      .setQuery(query)
-      .setDisplay(visualization)
-      .card();
   }
 
   if (segmentId) {
     query = filterBySegmentId(query, segmentId);
-    return Question.create({ databaseId, metadata })
-      .setQuery(query)
-      .setDisplay(visualization)
-      .card();
   }
 
   return Question.create({ databaseId, metadata })
