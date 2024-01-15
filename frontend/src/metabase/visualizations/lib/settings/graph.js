@@ -2,7 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import {
   columnsAreValid,
-  getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
   MAX_SERIES,
@@ -25,54 +24,34 @@ import {
 
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
+  getDefaultIsHistogram,
+  getDefaultScatterColumns,
+  getDefaultStackingValue,
+  getDefaultXAxisScale,
+  getDefaultXAxisTitle,
+  getDefaultYAxisTitle,
+  getIsXAxisLabelEnabledDefault,
+  getIsYAxisLabelEnabledDefault,
+  getSeriesOrderVisibilitySettings,
+  isStackingValueValid,
+  STACKABLE_DISPLAY_TYPES,
+} from "metabase/visualizations/shared/settings/cartesian-chart";
+import {
   isDimension,
   isMetric,
   isNumeric,
   isAny,
 } from "metabase-lib/types/utils/isa";
 
-// NOTE: currently we don't consider any date extracts to be histgrams
-const HISTOGRAM_DATE_EXTRACTS = new Set([
-  // "minute-of-hour",
-  // "hour-of-day",
-  // "day-of-month",
-  // "day-of-year",
-  // "week-of-year",
-]);
-
 export function getDefaultDimensionLabel(multipleSeries) {
-  return multipleSeries.length > 0 && multipleSeries[0].data.cols[0]
-    ? getFriendlyName(multipleSeries[0].data.cols[0])
-    : null;
+  return getDefaultXAxisTitle(multipleSeries[0]?.data.cols[0]);
 }
 
 export function getDefaultColumns(series) {
   if (series[0].card.display === "scatter") {
-    return getDefaultScatterColumns(series);
+    return getDefaultScatterColumns(series[0].data);
   } else {
     return getDefaultLineAreaBarColumns(series);
-  }
-}
-
-function getDefaultScatterColumns([
-  {
-    data: { cols, rows },
-  },
-]) {
-  const dimensions = cols.filter(isDimension);
-  const metrics = cols.filter(isMetric);
-  if (dimensions.length === 2 && metrics.length < 2) {
-    return {
-      dimensions: [dimensions[0].name],
-      metrics: [dimensions[1].name],
-      bubble: metrics.length === 1 ? metrics[0].name : null,
-    };
-  } else {
-    return {
-      dimensions: [null],
-      metrics: [null],
-      bubble: null,
-    };
   }
 }
 
@@ -178,54 +157,7 @@ export const GRAPH_DATA_SETTINGS = {
 
     getValue: (series, settings) => {
       const seriesKeys = series.map(s => keyForSingleSeries(s));
-      const seriesSettings = settings["series_settings"];
-      const seriesColors = settings["series_settings.colors"] || {};
-      const seriesOrder = settings["graph.series_order"];
-      // Because this setting is a read dependency of graph.series_order_dimension, this should
-      // Always be the stored setting, not calculated.
-      const seriesOrderDimension = settings["graph.series_order_dimension"];
-      const currentDimension = settings["graph.dimensions"][1];
-
-      if (currentDimension === undefined) {
-        return [];
-      }
-
-      const generateDefault = keys => {
-        return keys.map(key => ({
-          key,
-          color: seriesColors[key],
-          enabled: true,
-          name: seriesSettings[key]?.title || key,
-        }));
-      };
-
-      const removeMissingOrder = (keys, order) =>
-        order.filter(o => keys.includes(o.key));
-      const newKeys = (keys, order) =>
-        keys.filter(key => !order.find(o => o.key === key));
-
-      if (
-        !seriesOrder ||
-        !_.isArray(seriesOrder) ||
-        !seriesOrder.every(
-          order =>
-            order.key !== undefined &&
-            order.name !== undefined &&
-            order.color !== undefined,
-        ) ||
-        seriesOrderDimension !== currentDimension
-      ) {
-        return generateDefault(seriesKeys);
-      }
-
-      return [
-        ...removeMissingOrder(seriesKeys, seriesOrder),
-        ...generateDefault(newKeys(seriesKeys, seriesOrder)),
-      ].map(item => ({
-        ...item,
-        name: seriesSettings[item.key]?.title || item.key,
-        color: seriesColors[item.key],
-      }));
+      return getSeriesOrderVisibilitySettings(settings, seriesKeys);
     },
     getHidden: (series, settings) => {
       return (
@@ -335,8 +267,6 @@ export const LINE_SETTINGS = {
   },
 };
 
-const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar"]);
-
 export const STACKABLE_SETTINGS = {
   "stackable.stack_type": {
     section: t`Display`,
@@ -350,33 +280,21 @@ export const STACKABLE_SETTINGS = {
       ],
     },
     isValid: (series, settings) => {
-      if (settings["stackable.stack_type"] != null) {
-        const displays = series.map(single => settings.series(single).display);
-        const stackableDisplays = displays.filter(display =>
-          STACKABLE_DISPLAY_TYPES.has(display),
-        );
-        return stackableDisplays.length > 1;
-      }
-      return true;
+      const seriesDisplays = series.map(
+        single => settings.series(single).display,
+      );
+
+      return isStackingValueValid(settings, seriesDisplays);
     },
     getDefault: ([{ card, data }], settings) => {
-      // legacy setting and default for D-M-M+ charts
-      if (settings["stackable.stacked"]) {
-        return settings["stackable.stacked"];
-      }
-
-      const shouldStack =
-        card.display === "area" &&
-        (settings["graph.metrics"].length > 1 ||
-          settings["graph.dimensions"].length > 1);
-
-      return shouldStack ? "stacked" : null;
+      return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
       const displays = series.map(single => settings.series(single).display);
       const stackableDisplays = displays.filter(display =>
         STACKABLE_DISPLAY_TYPES.has(display),
       );
+
       return stackableDisplays.length <= 1;
     },
     readDependencies: ["graph.metrics", "graph.dimensions", "series"],
@@ -507,12 +425,7 @@ export const GRAPH_AXIS_SETTINGS = {
         },
       ],
       vizSettings,
-    ) =>
-      // matches binned numeric columns
-      cols[0].binning_info != null ||
-      // matches certain date extracts like day-of-week, etc
-      // NOTE: currently disabled
-      HISTOGRAM_DATE_EXTRACTS.has(cols[0].unit),
+    ) => getDefaultIsHistogram(cols[0]),
   },
   "graph.x_axis.scale": {
     section: t`Axes`,
@@ -525,14 +438,7 @@ export const GRAPH_AXIS_SETTINGS = {
       "graph.x_axis._is_numeric",
       "graph.x_axis._is_histogram",
     ],
-    getDefault: (series, vizSettings) =>
-      vizSettings["graph.x_axis._is_histogram"]
-        ? "histogram"
-        : vizSettings["graph.x_axis._is_timeseries"]
-        ? "timeseries"
-        : vizSettings["graph.x_axis._is_numeric"]
-        ? "linear"
-        : "ordinal",
+    getDefault: (series, vizSettings) => getDefaultXAxisScale(vizSettings),
     getProps: (series, vizSettings) => {
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {
@@ -642,7 +548,7 @@ export const GRAPH_AXIS_SETTINGS = {
     title: t`Show label`,
     inline: true,
     widget: "toggle",
-    default: true,
+    getDefault: getIsXAxisLabelEnabledDefault,
   },
   "graph.x_axis.title_text": {
     section: t`Axes`,
@@ -664,7 +570,7 @@ export const GRAPH_AXIS_SETTINGS = {
     group: t`Y-axis`,
     widget: "toggle",
     inline: true,
-    default: true,
+    getDefault: getIsYAxisLabelEnabledDefault,
   },
   "graph.y_axis.title_text": {
     section: t`Axes`,
@@ -678,15 +584,12 @@ export const GRAPH_AXIS_SETTINGS = {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
       const [metric] = vizSettings["graph.metrics"];
-      const metricNames = Array.from(
-        new Set(
-          series.map(({ data: { cols } }) => {
-            const metricCol = cols.find(c => c.name === metric);
-            return metricCol && metricCol.display_name;
-          }),
-        ),
-      );
-      return metricNames.length === 1 ? metricNames[0] : null;
+      const metricNames = series.map(({ data: { cols } }) => {
+        const metricCol = cols.find(c => c.name === metric);
+        return metricCol && metricCol.display_name;
+      });
+
+      return getDefaultYAxisTitle(metricNames);
     },
     readDependencies: ["series", "graph.metrics"],
   },

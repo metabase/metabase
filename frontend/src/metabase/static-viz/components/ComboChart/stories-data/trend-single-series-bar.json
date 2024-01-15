@@ -1,0 +1,308 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 109,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "set_release_date",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            861,
+            { "temporal-unit": "year", "base-type": "type/Date" }
+          ],
+          "effective_type": "type/Date",
+          "id": 861,
+          "visibility_type": "normal",
+          "display_name": "Set Release Date",
+          "fingerprint": {
+            "global": { "distinct-count": 127, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "1999-01-09",
+                "latest": "2023-09-22"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "display_name": "Average of Average Price",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 25, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 2.3497245762711865,
+                "q1": 3.6576124908681025,
+                "q3": 10.708645127053938,
+                "max": 18.295327695560253,
+                "sd": 4.338582329545648,
+                "avg": 6.809256968545855
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Pokemon Cards 20230927, Average of Average Price, Grouped by Set Release Date: Year",
+      "creator_id": 1,
+      "updated_at": "2023-11-20T15:01:33.826288-08:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "query": {
+          "aggregation": [
+            ["avg", ["field", 885, { "base-type": "type/Float" }]]
+          ],
+          "breakout": [
+            [
+              "field",
+              861,
+              { "temporal-unit": "year", "base-type": "type/Date" }
+            ]
+          ],
+          "source-table": "card__121"
+        },
+        "type": "query",
+        "database": 1
+      },
+      "id": 122,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "bar",
+      "entity_id": "_0Iz9SXhqHi5Jf1SaTsxr",
+      "collection_preview": true,
+      "visualization_settings": {
+        "series_settings": { "avg": { "color": "#88BF4D" } },
+        "graph.show_trendline": true,
+        "graph.y_axis.scale": "linear",
+        "graph.y_axis.auto_range": true,
+        "graph.dimensions": ["set_release_date"],
+        "graph.metrics": ["avg"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-11-20T15:01:33.826288",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "set_release_date",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              861,
+              { "temporal-unit": "year", "base-type": "type/Date" }
+            ],
+            "effective_type": "type/Date",
+            "id": 861,
+            "visibility_type": "normal",
+            "display_name": "Set Release Date",
+            "fingerprint": {
+              "global": { "distinct-count": 127, "nil%": 0 },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "1999-01-09",
+                  "latest": "2023-09-22"
+                }
+              }
+            },
+            "base_type": "type/Date"
+          },
+          {
+            "display_name": "Average of Average Price",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 25, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 2.3497245762711865,
+                  "q1": 3.6576124908681025,
+                  "q3": 10.708645127053938,
+                  "max": 18.295327695560253,
+                  "sd": 4.338582329545648,
+                  "avg": 6.809256968545855
+                }
+              }
+            }
+          }
+        ]
+      },
+      "rows": [
+        ["1999-01-01T00:00:00-08:00", 12.18824],
+        ["2000-01-01T00:00:00-08:00", 6.787137989778535],
+        ["2001-01-01T00:00:00-08:00", 11.983856209150327],
+        ["2002-01-01T00:00:00-08:00", 13.260026178010472],
+        ["2003-01-01T00:00:00-08:00", 12.236171171171172],
+        ["2004-01-01T00:00:00-08:00", 10.283574766355141],
+        ["2005-01-01T00:00:00-08:00", 18.295327695560253],
+        ["2006-01-01T00:00:00-08:00", 12.64924705882353],
+        ["2007-01-01T00:00:00-08:00", 7.1086390532544375],
+        ["2008-01-01T00:00:00-08:00", 2.463305439330544],
+        ["2009-01-01T00:00:00-08:00", 3.8290272373540857],
+        ["2010-01-01T00:00:00-08:00", 2.6711435523114355],
+        ["2011-01-01T00:00:00-08:00", 3.9551138716356107],
+        ["2012-01-01T00:00:00-08:00", 5.185030674846626],
+        ["2013-01-01T00:00:00-08:00", 6.440876436781609],
+        ["2014-01-01T00:00:00-08:00", 2.3497245762711865],
+        ["2015-01-01T00:00:00-08:00", 3.971716417910448],
+        ["2016-01-01T00:00:00-08:00", 3.1399658703071673],
+        ["2017-01-01T00:00:00-08:00", 4.4435952637244345],
+        ["2018-01-01T00:00:00-08:00", 5.328214731585518],
+        ["2019-01-01T00:00:00-08:00", 6.355325936199723],
+        ["2020-01-01T00:00:00-08:00", 2.50006586169045],
+        ["2021-01-01T00:00:00-08:00", 5.765554614733277],
+        ["2022-01-01T00:00:00-08:00", 3.897175355450237],
+        ["2023-01-01T00:00:00-08:00", 3.1433682514101533]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 109,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "set_release_date",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            861,
+            { "temporal-unit": "year", "base-type": "type/Date" }
+          ],
+          "effective_type": "type/Date",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 861,
+          "position": 18,
+          "visibility_type": "normal",
+          "display_name": "Set Release Date",
+          "fingerprint": {
+            "global": { "distinct-count": 127, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "1999-01-09",
+                "latest": "2023-09-22"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Average Price",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "viz-settings": {
+        "graph.show_trendline": true,
+        "graph.show_values": true,
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 871}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 884}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 886}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 863}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 858}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 865}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 889}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 862}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 870}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 879}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 869}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 854}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 874}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 856}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 866}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 876}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 888}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 880}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 885}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 872}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 883}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 878}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 868}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 875}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 877}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 881}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 859}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 873}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 867}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 857}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 855}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 864}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 887}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 882}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 860}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 861}": {}
+        },
+        "graph.y_axis.scale": "linear",
+        "graph.metrics": ["avg"],
+        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "series_settings": { "avg": { "color": "#88BF4D" } },
+        "graph.y_axis.auto_range": true,
+        "graph.dimensions": ["set_release_date"]
+      },
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"source\".\"set_release_date\") AS \"set_release_date\", AVG(\"source\".\"average_price\") AS \"avg\" FROM (SELECT \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"id\" AS \"id\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"image_small\" AS \"image_small\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"number\" AS \"number\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"name\" AS \"name\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"supertype\" AS \"supertype\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"subtype1\" AS \"subtype1\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"subtype2\" AS \"subtype2\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"type1\" AS \"type1\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"type2\" AS \"type2\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"hp\" AS \"hp\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"evolves_from\" AS \"evolves_from\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"evolves_to\" AS \"evolves_to\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"retreat_cost\" AS \"retreat_cost\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_id\" AS \"set_id\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_name\" AS \"set_name\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_series\" AS \"set_series\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_printed_total\" AS \"set_printed_total\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_total\" AS \"set_total\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_release_date\" AS \"set_release_date\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_unlimited_legal\" AS \"set_unlimited_legal\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_standard_legal\" AS \"set_standard_legal\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_expanded_legal\" AS \"set_expanded_legal\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_ptcgo_code\" AS \"set_ptcgo_code\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_symbol_image\" AS \"set_symbol_image\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"set_logo_image\" AS \"set_logo_image\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"artist\" AS \"artist\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"rarity\" AS \"rarity\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"image_large\" AS \"image_large\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"flavor_text\" AS \"flavor_text\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"pokedex_number\" AS \"pokedex_number\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"unlimited_legal\" AS \"unlimited_legal\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"standard_legal\" AS \"standard_legal\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"expanded_legal\" AS \"expanded_legal\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"regulation_mark\" AS \"regulation_mark\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"tcgplayer_url\" AS \"tcgplayer_url\", \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\".\"average_price\" AS \"average_price\" FROM \"PUBLIC\".\"pokemon_cards_20230927_20231120145052\") AS \"source\" GROUP BY DATE_TRUNC('year', \"source\".\"set_release_date\") ORDER BY DATE_TRUNC('year', \"source\".\"set_release_date\") ASC",
+        "params": null
+      },
+      "dataset": true,
+      "insights": [
+        {
+          "previous-value": 3.897175355450237,
+          "unit": "year",
+          "offset": 23.110631745253002,
+          "last-change": -0.1934239635858,
+          "col": "avg",
+          "slope": -0.0010885396531150407,
+          "last-value": 3.1433682514101533,
+          "best-fit": [
+            "*",
+            12404690089.08578,
+            ["pow", "x", -2.2405493102626313]
+          ]
+        }
+      ]
+    }
+  }
+]

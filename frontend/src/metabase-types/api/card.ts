@@ -62,9 +62,14 @@ export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
 }
 
 export type SeriesSettings = {
-  title: string;
+  title?: string;
   color?: string;
   show_series_values?: boolean;
+  display?: string;
+  axis?: string;
+  "line.interpolate"?: string;
+  "line.marker_enabled"?: boolean;
+  "line.missing"?: string;
 };
 
 export type SeriesOrderSetting = {
@@ -98,17 +103,31 @@ export type TableColumnOrderSetting = {
   field_ref?: FieldReference;
 };
 
+export type StackType = "stacked" | "normalized" | null;
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
-  "stackable.stack_type"?: "stacked" | "normalized" | null;
+  "stackable.stack_type"?: StackType;
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
 
   // X-axis
   "graph.x_axis.title_text"?: string;
-  "graph.x_axis.scale"?: "ordinal";
-  "graph.x_axis.axis_enabled"?: "compact";
+  "graph.x_axis.scale"?:
+    | "ordinal"
+    | "timeseries"
+    | "linear"
+    | "histogram"
+    // for scatter plot
+    | "log"
+    | "pow";
+  "graph.x_axis.axis_enabled"?:
+    | true
+    | false
+    | "compact"
+    | "rotate-45"
+    | "rotate-90";
 
   // Y-axis
   "graph.y_axis.title_text"?: string;
@@ -120,6 +139,9 @@ export type VisualizationSettings = {
   "graph.show_goal"?: boolean;
   "graph.goal_label"?: string;
 
+  // Trend
+  "graph.show_trendline"?: boolean;
+
   // Series
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
@@ -128,6 +150,15 @@ export type VisualizationSettings = {
   series_settings?: Record<string, SeriesSettings>;
 
   "graph.series_order"?: SeriesOrderSetting[];
+
+  // Scatter plot settings
+  "scatter.bubble"?: string; // col name
+
+  // Waterfall settings
+  "waterfall.increase_color"?: string;
+  "waterfall.decrease_color"?: string;
+  "waterfall.total_color"?: string;
+  "waterfall.show_total"?: boolean;
 
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];

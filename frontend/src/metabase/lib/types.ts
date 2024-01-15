@@ -19,3 +19,10 @@ export const checkNotNull = <T>(value: T | null | undefined): T => {
     throw new TypeError();
   }
 };
+
+export const checkNumber = (value: any) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    throw new TypeError(`value ${value} is not a non-NaN number`);
+  }
+  return value;
+};

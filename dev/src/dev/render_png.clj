@@ -9,6 +9,7 @@
     [metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]
+    [metabase.models.user :as user]
     [metabase.pulse :as pulse]
     [metabase.pulse.markdown :as markdown]
     [metabase.pulse.render :as render]

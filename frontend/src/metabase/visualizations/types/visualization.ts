@@ -1,17 +1,36 @@
+import type { ReactNode } from "react";
 import type {
   Card,
   DatasetData,
   RawSeries,
   Series,
+  TimelineEvent,
+  TimelineEventId,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { ClickObject } from "metabase/visualizations/types";
 import type { IconName, IconProps } from "metabase/ui";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+import type { OptionsType } from "metabase/lib/formatting/types";
+import type { StaticFormattingOptions } from "metabase/static-viz/lib/format";
 import type Query from "metabase-lib/queries/Query";
 
 import type { HoveredObject } from "./hover";
 import type { RemappingHydratedDatasetColumn } from "./columns";
+
+export type ColorGetter = (colorName: string) => string;
+export type Formatter = (
+  value: unknown,
+  options?: OptionsType | StaticFormattingOptions,
+) => string;
+
+export interface RenderingContext {
+  getColor: ColorGetter;
+  formatValue: Formatter;
+  measureText: TextWidthMeasurer;
+  fontFamily: string;
+}
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -22,9 +41,7 @@ type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (
-    col: RemappingHydratedDatasetColumn,
-  ) => RemappingHydratedDatasetColumn;
+  column?: (col: RemappingHydratedDatasetColumn) => Record<string, unknown>;
 };
 
 export interface VisualizationProps {
@@ -34,7 +51,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
-  actionButtons: React.ReactNode;
+  actionButtons: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;
   isFullscreen: boolean;
@@ -45,6 +62,8 @@ export interface VisualizationProps {
   isSettings: boolean;
   hovered?: HoveredObject;
   className?: string;
+  timelineEvents?: TimelineEvent[];
+  selectedTimelineEventIds?: TimelineEventId[];
 
   gridSize?: VisualizationGridSize;
   width: number;
@@ -65,6 +84,9 @@ export interface VisualizationProps {
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onDeselectTimelineEvents?: () => void;
+  onOpenTimelines?: () => void;
 
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
@@ -150,4 +172,5 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
   ) => void | never;
   isLiveResizable: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+  placeholderSeries: RawSeries;
 };

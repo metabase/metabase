@@ -1,0 +1,301 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 162,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1546, null],
+          "effective_type": "type/BigInteger",
+          "id": 1546,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "category",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1547, null],
+          "effective_type": "type/Text",
+          "id": 1547,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": { "distinct-count": 6, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 1
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1548, null],
+          "effective_type": "type/BigInteger",
+          "id": 1548,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 6, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -4,
+                "q1": -2,
+                "q3": 6,
+                "max": 8,
+                "sd": 4.9396356140913875,
+                "avg": 2
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 10,
+      "query_type": "query",
+      "name": "Waterfall Mixed Above 0",
+      "creator_id": 1,
+      "updated_at": "2023-12-16T19:40:14.793024Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "type": "query",
+        "database": 2,
+        "query": { "source-table": "card__159" }
+      },
+      "id": 160,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "waterfall",
+      "entity_id": "0uniUMuf0VeFG5X6hDdER",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["category"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["change"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-16T19:40:14.793024Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1546, null],
+            "effective_type": "type/BigInteger",
+            "id": 1546,
+            "visibility_type": "normal",
+            "display_name": "_mb_row_id",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "category",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1547, null],
+            "effective_type": "type/Text",
+            "id": 1547,
+            "visibility_type": "normal",
+            "display_name": "Category",
+            "fingerprint": {
+              "global": { "distinct-count": 6, "nil%": 0 },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 1
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "change",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1548, null],
+            "effective_type": "type/BigInteger",
+            "id": 1548,
+            "visibility_type": "normal",
+            "display_name": "Change",
+            "fingerprint": {
+              "global": { "distinct-count": 6, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": -4,
+                  "q1": -2,
+                  "q3": 6,
+                  "max": 8,
+                  "sd": 4.9396356140913875,
+                  "avg": 2
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "rows": [
+        [1, "A", 5],
+        [2, "B", 6],
+        [3, "C", -2],
+        [4, "D", -1],
+        [5, "E", 8],
+        [6, "F", -4]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 162,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1546, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1546,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "_mb_row_id",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 162,
+          "coercion_strategy": null,
+          "name": "category",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1547, null],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1547,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": { "distinct-count": 6, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 1
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 162,
+          "coercion_strategy": null,
+          "name": "change",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1548, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1548,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Change",
+          "fingerprint": {
+            "global": { "distinct-count": 6, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": -4,
+                "q1": -2,
+                "q3": 6,
+                "max": 8,
+                "sd": 4.9396356140913875,
+                "avg": 2
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "graph.dimensions": ["category"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.metrics": ["change"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1546}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1547}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1548}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"category\" AS \"category\", \"source\".\"change\" AS \"change\" FROM (SELECT \"csv_upload_data\".\"csv_upload_waterfall_mixed_above_0_20231216113933\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_waterfall_mixed_above_0_20231216113933\".\"category\" AS \"category\", \"csv_upload_data\".\"csv_upload_waterfall_mixed_above_0_20231216113933\".\"change\" AS \"change\" FROM \"csv_upload_data\".\"csv_upload_waterfall_mixed_above_0_20231216113933\") AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

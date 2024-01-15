@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { scaleLinear } from "@visx/scale";
 import { Group } from "@visx/group";
 import { ClipPath } from "@visx/clip-path";
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
+import type { ColorGetter } from "metabase/visualizations/types";
 import { formatNumber } from "../../lib/numbers";
 import { Text } from "../Text";
 import { Pointer } from "./Pointer";

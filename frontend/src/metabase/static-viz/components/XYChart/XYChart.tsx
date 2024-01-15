@@ -134,6 +134,7 @@ export const XYChart = ({
   const legendRows = calculateLegendRows(
     series.map(series => ({ name: series.name, color: series.color })),
     width - CHART_PADDING * 2,
+    0,
     style.legend.lineHeight,
     style.legend.fontSize,
     style.legend.fontWeight,
