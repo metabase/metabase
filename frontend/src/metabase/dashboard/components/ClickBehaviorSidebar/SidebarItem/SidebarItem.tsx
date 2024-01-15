@@ -54,7 +54,13 @@ interface SelectableSidebarItem extends Omit<SidebarItemProps, "as"> {
 }
 
 function SelectableSidebarItem(props: SelectableSidebarItem) {
-  return <SidebarItem {...props} as={SelectableSidebarItemRoot} />;
+  return (
+    <SidebarItem
+      {...props}
+      as={SelectableSidebarItemRoot}
+      aria-selected={props.isSelected}
+    />
+  );
 }
 
 SidebarItem.Selectable = SelectableSidebarItem;
