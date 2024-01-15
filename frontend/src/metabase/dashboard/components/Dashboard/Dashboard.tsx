@@ -291,15 +291,15 @@ class DashboardInner extends Component<DashboardProps, DashboardState> {
     this.props.setEditingDashboard(dashboard);
   };
 
-  setDashboardAttribute<Key extends keyof IDashboard>(
+  setDashboardAttribute = <Key extends keyof IDashboard>(
     attribute: Key,
     value: IDashboard[Key],
-  ) {
+  ) => {
     this.props.setDashboardAttributes({
       id: this.props.dashboard.id,
       attributes: { [attribute]: value },
     });
-  }
+  };
 
   onCancel = () => {
     this.props.setSharing(false);
