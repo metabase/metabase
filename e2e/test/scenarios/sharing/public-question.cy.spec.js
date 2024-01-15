@@ -138,8 +138,6 @@ describe("scenarios > public > question", () => {
   );
 
   it("should be able to view public questions with snippets", () => {
-    cy.visit("/");
-
     openNativeEditor();
 
     // Create a snippet
