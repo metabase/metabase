@@ -4,8 +4,7 @@
    [hooks.common :as common]))
 
 (def ^:private ignored-implicit-export?
-  '#{
-     active-users-count
+  '#{active-users-count
      admin-email
      analytics-uuid
      anon-tracking-enabled
@@ -16,7 +15,6 @@
      breakout-bin-width
      check-for-updates
      cloud-gateway-ips
-     config-from-file-settings-test-setting
      config-from-file-sync-databases
      custom-homepage
      custom-homepage-dashboard
@@ -91,7 +89,6 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
-     multi-setting-test-bird-name
      notification-link-base-url
      num-metabot-choices
      openai-api-key
@@ -110,7 +107,6 @@
      query-caching-ttl-ratio
      redirect-all-requests-to-https
      reset-token-ttl-hours
-     resolve-db-test-database-only-setting
      retired-setting
      retry-initial-interval
      retry-max-attempts
@@ -158,59 +154,6 @@
      ssh-heartbeat-interval-sec
      ssl-certificate-public-key
      startup-time-millis
-     test-admin-setting
-     test-api-setting-boolean
-     test-api-setting-double
-     test-api-setting-integer
-     test-authenticated-setting
-     test-boolean-database-local-setting
-     test-boolean-setting
-     test-csv-setting
-     test-csv-setting-with-default
-     test-database-local-allowed-setting
-     test-database-local-never-setting
-     test-database-local-only-setting
-     test-database-local-only-setting-with-default
-     test-db-local-setting-admin
-     test-db-local-setting-authenticated
-     test-db-local-setting-internal
-     test-db-local-setting-public
-     test-dynamic-i18n-setting
-     test-enabled-and-feature
-     test-enabled-setting-default
-     test-enabled-setting-no-default
-     test-env-setting
-     test-feature-setting
-     test-i18n-setting
-     test-integer-setting
-     test-internal-setting
-     test-json-setting
-     test-public-setting
-     test-sensitive-setting
-     test-sensitive-setting-audit
-     test-session-api-setting
-     test-setting-1
-     test-setting-2
-     test-setting-3
-     test-setting-audit-getter
-     test-setting-audit-never
-     test-setting-audit-raw-value
-     test-setting-calculated-getter
-     test-setting-normal
-     test-setting-normal-1
-     test-setting-normal-1??
-     test-setting-normal??
-     test-setting-with-question-mark?
-     test-setting-with-question-mark????
-     test-settings-manager-setting
-     test-settings-manager-visibility
-     test-timestamp-setting
-     test-user-local-allowed-setting
-     test-user-local-and-db-local-setting
-     test-user-local-never-setting
-     test-user-local-only-audited-setting
-     test-user-local-only-setting
-     test-util-test-setting
      token-features
      token-status
      toucan-name
@@ -219,10 +162,7 @@
      user-visibility
      version
      version-info
-     version-info-last-checked
-     with-temp-env-var-value-test-setting
-
-     })
+     version-info-last-checked})
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
