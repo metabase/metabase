@@ -72,26 +72,31 @@
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
-    (mt/with-temporary-setting-values [site-name          "Test"
+    (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
                                        enable-embedding    false]
       (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
         (let [stats (anonymous-usage-stats)]
           (is (partial= {:running_on               :unknown
-                         :check_for_updates        true
-                         :startup_time_millis      1234.0
-                         :friendly_names           false
-                         :email_configured         false
-                         :slack_configured         false
-                         :sso_configured           false
-                         :has_sample_data          true
-                         :enable_embedding         false
-                         :embedding_app_origin_set false
-                         :appearance_site_name     true
-                         :appearance_help_link     :metabase
-                         :appearance_logo          false
-                         :appareance_favicon       false}
+                         :check_for_updates                   true
+                         :startup_time_millis                 1234.0
+                         :friendly_names                      false
+                         :email_configured                    false
+                         :slack_configured                    false
+                         :sso_configured                      false
+                         :has_sample_data                     true
+                         :enable_embedding                    false
+                         :embedding_app_origin_set            false
+                         :appearance_site_name                false
+                         :appearance_help_link                :metabase
+                         :appearance_logo                     false
+                         :appareance_favicon                  false
+                         :apperance_loading_message           false
+                         :appearance_metabot_greeting         false
+                         :apparerance_lighthouse_illustration false
+                         :appearance_ui_colors                false
+                         :appearance_chart_colors             false}
                         stats))
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
