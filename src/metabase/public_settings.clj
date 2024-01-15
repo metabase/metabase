@@ -395,6 +395,7 @@
          "You might need to refresh your browser to see your changes take effect.")
     (application-name-for-setting-descriptions))
   :visibility :public
+  :export?    true
   :type       :json
   :feature    :whitelabel
   :default    {}
@@ -471,7 +472,6 @@
     "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
     "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
     "or be hidden if it is not set."))
-  :default    :default
   :type       :keyword
   :audit      :getter
   :visibility :public
@@ -506,6 +506,14 @@
                 (let [new-value-string (str new-value)]
                  (validate-help-url new-value-string)
                  (setting/set-value-of-type! :string :help-link-custom-destination new-value-string))))
+
+(defsetting show-metabase-links
+  (deferred-tru (str "Whether or not to display Metabase links outside admin settings."))
+  :type       :boolean
+  :default    true
+  :visibility :public
+  :audit      :getter
+  :feature    :whitelabel)
 
 (defsetting enable-password-login
   (deferred-tru "Allow logging in by email and password.")

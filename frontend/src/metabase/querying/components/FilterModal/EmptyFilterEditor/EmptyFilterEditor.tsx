@@ -21,7 +21,7 @@ export function EmptyFilterEditor({
   return (
     <Flex direction="row" align="center" gap="sm" py="1rem">
       <Icon name={columnIcon} />
-      <Text color="text.2" weight="bold">
+      <Text color="text-dark" weight="bold">
         {columnInfo.displayName}
       </Text>
     </Flex>
