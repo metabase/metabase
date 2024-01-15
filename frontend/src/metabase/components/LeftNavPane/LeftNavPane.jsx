@@ -41,7 +41,10 @@ export function LeftNavPaneItemBack({ path }) {
 
 export function LeftNavPane({ children }) {
   return (
-    <aside className="MetadataEditor-table-list AdminList flex-no-shrink">
+    <aside
+      data-testid="admin-left-nav-pane"
+      className="MetadataEditor-table-list AdminList flex-no-shrink"
+    >
       <ul className="AdminList-items pt1" aria-label="admin-list-items">
         {children}
       </ul>
