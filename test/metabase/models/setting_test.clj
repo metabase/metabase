@@ -1190,6 +1190,29 @@
                             :new-value      "AUDIT ME"}}
                  (mt/latest-audit-log-entry :setting-update))))))))
 
+(defsetting exported-setting
+  "This setting would be serialized"
+  :export? true)
+
+(defsetting non-exported-setting
+  "This setting would not be serialized"
+  :export? false)
+
+(deftest export?-test
+  (testing "The :export? property is exposed"
+    (is (#'setting/export? :exported-setting))
+    (is (not (#'setting/export? :non-exported-setting))))
+
+  (testing "Fallback to using a globally defined list"
+    (binding [setting/*exported-settings* #{'test-setting-1}]
+      (is (#'setting/export? :test-setting-1))
+      (is (not (#'setting/export? :test-setting-3)))
+      (is (not (#'setting/export? :non-existent-setting)))))
+
+  (testing "The explicit property takes precedence over the deprecated var"
+    (binding [setting/*exported-settings* #{:non-exported-setting}]
+      (is (not (#'setting/export? :non-exported-setting))))))
+
 (deftest realize-throwing-test
   (testing "The realize function ensures all nested lazy values are calculated"
     (let [ok (lazy-seq (cons 1 (lazy-seq (list 2))))
