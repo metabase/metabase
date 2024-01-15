@@ -12,6 +12,7 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
   getLoadingMessage,
+  getShowMetabaseLinks,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -27,6 +28,10 @@ import LogoIcon from "./components/LogoIcon";
 import { updateColors } from "./lib/whitelabel";
 import { getLoadingMessageOptions } from "./lib/loading-message";
 import { HelpLinkSettings } from "./components/HelpLinkSettings";
+import {
+  MetabaseLinksToggleDescription,
+  MetabaseLinksToggleWidget,
+} from "./components/MetabaseLinksToggleWidget";
 
 if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
@@ -108,6 +113,12 @@ if (hasPremiumFeature("whitelabel")) {
           widget: LighthouseToggleWidget,
           defaultValue: true,
         },
+        {
+          key: "show-metabase-links",
+          display_name: t`Documentation and references`,
+          description: <MetabaseLinksToggleDescription />,
+          widget: MetabaseLinksToggleWidget,
+        },
       ],
     },
     ...sections,
@@ -125,4 +136,5 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_SELECTORS.getLoadingMessage = getLoadingMessage;
   PLUGIN_SELECTORS.getIsWhiteLabeling = getIsWhiteLabeling;
   PLUGIN_SELECTORS.getApplicationName = getApplicationName;
+  PLUGIN_SELECTORS.getShowMetabaseLinks = getShowMetabaseLinks;
 }

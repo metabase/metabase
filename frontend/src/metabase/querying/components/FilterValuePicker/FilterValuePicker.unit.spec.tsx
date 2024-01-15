@@ -246,6 +246,26 @@ describe("StringFilterValuePicker", () => {
       expect(onBlur).toHaveBeenCalled();
     });
 
+    it("should ignore null field values", async () => {
+      await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: [],
+        fieldValues: createMockFieldValues({
+          field_id: PRODUCTS.CATEGORY,
+          values: [[null], ["Widget"]],
+        }),
+      });
+
+      expect(
+        screen.getByRole("checkbox", { name: "Widget" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("checkbox", { name: "null" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("should handle more field values", async () => {
       const { onChange } = await setupStringPicker({
         query,
