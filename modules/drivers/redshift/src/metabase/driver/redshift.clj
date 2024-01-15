@@ -3,6 +3,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -385,3 +386,36 @@
 (defmethod driver/insert-into! :redshift
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
+
+(defmethod driver/current-user-table-privileges :postgres
+  [_driver database]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an exnternal table
+    ;; result in a operation not supported error
+    (->> (jdbc/query
+          conn-spec
+          (str/join
+           "\n"
+           ["with table_privileges as ("
+            " select"
+            "   NULL as role,"
+            "   t.schemaname as schema,"
+            "   t.objectname as table,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
+            " from ("
+            "   select schemaname, objectname from pg_catalog.pg_tables"
+            "   union"
+            "   select schemaname, viewname as objectname from pg_views"
+            "   union"
+            "   select schemaname, name as objectname from stv_mv_info"
+            " ) t"
+            " where t.schemaname !~ '^pg_'"
+            "   and t.schemaname <> 'information_schema'"
+            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+            ")"
+            "select t.*"
+            "from table_privileges t"]))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %))))))

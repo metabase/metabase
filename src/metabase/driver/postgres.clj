@@ -847,7 +847,8 @@
 (defmethod driver/current-user-table-privileges :postgres
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    ;; KNOWN LIMITATION: for postgres this won't return privileges for foreign tables, and external tables for redshift
+    ;; KNOWN LIMITATION: this won't return privileges for foreign tables, calling has_table_privilege on a foreign table
+    ;; result in a operation not supported error
     (->> (jdbc/query
           conn-spec
           (str/join
@@ -856,17 +857,17 @@
             " select"
             "   NULL as role,"
             "   t.schemaname as schema,"
-            "   t.tablename as table,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'UPDATE') as update,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'SELECT') as select,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'INSERT') as insert,"
-            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.tablename || '\"',  'DELETE') as delete"
+            "   t.objectname as table,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
             " from ("
-            "   select schemaname, tablename from pg_catalog.pg_tables"
+            "   select schemaname, objectname from pg_catalog.pg_tables"
             "   union"
-            "   select schemaname, viewname as tablename from pg_views"
+            "   select schemaname, viewname as objectname from pg_views"
             "   union"
-            "   select schemaname, matviewname as tablename from pg_matviews"
+            "   select schemaname, matviewname as objectname from pg_matviews"
             " ) t"
             " where t.schemaname !~ '^pg_'"
             "   and t.schemaname <> 'information_schema'"
