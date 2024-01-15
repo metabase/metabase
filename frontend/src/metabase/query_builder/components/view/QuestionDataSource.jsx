@@ -15,7 +15,6 @@ import {
   isVirtualCardId,
   getQuestionIdFromVirtualTableId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
@@ -196,11 +195,9 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   }
 
   if (table) {
-    const hasTableLink = subHead || isObjectDetail;
     if (!isStructuredQuery) {
       return {
         name: table.displayName(),
-        link: hasTableLink ? getTableURL() : "",
       };
     }
 
@@ -213,7 +210,6 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
       <QuestionTableBadges
         tables={allTables}
         subHead={subHead}
-        hasLink={hasTableLink}
         isLast={!isObjectDetail}
       />,
     );
@@ -229,13 +225,13 @@ QuestionTableBadges.propTypes = {
   isLast: PropTypes.bool,
 };
 
-function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
+function QuestionTableBadges({ tables, subHead, isLast }) {
   const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
 
   const parts = tables.map(table => (
     <HeadBreadcrumbs.Badge
       key={table.id}
-      to={hasLink ? getTableURL(table) : ""}
+      to={""}
       inactiveColor={badgeInactiveColor}
     >
       <TableInfoPopover table={table} placement="bottom-start">
@@ -252,14 +248,6 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
       data-testid="question-table-badges"
     />
   );
-}
-
-function getTableURL(table) {
-  if (isVirtualCardId(table.id)) {
-    const cardId = getQuestionIdFromVirtualTableId(table.id);
-    return Urls.question({ id: cardId, name: table.displayName() });
-  }
-  return ML_Urls.getUrl(table.newQuestion());
 }
 
 export default QuestionDataSource;
