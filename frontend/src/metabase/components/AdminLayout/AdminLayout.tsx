@@ -25,8 +25,12 @@ export function AdminLayout({
       </AdminNotifications>
 
       <AdminMain>
-        <AdminSidebar>{sidebar}</AdminSidebar>
-        <AdminContent>{children}</AdminContent>
+        <AdminSidebar data-testid="admin-layout-sidebar">
+          {sidebar}
+        </AdminSidebar>
+        <AdminContent data-testid="admin-layout-content">
+          {children}
+        </AdminContent>
       </AdminMain>
     </AdminWrapper>
   );

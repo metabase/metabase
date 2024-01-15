@@ -348,9 +348,9 @@ function visitAndEnableSharing(object) {
 }
 
 function sidebar() {
-  return cy.get(".AdminList");
+  return cy.findByTestId("admin-layout-sidebar");
 }
 
 function mainPage() {
-  return sidebar().next();
+  return cy.findByTestId("admin-layout-content");
 }
