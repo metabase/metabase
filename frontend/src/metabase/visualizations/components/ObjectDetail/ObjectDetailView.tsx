@@ -65,9 +65,8 @@ function filterByPk(
           values: [zoomedRowID],
           options: {},
         });
-  const queryWithFilter = Lib.filter(query, stageIndex, filterClause);
-
-  return queryWithFilter;
+  
+  return Lib.filter(query, stageIndex, filterClause);
 }
 
 export function ObjectDetailView({
