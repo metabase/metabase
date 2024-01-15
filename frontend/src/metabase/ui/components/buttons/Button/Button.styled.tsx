@@ -37,8 +37,6 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           ref: getStylesRef("label"),
           display: "inline-block",
           height: "auto",
-          overflow: "hidden",
-          whiteSpace: "nowrap",
           textOverflow: "ellipsis",
         },
         leftIcon: {
