@@ -98,6 +98,45 @@ export const getQuestionOld = ({
   return question;
 };
 
+function aggregateCount(question) {
+  const query = question.query();
+  const stageIndex = -1;
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
+  const countOperator = operators.find(operator => {
+    const info = Lib.displayInfo(query, stageIndex, operator);
+    return info.shortName === "count";
+  });
+  const aggregationclause = Lib.aggregationClause(countOperator);
+  const newQuery = Lib.aggregate(query, stageIndex, aggregationclause);
+  return question.setQuery(newQuery);
+}
+
+function filterBySegmentId(question, segmentId) {
+  const stageIndex = -1;
+  const query = question.query();
+  const segmentMetadata = Lib.segmentMetadata(query, segmentId);
+
+  if (!segmentMetadata) {
+    return question;
+  }
+
+  const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
+  return question.setQuery(newQuery);
+}
+
+function aggregateByMetricId(question, metricId) {
+  const stageIndex = -1;
+  const query = question.query();
+  const metricMetadata = Lib.metricMetadata(query, metricId);
+
+  if (!metricMetadata) {
+    return question;
+  }
+
+  const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
+  return question.setQuery(newQuery);
+}
+
 export const getQuestion = ({
   dbId,
   tableId,
@@ -111,20 +150,19 @@ export const getQuestion = ({
   let question = Question.create({ databaseId: dbId, tableId, metadata });
 
   if (getCount) {
-    const query = question.query();
-    const stageIndex = -1;
-    const operators = Lib.availableAggregationOperators(query, stageIndex);
-    const countOperator = operators.find(operator => {
-      const info = Lib.displayInfo(query, stageIndex, operator);
-      return info.shortName === "count";
-    });
-    const aggregationclause = Lib.aggregationClause(countOperator);
-    const newQuery = Lib.aggregate(query, stageIndex, aggregationclause);
-    question = question.setQuery(newQuery);
+    question = aggregateCount(question);
   }
 
   if (visualization) {
     question.setDisplay(visualization);
+  }
+
+  if (metricId) {
+    question = aggregateByMetricId(question, metricId);
+  }
+
+  if (segmentId) {
+    question = filterBySegmentId(question, segmentId);
   }
 
   return question.card();
