@@ -135,7 +135,7 @@ function formatMetric([, metricId]: FieldReference, options: Options) {
   }
 
   const metric = Lib.availableMetrics(query).find(metric => {
-    const [_, availableMetricId] = Lib.legacyRef(metric);
+    const [_, availableMetricId] = Lib.legacyRef(query, stageIndex, metric);
 
     return availableMetricId === metricId;
   });
@@ -177,7 +177,7 @@ function formatSegment([, segmentId]: FieldReference, options: Options) {
   }
 
   const segment = Lib.availableSegments(query, stageIndex).find(segment => {
-    const [_, availableSegmentId] = Lib.legacyRef(segment);
+    const [_, availableSegmentId] = Lib.legacyRef(query, stageIndex, segment);
 
     return availableSegmentId === segmentId;
   });

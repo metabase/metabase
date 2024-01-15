@@ -29,7 +29,7 @@ function buildStructuredQuerySectionOptions(query, stageIndex, group) {
       sectionName: getColumnGroupName(groupInfo),
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
-      target: buildColumnTarget(column),
+      target: buildColumnTarget(query, stageIndex, column),
       isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
     };
   });
