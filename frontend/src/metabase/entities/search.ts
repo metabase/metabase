@@ -28,6 +28,7 @@ export default createEntity({
   path: "/api/search",
 
   api: {
+    // TODO: See if I can type these anys
     list: async (query: any = {}) => {
       if (query.collection) {
         const {
