@@ -387,7 +387,7 @@
   [driver db-id table-name column-names values]
   ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values))
 
-(defmethod driver/current-user-table-privileges :postgres
+(defmethod driver/current-user-table-privileges :redshift
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an exnternal table
@@ -406,11 +406,9 @@
             "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
             "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
             " from ("
-            "   select schemaname, objectname from pg_catalog.pg_tables"
+            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
             "   union"
             "   select schemaname, viewname as objectname from pg_views"
-            "   union"
-            "   select schemaname, name as objectname from stv_mv_info"
             " ) t"
             " where t.schemaname !~ '^pg_'"
             "   and t.schemaname <> 'information_schema'"

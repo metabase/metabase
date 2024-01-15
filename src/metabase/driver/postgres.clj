@@ -863,7 +863,7 @@
             "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
             "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
             " from ("
-            "   select schemaname, objectname from pg_catalog.pg_tables"
+            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
             "   union"
             "   select schemaname, viewname as objectname from pg_views"
             "   union"

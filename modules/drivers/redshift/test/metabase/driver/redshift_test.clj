@@ -353,6 +353,28 @@
                  (testing "normally, ::fake-schema should be filtered out (because it does not exist)"
                    (is (not (contains? (schemas) fake-schema-name)))))))))))))
 
+(deftest sync-materialized-views-test
+  (mt/test-driver :redshift
+    (testing "Check that we properly fetch materialized views"
+      (let [db-details   (tx/dbdef->connection-details :redshift nil nil)
+            table-name   "test_mv_table"
+            qual-tbl-nm  (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) table-name)
+            mview-nm     "test_mv_mv"
+            qual-mview-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) mview-nm)]
+        (mt/with-temp [Database _database {:engine :redshift, :details db-details}]
+          (try
+           (execute!
+            (str "DROP TABLE IF EXISTS %1$s CASCADE;\n"
+                 "CREATE TABLE %1$s(weird_varchar CHARACTER VARYING(50), numeric_col NUMERIC(10,2));\n"
+                 "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
+            qual-tbl-nm
+            qual-mview-nm)
+           (is (some #(= mview-nm (:name %))
+                      (:tables (sql-jdbc.describe-database/describe-database :redshift (mt/db)))))
+           (finally
+            (execute! "DROP TABLE IF EXISTS %s CASCADE;" qual-tbl-nm))))))))
+
+
 (mt/defdataset numeric-unix-timestamps
   [["timestamps"
     [{:field-name "timestamp", :base-type {:native "numeric"}}]
