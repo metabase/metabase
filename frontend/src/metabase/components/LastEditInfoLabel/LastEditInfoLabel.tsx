@@ -6,7 +6,8 @@ import { t } from "ttag";
 import moment from "moment-timezone";
 
 import { getUser } from "metabase/selectors/user";
-import { NamedUser, getFullName } from "metabase/lib/user";
+import type { NamedUser } from "metabase/lib/user";
+import { getFullName } from "metabase/lib/user";
 import { TextButton } from "metabase/components/Button.styled";
 import { Tooltip } from "metabase/ui";
 import DateTime from "metabase/components/DateTime";
@@ -53,17 +54,13 @@ export type CollectionItemWithLastEditedInfo = CollectionItem & {
   };
 };
 
-// Long variable names give more context to translators
-// TODO: Long variable names might not be used in POEditor; see if there's a conventional way of providing context to translators
-// TODO: Should there be a fallback to a string like 'Edited 3 months ago' when there's no name?
+// TODO: Should there be a fallback to a string like 'Edited 3 months ago' when there's no editor name?
 const defaultLabelFormatter = (
-  fullNameOfPersonWhoLastEditedThisItem: string | undefined,
-  amountOfTimeAgo: string | undefined = "",
+  nameOfLastEditor: string | undefined,
+  howLongAgo: string | undefined = "",
 ) => (
   <>
-    {fullNameOfPersonWhoLastEditedThisItem
-      ? t`Edited ${amountOfTimeAgo} by ${fullNameOfPersonWhoLastEditedThisItem}`
-      : null}
+    {nameOfLastEditor ? t`Edited ${howLongAgo} by ${nameOfLastEditor}` : null}
   </>
 );
 
@@ -121,7 +118,8 @@ function LastEditInfoLabel({
   ) : null;
 }
 // TODO: Make the tooltip look like the one on Figma (bottom left corner)
-// TODO: note that the header is meant to be truncated and ellipsified too
-// NOTE: Ryan says that the verified icon, both on the collection name and the models, is tricky. Verification of a question is an enterprise feature. Enterprise features are loaded through plugins.
+// NOTE: The header is meant to be truncated and ellipsified too
+// NOTE: Verification of a question is an enterprise feature. Enterprise features are loaded through plugins.
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(LastEditInfoLabel);
