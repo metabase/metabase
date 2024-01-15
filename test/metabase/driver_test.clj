@@ -155,7 +155,7 @@
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"
-                (is (nil? (cant-sync-log-msg))))
+                (is (some? (cant-sync-log-msg))))
               (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
                 (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
             ;; clean up the database
