@@ -75,7 +75,7 @@ import {
 
 type NewDashCardOpts = {
   dashId: DashboardId;
-  tabId: DashboardTabId;
+  tabId: DashboardTabId | null;
 };
 
 interface OwnProps {
@@ -209,41 +209,33 @@ class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
   };
 
   onAddMarkdownBox() {
-    if (this.props.selectedTabId) {
-      this.props.addMarkdownDashCardToDashboard({
-        dashId: this.props.dashboard.id,
-        tabId: this.props.selectedTabId,
-      });
-    }
+    this.props.addMarkdownDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddHeading() {
-    if (this.props.selectedTabId) {
-      this.props.addHeadingDashCardToDashboard({
-        dashId: this.props.dashboard.id,
-        tabId: this.props.selectedTabId,
-      });
-    }
+    this.props.addHeadingDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddLinkCard() {
-    if (this.props.selectedTabId) {
-      this.props.addLinkDashCardToDashboard({
-        dashId: this.props.dashboard.id,
-        tabId: this.props.selectedTabId,
-      });
-    }
+    this.props.addLinkDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddAction() {
-    if (this.props.selectedTabId) {
-      this.props.addActionToDashboard({
-        dashId: this.props.dashboard.id,
-        tabId: this.props.selectedTabId,
-        displayType: "button",
-        action: {},
-      });
-    }
+    this.props.addActionToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+      displayType: "button",
+      action: {},
+    });
   }
 
   onDoneEditing() {
