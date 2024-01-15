@@ -616,8 +616,9 @@ class Question {
   private _syncStructuredQueryColumnsAndSettings(previousQuestion: Question) {
     const query = this.query();
     const previousQuery = previousQuestion.query();
-    const columns = Lib.returnedColumns(query, -1);
-    const previousColumns = Lib.returnedColumns(previousQuery, -1);
+    const stageIndex = -1;
+    const columns = Lib.returnedColumns(query, stageIndex);
+    const previousColumns = Lib.returnedColumns(previousQuery, stageIndex);
 
     if (
       !_.isEqual(
@@ -630,19 +631,21 @@ class Question {
 
     const addedColumns = columns
       .filter(
-        column => !Lib.findMatchingColumn(query, -1, column, previousColumns),
+        column =>
+          !Lib.findMatchingColumn(query, stageIndex, column, previousColumns),
       )
       .map(column => ({
         column,
-        columnInfo: Lib.displayInfo(query, -1, column),
+        columnInfo: Lib.displayInfo(query, stageIndex, column),
       }));
     const removedColumns = previousColumns
       .filter(
-        column => !Lib.findMatchingColumn(previousQuery, -1, column, columns),
+        column =>
+          !Lib.findMatchingColumn(previousQuery, stageIndex, column, columns),
       )
       .map(column => ({
         column,
-        columnInfo: Lib.displayInfo(previousQuery, -1, column),
+        columnInfo: Lib.displayInfo(previousQuery, stageIndex, column),
       }));
     const graphMetrics = this.setting("graph.metrics");
 
@@ -690,7 +693,7 @@ class Question {
           ...addedColumns.map(({ column, columnInfo }) => {
             return {
               name: columnInfo.name,
-              fieldRef: Lib.legacyRef(column),
+              fieldRef: Lib.legacyRef(query, stageIndex, column),
               enabled: true,
             };
           }),
