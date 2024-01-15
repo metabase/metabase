@@ -229,7 +229,14 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, card, height, isDirty, isNativeEditorOpen } = this.props;
+    const {
+      question,
+      card,
+      height,
+      isDirty,
+      isNativeEditorOpen,
+      setQBDefaultParameterValue,
+    } = this.props;
     const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
@@ -253,6 +260,7 @@ class View extends Component {
           isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
+          setQBDefaultParameterValue={setQBDefaultParameterValue}
         />
       </NativeQueryEditorContainer>
     );

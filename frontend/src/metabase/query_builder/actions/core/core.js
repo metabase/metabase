@@ -37,6 +37,7 @@ import {
   getResultsMetadata,
   getTransformedSeries,
   isBasedOnExistingQuestion,
+  getParameters,
 } from "../../selectors";
 
 import { updateUrl } from "../navigation";
@@ -302,6 +303,22 @@ export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
   (parameterId, value) => {
     return { id: parameterId, value: normalizeValue(value) };
+  },
+);
+
+export const SET_QB_DEFAULT_PARAMETER_VALUE =
+  "metabase/qb/SET_DEFAULT_PARAMETER_VALUE";
+export const setQBDefaultParameterValue = createThunkAction(
+  SET_QB_DEFAULT_PARAMETER_VALUE,
+  parameterId => (dispatch, getState) => {
+    const parameter = getParameters(getState()).find(
+      ({ id }) => id === parameterId,
+    );
+    const defaultValue = parameter?.default;
+
+    if (defaultValue) {
+      dispatch(setParameterValue(parameterId, defaultValue));
+    }
   },
 );
 

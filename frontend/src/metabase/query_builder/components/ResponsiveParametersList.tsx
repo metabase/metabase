@@ -2,7 +2,7 @@ import { useCallback, useState, useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import Button from "metabase/core/components/Button";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, ParameterId } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -17,6 +17,7 @@ interface ResponsiveParametersListProps {
   question: Question;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
+  setQBDefaultParameterValue: (parameterId: ParameterId) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
 }
 
@@ -25,6 +26,7 @@ export const ResponsiveParametersList = ({
   parameters,
   setParameterValue,
   setParameterIndex,
+  setQBDefaultParameterValue,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
   const isSmallScreen = useIsSmallScreen();
@@ -78,6 +80,7 @@ export const ResponsiveParametersList = ({
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
+          setQBDefaultParameterValue={setQBDefaultParameterValue}
           isEditing
           commitImmediately
         />
