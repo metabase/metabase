@@ -1,7 +1,7 @@
 import {
   CHANGE_ARROW_ICONS,
   computeChange,
-  computeTrend,
+  computeTrend as _computeTrend,
   CHANGE_TYPE_OPTIONS,
 } from "metabase/visualizations/visualizations/SmartScalar/compute";
 import {
@@ -10,10 +10,13 @@ import {
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
-import { colors } from "metabase/lib/colors";
+import { color, colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { COMPARISON_TYPES } from "./constants";
 import { formatChange } from "./utils";
+
+const computeTrend = (...args) =>
+  _computeTrend(...args, { formatValue, getColor: color });
 
 describe("SmartScalar > compute", () => {
   describe("computeChange", () => {

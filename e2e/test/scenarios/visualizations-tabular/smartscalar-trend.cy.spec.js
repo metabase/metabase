@@ -257,6 +257,12 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
               column: "Mega Count",
               label: "Mega Count",
             },
+            {
+              id: "2",
+              type: "staticNumber",
+              value: 400000,
+              label: "Goal",
+            },
           ],
         },
       },
@@ -266,7 +272,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("viz-settings-button").click();
 
     // Selecting the main column ("Mega Count") to be the comparison column
-    // The comparison should be reset to "previous period"
+    // The "Another column (Mega Count)" comparison should disappear
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findByText("(Mega Count)").should("exist");
       cy.findByText("Count").click();
@@ -276,8 +282,29 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
     cy.findByTestId("scalar-previous-value").within(() => {
       cy.findByText("Sum of Total").should("not.exist");
+      cy.findByText("vs. goal:").should("exist");
+      cy.findByText("400,000").should("exist");
+    });
+
+    // Replacing "Custom value (Goal)" with "Another column (Count)"
+    // Setting the main column to "Count"
+    // The single invalid comparison should be reset to "previous period"
+    cy.findByTestId("chartsettings-sidebar")
+      .findByText(/Custom value/)
+      .click();
+    menu().button("Back").click();
+    menu().findByText("Value from another column…").click();
+    popover().findByText("Count").click();
+    popover().button("Done").click();
+
+    cy.findByTestId("chartsettings-sidebar").findByText("Mega Count").click();
+    popover().findByText("Count").click();
+
+    cy.findByTestId("scalar-value").should("have.text", "344");
+    cy.findByTestId("scalar-previous-value").within(() => {
+      cy.findByText("Count").should("not.exist");
       cy.findByText("vs. previous month:").should("exist");
-      cy.findByText("5,270,000").should("exist");
+      cy.findByText("527").should("exist");
     });
 
     cy.findByTestId("chartsettings-sidebar")
@@ -286,6 +313,9 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     menu().findByText("Value from another column…").click();
     popover().findByText("Sum of Total").click();
     popover().button("Done").click();
+
+    cy.findByTestId("chartsettings-sidebar").findByText("Count").click();
+    popover().findByText("Mega Count").click();
 
     // Removing the comparison column ("Sum of Total") from the query
     // The comparison should be reset to "previous period"

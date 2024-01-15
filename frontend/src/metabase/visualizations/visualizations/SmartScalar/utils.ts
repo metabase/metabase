@@ -14,7 +14,7 @@ import type {
 } from "metabase-types/api";
 
 import { isEmpty } from "metabase/lib/validate";
-import { formatNumber } from "metabase/lib/formatting";
+import { formatNumber } from "metabase/lib/formatting/numbers";
 import { measureText } from "metabase/lib/measure-text";
 import { uuid } from "metabase/lib/utils";
 import { isDate, isNumeric } from "metabase-lib/types/utils/isa";
@@ -108,7 +108,7 @@ export const COMPARISON_SELECTOR_OPTIONS = {
 export function getDefaultComparison(
   series: RawSeries,
   settings: VisualizationSettings,
-) {
+): SmartScalarComparison[] {
   const [
     {
       data: { insights },
@@ -123,9 +123,7 @@ export function getDefaultComparison(
     return [
       {
         id: uuid(),
-        ...createComparisonMenuOption({
-          type: COMPARISON_TYPES.PREVIOUS_VALUE,
-        }),
+        type: COMPARISON_TYPES.PREVIOUS_VALUE,
       },
     ];
   }
@@ -133,12 +131,13 @@ export function getDefaultComparison(
   return [
     {
       id: uuid(),
-      ...createComparisonMenuOption({
-        type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-        dateUnit,
-      }),
+      type: COMPARISON_TYPES.PREVIOUS_PERIOD,
     },
   ];
+}
+
+export function isSuitableScalarColumn(column: DatasetColumn) {
+  return isNumeric(column);
 }
 
 export function getColumnsForComparison(
@@ -263,6 +262,19 @@ export function validateComparisons(
   return comparisons.every(comparison =>
     isComparisonValid(comparison, series, settings),
   );
+}
+
+export function getComparisons(
+  series: RawSeries,
+  settings: VisualizationSettings,
+) {
+  const comparisons = settings["scalar.comparisons"] || [];
+  const filteredComparisons = comparisons.filter(comparison =>
+    isComparisonValid(comparison, series, settings),
+  );
+  return filteredComparisons.length > 0
+    ? filteredComparisons
+    : getDefaultComparison(series, settings);
 }
 
 type getMaxPeriodsAgoParameters = {

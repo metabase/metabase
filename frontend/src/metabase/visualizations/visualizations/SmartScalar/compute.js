@@ -1,16 +1,20 @@
 // eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment";
+import _ from "underscore";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
-import { formatValue } from "metabase/lib/formatting/value";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import { color, colors } from "metabase/lib/colors";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import { isEmpty } from "metabase/lib/validate";
 import { isDate } from "metabase-lib/types/utils/isa";
 
-export function computeTrend(series, insights, settings) {
+export function computeTrend(
+  series,
+  insights,
+  settings,
+  { formatValue, getColor },
+) {
   const comparisons = settings["scalar.comparisons"] || [];
   const currentMetricData = getCurrentMetricData({
     series,
@@ -26,7 +30,7 @@ export function computeTrend(series, insights, settings) {
     currentMetricData;
 
   const displayValue = formatValue(value, formatOptions);
-  const displayDate = formatDateStr({ date, dateUnitSettings });
+  const displayDate = formatDateStr({ date, dateUnitSettings, formatValue });
 
   return {
     value,
@@ -42,6 +46,8 @@ export function computeTrend(series, insights, settings) {
         currentMetricData,
         series,
         settings,
+        formatValue,
+        getColor,
       }),
     ),
   };
@@ -52,6 +58,8 @@ function buildComparisonObject({
   currentMetricData,
   series,
   settings,
+  formatValue,
+  getColor,
 }) {
   const { formatOptions, value } = currentMetricData;
 
@@ -60,6 +68,7 @@ function buildComparisonObject({
       comparison,
       currentMetricData,
       series,
+      formatValue,
     }) || {};
 
   const percentChange = !isEmpty(comparisonValue)
@@ -75,12 +84,14 @@ function buildComparisonObject({
     comparisonValue,
     formatOptions,
     percentChange,
+    formatValue,
   });
 
   const changeColor = !isEmpty(changeArrowIconName)
     ? getArrowColor(
         changeArrowIconName,
         settings["scalar.switch_positive_negative"],
+        { getColor },
       )
     : undefined;
 
@@ -98,7 +109,12 @@ function buildComparisonObject({
   };
 }
 
-function computeComparison({ comparison, currentMetricData, series }) {
+function computeComparison({
+  comparison,
+  currentMetricData,
+  series,
+  formatValue,
+}) {
   const { type } = comparison;
 
   if (type === COMPARISON_TYPES.ANOTHER_COLUMN) {
@@ -113,6 +129,7 @@ function computeComparison({ comparison, currentMetricData, series }) {
     return computeTrendPreviousValue({
       currentMetricData,
       series,
+      formatValue,
     });
   }
 
@@ -124,6 +141,7 @@ function computeComparison({ comparison, currentMetricData, series }) {
       comparison,
       currentMetricData,
       series,
+      formatValue,
     });
   }
 
@@ -245,7 +263,7 @@ function computeTrendStaticValue({ comparison }) {
   };
 }
 
-function computeTrendPreviousValue({ currentMetricData, series }) {
+function computeTrendPreviousValue({ currentMetricData, series, formatValue }) {
   const [
     {
       data: { rows },
@@ -265,6 +283,7 @@ function computeTrendPreviousValue({ currentMetricData, series }) {
     nextValueRowIndex: latestRowIndex,
     nextDate: date,
     dateUnitSettings,
+    formatValue,
   });
 }
 
@@ -275,13 +294,16 @@ function computeComparisonPreviousValue({
   nextValueRowIndex,
   nextDate,
   dateUnitSettings,
+  formatValue,
 }) {
-  const previousRow = rows.findLast(
+  const previousRowIndex = _.findLastIndex(
+    rows,
     (row, i) =>
       i < nextValueRowIndex &&
       !isEmpty(row[metricColIndex]) &&
       !isEmpty(row[dimensionColIndex]),
   );
+  const previousRow = rows[previousRowIndex];
   // if no row exists with non-null date and non-null value
   if (isEmpty(previousRow)) {
     return null;
@@ -294,6 +316,7 @@ function computeComparisonPreviousValue({
     nextDate,
     prevDate,
     dateUnitSettings,
+    formatValue,
   });
 
   return {
@@ -302,7 +325,12 @@ function computeComparisonPreviousValue({
   };
 }
 
-function computeTrendPeriodsAgo({ comparison, currentMetricData, series }) {
+function computeTrendPeriodsAgo({
+  comparison,
+  currentMetricData,
+  series,
+  formatValue,
+}) {
   const [
     {
       data: { rows },
@@ -333,6 +361,7 @@ function computeTrendPeriodsAgo({ comparison, currentMetricData, series }) {
     nextDate: date,
     dateUnitSettings,
     dateUnitsAgo,
+    formatValue,
   });
 }
 
@@ -344,6 +373,7 @@ function computeComparisonPeriodsAgo({
   nextDate,
   dateUnitSettings,
   dateUnitsAgo,
+  formatValue,
 }) {
   const dateUnitDisplay = Lib.describeTemporalUnit(
     dateUnitSettings.dateUnit,
@@ -361,6 +391,7 @@ function computeComparisonPeriodsAgo({
           dateUnitSettings,
           nextDate,
           prevDate,
+          formatValue,
         });
 
   const rowPeriodsAgo = getRowOfPeriodsAgo({
@@ -458,6 +489,7 @@ function computeComparisonStrPreviousValue({
   dateUnitSettings,
   prevDate,
   nextDate,
+  formatValue,
 }) {
   const isSameDay = moment.parseZone(prevDate).isSame(nextDate, "day");
   const isSameYear = moment.parseZone(prevDate).isSame(nextDate, "year");
@@ -471,12 +503,13 @@ function computeComparisonStrPreviousValue({
     date: prevDate,
     dateUnitSettings,
     options,
+    formatValue,
   });
 
   return t`vs. ${formattedDateStr}`;
 }
 
-function formatDateStr({ date, dateUnitSettings, options }) {
+function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
   const { dateColumn, dateColumnSettings, dateUnit } = dateUnitSettings;
 
   if (isEmpty(dateUnit)) {
@@ -525,6 +558,7 @@ function computeChangeTypeWithOptions({
   comparisonValue,
   formatOptions,
   percentChange,
+  formatValue,
 }) {
   if (isEmpty(comparisonValue)) {
     return {
@@ -553,16 +587,20 @@ function computeChangeTypeWithOptions({
   };
 }
 
-function getArrowColor(changeArrowIconName, shouldSwitchPositiveNegative) {
+function getArrowColor(
+  changeArrowIconName,
+  shouldSwitchPositiveNegative,
+  { getColor },
+) {
   const arrowIconColorNames = shouldSwitchPositiveNegative
     ? {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: colors.success,
-        [CHANGE_ARROW_ICONS.ARROW_UP]: colors.error,
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("success"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("error"),
       }
     : {
-        [CHANGE_ARROW_ICONS.ARROW_DOWN]: colors.error,
-        [CHANGE_ARROW_ICONS.ARROW_UP]: colors.success,
+        [CHANGE_ARROW_ICONS.ARROW_DOWN]: getColor("error"),
+        [CHANGE_ARROW_ICONS.ARROW_UP]: getColor("success"),
       };
 
-  return color(arrowIconColorNames[changeArrowIconName]);
+  return arrowIconColorNames[changeArrowIconName];
 }

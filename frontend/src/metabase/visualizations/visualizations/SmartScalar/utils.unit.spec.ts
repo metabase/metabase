@@ -79,7 +79,7 @@ describe("SmartScalar > utils", () => {
         expect(defaultComparison).toEqual([
           {
             id: expect.any(String),
-            ...COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE,
+            type: COMPARISON_TYPES.PREVIOUS_VALUE,
           },
         ]);
       });
@@ -100,7 +100,6 @@ describe("SmartScalar > utils", () => {
           {
             id: expect.any(String),
             type: COMPARISON_TYPES.PREVIOUS_PERIOD,
-            name: "Previous month",
           },
         ]);
       });

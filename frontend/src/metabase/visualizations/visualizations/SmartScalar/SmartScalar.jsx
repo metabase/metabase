@@ -18,11 +18,11 @@ import {
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { ScalarTitleContainer } from "metabase/visualizations/components/ScalarValue/ScalarValue.styled";
 
+import { color } from "metabase/lib/colors";
 import { isEmpty } from "metabase/lib/validate";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { formatValue } from "metabase/lib/formatting/value";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
-import { isNumeric } from "metabase-lib/types/utils/isa";
 import { ScalarContainer } from "../Scalar/Scalar.styled";
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 
@@ -33,6 +33,7 @@ import {
   MAX_COMPARISONS,
   SPACING,
   TOOLTIP_ICON_SIZE,
+  VIZ_SETTINGS_DEFAULTS,
 } from "./constants";
 import {
   PreviousValueDetails,
@@ -51,10 +52,12 @@ import {
   getColumnsForComparison,
   getComparisonOptions,
   formatChangeAutoPrecision,
+  getComparisons,
   getChangeWidth,
   getValueHeight,
   getValueWidth,
   isPeriodVisible,
+  isSuitableScalarColumn,
   validateComparisons,
 } from "./utils";
 import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
@@ -76,7 +79,11 @@ export function SmartScalar({
 
   const insights = rawSeries?.[0].data?.insights;
   const trend = useMemo(
-    () => computeTrend(series, insights, settings),
+    () =>
+      computeTrend(series, insights, settings, {
+        formatValue,
+        getColor: color,
+      }),
     [series, insights, settings],
   );
   if (trend == null) {
@@ -274,7 +281,7 @@ Object.assign(SmartScalar, {
   uiName: t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
-  canSavePng: false,
+  canSavePng: true,
 
   minSize: getMinSize("smartscalar"),
   defaultSize: getDefaultSize("smartscalar"),
@@ -283,12 +290,13 @@ Object.assign(SmartScalar, {
     ...fieldSetting("scalar.field", {
       section: t`Data`,
       title: t`Primary number`,
-      fieldFilter: isNumeric,
+      fieldFilter: isSuitableScalarColumn,
     }),
     "scalar.comparisons": {
       section: t`Data`,
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
+      getValue: (series, vizSettings) => getComparisons(series, vizSettings),
       isValid: (series, vizSettings) =>
         validateComparisons(series, vizSettings),
       getDefault: (series, vizSettings) =>
@@ -308,13 +316,14 @@ Object.assign(SmartScalar, {
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
+      default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
     },
     "scalar.compact_primary_number": {
       section: t`Display`,
       title: t`Compact number`,
       widget: "toggle",
       inline: true,
-      default: false,
+      default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
     },
     ...columnSettings({
       section: t`Display`,
