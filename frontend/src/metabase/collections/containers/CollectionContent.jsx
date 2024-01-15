@@ -97,7 +97,6 @@ function CollectionContent({
   uploadsEnabled,
   canUploadToDb,
 }) {
-
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
