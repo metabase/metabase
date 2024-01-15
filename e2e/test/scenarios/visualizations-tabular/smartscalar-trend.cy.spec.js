@@ -238,6 +238,8 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
   });
 
   it("should reset 'another column' comparison when it becomes invalid", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     cy.createQuestion(
       {
         query: {
@@ -321,6 +323,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     // The comparison should be reset to "previous period"
     summarize();
     rightSidebar().findByLabelText("Sum of Total").icon("close").click();
+    cy.wait("@dataset");
 
     cy.findByTestId("scalar-value").should("have.text", "3,440,000");
     cy.findByTestId("scalar-previous-value").within(() => {
@@ -335,6 +338,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       cy.findByLabelText("Count").icon("close").click();
       cy.button("Done").click();
     });
+    cy.wait("@dataset");
 
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
