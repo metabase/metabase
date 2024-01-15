@@ -243,7 +243,10 @@ export type PickerInfo = {
   isModel?: boolean;
 };
 
-export function pickerInfo(query: Query, metadata: Joinable): PickerInfo {
+export function pickerInfo(
+  query: Query,
+  metadata: Joinable,
+): PickerInfo | null {
   return ML.picker_info(query, metadata);
 }
 

@@ -184,9 +184,9 @@ function getDataSourceParts({ question }) {
       ...Lib.joins(query, -1)
         .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
         .map(pickerInfo => {
-          if (pickerInfo.tableId != null) {
+          if (pickerInfo?.tableId != null) {
             return metadata.table(pickerInfo.tableId);
-          } else if (pickerInfo.cardId != null) {
+          } else if (pickerInfo?.cardId != null) {
             return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
           }
         }),
