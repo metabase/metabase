@@ -43,15 +43,6 @@
   :database-local :allowed
   :audit          :getter)
 
-(defn query->max-rows
-  "Given a query, returns the max rows that should be returned *as defined by settings*. In other words,
-  return `(aggregated-query-row-limit)` or `(unaggregated-query-row-limit)` depending on whether the query is
-  aggregated or not."
-  [{{aggregations :aggregation} :query}]
-  (if-not aggregations
-    (unaggregated-query-row-limit)
-    (aggregated-query-row-limit)))
-
 (defn default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
   []
