@@ -1245,8 +1245,8 @@
                (when api/*is-superuser?*
                  [:admin]))))
 
-(defn- filtered-user-facing-settings
-  "Docstrings are hard"
+(defn- user-facing-settings-matching
+  "Returns the user facing view of the registered settings satisfying the given predicate"
   [pred options]
   (into
     []
@@ -1270,7 +1270,7 @@
   ;; ignore Database-local values, but not User-local values
   (let [writable-visibilities (current-user-writable-visibilities)]
     (binding [*database-local-values* nil]
-      (filtered-user-facing-settings
+      (user-facing-settings-matching
         (fn [setting]
           (and (contains? writable-visibilities (:visibility setting))
                (not= (:database-local setting) :only)))
@@ -1288,7 +1288,7 @@
   ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
-    (filtered-user-facing-settings
+    (user-facing-settings-matching
       (fn [setting]
         (and (not= (:visibility setting) :internal)
              (allows-site-wide-values? setting)))
