@@ -110,7 +110,7 @@ export const getQuestion = ({
   let question = Question.create({ databaseId: dbId, tableId, metadata });
 
   if (getCount) {
-    question = aggregateCount(question);
+    question = aggregateByCount(question);
   }
 
   if (metricId) {
@@ -126,7 +126,7 @@ export const getQuestion = ({
   return question.setDisplay(visualization).card();
 };
 
-function aggregateCount(question) {
+function aggregateByCount(question) {
   const query = question.query();
   const stageIndex = -1;
   const operators = Lib.availableAggregationOperators(query, stageIndex);
