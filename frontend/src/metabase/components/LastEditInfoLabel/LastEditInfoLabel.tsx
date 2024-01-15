@@ -56,7 +56,7 @@ export type CollectionItemWithLastEditedInfo = CollectionItem & {
 
 // TODO: Should there be a fallback to a string like 'Edited 3 months ago' when there's no editor name?
 const defaultLabelFormatter = (
-  nameOfLastEditor: string | undefined,
+  nameOfLastEditor: string | null | undefined,
   howLongAgo: string | undefined = "",
 ) => (
   <>
@@ -80,15 +80,15 @@ function LastEditInfoLabel({
   className: string;
   fullName: string | null;
   formatLabel: (
-    fullNameOfPersonWhoLastEditedThisItem: string | undefined,
-    amountOfTimeAgo: string | undefined,
+    nameOfLastEditor: string | null | undefined,
+    howLongAgo: string | undefined,
   ) => JSX.Element;
 }) {
   const lastEditInfo = item["last-edit-info"];
   const editorId = lastEditInfo?.id;
   const timestamp = lastEditInfo?.timestamp;
 
-  // TODO: use dayjs not moment
+  // TODO: Replace moment with dayjs for date handling as moment.js is deprecated.
   // Not sure how to localize this. Bracket this for now, says Ryan
   const momentTimestamp = moment(timestamp);
   const timeLabel =
@@ -97,8 +97,8 @@ function LastEditInfoLabel({
       : undefined;
 
   // TODO: Handle different capitalization of 'you' when name comes first
-  const editorFullName =
-    editorId === user.id ? t`you` : fullName || formatEditorName(lastEditInfo);
+  fullName ||= formatEditorName(lastEditInfo) || null;
+  const editorFullName = editorId === user.id ? t`you` : fullName;
   const label = formatLabel(editorFullName, timeLabel);
 
   return label ? (
