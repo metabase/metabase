@@ -283,7 +283,6 @@ describe("scenarios > visualizations > table column settings", () => {
       .findByLabelText(column)
       .should("be.checked")
       .click();
-    runQuery();
     cy.wait("@dataset");
     cy.findByText("Doing science...").should("not.exist");
     if (needsScroll) {
@@ -395,7 +394,6 @@ describe("scenarios > visualizations > table column settings", () => {
         .findByLabelText("Remove all")
         .click();
 
-      runQuery();
       cy.wait("@dataset");
       cy.findByTestId("query-builder-main")
         .findByText("Doing science...")
@@ -808,10 +806,6 @@ describe("scenarios > visualizations > table column settings", () => {
     });
   });
 });
-
-const runQuery = () => {
-  cy.findByTestId("query-builder-main").icon("play").click();
-};
 
 const showColumn = column => {
   cy.findByTestId(`${column}-show-button`).click();
