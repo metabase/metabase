@@ -162,10 +162,6 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
         column: (sourceColumn, sourceQuestion) => {
-          if (!sourceQuestion) {
-            throw new Error("sourceQuestion is required");
-          }
-
           const sourceQuery = sourceQuestion.query();
 
           return Lib.isCompatibleType(
