@@ -20,16 +20,16 @@
   :export?    true
   :audit      :getter)
 
+(def ^:const max-filtered-results
+  "Number of results to return in an API response"
+  1000)
+
 (def ^:dynamic *db-max-results*
   "Number of raw results to fetch from the database. This number is in place to prevent massive application DB load by
   returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
   that results are truncated.
 
   Under normal situations it shouldn't be rebound, but it's dynamic to make unit testing easier."
-  1000)
-
-(def ^:const max-filtered-results
-  "Number of results to return in an API response"
   1000)
 
 (def ^:const stale-time-in-days
