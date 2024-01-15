@@ -43,5 +43,5 @@ export function isCompatibleType(
   column1: ColumnMetadata,
   column2: ColumnMetadata,
 ): boolean {
-  return TYPES.compatible_type_QMARK_(column1, column2);
+  return TYPES.assignable_QMARK_(column1, column2);
 }
