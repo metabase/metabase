@@ -18,21 +18,6 @@ export function fieldRefForColumn(column) {
   );
 }
 
-/**
- * finds the column object from the dataset results for the given `table.columns` column setting
- * @param  {Column[]} columns             Dataset results columns
- * @param  {ColumnSetting} columnSetting  A "column setting" from the `table.columns` settings
- * @return {?Column}                      A result column
- */
-export function findColumnForColumnSetting(columns, columnSetting) {
-  const index = findColumnIndexForColumnSetting(columns, columnSetting);
-  if (index >= 0) {
-    return columns[index];
-  } else {
-    return null;
-  }
-}
-
 export function normalizeFieldRef(fieldRef) {
   const dimension = Dimension.parseMBQL(fieldRef);
   return dimension && dimension.mbql();

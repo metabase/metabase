@@ -100,7 +100,7 @@ function DeleteGroupModal({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color="error.0"
+            color="error"
             onClick={() => {
               onClose();
               onConfirm(group);

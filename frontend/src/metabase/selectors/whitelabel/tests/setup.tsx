@@ -10,6 +10,7 @@ import type { LoadingMessage, TokenFeatures } from "metabase-types/api";
 export interface SetupOpts {
   loadingMessage?: LoadingMessage;
   applicationName?: string;
+  showMetabaseLinks?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   hasEnterprisePlugins?: boolean;
 }
@@ -17,6 +18,7 @@ export interface SetupOpts {
 export function setup({
   loadingMessage = "doing-science",
   applicationName = "Metabase",
+  showMetabaseLinks = true,
   tokenFeatures = {},
   hasEnterprisePlugins = false,
 }: SetupOpts = {}) {
@@ -25,6 +27,7 @@ export function setup({
       "loading-message": loadingMessage,
       "application-name": applicationName,
       "token-features": createMockTokenFeatures(tokenFeatures),
+      "show-metabase-links": showMetabaseLinks,
     }),
   });
 
