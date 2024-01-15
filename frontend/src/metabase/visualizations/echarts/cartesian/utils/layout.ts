@@ -163,6 +163,12 @@ export const getChartPadding = (
     right: CHART_STYLE.padding.x,
   };
 
+  // Prevent data labels from being rendered outside the chart
+  if (settings["graph.show_values"]) {
+    padding.top +=
+      CHART_STYLE.seriesLabels.size + CHART_STYLE.seriesLabels.offset;
+  }
+
   const yAxisNameTotalWidth =
     CHART_STYLE.axisName.size / 2 + CHART_STYLE.axisNameMargin;
 
