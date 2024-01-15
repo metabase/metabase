@@ -48,89 +48,49 @@ interface BrowseDataTab {
 
 // TODO:Use the Ellipsified component to ellipsify the model description. Note the parent component must
 
+const groupModelsByParentCollection = (
+  ungroupedModelsArray: CollectionItem[],
+) => {
+  return _.groupBy(
+    ungroupedModelsArray,
+    model => model.collection?.id || "Ungrouped",
+  );
+};
+
 const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
+  if (!models.length)
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          flex: 1,
+          height: "100%",
+          width: "100%",
+        }}
+      >
+        <EmptyState
+          title={t`No models here yet`}
+          message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+          icon="empty"
+        />
+      </div>
+    );
+  const collectionIdToModels = Object.entries(
+    groupModelsByParentCollection(models),
+  );
   return (
-    <Grid>
-      {models.length ? (
-        models.map((model: CollectionItem) => {
-          console.log("model", model);
-          // If there is no information about the last edit,
-          // use the timestamp of the creation
-          const lastEditInfo = {
-            full_name:
-              model.last_editor_common_name! ?? model.creator_common_name!,
-            timestamp: model.last_edited_at! ?? model.created_at!,
-          };
-          const item: CollectionItemWithLastEditedInfo = {
-            ...model,
-            "last-edit-info": lastEditInfo,
-          };
-          return (
-            <ModelGridItem key={model.id}>
-              <Link
-                to={Urls.modelDetail(model)}
-                // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
-                data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
-              >
-                <ModelCard>
-                  <h4 className="text-wrap">{model.name}</h4>
-                  <Text
-                    size="xs"
-                    style={{
-                      height: "32px",
-                      textOverflow: "ellipsis",
-                      overflow: "hidden",
-                      width: "100%",
-                      whiteSpace: "normal",
-                      display: "block",
-                    }}
-                  >
-                    {model.description}{" "}
-                  </Text>
-                  <LastEditInfoLabel
-                    prefix={null}
-                    item={item}
-                    fullName={lastEditInfo.full_name}
-                    // TODO: This feels a little complicated.
-                    // Let me see if I can simplify it
-                    formatLabel={(
-                      fullName: string | undefined = "",
-                      timeLabel: string | undefined = "",
-                    ) => (
-                      <>
-                        {fullName}
-                        {fullName && timeLabel ? (
-                          <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
-                        ) : null}
-                        {timeLabel}
-                      </>
-                    )}
-                  />
-                </ModelCard>
-              </Link>
-            </ModelGridItem>
-          );
-        })
-      ) : (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-            height: "100%",
-            width: "100%",
-          }}
-        >
-          <EmptyState
-            title={t`No models here yet`}
-            message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-            icon="empty"
+      {collectionIdToModels.map(([collectionId, models]) => {
+        return (
+          <CollectionOfModels
+            collectionId={collectionId}
+            collectionName={collectionId}
+            models={models}
           />
-        </div>
-      )}
-    </Grid>
+        );
+      })}
   );
 };
 
@@ -236,4 +196,80 @@ export const BrowseDataPage = () => {
 };
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
-// NOTE: There's an EmptyState component
+
+const CollectionOfModels = ({
+  collectionId,
+  collectionName,
+  models,
+}: {
+  collectionId: string;
+  collectionName: string;
+  models: CollectionItem[];
+}) => {
+  return (
+    <div key={`collection-${collectionId}`} style={{display: 'flex', }}>
+      <h3>{collectionName}</h3>
+      <Grid>
+        {models.map(model => {
+          console.log("model", model);
+          // If there is no information about the last edit,
+          // use the timestamp of the creation
+          const lastEditInfo = {
+            full_name:
+              model.last_editor_common_name! ?? model.creator_common_name!,
+            timestamp: model.last_edited_at! ?? model.created_at!,
+          };
+          const item: CollectionItemWithLastEditedInfo = {
+            ...model,
+            "last-edit-info": lastEditInfo,
+          };
+          return (
+            <ModelGridItem key={model.id}>
+              <Link
+                to={Urls.modelDetail(model)}
+                // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
+                data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
+              >
+                <ModelCard>
+                  <h4 className="text-wrap">{model.name}</h4>
+                  <Text
+                    size="xs"
+                    style={{
+                      height: "32px",
+                      textOverflow: "ellipsis",
+                      overflow: "hidden",
+                      width: "100%",
+                      whiteSpace: "normal",
+                      display: "block",
+                    }}
+                  >
+                    {model.description}{" "}
+                  </Text>
+                  <LastEditInfoLabel
+                    prefix={null}
+                    item={item}
+                    fullName={lastEditInfo.full_name}
+                    // TODO: This feels a little complicated.
+                    // Let me see if I can simplify it
+                    formatLabel={(
+                      fullName: string | undefined = "",
+                      timeLabel: string | undefined = "",
+                    ) => (
+                      <>
+                        {fullName}
+                        {fullName && timeLabel ? (
+                          <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
+                        ) : null}
+                        {timeLabel}
+                      </>
+                    )}
+                  />
+                </ModelCard>
+              </Link>
+            </ModelGridItem>
+          );
+        })}
+      </Grid>
+    </div>
+  );
+};
