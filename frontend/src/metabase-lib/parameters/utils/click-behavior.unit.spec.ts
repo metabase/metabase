@@ -290,6 +290,7 @@ describe("metabase/lib/click-behavior", () => {
         ],
       ] as [string, Record<string, unknown>][]) {
         it(`should filter sources for a ${targetParameterType} parameter target`, () => {
+          const question = new Question(createMockCard(), metadata);
           const parameter = createMockParameter({
             id: "foo123",
             name: "My Param",
@@ -303,7 +304,7 @@ describe("metabase/lib/click-behavior", () => {
 
           const filteredSources = {
             column: sources.column.filter(column =>
-              sourceFilters.column(column),
+              sourceFilters.column(column, question),
             ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
@@ -357,31 +358,30 @@ describe("metabase/lib/click-behavior", () => {
         ],
       ] as [TemplateTagType, Record<string, unknown>][]) {
         it(`should filter sources for a ${targetVariableType} variable target`, () => {
-          const [{ sourceFilters }] = getTargetsForQuestion(
-            new Question(
-              createMockCard({
-                dataset_query: createMockNativeDatasetQuery({
-                  type: "native",
-                  native: {
-                    query: "{{foo}}",
-                    "template-tags": {
-                      my_variable: {
-                        "display-name": "My Variable",
-                        id: "foo123",
-                        name: "my_variable",
-                        type: targetVariableType,
-                      },
+          const question = new Question(
+            createMockCard({
+              dataset_query: createMockNativeDatasetQuery({
+                type: "native",
+                native: {
+                  query: "{{foo}}",
+                  "template-tags": {
+                    my_variable: {
+                      "display-name": "My Variable",
+                      id: "foo123",
+                      name: "my_variable",
+                      type: targetVariableType,
                     },
                   },
-                }),
+                },
               }),
-              metadata,
-            ),
+            }),
+            metadata,
           );
+          const [{ sourceFilters }] = getTargetsForQuestion(question);
 
           const filteredSources = {
             column: sources.column.filter(column =>
-              sourceFilters.column(column),
+              sourceFilters.column(column, question),
             ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(
@@ -444,33 +444,33 @@ describe("metabase/lib/click-behavior", () => {
         ],
       ] as [Field, Record<string, unknown>][]) {
         it(`should filter sources for a ${field.base_type} dimension target`, () => {
-          const [{ sourceFilters }] = getTargetsForQuestion(
-            new Question(
-              createMockCard({
-                dataset_query: createMockNativeDatasetQuery({
-                  native: {
-                    query: "{{my_field_filter}}",
-                    "template-tags": {
-                      my_field_filter: {
-                        default: null,
-                        dimension: ["field", field.id as FieldId, null],
-                        "display-name": "My Field Filter",
-                        id: "foo123",
-                        name: "my_field_filter",
-                        type: "dimension",
-                        "widget-type": "category",
-                      },
+          const question = new Question(
+            createMockCard({
+              dataset_query: createMockNativeDatasetQuery({
+                native: {
+                  query: "{{my_field_filter}}",
+                  "template-tags": {
+                    my_field_filter: {
+                      default: null,
+                      dimension: ["field", field.id as FieldId, null],
+                      "display-name": "My Field Filter",
+                      id: "foo123",
+                      name: "my_field_filter",
+                      type: "dimension",
+                      "widget-type": "category",
                     },
                   },
-                }),
+                },
               }),
-              metadata,
-            ),
+            }),
+            metadata,
           );
+
+          const [{ sourceFilters }] = getTargetsForQuestion(question);
 
           const filteredSources = {
             column: sources.column.filter(column =>
-              sourceFilters.column(column),
+              sourceFilters.column(column, question),
             ),
             parameter: sources.parameter.filter(sourceFilters.parameter),
             userAttribute: sources.userAttribute.filter(

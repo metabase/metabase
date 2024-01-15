@@ -44,7 +44,7 @@ interface Target {
 }
 
 interface SourceFilters {
-  column: (column: DatasetColumn, question?: Question) => boolean;
+  column: (column: DatasetColumn, question: Question) => boolean;
   parameter: (parameter: Parameter) => boolean;
   userAttribute: (userAttribute: string) => boolean;
 }
