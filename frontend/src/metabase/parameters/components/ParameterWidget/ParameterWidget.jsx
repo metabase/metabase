@@ -83,6 +83,7 @@ export class ParameterWidget extends Component {
       return (
         <ParameterFieldSet
           legend={legend}
+          required={Boolean(parameter.required)}
           noPadding={true}
           fieldHasValueOrFocus={fieldHasValueOrFocus}
           className={className}

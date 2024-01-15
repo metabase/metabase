@@ -4,6 +4,7 @@ import cx from "classnames";
 export default function FieldSet({
   className = "border-brand",
   legend,
+  required,
   noPadding,
   children,
 }) {
@@ -20,6 +21,7 @@ export default function FieldSet({
           className="h5 text-bold text-uppercase px1 text-nowrap text-medium"
         >
           {legend}
+          {required && <span>&nbsp;*</span>}
         </legend>
       )}
       <div data-testid="field-set-content" className="w-full">
