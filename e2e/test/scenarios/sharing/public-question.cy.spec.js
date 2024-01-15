@@ -169,7 +169,7 @@ describe("scenarios > public > question", () => {
     cy.createNativeQuestion({
       name: "Nested Question",
       native: {
-        query: "SELECT * FROM PEOPLE",
+        query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
       cy.visit("/");
