@@ -5,7 +5,7 @@
  * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
  * */
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import type { CollectionItem } from "metabase-types/api";
@@ -48,12 +48,11 @@ type Model = CollectionItem;
 
 const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
   // We build up a mapping of collection ids to names as we iterate through the models
-  //collectionIdToName
   const collectionIdToName: Record<string, string> = {};
   const groupedModels: Record<string, Model[]> = {};
   for (const model of ungroupedModelsArray) {
     const collectionId = `${model.collection?.id || -1}`;
-    const collectionName = model.collection?.name || "Ungrouped";
+    const collectionName = model.collection?.name || "No collection"; // TODO: Typescript requires a default value; find a good one
     collectionIdToName[collectionId] = collectionName;
     groupedModels[collectionId] ??= [];
     groupedModels[collectionId].push(model);
@@ -86,18 +85,21 @@ const ModelsTab = ({ models }: { models: Model[] }) => {
   const { groupedModels, collectionIdToName } =
     groupModelsByParentCollection(models);
   const entries = Object.entries(groupedModels);
-  return entries.map(([collectionId, models], index) => {
-    return (
-      <>
-        <CollectionOfModels
-          collectionId={collectionId}
-          collectionName={collectionIdToName[collectionId]}
-          models={models}
-          includeDivider={index !== 0}
-        />
-      </>
-    );
-  });
+  return (
+    <>
+      {entries.map(([collectionId, models], index) => {
+        return (
+          <CollectionOfModels
+            collectionId={collectionId}
+            collectionName={collectionIdToName[collectionId]}
+            models={models}
+            includeDivider={index !== 0}
+            key={collectionId}
+          />
+        );
+      })}
+    </>
+  );
 };
 
 const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
@@ -204,18 +206,16 @@ export const BrowseDataPage = () => {
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
 const CollectionOfModels = ({
-  collectionId,
   collectionName,
   models,
   includeDivider = true,
 }: {
-  collectionId: string;
   collectionName: string;
   models: Model[];
   includeDivider?: boolean;
 }) => {
   return (
-    <Fragment key={`collection-${collectionId}`}>
+    <>
       {includeDivider && <Divider />}
       <div
         style={{
@@ -227,8 +227,8 @@ const CollectionOfModels = ({
       >
         <h4 style={{ width: "100%" }}>{collectionName}</h4>
         <Grid>
+          {/* TODO: Type the `model` var*/}
           {models.map((model: any) => {
-            // TODO: Type this
             // If there is no information about the last edit,
             // use the timestamp of the creation
             const lastEditInfo = {
@@ -287,6 +287,6 @@ const CollectionOfModels = ({
           })}
         </Grid>
       </div>
-    </Fragment>
+    </>
   );
 };
