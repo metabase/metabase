@@ -46,18 +46,26 @@ interface BrowseDataTab {
   component: JSX.Element;
 }
 
+type Model = CollectionItem;
+
 // TODO:Use the Ellipsified component to ellipsify the model description. Note the parent component must
 
-const groupModelsByParentCollection = (
-  ungroupedModelsArray: CollectionItem[],
-) => {
-  return _.groupBy(
-    ungroupedModelsArray,
-    model => model.collection?.id || "Ungrouped",
-  );
+const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
+  // We build up a mapping of collection ids to names as we iterate through the models
+  //collectionIdToName
+  const collectionIdToName: Record<string, string> = {};
+  const groupedModels: Record<string, Model[]> = {};
+  for (const model of ungroupedModelsArray) {
+    const collectionId = `${model.collection?.id || -1}`;
+    const collectionName = model.collection?.name || "Ungrouped";
+    collectionIdToName[collectionId] = collectionName;
+    groupedModels[collectionId] ??= [];
+    groupedModels[collectionId].push(model);
+  }
+  return { groupedModels, collectionIdToName };
 };
 
-const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
+const ModelsTab = ({ models }: { models: Model[] }) => {
   if (!models.length)
     return (
       <div
@@ -78,20 +86,21 @@ const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
         />
       </div>
     );
-  const collectionIdToModels = Object.entries(
-    groupModelsByParentCollection(models),
-  );
-  return (
-      {collectionIdToModels.map(([collectionId, models]) => {
-        return (
-          <CollectionOfModels
-            collectionId={collectionId}
-            collectionName={collectionId}
-            models={models}
-          />
-        );
-      })}
-  );
+  const { groupedModels, collectionIdToName } =
+    groupModelsByParentCollection(models);
+  const entries = Object.entries(groupedModels);
+  return entries.map(([collectionId, models], index) => {
+    return (
+      <>
+        <CollectionOfModels
+          collectionId={collectionId}
+          collectionName={collectionIdToName[collectionId]}
+          models={models}
+        />
+        {index < entries.length - 1 && <Divider />}
+      </>
+    );
+  });
 };
 
 const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
@@ -204,11 +213,19 @@ const CollectionOfModels = ({
 }: {
   collectionId: string;
   collectionName: string;
-  models: CollectionItem[];
+  models: Model[];
 }) => {
   return (
-    <div key={`collection-${collectionId}`} style={{display: 'flex', }}>
-      <h3>{collectionName}</h3>
+    <div
+      key={`collection-${collectionId}`}
+      style={{
+        padding: "1rem 0",
+        flexFlow: "column nowrap",
+        width: "100%",
+        display: "flex",
+      }}
+    >
+      <h4 style={{ width: "100%" }}>{collectionName}</h4>
       <Grid>
         {models.map(model => {
           console.log("model", model);
