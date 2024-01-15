@@ -2,8 +2,12 @@ import {
   restore,
   filterWidget,
   visitQuestion,
+  saveQuestion,
   downloadAndAssert,
   assertSheetRowsCount,
+  createPublicQuestionLink,
+  modal,
+  openNativeEditor,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -54,14 +58,10 @@ describe("scenarios > public > question", () => {
     cy.signInAsAdmin();
 
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-
-    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
-      cy.wrap(id).as("questionId");
-    });
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
-    cy.get("@questionId").then(id => {
+    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
@@ -96,10 +96,30 @@ describe("scenarios > public > question", () => {
     });
   });
 
+  it("should only allow non-admin users to see a public link if one has already been created", () => {
+    cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
+      createPublicQuestionLink(id);
+      cy.signOut();
+      cy.signInAsNormalUser().then(() => {
+        visitQuestion(id);
+
+        cy.icon("share").click();
+
+        cy.findByTestId("public-link-popover-content").within(() => {
+          cy.findByText("Public link").should("be.visible");
+          cy.findByTestId("public-link-input").then($input =>
+            expect($input.val()).to.match(PUBLIC_QUESTION_REGEX),
+          );
+          cy.findByText("Remove public URL").should("not.exist");
+        });
+      });
+    });
+  });
+
   Object.entries(USERS).map(([userType, setUser]) =>
     describe(`${userType}`, () => {
       it(`should be able to view public questions`, () => {
-        cy.get("@questionId").then(id => {
+        cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
           cy.request("POST", `/api/card/${id}/public_link`).then(
             ({ body: { uuid } }) => {
               setUser();
@@ -117,6 +137,63 @@ describe("scenarios > public > question", () => {
       });
     }),
   );
+
+  it("should be able to view public questions with snippets", () => {
+    openNativeEditor();
+
+    // Create a snippet
+    cy.icon("snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
+        `'test'`,
+      );
+      cy.findByLabelText("Give your snippet a name").type("string 'test'");
+      cy.findByText("Save").click();
+    });
+
+    cy.get("@editor").type(`{moveToStart}select `);
+
+    saveQuestion("test question", { wrapId: true });
+
+    cy.get("@questionId").then(id => {
+      createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        cy.signOut();
+        cy.signInAsNormalUser().then(() => {
+          cy.visit(`/public/question/${uuid}`);
+          cy.get(".cellData").contains("test");
+        });
+      });
+    });
+  });
+
+  it("should be able to view public questions with card template tags", () => {
+    cy.createNativeQuestion({
+      name: "Nested Question",
+      native: {
+        query: "SELECT * FROM PEOPLE LIMIT 5",
+      },
+    }).then(({ body: { id } }) => {
+      openNativeEditor();
+
+      cy.get("@editor")
+        .type("select * from {{#")
+        .type(`{leftarrow}{leftarrow}${id}`);
+
+      saveQuestion("test question", { wrapId: true });
+      cy.get("@questionId").then(id => {
+        createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+          cy.signOut();
+          cy.signInAsNormalUser().then(() => {
+            cy.visit(`/public/question/${uuid}`);
+            // Check the name of the first person in the PEOPLE table
+            cy.get(".cellData").contains("Hudson Borer");
+          });
+        });
+      });
+    });
+  });
 });
 
 const visitPublicURL = () => {
