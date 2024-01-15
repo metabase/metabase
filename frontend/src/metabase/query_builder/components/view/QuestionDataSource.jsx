@@ -147,8 +147,9 @@ function getDataSourceParts({ question }) {
 
   const parts = [];
   const query = question.query();
+  const legacyQuery = question.legacyQuery();
   const metadata = question.metadata();
-  const isStructuredQuery = question.isStructured();
+  const isStructured = question.isStructured();
 
   const database = metadata.database(Lib.databaseID(query));
   if (database) {
@@ -159,7 +160,9 @@ function getDataSourceParts({ question }) {
     });
   }
 
-  const table = metadata.table(Lib.sourceTableOrCardId(query));
+  const table = isStructured
+    ? metadata.table(Lib.sourceTableOrCardId(query))
+    : legacyQuery.table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
@@ -171,7 +174,7 @@ function getDataSourceParts({ question }) {
   }
 
   if (table) {
-    if (!isStructuredQuery) {
+    if (!isStructured) {
       return {
         name: table.displayName(),
       };
