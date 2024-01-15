@@ -158,16 +158,16 @@ export function ObjectDetailView({
       typeof zoomedRowID !== "undefined"
     ) {
       // if we don't have the row in the current data, try to fetch this single row
+      const pkField = passedData.cols[pkIndex];
       const query = question?.query();
       const stageIndex = -1;
-      const columns = query ? Lib.filterableColumns(query, stageIndex) : [];
       const queryWithFilter = query
         ? Lib.filter(
             query,
             stageIndex,
             Lib.stringFilterClause({
               operator: "=",
-              column: columns[pkIndex],
+              column: Lib.fromLegacyColumn(query, stageIndex, pkField),
               values: [String(zoomedRowID)],
               options: {},
             }),
