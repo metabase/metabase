@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import type {
   ConcreteTableId,
+  DatasetColumn,
   DatasetData,
   WritebackActionId,
 } from "metabase-types/api";
@@ -32,13 +33,42 @@ import {
   ObjectDetailContainer,
   ObjectDetailWrapperDiv,
 } from "./ObjectDetailView.styled";
-import type { ObjectDetailProps } from "./types";
+import type { ObjectDetailProps, ObjectId } from "./types";
 import {
   getActionItems,
   getDisplayId,
   getObjectName,
   getSinglePKIndex,
 } from "./utils";
+
+function filterByPk(
+  query: Lib.Query,
+  pkField: DatasetColumn,
+  zoomedRowID: ObjectId | undefined,
+) {
+  if (typeof zoomedRowID === "undefined") {
+    return query;
+  }
+
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, pkField);
+  const filterClause =
+    typeof zoomedRowID === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [zoomedRowID],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [zoomedRowID],
+          options: {},
+        });
+  const queryWithFilter = Lib.filter(query, stageIndex, filterClause);
+
+  return queryWithFilter;
+}
 
 export function ObjectDetailView({
   data: passedData,
@@ -156,21 +186,8 @@ export function ObjectDetailView({
       // if we don't have the row in the current data, try to fetch this single row
       const pkField = passedData.cols[pkIndex];
       const query = question?.query();
-      const stageIndex = -1;
-      const queryWithFilter = query
-        ? Lib.filter(
-            query,
-            stageIndex,
-            Lib.stringFilterClause({
-              operator: "=",
-              column: Lib.fromLegacyColumn(query, stageIndex, pkField),
-              values: zoomedRowID != null ? [String(zoomedRowID)] : [],
-              options: {},
-            }),
-          )
-        : undefined;
-      const datasetQuery = queryWithFilter
-        ? Lib.toLegacyQuery(queryWithFilter)
+      const datasetQuery = query
+        ? Lib.toLegacyQuery(filterByPk(query, pkField, zoomedRowID))
         : undefined;
 
       MetabaseApi.dataset(datasetQuery)

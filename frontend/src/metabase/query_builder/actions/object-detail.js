@@ -63,13 +63,20 @@ export const followForeignKey = createThunkAction(
       const question = Question.create({ databaseId, tableId, metadata });
       const query = question.query();
       const stageIndex = -1;
-      const operator = "=";
-      const values = [objectId];
       const column = Lib.fromLegacyColumn(query, stageIndex, fk.origin);
       const filterClause =
         typeof objectId === "number"
-          ? Lib.numberFilterClause({ operator, column, values })
-          : Lib.stringFilterClause({ operator, column, values, options: {} });
+          ? Lib.numberFilterClause({
+              operator: "=",
+              column,
+              values: [objectId],
+            })
+          : Lib.stringFilterClause({
+              operator: "=",
+              column,
+              values: [objectId],
+              options: {},
+            });
       const queryWithFilter = Lib.filter(query, stageIndex, filterClause);
       const questionWithFilter = question.setQuery(queryWithFilter);
 
