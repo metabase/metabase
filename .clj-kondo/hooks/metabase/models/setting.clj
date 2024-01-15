@@ -40,7 +40,6 @@
      engines
      enum-cardinality-threshold
      follow-up-email-sent
-     foo
      ga-code
      ga-enabled
      google-auth-auto-create-accounts-domain

@@ -639,7 +639,8 @@
    {:inline-def                                    {:level :off}
     :missing-docstring                             {:level :off}
     :private-call                                  {:level :off}
-    :hooks.metabase.test.data/mbql-query-first-arg {:level :error}}}
+    :metabase/defsetting-must-specify-export       {:level :off}
+    :hooks.metabase.test.data/mbql-query-first-arg  {:level :error}}}
 
   source-namespaces
   {:linters
