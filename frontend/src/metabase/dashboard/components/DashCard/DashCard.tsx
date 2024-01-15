@@ -27,7 +27,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   VisualizationSettings,
-  Dataset,
+  DashCardDataMap,
 } from "metabase-types/api";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
@@ -54,7 +54,7 @@ export interface DashCardProps {
   dashcard: DashboardCard & { justAdded?: boolean };
   gridItemWidth: number;
   totalNumGridCols: number;
-  dashcardData: Record<DashCardId, Record<CardId, Dataset>>;
+  dashcardData: DashCardDataMap;
   slowCards: Record<CardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   metadata: Metadata;
@@ -79,6 +79,15 @@ export interface DashCardProps {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
+  fetchCardData: (
+    card: Card,
+    dashcard: DashboardCard,
+    options: {
+      clearCache?: boolean;
+      ignoreCache?: boolean;
+      reload?: boolean;
+    },
+  ) => Promise<unknown>;
   onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;

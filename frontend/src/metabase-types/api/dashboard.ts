@@ -1,5 +1,6 @@
 import type {
   Collection,
+  CollectionAuthorityLevel,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -23,6 +24,7 @@ export interface Dashboard {
   dashcards: (DashboardCard | ActionDashboardCard)[];
   tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
+  collection_authority_level?: CollectionAuthorityLevel;
   can_write: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
@@ -46,6 +48,7 @@ export type BaseDashboardCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
   dashboard_tab_id?: DashboardTabId;
+  collection_authority_level?: CollectionAuthorityLevel;
   size_x: number;
   size_y: number;
   col: number;
@@ -94,7 +97,7 @@ export type DashboardParameterMapping = {
 
 export type DashCardDataMap = Record<
   DashCardId,
-  Record<CardId, Dataset | undefined>
+  Record<CardId, Dataset | null | undefined>
 >;
 
 export type LinkEntity = RestrictedLinkEntity | UnrestrictedLinkEntity;

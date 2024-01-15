@@ -1,4 +1,5 @@
 import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./card";
 import type { DatabaseId } from "./database";
@@ -17,7 +18,7 @@ export type CollectionAuthorityLevelConfig = {
   type: CollectionAuthorityLevel;
   name: string;
   icon: IconName;
-  color?: string;
+  color?: ColorName;
   tooltips?: Record<string, string>;
 };
 
