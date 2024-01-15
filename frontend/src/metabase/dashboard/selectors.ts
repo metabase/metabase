@@ -107,7 +107,7 @@ export const getDashboardId = (state: State) => state.dashboard.dashboardId;
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
   (dashboardId, dashboards) =>
-    typeof dashboardId === "number" ? dashboards[dashboardId] : undefined,
+    dashboardId !== null ? dashboards[dashboardId] : undefined,
 );
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
