@@ -2,6 +2,13 @@
 // TODO: Implement quickly the grouping of models by collection and share the branch with Kyle along with my questions
 // ******************************************************************************************************
 
+/* Questions for Kyle
+ * - Do you have any suggestions about how the grid of models should adapt to a narrow viewport? Maybe a CSS-grid type solution would work here?
+ *
+ * Questions for backend team
+ * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
+ * */
+
 import { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
@@ -32,6 +39,7 @@ import {
 } from "metabase/common/hooks";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
+import EmptyState from "metabase/components/EmptyState";
 
 interface BrowseDataTab {
   label: string;
@@ -43,70 +51,88 @@ interface BrowseDataTab {
 const ModelsTab = ({ models }: { models: CollectionItem[] }) => {
   return (
     <Grid>
-      {models.map((model: CollectionItem) => {
-        console.log("model", model);
-        // If there is no information about the last edit,
-        // use the timestamp of the creation
-        const lastEditInfo = {
-          full_name:
-            model.last_editor_common_name! ?? model.creator_common_name!,
-          timestamp: model.last_edited_at! ?? model.created_at!,
-        };
-        const item: CollectionItemWithLastEditedInfo = {
-          ...model,
-          "last-edit-info": lastEditInfo,
-        };
-        return (
-          <ModelGridItem key={model.id}>
-            <Link
-              to={Urls.modelDetail(model)}
-              // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
-              data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
-            >
-              <ModelCard>
-                <h4 className="text-wrap">{model.name}</h4>
-                <Text
-                  size="xs"
-                  style={{
-                    height: "32px",
-                    textOverflow: "ellipsis",
-                    overflow: "hidden",
-                    width: "100%",
-                    whiteSpace: "normal",
-                    display: "block",
-                  }}
-                >
-                  {model.description}{" "}
-                </Text>
-                <LastEditInfoLabel
-                  prefix={null}
-                  item={item}
-                  fullName={lastEditInfo.full_name}
-                  // TODO: This feels a little complicated.
-                  // Let me see if I can simplify it
-                  formatLabel={(
-                    fullName: string | undefined = "",
-                    timeLabel: string | undefined = "",
-                  ) => (
-                    <>
-                      {fullName}
-                      {fullName && timeLabel ? (
-                        <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
-                      ) : null}
-                      {timeLabel}
-                    </>
-                  )}
-                />
-              </ModelCard>
-            </Link>
-          </ModelGridItem>
-        );
-      })}
+      {models.length ? (
+        models.map((model: CollectionItem) => {
+          console.log("model", model);
+          // If there is no information about the last edit,
+          // use the timestamp of the creation
+          const lastEditInfo = {
+            full_name:
+              model.last_editor_common_name! ?? model.creator_common_name!,
+            timestamp: model.last_edited_at! ?? model.created_at!,
+          };
+          const item: CollectionItemWithLastEditedInfo = {
+            ...model,
+            "last-edit-info": lastEditInfo,
+          };
+          return (
+            <ModelGridItem key={model.id}>
+              <Link
+                to={Urls.modelDetail(model)}
+                // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
+                data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
+              >
+                <ModelCard>
+                  <h4 className="text-wrap">{model.name}</h4>
+                  <Text
+                    size="xs"
+                    style={{
+                      height: "32px",
+                      textOverflow: "ellipsis",
+                      overflow: "hidden",
+                      width: "100%",
+                      whiteSpace: "normal",
+                      display: "block",
+                    }}
+                  >
+                    {model.description}{" "}
+                  </Text>
+                  <LastEditInfoLabel
+                    prefix={null}
+                    item={item}
+                    fullName={lastEditInfo.full_name}
+                    // TODO: This feels a little complicated.
+                    // Let me see if I can simplify it
+                    formatLabel={(
+                      fullName: string | undefined = "",
+                      timeLabel: string | undefined = "",
+                    ) => (
+                      <>
+                        {fullName}
+                        {fullName && timeLabel ? (
+                          <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
+                        ) : null}
+                        {timeLabel}
+                      </>
+                    )}
+                  />
+                </ModelCard>
+              </Link>
+            </ModelGridItem>
+          );
+        })
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+            height: "100%",
+            width: "100%",
+          }}
+        >
+          <EmptyState
+            title={t`No models here yet`}
+            message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+            icon="empty"
+          />
+        </div>
+      )}
     </Grid>
   );
 };
-
-// TODO: Ping Kyle about how the grid should be made responsive (with flexbox or grid or what?)
 
 const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
   return (
@@ -134,10 +160,9 @@ const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
 };
 
 export const BrowseDataPage = () => {
-  const defaultTab = "Models";
-  const [currentTab, setTab] = useState<string | null>(defaultTab);
+  const defaultTabId = "models";
+  const [currentTabId, setTabId] = useState<string | null>(defaultTabId);
 
-  // TODO: Ask the backend team, at what point does the search end point automatically paginate?
   const {
     data: models = [],
     metadata: _metadataForModels,
@@ -157,31 +182,54 @@ export const BrowseDataPage = () => {
     reload: true,
   });
 
-  const tabs: BrowseDataTab[] = [
-    { label: t`Models`, component: <ModelsTab models={models} /> },
-    { label: t`Databases`, component: <DatabasesTab databases={databases} /> },
-  ];
+  const tabs: Record<string, BrowseDataTab> = {
+    models: { label: t`Models`, component: <ModelsTab models={models} /> },
+    databases: {
+      label: t`Databases`,
+      component: <DatabasesTab databases={databases} />,
+    },
+  };
   // TODO: Fix font of BrowseHeader
   // TODO: Do we still need 'Learn about our data?'
+  const currentTab = currentTabId ? tabs[currentTabId] : null;
   return (
-    <div data-testid="database-browser">
+    <div
+      data-testid="database-browser"
+      style={{
+        display: "flex",
+        flex: 1,
+        flexFlow: "column nowrap",
+      }}
+    >
       <BrowseHeader crumbs={[{ title: t`Browse data` }]} />
-      <Tabs value={currentTab} onTabChange={setTab}>
+      <Tabs
+        value={currentTabId}
+        onTabChange={setTabId}
+        style={{
+          display: "flex",
+          flexFlow: "column nowrap",
+          flex: 1,
+        }}
+      >
         <Flex>
           <Tabs.List>
-            {tabs.map((tab: BrowseDataTab) => (
-              <Tabs.Tab key={tab.label} value={tab.label}>
+            {Object.entries(tabs).map(([tabId, tab]) => (
+              <Tabs.Tab key={tabId} value={tabId}>
                 {tab.label}
               </Tabs.Tab>
             ))}
           </Tabs.List>
         </Flex>
         <Divider />
-        {tabs.map(tab => (
-          <Tabs.Panel key={tab.label} value={tab.label}>
-            {tab.component}
+        {currentTab && (
+          <Tabs.Panel
+            key={currentTabId}
+            value={currentTabId ?? ""}
+            style={{ display: "flex", flexFlow: "column nowrap", flex: 1 }}
+          >
+            {currentTab.component}
           </Tabs.Panel>
-        ))}
+        )}
       </Tabs>
     </div>
   );
@@ -189,45 +237,3 @@ export const BrowseDataPage = () => {
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
 // NOTE: There's an EmptyState component
-
-// I think I need to do something like the following.
-// To get the models, I need to get the collections, and then get the items in each collection.
-// If these items are marked 'dataset', they're models.
-/* Something like this gets the list of collections, and then the particular items within a collection
-
-export default _.compose(
-  Bookmark.loadList(),
-  Databases.loadList(),
-  // Get the list of collections, I think
-  Collection.loadList({
-    query: {
-      tree: true,
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    },
-    loadingAndErrorWrapper: false,
-  }),
-  // Get the particular items within a collection
-  Collection.load({
-    id: (_, props) => props.collectionId,
-    reload: true,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(CollectionContent);
-
-
-This kind of code distinguishes models from other kinds of items that can be in collections:
-https://github.com/metabase/metabase/blob/be73bb2650729c2bae09b5b648443e2232687faf/frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx#L41
-
-It's a bit odd that I can't get just the models but have to get everything else,
-but perhaps there's a way to filter the results to just the models.
-
-The items retrieved in a collection are probably CollectionItems, defined here:
-import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-
-If item.model === 'dataset', it's a model, or so I think.
-
-See here too:
-https://github.com/metabase/metabase/blob/be73bb2650729c2bae09b5b648443e2232687faf/frontend/src/metabase-types/api/collection.ts#L72
-
- */
