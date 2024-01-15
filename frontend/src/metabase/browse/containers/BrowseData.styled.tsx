@@ -61,7 +61,7 @@ export const LastEditedInfoSeparator = styled.span`
   padding: 0 6px;
 `;
 
-export const EllipsifiedWithWrapping = styled(Ellipsified)`
+export const MultilineEllipsified = styled(Ellipsified)`
   white-space: pre-line;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -75,7 +75,7 @@ export const ModelGroupGrid = styled.div`
   flex: 1;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
+  gap: 1rem;
   margin-top: 1rem;
   & > div {
     height: 144px;

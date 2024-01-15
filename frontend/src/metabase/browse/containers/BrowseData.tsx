@@ -27,11 +27,12 @@ import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import NoResults from "assets/img/no_results.svg";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
   DatabaseGridItem,
-  EllipsifiedWithWrapping,
+  MultilineEllipsified,
   LastEditedInfoSeparator,
   ModelCard,
   ModelGroupGrid,
@@ -43,104 +44,6 @@ interface BrowseDataTab {
 }
 
 type Model = CollectionItem;
-
-const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
-  // We build up a mapping of collection ids to names as we iterate through the models
-  const collectionIdToName: Record<string, string> = {};
-  const groupedModels: Record<string, Model[]> = {};
-  for (const model of ungroupedModelsArray) {
-    const collectionId = `${model.collection?.id || -1}`;
-    const collectionName = model.collection?.name || "No collection"; // TODO: Typescript requires a default value; find a good one
-    collectionIdToName[collectionId] = collectionName;
-    groupedModels[collectionId] ??= [];
-    groupedModels[collectionId].push(model);
-  }
-  return { groupedModels, collectionIdToName };
-};
-
-const ModelsTab = ({ models }: { models: Model[] }) => {
-  if (!models.length) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-          height: "100%",
-          width: "100%",
-        }}
-      >
-        <EmptyState
-          title={t`No models here yet`}
-          message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-          icon="empty"
-        />
-      </div>
-    );
-  }
-  const { groupedModels, collectionIdToName } =
-    groupModelsByParentCollection(models);
-  const entries = Object.entries(groupedModels);
-  return (
-    <>
-      {entries.map(([collectionId, models], index) => {
-        return (
-          <ModelGroup
-            key={collectionId}
-            collectionName={collectionIdToName[collectionId]}
-            models={models}
-            includeDivider={index !== 0}
-          />
-        );
-      })}
-    </>
-  );
-};
-
-const DatabasesTab = ({ databases }: { databases: IDatabase[] }) => {
-  return (
-    <Grid>
-      {databases.map(database => (
-        <DatabaseGridItem key={database.id}>
-          <Link
-            to={Urls.browseDatabase(database)}
-            data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-          >
-            <DatabaseCard>
-              <Icon
-                name="database"
-                color={color("accent2")}
-                className="mb3"
-                size={32}
-              />
-              <h3 className="text-wrap">{database.name}</h3>
-            </DatabaseCard>
-          </Link>
-        </DatabaseGridItem>
-      ))}
-    </Grid>
-  );
-};
-
-export const BrowseDataTabWrapper = ({
-  isLoading,
-  error,
-  children,
-}: {
-  isLoading: boolean;
-  error: unknown;
-  children: JSX.Element;
-}) => {
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-  if (error) {
-    return <LoadingAndErrorWrapper error />;
-  }
-  return children;
-};
 
 export const BrowseDataPage = () => {
   const idOfInitialTab = "models";
@@ -159,7 +62,6 @@ export const BrowseDataPage = () => {
 
   const {
     data: databases = [],
-    metadata: _metadataForDatabases,
     error: errorLoadingDatabases,
     isLoading: isDatabaseListLoading,
   } = useDatabaseListQuery({
@@ -170,23 +72,21 @@ export const BrowseDataPage = () => {
     models: {
       label: t`Models`,
       component: (
-        <BrowseDataTabWrapper
+        <ModelsTab
+          models={models}
           isLoading={isModelListLoading}
           error={errorLoadingModels}
-        >
-          <ModelsTab models={models} />
-        </BrowseDataTabWrapper>
+        />
       ),
     },
     databases: {
       label: t`Databases`,
       component: (
-        <BrowseDataTabWrapper
+        <DatabasesTab
+          databases={databases}
           isLoading={isDatabaseListLoading}
           error={errorLoadingDatabases}
-        >
-          <DatabasesTab databases={databases} />
-        </BrowseDataTabWrapper>
+        />
       ),
     },
   };
@@ -241,6 +141,90 @@ export const BrowseDataPage = () => {
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
+const ModelsTab = ({
+  models,
+  error,
+  isLoading,
+}: {
+  models: Model[];
+  isLoading: boolean;
+  error: unknown;
+}) => {
+  if (error) {
+    return <LoadingAndErrorWrapper error />;
+  }
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+  if (!models.length) {
+    return (
+      <ContentOfEmptyTab
+        title={t`No models here yet`}
+        message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+      />
+    );
+  }
+  const { groupedModels, collectionIdToName } =
+    groupModelsByParentCollection(models);
+  const entries = Object.entries(groupedModels);
+  return (
+    <>
+      {entries.map(([collectionId, models], index) => {
+        return (
+          <ModelGroup
+            key={collectionId}
+            collectionName={collectionIdToName[collectionId]}
+            models={models}
+            includeDivider={index !== 0}
+          />
+        );
+      })}
+    </>
+  );
+};
+
+const DatabasesTab = ({
+  databases,
+  error,
+  isLoading,
+}: {
+  databases: IDatabase[];
+  error: unknown;
+  isLoading: boolean;
+}) => {
+  if (error) {
+    return <LoadingAndErrorWrapper error />;
+  }
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+  if (!databases.length) {
+    return <ContentOfEmptyTab title={t`No databases here yet`} />;
+  }
+  return (
+    <Grid>
+      {databases.map(database => (
+        <DatabaseGridItem key={database.id}>
+          <Link
+            to={Urls.browseDatabase(database)}
+            data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+          >
+            <DatabaseCard>
+              <Icon
+                name="database"
+                color={color("accent2")}
+                className="mb3"
+                size={32}
+              />
+              <h3 className="text-wrap">{database.name}</h3>
+            </DatabaseCard>
+          </Link>
+        </DatabaseGridItem>
+      ))}
+    </Grid>
+  );
+};
+
 const ModelGroup = ({
   collectionName,
   models,
@@ -285,15 +269,15 @@ const ModelGroup = ({
                 >
                   <ModelCard>
                     <h4 className="text-wrap" style={{ lineHeight: "16px" }}>
-                      {model.name}
+                      <MultilineEllipsified>{model.name}</MultilineEllipsified>
                     </h4>
                     <Text size="xs" style={{ height: "32px" }}>
-                      <EllipsifiedWithWrapping
+                      <MultilineEllipsified
                         tooltipMaxWidth="100%"
                         className={model.description ? "" : "text-light"}
                       >
                         {model.description || "No description."}{" "}
-                      </EllipsifiedWithWrapping>
+                      </MultilineEllipsified>
                     </Text>
                     <LastEditInfoLabel
                       prefix={null}
@@ -322,5 +306,47 @@ const ModelGroup = ({
         </ModelGroupGrid>
       </div>
     </>
+  );
+};
+
+const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
+  // We build up a mapping of collection ids to names as we iterate through the models
+  const collectionIdToName: Record<string, string> = {};
+  const groupedModels: Record<string, Model[]> = {};
+  for (const model of ungroupedModelsArray) {
+    const collectionId = `${model.collection?.id || -1}`;
+    const collectionName = model.collection?.name || "No collection"; // TODO: Typescript requires a default value; find a good one
+    collectionIdToName[collectionId] = collectionName;
+    groupedModels[collectionId] ??= [];
+    groupedModels[collectionId].push(model);
+  }
+  return { groupedModels, collectionIdToName };
+};
+
+const ContentOfEmptyTab = ({
+  title,
+  message = "",
+}: {
+  title: string;
+  message?: string;
+}) => {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        flex: 1,
+        height: "100%",
+        width: "100%",
+      }}
+    >
+      <EmptyState
+        title={title}
+        message={message}
+        illustrationElement={<img src={NoResults} />}
+      />
+    </div>
   );
 };
