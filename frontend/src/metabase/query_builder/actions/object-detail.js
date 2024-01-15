@@ -1,11 +1,12 @@
 import _ from "underscore";
 
-import { startNewCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
+import * as Lib from "metabase-lib";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
-
 import { FieldDimension } from "metabase-lib/Dimension";
+import Question from "metabase-lib/Question";
 
 import {
   getCard,
@@ -56,14 +57,26 @@ export const followForeignKey = createThunkAction(
         return false;
       }
 
-      const newCard = startNewCard(
-        card.dataset_query.database,
-        fk.origin.table.id,
+      const databaseId = card.dataset_query.database;
+      const tableId = fk.origin.table.id;
+      const metadata = getMetadata(getState());
+      const question = Question.create({ databaseId, tableId, metadata });
+      const query = question.query();
+      const stageIndex = -1;
+      const queryWithFilter = Lib.filter(
+        query,
+        stageIndex,
+        Lib.stringFilterClause({
+          operator: "=",
+          column: Lib.fromLegacyColumn(query, stageIndex, fk),
+          values: objectId ? [String(objectId)] : [],
+          options: {},
+        }),
       );
-      newCard.dataset_query.query.filter = getFilterForFK(objectId, fk);
+      const questionWithFilter = question.setQuery(queryWithFilter);
 
       dispatch(resetRowZoom());
-      dispatch(setCardAndRun(newCard));
+      dispatch(setCardAndRun(questionWithFilter.card()));
     };
   },
 );
