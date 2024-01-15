@@ -3,7 +3,9 @@ import { assoc, assocIn, chain } from "icepick";
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
 import { isTypePK } from "metabase-lib/types/utils/isa";
+import Question from "metabase-lib/Question";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
@@ -47,7 +49,7 @@ export const databaseToForeignKeys = database =>
     : {};
 
 // TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
-export const getQuestion = ({
+export const getQuestionOld = ({
   dbId,
   tableId,
   fieldId,
@@ -94,6 +96,38 @@ export const getQuestion = ({
   }
 
   return question;
+};
+
+export const getQuestion = ({
+  dbId,
+  tableId,
+  fieldId,
+  metricId,
+  segmentId,
+  getCount,
+  visualization,
+  metadata,
+}) => {
+  let question = Question.create({ databaseId: dbId, tableId, metadata });
+
+  if (getCount) {
+    const query = question.query();
+    const stageIndex = -1;
+    const operators = Lib.availableAggregationOperators(query, stageIndex);
+    const countOperator = operators.find(operator => {
+      const info = Lib.displayInfo(query, stageIndex, operator);
+      return info.shortName === "count";
+    });
+    const aggregationclause = Lib.aggregationClause(countOperator);
+    const newQuery = Lib.aggregate(query, stageIndex, aggregationclause);
+    question = question.setQuery(newQuery);
+  }
+
+  if (visualization) {
+    question.setDisplay(visualization);
+  }
+
+  return question.card();
 };
 
 export const getQuestionUrl = getQuestionArgs =>
