@@ -56,9 +56,10 @@ export const followForeignKey = createThunkAction(
         return false;
       }
 
-      const newCard = startNewCard("query", card.dataset_query.database);
-
-      newCard.dataset_query.query["source-table"] = fk.origin.table.id;
+      const newCard = startNewCard(
+        card.dataset_query.database,
+        fk.origin.table.id,
+      );
       newCard.dataset_query.query.filter = getFilterForFK(objectId, fk);
 
       dispatch(resetRowZoom());
