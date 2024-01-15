@@ -2,7 +2,7 @@
 import * as React from "react";
 import _ from "underscore";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import {
   TreeNodeRoot,

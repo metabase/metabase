@@ -11,8 +11,8 @@ import {
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Menu, Title, Text, Stack, Center } from "metabase/ui";
-import { Icon } from "metabase/core/components/Icon";
+import { Menu, Title, Text, Stack, Center, Icon } from "metabase/ui";
+
 import { AdminEmbedMenuContainer } from "./AdminEmbedMenu.styled";
 
 export const AdminEmbedMenu = ({
@@ -69,15 +69,13 @@ export const AdminEmbedMenu = ({
           onClick={() => setMenuMode("public-link-popover")}
         >
           {isPublicSharingEnabled ? (
-            <Title c="inherit" order={4}>
+            <Title order={4}>
               {hasPublicLink ? t`Public link` : t`Create a public link`}
             </Title>
           ) : (
             <Stack spacing="xs">
-              <Title c="inherit" order={4}>
-                {t`Public links are off`}
-              </Title>
-              <Text size="sm" c="inherit">{t`Enable them in settings`}</Text>
+              <Title order={4}>{t`Public links are off`}</Title>
+              <Text size="sm">{t`Enable them in settings`}</Text>
             </Stack>
           )}
         </Menu.Item>
@@ -94,15 +92,11 @@ export const AdminEmbedMenu = ({
           onClick={onModalOpen}
         >
           {isEmbeddingEnabled ? (
-            <Title c="inherit" order={4}>
-              {t`Embed`}
-            </Title>
+            <Title order={4}>{t`Embed`}</Title>
           ) : (
             <Stack spacing="xs">
-              <Title c="inherit" order={4}>
-                {t`Embedding is off`}
-              </Title>
-              <Text size="sm" c="inherit">{t`Enable it in settings`}</Text>
+              <Title order={4}>{t`Embedding is off`}</Title>
+              <Text size="sm">{t`Enable it in settings`}</Text>
             </Stack>
           )}
         </Menu.Item>

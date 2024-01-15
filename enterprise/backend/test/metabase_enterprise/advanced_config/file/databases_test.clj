@@ -5,7 +5,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.driver.h2 :as h2]
    [metabase.models :refer [Database Table]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -13,7 +12,7 @@
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
                                 h2/*allow-testing-h2-connections*         true]
-                        (premium-features-test/with-premium-features #{:config-text-file}
+                        (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (def ^:private test-db-name (u/qualified-name ::test-db))

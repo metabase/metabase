@@ -7,7 +7,7 @@ import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import Link from "metabase/core/components/Link";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import {

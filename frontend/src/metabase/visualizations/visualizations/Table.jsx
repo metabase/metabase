@@ -343,7 +343,7 @@ export default class Table extends Component {
         ),
       });
     } else {
-      const { cols, rows } = data;
+      const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(
@@ -359,6 +359,7 @@ export default class Table extends Component {
         data: {
           cols: columnIndexes.map(i => cols[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
+          results_timezone,
         },
       });
     }

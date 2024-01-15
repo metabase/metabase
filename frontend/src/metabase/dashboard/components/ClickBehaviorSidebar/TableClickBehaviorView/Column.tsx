@@ -11,7 +11,7 @@ import type {
   DatasetColumn,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import type { IconName } from "metabase/core/components/Icon";
+import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 import { SidebarItem } from "../SidebarItem";
