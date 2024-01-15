@@ -313,7 +313,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Partitioned tables that require a partition filter can be synced"
       (mt/with-model-cleanup [:model/Table]
-        (let [table-names  ["partition_by_range" "partition_by_time"
+        (let [table-names  ["partition_by_range" "partition_by_time" "partitioned_by_datetime"
                             "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]]
           (try
            (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
@@ -323,6 +323,15 @@
                         (format "INSERT INTO %s (customer_id)
                                 VALUES (1), (2), (3);"
                                 (fmt-table-name "partition_by_range"))
+                        (format "CREATE TABLE %s (company STRING, founded DATETIME)
+                                PARTITION BY DATE(founded)
+                                OPTIONS (require_partition_filter = TRUE);"
+                                (fmt-table-name "partitioned_by_datetime"))
+                        (format "INSERT INTO %s (company, founded)
+                                VALUES ('Metabase', DATETIME('2014-10-10 00:00:00')),
+                                ('Tesla', DATETIME('2003-07-01 00:00:00')),
+                                ('Apple', DATETIME('1976-04-01 00:00:00'));"
+                                (fmt-table-name "partitioned_by_datetime"))
                         (format "CREATE TABLE %s (name STRING, birthday TIMESTAMP)
                                 PARTITION BY DATE(birthday)
                                 OPTIONS (require_partition_filter = TRUE);"
@@ -347,7 +356,6 @@
                                 (fmt-table-name "partition_by_ingestion_time_not_required"))]]
              (bigquery.tx/execute! sql))
            (sync/sync-database! (mt/db))
-
            (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in table-names])
                  all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
              (testing "all fields are fingerprinted"
@@ -355,13 +363,14 @@
              (testing "Field values are correctly synced"
                (is (= {"customer_id"   #{1 2 3}
                        "name"          #{"Khuat" "Quang" "Ngoc"}
+                       "company"       #{"Metabase" "Tesla" "Apple"}
                        "is_awesome"    #{true false}
                        "is_opensource" #{true false}}
                       (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
                                       :from   [[:metabase_field :field]]
                                       :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
                                       :where  [:and [:in :field.table_id table-ids]
-                                               [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource"]]]})
+                                               [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource" "company"]]]})
                            (map #(update % :values (comp set json/parse-string)))
                            (map (juxt :field-name :values))
                            (into {}))))))

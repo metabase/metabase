@@ -30,11 +30,11 @@
 (defn- partition-field->filter-form
   "Given a partition field, returns the default value can be used to query."
   [field]
-  (let [field-form [:field (:id field) nil]]
+  (let [field-form [:field (:id field) {:base-type (:base_type field)}]]
     (condp #(isa? %2 %1) (:base_type field)
       :type/Number   [:> field-form -9223372036854775808]
       :type/Date     [:> field-form "0001-01-01"]
-      :type/DateTime [:> field-form "0001-01-01 00:00:00"])))
+      :type/DateTime [:> field-form "0001-01-01T00:00:00"])))
 
 (defn- query-with-default-partitioned-field-filter
   [query table-id]
@@ -191,9 +191,8 @@
     fields :- [:sequential (ms/InstanceOf :model/Field)]
     rff    :- fn?
     opts   :- TableRowsSampleOptions]
-   (let [query (table-rows-sample-query table fields opts)
-         qp    (requiring-resolve 'metabase.query-processor/process-query)]
-     (qp query rff nil))))
+   (let [query (table-rows-sample-query table fields opts)]
+     (qp/process-query query rff nil))))
 
 (defmethod driver/table-rows-sample :default
   [_driver table fields rff opts]
