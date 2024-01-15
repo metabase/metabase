@@ -114,3 +114,11 @@ export function visitIframe() {
     cy.visit(iframe.src);
   });
 }
+
+export function createPublicQuestionLink(questionId) {
+  return cy.request("POST", `/api/card/${questionId}/public_link`, {});
+}
+
+export function createPublicDashboardLink(dashboardId) {
+  return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+}
