@@ -152,11 +152,7 @@ export function ObjectDetailView({
   ]);
 
   useEffect(() => {
-    if (
-      maybeLoading &&
-      pkIndex !== undefined &&
-      typeof zoomedRowID !== "undefined"
-    ) {
+    if (maybeLoading && pkIndex !== undefined) {
       // if we don't have the row in the current data, try to fetch this single row
       const pkField = passedData.cols[pkIndex];
       const query = question?.query();
@@ -168,7 +164,7 @@ export function ObjectDetailView({
             Lib.stringFilterClause({
               operator: "=",
               column: Lib.fromLegacyColumn(query, stageIndex, pkField),
-              values: [String(zoomedRowID)],
+              values: zoomedRowID ? [String(zoomedRowID)] : [],
               options: {},
             }),
           )
