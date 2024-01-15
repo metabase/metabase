@@ -25,7 +25,7 @@ export const getMultiSelectOverrides =
         dropdownComponent: SelectDropdown,
         itemComponent: SelectItem,
         clearButtonProps: {
-          color: "text.2",
+          color: "text-dark",
         },
       },
       styles: (
