@@ -65,7 +65,7 @@ function filterByPk(
           values: [zoomedRowID],
           options: {},
         });
-  
+
   return Lib.filter(query, stageIndex, filterClause);
 }
 
