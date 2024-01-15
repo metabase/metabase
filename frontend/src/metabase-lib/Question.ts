@@ -680,7 +680,7 @@ class Question {
         "table.columns": [
           ...tableColumns.filter(
             column =>
-              !removedColumns.some(
+              !addedColumns.some(
                 ({ columnInfo }) => column.name === columnInfo.name,
               ) &&
               !removedColumns.some(
