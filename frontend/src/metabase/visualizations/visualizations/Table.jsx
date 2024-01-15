@@ -362,6 +362,8 @@ export default class Table extends Component {
           rows: rows.map(row => columnIndexes.map(i => row[i])),
           results_timezone,
         },
+        // construct a Question that is in-sync with query results
+        // cache it here for performance reasons
         question: new Question(card, metadata),
       });
     }
