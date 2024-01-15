@@ -28,9 +28,3 @@
   Hack: This relies on a dev-mode-only global property that's set whenever a Question object is converted to MLv2."
   []
   (.-__MLv2_query js/window))
-
-(defn current-query-results
-  "Gets the current query results from the reduce store.
-  This is normally a JS array or result_metadata objects."
-  []
-  (.. (redux-state) -qb -queryResults))
