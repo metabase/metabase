@@ -82,11 +82,11 @@
      :model/Field    field2 {:name "group_id" :table_id (:id table) :database_partitioned true :base_type :type/Integer}]
     (testing "the sample rows query on a table that requires a filter will include a filter"
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
-      (is (=? [:> [:field (:id field2) nil] (mt/malli=? int?)]
+      (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
               (get-in (#'metadata-queries/table-rows-sample-query table [field1] {}) [:query :filter]))))
     (testing "the field mbql on a table that requires a filter will include a filter"
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
-      (is (=? [:> [:field (:id field2) nil] (mt/malli=? int?)]
+      (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
               (get (#'metadata-queries/field-mbql-query table {}) :filter))))))
 
 (deftest text-field?-test
