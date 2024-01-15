@@ -147,7 +147,6 @@ function getDataSourceParts({ question }) {
 
   const parts = [];
   const query = question.query();
-  const legacyQuery = question.legacyQuery();
   const metadata = question.metadata();
   const isStructured = question.isStructured();
 
@@ -162,7 +161,7 @@ function getDataSourceParts({ question }) {
 
   const table = isStructured
     ? metadata.table(Lib.sourceTableOrCardId(query))
-    : legacyQuery.table();
+    : question.legacyQuery().table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
