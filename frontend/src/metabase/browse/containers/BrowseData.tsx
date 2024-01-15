@@ -90,11 +90,10 @@ const ModelsTab = ({ models }: { models: Model[] }) => {
       {entries.map(([collectionId, models], index) => {
         return (
           <CollectionOfModels
-            collectionId={collectionId}
+            key={collectionId}
             collectionName={collectionIdToName[collectionId]}
             models={models}
             includeDivider={index !== 0}
-            key={collectionId}
           />
         );
       })}
