@@ -738,14 +738,12 @@ class Question {
     });
   }
 
-  syncColumnsAndSettings(previousQuestion: Question, queryResults: Dataset) {
-    const isQueryResultValid = queryResults && !queryResults.error;
-
-    if (this.isNative() && isQueryResultValid) {
+  syncColumnsAndSettings(previousQuestion?: Question, queryResults?: Dataset) {
+    if (this.isNative() && queryResults && !queryResults.error) {
       return this._syncNativeQuerySettings(queryResults);
     }
 
-    if (this.isStructured() && previousQuestion.isStructured()) {
+    if (this.isStructured() && previousQuestion?.isStructured()) {
       return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
     }
 
