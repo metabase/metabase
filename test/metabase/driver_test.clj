@@ -115,6 +115,34 @@
             ;; clean up the database
             (t2/delete! :model/Database (u/the-id db))))))))
 
+;; FAIL in metabase.driver-test/check-can-connect-before-sync-test (driver_test.clj:139)
+;; Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)
+;; :bigquery-cloud-sdk
+;;  using dbdef dataset
+;;  sense checks before deleting the database sense check 1: sync-and-analyze-database! should not log a warning
+;; expected: (false? (cant-sync-logged?))
+;;   actual: (not (false? true))
+
+;; FAIL in metabase.driver-test/check-can-connect-before-sync-test (http_client.clj:187)
+;; Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)
+;; :bigquery-cloud-sdk
+;;  using dbdef dataset
+;;  sense checks before deleting the database sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed
+;; POST /api/database/360/sync_schema expected a status code of 200, got 422.
+;; expected: 200
+;;   actual: 422
+
+
+;; FAIL in metabase.driver-test/check-can-connect-before-sync-test (driver_test.clj:141)
+;; Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)
+;; :bigquery-cloud-sdk
+;;  using dbdef dataset
+;;  sense checks before deleting the database sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed
+;; expected: {:status "ok"}
+;;   actual: "Timed out after 3.0 s"
+
+(mt/set-test-drivers! [:bigquery-cloud-sdk])
+
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
     (mt/test-drivers (->> (mt/normal-drivers)
@@ -125,18 +153,17 @@
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
           (let [db (mt/db)
-                cant-sync-logged? (fn []
-                                    (some?
-                                     (some
-                                      (fn [[log-level throwable message]]
-                                        (and (= log-level :warn)
-                                             (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
-                                      (mt/with-log-messages-for-level :warn
-                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+                cant-sync-log-msg (fn []
+                                    (some
+                                     (fn [[log-level throwable message]]
+                                       (and (= log-level :warn)
+                                            (instance? clojure.lang.ExceptionInfo throwable)
+                                            (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
+                                     (mt/with-log-messages-for-level :warn
+                                       (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db)))))]
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
-                (is (false? (cant-sync-logged?))))
+                (is (nil? (cant-sync-log-msg))))
               (testing "sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
                 (is (= {:status "ok"}
                        (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
@@ -156,7 +183,7 @@
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
               (testing "1: sync-and-analyze-database! should log a warning and fail early"
-                (is (true? (cant-sync-logged?))))
+                (is (nil? (cant-sync-log-msg))))
               (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
                 (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
             ;; clean up the database
