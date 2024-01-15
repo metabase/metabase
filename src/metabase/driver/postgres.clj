@@ -865,6 +865,8 @@
             "   select schemaname, tablename from pg_catalog.pg_tables"
             "   union"
             "   select schemaname, viewname as tablename from pg_views"
+            "   union"
+            "   select schemaname, matviewname as tablename from pg_matviews"
             " ) t"
             " where t.schemaname !~ '^pg_'"
             "   and t.schemaname <> 'information_schema'"
