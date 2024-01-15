@@ -113,19 +113,17 @@ export const getQuestion = ({
     question = aggregateCount(question);
   }
 
-  if (visualization) {
-    question.setDisplay(visualization);
-  }
-
   if (metricId) {
     question = aggregateByMetricId(question, metricId);
+    return question.setDisplay(visualization).card();
   }
 
   if (segmentId) {
     question = filterBySegmentId(question, segmentId);
+    return question.setDisplay(visualization).card();
   }
 
-  return question.card();
+  return question.setDisplay(visualization).card();
 };
 
 function aggregateCount(question) {
