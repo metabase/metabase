@@ -195,7 +195,7 @@ function fieldFilterParameterToMBQL(query, stageIndex, parameter) {
   }
 
   const column = columns[columnIndex];
-  const fieldRef = Lib.legacyRef(column);
+  const fieldRef = Lib.legacyRef(query, stageIndex, column);
 
   if (isDateParameter(parameter)) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);

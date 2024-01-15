@@ -246,7 +246,7 @@ export function LinkedEntityPicker({
   );
 
   const dashboard = useSelector(getDashboard);
-  const dashboardCollection = dashboard.collection ?? ROOT_COLLECTION;
+  const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
   const filterPersonalCollections = isPublicCollection(dashboardCollection)
     ? "exclude"
     : undefined;

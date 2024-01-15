@@ -224,7 +224,7 @@ export const addColumnInSettings = (
   if (settingIndex >= 0) {
     newSettings[settingIndex] = { ...newSettings[settingIndex], enabled: true };
   } else {
-    const fieldRef = Lib.legacyRef(column);
+    const fieldRef = Lib.legacyRef(query, STAGE_INDEX, column);
     newSettings.push({ name, fieldRef, enabled: true });
   }
 

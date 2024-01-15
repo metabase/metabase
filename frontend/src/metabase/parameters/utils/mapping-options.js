@@ -29,7 +29,7 @@ function buildStructuredQuerySectionOptions(query, stageIndex, group) {
       sectionName: getColumnGroupName(groupInfo),
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
-      target: buildColumnTarget(column),
+      target: buildColumnTarget(query, stageIndex, column),
       isForeign: columnInfo.isFromJoin || columnInfo.isImplicitlyJoinable,
     };
   });
@@ -65,7 +65,7 @@ function buildTextTagOption(tagName) {
 /**
  *
  * @param {import("metabase-lib/metadata/Metadata").default} metadata
- * @param {import("metabase-types/api").ParameterTarget|null} parameter
+ * @param {import("metabase-types/api").Parameter|null} parameter
  * @param {import("metabase-types/api").Card} card
  * @param {import("metabase-types/store").DashboardCard|null} [dashcard]
  * @returns {*}

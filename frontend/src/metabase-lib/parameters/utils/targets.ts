@@ -42,8 +42,12 @@ export function buildDimensionTarget(dimension: Dimension) {
   return ["dimension", dimension.mbql()];
 }
 
-export function buildColumnTarget(column: Lib.ColumnMetadata) {
-  return ["dimension", Lib.legacyRef(column)];
+export function buildColumnTarget(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+) {
+  return ["dimension", Lib.legacyRef(query, stageIndex, column)];
 }
 
 export function buildTemplateTagVariableTarget(variable: TemplateTagVariable) {

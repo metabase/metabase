@@ -234,7 +234,7 @@
         query (lib/query metadata-provider (meta/table-metadata :venues))
 
         array-checker #(when (array? %) (js->clj %))
-        to-legacy-refs (comp array-checker lib.js/legacy-ref)]
+        to-legacy-refs (comp array-checker #(lib.js/legacy-ref query -1 %))]
     (testing "field refs come with options"
       (is (= [["field" (meta/id :venues :id) {"base-type" "type/BigInteger"}]
               ["field" (meta/id :venues :name) {"base-type" "type/Text"}]
@@ -248,7 +248,21 @@
              (->> query lib/available-segments (map to-legacy-refs)))))
     (testing "metric refs come without options"
       (is (= [["metric" metric-id]]
-             (->> query lib/available-metrics (map to-legacy-refs)))))))
+             (->> query lib/available-metrics (map to-legacy-refs)))))
+    (testing "aggregation references (#37698)"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                      ;; The display-name set here gets lost when the corresponding column
+                      ;; is converted to a ref. Currently there is no option that would
+                      ;; survive the aggregation -> column -> ref -> legacy ref conversion
+                      ;; (cf. column-metadata->aggregation-ref and options->legacy-MBQL).
+                      #_(lib/aggregate (lib.options/update-options (lib/avg (meta/field-metadata :venues :price))
+                                                                   assoc :display-name "avg price")))]
+        (is (= [["aggregation" 0]
+                ;; add this back when the second aggregation is added back
+                #_["aggregation-options" ["aggregation 1"] {"display-name" "avg price"}]]
+               (map (comp array-checker #(lib.js/legacy-ref query -1 %))
+                    (lib.js/returned-columns query -1))))))))
 
 (deftest ^:parallel source-table-or-card-id-test
   (testing "returns the table-id as a number"
