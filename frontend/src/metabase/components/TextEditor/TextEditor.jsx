@@ -1,5 +1,4 @@
 /*global ace*/
-/* eslint-disable react/prop-types */
 import { Component, createRef } from "react";
 import PropTypes from "prop-types";
 
@@ -11,6 +10,12 @@ import { TextEditorRoot } from "./TextEditor.styled";
 
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
+const HIGHLIGHTED_CODE_ROW_CLASSNAME = "highlighted-code-marker";
+const HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME =
+  "highlighted-code-marker-row-number";
+const HIGHLIGHTED_CODE_ROW_CLASSNAME_ACCENT = "highlighted-code-marker-accent";
+const HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME_ACCENT =
+  "highlighted-code-marker-row-number-accent";
 
 export default class TextEditor extends Component {
   static propTypes = {
@@ -18,7 +23,11 @@ export default class TextEditor extends Component {
     theme: PropTypes.string,
     value: PropTypes.string,
     defaultValue: PropTypes.string,
+    readOnly: PropTypes.bool,
+    highlightedText: PropTypes.string,
+    isHighlightedTextAccent: PropTypes.bool,
     onChange: PropTypes.func,
+    className: PropTypes.string,
   };
 
   static defaultProps = {
@@ -27,6 +36,9 @@ export default class TextEditor extends Component {
   };
 
   editorRef = createRef();
+
+  highlightedTextValue = null;
+  highlightedTextMarkerId = null;
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (
@@ -55,6 +67,20 @@ export default class TextEditor extends Component {
     this._editor.setReadOnly(this.props.readOnly);
     element.classList[this.props.readOnly ? "add" : "remove"]("read-only");
 
+    // highlightedText
+    if (
+      this.highlightedTextValue !== this.props.highlightedText &&
+      this.props.highlightedText != null
+    ) {
+      this._addTextHighlight();
+      this.highlightedTextValue = this.props.highlightedText;
+    }
+
+    if (this.props.highlightedText == null) {
+      this._removeTextHighlight();
+      this.highlightedTextValue = null;
+    }
+
     this._updateSize();
   }
 
@@ -70,6 +96,48 @@ export default class TextEditor extends Component {
     element.style.height =
       2 * SCROLL_MARGIN + LINE_HEIGHT * doc.getLength() + "px";
     this._editor.resize();
+  }
+
+  _addTextHighlight() {
+    const textRange = this._editor.find(this.props.highlightedText);
+    this._editor.selection.clearSelection();
+
+    if (textRange) {
+      this._removeTextHighlight();
+
+      this.highlightedTextMarkerId = this._editor.session.addMarker(
+        textRange,
+        this.props.isHighlightedTextAccent
+          ? HIGHLIGHTED_CODE_ROW_CLASSNAME_ACCENT
+          : HIGHLIGHTED_CODE_ROW_CLASSNAME,
+        "fullLine",
+        true,
+      );
+
+      for (let i = textRange.start.row; i <= textRange.end.row; i++) {
+        this._editor.session.addGutterDecoration(
+          i,
+          this.props.isHighlightedTextAccent
+            ? HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME_ACCENT
+            : HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
+        );
+      }
+    }
+  }
+
+  _removeTextHighlight() {
+    if (this.highlightedTextMarkerId) {
+      this._editor.session.removeMarker(this.highlightedTextMarkerId);
+    }
+
+    for (let i = 0; i <= this._editor.session.getLength(); i++) {
+      this._editor.session.removeGutterDecoration(
+        i,
+        this.props.isHighlightedTextAccent
+          ? HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME_ACCENT
+          : HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
+      );
+    }
   }
 
   onChange = e => {
@@ -126,14 +194,8 @@ export default class TextEditor extends Component {
   }
 
   render() {
-    const { className, style } = this.props;
+    const { className } = this.props;
 
-    return (
-      <TextEditorRoot
-        ref={this.editorRef}
-        className={className}
-        style={style}
-      />
-    );
+    return <TextEditorRoot ref={this.editorRef} className={className} />;
   }
 }

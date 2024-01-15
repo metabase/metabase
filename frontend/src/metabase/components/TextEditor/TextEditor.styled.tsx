@@ -98,4 +98,28 @@ export const TextEditorRoot = styled.div`
     background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVQImWP4////f4bLly//BwAmVgd1/w11/gAAAABJRU5ErkJggg==")
       right repeat-y;
   }
+
+  .highlighted-code-marker {
+    position: absolute;
+
+    opacity: 0.3;
+    background: ${color("accent4")};
+    mix-blend-mode: multiply;
+  }
+
+  .highlighted-code-marker-row-number {
+    background: ${color("accent4")};
+  }
+
+  .highlighted-code-marker-accent {
+    position: absolute;
+
+    opacity: 0.3;
+    background: ${color("accent5")};
+    mix-blend-mode: multiply;
+  }
+
+  .highlighted-code-marker-row-number-accent {
+    background: ${color("accent5")};
+  }
 `;

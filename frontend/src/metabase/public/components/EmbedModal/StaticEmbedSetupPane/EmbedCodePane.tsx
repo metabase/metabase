@@ -2,7 +2,6 @@ import { useState } from "react";
 import _ from "underscore";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Icon, Text } from "metabase/ui";
 import {
   getEmbedClientCodeExampleOptions,
   getEmbedServerCodeExampleOptions,
@@ -13,9 +12,9 @@ import type {
   EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-import { DEFAULT_DISPLAY_OPTIONS } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/config";
+import { Stack } from "metabase/ui";
 
-import { NoCodeDiffContainer } from "./CodeSample.styled";
+import { DEFAULT_DISPLAY_OPTIONS } from "./config";
 import { CodeSample } from "./CodeSample";
 
 import "ace/mode-clojure";
@@ -37,13 +36,11 @@ type EmbedCodePaneProps = {
   className?: string;
 } & (
   | {
-      showDiff?: false;
-      variant?: undefined;
+      variant: "overview" | "appearance";
       initialPreviewParameters?: undefined;
     }
   | {
-      showDiff: true;
-      variant: "parameters" | "appearance";
+      variant: "parameters";
       initialPreviewParameters: EmbeddingParameters;
     }
 );
@@ -56,7 +53,6 @@ export const EmbedCodePane = ({
   params,
   initialPreviewParameters,
   displayOptions,
-  showDiff,
   variant,
   withExamplesLink,
 
@@ -91,10 +87,7 @@ export const EmbedCodePane = ({
     return null;
   }
 
-  if (showDiff) {
-    const isParametersView = variant === "parameters";
-    const isAppearanceView = variant === "appearance";
-
+  if (variant === "parameters") {
     const hasCodeDiff =
       !_.isEqual(initialPreviewParameters, params) &&
       selectedServerCodeOption.parametersSource !==
@@ -110,47 +103,42 @@ export const EmbedCodePane = ({
 
     return (
       <div className={className}>
-        {isParametersView &&
-          (hasCodeDiff ? (
-            <CodeSample
-              dataTestId="embed-backend"
-              title={t`In addition to publishing changes, update the params in the payload, like this:`}
-              selectedOptionName={selectedServerCodeOptionName}
-              languageOptions={serverCodeOptions.map(({ name }) => name)}
-              source={selectedServerCodeOption.parametersSource}
-              textHighlightMode={selectedServerCodeOption.mode}
-              onChangeOption={setSelectedServerCodeOptionName}
-            />
-          ) : (
-            <NoCodeDiffContainer spacing="1.5rem" align="center">
-              <Icon name="sql" size={40} opacity={0.5} />
-              <Text color="inherit">{t`If there’s any code you need to change, we’ll show you that here.`}</Text>
-            </NoCodeDiffContainer>
-          ))}
+        <CodeSample
+          dataTestId="embed-backend"
+          title={t`In addition to publishing changes, update the params in the payload, like this:`}
+          selectedOptionName={selectedServerCodeOptionName}
+          languageOptions={serverCodeOptions.map(({ name }) => name)}
+          source={selectedServerCodeOption.source}
+          textHighlightMode={selectedServerCodeOption.mode}
+          highlightedText={selectedServerCodeOption.parametersSource}
+          isHighlightedTextAccent={hasCodeDiff}
+          onChangeOption={setSelectedServerCodeOptionName}
+        />
+      </div>
+    );
+  }
 
-        {isAppearanceView &&
-          (!_.isEqual(DEFAULT_DISPLAY_OPTIONS, displayOptions) ? (
-            <CodeSample
-              dataTestId="embed-backend"
-              title={t`Here’s the code you’ll need to alter:`}
-              selectedOptionName={selectedServerCodeOptionName}
-              languageOptions={serverCodeOptions.map(({ name }) => name)}
-              source={selectedServerCodeOption.iframeUrlSource}
-              textHighlightMode={selectedServerCodeOption.mode}
-              onChangeOption={setSelectedServerCodeOptionName}
-            />
-          ) : (
-            <NoCodeDiffContainer spacing="1.5rem" align="center">
-              <Icon name="sql" size={40} opacity={0.5} />
-              <Text color="inherit">{t`If there’s any code you need to change, we’ll show you that here.`}</Text>
-            </NoCodeDiffContainer>
-          ))}
+  if (variant === "appearance") {
+    const hasCodeDiff = !_.isEqual(DEFAULT_DISPLAY_OPTIONS, displayOptions);
+    return (
+      <div className={className}>
+        <CodeSample
+          dataTestId="embed-backend"
+          title={t`Here’s the code you’ll need to alter:`}
+          selectedOptionName={selectedServerCodeOptionName}
+          languageOptions={serverCodeOptions.map(({ name }) => name)}
+          source={selectedServerCodeOption.source}
+          textHighlightMode={selectedServerCodeOption.mode}
+          highlightedText={selectedServerCodeOption.iframeUrlSource}
+          isHighlightedTextAccent={hasCodeDiff}
+          onChangeOption={setSelectedServerCodeOptionName}
+        />
       </div>
     );
   }
 
   return (
-    <div className={className}>
+    <Stack spacing="2rem" className={className}>
       <CodeSample
         dataTestId="embed-backend"
         title={t`Insert this code snippet in your server code to generate the signed embedding URL `}
@@ -161,7 +149,6 @@ export const EmbedCodePane = ({
         onChangeOption={setSelectedServerCodeOptionName}
       />
       <CodeSample
-        className="mt2"
         dataTestId="embed-frontend"
         title={t`Then insert this code snippet in your HTML template or single page app.`}
         selectedOptionName={selectedClientCodeOptionName}
@@ -172,7 +159,7 @@ export const EmbedCodePane = ({
       />
 
       {withExamplesLink && (
-        <div className="text-centered mb2 mt4">
+        <div className="text-centered mb2 mt2">
           <h4>{jt`More ${(
             <ExternalLink
               key="examples"
@@ -183,6 +170,6 @@ export const EmbedCodePane = ({
           )}`}</h4>
         </div>
       )}
-    </div>
+    </Stack>
   );
 };

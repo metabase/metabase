@@ -83,10 +83,10 @@ export const ParametersSettings = ({
         resourceParameters.length > 0 ? (
           <>
             <StaticEmbedSetupPaneSettingsContentSection
-              title={t`Enable or lock parameters`}
+              title={t`Configuring parameters`}
             >
               <Stack spacing="1rem">
-                <Text>{t`Enabling a parameter lets viewers interact with it. Locking one lets you pass it a value from your app while hiding it from viewers.`}</Text>
+                <Text>{t`Parameters are disabled by default, which also makes them hidden from end-users. Make them editable so that end-users can see and modify them. Make them locked so that they are hidden from end-users but you can set their values from your app.`}</Text>
 
                 {resourceParameters.map(parameter => (
                   <div key={parameter.id} className="flex align-center">
@@ -174,7 +174,6 @@ export const ParametersSettings = ({
           ) : activePane === "code" ? (
             <EmbedCodePane
               className="flex-full w-full"
-              showDiff
               variant="parameters"
               resource={resource}
               resourceType={resourceType}

@@ -55,6 +55,7 @@ export const OverviewSettings = ({
       previewSlot={
         <EmbedCodePane
           className="flex-full w-full"
+          variant="overview"
           resource={resource}
           resourceType={resourceType}
           siteUrl={siteUrl}

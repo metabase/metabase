@@ -182,7 +182,6 @@ export const StaticEmbedSetupPane = ({
               siteUrl={siteUrl}
               secretKey={secretKey}
               params={previewParametersBySlug}
-              initialPreviewParameters={initialPreviewParameters}
               displayOptions={displayOptions}
               onChangePane={setActivePane}
               onChangeDisplayOptions={setDisplayOptions}

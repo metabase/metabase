@@ -41,7 +41,6 @@ export interface AppearanceSettingsProps {
   siteUrl: string;
   secretKey: string;
   params: EmbeddingParameters;
-  initialPreviewParameters: EmbeddingParameters;
   displayOptions: EmbeddingDisplayOptions;
 
   onChangePane: (pane: ActivePreviewPane) => void;
@@ -57,7 +56,6 @@ export const AppearanceSettings = ({
   secretKey,
   params,
   displayOptions,
-  initialPreviewParameters,
 
   onChangePane,
   onChangeDisplayOptions,
@@ -221,7 +219,6 @@ export const AppearanceSettings = ({
           ) : activePane === "code" ? (
             <EmbedCodePane
               className="flex-full w-full"
-              showDiff
               variant="appearance"
               resource={resource}
               resourceType={resourceType}
@@ -229,7 +226,6 @@ export const AppearanceSettings = ({
               secretKey={secretKey}
               params={params}
               displayOptions={displayOptions}
-              initialPreviewParameters={initialPreviewParameters}
             />
           ) : null}
         </>
