@@ -13,6 +13,10 @@ import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesi
 import type { TimelineEventId } from "metabase-types/api";
 import { getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLineOptionsAndDatasets } from "./trend-line";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
@@ -52,9 +56,11 @@ export const getCartesianChartOption = (
     getTrendLineOptionsAndDatasets(chartModel, settings, renderingContext);
 
   const seriesOption = [
+    // Data series should always come first for correct labels positioning
+    // since series labelLayout function params return seriesIndex which is used to access label value
+    dataSeriesOptions,
     goalSeriesOption,
     trendSeriesOptions,
-    dataSeriesOptions,
     timelineEventsSeries,
   ].flatMap(option => option ?? []);
 
@@ -62,6 +68,7 @@ export const getCartesianChartOption = (
   const dimensions = [
     chartModel.dimensionModel.dataKey,
     ...chartModel.seriesModels.map(seriesModel => seriesModel.dataKey),
+    ...[POSITIVE_STACK_TOTAL_DATA_KEY, NEGATIVE_STACK_TOTAL_DATA_KEY],
   ];
   const echartsDataset = [
     { source: chartModel.transformedDataset, dimensions },

@@ -15,7 +15,7 @@ export function getGoalLineSeriesOption(
   }
 
   return {
-    type: "line", // type is irreelevant since we don't render any series data
+    type: "line", // type is irrelevant since we don't render any series data
     data: [],
     silent: true,
     markLine: {

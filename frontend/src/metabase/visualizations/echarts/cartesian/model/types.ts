@@ -1,13 +1,21 @@
 import type { Insight } from "metabase-types/api/insight";
 
 import type { CardId, DatasetColumn, RowValue } from "metabase-types/api";
+import type {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 export type BreakoutValue = RowValue;
 export type ColumnName = string;
 
-export type DataKey =
+export type SeriesDataKey =
   | `${Nullable<CardId>}:${ColumnName}:${BreakoutValue}`
   | `${Nullable<CardId>}:${ColumnName}`;
+export type StackTotalDataKey =
+  | typeof POSITIVE_STACK_TOTAL_DATA_KEY
+  | typeof NEGATIVE_STACK_TOTAL_DATA_KEY;
+export type DataKey = SeriesDataKey | StackTotalDataKey | string;
 
 export type VizSettingsKey = string;
 
