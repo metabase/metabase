@@ -48,7 +48,6 @@ export const databaseToForeignKeys = database =>
         .reduce((map, foreignKey) => assoc(map, foreignKey.id, foreignKey), {})
     : {};
 
-// TODO Atte Keinänen 7/3/17: Construct question with Question of metabase-lib instead of this using function
 export const getQuestionOld = ({
   dbId,
   tableId,
@@ -98,6 +97,37 @@ export const getQuestionOld = ({
   return question;
 };
 
+export const getQuestion = ({
+  dbId,
+  tableId,
+  fieldId,
+  metricId,
+  segmentId,
+  getCount,
+  visualization,
+  metadata,
+}) => {
+  let question = Question.create({ databaseId: dbId, tableId, metadata });
+
+  if (getCount) {
+    question = aggregateCount(question);
+  }
+
+  if (visualization) {
+    question.setDisplay(visualization);
+  }
+
+  if (metricId) {
+    question = aggregateByMetricId(question, metricId);
+  }
+
+  if (segmentId) {
+    question = filterBySegmentId(question, segmentId);
+  }
+
+  return question.card();
+};
+
 function aggregateCount(question) {
   const query = question.query();
   const stageIndex = -1;
@@ -136,37 +166,6 @@ function aggregateByMetricId(question, metricId) {
   const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
   return question.setQuery(newQuery);
 }
-
-export const getQuestion = ({
-  dbId,
-  tableId,
-  fieldId,
-  metricId,
-  segmentId,
-  getCount,
-  visualization,
-  metadata,
-}) => {
-  let question = Question.create({ databaseId: dbId, tableId, metadata });
-
-  if (getCount) {
-    question = aggregateCount(question);
-  }
-
-  if (visualization) {
-    question.setDisplay(visualization);
-  }
-
-  if (metricId) {
-    question = aggregateByMetricId(question, metricId);
-  }
-
-  if (segmentId) {
-    question = filterBySegmentId(question, segmentId);
-  }
-
-  return question.card();
-};
 
 export const getQuestionUrl = getQuestionArgs =>
   Urls.question(null, { hash: getQuestion(getQuestionArgs) });
