@@ -164,6 +164,46 @@
      version-info
      version-info-last-checked})
 
+(defn- defsetting-lint [node setting-name docstring options-list]
+  (let [anon-binding (common/with-macro-meta (hooks/token-node '_) node)
+        ;; (defn my-setting [] ...)
+        getter-node (-> (list
+                         (hooks/token-node 'defn)
+                         setting-name
+                         (hooks/string-node "Docstring.")
+                         (hooks/vector-node []))
+                        hooks/list-node
+                        (with-meta (meta node)))
+        ;; (defn my-setting! [_x] ...)
+        setter-node (-> (list
+                         (hooks/token-node 'defn)
+                         (with-meta
+                           (hooks/token-node (symbol (str (hooks/sexpr setting-name) \!)))
+                           (meta setting-name))
+                         (hooks/string-node "Docstring.")
+                         (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
+                        hooks/list-node
+                        (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))]
+
+    (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
+      (when-not (contains? ignored-implicit-export? (:value setting-name))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (prn (:value setting-name))
+        (hooks/reg-finding! (assoc (meta node)
+                                   :message "Setting definition must provide an explicit value for :export?"
+                                   :type :metabase/defsetting-must-specify-export))))
+
+    {:node (-> (list
+                (hooks/token-node 'let)
+                 ;; include description and the options map so they can get validated as well.
+                (hooks/vector-node
+                 [anon-binding docstring
+                  anon-binding (hooks/map-node options-list)])
+                getter-node
+                setter-node)
+               hooks/list-node
+               (with-meta (meta node)))}))
+
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
 
@@ -178,43 +218,25 @@
 
   for linting purposes."
   [{:keys [node]}]
-  (let [[setting-name docstring & options] (rest (:children node))
-        anon-binding (common/with-macro-meta (hooks/token-node '_) node)
-        ;; (defn my-setting [] ...)
-        getter-node           (-> (list
-                                   (hooks/token-node 'defn)
-                                   setting-name
-                                   (hooks/string-node "Docstring.")
-                                   (hooks/vector-node []))
-                                  hooks/list-node
-                                  (with-meta (meta node)))
-        ;; (defn my-setting! [_x] ...)
-        setter-node           (-> (list
-                                   (hooks/token-node 'defn)
-                                   (with-meta
-                                     (hooks/token-node (symbol (str (hooks/sexpr setting-name) \!)))
-                                     (meta setting-name))
-                                   (hooks/string-node "Docstring.")
-                                   (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
-                                  hooks/list-node
-                                  (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))]
-    (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options)))
-      (when-not (contains? ignored-implicit-export? (:value setting-name))
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (prn (:value setting-name))
-        (hooks/reg-finding! (assoc (meta node)
-                              :message "Setting definition must provide an explicit value for :export?"
-                              :type :metabase/defsetting-must-specify-export))))
-    {:node (-> (list
-                (hooks/token-node 'let)
-                ;; include description and the options map so they can get validated as well.
-                (hooks/vector-node
-                  [anon-binding docstring
-                   anon-binding (hooks/map-node options)])
-                getter-node
-                setter-node)
-               hooks/list-node
-               (with-meta (meta node)))}))
+  (let [[setting-name docstring & options] (rest (:children node))]
+    (defsetting-lint node setting-name docstring options)))
+
+(defn define-multi-setting
+  "Rewrite a [[metabase.models.define-multi-setting]] form like
+
+    (defsetting my-setting \"Description\" :key :type :boolean)
+
+  as
+
+    (let [_ \"Description\"
+          _ {:type :boolean, :multi-think :key}]
+      (defn my-setting \"Docstring.\" [])
+      (defn my-setting! \"Docstring.\" [_value-or-nil]))
+
+  for linting purposes."
+  [{:keys [node]}]
+  (let [[setting-name docstring thunk & options] (rest (:children node))]
+    (defsetting-lint node setting-name docstring (concat options [:multi-thunk thunk]))))
 
 (comment
   (defn- defsetting* [form]
