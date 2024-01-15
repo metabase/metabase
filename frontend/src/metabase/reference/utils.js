@@ -98,7 +98,7 @@ export const getQuestionOld = ({
 };
 
 export const getQuestion = ({
-  dbId,
+  dbId: databaseId,
   tableId,
   fieldId,
   metricId,
@@ -107,27 +107,37 @@ export const getQuestion = ({
   visualization,
   metadata,
 }) => {
-  let question = Question.create({ databaseId: dbId, tableId, metadata });
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
 
   if (getCount) {
-    question = aggregateByCount(question);
+    query = aggregateByCount(query);
   }
 
   if (metricId) {
-    question = aggregateByMetricId(question, metricId);
-    return question.setDisplay(visualization).card();
+    query = aggregateByMetricId(query, metricId);
+    return Question.create({ databaseId, metadata })
+      .setQuery(query)
+      .setDisplay(visualization)
+      .card();
   }
 
   if (segmentId) {
-    question = filterBySegmentId(question, segmentId);
-    return question.setDisplay(visualization).card();
+    query = filterBySegmentId(query, segmentId);
+    return Question.create({ databaseId, metadata })
+      .setQuery(query)
+      .setDisplay(visualization)
+      .card();
   }
 
-  return question.setDisplay(visualization).card();
+  return Question.create({ databaseId, metadata })
+    .setQuery(query)
+    .setDisplay(visualization)
+    .card();
 };
 
-function aggregateByCount(question) {
-  const query = question.query();
+function aggregateByCount(query) {
   const stageIndex = -1;
   const operators = Lib.availableAggregationOperators(query, stageIndex);
   const countOperator = operators.find(operator => {
@@ -135,34 +145,29 @@ function aggregateByCount(question) {
     return info.shortName === "count";
   });
   const aggregationclause = Lib.aggregationClause(countOperator);
-  const newQuery = Lib.aggregate(query, stageIndex, aggregationclause);
-  return question.setQuery(newQuery);
+  return Lib.aggregate(query, stageIndex, aggregationclause);
 }
 
-function filterBySegmentId(question, segmentId) {
+function filterBySegmentId(query, segmentId) {
   const stageIndex = -1;
-  const query = question.query();
   const segmentMetadata = Lib.segmentMetadata(query, segmentId);
 
   if (!segmentMetadata) {
-    return question;
+    return query;
   }
 
-  const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
-  return question.setQuery(newQuery);
+  return Lib.filter(query, stageIndex, segmentMetadata);
 }
 
-function aggregateByMetricId(question, metricId) {
+function aggregateByMetricId(query, metricId) {
   const stageIndex = -1;
-  const query = question.query();
   const metricMetadata = Lib.metricMetadata(query, metricId);
 
   if (!metricMetadata) {
-    return question;
+    return query;
   }
 
-  const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
-  return question.setQuery(newQuery);
+  return Lib.aggregate(query, stageIndex, metricMetadata);
 }
 
 export const getQuestionUrl = getQuestionArgs =>
