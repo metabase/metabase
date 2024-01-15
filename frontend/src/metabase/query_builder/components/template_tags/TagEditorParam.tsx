@@ -217,6 +217,7 @@ class TagEditorParamInner extends Component<Props> {
     const hasNoWidgetType =
       tag["widget-type"] === "none" || !tag["widget-type"];
     const hasNoWidgetLabel = !tag["display-name"];
+    const hasNoDefaultValue = !tag.default;
 
     return (
       <TagContainer>
@@ -359,7 +360,12 @@ class TagEditorParamInner extends Component<Props> {
           tag.type === "dimension" ||
           (tag["widget-type"] && tag["widget-type"] !== "none")) && (
           <InputContainer lessBottomPadding>
-            <ContainerLabel>{t`Default filter widget value`}</ContainerLabel>
+            <ContainerLabel>
+              {t`Default filter widget value`}
+              {hasNoDefaultValue && tag.required && (
+                <ErrorSpan>{t`(required)`}</ErrorSpan>
+              )}
+            </ContainerLabel>
             <DefaultParameterValueWidget
               parameter={
                 tag.type === "text" || tag.type === "dimension"
