@@ -36,11 +36,3 @@ export function findColumnIndexesFromLegacyRefs(
     fieldRefs,
   );
 }
-
-export function isSameColumnList(
-  query: Query,
-  returnedColumns: ColumnMetadata[],
-  resultColumns: DatasetColumn[],
-): boolean {
-  return ML.same_column_lists_QMARK_(query, returnedColumns, resultColumns);
-}

@@ -3,7 +3,7 @@ import { assocIn } from "icepick";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 
-import type { Dataset, Series } from "metabase-types/api";
+import type { Series } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
@@ -28,18 +28,6 @@ import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
-
-function hasNewColumns(question: Question, queryResult: Dataset | null) {
-  if (!queryResult) {
-    return false;
-  }
-
-  const query = question.query();
-  const stageIndex = -1;
-  const returnedColumns = Lib.returnedColumns(query, stageIndex);
-  const resultColumns = queryResult.data.cols;
-  return !Lib.isSameColumnList(query, returnedColumns, resultColumns);
-}
 
 function checkShouldRerunPivotTableQuestion({
   isPivot,
@@ -102,7 +90,7 @@ function shouldTemplateTagEditorBeVisible({
 }
 
 export type UpdateQuestionOpts = {
-  run?: boolean | "auto";
+  run?: boolean;
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
 };
@@ -152,10 +140,6 @@ export const updateQuestion = (
       currentQuestion,
       queryResult,
     );
-
-    if (run === "auto") {
-      run = hasNewColumns(newQuestion, queryResult);
-    }
 
     if (!newQuestion.canAutoRun()) {
       run = false;

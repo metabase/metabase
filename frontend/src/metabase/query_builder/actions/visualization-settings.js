@@ -34,7 +34,6 @@ export const updateCardVisualizationSettings =
     const hasWritePermissions = question.isQueryEditable();
     await dispatch(
       updateQuestion(question.updateSettings(settings), {
-        run: hasWritePermissions ? "auto" : false,
         shouldUpdateUrl: hasWritePermissions,
       }),
     );
@@ -42,6 +41,7 @@ export const updateCardVisualizationSettings =
 
 export const replaceAllCardVisualizationSettings =
   (settings, question) => async (dispatch, getState) => {
+    const shouldRun = question != null ? question.isQueryEditable() : false;
     question = question ?? getQuestion(getState());
     question = question.setSettings(settings);
 
@@ -49,7 +49,7 @@ export const replaceAllCardVisualizationSettings =
     const hasWritePermissions = question.isQueryEditable();
     await dispatch(
       updateQuestion(question, {
-        run: hasWritePermissions ? "auto" : false,
+        run: shouldRun,
         shouldUpdateUrl: hasWritePermissions,
       }),
     );
