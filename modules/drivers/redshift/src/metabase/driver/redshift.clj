@@ -390,8 +390,8 @@
 (defmethod driver/current-user-table-privileges :redshift
   [_driver database]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an exnternal table
-    ;; result in a operation not supported error
+    ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
+    ;; result in an operation not supported error
     (->> (jdbc/query
           conn-spec
           (str/join
