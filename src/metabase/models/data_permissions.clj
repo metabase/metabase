@@ -229,6 +229,7 @@
       (when (= [:data-access :block] [perm-type value])
         (set-database-permission! group-or-id db-or-id :native-query-editing :no)))))
 
+;; TODO: Update to take multiple tables
 (mu/defn set-table-permission!
   "Sets a single permission to a specified value for a given group and DB or table. If a permission value already exists
   for the specified group and object, it will be updated to the new value.

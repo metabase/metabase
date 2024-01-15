@@ -16,7 +16,6 @@
      :manage-table-metadata :data-model
 
      :native-query-editing  :native
-     :native-downloads      :native
      :manage-database       :details})
 
 #_(def ^:private db->api-vals
@@ -24,14 +23,12 @@
                              :no-self-service nil
                              :block           :block}
      :download-results      {:one-million-rows  :full
-                             :ten-thousand-rows :partial
+                             :ten-thousand-rows :limited
                              :no                 nil}
      :manage-table-metadata {:yes :all
                              :no nil}
 
      :native-query-editing  {:yes :full
-                             :no nil}
-     :native-downloads      {:yes :write
                              :no nil}
      :manage-database       {:yes :yes
                              :no  :no}})
@@ -64,7 +61,7 @@
   (if (map? new-schema-perms)
     (doseq [[table-id table-perm] new-schema-perms]
       (update-table-level-metadata-permissions! group-id db-id table-id schema table-perm))
-    (let [tables (db/select :model/Table :db_id db-id :schema schema)]
+    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
       (doseq [table tables]
        (case new-schema-perms
          :all
@@ -104,7 +101,7 @@
   (if (map? new-schema-perms)
     (doseq [[table-id table-perm] new-schema-perms]
       (update-table-level-download-permissions! group-id db-id table-id schema table-perm))
-    (let [tables (db/select :model/Table :db_id db-id :schema schema)]
+    (let [tables (db/select :model/Table :db_id db-id :schema (not-empty schema))]
       (doseq [table tables]
         (case new-schema-perms
           :full
