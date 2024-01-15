@@ -966,8 +966,8 @@
 
 (deftest duplicated-setting-name
   (testing "can re-register a setting in the same ns (redefining or reloading ns)"
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public))
-    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public)))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :export? false))
+    (is (defsetting foo (deferred-tru "A testing setting") :visibility :public :export? false)))
   (testing "if attempt to register in a different ns throws an error"
     (let [current-ns (ns-name *ns*)]
       (try
@@ -975,7 +975,7 @@
           (:require
            [metabase.models.setting :refer [defsetting]]
            [metabase.util.i18n :as i18n :refer [deferred-tru]]))
-        (defsetting foo (deferred-tru "A testing setting") :visibility :public)
+        (defsetting foo (deferred-tru "A testing setting") :visibility :public :export? false)
         (catch Exception e
           (is (=? {:existing-setting
                    {:description (deferred-tru "A testing setting")
