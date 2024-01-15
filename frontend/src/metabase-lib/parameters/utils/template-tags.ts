@@ -69,9 +69,7 @@ export function getTemplateTagParameters(
 }
 
 export function getTemplateTags(card: Card): TemplateTag[] {
-  return card &&
-    card.dataset_query &&
-    card.dataset_query.type === "native" &&
+  return card?.dataset_query?.type === "native" &&
     card.dataset_query.native["template-tags"]
     ? Object.values(card.dataset_query.native["template-tags"])
     : [];

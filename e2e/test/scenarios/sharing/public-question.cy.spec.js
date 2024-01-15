@@ -155,13 +155,15 @@ describe("scenarios > public > question", () => {
     cy.get("@editor").type(`{moveToStart}select `);
 
     saveQuestion("test question", { wrapId: true });
+
     cy.get("@questionId").then(id => {
-      cy.request("POST", `/api/card/${id}/public_link`).then(
-        ({ body: { uuid } }) => {
+      createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        cy.signOut();
+        cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
           cy.get(".cellData").contains("test");
-        },
-      );
+        });
+      });
     });
   });
 
@@ -172,8 +174,6 @@ describe("scenarios > public > question", () => {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
     }).then(({ body: { id } }) => {
-      cy.visit("/");
-
       openNativeEditor();
 
       cy.get("@editor")
@@ -182,13 +182,14 @@ describe("scenarios > public > question", () => {
 
       saveQuestion("test question", { wrapId: true });
       cy.get("@questionId").then(id => {
-        cy.request("POST", `/api/card/${id}/public_link`).then(
-          ({ body: { uuid } }) => {
+        createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+          cy.signOut();
+          cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
             // Check the name of the first person in the PEOPLE table
             cy.get(".cellData").contains("Hudson Borer");
-          },
-        );
+          });
+        });
       });
     });
   });
