@@ -18,7 +18,7 @@ import type BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
-import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
+import { FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { sortObject } from "metabase-lib/utils";
 
@@ -34,6 +34,7 @@ import type {
   ParameterValues,
   ParameterId,
   VisualizationSettings,
+  Dataset,
 } from "metabase-types/api";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
@@ -57,7 +58,6 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
-import { getBaseDimensionReference } from "metabase-lib/references";
 
 import type { Query } from "./types";
 
@@ -613,11 +613,11 @@ class Question {
     });
   }
 
-  private _syncStructuredQueryColumnsAndSettings(
-    previousQuestion,
-    previousQuery,
-  ) {
-    const query = this.legacyQuery({ useStructuredQuery: true });
+  private _syncStructuredQueryColumnsAndSettings(previousQuestion: Question) {
+    const query = this.query();
+    const previousQuery = previousQuestion.query();
+    const columns = Lib.returnedColumns(query, -1);
+    const previousColumns = Lib.returnedColumns(previousQuery, -1);
 
     if (
       !_.isEqual(
@@ -628,32 +628,35 @@ class Question {
       return this;
     }
 
-    const addedColumnNames = _.difference(
-      query.columnNames(),
-      previousQuery.columnNames(),
-    );
-
-    const removedColumnNames = _.difference(
-      previousQuery.columnNames(),
-      query.columnNames(),
-    );
-
+    const addedColumns = columns
+      .filter(
+        column => !Lib.findMatchingColumn(query, -1, column, previousColumns),
+      )
+      .map(column => ({
+        column,
+        columnInfo: Lib.displayInfo(query, -1, column),
+      }));
+    const removedColumns = previousColumns
+      .filter(
+        column => !Lib.findMatchingColumn(previousQuery, -1, column, columns),
+      )
+      .map(column => ({
+        column,
+        columnInfo: Lib.displayInfo(previousQuery, -1, column),
+      }));
     const graphMetrics = this.setting("graph.metrics");
 
     if (
       graphMetrics &&
-      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
+      (addedColumns.length > 0 || removedColumns.length > 0)
     ) {
-      const addedMetricColumnNames = addedColumnNames.filter(
-        name =>
-          query.columnDimensionWithName(name) instanceof AggregationDimension,
-      );
+      const addedMetricColumnNames = addedColumns
+        .filter(({ columnInfo }) => columnInfo.isAggregation)
+        .map(({ columnInfo }) => columnInfo.name);
 
-      const removedMetricColumnNames = removedColumnNames.filter(
-        name =>
-          previousQuery.columnDimensionWithName(name) instanceof
-          AggregationDimension,
-      );
+      const removedMetricColumnNames = removedColumns
+        .filter(({ columnInfo }) => columnInfo.isAggregation)
+        .map(({ columnInfo }) => columnInfo.name);
 
       if (
         addedMetricColumnNames.length > 0 ||
@@ -671,20 +674,23 @@ class Question {
     const tableColumns = this.setting("table.columns");
     if (
       tableColumns &&
-      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
+      (addedColumns.length > 0 || removedColumns.length > 0)
     ) {
       return this.updateSettings({
         "table.columns": [
           ...tableColumns.filter(
             column =>
-              !removedColumnNames.includes(column.name) &&
-              !addedColumnNames.includes(column.name),
+              !removedColumns.some(
+                ({ columnInfo }) => column.name === columnInfo.name,
+              ) &&
+              !removedColumns.some(
+                ({ columnInfo }) => column.name === columnInfo.name,
+              ),
           ),
-          ...addedColumnNames.map(name => {
-            const dimension = query.columnDimensionWithName(name);
+          ...addedColumns.map(({ column, columnInfo }) => {
             return {
-              name: name,
-              fieldRef: getBaseDimensionReference(dimension.mbql()),
+              name: columnInfo.name,
+              fieldRef: Lib.legacyRef(column),
               enabled: true,
             };
           }),
@@ -732,25 +738,15 @@ class Question {
     });
   }
 
-  syncColumnsAndSettings(previous, queryResults) {
-    const query = this.legacyQuery({ useStructuredQuery: true });
+  syncColumnsAndSettings(previousQuestion: Question, queryResults: Dataset) {
     const isQueryResultValid = queryResults && !queryResults.error;
 
-    if (query instanceof NativeQuery && isQueryResultValid) {
+    if (this.isNative() && isQueryResultValid) {
       return this._syncNativeQuerySettings(queryResults);
     }
 
-    const previousQuery =
-      previous && previous.legacyQuery({ useStructuredQuery: true });
-
-    if (
-      query instanceof StructuredQuery &&
-      previousQuery instanceof StructuredQuery
-    ) {
-      return this._syncStructuredQueryColumnsAndSettings(
-        previous,
-        previousQuery,
-      );
+    if (this.isStructured() && previousQuestion.isStructured()) {
+      return this._syncStructuredQueryColumnsAndSettings(previousQuestion);
     }
 
     return this;
