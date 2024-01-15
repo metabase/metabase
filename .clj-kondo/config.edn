@@ -18,6 +18,8 @@
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
+  :metabase/defsetting-must-specify-export {:level :warning}
+
   ;;
   ;; disabled linters
   ;;
