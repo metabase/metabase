@@ -161,11 +161,14 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       target,
       name: Lib.displayInfo(query, stageIndex, targetColumn).longDisplayName,
       sourceFilters: {
-        column: sourceColumn =>
-          Lib.isCompatibleType(
-            Lib.fromLegacyColumn(query, stageIndex, sourceColumn),
+        column: (sourceColumn: DatasetColumn, question: Question) => {
+          const sourceQuery = question.query();
+
+          return Lib.isCompatibleType(
+            Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),
             targetColumn,
-          ),
+          );
+        },
         parameter: parameter =>
           columnFilterForParameter(parameter)(targetColumn),
         userAttribute: () => Lib.isString(targetColumn),
