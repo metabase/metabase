@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useCallback } from "react";
+import { useAsync } from "react-use";
 import _ from "underscore";
 import type { Route } from "react-router";
 
@@ -7,14 +8,18 @@ import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
 
+import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { PermissionsApi } from "metabase/services";
+import { Loader, Center } from "metabase/ui";
+
 import type { DatabaseId, Group } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import type Database from "metabase-lib/metadata/Database";
 import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
-  loadDataPermissions,
-  initializeDataPermissions,
+  restoreLoadedPermissions,
+  LOAD_DATA_PERMISSIONS_FOR_GROUP,
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
@@ -46,12 +51,25 @@ function DataPermissionsPage({
 
   const dispatch = useDispatch();
 
-  const loadPermissions = () => dispatch(loadDataPermissions());
+  const resetPermissions = () => dispatch(restoreLoadedPermissions());
   const savePermissions = () => dispatch(saveDataPermissions());
-  const initialize = useCallback(
-    () => dispatch(initializeDataPermissions()),
-    [dispatch],
-  );
+
+  const { loading: isLoadingAllUsers } = useAsync(async () => {
+    const allUsers = groups.find(isDefaultGroup);
+    const result = await PermissionsApi.graphForGroup({
+      groupId: allUsers?.id,
+    });
+    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
+  }, []);
+
+  const { loading: isLoadingAdminstrators } = useAsync(async () => {
+    const admins = groups.find(isAdminGroup);
+    const result = await PermissionsApi.graphForGroup({
+      groupId: admins?.id,
+    });
+    await dispatch({ type: LOAD_DATA_PERMISSIONS_FOR_GROUP, payload: result });
+  }, []);
+
   const fetchTables = useCallback(
     (dbId: DatabaseId) =>
       dispatch(
@@ -65,20 +83,24 @@ function DataPermissionsPage({
   );
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
-
-  useEffect(() => {
     if (params.databaseId == null) {
       return;
     }
     fetchTables(params.databaseId);
   }, [params.databaseId, fetchTables]);
 
+  if (isLoadingAllUsers || isLoadingAdminstrators) {
+    return (
+      <Center h="100%">
+        <Loader size="lg" />
+      </Center>
+    );
+  }
+
   return (
     <PermissionsPageLayout
       tab="data"
-      onLoad={loadPermissions}
+      onLoad={resetPermissions}
       onSave={savePermissions}
       diff={diff}
       isDirty={isDirty}

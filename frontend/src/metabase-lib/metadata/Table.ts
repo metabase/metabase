@@ -86,12 +86,14 @@ class Table {
   }
 
   legacyQuery(query = {}) {
-    return (this.question().legacyQuery() as StructuredQuery).updateQuery(
-      q => ({
-        ...q,
-        ...query,
-      }),
-    );
+    return (
+      this.question().legacyQuery({
+        useStructuredQuery: true,
+      }) as StructuredQuery
+    ).updateQuery(q => ({
+      ...q,
+      ...query,
+    }));
   }
 
   dimensions() {

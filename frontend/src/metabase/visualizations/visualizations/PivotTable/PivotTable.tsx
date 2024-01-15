@@ -44,7 +44,6 @@ import {
 
 import {
   getLeftHeaderWidths,
-  databaseSupportsPivotTables,
   isSensible,
   checkRenderable,
   leftHeaderCellSizeAndPositionGetter,
@@ -499,7 +498,6 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   minSize: getMinSize("pivot"),
   defaultSize: getDefaultSize("pivot"),
   canSavePng: false,
-  databaseSupportsPivotTables,
   isSensible,
   checkRenderable,
   settings,

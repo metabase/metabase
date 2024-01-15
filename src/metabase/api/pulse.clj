@@ -290,8 +290,13 @@
    :headers {"Content-Type" "text/html"}
    :body    (preview/style-tag-from-inline-styles
              (html5
-                 [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
-                  (preview/render-dashboard-to-html id)]))})
+               [:head
+                [:meta {:charset "utf-8"}]
+                [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
+                        :rel  "stylesheet"
+                        :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
+               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
+                (preview/render-dashboard-to-html id)]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."

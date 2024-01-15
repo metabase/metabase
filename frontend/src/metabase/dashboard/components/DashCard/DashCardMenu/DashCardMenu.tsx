@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
 import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
@@ -16,7 +16,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
-import InternalQuery from "metabase-lib/queries/InternalQuery";
 import { CardMenuRoot } from "./DashCardMenu.styled";
 
 interface OwnProps {
@@ -131,11 +130,7 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  return (
-    question.canWrite() &&
-    question.legacyQuery() != null &&
-    question.isQueryEditable()
-  );
+  return question.canWrite() && question.isQueryEditable();
 };
 
 const canDownloadResults = (result?: Dataset) => {
@@ -154,12 +149,10 @@ DashCardMenu.shouldRender = ({
   isPublic,
   isEditing,
 }: QueryDownloadWidgetOpts) => {
-  const isInternalQuery = question.legacyQuery() instanceof InternalQuery;
   if (isEmbed) {
     return isEmbed;
   }
   return (
-    !isInternalQuery &&
     !isPublic &&
     !isEditing &&
     !isXray &&

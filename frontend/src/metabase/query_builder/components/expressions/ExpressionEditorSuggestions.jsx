@@ -1,7 +1,9 @@
+/* eslint-disable react/prop-types */
 import { Component, Fragment } from "react";
 import PropTypes from "prop-types";
+import _ from "underscore";
 import { color } from "metabase/lib/colors";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { isObscured } from "metabase/lib/dom";
 import {
   ExpressionListItem,
@@ -71,6 +73,10 @@ export default class ExpressionEditorSuggestions extends Component {
     this.props.onSuggestionMouseDown && this.props.onSuggestionMouseDown(index);
   }
 
+  createOnMouseDownHandler = _.memoize(i => {
+    return event => this.onSuggestionMouseDown(event, i);
+  });
+
   render() {
     const { suggestions, highlightedIndex, target } = this.props;
 
@@ -92,38 +98,48 @@ export default class ExpressionEditorSuggestions extends Component {
             className="pb1"
             data-ignore-outside-clicks
           >
-            {suggestions.map((suggestion, i) => {
-              const isHighlighted = i === highlightedIndex;
-              const { icon } = suggestion;
-              const { normal, highlighted } = colorForIcon(icon);
-
-              const key = `$suggstion-${i}`;
-              const listItem = (
-                <ExpressionListItem
-                  onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
-                  isHighlighted={isHighlighted}
-                  className="hover-parent hover--inherit"
-                  data-ignore-outside-clicks
-                >
-                  <Icon
-                    name={icon}
-                    color={isHighlighted ? highlighted : normal}
-                    className="mr1"
-                    data-ignore-outside-clicks
-                  />
-                  <SuggestionSpan
-                    suggestion={suggestion}
-                    isHighlighted={isHighlighted}
-                    data-ignore-outside-clicks
-                  />
-                </ExpressionListItem>
-              );
-
-              return <Fragment key={key}>{listItem}</Fragment>;
-            })}
+            {suggestions.map((suggestion, i) => (
+              <Fragment key={`$suggestion-${i}`}>
+                <ExpressionEditorSuggestionsListItem
+                  suggestion={suggestion}
+                  isHighlighted={i === highlightedIndex}
+                  onMouseDownCapture={this.createOnMouseDownHandler(i)}
+                />
+              </Fragment>
+            ))}
           </ExpressionList>
         }
       />
     );
   }
+}
+
+function ExpressionEditorSuggestionsListItem({
+  suggestion,
+  isHighlighted,
+  onMouseDownCapture,
+}) {
+  const { icon } = suggestion;
+  const { normal, highlighted } = colorForIcon(icon);
+
+  return (
+    <ExpressionListItem
+      onMouseDownCapture={onMouseDownCapture}
+      isHighlighted={isHighlighted}
+      className="hover-parent hover--inherit"
+      data-ignore-outside-clicks
+    >
+      <Icon
+        name={icon}
+        color={isHighlighted ? highlighted : normal}
+        className="mr1"
+        data-ignore-outside-clicks
+      />
+      <SuggestionSpan
+        suggestion={suggestion}
+        isHighlighted={isHighlighted}
+        data-ignore-outside-clicks
+      />
+    </ExpressionListItem>
+  );
 }

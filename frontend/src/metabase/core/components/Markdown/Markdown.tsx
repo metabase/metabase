@@ -12,6 +12,7 @@ export interface MarkdownProps
   disallowHeading?: boolean;
   unstyleLinks?: boolean;
   children: string;
+  lineClamp?: number;
 }
 
 const Markdown = ({

@@ -307,8 +307,12 @@ describe("Question", () => {
       });
 
       it("contains an empty structured query", () => {
-        expect(question.legacyQuery().constructor).toBe(StructuredQuery);
-        expect(question.legacyQuery().constructor).toBe(StructuredQuery);
+        expect(
+          question.legacyQuery({ useStructuredQuery: true }).constructor,
+        ).toBe(StructuredQuery);
+        expect(
+          question.legacyQuery({ useStructuredQuery: true }).constructor,
+        ).toBe(StructuredQuery);
       });
 
       it("defaults to table display", () => {
@@ -345,19 +349,28 @@ describe("Question", () => {
     describe("legacyQuery()", () => {
       it("returns a correct class instance for structured query", () => {
         // This is a bit wack, and the repetitive naming is pretty confusing.
-        const query = orders_raw_question.legacyQuery();
+        const query = orders_raw_question.legacyQuery({
+          useStructuredQuery: true,
+        });
         expect(query instanceof StructuredQuery).toBe(true);
       });
       it("returns a correct class instance for native query", () => {
-        const query = native_orders_count_question.legacyQuery();
+        const query = native_orders_count_question.legacyQuery({
+          useStructuredQuery: true,
+        });
         expect(query instanceof NativeQuery).toBe(true);
       });
     });
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const rawQuery = native_orders_count_question.legacyQuery();
-        const newRawQuestion = orders_raw_question.setQuery(rawQuery);
-        expect(newRawQuestion.legacyQuery() instanceof NativeQuery).toBe(true);
+        const rawQuery = native_orders_count_question.legacyQuery({
+          useStructuredQuery: true,
+        });
+        const newRawQuestion = orders_raw_question.setLegacyQuery(rawQuery);
+        expect(
+          newRawQuestion.legacyQuery({ useStructuredQuery: true }) instanceof
+            NativeQuery,
+        ).toBe(true);
       });
     });
     describe("setDatasetQuery(datasetQuery)", () => {
@@ -366,7 +379,10 @@ describe("Question", () => {
           native_orders_count_question.datasetQuery(),
         );
 
-        expect(rawQuestion.legacyQuery() instanceof NativeQuery).toBe(true);
+        expect(
+          rawQuestion.legacyQuery({ useStructuredQuery: true }) instanceof
+            NativeQuery,
+        ).toBe(true);
       });
     });
   });
@@ -545,139 +561,6 @@ describe("Question", () => {
 
         expect(question.display()).not.toBe("table");
         expect(question.display()).toBe("scalar");
-      });
-    });
-  });
-
-  // TODO: These are mode-dependent and should probably be tied to modes
-  // At the same time, the choice that which actions are visible depend on the question's properties
-  // as actions are filtered using those
-  describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
-    describe("aggregate(...)", () => {
-      it("returns the correct query for a summarization of a raw data table", () => {
-        const summarizedQuestion = orders_raw_question.aggregate(["count"]);
-        expect(summarizedQuestion.canRun()).toBe(true);
-        // if I actually call the .legacyQuery() method below, this blows up garbage collection =/
-        expect(summarizedQuestion.datasetQuery()).toEqual(
-          orders_count_card.dataset_query,
-        );
-      });
-    });
-
-    describe("breakout(...)", () => {
-      it("works with a datetime field reference", () => {
-        const brokenOutCard = orders_count_question.breakout([
-          "field",
-          ORDERS.CREATED_AT,
-          null,
-        ]);
-        expect(brokenOutCard.canRun()).toBe(true);
-
-        expect(brokenOutCard.datasetQuery()).toEqual({
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", ORDERS.CREATED_AT, null]],
-          },
-        });
-
-        // Make sure we haven't mutated the underlying query
-        expect(orders_count_question.datasetQuery().query).toEqual({
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        });
-      });
-      it("works with a primary key field reference", () => {
-        const brokenOutQuestion = orders_count_question.breakout([
-          "field",
-          ORDERS.ID,
-          null,
-        ]);
-        expect(brokenOutQuestion.canRun()).toBe(true);
-        // This breaks because we're apparently modifying OrdersCountDataCard
-        expect(brokenOutQuestion.datasetQuery()).toEqual({
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            aggregation: [["count"]],
-            breakout: [["field", ORDERS.ID, null]],
-          },
-        });
-
-        // Make sure we haven't mutated the underlying query
-        expect(orders_count_card.dataset_query.query).toEqual({
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-        });
-      });
-    });
-
-    describe("filter(...)", () => {
-      const questionForFiltering = orders_raw_question;
-
-      it("works with an id filter", () => {
-        const ordersId = metadata.field(ORDERS.ID);
-        const filteringQuestion = questionForFiltering.filter(
-          "=",
-          ordersId.column(),
-          1,
-        );
-
-        expect(filteringQuestion.datasetQuery()).toEqual({
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            filter: ["=", ["field", ORDERS.ID, null], 1],
-          },
-        });
-      });
-      it("works with a categorical value filter", () => {
-        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
-        const productsCategory = metadata.field(PRODUCTS.CATEGORY);
-        const filteringQuestion = questionForFiltering.filter(
-          "=",
-          ordersProductId.foreign(productsCategory).column(),
-          "Doohickey",
-        );
-
-        expect(filteringQuestion.datasetQuery()).toEqual({
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            filter: [
-              "=",
-              [
-                "field",
-                PRODUCTS.CATEGORY,
-                { "source-field": ORDERS.PRODUCT_ID },
-              ],
-              "Doohickey",
-            ],
-          },
-        });
-      });
-
-      it("works with a time filter", () => {
-        const ordersCreatedAt = metadata.field(ORDERS.CREATED_AT);
-        const filteringQuestion = questionForFiltering.filter(
-          "=",
-          ordersCreatedAt.column(),
-          "12/12/2012",
-        );
-
-        expect(filteringQuestion.datasetQuery()).toEqual({
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": ORDERS_ID,
-            filter: ["=", ["field", ORDERS.CREATED_AT, null], "12/12/2012"],
-          },
-        });
       });
     });
   });

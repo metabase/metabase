@@ -7,7 +7,6 @@ import { useDispatch } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
@@ -50,8 +49,8 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 
   async function cleanupQuestion() {
     // Converting a query to MLv2 and back performs a clean-up
-    let cleanQuestion = question.setDatasetQuery(
-      Lib.toLegacyQuery(Lib.dropEmptyStages(question.query())),
+    let cleanQuestion = question.setQuery(
+      Lib.dropEmptyStages(question.query()),
     );
 
     if (cleanQuestion.display() === "table") {
@@ -93,13 +92,17 @@ const Notebook = ({ className, updateQuestion, ...props }: NotebookProps) => {
 };
 
 function getSourceQuestionId(question: Question) {
-  const query = question.legacyQuery();
-  if (query instanceof StructuredQuery) {
-    const sourceTableId = query.sourceTableId();
+  const query = question.query();
+
+  if (question.isStructured()) {
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+
     if (isVirtualCardId(sourceTableId)) {
       return getQuestionIdFromVirtualTableId(sourceTableId);
     }
   }
+
+  return undefined;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

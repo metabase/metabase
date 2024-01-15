@@ -2,7 +2,10 @@ import { STANDARD_AGGREGATIONS } from "metabase-lib/expressions";
 import * as FieldRef from "./field-ref";
 import { add, update, remove, clear } from "./util";
 
-// returns canonical list of Aggregations, i.e. with deprecated "rows" removed
+/**
+ * Returns canonical list of Aggregations, i.e. with deprecated "rows" removed
+ * @deprecated use MLv2
+ */
 export function getAggregations(aggregation) {
   let aggregations;
   if (Array.isArray(aggregation) && Array.isArray(aggregation[0])) {
@@ -16,7 +19,9 @@ export function getAggregations(aggregation) {
   return aggregations.filter(agg => agg && agg[0] && agg[0] !== "rows");
 }
 
-// turns a list of Aggregations into the canonical AggregationClause
+/**
+ * Turns a list of Aggregations into the canonical AggregationClause
+ */
 function getAggregationClause(aggregations) {
   aggregations = getAggregations(aggregations);
   if (aggregations.length === 0) {
@@ -26,25 +31,42 @@ function getAggregationClause(aggregations) {
   }
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export function addAggregation(aggregation, newAggregation) {
   return getAggregationClause(
     add(getAggregations(aggregation), newAggregation),
   );
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function updateAggregation(aggregation, index, updatedAggregation) {
   return getAggregationClause(
     update(getAggregations(aggregation), index, updatedAggregation),
   );
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function removeAggregation(aggregation, index) {
   return getAggregationClause(remove(getAggregations(aggregation), index));
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function clearAggregations(ac) {
   return getAggregationClause(clear());
 }
 
 // MISC
-
+/**
+ * @deprecated use MLv2
+ */
 export function isBareRows(ac) {
   return getAggregations(ac).length === 0;
 }
@@ -52,7 +74,9 @@ export function isBareRows(ac) {
 // AGGREGATION TYPES
 
 // NOTE: these only differentiate between "standard", "metric", and "custom", but do not validate the aggregation
-
+/**
+ * @deprecated use MLv2
+ */
 export function isStandard(aggregation) {
   return (
     Array.isArray(aggregation) &&
@@ -63,10 +87,16 @@ export function isStandard(aggregation) {
   );
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export function isMetric(aggregation) {
   return Array.isArray(aggregation) && aggregation[0] === "metric";
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export function isCustom(aggregation) {
   return !isStandard(aggregation) && !isMetric(aggregation);
 }
@@ -79,15 +109,31 @@ function hasOptions(aggregation) {
 function getOptions(aggregation) {
   return hasOptions(aggregation) && aggregation[2] ? aggregation[2] : {};
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function getContent(aggregation) {
   return hasOptions(aggregation) ? aggregation[1] : aggregation;
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function isNamed(aggregation) {
   return !!getName(aggregation);
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function getName(aggregation) {
   return getOptions(aggregation)["display-name"];
 }
+
+/**
+ * @deprecated use MLv2
+ */
 export function setName(aggregation, name) {
   return [
     "aggregation-options",
@@ -97,6 +143,9 @@ export function setName(aggregation, name) {
 }
 
 // METRIC
+/**
+ * @deprecated use MLv2
+ */
 export function getMetric(aggregation) {
   if (isMetric(aggregation)) {
     return aggregation[1];
@@ -107,7 +156,10 @@ export function getMetric(aggregation) {
 
 // STANDARD
 
-// get the operator from a standard aggregation clause
+/**
+ * Get the operator from a standard aggregation clause
+ * @deprecated use MLv2
+ */
 export function getOperator(aggregation) {
   if (isStandard(aggregation)) {
     return aggregation[0];
@@ -116,7 +168,10 @@ export function getOperator(aggregation) {
   }
 }
 
-// set the fieldId on a standard aggregation clause
+/**
+ * Set the fieldId on a standard aggregation clause
+ * @deprecated use MLv2
+ */
 export function setField(aggregation, fieldRef) {
   if (isStandard(aggregation)) {
     return [aggregation[0], fieldRef];
@@ -126,6 +181,9 @@ export function setField(aggregation, fieldRef) {
   }
 }
 
+/**
+ * @deprecated use MLv2
+ */
 export function isRows(aggregation) {
   return aggregation && aggregation[0] === "rows";
 }
