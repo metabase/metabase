@@ -68,8 +68,8 @@ export const followForeignKey = createThunkAction(
         stageIndex,
         Lib.stringFilterClause({
           operator: "=",
-          column: Lib.fromLegacyColumn(query, stageIndex, fk),
-          values: objectId ? [String(objectId)] : [],
+          column: Lib.fromLegacyColumn(query, stageIndex, fk.origin),
+          values: [objectId],
           options: {},
         }),
       );
