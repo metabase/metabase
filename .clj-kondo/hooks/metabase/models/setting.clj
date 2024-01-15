@@ -4,7 +4,12 @@
    [hooks.common :as common]))
 
 (def ^:private ignored-implicit-export?
-  '#{engines})
+  '#{
+     engines
+     jdbc-data-warehouse-max-connection-pool-size
+     jdbc-data-warehouse-unreturned-connection-timeout-seconds
+     sql-jdbc-fetch-size
+     })
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
@@ -42,6 +47,8 @@
                                   (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))]
     (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options)))
       (when-not (contains? ignored-implicit-export? (:value setting-name))
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (prn (:value setting-name))
         (hooks/reg-finding! (assoc (meta node)
                               :message "Setting definition must provide an explicit value for :export?"
                               :type :metabase/defsetting-must-specify-export))))
