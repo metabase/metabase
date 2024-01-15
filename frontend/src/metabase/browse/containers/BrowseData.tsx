@@ -9,10 +9,10 @@
  * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
  * */
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import type { Card, CollectionItem, User } from "metabase-types/api";
+import type { CollectionItem } from "metabase-types/api";
 import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
@@ -25,6 +25,13 @@ import Link from "metabase/core/components/Link";
 import BrowseHeader from "metabase/browse/components/BrowseHeader";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+import {
+  useDatabaseListQuery,
+  useSearchListQuery,
+} from "metabase/common/hooks";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
+import EmptyState from "metabase/components/EmptyState";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
@@ -33,13 +40,6 @@ import {
   ModelCard,
   ModelGridItem,
 } from "./BrowseData.styled";
-import {
-  useDatabaseListQuery,
-  useSearchListQuery,
-} from "metabase/common/hooks";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import EmptyState from "metabase/components/EmptyState";
 
 interface BrowseDataTab {
   label: string;
@@ -66,7 +66,7 @@ const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
 };
 
 const ModelsTab = ({ models }: { models: Model[] }) => {
-  if (!models.length)
+  if (!models.length) {
     return (
       <div
         style={{
@@ -86,6 +86,7 @@ const ModelsTab = ({ models }: { models: Model[] }) => {
         />
       </div>
     );
+  }
   const { groupedModels, collectionIdToName } =
     groupModelsByParentCollection(models);
   const entries = Object.entries(groupedModels);
@@ -96,8 +97,8 @@ const ModelsTab = ({ models }: { models: Model[] }) => {
           collectionId={collectionId}
           collectionName={collectionIdToName[collectionId]}
           models={models}
+          includeDivider={index !== 0}
         />
-        {index < entries.length - 1 && <Divider />}
       </>
     );
   });
@@ -210,83 +211,86 @@ const CollectionOfModels = ({
   collectionId,
   collectionName,
   models,
+  includeDivider = true,
 }: {
   collectionId: string;
   collectionName: string;
   models: Model[];
+  includeDivider?: boolean;
 }) => {
   return (
-    <div
-      key={`collection-${collectionId}`}
-      style={{
-        padding: "1rem 0",
-        flexFlow: "column nowrap",
-        width: "100%",
-        display: "flex",
-      }}
-    >
-      <h4 style={{ width: "100%" }}>{collectionName}</h4>
-      <Grid>
-        {models.map(model => {
-          console.log("model", model);
-          // If there is no information about the last edit,
-          // use the timestamp of the creation
-          const lastEditInfo = {
-            full_name:
-              model.last_editor_common_name! ?? model.creator_common_name!,
-            timestamp: model.last_edited_at! ?? model.created_at!,
-          };
-          const item: CollectionItemWithLastEditedInfo = {
-            ...model,
-            "last-edit-info": lastEditInfo,
-          };
-          return (
-            <ModelGridItem key={model.id}>
-              <Link
-                to={Urls.modelDetail(model)}
-                // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
-                data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
-              >
-                <ModelCard>
-                  <h4 className="text-wrap">{model.name}</h4>
-                  <Text
-                    size="xs"
-                    style={{
-                      height: "32px",
-                      textOverflow: "ellipsis",
-                      overflow: "hidden",
-                      width: "100%",
-                      whiteSpace: "normal",
-                      display: "block",
-                    }}
-                  >
-                    {model.description}{" "}
-                  </Text>
-                  <LastEditInfoLabel
-                    prefix={null}
-                    item={item}
-                    fullName={lastEditInfo.full_name}
-                    // TODO: This feels a little complicated.
-                    // Let me see if I can simplify it
-                    formatLabel={(
-                      fullName: string | undefined = "",
-                      timeLabel: string | undefined = "",
-                    ) => (
-                      <>
-                        {fullName}
-                        {fullName && timeLabel ? (
-                          <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
-                        ) : null}
-                        {timeLabel}
-                      </>
-                    )}
-                  />
-                </ModelCard>
-              </Link>
-            </ModelGridItem>
-          );
-        })}
-      </Grid>
-    </div>
+    <Fragment key={`collection-${collectionId}`}>
+      {includeDivider && <Divider />}
+      <div
+        style={{
+          padding: "1rem 0",
+          flexFlow: "column nowrap",
+          width: "100%",
+          display: "flex",
+        }}
+      >
+        <h4 style={{ width: "100%" }}>{collectionName}</h4>
+        <Grid>
+          {models.map((model: any) => {
+            // TODO: Type this
+            // If there is no information about the last edit,
+            // use the timestamp of the creation
+            const lastEditInfo = {
+              full_name:
+                model.last_editor_common_name ?? model.creator_common_name,
+              timestamp: model.last_edited_at ?? model.created_at,
+            };
+            const item: CollectionItemWithLastEditedInfo = {
+              ...model,
+              "last-edit-info": lastEditInfo,
+            };
+            return (
+              <ModelGridItem key={model.id}>
+                <Link
+                  to={Urls.modelDetail(model)}
+                  // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
+                  data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
+                >
+                  <ModelCard>
+                    <h4 className="text-wrap">{model.name}</h4>
+                    <Text
+                      size="xs"
+                      style={{
+                        height: "32px",
+                        textOverflow: "ellipsis",
+                        overflow: "hidden",
+                        width: "100%",
+                        whiteSpace: "normal",
+                        display: "block",
+                      }}
+                    >
+                      {model.description}{" "}
+                    </Text>
+                    <LastEditInfoLabel
+                      prefix={null}
+                      item={item}
+                      fullName={lastEditInfo.full_name}
+                      // TODO: Simplify this
+                      formatLabel={(
+                        fullName: string | undefined = "",
+                        timeLabel: string | undefined = "",
+                      ) => (
+                        <>
+                          {fullName}
+                          {fullName && timeLabel ? (
+                            <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
+                          ) : null}
+                          {timeLabel}
+                        </>
+                      )}
+                    />
+                  </ModelCard>
+                </Link>
+              </ModelGridItem>
+            );
+          })}
+        </Grid>
+      </div>
+    </Fragment>
   );
 };
