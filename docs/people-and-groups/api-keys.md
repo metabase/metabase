@@ -22,6 +22,8 @@ To create an API key:
 6. Click the **Create API Key** button.
 7. Enter a **Key name**. You can have multiple API keys, so give it a name that will help you remember what you're using the key for.
 8. Select a **Group**. The key will have the same permissions granted to that group.
+9. Click **Create**.
+10. Copy the generated API key and save it somewhere safe. Metabase won't be able to show you the key again. If you lose the key, you'll need to generate a new key.
 
 ## Managing API Keys
 
@@ -54,6 +56,51 @@ To delete an API Key:
 5. Scroll to **API Keys** and click **Manage**.
 6. Select the key you want to delete and click the **trash** icon.
 7. Metabase will pop up a **Delete API Key** modal. Click the **Delete API Key** button.
+
+## Example `GET` requests
+
+Here are some example `GET` requests the return the groups in your Metabase.
+
+### `curl` example
+
+Replace `YOUR_API_KEY` with the API key you generated above.
+
+```sh
+curl \
+-H 'x-api-key: YOUR_API_KEY' \
+-X GET 'http://localhost:3000/api/permissions/group'
+```
+
+### JavaScript example
+
+Assuming you've set your key as an environment variable like so:
+
+```sh
+export METABASE_API_KEY="YOUR_API_KEY"
+```
+
+Here's a basic `GET` request using `fetch`:
+
+```js
+const API_KEY = process.env.METABASE_API_KEY;
+
+const init = {
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-KEY": API_KEY,
+  },
+};
+
+const host = "http://127.0.0.1:3000"
+
+
+async function getGroups(url = "") {
+    const response = await fetch(`${host}/api/permissions/group`, init);
+    return response.json();
+};
+
+getGroups().then(resp => console.log("Response", resp));
+```
 
 ## Further reading
 
