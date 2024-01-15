@@ -288,8 +288,11 @@ const ModelGroup = ({
                       {model.name}
                     </h4>
                     <Text size="xs" style={{ height: "32px" }}>
-                      <EllipsifiedWithWrapping tooltipMaxWidth="100%">
-                        {model.description}{" "}
+                      <EllipsifiedWithWrapping
+                        tooltipMaxWidth="100%"
+                        className={model.description ? "" : "text-light"}
+                      >
+                        {model.description || "No description."}{" "}
                       </EllipsifiedWithWrapping>
                     </Text>
                     <LastEditInfoLabel
