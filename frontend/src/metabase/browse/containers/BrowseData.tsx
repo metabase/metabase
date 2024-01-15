@@ -1,7 +1,3 @@
-// ******************************************************************************************************
-// TODO: Implement quickly the grouping of models by collection and share the branch with Kyle along with my questions
-// ******************************************************************************************************
-
 /* Questions for Kyle
  * - Do you have any suggestions about how the grid of models should adapt to a narrow viewport? Maybe a CSS-grid type solution would work here?
  *
