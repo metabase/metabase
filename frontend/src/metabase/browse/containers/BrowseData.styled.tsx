@@ -6,6 +6,7 @@ import {
 } from "metabase/styled-components/theme";
 import Card from "metabase/components/Card";
 import { GridItem } from "metabase/components/Grid";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
@@ -44,29 +45,42 @@ export const ModelCard = styled(Card)`
   justify-content: space-between;
   align-items: flex-start;
   // TODO: Ask Kyle about the box-shadow on the card, which is different between the spec and the defaults for this Card component
-`;
 
-export const ModelGridItem = styled(GridItem)`
-
-  // TODO: Not sure we're using magic numbers like this
-  height: 164px;
-  // TODO: Tweak padding
-
-  width: 100%;
-
-  &:hover {
-    color: ${color("brand")};
+  // TODO: This feels hacky, is this the right way to do this?
+  & .last-edit-info-label-button {
   }
-
-  ${breakpointMinSmall} {
-    width: 50%;
-  }
-
-  ${breakpointMinMedium} {
-    width: 33.33%;
+  & .last-edit-info-label-button div,
+  & .last-edit-info-label-button span {
+    white-space: wrap !important;
+    text-align: left;
+    font-weight: normal;
   }
 `;
 
 export const LastEditedInfoSeparator = styled.span`
   padding: 0 6px;
-`
+`;
+
+export const EllipsifiedWithWrapping = styled(Ellipsified)`
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+`;
+
+export const ModelGroupGrid = styled.div`
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 1rem;
+  & > div {
+    height: 144px;
+    &:hover {
+      color: ${color("brand")};
+    }
+  }
+`;
