@@ -37,6 +37,7 @@ export interface Dashboard {
   auto_apply_filters: boolean;
   archived: boolean;
   public_uuid: string | null;
+  embedding_params?: Record<string, string> | null;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

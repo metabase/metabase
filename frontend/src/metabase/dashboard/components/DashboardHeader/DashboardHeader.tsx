@@ -1,9 +1,10 @@
+import type { MouseEvent, ReactNode } from "react";
 import { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import type { Location } from "history";
 
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 
@@ -45,6 +46,26 @@ import { dismissAllUndo } from "metabase/redux/undo";
 import Link from "metabase/core/components/Link/Link";
 import Collections from "metabase/entities/collections/collections";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+
+import type {
+  Bookmark as IBookmark,
+  DashboardId,
+  DashboardTabId,
+  Dashboard,
+  ActionDisplayType,
+  WritebackAction,
+  Collection,
+  DatabaseId,
+  Database,
+  CardId,
+  ParameterMappingOptions,
+} from "metabase-types/api";
+import type {
+  DashboardSidebarName,
+  DashboardSidebarState,
+  State,
+} from "metabase-types/store";
+
 import { SIDEBAR_NAME } from "../../constants";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";
 import {
@@ -52,9 +73,102 @@ import {
   DashboardHeaderActionDivider,
 } from "./DashboardHeader.styled";
 
-const mapStateToProps = (state, props) => {
+type NewDashCardOpts = {
+  dashId: DashboardId;
+  tabId: DashboardTabId;
+};
+
+interface OwnProps {
+  dashboardId: DashboardId;
+  dashboard: Dashboard;
+  dashboardBeforeEditing?: Dashboard | null;
+  bookmarks: IBookmark[];
+  databases: Record<DatabaseId, Database>;
+  collection: Collection;
+  sidebar: DashboardSidebarState;
+  location: Location;
+  refreshPeriod: number | null;
+  isAdmin: boolean;
+  isDirty: boolean;
+  isEditing: boolean;
+  isFullscreen: boolean;
+  isNightMode: boolean;
+  isAdditionalInfoVisible: boolean;
+  isAddParameterPopoverOpen: boolean;
+  canManageSubscriptions: boolean;
+  hasNightModeToggle: boolean;
+  parametersWidget: ReactNode;
+
+  addCardToDashboard: (opts: {
+    dashId: DashboardId;
+    cardId: CardId;
+    tabId: DashboardTabId | null;
+  }) => void;
+  addHeadingDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addMarkdownDashCardToDashboard: (opts: NewDashCardOpts) => void;
+  addLinkDashCardToDashboard: (opts: NewDashCardOpts) => void;
+
+  fetchDashboard: (opts: {
+    dashId: DashboardId;
+    queryParams?: Record<string, unknown>;
+    options?: {
+      clearCache?: boolean;
+      preserveParameters?: boolean;
+    };
+  }) => Promise<void>;
+  fetchPulseFormInput: () => void;
+  setDashboardAttribute: <Key extends keyof Dashboard>(
+    key: Key,
+    value: Dashboard[Key],
+  ) => void;
+  setRefreshElapsedHook: (hook: (elapsed: number) => void) => void;
+  updateDashboardAndCards: () => void;
+
+  addParameter: (option: ParameterMappingOptions) => void;
+  showAddParameterPopover: () => void;
+  hideAddParameterPopover: () => void;
+
+  onEditingChange: (arg: Dashboard | boolean) => void;
+  onRefreshPeriodChange: (period: number | null) => void;
+  onFullscreenChange: (
+    isFullscreen: boolean,
+    browserFullscreen?: boolean,
+  ) => void;
+  onSharingClick: () => void;
+  onNightModeChange: () => void;
+
+  setSidebar: (opts: { name: DashboardSidebarName }) => void;
+  closeSidebar: () => void;
+}
+
+interface StateProps {
+  formInput: unknown;
+  selectedTabId: DashboardTabId | null;
+  isBookmarked: boolean;
+  isNavBarOpen: boolean;
+  isShowingDashboardInfoSidebar: boolean;
+  isHomepageDashboard: boolean;
+}
+
+interface DispatchProps {
+  createBookmark: (args: { id: DashboardId }) => void;
+  deleteBookmark: (args: { id: DashboardId }) => void;
+  toggleSidebar: (sidebarName: DashboardSidebarName) => void;
+  onChangeLocation: (location: Location) => void;
+  addActionToDashboard: (
+    opts: NewDashCardOpts & {
+      action: Partial<WritebackAction>;
+      displayType: ActionDisplayType;
+    },
+  ) => void;
+  dismissAllUndo: () => void;
+}
+
+type DashboardHeaderProps = OwnProps & StateProps & DispatchProps;
+
+const mapStateToProps = (state: State, props: OwnProps): StateProps => {
   return {
-    formInput: getPulseFormInput(state, props),
+    formInput: getPulseFormInput(state),
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
@@ -66,9 +180,9 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-  createBookmark: ({ id }) =>
+  createBookmark: ({ id }: { id: DashboardId }) =>
     Bookmark.actions.create({ id, type: "dashboard" }),
-  deleteBookmark: ({ id }) =>
+  deleteBookmark: ({ id }: { id: DashboardId }) =>
     Bookmark.actions.delete({ id, type: "dashboard" }),
   fetchPulseFormInput,
   onChangeLocation: push,
@@ -77,87 +191,16 @@ const mapDispatchToProps = {
   dismissAllUndo,
 };
 
-class DashboardHeaderContainer extends Component {
-  constructor(props) {
-    super(props);
-    this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
-  }
+class DashboardHeaderContainer extends Component<DashboardHeaderProps> {
+  state = {
+    showCancelWarning: false,
+  };
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
   }
 
-  state = {
-    showCancelWarning: false,
-  };
-
-  static propTypes = {
-    dashboard: PropTypes.object.isRequired,
-    fetchPulseFormInput: PropTypes.func.isRequired,
-    formInput: PropTypes.object.isRequired,
-    isAdmin: PropTypes.bool,
-    isDirty: PropTypes.bool,
-    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
-      .isRequired,
-    isFullscreen: PropTypes.bool.isRequired,
-    isNavBarOpen: PropTypes.bool.isRequired,
-    isNightMode: PropTypes.bool.isRequired,
-    isAdditionalInfoVisible: PropTypes.bool,
-
-    refreshPeriod: PropTypes.number,
-    setRefreshElapsedHook: PropTypes.func.isRequired,
-
-    addCardToDashboard: PropTypes.func.isRequired,
-    addHeadingDashCardToDashboard: PropTypes.func.isRequired,
-    addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
-    addLinkDashCardToDashboard: PropTypes.func.isRequired,
-    fetchDashboard: PropTypes.func.isRequired,
-    updateDashboardAndCards: PropTypes.func.isRequired,
-    setDashboardAttribute: PropTypes.func.isRequired,
-    dismissAllUndo: PropTypes.func.isRequired,
-
-    onEditingChange: PropTypes.func.isRequired,
-    onRefreshPeriodChange: PropTypes.func.isRequired,
-    onNightModeChange: PropTypes.func.isRequired,
-    onFullscreenChange: PropTypes.func.isRequired,
-
-    onSharingClick: PropTypes.func.isRequired,
-    onChangeLocation: PropTypes.func.isRequired,
-
-    toggleSidebar: PropTypes.func.isRequired,
-    sidebar: PropTypes.shape({
-      name: PropTypes.string,
-      props: PropTypes.object,
-    }).isRequired,
-    setSidebar: PropTypes.func.isRequired,
-    closeSidebar: PropTypes.func.isRequired,
-    addActionToDashboard: PropTypes.func.isRequired,
-
-    databases: PropTypes.object,
-    collection: PropTypes.object,
-
-    dashboardId: PropTypes.number,
-    selectedTabId: PropTypes.number,
-
-    location: PropTypes.shape({
-      query: PropTypes.object,
-      pathname: PropTypes.string,
-    }),
-
-    createBookmark: PropTypes.func,
-    deleteBookmark: PropTypes.func,
-    isBookmarked: PropTypes.bool,
-    dashboardBeforeEditing: PropTypes.object,
-    parametersWidget: PropTypes.node,
-    isShowingDashboardInfoSidebar: PropTypes.bool,
-    isAddParameterPopoverOpen: PropTypes.bool,
-    showAddParameterPopover: PropTypes.func,
-    hideAddParameterPopover: PropTypes.func,
-    addParameter: PropTypes.func,
-    isHomepageDashboard: PropTypes.bool,
-  };
-
-  handleEdit(dashboard) {
+  handleEdit(dashboard: Dashboard) {
     this.props.onEditingChange(dashboard);
   }
 
@@ -165,42 +208,42 @@ class DashboardHeaderContainer extends Component {
     this.setState({ showCancelWarning: false });
   };
 
-  handleToggleBookmark() {
-    const { createBookmark, deleteBookmark, isBookmarked } = this.props;
-
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-
-    toggleBookmark(this.props.dashboardId);
-  }
-
   onAddMarkdownBox() {
-    this.props.addMarkdownDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
-    });
+    if (this.props.selectedTabId) {
+      this.props.addMarkdownDashCardToDashboard({
+        dashId: this.props.dashboard.id,
+        tabId: this.props.selectedTabId,
+      });
+    }
   }
 
   onAddHeading() {
-    this.props.addHeadingDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
-    });
+    if (this.props.selectedTabId) {
+      this.props.addHeadingDashCardToDashboard({
+        dashId: this.props.dashboard.id,
+        tabId: this.props.selectedTabId,
+      });
+    }
   }
 
   onAddLinkCard() {
-    this.props.addLinkDashCardToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
-    });
+    if (this.props.selectedTabId) {
+      this.props.addLinkDashCardToDashboard({
+        dashId: this.props.dashboard.id,
+        tabId: this.props.selectedTabId,
+      });
+    }
   }
 
   onAddAction() {
-    this.props.addActionToDashboard({
-      dashId: this.props.dashboard.id,
-      tabId: this.props.selectedTabId,
-      displayType: "button",
-      action: {},
-    });
+    if (this.props.selectedTabId) {
+      this.props.addActionToDashboard({
+        dashId: this.props.dashboard.id,
+        tabId: this.props.selectedTabId,
+        displayType: "button",
+        action: {},
+      });
+    }
   }
 
   onDoneEditing() {
@@ -238,14 +281,14 @@ class DashboardHeaderContainer extends Component {
     this.onDoneEditing();
   };
 
-  getEditWarning(dashboard) {
+  getEditWarning(dashboard: Dashboard) {
     if (dashboard.embedding_params) {
       const currentSlugs = Object.keys(dashboard.embedding_params);
       // are all of the original embedding params keys in the current
       // embedding params keys?
       if (
         this.props.isEditing &&
-        this.props.dashboardBeforeEditing &&
+        this.props.dashboardBeforeEditing?.embedding_params &&
         Object.keys(this.props.dashboardBeforeEditing.embedding_params).some(
           slug => !currentSlugs.includes(slug),
         )
@@ -446,7 +489,7 @@ class DashboardHeaderContainer extends Component {
       extraButtons.push({
         title: t`Enter fullscreen`,
         icon: "expand",
-        action: e => onFullscreenChange(!isFullscreen, !e.altKey),
+        action: (e: MouseEvent) => onFullscreenChange(!isFullscreen, !e.altKey),
         event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
       });
 
@@ -459,7 +502,9 @@ class DashboardHeaderContainer extends Component {
 
       extraButtons.push({
         title:
-          dashboard.tabs?.length > 1 ? t`Export tab as PDF` : t`Export as PDF`,
+          Array.isArray(dashboard.tabs) && dashboard.tabs.length > 1
+            ? t`Export tab as PDF`
+            : t`Export as PDF`,
         icon: "document",
         testId: "dashboard-export-pdf-button",
         action: () => {
@@ -567,8 +612,6 @@ class DashboardHeaderContainer extends Component {
       <>
         <DashboardHeaderComponent
           headerClassName="wrapper"
-          objectType="dashboard"
-          analyticsContext="Dashboard"
           location={this.props.location}
           dashboard={dashboard}
           collection={collection}
@@ -605,7 +648,8 @@ class DashboardHeaderContainer extends Component {
 export const DashboardHeader = _.compose(
   Bookmark.loadList(),
   Collections.load({
-    id: (state, props) => props.dashboard.collection_id || "root",
+    id: (state: State, props: OwnProps) =>
+      props.dashboard.collection_id || "root",
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(DashboardHeaderContainer);
