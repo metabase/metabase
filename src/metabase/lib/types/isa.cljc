@@ -328,6 +328,4 @@
     (and (string? src-column)   (string? dst-column))
     (and (number? src-column)   (number? dst-column))
     (and (temporal? src-column) (temporal? dst-column))
-    (when (:effective-type dst-column)
-      (clojure.core/isa? src-column (:effective-type dst-column)))
-    (clojure.core/isa? src-column (:base-type dst-column))))
+    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))
