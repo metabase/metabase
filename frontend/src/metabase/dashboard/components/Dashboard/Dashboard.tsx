@@ -357,10 +357,10 @@ function DashboardInner(props: DashboardProps) {
   }, [isInitialized]);
 
   useEffect(() => {
-    if (isInitialized && !previousDashboard && dashboard) {
+    if (!previousDashboard && dashboard) {
       fetchDashboardCardData({ reload: false, clearCache: true });
     }
-  }, [dashboard, fetchDashboardCardData, isInitialized, previousDashboard]);
+  }, [dashboard, fetchDashboardCardData, previousDashboard]);
 
   useEffect(() => {
     if (isInitialized && previousDashboardId !== dashboardId) {
