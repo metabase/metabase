@@ -99,7 +99,7 @@ class ParameterValueWidget extends Component {
     } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
-    const { noPopover } = getWidgetDefinition(parameter);
+    const noPopover = isTextWidget(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
@@ -127,7 +127,7 @@ class ParameterValueWidget extends Component {
           <WidgetStatusIcon
             isFullscreen={isFullscreen}
             hasValue={hasValue}
-            noPopover={!!noPopover}
+            noPopover={noPopover}
             isFocused={isFocused}
             setValue={setValue}
           />
@@ -170,7 +170,7 @@ class ParameterValueWidget extends Component {
               <WidgetStatusIcon
                 isFullscreen={isFullscreen}
                 hasValue={hasValue}
-                noPopover={!!noPopover}
+                noPopover={noPopover}
                 isFocused={isFocused}
                 setValue={setValue}
               />
@@ -288,20 +288,6 @@ Widget.propTypes = {
   onPopoverClose: PropTypes.func.isRequired,
   onFocusChanged: PropTypes.func.isRequired,
 };
-
-function getWidgetDefinition(parameter) {
-  if (DATE_WIDGETS[parameter.type]) {
-    return DATE_WIDGETS[parameter.type];
-  } else if (isTextWidget(parameter)) {
-    return TextWidget;
-  } else if (isNumberParameter(parameter)) {
-    return NumberInputWidget;
-  } else if (isFieldWidget(parameter)) {
-    return ParameterFieldWidget;
-  } else {
-    return StringInputWidget;
-  }
-}
 
 function isTextWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
