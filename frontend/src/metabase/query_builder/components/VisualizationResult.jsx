@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
@@ -108,7 +109,9 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
-      const hasDrills = question.isQueryEditable();
+      const query = question.query();
+      const { isEditable } = Lib.displayInfo(query, -1, query);
+      const hasDrills = isEditable;
       return (
         <>
           <Visualization

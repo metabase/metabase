@@ -1,5 +1,6 @@
 import { createThunkAction } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import * as Lib from "metabase-lib";
 
 import { openUrl } from "metabase/redux/app";
 import { getParametersMappedToDashcard } from "metabase/parameters/utils/dashboards";
@@ -50,8 +51,11 @@ export const navigateToNewCardFromDashboard = createThunkAction(
         previousCard,
       );
 
+      const query = question.query();
+      const { isEditable } = Lib.displayInfo(query, -1, query);
+
       let question = new Question(cardAfterClick, metadata);
-      if (question.isQueryEditable()) {
+      if (isEditable) {
         question = question
           .setDisplay(cardAfterClick.display || previousCard.display)
           .setSettings(dashcard.card.visualization_settings)

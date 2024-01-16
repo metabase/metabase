@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import { onUpdateVisualizationSettings } from "metabase/query_builder/actions";
 import {
@@ -11,12 +12,14 @@ export const HideColumnAction: LegacyDrill = ({
   clicked,
   settings,
 }) => {
+  const query = question.query();
+  const { isEditable } = Lib.displayInfo(query, -1, query);
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.column ||
     clicked?.extraData?.isRawTable ||
-    !question.isQueryEditable()
+    !isEditable
   ) {
     return [];
   }

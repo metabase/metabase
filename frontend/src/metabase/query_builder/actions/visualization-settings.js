@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import {
   getDatasetEditorTab,
   getPreviousQueryBuilderMode,
@@ -6,6 +7,12 @@ import {
 } from "../selectors";
 
 import { updateQuestion } from "./core";
+
+function isQuestionEditable(question) {
+  const query = question.query();
+  const { isEditable } = Lib.displayInfo(query, -1, query);
+  return isEditable;
+}
 
 export const updateCardVisualizationSettings =
   settings => async (dispatch, getState) => {
@@ -31,7 +38,7 @@ export const updateCardVisualizationSettings =
     }
 
     // The check allows users without data permission to resize/rearrange columns
-    const hasWritePermissions = question.isQueryEditable();
+    const hasWritePermissions = isQuestionEditable(question);
     await dispatch(
       updateQuestion(question.updateSettings(settings), {
         shouldUpdateUrl: hasWritePermissions,
@@ -43,7 +50,7 @@ export const replaceAllCardVisualizationSettings =
   (settings, newQuestion) => async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
     const updatedQuestion = (newQuestion ?? oldQuestion).setSettings(settings);
-    const hasWritePermissions = updatedQuestion.isQueryEditable();
+    const hasWritePermissions = isQuestionEditable(newQuestion);
 
     await dispatch(
       updateQuestion(updatedQuestion, {

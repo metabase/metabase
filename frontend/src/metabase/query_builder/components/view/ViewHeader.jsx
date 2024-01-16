@@ -297,7 +297,10 @@ function AhHocQuestionLeftSide(props) {
   } = props;
 
   const handleTitleClick = () => {
-    if (question.isQueryEditable()) {
+    const query = question.query();
+    const { isEditable } = Lib.displayInfo(query, -1, query);
+
+    if (isEditable) {
       onOpenModal(MODAL_TYPES.SAVE);
     }
   };
@@ -412,7 +415,9 @@ function ViewTitleHeaderRightSide(props) {
     onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canEditQuery = question.isQueryEditable();
+  const query = question.query();
+  const { isEditable: canEditQuery } = Lib.displayInfo(query, -1, query);
+
   const hasExploreResultsLink =
     question.canExploreResults() &&
     MetabaseSettings.get("enable-nested-queries");

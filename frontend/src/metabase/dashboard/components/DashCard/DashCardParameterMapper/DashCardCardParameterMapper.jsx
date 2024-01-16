@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
@@ -120,7 +121,9 @@ export function DashCardCardParameterMapper({
     }
 
     const question = new Question(card, metadata);
-    return question.isQueryEditable();
+    const query = question.query();
+    const { isEditable } = Lib.displayInfo(query, -1, query);
+    return isEditable;
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =

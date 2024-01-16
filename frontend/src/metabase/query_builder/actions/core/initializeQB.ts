@@ -347,10 +347,17 @@ async function handleQBInit(
     uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
   }
 
-  if (question.isNative() && question.isQueryEditable()) {
-    const query = question.legacyQuery() as NativeQuery;
-    const newQuery = await updateTemplateTagNames(query, getState, dispatch);
-    question = question.setLegacyQuery(newQuery);
+  const query = question.query();
+  const { isEditable } = Lib.displayInfo(query, -1, query);
+
+  if (question.isNative() && isEditable) {
+    const legacyQuery = question.legacyQuery() as NativeQuery;
+    const newLegacyQuery = await updateTemplateTagNames(
+      legacyQuery,
+      getState,
+      dispatch,
+    );
+    question = question.setLegacyQuery(newLegacyQuery);
   }
 
   const finalCard = question.card();

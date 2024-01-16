@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import type * as React from "react";
 import _ from "underscore";
 import { t } from "ttag";
+import * as Lib from "metabase-lib";
 import { Icon } from "metabase/ui";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
@@ -109,8 +110,11 @@ const ChartTypeSidebar = ({
           newQuestion = newQuestion.updateSettings(updatedSettings);
         }
 
+        const query = question.query();
+        const { isEditable } = Lib.displayInfo(query, -1, query);
+
         updateQuestion(newQuestion, {
-          shouldUpdateUrl: question.isQueryEditable(),
+          shouldUpdateUrl: isEditable,
         });
         setUIControls({ isShowingRawTable: false });
       }

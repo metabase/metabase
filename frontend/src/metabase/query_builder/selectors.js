@@ -350,7 +350,9 @@ export const getQuestion = createSelector(
 );
 
 function isQuestionEditable(question) {
-  return question ? question.isQueryEditable() : false;
+  const query = question.query();
+  const { isEditable } = Lib.displayInfo(query, -1, query);
+  return isEditable;
 }
 
 function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
@@ -576,8 +578,10 @@ export const getIsRunnable = createSelector(
     if (!question) {
       return false;
     }
+    const query = question.query();
+    const { isEditable } = Lib.displayInfo(query, -1, query);
     if (!question.isSaved() || isDirty) {
-      return question.canRun() && question.isQueryEditable();
+      return question.canRun() && isEditable;
     }
     return question.canRun();
   },

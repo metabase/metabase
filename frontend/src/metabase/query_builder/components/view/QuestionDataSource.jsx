@@ -140,11 +140,13 @@ function getDataSourceParts({ question }) {
   }
 
   const isStructuredQuery = question.isStructured();
-  const query = isStructuredQuery
+  const legacyQuery = isStructuredQuery
     ? question.legacyQuery({ useStructuredQuery: true }).rootQuery()
     : question.legacyQuery();
 
-  const hasDataPermission = question.isQueryEditable();
+  const query = question.query();
+  const { isEditable: hasDataPermission } = Lib.displayInfo(query, -1, query);
+
   if (!hasDataPermission) {
     return [];
   }
@@ -160,7 +162,7 @@ function getDataSourceParts({ question }) {
     });
   }
 
-  const table = query.table();
+  const table = legacyQuery.table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
@@ -180,7 +182,7 @@ function getDataSourceParts({ question }) {
 
     const allTables = [
       table,
-      ...query.joins().map(j => j.joinedTable()),
+      ...legacyQuery.joins().map(j => j.joinedTable()),
     ].filter(Boolean);
 
     parts.push(<QuestionTableBadges tables={allTables} />);

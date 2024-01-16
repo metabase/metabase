@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -197,7 +198,10 @@ const QuestionActions = ({
     }
   }
 
-  if (question.isQueryEditable()) {
+  const query = question.query();
+  const { isEditable } = Lib.displayInfo(query, -1, query);
+
+  if (isEditable) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "clone",

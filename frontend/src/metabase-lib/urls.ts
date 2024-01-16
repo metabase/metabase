@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import * as Urls from "metabase/lib/urls";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import type { ParameterId, ParameterValue } from "metabase-types/api";
@@ -56,7 +57,10 @@ export function getUrlWithParameters(
   if (question.isStructured()) {
     let questionWithParameters = question.setParameters(parameters);
 
-    if (question.isQueryEditable()) {
+    const libQuery = question.query();
+    const { isEditable } = Lib.displayInfo(libQuery, -1, libQuery);
+
+    if (isEditable) {
       questionWithParameters = questionWithParameters
         .setParameterValues(parameterValues)
         ._convertParametersToMbql();
