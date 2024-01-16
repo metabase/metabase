@@ -187,8 +187,6 @@
 
     (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
       (when-not (contains? ignored-implicit-export? (:value setting-name))
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (prn (:value setting-name))
         (hooks/reg-finding! (assoc (meta node)
                                    :message "Setting definition must provide an explicit value for :export?"
                                    :type :metabase/defsetting-must-specify-export))))
