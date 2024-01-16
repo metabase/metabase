@@ -129,16 +129,16 @@
   ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
   ;; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges database)
-   (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver database)]
-     (fn [{schema :schema table :name ttype :type}]
-       ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
-       ;; table on postgres, so we need to use the select method on them
-       (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
-            [driver ttype])
-         (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-         (contains? schema+table-with-select-privileges [schema table]))))
-   (fn [{schema :schema table :name}]
-     (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
+    (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver database)]
+      (fn [{schema :schema table :name ttype :type}]
+        ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
+        ;; table on postgres, so we need to use the select method on them
+        (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
+             [driver ttype])
+          (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+          (contains? schema+table-with-select-privileges [schema table]))))
+    (fn [{schema :schema table :name}]
+      (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -198,11 +198,18 @@
     db-or-id-or-spec
     nil
     (fn [^Connection conn]
-      (let [schema-filter-prop (driver.u/find-schema-filters-prop driver)
-            database           (db-or-id-or-spec->database db-or-id-or-spec)]
-        (if (some? schema-filter-prop)
-          (let [prop-nm              (:name schema-filter-prop)
-                [inclusion-patterns
-                 exclusion-patterns] (driver.s/db-details->schema-filter-patterns prop-nm database)]
-            (into #{} (sql-jdbc.sync.interface/active-tables driver database conn inclusion-patterns exclusion-patterns)))
-          (into #{} (sql-jdbc.sync.interface/active-tables driver database conn nil nil))))))})
+      (let [schema-filter-prop      (driver.u/find-schema-filters-prop driver)
+            has-schema-filter-prop? (some? schema-filter-prop)
+            database                (db-or-id-or-spec->database db-or-id-or-spec)
+            default-active-tbl-fn   #(into #{} (sql-jdbc.sync.interface/active-tables driver database conn nil nil))]
+        (if has-schema-filter-prop?
+          ;; TODO: the else of this branch seems uncessary, why do you want to call describe-database on a database that
+          ;; does not exists?
+          (if-some database
+            (let [prop-nm                                 (:name schema-filter-prop)
+                  [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
+                                                           prop-nm
+                                                           database)]
+              (into #{} (sql-jdbc.sync.interface/active-tables driver database conn inclusion-patterns exclusion-patterns)))
+            (default-active-tbl-fn))
+          (default-active-tbl-fn)))))})
