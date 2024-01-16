@@ -203,7 +203,7 @@
           (jdbc/execute! spec [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
                                        SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                                        (:db details) (:db details) (:db details))])
-          (sync/sync-database! (t2/select-one :model/Database db-id))
+          (sync/sync-database! (t2/select-one :model/Database db-id) {:scan :schema})
           (testing "both base tables and dynamic tables should be synced"
             (is (= #{"metabase_fan" "metabase_users"}
                    (t2/select-fn-set :name :model/Table :db_id db-id)))
@@ -420,3 +420,15 @@
             result-comment (second (re-find #"-- (\{.*\})" result-query))
             result-map (json/read-str result-comment)]
         (is (= expected-map result-map))))))
+
+(deftest show-command-sql-test
+  (are [expected args] (= expected (apply #'driver.snowflake/show-command-sql args))
+    "SHOW OBJECTS" ["OBJECTS"]
+    "SHOW OBJECTS LIKE 'orders'" ["OBJECTS" :like "orders"]
+
+    "SHOW DYNAMIC TABLES LIKE 'orders' IN \"my_database\".\"my_schema\""
+    ["DYNAMIC TABLES" :like "orders" :database "my\\_database" :schema "my_schema"]
+
+    "SHOW DYNAMIC TABLES LIKE 'orders' IN DATABASE \"my_database\"" ["DYNAMIC TABLES" :like "orders" :database "my\\_database"]
+
+    "SHOW DYNAMIC TABLES LIKE 'orders' IN SCHEMA \"my_schema\"" ["DYNAMIC TABLES" :like "orders" :schema "my\\_schema"]))

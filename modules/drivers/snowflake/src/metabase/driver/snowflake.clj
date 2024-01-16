@@ -405,25 +405,31 @@
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [[(qp.store/with-metadata-provider (u/the-id database)
                                                (sql.qp/->honeysql driver table))]]}))
-
 (defn- show-command-sql
   ;; IMPORTANT: prefer using this command over using the JDBC `.getTables` method because the jdbc is buggy
   ;; it works sometimes but other times randomly.
   ;; we have tried to use it but people reported that some schemas disappear on their instances.
   ;; See https://discourse.metabase.com/t/snowflake-broken-in-0-48-1/63849
   [object-type & {:keys [like database schema]}]
-  (cond-> [(format "SHOW %s" object-type)]
-    (some? like)
-    (conj (format "LIKE %s" like))
+  ;; in case the name is escaped for schema using escape-name-for-metadata, we undo that just to be sure
+  (let [quote-and-unescape #(quote-name (str/replace % "\\_" "_"))]
+    (str/join
+     " "
+     (cond-> [(format "SHOW %s" object-type)]
+       (some? like)
+       (conj (format "LIKE '%s'" like))
 
-    (or database schema)
-    (conj "IN")
+       (or database schema)
+       (conj "IN")
 
-    (some? database)
-    (conj (format "DATABASE %s" database))
+       (and database schema)
+       (conj (format "%s" (str/join "." (remove nil? [(quote-and-unescape database) (quote-and-unescape schema)]))))
 
-    (some? schema)
-    (conj (format "SCHEMA %s" schema))))
+       (and (some? database) (nil? schema))
+       (conj (format "DATABASE %s" (quote-and-unescape database)))
+
+       (and (nil? database) (some? schema))
+       (conj (format "SCHEMA %s" (quote-and-unescape schema)))))))
 
 (defmethod driver/describe-database :snowflake
   [driver database]
@@ -499,7 +505,7 @@
             (first (jdbc/query {:connection conn}
                                (show-command-sql
                                 "DYNAMIC TABLES"
-                                :database db-name-or-nil :schema schema-name :like table-name))))
+                                :like table-name :database db-name-or-nil :schema schema-name))))
          []
          (throw e))))))
 
@@ -527,7 +533,7 @@
             (first (jdbc/query {:connection conn}
                                (show-command-sql
                                 "DYNAMIC TABLES"
-                                :database db-name-or-nil :schema schema-name :like table-name))))
+                                :like table-name :database db-name-or-nil :schema schema-name))))
          #{}
          (throw e))))))
 
@@ -567,11 +573,11 @@
   #{"INFORMATION_SCHEMA"})
 
 (defmethod driver/can-connect? :snowflake
-  [driver {:keys [db], :as details}]
+  [driver details]
   (and ((get-method driver/can-connect? :sql-jdbc) driver details)
        (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
          ;; jdbc/query is used to see if we throw, we want to ignore the results
-         (jdbc/query spec (format "SHOW OBJECTS IN DATABASE \"%s\";" db))
+         (jdbc/query spec (show-command-sql "OBJECTS" :database (db-name {:details details})))
          true)))
 
 (defmethod driver/normalize-db-details :snowflake
