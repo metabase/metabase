@@ -96,7 +96,10 @@ export default class LegendVertical extends Component {
               />
               {Array.isArray(title) && (
                 <span
-                  className={cx("LegendItem", "flex-align-right pl1")}
+                  className={cx(
+                    "LegendItem",
+                    "flex align-center flex-align-right pl1",
+                  )}
                   style={{ opacity: isMuted ? 0.4 : 1 }}
                 >
                   {title[1]}

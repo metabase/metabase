@@ -26,6 +26,10 @@ export const createMockPermissionsState = (
     collectionPermissions: {},
     originalCollectionPermissions: {},
     isHelpReferenceOpen: false,
+    hasRevisionChanged: {
+      revision: null,
+      hasChanged: false,
+    },
     ...opts,
   };
 };

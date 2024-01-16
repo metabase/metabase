@@ -43,13 +43,13 @@ export const DeleteApiKeyModal = ({
             <FormErrorMessage />
             <Group position="right">
               <Button
-                color="error.0"
+                color="error"
                 onClick={onClose}
               >{t`No, don't delete`}</Button>
               <FormSubmitButton
                 label={t`Delete API Key`}
                 variant="filled"
-                color="error.0"
+                color="error"
               />
             </Group>
           </Stack>

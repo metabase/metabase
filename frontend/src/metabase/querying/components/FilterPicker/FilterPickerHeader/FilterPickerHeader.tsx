@@ -14,7 +14,7 @@ export function FilterPickerHeader({
   onBack,
 }: FilterPickerHeaderProps) {
   return (
-    <FilterHeaderRoot p="sm" justify="space-between">
+    <FilterHeaderRoot px="md" py="sm" justify="space-between">
       {onBack && (
         <PopoverBackButton pr="md" onClick={onBack}>
           {columnName}
