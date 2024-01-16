@@ -50,13 +50,6 @@ class Query {
   }
 
   /**
-   * Does this query have the sufficient metadata for editing it?
-   */
-  isEditable(): boolean {
-    return true;
-  }
-
-  /**
    * Returns the dataset_query object underlying this Query
    */
   datasetQuery(): DatasetQuery {

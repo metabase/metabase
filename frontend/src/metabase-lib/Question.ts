@@ -508,9 +508,13 @@ class Question {
     return (db && db.auto_run_queries) || false;
   }
 
+  /**
+   * @deprecated use MLv2
+   */
   isQueryEditable(): boolean {
-    const query = this.legacyQuery({ useStructuredQuery: true });
-    return query ? query.isEditable() : false;
+    const query = this.query();
+    const { isEditable } = Lib.displayInfo(query, -1, query);
+    return isEditable;
   }
 
   /**
