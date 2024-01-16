@@ -6,6 +6,8 @@ redirect_from:
 
 # MySQL
 
+> We recommend using MySQL version 8.0.33 or higher, though older versions may work.
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 ## Settings
