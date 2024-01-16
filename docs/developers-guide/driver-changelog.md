@@ -17,9 +17,9 @@ title: Driver interface changelog
   `metabase.driver.sql.query-processor/honey-sql-version` is now deprecated and no longer called. All drivers are
   assumed to use Honey SQL 2.
 
-- The method `metabase.driver.sql-jdbc.sync.interface/active-tables` that we added in 47 has been updated to take
+- The method `metabase.driver.sql-jdbc.sync.interface/active-tables` that we added in 47 has been updated to require
   an additional argument: `database`.
-  The new function arglist is `[driver database conneciton schema-inclusion-filters schema-exclusion-filters]`.
+  The new function arglist is `[driver database connection schema-inclusion-filters schema-exclusion-filters]`.
 
 ## Metabase 0.48.0
 

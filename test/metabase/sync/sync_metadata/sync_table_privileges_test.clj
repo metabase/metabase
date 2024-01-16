@@ -14,7 +14,7 @@
 (deftest sync-table-privileges!-test
   (mt/test-drivers (disj (set/intersection (mt/normal-drivers-with-feature :table-privileges)
                                            (mt/normal-drivers-with-feature :schemas))
-                         ;; redshift support it but we don't want to enable syncing table privileges for it for now
+                         ;; redshift supports it but we don't want to enable syncing table privileges for it for now
                          :redshift)
     (testing "`TablePrivileges` should store the correct data for current_user and role privileges for databases with schemas"
       (mt/with-empty-db

@@ -126,17 +126,19 @@
           tables                   ...]
       (filter have-select-privilege-fn* tables))"
   [driver database conn]
+  ;; `sql-jdbc.sync.interface/have-select-privilege?` is slow because we're doing a SELECT query on each table
+  ;; It's basically a N+1 operation where N is the number of tables in the database
   (if (driver/database-supports? driver :table-privileges database)
-    (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver database)]
-      (fn [{schema :schema table :name ttype :type}]
-        ;; driver/current-user-table-privileges does not return privielges for external table on redshift, and foreign
-        ;; table on postgres, so we need to use the select method on them
-        (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
-             [driver ttype])
-          (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
-          (contains? schema+table-with-select-privileges [schema table]))))
-    (fn [{schema :schema table :name}]
-      (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
+   (let [schema+table-with-select-privileges (schema+table-with-select-privileges driver database)]
+     (fn [{schema :schema table :name ttype :type}]
+       ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
+       ;; table on postgres, so we need to use the select method on them
+       (if (#{[:redshift "EXTERNAL TABLE"] [:postgres "FOREIGN TABLE"]}
+            [driver ttype])
+         (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
+         (contains? schema+table-with-select-privileges [schema table]))))
+   (fn [{schema :schema table :name}]
+     (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -149,10 +151,10 @@
   (let [metadata                  (.getMetaData conn)
         syncable-schemas          (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
                                                                                      schema-inclusion-filters schema-exclusion-filters)
-        have-select-privilege-fn* (have-select-privilege-fn driver database conn)]
+        have-select-privilege-fn? (have-select-privilege-fn driver database conn)]
     (eduction (mapcat (fn [schema]
                         (->> (db-tables driver metadata schema db-name-or-nil)
-                             (filter have-select-privilege-fn*)
+                             (filter have-select-privilege-fn?)
                              (map #(dissoc % :type))))) syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
@@ -164,14 +166,14 @@
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver database ^Connection conn & [db-name-or-nil schema-inclusion-filters schema-exclusion-filters]]
   {:pre [(instance? Connection conn)]}
-  (let [have-select-privilege-fn* (have-select-privilege-fn driver database conn)]
+  (let [have-select-privilege-fn? (have-select-privilege-fn driver database conn)]
     (eduction
      (comp
       (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
                 (fn [{table-schema :schema :as table}]
                   (and (not (contains? excluded table-schema))
                        (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
-                       (have-select-privilege-fn* table)))))
+                       (have-select-privilege-fn? table)))))
       (map #(dissoc % :type)))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
