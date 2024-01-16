@@ -5,11 +5,13 @@
  * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
  * */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import type { CollectionItem } from "metabase-types/api";
 import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
+
+// TODO: Sort models alphabetically
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
@@ -35,15 +37,22 @@ import {
   MultilineEllipsified,
   LastEditedInfoSeparator,
   ModelCard,
-  ModelGroupGrid,
 } from "./BrowseData.styled";
+import VirtualizedList from "metabase/components/VirtualizedList";
+import {
+  VirtualizedGrid,
+  VirtualizedGridItemProps,
+  VirtualizedGridProps,
+} from "metabase/components/VirtualizedGrid/VirtualizedGrid";
 
 interface BrowseDataTab {
   label: string;
   component: JSX.Element;
 }
 
-type Model = CollectionItem;
+type ModelWithoutEditInfo = CollectionItem;
+
+type Model = CollectionItemWithLastEditedInfo;
 
 export const BrowseDataPage = () => {
   const idOfInitialTab = "models";
@@ -60,6 +69,44 @@ export const BrowseDataPage = () => {
     reload: true,
   });
 
+  const modelsWithEditInfo: Model[] = useMemo(() => {
+    // For testing, increase the number of models
+    if (models.length) {
+      for (let i = 0; i < 999; i++) {
+        const pushMe = models[i];
+        models.push(pushMe);
+      }
+    }
+
+    console.log("useMemo function invoked");
+    // Sort models by collection name and then secondarily by id. We sort on id first
+    const modelsSortedByCollectionId = _.sortBy(
+      models,
+      models => models.collection?.id || "zzz",
+    );
+    const modelsSortedByCollectionNameAndId = _.sortBy(
+      modelsSortedByCollectionId,
+      model => model.collection?.name || "zzz",
+    );
+    const modelsWithEditInfo: Model[] = modelsSortedByCollectionNameAndId.map(
+      (model: ModelWithoutEditInfo) => {
+        const lastEditInfo = {
+          full_name: model.last_editor_common_name ?? model.creator_common_name,
+          timestamp: model.last_edited_at ?? model.created_at,
+        };
+        const item: Model = {
+          ...model,
+          "last-edit-info": lastEditInfo,
+        };
+        return item;
+      },
+    );
+
+    return modelsWithEditInfo;
+  }, [models]);
+
+  console.log("modelsWithEditInfo.length", modelsWithEditInfo.length);
+
   const {
     data: databases = [],
     error: errorLoadingDatabases,
@@ -73,7 +120,7 @@ export const BrowseDataPage = () => {
       label: t`Models`,
       component: (
         <ModelsTab
-          models={models}
+          models={modelsWithEditInfo}
           isLoading={isModelListLoading}
           error={errorLoadingModels}
         />
@@ -156,30 +203,23 @@ const ModelsTab = ({
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
-  if (!models.length) {
-    return (
-      <ContentOfEmptyTab
-        title={t`No models here yet`}
-        message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-      />
-    );
-  }
-  const { groupedModels, collectionIdToName } =
-    groupModelsByParentCollection(models);
-  const entries = Object.entries(groupedModels);
-  return (
-    <>
-      {entries.map(([collectionId, models], index) => {
-        return (
-          <ModelGroup
-            key={collectionId}
-            collectionName={collectionIdToName[collectionId]}
-            models={models}
-            includeDivider={index !== 0}
-          />
-        );
-      })}
-    </>
+  return models.length ? (
+    <VirtualizedGrid
+      items={models}
+      itemHeight={160}
+      itemMinWidth={240}
+      // TODO: Change the width
+      renderItem={(props: VirtualizedGridItemProps<Model>) => (
+        <ModelItem {...props} />
+      )}
+      gridGapSize={16}
+      scrollElement={document.getElementsByTagName('main')[0]}
+    />
+  ) : (
+    <ContentOfEmptyTab
+      title={t`No models here yet`}
+      message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+    />
   );
 };
 
@@ -225,103 +265,117 @@ const DatabasesTab = ({
   );
 };
 
-const ModelGroup = ({
-  collectionName,
-  models,
-  includeDivider = true,
-}: {
-  collectionName: string;
-  models: Model[];
-  includeDivider?: boolean;
-}) => {
+// const ModelGroup = ({
+//   collectionName,
+//   models,
+//   includeDivider = true,
+// }: {
+//   collectionName: string;
+//   models: Model[];
+//   includeDivider?: boolean;
+// }) => {
+//   return (
+//     <>
+//       {includeDivider && <Divider />}
+//       <div
+//         style={{
+//           padding: "1rem 0",
+//           flexFlow: "column nowrap",
+//           width: "100%",
+//           display: "flex",
+//         }}
+//       >
+//         <h4 style={{ width: "100%" }}>{collectionName}</h4>
+//         <ModelGroupGrid>
+//           {/* TODO: Type the `model` var*/}
+//           {models.map((model: any) => {
+//             // If there is no information about the last edit,
+//             // use the timestamp of the creation
+//             const lastEditInfo = {
+//               full_name:
+//                 model.last_editor_common_name ?? model.creator_common_name,
+//               timestamp: model.last_edited_at ?? model.created_at,
+//             };
+//             const item: CollectionItemWithLastEditedInfo = {
+//               ...model,
+//               "last-edit-info": lastEditInfo,
+//             };
+//             return <ModelItem model={item}/>
+//           })}
+//         </ModelGroupGrid>
+//       </div>
+//     </>
+//   );
+// };
+
+const ModelItem = (props: VirtualizedGridItemProps<Model>) => {
+  const { rowIndex, columnIndex, columnCount, items: models, style } = props;
+  const index = rowIndex * columnCount + columnIndex;
+  if (index >= models.length) return null;
+  const model = models[index];
+
+  // TODO: temporary workaround
+  if (!model) {
+    console.log("model is undefined");
+    return null;
+  }
   return (
-    <>
-      {includeDivider && <Divider />}
-      <div
-        style={{
-          padding: "1rem 0",
-          flexFlow: "column nowrap",
-          width: "100%",
-          display: "flex",
-        }}
+    <div key={model.id} style={style}>
+      <Link
+        to={Urls.modelDetail(model)}
+        // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
+        data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
       >
-        <h4 style={{ width: "100%" }}>{collectionName}</h4>
-        <ModelGroupGrid>
-          {/* TODO: Type the `model` var*/}
-          {models.map((model: any) => {
-            // If there is no information about the last edit,
-            // use the timestamp of the creation
-            const lastEditInfo = {
-              full_name:
-                model.last_editor_common_name ?? model.creator_common_name,
-              timestamp: model.last_edited_at ?? model.created_at,
-            };
-            const item: CollectionItemWithLastEditedInfo = {
-              ...model,
-              "last-edit-info": lastEditInfo,
-            };
-            return (
-              <div key={model.id}>
-                <Link
-                  to={Urls.modelDetail(model)}
-                  // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
-                  data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
-                >
-                  <ModelCard>
-                    <h4 className="text-wrap" style={{ lineHeight: "16px" }}>
-                      <MultilineEllipsified>{model.name}</MultilineEllipsified>
-                    </h4>
-                    <Text size="xs" style={{ height: "32px" }}>
-                      <MultilineEllipsified
-                        tooltipMaxWidth="100%"
-                        className={model.description ? "" : "text-light"}
-                      >
-                        {model.description || "No description."}{" "}
-                      </MultilineEllipsified>
-                    </Text>
-                    <LastEditInfoLabel
-                      prefix={null}
-                      item={item}
-                      fullName={lastEditInfo.full_name}
-                      className={"last-edit-info-label-button"}
-                      // TODO: Simplify the formatLabel prop
-                      formatLabel={(
-                        fullName: string | undefined = "",
-                        timeLabel: string | undefined = "",
-                      ) => (
-                        <>
-                          {fullName}
-                          {fullName && timeLabel ? (
-                            <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
-                          ) : null}
-                          {timeLabel}
-                        </>
-                      )}
-                    />
-                  </ModelCard>
-                </Link>
-              </div>
-            );
-          })}
-        </ModelGroupGrid>
-      </div>
-    </>
+        <ModelCard>
+          <h4 className="text-wrap" style={{ lineHeight: "16px" }}>
+            <MultilineEllipsified>{model.name}</MultilineEllipsified>
+          </h4>
+          <Text size="xs" style={{ height: "32px" }}>
+            <MultilineEllipsified
+              tooltipMaxWidth="100%"
+              className={model.description ? "" : "text-light"}
+            >
+              {model.description || "No description."}{" "}
+            </MultilineEllipsified>
+          </Text>
+          <LastEditInfoLabel
+            prefix={null}
+            item={model}
+            fullName={model["last-edit-info"].full_name}
+            className={"last-edit-info-label-button"}
+            // TODO: Simplify the formatLabel prop
+            formatLabel={(
+              fullName: string | undefined = "",
+              timeLabel: string | undefined = "",
+            ) => (
+              <>
+                {fullName}
+                {fullName && timeLabel ? (
+                  <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
+                ) : null}
+                {timeLabel}
+              </>
+            )}
+          />
+        </ModelCard>
+      </Link>
+    </div>
   );
 };
 
-const groupModelsByParentCollection = (ungroupedModelsArray: Model[]) => {
-  // We build up a mapping of collection ids to names as we iterate through the models
-  const collectionIdToName: Record<string, string> = {};
-  const groupedModels: Record<string, Model[]> = {};
-  for (const model of ungroupedModelsArray) {
-    const collectionId = `${model.collection?.id || -1}`;
-    const collectionName = model.collection?.name || "No collection"; // TODO: Typescript requires a default value; find a good one
-    collectionIdToName[collectionId] = collectionName;
-    groupedModels[collectionId] ??= [];
-    groupedModels[collectionId].push(model);
-  }
-  return { groupedModels, collectionIdToName };
-};
+// const sortModelsByParentCollection = (unsortedModels: Model[]) => {
+//   // We build up a mapping of collection ids to names as we iterate through the models
+//   const collectionIdToName: Record<string, string> = {};
+//   const sortedModels: Record<string, Model[]> = {};
+//   for (const model of unsortedModels) {
+//     const collectionId = `${model.collection?.id || -1}`;
+//     const collectionName = model.collection?.name || "No collection"; // TODO: Typescript requires a default value; find a good one
+//     collectionIdToName[collectionId] = collectionName;
+//     groupedModels[collectionId] ??= [];
+//     groupedModels[collectionId].push(model);
+//   }
+//   return { groupedModels, collectionIdToName };
+// };
 
 const ContentOfEmptyTab = ({
   title,
