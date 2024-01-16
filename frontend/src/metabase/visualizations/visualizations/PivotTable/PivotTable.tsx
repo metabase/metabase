@@ -207,7 +207,7 @@ function PivotTable({
       setHeaderWidths({
         leftHeaderWidths: null,
         totalLeftHeaderWidths: null,
-        valueHeaderWidths: {},
+        valueHeaderWidths,
       });
       return;
     }
@@ -220,17 +220,18 @@ function PivotTable({
         fontFamily: fontFamily,
       });
 
-      setHeaderWidths({ ...newLeftHeaderWidths, valueHeaderWidths: {} });
+      setHeaderWidths({ ...newLeftHeaderWidths, valueHeaderWidths });
 
       onUpdateVisualizationSettings({
         "pivot_table.column_widths": {
           ...newLeftHeaderWidths,
-          valueHeaderWidths: {},
+          valueHeaderWidths,
         },
       });
     }
   }, [
     onUpdateVisualizationSettings,
+    valueHeaderWidths,
     pivoted,
     fontFamily,
     getColumnTitle,
