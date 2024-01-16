@@ -1,6 +1,6 @@
 // Based on https://codesandbox.io/p/sandbox/react-virtualized-responsive-card-grid-7ry39g?file=%2Fsrc%2FVirtualizedGrid.tsx%3A1%2C1-120%2C1
 
-import { FC, useEffect, useRef } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import {
   AutoSizerProps,
   Grid as _Grid,
@@ -10,7 +10,7 @@ import {
   AutoSizer as _AutoSizer,
   WindowScrollerProps,
 } from "react-virtualized";
-import styled from "@emotion/styled";
+import styled  from "@emotion/styled";
 
 const Grid = _Grid as unknown as FC<GridProps>;
 const WindowScroller = _WindowScroller as unknown as FC<WindowScrollerProps>;
@@ -29,10 +29,12 @@ export interface VirtualizedGridProps<ItemType> {
 export interface VirtualizedGridItemProps<ItemType> extends GridCellProps {
   items: ItemType[];
   columnCount: number;
+  gridGapSize: number;
 }
 
 const Container = styled.div`
   flex: 1;
+  width: 100%;
 
   > div {
     height: unset !important;
@@ -45,6 +47,7 @@ const Container = styled.div`
   .ReactVirtualized__Grid__innerScrollContainer {
     overflow: visible !important;
   }
+
 `;
 
 export function VirtualizedGrid<ItemType>({
@@ -56,18 +59,13 @@ export function VirtualizedGrid<ItemType>({
   gridGapSize,
   scrollElement,
 }: VirtualizedGridProps<ItemType>): JSX.Element {
-  const gridRef = useRef<any>(null);
-  const containerRef = useRef<any>(null);
-
-  // FIXME: Remove this number
-  const containerWidth = containerRef?.current?.clientWidth;
-  console.log('containerRef?.current', containerRef?.current);
+  const gridRef = useRef<_Grid | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
 
   useEffect(() => {
     const recomputeGridSize = () => {
       gridRef.current?.recomputeGridSize();
-
-      console.log('gridRef.current?.recomputeGridSize', gridRef.current?.recomputeGridSize);
     };
     window.addEventListener("resize", recomputeGridSize);
     return () => window.removeEventListener("resize", recomputeGridSize);
@@ -81,44 +79,78 @@ export function VirtualizedGrid<ItemType>({
     return width / columnCount;
   };
 
+  useEffect(() => {
+    const handleResize = () => {
+      console.log("handleResize");
+      if (containerRef?.current) {
+        setContainerWidth(containerRef?.current?.clientWidth);
+        console.log(
+          "in handleResize, settingContainerWidth to containerRef?.current?.clientWidth",
+          containerRef?.current?.clientWidth,
+        );
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [containerRef?.current]);
+
+  console.log("containerRef?.current", containerRef?.current);
+  console.log(
+    "containerRef?.current?.clientWidth",
+    containerRef?.current?.clientWidth,
+  );
+
+  console.log('scrollElement', scrollElement);
   return (
     <Container ref={containerRef}>
-      <WindowScroller scrollElement={scrollElement}>
-        {({ height, isScrolling, onChildScroll, scrollTop }) => (
-          <AutoSizer disableHeight>
-            {() => {
-              const columnCount =
-                numColumns ?? calculateColumnCount(containerWidth);
-              const rowCount = Math.ceil(items.length / columnCount);
-              const itemWidth = calculateItemWidth(containerWidth, columnCount);
-              return (
-                <Grid
-                  gap={gridGapSize}
-                  ref={gridRef}
-                  autoHeight
-                  columnCount={columnCount}
-                  columnWidth={itemWidth}
-                  width={containerWidth}
-                  height={height}
-                  rowCount={rowCount}
-                  rowHeight={itemHeight}
-                  isScrolling={isScrolling}
-                  scrollTop={scrollTop}
-                  onScroll={onChildScroll}
-                  cellRenderer={(props: GridCellProps) => {
-                    const fullProps: VirtualizedGridItemProps<ItemType> = {
-                      ...props,
-                      items,
-                      columnCount: columnCount,
-                    };
-                    return renderItem(fullProps);
-                  }}
-                />
-              );
-            }}
-          </AutoSizer>
-        )}
-      </WindowScroller>
+      {
+        // Only render this once containerWidth has been set
+        containerWidth && (
+        <WindowScroller scrollElement={scrollElement}>
+          {({ height, isScrolling, onChildScroll, scrollTop }) => (
+            <AutoSizer disableHeight>
+              {() => {
+                const columnCount =
+                  numColumns ?? calculateColumnCount(containerWidth);
+                const rowCount = Math.ceil(items.length / columnCount);
+                const itemWidth = calculateItemWidth(
+                  containerWidth,
+                  columnCount,
+                );
+                console.log('itemWidth', itemWidth);
+                console.log('containerWidth', containerWidth);
+                console.log('columnCount', columnCount);
+
+                return (
+                  <Grid
+                    gap={gridGapSize}
+                    ref={gridRef}
+                    autoHeight
+                    columnCount={columnCount}
+                    columnWidth={itemWidth}
+                    width={containerWidth}
+                    height={height}
+                    rowCount={rowCount}
+                    rowHeight={itemHeight}
+                    isScrolling={isScrolling}
+                    scrollTop={scrollTop}
+                    onScroll={onChildScroll}
+                    cellRenderer={(props: GridCellProps) => {
+                      const fullProps: VirtualizedGridItemProps<ItemType> = {
+                        ...props,
+                        items,
+                        columnCount: columnCount,
+                      };
+                      return renderItem(fullProps);
+                    }}
+                  />
+                );
+              }}
+            </AutoSizer>
+          )}
+        </WindowScroller>
+      )}
     </Container>
   );
 }
