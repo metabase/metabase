@@ -125,14 +125,14 @@
           (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
-  (testing "granting data permissions should delete existing block permissions"
-    (mt/with-temp [PermissionsGroup {group-id :id} {}
-                   Permissions      _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
-      (is (= {:schemas :block}
-             (test-db-perms group-id)))
-      (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"public" {(mt/id :venues) {:read :all}}})
-      (is (= {:schemas {"public" {(mt/id :venues) {:read :all}}}}
-             (test-db-perms group-id))))))
+ (testing "granting data permissions should delete existing block permissions"
+   (mt/with-temp [PermissionsGroup {group-id :id} {}
+                  Permissions      _ {:group_id group-id :object (perms/database-block-perms-path (mt/id))}]
+     (is (= {:schemas :block}
+            (test-db-perms group-id)))
+     (perms/update-data-perms-graph! [group-id (mt/id) :data :schemas] {"public" {(mt/id :venues) {:read :all}}})
+     (is (= {:schemas {"public" {(mt/id :venues) {:read :all}}}}
+            (test-db-perms group-id))))))
 
 (deftest update-graph-disallow-native-query-perms-test
   (testing "Disallow block permissions + native query permissions"
