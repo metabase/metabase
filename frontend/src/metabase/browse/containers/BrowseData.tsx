@@ -5,14 +5,10 @@
  * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
  * */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import type {
-  Collection,
-  CollectionId,
-  CollectionItem,
-} from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 
 import { color } from "metabase/lib/colors";
@@ -44,6 +40,7 @@ import {
   VirtualizedGrid,
   VirtualizedGridItemProps,
 } from "metabase/components/VirtualizedGrid/VirtualizedGrid";
+import styled from "@emotion/styled";
 
 interface BrowseDataTab {
   label: string;
@@ -192,6 +189,37 @@ const ModelsTab = ({
   isLoading: boolean;
   error: unknown;
 }) => {
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (gridContainerRef?.current) {
+        // TODO: use a ref
+        const width = document.querySelector("[data-testid='browse-data']")?.clientWidth ?? 0;
+        console.log('container width set to', width);
+        const columnCount = calculateColumnCount(width);
+        const rowCount = Math.ceil(items.length / columnCount);
+        const columnWidth = calculateItemWidth(width, columnCount);
+        setGridOptions({
+          width,
+          columnWidth,
+          columnCount,
+          rowCount,
+        });
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [gridContainerRef?.current]);
+
+  const [gridOptions, setGridOptions] = useState<{
+    width: number;
+    columnWidth: number;
+    columnCount: number;
+    rowCount: number;
+  } | null>(null);
+
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
@@ -204,6 +232,7 @@ const ModelsTab = ({
     const { rowIndex, columnIndex, columnCount, items } = props;
     const index = rowIndex * columnCount + columnIndex;
     const item = items[index];
+    if (!item) return <></>; // TODO: This is a workaround because sometimes item is undefined, see if you can remove this
     if (gridItemIsGroupHeader(item)) {
       return (
         <ModelGroupHeader
@@ -224,24 +253,59 @@ const ModelsTab = ({
     }
   };
 
-  return items.length ? (
-    <VirtualizedGrid
-      gridGapSize={gridGapSize}
-      items={items}
-      itemHeight={160}
-      itemMinWidth={256}
-      // Change the width
-      renderItem={renderItem}
-      // TODO: Probably use a ref
-      scrollElement={document.getElementsByTagName("main")[0]}
-    />
-  ) : (
-    <ContentOfEmptyTab
-      title={t`No models here yet`}
-      message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-    />
+  const itemMinWidth = 240; // TODO: replace magic number
+  const itemHeight = 160; // TODO: replace magic number?
+
+  const calculateColumnCount = (width: number) => {
+    return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
+  };
+
+  const calculateItemWidth = (width: number, columnCount: number) => {
+    return width / columnCount;
+  };
+
+  console.log('gridOptions.width', gridOptions?.width);
+
+  return (
+    <GridContainer ref={gridContainerRef}>
+      {items.length && gridOptions ? (
+        <VirtualizedGrid
+          width={gridOptions.width}
+          columnWidth={gridOptions.columnWidth}
+          columnCount={gridOptions.columnCount}
+          rowCount={gridOptions.rowCount}
+          items={items}
+          itemHeight={itemHeight}
+          gridGapSize={gridGapSize}
+          renderItem={renderItem}
+          // TODO: Probably use a ref
+          scrollElement={document.getElementsByTagName("main")[0]}
+        />
+      ) : (
+        <ContentOfEmptyTab
+          title={t`No models here yet`}
+          message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+        />
+      )}
+    </GridContainer>
   );
 };
+
+const GridContainer = styled.div`
+  flex: 1;
+  width: 100%;
+
+  > div {
+    height: unset !important;
+  }
+
+  overflow: hidden ! important;
+
+  .ReactVirtualized__Grid,
+  .ReactVirtualized__Grid__innerScrollContainer {
+    overflow: visible !important;
+  }
+`;
 
 const DatabasesTab = ({
   databases,
