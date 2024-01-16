@@ -500,8 +500,7 @@
             (first (jdbc/query {:connection conn}
                                (show-command-sql
                                 "DYNAMIC TABLES"
-                                :database db-name-or-nil :schema schema-name
-                                :like table-name))))
+                                :database db-name-or-nil :schema schema-name :like table-name))))
          []
          (throw e))))))
 
@@ -529,7 +528,7 @@
             (first (jdbc/query {:connection conn}
                                (show-command-sql
                                 "DYNAMIC TABLES"
-                                :database db-name-or-nil :schema schema-name))))
+                                :database db-name-or-nil :schema schema-name :like table-name))))
          #{}
          (throw e))))))
 
