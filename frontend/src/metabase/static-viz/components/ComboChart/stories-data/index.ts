@@ -19,6 +19,7 @@ import trendMultiSeriesNormalizedStackedBar from "./trend-multi-series-normalize
 import trendCombo from "./trend-combo.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendComboLog from "./trend-combo-log.json";
+import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
 
 export const data = {
   lineLinearXScale,
@@ -42,4 +43,5 @@ export const data = {
   trendCombo,
   trendComboPower,
   trendComboLog,
+  combinedBarTimeSeriesDifferentGranularityWithBreakout,
 };
