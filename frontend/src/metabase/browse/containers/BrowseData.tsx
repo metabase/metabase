@@ -38,8 +38,10 @@ import {
   LastEditedInfoSeparator,
   ModelCard,
 } from "./BrowseData.styled";
-import { VirtualizedGrid } from "@mierak/react-virtualized-grid";
-import styled from "@emotion/styled";
+import {
+  VirtualizedGrid,
+  VirtualizedGridItemProps,
+} from "metabase/components/VirtualizedGrid/VirtualizedGrid";
 
 interface BrowseDataTab {
   label: string;
@@ -68,23 +70,16 @@ export const BrowseDataPage = () => {
   const modelsWithEditInfo: Model[] = useMemo(() => {
     // For testing, increase the number of models
     if (models.length) {
-      for (let i = 0; i < 999; i++) {
-        const pushMe = models[i];
+      for (let i = 0; i < 9999; i++) {
+        const pushMe = _.clone(models[i]);
+        pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
+        pushMe.name += ` (${i})`;
         models.push(pushMe);
       }
     }
 
-    console.log("useMemo function invoked");
-    // Sort models by collection name and then secondarily by id. We sort on id first
-    const modelsSortedByCollectionId = _.sortBy(
-      models,
-      models => models.collection?.id || "zzz",
-    );
-    const modelsSortedByCollectionNameAndId = _.sortBy(
-      modelsSortedByCollectionId,
-      model => model.collection?.name || "zzz",
-    );
-    const modelsWithEditInfo: Model[] = modelsSortedByCollectionNameAndId.map(
+    // Sort models by (in descending order of priority): collection name, collection id, model name, model id.
+    const modelsWithEditInfo: Model[] = models.map(
       (model: ModelWithoutEditInfo) => {
         const lastEditInfo = {
           full_name: model.last_editor_common_name ?? model.creator_common_name,
@@ -97,9 +92,9 @@ export const BrowseDataPage = () => {
         return item;
       },
     );
-
-    return modelsWithEditInfo;
-  }, [models]);
+    const sortedModels = modelsWithEditInfo.sort(sortModels);
+    return sortedModels;
+  }, [models.length]);
 
   console.log("modelsWithEditInfo.length", modelsWithEditInfo.length);
 
@@ -184,31 +179,6 @@ export const BrowseDataPage = () => {
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
-const VirtualizedModelGrid = styled(VirtualizedGrid)`
-  &.container {
-    //--grid-gap: 16px;
-    //--grid-height: 100vh;
-    //--grid-columns: '2';
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    grid-gap: 16px;
-    overflow-y: auto;
-    width: 100%;
-    max-height: 100vh;
-    height: var(--grid-height);
-  }
-
-  & .cell {
-    --cell-height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-sizing: border-box;
-    height: var(--cell-height);
-  }
-`
-
-
 const ModelsTab = ({
   models,
   error,
@@ -224,26 +194,23 @@ const ModelsTab = ({
   if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
+  const gridGapSize = 16;
+
+  const renderItem = (props: VirtualizedGridItemProps<Model>) => {
+    return <ModelCell {...props} gridGapSize={gridGapSize} />
+  }
+
   return models.length ? (
-    <VirtualizedModelGrid
-      itemCount={models.length}
-      gridGap={16}
-      rowHeight={160}
-      cellWidth={240}
-      // items={models}
-      // itemHeight={160}
-      // itemMinWidth={240}
-      // // TODO: Change the width
-      // renderItem={(props: VirtualizedGridItemProps<Model>) => (
-      //   <ModelItem {...props} />
-      // )}
-      // gridGapSize={16}
-      // scrollElement={document.getElementsByTagName('main')[0]}
-    >
-      {(index: number, rowIndex: number, columnIndex: number) => (
-        <ModelItem model={models[index]} />
-      )}
-    </VirtualizedModelGrid>
+    <VirtualizedGrid
+      gridGapSize={gridGapSize}
+      items={models}
+      itemHeight={160}
+      itemMinWidth={256}
+      // Change the width
+      renderItem={renderItem}
+      // TODO: Probably use a ref
+      scrollElement={document.getElementsByTagName("main")[0]}
+    />
   ) : (
     <ContentOfEmptyTab
       title={t`No models here yet`}
@@ -251,6 +218,8 @@ const ModelsTab = ({
     />
   );
 };
+
+
 
 const DatabasesTab = ({
   databases,
@@ -337,11 +306,18 @@ const DatabasesTab = ({
 //   );
 // };
 
-const ModelItem = ({ model }: { model: Model }) => {
-  // const { rowIndex, columnIndex, columnCount, items: models, style } = props;
-  // const index = rowIndex * columnCount + columnIndex;
-  // if (index >= models.length) return null;
-  // const model = models[index];
+const ModelCell = (props: VirtualizedGridItemProps<Model>) => {
+  const { rowIndex, columnIndex, columnCount, items: models, style } = props;
+  const index = rowIndex * columnCount + columnIndex;
+  if (index >= models.length) return null;
+  const model = models[index];
+
+  const firstModelInItsCollection =
+    index === 0 || models[index - 1].collection !== model.collection;
+  if (firstModelInItsCollection) {
+    model.name += "[first]";
+  }
+  // One idea is to insert a header into the list of models, as N cells in the grid, where N is .
 
   // TODO: temporary workaround
   if (!model) {
@@ -349,7 +325,7 @@ const ModelItem = ({ model }: { model: Model }) => {
     return null;
   }
   return (
-    <div key={model.id}>
+    <div key={model.id} style={{ ...style, paddingRight: "16px" }}>
       <Link
         to={Urls.modelDetail(model)}
         // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
@@ -392,20 +368,6 @@ const ModelItem = ({ model }: { model: Model }) => {
   );
 };
 
-// const sortModelsByParentCollection = (unsortedModels: Model[]) => {
-//   // We build up a mapping of collection ids to names as we iterate through the models
-//   const collectionIdToName: Record<string, string> = {};
-//   const sortedModels: Record<string, Model[]> = {};
-//   for (const model of unsortedModels) {
-//     const collectionId = `${model.collection?.id || -1}`;
-//     const collectionName = model.collection?.name || "No collection"; // TODO: Typescript requires a default value; find a good one
-//     collectionIdToName[collectionId] = collectionName;
-//     groupedModels[collectionId] ??= [];
-//     groupedModels[collectionId].push(model);
-//   }
-//   return { groupedModels, collectionIdToName };
-// };
-
 const ContentOfEmptyTab = ({
   title,
   message = "",
@@ -432,4 +394,37 @@ const ContentOfEmptyTab = ({
       />
     </div>
   );
+};
+
+const sortModels = (a: Model, b: Model) => {
+  const sortLast = Number.MAX_SAFE_INTEGER; // assume sortLast is a fallback value for sorting
+  const nameA = a.name || sortLast;
+  const nameB = b.name || sortLast;
+
+  // Sort first on the name of the model's parent collection
+  const collectionNameA = a.collection?.name || sortLast;
+  const collectionNameB = b.collection?.name || sortLast;
+
+  if (collectionNameA < collectionNameB) return -1;
+  if (collectionNameA > collectionNameB) return 1;
+
+  // If the two models' parent collections have the same name, sort on the id of the collection
+  const collectionIdA = a.collection?.id ?? sortLast;
+  const collectionIdB = b.collection?.id ?? sortLast;
+
+  if (collectionIdA < collectionIdB) return -1;
+  if (collectionIdA > collectionIdB) return 1;
+
+  // If the two collection ids are the same, sort on the names of the models
+  if (nameA < nameB) return -1;
+  if (nameA > nameB) return 1;
+
+  // If the two models have the same name, sort on id
+  const idA = a.id ?? sortLast;
+  const idB = b.id ?? sortLast;
+
+  if (idA < idB) return -1;
+  if (idA > idB) return 1;
+
+  return 0;
 };
