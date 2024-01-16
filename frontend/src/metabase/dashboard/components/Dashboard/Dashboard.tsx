@@ -282,7 +282,7 @@ function DashboardInner(props: DashboardProps) {
 
       loadDashboardParams();
 
-      const result = await fetchDashboard({
+      const result: any = await fetchDashboard({
         dashId: dashboardId,
         queryParams: location.query,
         options: {
@@ -297,6 +297,7 @@ function DashboardInner(props: DashboardProps) {
       }
 
       try {
+        const dashboard = result.payload.dashboard;
         if (editingOnLoad) {
           handleSetEditing(dashboard);
         }
@@ -319,7 +320,6 @@ function DashboardInner(props: DashboardProps) {
     [
       addCardOnLoad,
       addCardToDashboard,
-      dashboard,
       editingOnLoad,
       fetchDashboard,
       handleSetEditing,
