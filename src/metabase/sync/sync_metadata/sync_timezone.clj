@@ -39,7 +39,7 @@
   [database :- i/DatabaseInstance]
   (let [driver  (driver.u/database->driver database)
         zone-id (driver/db-default-timezone driver database)]
-    (log/infof (i18n/trs "{0} database {1} default timezone is {2}" driver (pr-str (:id database)) (pr-str zone-id)))
+    (log/infof "%s database %s default timezone is %s" driver (:id database) (pr-str zone-id))
     (validate-zone-id driver zone-id)
     (let [zone-id (some-> zone-id str)
           zone-id (if (= zone-id "Z") "UTC" zone-id)]
