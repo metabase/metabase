@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
@@ -29,11 +30,18 @@
    [:sso_source       [:enum :saml :jwt]]
    [:login_attributes [:maybe :map]]])
 
+(defn check-user-provisioning
+  "If `user-provisioning-enabled?` is false, then we should throw an error when attempting to create a new user."
+  []
+  (when (not (sso-settings/user-provisioning-enabled?))
+    (throw (trs "Unable to create new SSO user. user provisioning must be enabled."))))
+
 (mu/defn create-new-sso-user!
   "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.models.user`. We need
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
-  reuse it"
+  reuse it."
   [user :- UserAttributes]
+  (check-user-provisioning)
   (try
     (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
       (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))

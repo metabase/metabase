@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils])
   (:import
    (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
 
@@ -250,4 +251,5 @@
 (mu/defn fetch-or-create-user! :- (ms/InstanceOf User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
+  (sso-utils/check-user-provisioning)
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

@@ -23,6 +23,13 @@
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (mc/validator GroupMappings))
 
+(defsetting user-provisioning-enabled?
+  (deferred-tru "When we enable user provisioning, we automatically create a Metabase account on signin for users who
+don''t have one.")
+  :default true
+  :feature :public
+  :audit   :getter)
+
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
 using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml")
