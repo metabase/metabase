@@ -2,6 +2,10 @@
 import { useCallback } from "react";
 import { List, WindowScroller, AutoSizer } from "react-virtualized";
 
+/* Perhaps better options
+https://github.com/mierak/react-virtualized-grid
+// */
+
 function VirtualizedList({ items, rowHeight, renderItem, scrollElement }) {
   const rowRenderer = useCallback(
     ({ index, key, style }) => (
