@@ -30,6 +30,7 @@ export interface VirtualizedGridItemProps<ItemType> extends GridCellProps {
   items: ItemType[];
   columnCount: number;
   gridGapSize: number;
+  groupLabel?: string;
 }
 
 const Container = styled.div`

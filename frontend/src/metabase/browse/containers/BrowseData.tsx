@@ -8,10 +8,12 @@
 import { useMemo, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import type { CollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItem,
+} from "metabase-types/api";
 import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
-
-// TODO: Sort models alphabetically
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
@@ -67,10 +69,10 @@ export const BrowseDataPage = () => {
     reload: true,
   });
 
-  const modelsWithEditInfo: Model[] = useMemo(() => {
+  const gridItems: GridItem[] = useMemo(() => {
     // For testing, increase the number of models
     if (models.length) {
-      for (let i = 0; i < 9999; i++) {
+      for (let i = 0; i < 99; i++) {
         const pushMe = _.clone(models[i]);
         pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
         pushMe.name += ` (${i})`;
@@ -93,10 +95,11 @@ export const BrowseDataPage = () => {
       },
     );
     const sortedModels = modelsWithEditInfo.sort(sortModels);
-    return sortedModels;
+    const modelsWithHeaders = addCellsForGroupHeaders(sortedModels);
+    return modelsWithHeaders;
   }, [models.length]);
 
-  console.log("modelsWithEditInfo.length", modelsWithEditInfo.length);
+  console.log("gridItems.length", gridItems.length);
 
   const {
     data: databases = [],
@@ -111,7 +114,7 @@ export const BrowseDataPage = () => {
       label: t`Models`,
       component: (
         <ModelsTab
-          models={modelsWithEditInfo}
+          items={gridItems}
           isLoading={isModelListLoading}
           error={errorLoadingModels}
         />
@@ -180,11 +183,12 @@ export const BrowseDataPage = () => {
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
 const ModelsTab = ({
-  models,
+  items,
   error,
   isLoading,
 }: {
-  models: Model[];
+  /* The objects used to construct the grid. Most of these are models but there are some header objects added in too, in the right places. These are used to generate the headers */
+  items: GridItem[];
   isLoading: boolean;
   error: unknown;
 }) => {
@@ -196,14 +200,34 @@ const ModelsTab = ({
   }
   const gridGapSize = 16;
 
-  const renderItem = (props: VirtualizedGridItemProps<Model>) => {
-    return <ModelCell {...props} gridGapSize={gridGapSize} />
-  }
+  const renderItem = (props: VirtualizedGridItemProps<GridItem>) => {
+    const { rowIndex, columnIndex, columnCount, items } = props;
+    const index = rowIndex * columnCount + columnIndex;
+    const item = items[index];
+    if (gridItemIsGroupHeader(item)) {
+      return (
+        <ModelGroupHeader
+          {...(props as VirtualizedGridItemProps<HeaderGridItem>)}
+          groupLabel={`${item.collection?.name || "Untitled collection"} (${
+            item.collection?.id ?? "no id"
+          })`}
+          gridGapSize={gridGapSize}
+        />
+      );
+    } else {
+      return (
+        <ModelCell
+          {...(props as VirtualizedGridItemProps<Model>)}
+          gridGapSize={gridGapSize}
+        />
+      );
+    }
+  };
 
-  return models.length ? (
+  return items.length ? (
     <VirtualizedGrid
       gridGapSize={gridGapSize}
-      items={models}
+      items={items}
       itemHeight={160}
       itemMinWidth={256}
       // Change the width
@@ -218,8 +242,6 @@ const ModelsTab = ({
     />
   );
 };
-
-
 
 const DatabasesTab = ({
   databases,
@@ -311,13 +333,6 @@ const ModelCell = (props: VirtualizedGridItemProps<Model>) => {
   const index = rowIndex * columnCount + columnIndex;
   if (index >= models.length) return null;
   const model = models[index];
-
-  const firstModelInItsCollection =
-    index === 0 || models[index - 1].collection !== model.collection;
-  if (firstModelInItsCollection) {
-    model.name += "[first]";
-  }
-  // One idea is to insert a header into the list of models, as N cells in the grid, where N is .
 
   // TODO: temporary workaround
   if (!model) {
@@ -428,3 +443,36 @@ const sortModels = (a: Model, b: Model) => {
 
   return 0;
 };
+
+const ModelGroupHeader = (props: VirtualizedGridItemProps<HeaderGridItem>) => {
+  const { groupLabel, style } = props;
+  return <div style={style}>{groupLabel}</div>;
+};
+
+interface HeaderGridItem {
+  collection: Collection | null | undefined;
+}
+type GridItem = Model | HeaderGridItem;
+
+const addCellsForGroupHeaders = (models: Model[]): GridItem[] => {
+  const modelsWithHeaders: (Model | HeaderGridItem)[] = [];
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const connectionIdChanged =
+      models[i - 1]?.collection?.id !== model.collection?.id;
+    const firstModelInItsCollection =
+      i === 0 || connectionIdChanged || !model.collection?.id;
+    // Before the first model in a given collection, add an item that represents the header of the collection
+    if (firstModelInItsCollection) {
+      const groupHeader: HeaderGridItem = {
+        collection: model.collection,
+      };
+      modelsWithHeaders.push(groupHeader);
+    }
+    modelsWithHeaders.push(model);
+  }
+  return modelsWithHeaders;
+};
+
+const gridItemIsGroupHeader = (item: GridItem): item is HeaderGridItem =>
+  (item as Model).model === undefined;
