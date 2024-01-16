@@ -178,8 +178,7 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
-  const addCardOnLoad =
-    typeof options.add === "string" ? parseInt(options.add) : undefined;
+  const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
   const dispatch = useDispatch();
 
