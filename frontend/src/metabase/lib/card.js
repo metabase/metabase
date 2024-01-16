@@ -14,10 +14,10 @@ export function createCard(name = null) {
 }
 
 // start a new card using the given query type and optional database and table selections
-export function startNewCard(type, databaseId, tableId) {
+export function startNewCard(databaseId, tableId) {
   // create a brand new card to work from
   const card = createCard();
-  card.dataset_query = Q_DEPRECATED.createQuery(type, databaseId, tableId);
+  card.dataset_query = Q_DEPRECATED.createQuery("query", databaseId, tableId);
 
   return card;
 }

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -134,7 +134,6 @@ export default class VisualizationResult extends Component {
             onUpdateVisualizationSettings={
               this.props.onUpdateVisualizationSettings
             }
-            query={question.legacyQuery({ useStructuredQuery: true })}
             {...vizSpecificProps}
           />
           {this.props.isObjectDetail && (
