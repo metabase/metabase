@@ -61,29 +61,27 @@ export const getQuestion = ({
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
   let question = Question.create({ databaseId, metadata });
 
-  if (!table) {
-    return question.card();
+  if (table) {
+    let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+
+    if (getCount) {
+      query = Lib.aggregateByCount(query);
+    }
+
+    if (fieldId) {
+      query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
+    }
+
+    if (metricId) {
+      query = aggregateByMetricId(query, metricId);
+    }
+
+    if (segmentId) {
+      query = filterBySegmentId(query, segmentId);
+    }
+
+    question = question.setQuery(query);
   }
-
-  let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
-
-  if (getCount) {
-    query = Lib.aggregateByCount(query);
-  }
-
-  if (fieldId) {
-    query = breakoutWithDefaultTemporalBucket(query, metadata, fieldId);
-  }
-
-  if (metricId) {
-    query = aggregateByMetricId(query, metricId);
-  }
-
-  if (segmentId) {
-    query = filterBySegmentId(query, segmentId);
-  }
-
-  question = question.setQuery(query);
 
   if (visualization) {
     question = question.setDisplay(visualization);
