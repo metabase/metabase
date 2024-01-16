@@ -186,9 +186,13 @@ function getDataSourceParts({ question }) {
         .map(pickerInfo => {
           if (pickerInfo?.tableId != null) {
             return metadata.table(pickerInfo.tableId);
-          } else if (pickerInfo?.cardId != null) {
+          }
+
+          if (pickerInfo?.cardId != null) {
             return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
           }
+
+          return undefined;
         }),
     ].filter(isNotNull);
 
