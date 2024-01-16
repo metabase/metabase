@@ -45,7 +45,7 @@ export const SecretKeyModal = ({
         />
         <Text
           size="sm"
-          color="text.1"
+          color="text-medium"
         >{t`Please copy this key and save it somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       </Flex>
       <Group position="right">

@@ -48,8 +48,7 @@ describeEE("scenarios > question > snippets (EE)", () => {
 
       openNativeEditor();
       cy.icon("snippet").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Create a snippet").click();
+      cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
       modal().within(() => {
         cy.findByLabelText(

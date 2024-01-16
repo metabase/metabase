@@ -1,12 +1,15 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -95,3 +98,36 @@
   (is (= 1 (lib/stage-count lib.tu/venues-query)))
   (is (= 2 (lib/stage-count (lib/append-stage lib.tu/venues-query))))
   (is (= 3 (lib/stage-count (lib/append-stage (lib/append-stage lib.tu/venues-query))))))
+
+(deftest ^:parallel native?-test
+  (testing "MBQL queries are not native"
+    (is (not (lib.query/native? (lib/query meta/metadata-provider (meta/table-metadata :orders))))))
+  (testing "SQL queries are native"
+    (is (lib.query/native? (lib/native-query meta/metadata-provider "SELECT * FROM Orders;")))))
+
+(deftest ^:parallel display-info-test
+  (testing "display-info"
+    (testing "on MBQL queries"
+      (let [editable    (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+        (are [editable? query] (= {:is-native   false
+                                   :is-editable editable?}
+                                  (mu/disable-enforcement
+                                    (lib/display-info query -1 query)))
+          true  editable
+          false (assoc editable :database 999999999)                       ; database unknown - no permissions
+          false (assoc-in editable [:stages 0 :source-table] 999999999)    ; source-table not visible
+          false (lib.util/update-query-stage
+                  editable 0
+                  #(-> %
+                       ; source-card not visible
+                       (assoc :source-card 999999999)
+                       (dissoc :source-table))))))
+    (testing "on native queries"
+      (let [editable (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
+            bad-db   (assoc editable :database 999999999)]
+        (is (= {:is-native   true
+                :is-editable true}
+               (lib/display-info editable -1 editable)))
+        (is (= {:is-native   true
+                :is-editable false}
+               (lib/display-info bad-db -1 bad-db)))))))

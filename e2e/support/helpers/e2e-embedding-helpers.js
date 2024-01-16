@@ -203,9 +203,9 @@ export function openNewPublicLinkDropdown(resourceType) {
 }
 
 export function createPublicQuestionLink(questionId) {
-  cy.request("POST", `/api/card/${questionId}/public_link`, {});
+  return cy.request("POST", `/api/card/${questionId}/public_link`, {});
 }
 
 export function createPublicDashboardLink(dashboardId) {
-  cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+  return cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
 }
