@@ -876,7 +876,9 @@
   ;; for the mysql database), so we can't query the full privileges of the current user.
   (when-not (mariadb? database)
     (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-          db-name     (get-in database [:details :dbname])
+          db-name     (or (get-in database [:details :db])
+                          ;; some tests are stil using dbname
+                          (get-in database [:details :dbname]))
           table-names (->> (jdbc/query conn-spec "SHOW TABLES" {:as-arrays? true})
                            (drop 1)
                            (map first))]
