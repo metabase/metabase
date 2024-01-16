@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clj-ldap.client :as ldap]
-   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -251,5 +250,4 @@
 (mu/defn fetch-or-create-user! :- (ms/InstanceOf User)
   "Using the `user-info` (from [[find-user]]) get the corresponding Metabase user, creating it if necessary."
   [user-info :- default-impl/UserInfo]
-  (sso-utils/check-user-provisioning)
   (default-impl/fetch-or-create-user! user-info (ldap-settings)))

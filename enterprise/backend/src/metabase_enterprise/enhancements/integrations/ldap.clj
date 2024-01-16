@@ -1,6 +1,7 @@
 (ns metabase-enterprise.enhancements.integrations.ldap
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
   (:require
+   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -82,6 +83,7 @@
   :feature :sso-ldap
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
    {:keys [sync-groups?], :as settings}                                  :- default-impl/LDAPSettings]
+  (sso-utils/check-user-provisioning)
   (let [user (or (attribute-synced-user user-info)
                  (-> (user/create-new-ldap-auth-user! {:first_name       first-name
                                                        :last_name        last-name
