@@ -38,7 +38,6 @@ import {
   LastEditedInfoSeparator,
   ModelCard,
 } from "./BrowseData.styled";
-import VirtualizedList from "metabase/components/VirtualizedList";
 import {
   VirtualizedGrid,
   VirtualizedGridItemProps,
@@ -320,7 +319,7 @@ const ModelItem = (props: VirtualizedGridItemProps<Model>) => {
     return null;
   }
   return (
-    <div key={model.id} style={style}>
+    <div key={model.id} style={{...style, marginRight: '16px'}}>
       <Link
         to={Urls.modelDetail(model)}
         // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
