@@ -20,7 +20,7 @@ const QuestionCacheSection = ({
   return (
     <Stack spacing="0.5rem">
       {cacheTimestamp && (
-        <Text color="text.2" fw="bold">
+        <Text color="text-dark" fw="bold">
           {t`Question last cached ${cacheRelativeTime}`}
         </Text>
       )}
