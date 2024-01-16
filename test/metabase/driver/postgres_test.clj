@@ -1028,7 +1028,7 @@
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
-            (is (some? (sync/sync-database! database))))
+            (is (some? (sync/sync-database! database {:scan :schema}))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
@@ -1231,42 +1231,62 @@
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
-
 (deftest table-privileges-test
   (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                  [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                   (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
+                                   (set (driver/current-user-table-privileges driver/*driver* (mt/db))))))]
           (try
-            (jdbc/execute! conn-spec (str "CREATE SCHEMA \"dotted.schema\";"
-                                          "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
-                                          "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
-                                          "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
-                                          "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
-                                          "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"))
-            (testing "check that without USAGE privileges on the schema, nothing is returned"
-              (is (= []
-                     (get-privileges))))
-            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
-              (is (= [{:role   nil
-                       :schema "dotted.schema",
-                       :table  "dotted.table",
-                       :select true,
-                       :update true,
-                       :insert false,
-                       :delete false}]
-                     (get-privileges))))
-            (finally
-              (doseq [stmt ["REVOKE ALL PRIVILEGES ON TABLE \"dotted.schema\".\"dotted.table\" FROM privilege_rows_test_example_role;"
-                            "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
-                            "DROP ROLE privilege_rows_test_example_role;"]]
-                (jdbc/execute! conn-spec stmt)))))))))
+           (jdbc/execute! conn-spec (str
+                                     "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
+                                     "CREATE SCHEMA \"dotted.schema\";"
+                                     "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
+                                     "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
+                                     "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
+                                     "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
+                                     "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
+                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
+           (testing "check that without USAGE privileges on the schema, nothing is returned"
+             (is (= #{}
+                    (get-privileges))))
+           (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
+             (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
+             (is (= #{{:role   nil
+                       :schema "dotted.schema"
+                       :table  "dotted.materialized_view"
+                       :update false
+                       :select true
+                       :insert false
+                       :delete false}
+                      {:role   nil
+                       :schema "dotted.schema"
+                       :table  "dotted.view"
+                       :update false
+                       :select true
+                       :insert false
+                       :delete false}
+                      {:role   nil
+                       :schema "dotted.schema"
+                       :table  "dotted.table"
+                       :select true
+                       :update true
+                       :insert false
+                       :delete false}}
+                    (get-privileges))))
+           (finally
+            (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+                          "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+                          "DROP ROLE privilege_rows_test_example_role;"]]
+              (jdbc/execute! conn-spec stmt)))))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
