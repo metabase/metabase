@@ -205,7 +205,7 @@
         (if has-schema-filter-prop?
           ;; TODO: the else of this branch seems uncessary, why do you want to call describe-database on a database that
           ;; does not exists?
-          (if-some database
+          (if (some? database)
             (let [prop-nm                                 (:name schema-filter-prop)
                   [inclusion-patterns exclusion-patterns] (driver.s/db-details->schema-filter-patterns
                                                            prop-nm
