@@ -62,7 +62,7 @@ export const getQuestion = ({
   let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
 
   if (getCount) {
-    query = aggregateByCount(query);
+    query = Lib.aggregateByCount(query);
   }
 
   if (fieldId) {
@@ -82,17 +82,6 @@ export const getQuestion = ({
     .setDisplay(visualization)
     .card();
 };
-
-function aggregateByCount(query) {
-  const stageIndex = -1;
-  const operators = Lib.availableAggregationOperators(query, stageIndex);
-  const countOperator = operators.find(operator => {
-    const info = Lib.displayInfo(query, stageIndex, operator);
-    return info.shortName === "count";
-  });
-  const aggregationclause = Lib.aggregationClause(countOperator);
-  return Lib.aggregate(query, stageIndex, aggregationclause);
-}
 
 function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
   const stageIndex = -1;
