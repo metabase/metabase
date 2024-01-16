@@ -77,10 +77,13 @@ export const getQuestion = ({
     query = filterBySegmentId(query, segmentId);
   }
 
-  return Question.create({ databaseId, metadata })
-    .setQuery(query)
-    .setDisplay(visualization)
-    .card();
+  let question = Question.create({ databaseId, metadata }).setQuery(query);
+
+  if (visualization) {
+    question = question.setDisplay(visualization);
+  }
+
+  return question.card();
 };
 
 function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
