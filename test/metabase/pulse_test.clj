@@ -1005,9 +1005,10 @@
                                        :pulse_id     pulse-id
                                        :enabled      true}]
           (metabase.pulse/send-pulse! p)
-          (is (= (-> result-metadata
-                     first
-                     (select-keys [:display_name :description]))
-                 (t2/select-one-fn
-                  (comp #(select-keys % [:display_name :description]) first :result_metadata)
-                  :model/Card :id card-id))))))))
+          (testing "The custom columns defined in the result-metadata (:display_name and :description) are still present after the alert has run."
+              (is (= (-> result-metadata
+                         first
+                         (select-keys [:display_name :description]))
+                     (t2/select-one-fn
+                      (comp #(select-keys % [:display_name :description]) first :result_metadata)
+                      :model/Card :id card-id)))))))))
