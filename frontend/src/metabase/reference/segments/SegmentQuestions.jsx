@@ -17,6 +17,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
@@ -48,6 +49,7 @@ const mapStateToProps = (state, props) => ({
   entities: getSegmentQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
