@@ -319,7 +319,7 @@ const ModelItem = (props: VirtualizedGridItemProps<Model>) => {
     return null;
   }
   return (
-    <div key={model.id} style={{...style, marginRight: '16px'}}>
+    <div key={model.id} style={style}>
       <Link
         to={Urls.modelDetail(model)}
         // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
