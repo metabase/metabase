@@ -141,11 +141,12 @@
         (-> new-table-perms
             (update-vals (fn [table-perm]
                            (if (map? table-perm)
-                             (when (#{:all :segmented} (table-perm :query))
+                             (if (#{:all :segmented} (table-perm :query))
                                ;; `:segmented` indicates that the table is sandboxed, but we should set :data-access
                                ;; permissions to :unrestricted and rely on the `sandboxes` table as the source of truth
                                ;; for sandboxing.
-                               :unrestricted)
+                               :unrestricted
+                               :no-self-service)
                              (case table-perm
                                :all  :unrestricted
                                :none :no-self-service))))
