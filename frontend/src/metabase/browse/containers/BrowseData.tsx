@@ -1,21 +1,22 @@
-/* Questions for Kyle
- * - Do you have any suggestions about how the grid of models should adapt to a narrow viewport? Maybe a CSS-grid type solution would work here?
- *
- * Questions for backend team
- * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
- * */
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import styled from "@emotion/styled";
+import type { GridCellProps } from "react-virtualized";
+import {
+  Grid as VirtualizedGrid,
+  WindowScroller,
+  AutoSizer,
+} from "react-virtualized";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
-
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-
 import { Grid } from "metabase/components/Grid";
+
+// const VirtualizedGrid = _Grid as unknown as FC<GridProps>;
+// const WindowScroller = _WindowScroller as unknown as FC<WindowScrollerProps>;
+// const AutoSizer = _AutoSizer as unknown as FC<AutoSizerProps>;
 
 import Link from "metabase/core/components/Link";
 
@@ -29,8 +30,6 @@ import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastE
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import NoResults from "assets/img/no_results.svg";
-import type { VirtualizedGridItemProps } from "metabase/components/VirtualizedGrid/VirtualizedGrid";
-import { VirtualizedGrid } from "metabase/components/VirtualizedGrid/VirtualizedGrid";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
@@ -53,22 +52,14 @@ export const BrowseDataPage = () => {
   const idOfInitialTab = "models";
   const [currentTabId, setTabId] = useState<string | null>(idOfInitialTab);
 
-  const {
-    data: models = [],
-    error: errorLoadingModels,
-    isLoading: isModelListLoading,
-  } = useSearchListQuery({
+  const models = useSearchListQuery({
     query: {
       models: ["dataset"],
     },
     reload: true,
   });
 
-  const {
-    data: databases = [],
-    error: errorLoadingDatabases,
-    isLoading: isDatabaseListLoading,
-  } = useDatabaseListQuery({
+  const databases = useDatabaseListQuery({
     reload: true,
   });
 
@@ -77,9 +68,9 @@ export const BrowseDataPage = () => {
       label: t`Models`,
       component: (
         <ModelsTab
-          models={models}
-          isLoading={isModelListLoading}
-          error={errorLoadingModels}
+          models={models.data ?? []}
+          isLoading={models.isLoading}
+          error={models.error}
         />
       ),
     },
@@ -87,15 +78,13 @@ export const BrowseDataPage = () => {
       label: t`Databases`,
       component: (
         <DatabasesTab
-          databases={databases}
-          isLoading={isDatabaseListLoading}
-          error={errorLoadingDatabases}
+          databases={databases.data ?? []}
+          isLoading={databases.isLoading}
+          error={databases.error}
         />
       ),
     },
   };
-  // TODO: Fix font of BrowseHeader
-  // TODO: Do we still need 'Learn about our data?'
   const currentTab = currentTabId ? tabs[currentTabId] : null;
   return (
     <div
@@ -181,20 +170,16 @@ const ModelsTab = ({
     return <LoadingAndErrorWrapper error />;
   }
   if (isLoading || !gridOptions) {
-    return (
-      <GridContainer>
-        <LoadingAndErrorWrapper loading />
-      </GridContainer>
-    );
+    return <LoadingAndErrorWrapper loading />;
   }
 
-  const renderItem = ({
-    rowIndex,
-    columnIndex,
+  const renderItem: RenderItemFunction = ({
     columnCount,
+    columnIndex,
     items,
+    rowIndex,
     style,
-  }: VirtualizedGridItemProps<GridItem>) => {
+  }) => {
     const index = rowIndex * columnCount + columnIndex;
     const item = items[index];
     if (!item) {
@@ -223,7 +208,7 @@ const ModelsTab = ({
   return (
     <GridContainer>
       {gridOptions?.gridItems.length ? (
-        <VirtualizedGrid
+        <SizedVirtualizedGrid
           width={gridOptions.width}
           columnWidth={gridOptions.columnWidth}
           columnCount={gridOptions.columnCount}
@@ -287,6 +272,7 @@ const DatabasesTab = ({
   if (!databases.length) {
     return <ContentOfEmptyTab title={t`No databases here yet`} />;
   }
+  // TODO: Virtualize this list too?
   return (
     <Grid>
       {databases.map(database => (
@@ -560,10 +546,86 @@ const getGridOptions = (
   const gridItems = addHeadersToItems(sortedModels, columnCount);
   const rowCount = Math.ceil(gridItems.length / columnCount);
   return {
-    gridItems,
-    width,
-    columnWidth,
     columnCount,
+    columnWidth,
+    gridItems,
     rowCount,
+    width,
   };
+};
+
+type RenderItemFunction = (
+  props: GridCellProps & {
+    columnCount: number;
+    gridGapSize?: number;
+    groupLabel?: string;
+    items: GridItem[];
+  },
+) => JSX.Element;
+
+const SizedVirtualizedGrid = ({
+  columnCount,
+  columnWidth,
+  gridGapSize,
+  itemHeight,
+  items,
+  renderItem,
+  rowCount,
+  scrollElement,
+  width,
+}: {
+  items: GridItem[];
+  itemHeight: number;
+  renderItem: RenderItemFunction;
+  gridGapSize: number;
+  scrollElement?: HTMLElement;
+  width: number;
+  columnWidth: number;
+  columnCount: number;
+  rowCount: number;
+}): JSX.Element => {
+  const gridRef = useRef<VirtualizedGrid | null>(null);
+
+  useEffect(() => {
+    const recomputeGridSize = () => {
+      gridRef.current?.recomputeGridSize();
+    };
+    window.addEventListener("resize", recomputeGridSize);
+    return () => window.removeEventListener("resize", recomputeGridSize);
+  }, []);
+
+  return (
+    <WindowScroller scrollElement={scrollElement}>
+      {({ height, isScrolling, onChildScroll, scrollTop }) => (
+        <AutoSizer disableHeight>
+          {() => {
+            return (
+              <VirtualizedGrid
+                rowCount={rowCount}
+                columnCount={columnCount}
+                columnWidth={columnWidth}
+                width={width}
+                gap={gridGapSize}
+                ref={gridRef}
+                autoHeight
+                height={height}
+                rowHeight={itemHeight}
+                isScrolling={isScrolling}
+                scrollTop={scrollTop}
+                onScroll={onChildScroll}
+                cellRenderer={(props: GridCellProps) => {
+                  const fullProps = {
+                    ...props,
+                    items,
+                    columnCount,
+                  };
+                  return renderItem(fullProps);
+                }}
+              />
+            );
+          }}
+        </AutoSizer>
+      )}
+    </WindowScroller>
+  );
 };
