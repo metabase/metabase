@@ -4,6 +4,7 @@
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
@@ -11,7 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-v2 :as perms-v2]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -64,22 +64,21 @@
     (merge defaults table)))
 
 (defn- set-new-table-permissions!
-  [{:keys [db_id schema id]}]
+  [table]
   (let [all-users-group  (perms-group/all-users)
         non-magic-groups (perms-group/non-magic-groups)
         non-admin-groups (conj non-magic-groups all-users-group)]
     ;; Data access permissions
-    (perms-v2/set-permission! :data-access all-users-group :unrestricted id db_id schema)
-    (when (not-empty non-magic-groups)
-     (perms-v2/set-group-permissions! :data-access non-magic-groups :no-self-service id db_id schema))
-
+    (data-perms/set-table-permission! all-users-group table :data-access :unrestricted)
+    (doseq [group non-magic-groups]
+      (data-perms/set-table-permission! group table :data-access :no-self-service))
     ;; Download permissions
-    (perms-v2/set-permission! :download-results all-users-group :one-million-rows id db_id schema)
-    (when (not-empty non-magic-groups)
-     (perms-v2/set-group-permissions! :download-results non-magic-groups :no id db_id schema))
-
+    (data-perms/set-table-permission! all-users-group table :download-results :one-million-rows)
+    (doseq [group non-magic-groups]
+      (data-perms/set-table-permission! group table :download-results :no))
     ;; Table metadata management
-    (perms-v2/set-group-permissions! :manage-table-metadata non-admin-groups :no id db_id schema)))
+    (doseq [group non-admin-groups]
+      (data-perms/set-table-permission! group table :manage-table-metadata :no))))
 
 (t2/define-after-insert :model/Table
   [table]

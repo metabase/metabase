@@ -6,10 +6,10 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-v2 :as perms-v2]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -101,10 +101,11 @@
         non-magic-groups (perms-group/non-magic-groups)
         non-admin-groups (conj non-magic-groups all-users-group)]
     ;; All other permissions are set at the table-level, so they are added when individual tables are synced
-    (perms-v2/set-permission! :native-query-editing all-users-group :yes database)
-    (when (not-empty non-magic-groups)
-      (perms-v2/set-group-permissions! :native-query-editing non-magic-groups :no database))
-    (perms-v2/set-group-permissions! :manage-database non-admin-groups :no database)))
+    (data-perms/set-database-permission! all-users-group database :native-query-editing :yes)
+    (doseq [group non-magic-groups]
+      (data-perms/set-database-permission! group database :native-query-editing :no))
+    (doseq [group non-admin-groups]
+      (data-perms/set-database-permission! group database :manage-database :no))))
 
 (t2/define-after-insert :model/Database
   [database]

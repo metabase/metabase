@@ -8,10 +8,10 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models :refer [Database]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.permissions-v2 :as perms-v2]
    [metabase.models.secret :as secret :refer [Secret]]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.store :as qp.store]
@@ -44,21 +44,21 @@
                 {db-id
                  {:native-query-editing :yes
                   :manage-database      :no}}}
-               (perms-v2/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
+               (data-perms/data-permissions-graph :group-id all-users-group-id :db-id db-id))))
 
       ;; Other groups should have no DB-level perms
       (is (= {group-id
               {db-id
                {:native-query-editing :no
                 :manage-database      :no}}}
-             (perms-v2/data-permissions-graph :group-id group-id :db-id db-id))))))
+             (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
 
 (deftest cleanup-permissions-after-delete-db-test
   (mt/with-temp [:model/Database {db-id :id} {}]
-    (is (true? (t2/exists? :model/PermissionsV2 :db_id db-id)))
+    (is (true? (t2/exists? :model/DataPermissions :db_id db-id)))
     (t2/delete! :model/Database db-id)
     (testing "Table-level permissions are deleted when we delete the table"
-      (is (false? (t2/exists? :model/PermissionsV2 :db_id db-id))))))
+      (is (false? (t2/exists? :model/DataPermissions :db_id db-id))))))
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
