@@ -84,19 +84,19 @@ export function PeriodsAgoMenuOption({
   return (
     <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
       <Box onClick={() => onChange({ type, value }, true)}>
-        <Group position="apart" px="0.5rem">
-          <Text fw="bold">{`${value} ${name}`}</Text>
+        <Group spacing="sm" px="sm">
           <NumberInputStyled
-            ref={inputRef}
+            type="number"
             value={value}
             onChange={(value: number) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
             size="xs"
             w="3.5rem"
-            type="number"
             required
-          ></NumberInputStyled>
+            ref={inputRef}
+          />
+          <Text fw="bold">{name}</Text>
         </Group>
       </Box>
     </MenuItemStyled>

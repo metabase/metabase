@@ -188,7 +188,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
       .should("have.length", 2)
       .last()
       .click();
-    menu().findByText("2 months ago").click();
+    menu().findByText("months ago").click();
     cy.findAllByTestId("scalar-previous-value")
       .children()
       .should("have.length", 2)
