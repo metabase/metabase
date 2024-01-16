@@ -216,7 +216,7 @@
                                   {:result-metadata
                                    (->> (lib.metadata/fields metadata-provider table-id)
                                         (sort-by :id)
-                                        (mapv #(if native? (dissoc % :table-id :id) %)))}))])))
+                                        (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
         table-key-and-ids))
 
 (def mock-cards

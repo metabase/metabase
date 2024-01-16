@@ -17,7 +17,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       itemComponent: SelectItem,
       maxDropdownHeight: 512,
       clearButtonProps: {
-        color: "text.2",
+        color: "text-dark",
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
@@ -132,6 +132,10 @@ export const getSelectItemsOverrides = (
       "&[data-hovered]": {
         color: theme.fn.themeColor("brand"),
         backgroundColor: theme.fn.themeColor("brand-lighter"),
+      },
+      "&[data-selected]": {
+        color: theme.fn.themeColor("text-white"),
+        backgroundColor: theme.fn.themeColor("brand"),
       },
       "&[data-disabled]": {
         color: theme.fn.themeColor("text-light"),

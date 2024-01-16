@@ -137,7 +137,8 @@ class StructuredQuery extends AtomicQuery {
    * @returns true if we have metadata for the root source table loaded
    */
   hasMetadata(): boolean {
-    return this.metadata() != null && this.rootTable() != null;
+    const metadata = this.metadata();
+    return metadata != null && metadata.table(this._sourceTableId()) != null;
   }
 
   // Whether the user can modify and run this query
