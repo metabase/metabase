@@ -538,8 +538,16 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(t2/hydrate % :ordered_cards))
+  (eduction (map #(t2/hydrate % [:ordered_cards :series]))
             (serdes/extract-query-collections Dashboard opts)))
+
+(defn export-dashboard-card-series
+  "Given the hydrated `:series` of a DashboardCard, as a vector of maps, converts it to a portable form with
+  the card IDs replaced with their entity IDs."
+  [cards]
+  (mapv (fn [card]
+          {:card_id (serdes/*export-fk* (:id card) :model/Card)})
+        cards))
 
 (defn- extract-dashcard
   [dashcard]
@@ -548,6 +556,7 @@
       (update :card_id                serdes/*export-fk* 'Card)
       (update :action_id              serdes/*export-fk* 'Action)
       (update :dashboard_tab_id       serdes/*export-fk* :model/DashboardTab)
+      (update :series                 export-dashboard-card-series)
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))
 
@@ -559,7 +568,7 @@
   [_model-name _opts dash]
   (let [dash (cond-> dash
                (nil? (:ordered_cards dash))
-               (t2/hydrate :ordered_cards)
+               (t2/hydrate [:ordered_cards :series])
                (nil? (:ordered_tabs dash))
                (t2/hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
@@ -619,11 +628,12 @@
                         (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
 
 (defn- serdes-deps-dashcard
-  [{:keys [action_id card_id parameter_mappings visualization_settings]}]
+  [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
   (->> (mapcat serdes/mbql-deps parameter_mappings)
        (concat (serdes/visualization-settings-deps visualization_settings))
        (concat (when card_id   #{[{:model "Card"   :id card_id}]}))
        (concat (when action_id #{[{:model "Action" :id action_id}]}))
+       (concat (for [s series] [{:model "Card" :id (:card_id s)}]))
        set))
 
 (defmethod serdes/dependencies "Dashboard"
@@ -634,17 +644,21 @@
        (set/union (serdes/parameters-deps parameters))))
 
 (defmethod serdes/descendants "Dashboard" [_model-name id]
-  (let [dashcards (t2/select ['DashboardCard :card_id :action_id :parameter_mappings :visualization_settings]
+  (let [dashcards (t2/select ['DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
                              :dashboard_id id)
         dashboard (t2/select-one Dashboard :id id)]
     (set/union
       ;; DashboardCards are inlined into Dashboards, but we need to capture what those those DashboardCards rely on
-      ;; here. So their actions, and their cards both direct and mentioned in their parameters or viz settings.
+      ;; here. So their actions, and their cards both direct, mentioned in their parameters viz settings, and related
+      ;; via dashboard card series.
      (set (for [{:keys [card_id parameter_mappings]} dashcards
-                 ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
+                ;; Capture all card_ids in the parameters, plus this dashcard's card_id if non-nil.
                 card-id (cond-> (set (keep :card_id parameter_mappings))
                           card_id (conj card_id))]
             ["Card" card-id]))
+     (when (not-empty dashcards)
+       (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries :dashboardcard_id [:in (map :id dashcards)])]
+              ["Card" card-id])))
      (set (for [{:keys [action_id]} dashcards
                 :when action_id]
             ["Action" action_id]))

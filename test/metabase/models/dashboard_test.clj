@@ -966,4 +966,19 @@
                                                                     :target       [:dimension (mt/$ids $categories.name)]}]}]]
       (is (= #{["Card" (:id card1)]
                ["Card" (:id card2)]}
+             (serdes/descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard in which its dashcards have series"
+    (mt/with-temp* [Card                [card1 {:name "Card attached to dashcard"}]
+                    Card                [card2 {:name "Card attached to series in 1st position"}]
+                    Card                [card3 {:name "Card attached to series in 2nd position"}]
+                    Dashboard           [dashboard {:parameters [{:name "Category Name"
+                                                                   :slug "category_name"
+                                                                   :id   "_CATEGORY_NAME_"
+                                                                   :type "category"}]}]
+                    DashboardCard       [dashcard {:card_id (:id card1), :dashboard_id (:id dashboard)}]
+                    DashboardCardSeries [_ {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}]
+                    DashboardCardSeries [_ {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]]
+      (is (= (set (for [card [card1 card2 card3]]
+                    ["Card" (:id card)]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))
