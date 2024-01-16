@@ -48,7 +48,7 @@ const mapStateToProps = (state, props) => ({
   entities: getTableQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
-  metadata: getMetadata(state, props),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {

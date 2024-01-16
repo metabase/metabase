@@ -48,7 +48,7 @@ const emptyStateData = (table, metric, metadata) => {
 const mapStateToProps = (state, props) => ({
   metric: getMetric(state, props),
   table: getTable(state, props),
-  metadata: getMetadata(state, props),
+  metadata: getMetadata(state),
   entities: getMetricQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),

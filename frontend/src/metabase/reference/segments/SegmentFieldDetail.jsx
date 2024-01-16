@@ -71,7 +71,7 @@ const mapStateToProps = (state, props) => {
     foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
-    metadata: getMetadata(state, props),
+    metadata: getMetadata(state),
   };
 };
 

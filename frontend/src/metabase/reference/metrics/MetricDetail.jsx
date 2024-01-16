@@ -39,7 +39,7 @@ const mapStateToProps = (state, props) => {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
-    metadata: getMetadata(state, props),
+    metadata: getMetadata(state),
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
