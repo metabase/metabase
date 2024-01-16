@@ -1,14 +1,17 @@
 // Based on https://codesandbox.io/p/sandbox/react-virtualized-responsive-card-grid-7ry39g?file=%2Fsrc%2FVirtualizedGrid.tsx%3A1%2C1-120%2C1
 
-import { FC, useEffect, useRef } from "react";
-import {
+import type { FC } from "react";
+import { useEffect, useRef } from "react";
+import type {
   AutoSizerProps,
-  Grid as _Grid,
   GridCellProps,
   GridProps,
+  WindowScrollerProps,
+} from "react-virtualized";
+import {
+  Grid as _Grid,
   WindowScroller as _WindowScroller,
   AutoSizer as _AutoSizer,
-  WindowScrollerProps,
 } from "react-virtualized";
 
 const Grid = _Grid as unknown as FC<GridProps>;
@@ -19,7 +22,6 @@ export interface VirtualizedGridProps<ItemType> {
   items: ItemType[];
   itemHeight: number;
   renderItem: (props: VirtualizedGridItemProps<ItemType>) => JSX.Element;
-  numColumns?: number; // explicitly set number of columns
   gridGapSize: number;
   scrollElement?: HTMLElement;
   width: number;
@@ -29,6 +31,7 @@ export interface VirtualizedGridProps<ItemType> {
 }
 
 export interface VirtualizedGridItemProps<ItemType> extends GridCellProps {
+  rowIndex: number;
   items: ItemType[];
   columnCount: number;
   gridGapSize?: number;
@@ -91,28 +94,3 @@ export function VirtualizedGrid<ItemType>({
     </WindowScroller>
   );
 }
-
-// const useDimensions = () => {
-//   const [dimensions, setDimensions] = useState<{
-//     width: number | undefined;
-//     height: number | undefined;
-//   }>({
-//     width: undefined,
-//     height: undefined,
-//   });
-
-//   useEffect(() => {
-//     if (typeof window !== "undefined") {
-//       const handleResize = () => {
-//         setDimensions({
-//           width: window.innerWidth,
-//           height: window.innerHeight,
-//         });
-//       };
-//       window.addEventListener("resize", handleResize);
-//       handleResize();
-//       return () => window.removeEventListener("resize", handleResize);
-//     }
-//   }, []);
-//   return dimensions;
-// };
