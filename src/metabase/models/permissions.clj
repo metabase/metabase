@@ -176,6 +176,7 @@
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision
@@ -1288,6 +1289,7 @@
        (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
+        (data-perms.graph/update-data-perms-graph! new)
         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
         (delete-impersonations-if-needed-after-permissions-change! new)
         (delete-gtaps-if-needed-after-permissions-change! new)))))
