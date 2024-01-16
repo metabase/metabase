@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Component } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMount, usePrevious, useUnmount } from "react-use";
 import type { Route } from "react-router";
 import _ from "underscore";
 import type { Location } from "history";
@@ -173,168 +174,229 @@ interface DashboardProps {
   ) => void;
 }
 
-interface DashboardState {
-  error: unknown;
-  parametersListLength: number;
-  hasScroll: boolean;
-}
+function DashboardInner(props: DashboardProps) {
+  const {
+    addCardOnLoad,
+    addCardToDashboard,
+    addParameter,
+    cancelFetchDashboardCardData,
+    closeNavbar,
+    dashboard,
+    dashboardId,
+    draftParameterValues,
+    editingOnLoad,
+    editingParameter,
+    fetchDashboard,
+    fetchDashboardCardData,
+    fetchDashboardCardMetadata,
+    initialize,
+    isAutoApplyFilters,
+    isEditing,
+    isFullscreen,
+    isHeaderVisible,
+    isNavigatingBackToDashboard,
+    isNightMode,
+    isSharing,
+    loadDashboardParams,
+    location,
+    onRefreshPeriodChange,
+    parameterValues,
+    parameters,
+    selectedTabId,
+    setDashboardAttributes,
+    setEditingDashboard,
+    setEditingParameter,
+    setErrorPage,
+    setParameterIndex,
+    setParameterValue,
+    setSharing,
+    toggleSidebar,
+  } = props;
 
-class DashboardInner extends Component<DashboardProps, DashboardState> {
-  state = {
-    error: null,
-    parametersListLength: 0,
-    hasScroll: getMainElement()?.scrollTop > 0,
-  };
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
 
-  static defaultProps = {
-    isSharing: false,
-  };
+  const previousDashboard = usePrevious(dashboard);
+  const previousDashboardId = usePrevious(dashboardId);
+  const previousTabId = usePrevious(selectedTabId);
+  const previousParameterValues = usePrevious(parameterValues);
 
-  static getDerivedStateFromProps(
-    { parameters }: DashboardProps,
-    { parametersListLength }: DashboardState,
-  ) {
-    const visibleParameters = getVisibleParameters(parameters);
-    return visibleParameters.length !== parametersListLength
-      ? { parametersListLength: visibleParameters.length }
-      : null;
-  }
+  const visibleParameters = useMemo(
+    () => getVisibleParameters(parameters),
+    [parameters],
+  );
 
-  async componentDidMount() {
-    await this.loadDashboard(this.props.dashboardId);
-    getMainElement().addEventListener("scroll", this.onMainScroll, {
+  const tabHasCards = useMemo(() => {
+    if (!Array.isArray(dashboard?.dashcards)) {
+      return false;
+    }
+    const tabDashCards = dashboard.dashcards.filter(
+      dc => dc.dashboard_tab_id === selectedTabId,
+    );
+    return tabDashCards.length > 0;
+  }, [dashboard, selectedTabId]);
+
+  const canWrite = Boolean(dashboard?.can_write);
+  const dashboardHasCards = dashboard?.dashcards.length > 0;
+  const hasVisibleParameters = visibleParameters.length > 0;
+
+  const shouldRenderAsNightMode = isNightMode && isFullscreen;
+
+  const shouldRenderParametersWidgetInViewMode =
+    !isEditing && !isFullscreen && hasVisibleParameters;
+
+  const shouldRenderParametersWidgetInEditMode =
+    isEditing && hasVisibleParameters;
+
+  const handleSetDashboardAttribute = useCallback(
+    <Key extends keyof IDashboard>(attribute: Key, value: IDashboard[Key]) => {
+      setDashboardAttributes({
+        id: dashboard.id,
+        attributes: { [attribute]: value },
+      });
+    },
+    [dashboard, setDashboardAttributes],
+  );
+
+  const handleSetEditing = useCallback(
+    (dashboard: IDashboard) => {
+      onRefreshPeriodChange(null);
+      setEditingDashboard(dashboard);
+    },
+    [onRefreshPeriodChange, setEditingDashboard],
+  );
+
+  const handleAddQuestion = useCallback(() => {
+    handleSetEditing(dashboard);
+    toggleSidebar(SIDEBAR_NAME.addQuestion);
+  }, [dashboard, toggleSidebar, handleSetEditing]);
+
+  const handleToggleSharing = useCallback(() => {
+    setSharing(!isSharing);
+  }, [isSharing, setSharing]);
+
+  const handleLoadDashboard = useCallback(
+    async (dashboardId: DashboardId) => {
+      initialize({ clearCache: !isNavigatingBackToDashboard });
+
+      loadDashboardParams();
+
+      const result = await fetchDashboard({
+        dashId: dashboardId,
+        queryParams: location.query,
+        options: {
+          clearCache: !isNavigatingBackToDashboard,
+          preserveParameters: isNavigatingBackToDashboard,
+        },
+      });
+
+      if (result.error) {
+        setErrorPage(result.payload);
+        return;
+      }
+
+      try {
+        if (editingOnLoad) {
+          handleSetEditing(dashboard);
+        }
+        if (addCardOnLoad != null) {
+          addCardToDashboard({
+            dashId: dashboardId,
+            cardId: addCardOnLoad,
+            tabId: dashboard.tabs?.[0]?.id ?? null,
+          });
+        }
+      } catch (error) {
+        if (error instanceof Response && error.status === 404) {
+          setErrorPage({ ...error, context: "dashboard" });
+        } else {
+          console.error(error);
+          setError(error);
+        }
+      }
+    },
+    [
+      addCardOnLoad,
+      addCardToDashboard,
+      dashboard,
+      editingOnLoad,
+      fetchDashboard,
+      handleSetEditing,
+      initialize,
+      isNavigatingBackToDashboard,
+      loadDashboardParams,
+      location.query,
+      setErrorPage,
+    ],
+  );
+
+  useMount(() => {
+    handleLoadDashboard(dashboardId).then(() => {
+      setIsInitialized(true);
+    });
+  });
+
+  useEffect(() => {
+    if (!isInitialized) {
+      return;
+    }
+
+    const node = getMainElement();
+
+    const handleScroll = (event: any) => {
+      setHasScroll(event.target.scrollTop > 0);
+    };
+
+    node.addEventListener("scroll", handleScroll, {
       capture: false,
       passive: true,
     });
-  }
 
-  async componentDidUpdate(prevProps: DashboardProps) {
-    if (prevProps.dashboardId !== this.props.dashboardId) {
-      await this.loadDashboard(this.props.dashboardId);
-      return;
+    return () => node.removeEventListener("scroll", handleScroll);
+  }, [isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized && !previousDashboard && dashboard) {
+      fetchDashboardCardData({ reload: false, clearCache: true });
     }
+  }, [dashboard, fetchDashboardCardData, isInitialized, previousDashboard]);
 
-    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
-      this.props.fetchDashboardCardData();
-      this.props.fetchDashboardCardMetadata();
-      return;
+  useEffect(() => {
+    if (isInitialized && previousDashboardId !== dashboardId) {
+      handleLoadDashboard(dashboardId);
     }
+  }, [dashboardId, handleLoadDashboard, isInitialized, previousDashboardId]);
 
-    if (
-      !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      (!prevProps.dashboard && this.props.dashboard)
-    ) {
-      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
+  useEffect(() => {
+    if (isInitialized && previousTabId !== selectedTabId) {
+      fetchDashboardCardData();
+      fetchDashboardCardMetadata();
     }
-  }
+  }, [
+    fetchDashboardCardData,
+    fetchDashboardCardMetadata,
+    isInitialized,
+    previousTabId,
+    selectedTabId,
+  ]);
 
-  componentWillUnmount() {
-    this.props.cancelFetchDashboardCardData();
-    getMainElement().removeEventListener("scroll", this.onMainScroll);
-  }
-
-  async loadDashboard(dashboardId: DashboardId) {
-    const {
-      editingOnLoad,
-      addCardOnLoad,
-      addCardToDashboard,
-      fetchDashboard,
-      initialize,
-      loadDashboardParams,
-      location,
-      setErrorPage,
-      isNavigatingBackToDashboard,
-    } = this.props;
-
-    initialize({ clearCache: !isNavigatingBackToDashboard });
-
-    loadDashboardParams();
-
-    const result = await fetchDashboard({
-      dashId: dashboardId,
-      queryParams: location.query,
-      options: {
-        clearCache: !isNavigatingBackToDashboard,
-        preserveParameters: isNavigatingBackToDashboard,
-      },
-    });
-
-    if (result.error) {
-      setErrorPage(result.payload);
-      return;
+  useEffect(() => {
+    if (isInitialized && !_.isEqual(previousParameterValues, parameterValues)) {
+      fetchDashboardCardData({ reload: false, clearCache: true });
     }
+  }, [
+    fetchDashboardCardData,
+    isInitialized,
+    parameterValues,
+    previousParameterValues,
+  ]);
 
-    try {
-      if (editingOnLoad) {
-        this.setEditing(this.props.dashboard);
-      }
-      if (addCardOnLoad != null) {
-        addCardToDashboard({
-          dashId: dashboardId,
-          cardId: addCardOnLoad,
-          tabId: this.props.dashboard.tabs?.[0]?.id ?? null,
-        });
-      }
-    } catch (error) {
-      if (error instanceof Response && error.status === 404) {
-        setErrorPage({ ...error, context: "dashboard" });
-      } else {
-        console.error(error);
-        this.setState({ error });
-      }
-    }
-  }
+  useUnmount(() => {
+    cancelFetchDashboardCardData();
+  });
 
-  setEditing = (dashboard: IDashboard) => {
-    this.props.onRefreshPeriodChange(null);
-    this.props.setEditingDashboard(dashboard);
-  };
-
-  setDashboardAttribute = <Key extends keyof IDashboard>(
-    attribute: Key,
-    value: IDashboard[Key],
-  ) => {
-    this.props.setDashboardAttributes({
-      id: this.props.dashboard.id,
-      attributes: { [attribute]: value },
-    });
-  };
-
-  onCancel = () => {
-    this.props.setSharing(false);
-  };
-
-  onSharingClick = () => {
-    this.props.setSharing(!this.props.isSharing);
-  };
-
-  onAddQuestion = () => {
-    const { dashboard } = this.props;
-    this.setEditing(dashboard);
-    this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
-  };
-
-  onMainScroll = (event: Event) => {
-    if (event.target instanceof HTMLElement) {
-      this.setState({ hasScroll: event.target.scrollTop > 0 });
-    }
-  };
-
-  renderContent = () => {
-    const { dashboard, selectedTabId, isNightMode, isFullscreen } = this.props;
-
-    const canWrite = dashboard?.can_write ?? false;
-
-    const dashboardHasCards = dashboard?.dashcards.length > 0 ?? false;
-
-    const tabHasCards =
-      dashboard?.dashcards.filter(
-        c =>
-          selectedTabId !== undefined && c.dashboard_tab_id === selectedTabId,
-      ).length > 0 ?? false;
-
-    const shouldRenderAsNightMode = isNightMode && isFullscreen;
-
+  const renderContent = () => {
     if (!dashboardHasCards && !canWrite) {
       return (
         <DashboardEmptyStateWithoutAddPrompt
@@ -347,8 +409,8 @@ class DashboardInner extends Component<DashboardProps, DashboardState> {
         <DashboardEmptyState
           dashboard={dashboard}
           isNightMode={shouldRenderAsNightMode}
-          addQuestion={this.onAddQuestion}
-          closeNavbar={this.props.closeNavbar}
+          addQuestion={handleAddQuestion}
+          closeNavbar={closeNavbar}
         />
       );
     }
@@ -361,137 +423,103 @@ class DashboardInner extends Component<DashboardProps, DashboardState> {
     }
     return (
       <DashboardGridConnected
-        {...this.props}
-        dashboard={this.props.dashboard}
+        {...props}
         isNightMode={shouldRenderAsNightMode}
-        onEditingChange={this.setEditing}
+        onEditingChange={handleSetEditing}
       />
     );
   };
 
-  render() {
-    const {
-      addParameter,
-      dashboard,
-      isEditing,
-      isFullscreen,
-      isNightMode,
-      isSharing,
-      parameters,
-      parameterValues,
-      draftParameterValues,
-      editingParameter,
-      setParameterValue,
-      setParameterIndex,
-      setEditingParameter,
-      isHeaderVisible,
-      isAutoApplyFilters,
-    } = this.props;
+  const parametersWidget = (
+    <SyncedParametersList
+      parameters={getValuePopulatedParameters(
+        parameters,
+        isAutoApplyFilters ? parameterValues : draftParameterValues,
+      )}
+      editingParameter={editingParameter}
+      dashboard={dashboard}
+      isFullscreen={isFullscreen}
+      isNightMode={shouldRenderAsNightMode}
+      isEditing={isEditing}
+      setParameterValue={setParameterValue}
+      setParameterIndex={setParameterIndex}
+      setEditingParameter={setEditingParameter}
+    />
+  );
 
-    const { error, parametersListLength, hasScroll } = this.state;
-
-    const shouldRenderAsNightMode = isNightMode && isFullscreen;
-
-    const visibleParameters = getVisibleParameters(parameters);
-    const hasVisibleParameters = visibleParameters.length > 0;
-
-    const parametersWidget = (
-      <SyncedParametersList
-        parameters={getValuePopulatedParameters(
-          parameters,
-          isAutoApplyFilters ? parameterValues : draftParameterValues,
-        )}
-        editingParameter={editingParameter}
-        dashboard={dashboard}
-        isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
-        isEditing={isEditing}
-        setParameterValue={setParameterValue}
-        setParameterIndex={setParameterIndex}
-        setEditingParameter={setEditingParameter}
-      />
-    );
-
-    const shouldRenderParametersWidgetInViewMode =
-      !isEditing && !isFullscreen && hasVisibleParameters;
-
-    const shouldRenderParametersWidgetInEditMode =
-      isEditing && hasVisibleParameters;
-
-    return (
-      <DashboardLoadingAndErrorWrapper
-        isFullHeight={isEditing || isSharing}
-        isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
-        loading={!dashboard}
-        error={error}
-      >
-        {() => (
-          <DashboardStyled>
-            {isHeaderVisible && (
-              <DashboardHeaderContainer
-                isFullscreen={isFullscreen}
-                isNightMode={shouldRenderAsNightMode}
-              >
-                <DashboardHeader
-                  {...this.props}
-                  onEditingChange={this.setEditing}
-                  setDashboardAttribute={this.setDashboardAttribute}
-                  addParameter={addParameter}
-                  parametersWidget={parametersWidget}
-                  onSharingClick={this.onSharingClick}
-                />
-
-                {shouldRenderParametersWidgetInEditMode && (
-                  <ParametersWidgetContainer
-                    data-testid="edit-dashboard-parameters-widget-container"
-                    isEditing={!!isEditing}
-                    hasScroll={false}
-                    isSticky={false}
-                  >
-                    {parametersWidget}
-                  </ParametersWidgetContainer>
-                )}
-              </DashboardHeaderContainer>
-            )}
-
-            <DashboardBody isEditingOrSharing={isEditing || isSharing}>
-              <ParametersAndCardsContainer
-                data-testid="dashboard-parameters-and-cards"
-                shouldMakeDashboardHeaderStickyAfterScrolling={
-                  !isFullscreen && (isEditing || isSharing)
-                }
-              >
-                {shouldRenderParametersWidgetInViewMode && (
-                  <ParametersWidgetContainer
-                    data-testid="dashboard-parameters-widget-container"
-                    isEditing={false}
-                    hasScroll={hasScroll}
-                    isSticky={isParametersWidgetContainersSticky(
-                      parametersListLength,
-                    )}
-                  >
-                    {parametersWidget}
-                    <FilterApplyButton />
-                  </ParametersWidgetContainer>
-                )}
-
-                <CardsContainer id="Dashboard-Cards-Container">
-                  {this.renderContent()}
-                </CardsContainer>
-              </ParametersAndCardsContainer>
-
-              <DashboardSidebars
-                {...this.props}
-                onCancel={this.onCancel}
-                setDashboardAttribute={this.setDashboardAttribute}
+  return (
+    <DashboardLoadingAndErrorWrapper
+      isFullHeight={isEditing || isSharing}
+      isFullscreen={isFullscreen}
+      isNightMode={shouldRenderAsNightMode}
+      loading={!dashboard}
+      error={error}
+    >
+      {() => (
+        <DashboardStyled>
+          {isHeaderVisible && (
+            <DashboardHeaderContainer
+              isFullscreen={isFullscreen}
+              isNightMode={shouldRenderAsNightMode}
+            >
+              <DashboardHeader
+                {...props}
+                onEditingChange={handleSetEditing}
+                setDashboardAttribute={handleSetDashboardAttribute}
+                addParameter={addParameter}
+                parametersWidget={parametersWidget}
+                onSharingClick={handleToggleSharing}
               />
-            </DashboardBody>
-          </DashboardStyled>
-        )}
-      </DashboardLoadingAndErrorWrapper>
-    );
-  }
+
+              {shouldRenderParametersWidgetInEditMode && (
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  isEditing={!!isEditing}
+                  hasScroll={false}
+                  isSticky={false}
+                >
+                  {parametersWidget}
+                </ParametersWidgetContainer>
+              )}
+            </DashboardHeaderContainer>
+          )}
+
+          <DashboardBody isEditingOrSharing={isEditing || isSharing}>
+            <ParametersAndCardsContainer
+              data-testid="dashboard-parameters-and-cards"
+              shouldMakeDashboardHeaderStickyAfterScrolling={
+                !isFullscreen && (isEditing || isSharing)
+              }
+            >
+              {shouldRenderParametersWidgetInViewMode && (
+                <ParametersWidgetContainer
+                  data-testid="dashboard-parameters-widget-container"
+                  isEditing={false}
+                  hasScroll={hasScroll}
+                  isSticky={isParametersWidgetContainersSticky(
+                    visibleParameters.length,
+                  )}
+                >
+                  {parametersWidget}
+                  <FilterApplyButton />
+                </ParametersWidgetContainer>
+              )}
+
+              <CardsContainer id="Dashboard-Cards-Container">
+                {renderContent()}
+              </CardsContainer>
+            </ParametersAndCardsContainer>
+
+            <DashboardSidebars
+              {...props}
+              setDashboardAttribute={handleSetDashboardAttribute}
+              onCancel={() => setSharing(false)}
+            />
+          </DashboardBody>
+        </DashboardStyled>
+      )}
+    </DashboardLoadingAndErrorWrapper>
+  );
 }
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
