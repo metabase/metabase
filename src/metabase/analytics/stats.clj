@@ -124,15 +124,17 @@
     (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
     :else                                    :unknown))
 
+(def ^:private ui-colors [:brand :filter :summarize])
+
 (defn appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
-  (boolean (seq (select-keys (public-settings/application-colors) [:brand :filter :summarize]))))
+  (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
 
 (defn appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
-  (boolean (seq (dissoc (public-settings/application-colors) :brand :filter :summarize))))
+  (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
 
 (defn- instance-settings
   "Figure out global info about this instance"
