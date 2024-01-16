@@ -308,9 +308,8 @@
     (or (clojure.core/isa? column-type :type/Text)
         (clojure.core/isa? column-type :type/TextLike))))
 
-(defn ^:export assignable?
-  "Given two CLJS `:metadata/columns` returns true if the first column's type `[[lib.types.isa/isa?]]` subtype of the
-  second column's type. That is, that a value from `src-column` is assignable to `dst-column`.
+(defn valid-filter-for?
+  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`.
 
   That's the case if both are from the same family (strings, numbers, temporal) or if the `src-column` [[isa?]] subtype
   of `dst-column`."
