@@ -406,12 +406,32 @@
                                    :from   [[(qp.store/with-metadata-provider (u/the-id database)
                                                (sql.qp/->honeysql driver table))]]}))
 
+(defn- show-command-sql
+  "Execute the SHOW command and returns a reducible result."
+  ;; IMPORTANT: prefer using this command over using the JDBC `.getTables` method because the jdbc is buggy
+  ;; it works sometimes but other times randomly.
+  ;; we have tried to use it but people reported that some schemas disappear on their instances.
+  ;; See https://discourse.metabase.com/t/snowflake-broken-in-0-48-1/63849
+  [object-type & {:keys [like database schema]}]
+  (cond-> [(format "SHOW %s" object-type)]
+    (some? like)
+    (conj (format "LIKE %s" like))
+
+    (or database schema)
+    (conj "IN")
+
+    (some? database)
+    (conj (format "DATABASE %s" database))
+
+    (some? schema)
+    (conj (format "SCHEMA %s" schema))))
+
 (defmethod driver/describe-database :snowflake
   [driver database]
   (let [db-name          (db-name database)
         excluded-schemas (set (sql-jdbc.sync/excluded-schemas driver))]
     (qp.store/with-metadata-provider (u/the-id database)
-      (let [sql             (format "SHOW OBJECTS IN DATABASE \"%s\"" db-name)
+      (let [sql             (show-command-sql "OBJECTS" :database db-name)
             schema-patterns (driver.s/db-details->schema-filter-patterns "schema-filters" database)
             [inclusion-patterns exclusion-patterns] schema-patterns]
         (sql-jdbc.execute/do-with-connection-with-options
@@ -420,9 +440,6 @@
          nil
          (fn [^Connection conn]
            (log/tracef "[Snowflake] %s" sql)
-           ;; IMPORTANT: using the JDBC `.getTables` method is buggy -- it works sometimes but other times randomly
-           ;; we have tried to use it but people reported that some schemas disappear on their instances.
-           ;; See https://discourse.metabase.com/t/snowflake-broken-in-0-48-1/63849
            {:tables  (into
                       #{}
                       (comp (filter (fn [{schema :schema_name, table-name :name}]
@@ -479,9 +496,12 @@
                (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))
      (catch SnowflakeSQLException e
        ;; dynamic tables doesn't support pks so it's fine to suppress the exception
-       (if (= "DYNAMIC_TABLE"
-              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
-                  jdbc/result-set-seq first :table_type))
+       (if (some?
+            (first (jdbc/query {:connection conn}
+                               (show-command-sql
+                                "DYNAMIC TABLES"
+                                :database db-name-or-nil :schema schema-name
+                                :like table-name))))
          []
          (throw e))))))
 
@@ -505,9 +525,11 @@
                                                    :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))
      (catch SnowflakeSQLException e
        ;; dynamic tables doesn't support kks so it's fine to suppress the exception
-       (if (= "DYNAMIC_TABLE"
-              (-> (.getTables metadata db-name-or-nil schema-name table-name nil)
-                  jdbc/result-set-seq first :table_type))
+       (if (some?
+            (first (jdbc/query {:connection conn}
+                               (show-command-sql
+                                "DYNAMIC TABLES"
+                                :database db-name-or-nil :schema schema-name))))
          #{}
          (throw e))))))
 
