@@ -96,7 +96,8 @@
                          :appearance_metabot_greeting         false
                          :apparerance_lighthouse_illustration false
                          :appearance_ui_colors                false
-                         :appearance_chart_colors             false}
+                         :appearance_chart_colors             false
+                         :appearance_show_mb_links            false}
                         stats))
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
@@ -117,7 +118,8 @@
                                          loading-message              :running-query
                                          show-metabot                 false
                                          show-lighthouse-illustration false
-                                         application-colors           {:brand "#123456"}]
+                                         application-colors           {:brand "#123456"}
+                                         show-metabase-links          false]
         (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
           (let [stats (anonymous-usage-stats)]
             (is (partial= {:running_on               :unknown
@@ -138,7 +140,8 @@
                            :appearance_metabot_greeting         true
                            :apparerance_lighthouse_illustration true
                            :appearance_ui_colors                true
-                           :appearance_chart_colors             false}
+                           :appearance_chart_colors             false
+                           :appearance_show_mb_links            true}
                           stats))
             (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                         (-> stats :stats :database :dbms_versions)))))))))

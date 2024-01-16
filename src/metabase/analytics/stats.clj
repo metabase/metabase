@@ -160,7 +160,8 @@
    :appearance_metabot_greeting         (not (public-settings/show-metabot))
    :apparerance_lighthouse_illustration (not (public-settings/show-lighthouse-illustration))
    :appearance_ui_colors                (appearance-ui-colors-changed?)
-   :appearance_chart_colors             (appearance-chart-colors-changed?)})
+   :appearance_chart_colors             (appearance-chart-colors-changed?)
+   :appearance_show_mb_links            (not (public-settings/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
