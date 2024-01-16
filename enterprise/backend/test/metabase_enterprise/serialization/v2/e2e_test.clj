@@ -642,9 +642,18 @@
            :model/Card {c3-id :id :as c3} {:name "Series Question B", :collection_id coll-id}
            :model/Dashboard {dash-id :id :as dash} {:name "Shared Dashboard", :collection_id coll-id}
            :model/DashboardCard {dc1-id :id} {:card_id c1-id, :dashboard_id dash-id}
-           :model/DashboardCard _dc2 {:card_id c2-id, :dashboard_id dash-id}
+           :model/DashboardCard {dc2-id :id} {:card_id c2-id, :dashboard_id dash-id}
            :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
            :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+          (testing "sense check what hydrated dashcards look like on the source DB"
+            (let [hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+                                         (t2/hydrate [:dashcards :series])
+                                         :dashcards
+                                         (->> (m/index-by :id)))]
+              (is (=? {dc1-id {:series [{:id c2-id}
+                                        {:id c3-id}]}
+                       dc2-id {:series []}}
+                      hydrated-dashcards))))
           (testing "extract and store"
             (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
               (storage/store! (seq extraction) dump-dir)))
@@ -659,21 +668,20 @@
                       new-c3-id  (t2/select-one-pk :model/Card :name (:name c3))
                       new-dc1-id (t2/select-one-pk :model/DashboardCard :card_id new-c1-id)
                       new-dc2-id (t2/select-one-pk :model/DashboardCard :card_id new-c2-id)
-                      hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
-                                             (t2/hydrate [:dashcards :series])
-                                             :dashcards
-                                             (->> (m/index-by :id)))]
+                      new-hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+                                                 (t2/hydrate [:dashcards :series])
+                                                 :dashcards
+                                                 (->> (m/index-by :id)))]
                   (is (some? new-c1-id))
                   (is (some? new-c2-id))
                   (is (some? new-c3-id))
                   (is (some? new-dc1-id))
                   (is (some? new-dc2-id))
                   (testing "Series hydrate on the dashboard correctly"
-                    (is (= [new-c2-id new-c3-id]
-                           (->> (get-in hydrated-dashcards [new-dc1-id :series])
-                                (map :id))))
-                    (is (= []
-                           (get-in hydrated-dashcards [new-dc2-id :series])))))))))))))
+                    (is (=? {new-dc1-id {:series [{:id new-c2-id}
+                                                  {:id new-c3-id}]}
+                             new-dc2-id {:series []}}
+                            new-hydrated-dashcards))))))))))))
 
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
