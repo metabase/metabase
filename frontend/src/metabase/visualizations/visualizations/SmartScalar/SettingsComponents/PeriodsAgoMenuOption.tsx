@@ -1,5 +1,6 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
+import { t } from "ttag";
 import { Group, Text, Box } from "metabase/ui";
 import type { SmartScalarComparisonPeriodsAgo } from "metabase-types/api";
 import type { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
@@ -28,12 +29,16 @@ export function PeriodsAgoMenuOption({
   onChange,
   type,
 }: PeriodsAgoMenuOptionProps) {
+  const [message, setMessage] = useState<string | null>(null);
+
   // utilities for blurring and selecting the input whenever
   // validation fails so that the user can easily re-enter a valid value
   const inputRef = useRef<HTMLInputElement>(null);
+
   const selectInput = useCallback(() => {
     inputRef.current?.select();
   }, [inputRef]);
+
   const reSelectInput = useCallback(() => {
     inputRef.current?.blur();
     setTimeout(() => selectInput(), 0);
@@ -42,6 +47,10 @@ export function PeriodsAgoMenuOption({
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
     (value: number) => {
+      if (message) {
+        setMessage(null);
+      }
+
       if (value < 1) {
         onChange({ type, value: MIN_VALUE });
         reSelectInput();
@@ -50,6 +59,9 @@ export function PeriodsAgoMenuOption({
 
       if (value > maxValue) {
         onChange({ type, value: maxValue });
+        setMessage(
+          t`${value} is beyond the date range. Auto-adjusted to the max.`,
+        );
         reSelectInput();
         return;
       }
@@ -62,7 +74,7 @@ export function PeriodsAgoMenuOption({
 
       onChange({ type, value });
     },
-    [maxValue, onChange, reSelectInput, type],
+    [maxValue, message, onChange, reSelectInput, type],
   );
 
   const handleInputEnter = useCallback(
@@ -83,8 +95,8 @@ export function PeriodsAgoMenuOption({
 
   return (
     <MenuItemStyled py="0.25rem" aria-selected={isSelected}>
-      <Box onClick={() => onChange({ type, value }, true)}>
-        <Group spacing="sm" px="sm">
+      <Box px="sm" onClick={() => onChange({ type, value }, true)}>
+        <Group spacing="sm">
           <NumberInputStyled
             type="number"
             value={value}
@@ -98,6 +110,11 @@ export function PeriodsAgoMenuOption({
           />
           <Text fw="bold">{name}</Text>
         </Group>
+        {!!message && (
+          <Text size="xs" color="text-light" mt="xs">
+            {message}
+          </Text>
+        )}
       </Box>
     </MenuItemStyled>
   );

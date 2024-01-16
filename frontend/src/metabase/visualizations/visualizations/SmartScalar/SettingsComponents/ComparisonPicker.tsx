@@ -172,9 +172,7 @@ export function ComparisonPicker({
         </ComparisonPickerButton>
       </Menu.Target>
 
-      <Menu.Dropdown miw="18.25rem">
-        {renderMenuDropdownContent()}
-      </Menu.Dropdown>
+      <Menu.Dropdown miw="21.5rem">{renderMenuDropdownContent()}</Menu.Dropdown>
     </Menu>
   );
 }
