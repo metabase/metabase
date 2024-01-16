@@ -29,9 +29,9 @@ const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
       </NodeListTitleText>
     </NodeListTitle>
     {fields.map(field => {
-      // @ts-expect-error field.icon() cannot be annotated to return IconName
+      // field.icon() cannot be annotated to return IconName
       // because metabase-lib cannot import from metabase.
-      const iconName: IconName = field.icon();
+      const iconName = field.icon() as IconName;
       const tooltip = iconName === "unknown" ? t`Unknown type` : null;
       return (
         <li key={field.getUniqueId()}>

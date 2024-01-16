@@ -1,7 +1,8 @@
 import _ from "underscore";
 import { t } from "ttag";
 
-import type React from "react";
+import type React, { ReactNode } from "react";
+
 import { useState } from "react";
 import { Button, TextInput, Icon } from "metabase/ui";
 
@@ -40,7 +41,7 @@ interface MappingEditorProps {
   keyPlaceholder?: string;
   valuePlaceholder?: string;
   renderKeyInput?: (input: DefaultRenderInputProps) => JSX.Element;
-  renderValueInput?: (input: DefaultRenderInputProps) => JSX.Element;
+  renderValueInput?: (input: DefaultRenderInputProps) => ReactNode;
   divider?: JSX.Element;
   canAdd?: boolean;
   canDelete?: boolean;

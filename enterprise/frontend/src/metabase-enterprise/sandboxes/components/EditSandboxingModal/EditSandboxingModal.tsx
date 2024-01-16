@@ -143,7 +143,6 @@ const EditSandboxingModal = ({
             <div className="pb2">
               {t`Pick a saved question that returns the custom view of this table that these users should see.`}
             </div>
-            {/* TODO: remove maxHeight if not needed */}
             <QuestionPicker
               maxHeight={undefined}
               value={policy.card_id}

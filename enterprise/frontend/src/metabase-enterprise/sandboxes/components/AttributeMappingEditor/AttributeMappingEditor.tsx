@@ -56,7 +56,6 @@ const AttributeMappingEditor = ({
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
-    // @ts-expect-error type is incorrect
     renderValueInput={({ value, onChange }) =>
       !shouldUseSavedQuestion && policy.table_id != null ? (
         <div style={{ minWidth: 200 }}>
