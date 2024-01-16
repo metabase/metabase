@@ -166,7 +166,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: [["count"]],
+          aggregation: [["count", null]],
         }),
       );
     });
@@ -200,7 +200,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           display: "bar",
           breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-          aggregation: [["count"]],
+          aggregation: [["count", null]],
         }),
       );
     });
@@ -219,7 +219,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           display: "pie",
           breakout: [["field", fieldId, { "base-type": "type/Text" }]],
-          aggregation: [["count"]],
+          aggregation: [["count", null]],
         }),
       );
     });
@@ -282,7 +282,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: [["count"]],
+          aggregation: [["count", null]],
           filter: ["segment", segmentId],
         }),
       );
