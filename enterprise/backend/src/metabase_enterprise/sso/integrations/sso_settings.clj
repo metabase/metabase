@@ -26,6 +26,7 @@
 (defsetting user-provisioning-enabled?
   (deferred-tru "When we enable user provisioning, we automatically create a Metabase account on signin for users who
 don''t have one.")
+  :type    :boolean
   :default true
   :feature :public
   :audit   :getter)
