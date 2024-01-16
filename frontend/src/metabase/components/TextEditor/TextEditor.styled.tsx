@@ -104,7 +104,6 @@ export const TextEditorRoot = styled.div`
 
     opacity: 0.3;
     background: ${color("accent4")};
-    mix-blend-mode: multiply;
   }
 
   .highlighted-code-marker-row-number {
@@ -116,7 +115,6 @@ export const TextEditorRoot = styled.div`
 
     opacity: 0.3;
     background: ${color("accent5")};
-    mix-blend-mode: multiply;
   }
 
   .highlighted-code-marker-row-number-accent {

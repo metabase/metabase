@@ -12,7 +12,7 @@ import type {
   EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
-import { Stack } from "metabase/ui";
+import { Box, Center, Stack } from "metabase/ui";
 
 import { DEFAULT_DISPLAY_OPTIONS } from "./config";
 import { CodeSample } from "./CodeSample";
@@ -88,7 +88,7 @@ export const EmbedCodePane = ({
   }
 
   if (variant === "parameters") {
-    const hasCodeDiff =
+    const hasParametersCodeDiff =
       !_.isEqual(initialPreviewParameters, params) &&
       selectedServerCodeOption.parametersSource !==
         getEmbedServerCodeExampleOptions({
@@ -106,7 +106,7 @@ export const EmbedCodePane = ({
         <CodeSample
           dataTestId="embed-backend"
           title={
-            hasCodeDiff
+            hasParametersCodeDiff
               ? t`In addition to publishing changes, update the params in the payload, like this:`
               : undefined
           }
@@ -115,7 +115,7 @@ export const EmbedCodePane = ({
           source={selectedServerCodeOption.source}
           textHighlightMode={selectedServerCodeOption.mode}
           highlightedText={selectedServerCodeOption.parametersSource}
-          isHighlightedTextAccent={hasCodeDiff}
+          isHighlightedTextAccent={hasParametersCodeDiff}
           onChangeOption={setSelectedServerCodeOptionName}
         />
       </div>
@@ -123,20 +123,25 @@ export const EmbedCodePane = ({
   }
 
   if (variant === "appearance") {
-    const hasCodeDiff = !_.isEqual(DEFAULT_DISPLAY_OPTIONS, displayOptions);
+    const hasAppearanceCodeDiff = !_.isEqual(
+      DEFAULT_DISPLAY_OPTIONS,
+      displayOptions,
+    );
     return (
       <div className={className}>
         <CodeSample
           dataTestId="embed-backend"
           title={
-            hasCodeDiff ? t`Here’s the code you’ll need to alter:` : undefined
+            hasAppearanceCodeDiff
+              ? t`Here’s the code you’ll need to alter:`
+              : undefined
           }
           selectedOptionName={selectedServerCodeOptionName}
           languageOptions={serverCodeOptions.map(({ name }) => name)}
           source={selectedServerCodeOption.source}
           textHighlightMode={selectedServerCodeOption.mode}
           highlightedText={selectedServerCodeOption.iframeUrlSource}
-          isHighlightedTextAccent={hasCodeDiff}
+          isHighlightedTextAccent={hasAppearanceCodeDiff}
           onChangeOption={setSelectedServerCodeOptionName}
         />
       </div>
@@ -165,16 +170,18 @@ export const EmbedCodePane = ({
       />
 
       {withExamplesLink && (
-        <div className="text-centered mb2 mt2">
-          <h4>{jt`More ${(
-            <ExternalLink
-              key="examples"
-              href="https://github.com/metabase/embedding-reference-apps"
-            >
-              {t`examples on GitHub`}
-            </ExternalLink>
-          )}`}</h4>
-        </div>
+        <Box my="1rem">
+          <Center>
+            <h4>{jt`More ${(
+              <ExternalLink
+                key="examples"
+                href="https://github.com/metabase/embedding-reference-apps"
+              >
+                {t`examples on GitHub`}
+              </ExternalLink>
+            )}`}</h4>
+          </Center>
+        </Box>
       )}
     </Stack>
   );
