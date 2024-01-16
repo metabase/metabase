@@ -42,6 +42,7 @@ import type {
   SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
+  QueryDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
@@ -143,6 +144,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  queryInfo: Query,
+): QueryDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
