@@ -1192,7 +1192,9 @@
 
 (defsetting exported-setting
   "This setting would be serialized"
-  :export? true)
+  :export? true
+  ;; make sure it's internal so it doesn't interfere with export test
+  :visibility :internal)
 
 (defsetting non-exported-setting
   "This setting would not be serialized"
@@ -1203,15 +1205,8 @@
     (is (#'setting/export? :exported-setting))
     (is (not (#'setting/export? :non-exported-setting))))
 
-  (testing "Fallback to using a globally defined list"
-    (binding [setting/*exported-settings* #{'test-setting-1}]
-      (is (#'setting/export? :test-setting-1))
-      (is (not (#'setting/export? :test-setting-3)))
-      (is (not (#'setting/export? :non-existent-setting)))))
-
-  (testing "The explicit property takes precedence over the deprecated var"
-    (binding [setting/*exported-settings* #{:non-exported-setting}]
-      (is (not (#'setting/export? :non-exported-setting))))))
+  (testing "By default settings are not exported"
+    (is (not (#'setting/export? :test-setting-1)))))
 
 (deftest realize-throwing-test
   (testing "The realize function ensures all nested lazy values are calculated"

@@ -54,6 +54,7 @@
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
+  :export?    true
   :audit      :getter
   :setter
   (fn [new-value]
@@ -63,6 +64,7 @@
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
   :doc        false)
@@ -70,6 +72,7 @@
 (defsetting report-timezone-long
   "Current report timezone string"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
