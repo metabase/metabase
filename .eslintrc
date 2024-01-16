@@ -74,6 +74,7 @@
       }
     ],
     "no-console": [2, { "allow": ["warn", "error"] }],
+    "no-unconditional-metabase-links-render": "error",
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
