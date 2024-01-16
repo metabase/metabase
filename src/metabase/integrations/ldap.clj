@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-ldap.client :as ldap]
+   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase.config :as config]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -10,8 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils])
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.unboundid.ldap.sdk DN LDAPConnectionPool LDAPException)))
 
