@@ -1,11 +1,12 @@
 import _ from "underscore";
 
-import { startNewCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
+import * as Lib from "metabase-lib";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils";
-
 import { FieldDimension } from "metabase-lib/Dimension";
+import Question from "metabase-lib/Question";
 
 import {
   getCard,
@@ -56,13 +57,34 @@ export const followForeignKey = createThunkAction(
         return false;
       }
 
-      const newCard = startNewCard("query", card.dataset_query.database);
-
-      newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-      newCard.dataset_query.query.filter = getFilterForFK(objectId, fk);
+      const metadata = getMetadata(getState());
+      const databaseId = new Question(card, metadata).databaseId();
+      const tableId = fk.origin.table.id;
+      const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+      const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+      const query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+      const stageIndex = -1;
+      const column = Lib.fromLegacyColumn(query, stageIndex, fk.origin);
+      const filterClause =
+        typeof objectId === "number"
+          ? Lib.numberFilterClause({
+              operator: "=",
+              column,
+              values: [objectId],
+            })
+          : Lib.stringFilterClause({
+              operator: "=",
+              column,
+              values: [objectId],
+              options: {},
+            });
+      const queryWithFilter = Lib.filter(query, stageIndex, filterClause);
+      const question = Question.create({ databaseId, metadata }).setQuery(
+        queryWithFilter,
+      );
 
       dispatch(resetRowZoom());
-      dispatch(setCardAndRun(newCard));
+      dispatch(setCardAndRun(question.card()));
     };
   },
 );
