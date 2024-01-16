@@ -1119,7 +1119,7 @@
              series3s      (ts/create! :model/DashboardCardSeries :dashboardcard_id (:id dashcard1s) :card_id (:id series-card3s) :position 2)
              extract1      (into [] (serdes.extract/extract {}))]
          (ts/with-dest-db
-           (serdes.load/load-metabase! (ingestion-in-memory extract1))
+           (serdes.load/load-metabase (ingestion-in-memory extract1))
            (ts/with-source-db
              ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
              (t2/delete! :model/DashboardCardSeries (:id series1s))
@@ -1134,7 +1134,7 @@
                    (testing "Sense check: there are 3 series for the dashboard card initially"
                      (is (= 3
                             (t2/count :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted)))))
-                   (serdes.load/load-metabase! (ingestion-in-memory extract2))
+                   (serdes.load/load-metabase (ingestion-in-memory extract2))
                    (let [dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
                                     (t2/hydrate [:dashcards :series]))]
                      (testing "Dashboard cards have the same entity ID"

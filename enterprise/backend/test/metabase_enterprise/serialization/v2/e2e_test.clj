@@ -652,7 +652,7 @@
           (testing "ingest and load"
             (ts/with-dest-db
               (testing "doing ingestion"
-                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                     "successful"))
               (testing "Series are loaded correctly"
                 (let [new-dc1-id (t2/select-one-pk :model/DashboardCard :card_id (:id c1))
