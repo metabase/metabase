@@ -38,6 +38,9 @@ const Container = styled.div`
     height: unset !important;
   }
 
+  // Not sure if this is needed
+  overflow: hidden;
+
   .ReactVirtualized__Grid,
   .ReactVirtualized__Grid__innerScrollContainer {
     overflow: visible !important;
@@ -51,16 +54,19 @@ export function VirtualizedGrid<ItemType>({
   itemMinWidth,
   numColumns,
   gridGapSize,
-  scrollElement
+  scrollElement,
 }: VirtualizedGridProps<ItemType>): JSX.Element {
   const gridRef = useRef<any>(null);
   const containerRef = useRef<any>(null);
 
- // FIXME: Remove this number
-  const containerWidth = containerRef?.current?.clientWidth || 1000;
+  // FIXME: Remove this number
+  const containerWidth = containerRef?.current?.clientWidth || 800;
+  console.log('containerRef?.current', containerRef?.current);
 
   useEffect(() => {
-    const recomputeGridSize = () => gridRef.current?.recomputeGridSize();
+    const recomputeGridSize = () => {
+      gridRef.current?.recomputeGridSize();
+    };
     window.addEventListener("resize", recomputeGridSize);
     return () => window.removeEventListener("resize", recomputeGridSize);
   }, []);
@@ -75,9 +81,7 @@ export function VirtualizedGrid<ItemType>({
 
   return (
     <Container ref={containerRef}>
-      <WindowScroller
-        scrollElement={scrollElement}
-      >
+      <WindowScroller scrollElement={scrollElement}>
         {({ height, isScrolling, onChildScroll, scrollTop }) => (
           <AutoSizer disableHeight>
             {() => {
@@ -87,6 +91,7 @@ export function VirtualizedGrid<ItemType>({
               const itemWidth = calculateItemWidth(containerWidth, columnCount);
               return (
                 <Grid
+                  gap={gridGapSize}
                   ref={gridRef}
                   autoHeight
                   columnCount={columnCount}
