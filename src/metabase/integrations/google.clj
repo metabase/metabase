@@ -122,13 +122,13 @@
             (not= last-name (:last_name user)))
     (t2/update! :model/User (:id user) {:first_name first-name
                                         :last_name  last-name}))
-  (dissoc user :first_name :last_name))
+  (assoc user :first_name first-name :last_name last-name))
 
 (mu/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
   [first-name last-name email]
   (let [existing-user (t2/select-one [User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
     (if existing-user
-      (update-google-user! existing-user first-name last-name)
+      (maybe-update-google-user! existing-user first-name last-name)
       (google-auth-create-new-user! {:first_name first-name
                                      :last_name  last-name
                                      :email      email}))))
