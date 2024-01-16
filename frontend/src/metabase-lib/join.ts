@@ -243,6 +243,9 @@ export type PickerInfo = {
   isModel?: boolean;
 };
 
+/**
+ * Returns `null` when the joined table/card isn't available, e.g. due to sandboxing.
+ */
 export function pickerInfo(
   query: Query,
   metadata: Joinable,
