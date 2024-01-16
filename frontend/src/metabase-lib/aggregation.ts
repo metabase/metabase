@@ -48,8 +48,8 @@ export function aggregateByCount(query: Query): Query {
     return query;
   }
 
-  const aggregationclause = aggregationClause(countOperator);
-  return aggregate(query, stageIndex, aggregationclause);
+  const aggregation = aggregationClause(countOperator);
+  return aggregate(query, stageIndex, aggregation);
 }
 
 export function aggregations(
