@@ -59,6 +59,11 @@ export const getQuestion = ({
 }) => {
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+
+  if (!table) {
+    return Question.create({ databaseId, metadata }).card();
+  }
+
   let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
 
   if (getCount) {
