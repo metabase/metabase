@@ -59,7 +59,7 @@ To delete an API Key:
 
 ## Example `GET` requests
 
-Here are some example `GET` requests the return the groups in your Metabase.
+Here are some example `GET` requests that return the groups in your Metabase. These examples assume you're running Metabase locally on the default port: 3000.
 
 ### `curl` example
 
@@ -79,27 +79,27 @@ Assuming you've set your key as an environment variable like so:
 export METABASE_API_KEY="YOUR_API_KEY"
 ```
 
-Here's a basic `GET` request using `fetch`:
+Here's a basic `GET` request using `fetch`. You can copy the code, save it as file (e.g., as `api-test.js`), and run the code with `node api-test.js`.
 
 ```js
+// Set in process with `export METABASE_API_KEY="YOUR_KEY_HERE"`
 const API_KEY = process.env.METABASE_API_KEY;
 
 const init = {
   headers: {
     "Content-Type": "application/json",
-    "X-API-KEY": API_KEY,
+    "X-API-KEY": API_KEY
   },
 };
 
 const host = "http://127.0.0.1:3000"
 
-
-async function getGroups(url = "") {
+async function getGroups() {
     const response = await fetch(`${host}/api/permissions/group`, init);
     return response.json();
 };
 
-getGroups().then(resp => console.log("Response", resp));
+getGroups().then(resp => console.log("Response:", resp));
 ```
 
 ## Further reading
