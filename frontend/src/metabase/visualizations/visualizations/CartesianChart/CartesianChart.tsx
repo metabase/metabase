@@ -33,6 +33,7 @@ import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
+import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall2/model";
 
 export function CartesianChart({
   rawSeries,
@@ -81,7 +82,10 @@ export function CartesianChart({
   );
 
   const chartModel = useMemo(
-    () => getCartesianChartModel(seriesToRender, settings, renderingContext),
+    () =>
+      seriesToRender[0].card.display === "waterfall"
+        ? getWaterfallChartModel(seriesToRender, settings, renderingContext)
+        : getCartesianChartModel(seriesToRender, settings, renderingContext),
     [seriesToRender, renderingContext, settings],
   );
 

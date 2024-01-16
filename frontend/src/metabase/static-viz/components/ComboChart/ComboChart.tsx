@@ -8,6 +8,7 @@ import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/
 import { calculateLegendRows } from "../Legend/utils";
 import { Legend } from "../Legend";
 import { computeStaticComboChartSettings } from "./settings";
+import { getWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall2/model";
 
 const WIDTH = 540;
 const HEIGHT = 360;
@@ -33,13 +34,18 @@ export const ComboChart = ({
     renderingContext,
   );
 
-  console.log(JSON.stringify(rawSeries));
-
-  const chartModel = getCartesianChartModel(
-    rawSeries,
-    computedVisualizationSettings,
-    renderingContext,
-  );
+  const chartModel =
+    rawSeries[0].card.display === "waterfall"
+      ? getWaterfallChartModel(
+          rawSeries,
+          computedVisualizationSettings,
+          renderingContext,
+        )
+      : getCartesianChartModel(
+          rawSeries,
+          computedVisualizationSettings,
+          renderingContext,
+        );
 
   const legendItems = getLegendItems(chartModel);
   const { height: legendHeight, items: legendLayoutItems } =

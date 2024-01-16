@@ -24,9 +24,36 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 import { getObjectValues } from "metabase/lib/objects";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
-import { buildEChartsWaterfallSeries } from "../waterfall/series";
-import type { WaterfallChartModel } from "../waterfall/types";
 import { getSeriesYAxisIndex } from "./utils";
+import { buildEChartsWaterfallSeries } from "metabase/visualizations/echarts/cartesian/waterfall2/option";
+
+export function getBarLabelLayout(
+  dataKey: DataKey,
+  dataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+) {
+  return params => {
+    const { dataIndex, rect } = params;
+    if (dataIndex == null) {
+      return {};
+    }
+
+    const labelValue = dataset[dataIndex][dataKey];
+    if (typeof labelValue !== "number") {
+      return {};
+    }
+
+    const barHeight = rect.height;
+    const labelOffset =
+      barHeight / 2 +
+      CHART_STYLE.seriesLabels.size / 2 +
+      CHART_STYLE.seriesLabels.offset;
+    return {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+      dy: labelValue < 0 ? labelOffset : -labelOffset,
+    };
+  };
+}
 
 export function getDataLabelFormatter(
   seriesModel: SeriesModel,
@@ -123,27 +150,7 @@ const buildEChartsBarSeries = (
       renderingContext,
       settings["graph.show_values"] && settings["stackable.stack_type"] == null,
     ),
-    labelLayout: params => {
-      const { dataIndex, rect } = params;
-      if (dataIndex == null) {
-        return {};
-      }
-
-      const labelValue = dataset[dataIndex][seriesModel.dataKey];
-      if (typeof labelValue !== "number") {
-        return {};
-      }
-
-      const barHeight = rect.height;
-      const labelOffset =
-        barHeight / 2 +
-        CHART_STYLE.seriesLabels.size / 2 +
-        CHART_STYLE.seriesLabels.offset;
-      return {
-        hideOverlap: settings["graph.label_value_frequency"] === "fit",
-        dy: labelValue < 0 ? labelOffset : -labelOffset,
-      };
-    },
+    labelLayout: getBarLabelLayout(seriesModel.dataKey, dataset, settings),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -383,9 +390,12 @@ export const buildEChartsSeries = (
         case "waterfall":
           return buildEChartsWaterfallSeries(
             seriesModel,
-            chartModel.dataset,
+            chartModel.transformedDataset,
             settings,
-            (chartModel as WaterfallChartModel).total, // TODO remove the typecast later after refactoring
+            chartModel.dimensionModel.dataKey,
+            yAxisIndex,
+            barSeriesCount,
+            hasMultipleSeries,
             renderingContext,
           );
       }
