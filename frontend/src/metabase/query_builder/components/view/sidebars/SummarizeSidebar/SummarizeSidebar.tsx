@@ -163,9 +163,9 @@ function getQuery(query: Lib.Query, isDefaultAggregationRemoved: boolean) {
   const shouldAddDefaultAggregation =
     !hasAggregations && !isDefaultAggregationRemoved;
 
-  if (shouldAddDefaultAggregation) {
-    return Lib.aggregateByCount(query);
+  if (!shouldAddDefaultAggregation) {
+    return query;
   }
 
-  return query;
+  return Lib.aggregateByCount(query);
 }
