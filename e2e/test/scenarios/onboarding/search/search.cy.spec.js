@@ -210,7 +210,7 @@ describe("scenarios > search", () => {
         .should("not.exist");
     });
 
-    it("should not dismiss when a dashboard finishes loading (#35009)", () => {
+    it("should not dismiss when a dashboard finishes loading (metabase#35009)", () => {
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
       // Type as soon as possible, before the dashboard has finished loading
@@ -218,6 +218,35 @@ describe("scenarios > search", () => {
 
       // Once the dashboard is visible, the search results should not be dismissed
       main().findByRole("heading", { name: "Loading..." }).should("not.exist");
+      cy.findByTestId("search-results-floating-container").should("exist");
+    });
+
+    it("should not dismiss when the homepage redirects to a dashboard (metabase#34226)", () => {
+      cy.request("PUT", "/api/setting/custom-homepage", { value: true });
+      cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
+        value: ORDERS_DASHBOARD_ID,
+      });
+      cy.intercept(
+        {
+          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
+          method: "GET",
+          middleware: true,
+        },
+        req => {
+          req.continue(res => {
+            res.delay = 1000;
+            res.send();
+          });
+        },
+      );
+      cy.visit(`/`);
+
+      // Type as soon as possible, before the dashboard has finished loading
+      getSearchBar().type("ord");
+
+      // Once the dashboard is visible, the search results should not be dismissed
+      cy.findByTestId("dashboard-parameters-and-cards").should("exist");
+
       cy.findByTestId("search-results-floating-container").should("exist");
     });
   });
