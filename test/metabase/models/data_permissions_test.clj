@@ -47,16 +47,15 @@
                  :model/Database         {database-id :id} {}]
     (with-restored-perms-for-group! group-id
       (testing "`set-database-permission!` correctly updates an individual database's permissions"
-        (data-perms/set-database-permission! group-id database-id :native-query-editing :yes)
-        (is (= :yes (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil)))
         (data-perms/set-database-permission! group-id database-id :native-query-editing :no)
-        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil))))
+        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :native-query-editing)))
+        (data-perms/set-database-permission! group-id database-id :native-query-editing :yes)
+        (is (= :yes (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :native-query-editing))))
 
-      (testing "A non database-level permission cannot be set"
-        (is (thrown-with-msg?
-             ExceptionInfo
-             #"Permission type :data-access cannot be set on databases."
-             (data-perms/set-database-permission! group-id database-id :data-access :unrestricted))))
+      (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :block"
+        (data-perms/set-database-permission! group-id database-id :data-access :block)
+        (is (= :block (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :data-access)))
+        (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :type :native-query-editing))))
 
       (testing "A database-level permission cannot be set to an invalid value"
         (is (thrown-with-msg?
@@ -64,52 +63,68 @@
              #"Permission type :native-query-editing cannot be set to :invalid-value"
              (data-perms/set-database-permission! group-id database-id :native-query-editing :invalid-value)))))))
 
-(deftest set-table-permission!-test
-  (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
-                 :model/Database         {database-id :id} {}
-                 :model/Table            {table-id-1 :id}  {:db_id database-id}
-                 :model/Table            {table-id-2 :id}  {:db_id database-id}
-                 :model/Table            {table-id-3 :id}  {:db_id database-id}]
+(deftest set-table-permissions!-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
+                 :model/Database         {database-id :id}   {}
+                 :model/Database         {database-id-2 :id} {}
+                 :model/Table            {table-id-1 :id
+                                          :as table-1}       {:db_id database-id}
+                 :model/Table            {table-id-2 :id}    {:db_id database-id}
+                 :model/Table            {table-id-3 :id}    {:db_id database-id}
+                 :model/Table            {table-id-4 :id}    {:db_id database-id-2}]
     (with-restored-perms-for-group! group-id
-      (testing "`set-table-permission!` can set individual table permissions to different values"
-        (data-perms/set-table-permission! group-id table-id-1 :data-access :unrestricted)
-        (data-perms/set-table-permission! group-id table-id-2 :data-access :no-self-service)
-        (data-perms/set-table-permission! group-id table-id-3 :data-access :unrestricted)
-        (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-1)))
-        (is (= :no-self-service (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-2)))
-        (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-3))))
+      (testing "`set-table-permissions!` can set individual table permissions to different values"
+        (data-perms/set-table-permissions! group-id :data-access {table-id-1 :no-self-service
+                                                                  table-id-2 :unrestricted
+                                                                  table-id-3 :no-self-service})
+        (is (= :no-self-service (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-1)))
+        (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-2)))
+        (is (= :no-self-service (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-3))))
+
+      (testing "`set-table-permissions!` can set individual table permissions passed in as the full tables"
+        (data-perms/set-table-permissions! group-id :data-access {table-1 :unrestricted})
+        (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-1))))
 
       (testing "`set-table-permission!` coalesces table perms to a DB-level value if they're all the same"
-        (data-perms/set-table-permission! group-id table-id-2 :data-access :unrestricted)
-        (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil)))
+        (data-perms/set-table-permissions! group-id :data-access {table-id-1 :no-self-service
+                                                                  table-id-2 :no-self-service})
+        (is (= :no-self-service (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil)))
         (is (nil? (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-1)))
         (is (nil? (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-2)))
         (is (nil? (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-3))))
 
-      (testing "`set-table-permission!` breaks table perms out again if one is modified"
-        (data-perms/set-table-permission! group-id table-id-1 :data-access :no-self-service)
+      (testing "`set-table-permission!` breaks table perms out again if any are modified"
+        (data-perms/set-table-permissions! group-id :data-access {table-id-2 :unrestricted
+                                                                  table-id-3 :no-self-service})
         (is (nil? (t2/select-one-fn :perm_value :model/DataPermissions :db_id database-id :table_id nil)))
         (is (= :no-self-service (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-1)))
         (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-2)))
-        (is (= :unrestricted (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-3))))
+        (is (= :no-self-service (t2/select-one-fn :perm_value :model/DataPermissions :table_id table-id-3))))
 
       (testing "A non table-level permission cannot be set"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Permission type :native-query-editing cannot be set on tables."
-             (data-perms/set-table-permission! group-id table-id-1 :native-query-editing :yes))))
+             (data-perms/set-table-permissions! group-id :native-query-editing {table-id-1 :yes}))))
 
       (testing "A table-level permission cannot be set to an invalid value"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Permission type :data-access cannot be set to :invalid"
-             (data-perms/set-table-permission! group-id table-id-1 :data-access :invalid))))
+             (data-perms/set-table-permissions! group-id :data-access {table-id-1 :invalid}))))
 
       (testing "A table-level permission cannot be set to :block"
         (is (thrown-with-msg?
              ExceptionInfo
              #"Block permissions must be set at the database-level only."
-             (data-perms/set-table-permission! group-id table-id-1 :data-access :block))))
+             (data-perms/set-table-permissions! group-id :data-access {table-id-1 :block}))))
+
+      (testing "Table-level permissions can only be set in bulk for tables in the same database"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"All tables must belong to the same database."
+             (data-perms/set-table-permissions! group-id :data-access {table-id-3 :unrestricted
+                                                                       table-id-4 :unrestricted}))))
 
       (testing "Setting block permissions at the database level clears table-level data access perms"
         (data-perms/set-database-permission! group-id database-id :data-access :block)
