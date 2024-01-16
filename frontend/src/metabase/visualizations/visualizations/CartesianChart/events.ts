@@ -319,7 +319,9 @@ export const getBrushData = (
   if (range) {
     const column = chartModel.dimensionModel.column;
     const card = rawSeries[0].card;
-    const query = new Question(card).query();
+    const query = new Question(card).legacyQuery({
+      useStructuredQuery: true,
+    });
     const [start, end] = range;
     if (isTimeSeries) {
       return {
