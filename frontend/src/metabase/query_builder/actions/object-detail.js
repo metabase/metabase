@@ -121,7 +121,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         const query = filterByFk(aggregatedQuery, fk.origin, objectId);
         const finalCard = Question.create({ databaseId, metadata })
           .setQuery(query)
-          .card();
+          .datasetQuery();
 
         const info = { status: 0, value: null };
 
