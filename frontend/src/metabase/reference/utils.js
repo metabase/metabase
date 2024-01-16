@@ -86,6 +86,11 @@ export const getQuestion = ({
 function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
   const stageIndex = -1;
   const field = metadata.field(fieldId);
+
+  if (!field) {
+    return query;
+  }
+
   const column = Lib.fromLegacyColumn(query, stageIndex, field);
 
   if (!column) {
