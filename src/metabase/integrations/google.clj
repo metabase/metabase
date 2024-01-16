@@ -115,7 +115,7 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(defn- update-google-user!
+(defn- maybe-update-google-user!
   "Update google user if the first or list name changed."
   [user first-name last-name]
   (when (or (not= first-name (:first_name user))
