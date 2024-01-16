@@ -51,9 +51,9 @@
    * http://clojuremongodb.info/articles/deleting.html
    * http://clojuremongodb.info/articles/aggregation.html"
   (:refer-clojure :exclude [find remove count drop distinct empty? any? update])
-  (:import [com.mongodb Mongo DB DBCollection WriteResult DBObject WriteConcern
-            DBCursor MapReduceCommand MapReduceCommand$OutputType AggregationOutput
-            AggregationOptions AggregationOptions$OutputMode]
+  (:import [com.mongodb #_Mongo DB DBCollection WriteResult DBObject WriteConcern
+            DBCursor #_MapReduceCommand #_MapReduceCommand$OutputType #_AggregationOutput
+            #_AggregationOptions #_AggregationOptions$OutputMode]
            [java.util List Map]
            [java.util.concurrent TimeUnit]
            [clojure.lang IPersistentMap ISeq]
@@ -525,14 +525,15 @@
 ;;
 
 (defn- build-aggregation-options
-  ^AggregationOptions
+;;   ^AggregationOptions
   [{:keys [^Boolean allow-disk-use cursor ^Long max-time]}]
-  (cond-> (AggregationOptions/builder)
+  #_(cond-> (AggregationOptions/builder)
      allow-disk-use       (.allowDiskUse allow-disk-use)
      cursor               (.outputMode AggregationOptions$OutputMode/CURSOR)
      max-time             (.maxTime max-time TimeUnit/MILLISECONDS)
      (:batch-size cursor) (.batchSize (int (:batch-size cursor)))
-     true                 .build))
+     true                 .build)
+  nil)
 
 (defn aggregate
   "Executes an aggregation query. MongoDB 2.2+ only.
