@@ -5,9 +5,10 @@
  * - The max number of results shown in /api/search is 1000 (I believe, due to https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/search/config.clj#L30-L32 and https://github.com/metabase/metabase/blob/672b07e900b8291fe205bb0e929e7730f32416a2/src/metabase/api/search.clj#L471). To definitely retrieve all the models, would it make sense to poll continually, increasing the offset by 1000, until a page with fewer than 1000 results is returned?
  * */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
+import styled from "@emotion/styled";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 
@@ -28,6 +29,8 @@ import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastE
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import NoResults from "assets/img/no_results.svg";
+import type { VirtualizedGridItemProps } from "metabase/components/VirtualizedGrid/VirtualizedGrid";
+import { VirtualizedGrid } from "metabase/components/VirtualizedGrid/VirtualizedGrid";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import {
   DatabaseCard,
@@ -36,11 +39,6 @@ import {
   LastEditedInfoSeparator,
   ModelCard,
 } from "./BrowseData.styled";
-import {
-  VirtualizedGrid,
-  VirtualizedGridItemProps,
-} from "metabase/components/VirtualizedGrid/VirtualizedGrid";
-import styled from "@emotion/styled";
 
 interface BrowseDataTab {
   label: string;
@@ -66,38 +64,6 @@ export const BrowseDataPage = () => {
     reload: true,
   });
 
-  const gridItems: GridItem[] = useMemo(() => {
-    // For testing, increase the number of models
-    if (models.length) {
-      for (let i = 0; i < 99; i++) {
-        const pushMe = _.clone(models[i]);
-        pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
-        pushMe.name += ` (${i})`;
-        models.push(pushMe);
-      }
-    }
-
-    // Sort models by (in descending order of priority): collection name, collection id, model name, model id.
-    const modelsWithEditInfo: Model[] = models.map(
-      (model: ModelWithoutEditInfo) => {
-        const lastEditInfo = {
-          full_name: model.last_editor_common_name ?? model.creator_common_name,
-          timestamp: model.last_edited_at ?? model.created_at,
-        };
-        const item: Model = {
-          ...model,
-          "last-edit-info": lastEditInfo,
-        };
-        return item;
-      },
-    );
-    const sortedModels = modelsWithEditInfo.sort(sortModels);
-    const modelsWithHeaders = addCellsForGroupHeaders(sortedModels);
-    return modelsWithHeaders;
-  }, [models.length]);
-
-  console.log("gridItems.length", gridItems.length);
-
   const {
     data: databases = [],
     error: errorLoadingDatabases,
@@ -111,7 +77,7 @@ export const BrowseDataPage = () => {
       label: t`Models`,
       component: (
         <ModelsTab
-          items={gridItems}
+          models={models}
           isLoading={isModelListLoading}
           error={errorLoadingModels}
         />
@@ -180,40 +146,31 @@ export const BrowseDataPage = () => {
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
 const ModelsTab = ({
-  items,
+  models,
   error,
   isLoading,
 }: {
-  /* The objects used to construct the grid. Most of these are models but there are some header objects added in too, in the right places. These are used to generate the headers */
-  items: GridItem[];
+  models: ModelWithoutEditInfo[];
   isLoading: boolean;
   error: unknown;
 }) => {
-  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const gridGapSize = 16;
+  const itemMinWidth = 240; // TODO: replace magic number
+  const itemHeight = 160; // TODO: replace magic number?
 
   useEffect(() => {
-    const handleResize = () => {
-      if (gridContainerRef?.current) {
-        // TODO: use a ref
-        const width = document.querySelector("[data-testid='browse-data']")?.clientWidth ?? 0;
-        console.log('container width set to', width);
-        const columnCount = calculateColumnCount(width);
-        const rowCount = Math.ceil(items.length / columnCount);
-        const columnWidth = calculateItemWidth(width, columnCount);
-        setGridOptions({
-          width,
-          columnWidth,
-          columnCount,
-          rowCount,
-        });
-      }
+    // TODO: Is a browser font size change a resize?
+    const configureGrid = () => {
+      const gridOptions = getGridOptions(models, gridGapSize, itemMinWidth);
+      setGridOptions(gridOptions);
     };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [gridContainerRef?.current]);
+    configureGrid();
+    window.addEventListener("resize", configureGrid);
+    return () => window.removeEventListener("resize", configureGrid);
+  }, [models]);
 
   const [gridOptions, setGridOptions] = useState<{
+    gridItems: GridItem[];
     width: number;
     columnWidth: number;
     columnCount: number;
@@ -223,58 +180,55 @@ const ModelsTab = ({
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
-  if (isLoading) {
-    return <LoadingAndErrorWrapper loading />;
+  if (isLoading || !gridOptions) {
+    return (
+      <GridContainer>
+        <LoadingAndErrorWrapper loading />
+      </GridContainer>
+    );
   }
-  const gridGapSize = 16;
 
-  const renderItem = (props: VirtualizedGridItemProps<GridItem>) => {
-    const { rowIndex, columnIndex, columnCount, items } = props;
+  const renderItem = ({
+    rowIndex,
+    columnIndex,
+    columnCount,
+    items,
+    style,
+  }: VirtualizedGridItemProps<GridItem>) => {
     const index = rowIndex * columnCount + columnIndex;
     const item = items[index];
-    if (!item) return <></>; // TODO: This is a workaround because sometimes item is undefined, see if you can remove this
+    if (!item) {
+      return <div style={style}></div>;
+    }
     if (gridItemIsGroupHeader(item)) {
       return (
         <ModelGroupHeader
-          {...(props as VirtualizedGridItemProps<HeaderGridItem>)}
-          groupLabel={`${item.collection?.name || "Untitled collection"} (${
-            item.collection?.id ?? "no id"
-          })`}
-          gridGapSize={gridGapSize}
+          groupLabel={item.collection?.name || "Untitled collection"}
+          style={style}
         />
       );
     } else {
       return (
         <ModelCell
-          {...(props as VirtualizedGridItemProps<Model>)}
-          gridGapSize={gridGapSize}
+          rowIndex={rowIndex}
+          columnIndex={columnIndex}
+          columnCount={columnCount}
+          items={items as Model[]}
+          style={style}
         />
       );
     }
   };
 
-  const itemMinWidth = 240; // TODO: replace magic number
-  const itemHeight = 160; // TODO: replace magic number?
-
-  const calculateColumnCount = (width: number) => {
-    return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
-  };
-
-  const calculateItemWidth = (width: number, columnCount: number) => {
-    return width / columnCount;
-  };
-
-  console.log('gridOptions.width', gridOptions?.width);
-
   return (
-    <GridContainer ref={gridContainerRef}>
-      {items.length && gridOptions ? (
+    <GridContainer>
+      {gridOptions?.gridItems.length ? (
         <VirtualizedGrid
           width={gridOptions.width}
           columnWidth={gridOptions.columnWidth}
           columnCount={gridOptions.columnCount}
           rowCount={gridOptions.rowCount}
-          items={items}
+          items={gridOptions.gridItems}
           itemHeight={itemHeight}
           gridGapSize={gridGapSize}
           renderItem={renderItem}
@@ -299,11 +253,19 @@ const GridContainer = styled.div`
     height: unset !important;
   }
 
-  overflow: hidden ! important;
+  overflow: hidden !important;
 
   .ReactVirtualized__Grid,
   .ReactVirtualized__Grid__innerScrollContainer {
     overflow: visible !important;
+  }
+
+  .model-group-header {
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-end;
+    padding-bottom: 1rem;
   }
 `;
 
@@ -349,60 +311,24 @@ const DatabasesTab = ({
   );
 };
 
-// const ModelGroup = ({
-//   collectionName,
-//   models,
-//   includeDivider = true,
-// }: {
-//   collectionName: string;
-//   models: Model[];
-//   includeDivider?: boolean;
-// }) => {
-//   return (
-//     <>
-//       {includeDivider && <Divider />}
-//       <div
-//         style={{
-//           padding: "1rem 0",
-//           flexFlow: "column nowrap",
-//           width: "100%",
-//           display: "flex",
-//         }}
-//       >
-//         <h4 style={{ width: "100%" }}>{collectionName}</h4>
-//         <ModelGroupGrid>
-//           {/* TODO: Type the `model` var*/}
-//           {models.map((model: any) => {
-//             // If there is no information about the last edit,
-//             // use the timestamp of the creation
-//             const lastEditInfo = {
-//               full_name:
-//                 model.last_editor_common_name ?? model.creator_common_name,
-//               timestamp: model.last_edited_at ?? model.created_at,
-//             };
-//             const item: CollectionItemWithLastEditedInfo = {
-//               ...model,
-//               "last-edit-info": lastEditInfo,
-//             };
-//             return <ModelItem model={item}/>
-//           })}
-//         </ModelGroupGrid>
-//       </div>
-//     </>
-//   );
-// };
-
-const ModelCell = (props: VirtualizedGridItemProps<Model>) => {
-  const { rowIndex, columnIndex, columnCount, items: models, style } = props;
+const ModelCell = ({
+  rowIndex,
+  columnIndex,
+  columnCount,
+  items: models,
+  style,
+}: {
+  rowIndex: number;
+  columnIndex: number;
+  columnCount: number;
+  items: Model[];
+  style: React.CSSProperties;
+}) => {
   const index = rowIndex * columnCount + columnIndex;
-  if (index >= models.length) return null;
-  const model = models[index];
-
-  // TODO: temporary workaround
-  if (!model) {
-    console.log("model is undefined");
+  if (index >= models.length) {
     return null;
   }
+  const model = models[index];
   return (
     <div key={model.id} style={{ ...style, paddingRight: "16px" }}>
       <Link
@@ -484,43 +410,81 @@ const sortModels = (a: Model, b: Model) => {
   const collectionNameA = a.collection?.name || sortLast;
   const collectionNameB = b.collection?.name || sortLast;
 
-  if (collectionNameA < collectionNameB) return -1;
-  if (collectionNameA > collectionNameB) return 1;
+  if (collectionNameA < collectionNameB) {
+    return -1;
+  }
+  if (collectionNameA > collectionNameB) {
+    return 1;
+  }
 
   // If the two models' parent collections have the same name, sort on the id of the collection
   const collectionIdA = a.collection?.id ?? sortLast;
   const collectionIdB = b.collection?.id ?? sortLast;
 
-  if (collectionIdA < collectionIdB) return -1;
-  if (collectionIdA > collectionIdB) return 1;
+  if (collectionIdA < collectionIdB) {
+    return -1;
+  }
+  if (collectionIdA > collectionIdB) {
+    return 1;
+  }
 
   // If the two collection ids are the same, sort on the names of the models
-  if (nameA < nameB) return -1;
-  if (nameA > nameB) return 1;
+  if (nameA < nameB) {
+    return -1;
+  }
+  if (nameA > nameB) {
+    return 1;
+  }
 
   // If the two models have the same name, sort on id
   const idA = a.id ?? sortLast;
   const idB = b.id ?? sortLast;
 
-  if (idA < idB) return -1;
-  if (idA > idB) return 1;
+  if (idA < idB) {
+    return -1;
+  }
+  if (idA > idB) {
+    return 1;
+  }
 
   return 0;
 };
 
-const ModelGroupHeader = (props: VirtualizedGridItemProps<HeaderGridItem>) => {
-  const { groupLabel, style } = props;
-  return <div style={style}>{groupLabel}</div>;
+const ModelGroupHeader = ({
+  groupLabel,
+  style,
+}: {
+  groupLabel: string;
+  style: React.CSSProperties;
+}) => {
+  return (
+    <div className="model-group-header" style={{ ...style, width: "100%" }}>
+      <h4>{groupLabel}</h4>
+    </div>
+  );
 };
 
 interface HeaderGridItem {
   collection: Collection | null | undefined;
 }
-type GridItem = Model | HeaderGridItem;
 
-const addCellsForGroupHeaders = (models: Model[]): GridItem[] => {
-  const modelsWithHeaders: (Model | HeaderGridItem)[] = [];
-  for (let i = 0; i < models.length; i++) {
+/** The objects used to construct the grid.
+ * Most of these are models but there are other objects added in too,
+ * to generate headers and blank cells (represented by null). */
+type GridItem = Model | HeaderGridItem | null;
+
+const makeBlankItems = (count: number) => Array(count).fill(null);
+
+const addHeadersToItems = (
+  models: Model[],
+  columnCount: number,
+): GridItem[] => {
+  const gridItems: GridItem[] = [];
+  for (
+    let i = 0, columnIndex = 0;
+    i < models.length;
+    i++, columnIndex = (columnIndex + 1) % columnCount
+  ) {
     const model = models[i];
     const connectionIdChanged =
       models[i - 1]?.collection?.id !== model.collection?.id;
@@ -531,12 +495,75 @@ const addCellsForGroupHeaders = (models: Model[]): GridItem[] => {
       const groupHeader: HeaderGridItem = {
         collection: model.collection,
       };
-      modelsWithHeaders.push(groupHeader);
+      gridItems.push(
+        // So that the model group header appears at the start of the row,
+        // add zero or more blank items to fill in the rest of the row
+        ...(columnIndex > 0 ? makeBlankItems(columnCount - columnIndex) : []),
+        groupHeader,
+        // Fill in the rest of the row with blank items
+        ...makeBlankItems(columnCount - 1),
+      );
     }
-    modelsWithHeaders.push(model);
+    gridItems.push(model);
   }
-  return modelsWithHeaders;
+  return gridItems;
 };
 
 const gridItemIsGroupHeader = (item: GridItem): item is HeaderGridItem =>
-  (item as Model).model === undefined;
+  item !== null && (item as Model).model === undefined;
+
+const getGridOptions = (
+  models: ModelWithoutEditInfo[],
+  gridGapSize: number,
+  itemMinWidth: number,
+) => {
+  // TODO: use a ref
+  const width =
+    document.querySelector("[data-testid='browse-data']")?.clientWidth ?? 0;
+
+  const calculateColumnCount = (width: number) => {
+    return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
+  };
+
+  const calculateItemWidth = (width: number, columnCount: number) => {
+    return width / columnCount;
+  };
+
+  // For testing, increase the number of models
+  if (models.length && models.length < 100) {
+    for (let i = 0; i < 999; i++) {
+      const pushMe = _.clone(models[i]);
+      pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
+      pushMe.name += ` (${i})`;
+      models.push(pushMe);
+    }
+  }
+
+  // Sort models by (in descending order of priority): collection name, collection id, model name, model id.
+  const modelsWithEditInfo: Model[] = models.map(
+    (model: ModelWithoutEditInfo) => {
+      const lastEditInfo = {
+        full_name: model.last_editor_common_name ?? model.creator_common_name,
+        timestamp: model.last_edited_at ?? model.created_at,
+      };
+      const item: Model = {
+        ...model,
+        "last-edit-info": lastEditInfo,
+      };
+      return item;
+    },
+  );
+  const sortedModels = modelsWithEditInfo.sort(sortModels);
+
+  const columnCount = calculateColumnCount(width);
+  const columnWidth = calculateItemWidth(width, columnCount);
+  const gridItems = addHeadersToItems(sortedModels, columnCount);
+  const rowCount = Math.ceil(gridItems.length / columnCount);
+  return {
+    gridItems,
+    width,
+    columnWidth,
+    columnCount,
+    rowCount,
+  };
+};
