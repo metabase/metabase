@@ -29,6 +29,7 @@ interface ComparisonPickerProps {
   value: SmartScalarComparison;
   options: ComparisonMenuOption[];
   comparableColumns: DatasetColumn[];
+  isDraggable?: boolean;
   isRemovable?: boolean;
   onChange: (setting: SmartScalarComparison) => void;
   onRemove: () => void;
@@ -38,6 +39,7 @@ export function ComparisonPicker({
   onChange,
   onRemove,
   options,
+  isDraggable = false,
   isRemovable = true,
   comparableColumns,
   value: selectedValue,
@@ -146,7 +148,7 @@ export function ComparisonPicker({
       <Menu.Target>
         <ComparisonPickerButton
           disabled={isDisabled}
-          leftIcon={<DragHandleIcon name="grabber" />}
+          leftIcon={isDraggable && <DragHandleIcon name="grabber" />}
           rightIcon={
             isRemovable && (
               <IconButtonWrapper

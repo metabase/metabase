@@ -43,6 +43,7 @@ export function SmartScalarComparisonWidget({
   });
 
   const canAddComparison = value.length < maxComparisons;
+  const canSortComparisons = value.length > 1;
   const canRemoveComparison = value.length > 1;
 
   const handleAddComparison = useCallback(() => {
@@ -89,13 +90,23 @@ export function SmartScalarComparisonWidget({
         modifiers={[restrictToVerticalAxis, restrictToParentElement]}
         sensors={[pointerSensor]}
       >
-        <SortableContext items={value} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={value}
+          disabled={!canSortComparisons}
+          strategy={verticalListSortingStrategy}
+        >
           <ComparisonList data-testid="comparison-list">
             {value.map(comparison => (
-              <Sortable as="li" key={comparison.id} id={comparison.id}>
+              <Sortable
+                as="li"
+                key={comparison.id}
+                id={comparison.id}
+                disabled={!canSortComparisons}
+              >
                 <ComparisonPicker
                   {...props}
                   value={comparison}
+                  isDraggable={canSortComparisons}
                   isRemovable={canRemoveComparison}
                   onChange={handleChangeComparison}
                   onRemove={() => handleRemoveComparison(comparison)}
