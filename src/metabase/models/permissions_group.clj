@@ -94,7 +94,7 @@
 
 (defn- set-default-permission-values!
   [group]
-  ;; New groups generally get *no* permissions by default
+  ;; New groups get *no* permissions by default
   (doseq [db-id (t2/select-pks-vec :model/Database)]
    (data-perms/set-database-permission! group db-id :data-access :no-self-service)
    (data-perms/set-database-permission! group db-id :download-results :no)
