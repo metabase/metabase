@@ -317,4 +317,4 @@
    table-or-id :- TheIdable
    perm-type   :- :keyword
    value       :- :keyword]
-  (set-table-permissions! group-or-id perm-type [{:table table-or-id :value value}]))
+  (set-table-permissions! group-or-id perm-type {table-or-id value}))
