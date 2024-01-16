@@ -97,15 +97,16 @@
 
 (defn- set-new-database-permissions!
   [database]
-  (let [all-users-group  (perms-group/all-users)
-        non-magic-groups (perms-group/non-magic-groups)
-        non-admin-groups (conj non-magic-groups all-users-group)]
-    ;; All other permissions are set at the table-level, so they are added when individual tables are synced
-    (data-perms/set-database-permission! all-users-group database :native-query-editing :yes)
-    (doseq [group non-magic-groups]
-      (data-perms/set-database-permission! group database :native-query-editing :no))
-    (doseq [group non-admin-groups]
-      (data-perms/set-database-permission! group database :manage-database :no))))
+  (t2/with-transaction [_conn]
+    (let [all-users-group  (perms-group/all-users)
+          non-magic-groups (perms-group/non-magic-groups)
+          non-admin-groups (conj non-magic-groups all-users-group)]
+      ;; All other permissions are set at the table-level, so they are added when individual tables are synced
+      (data-perms/set-database-permission! all-users-group database :native-query-editing :yes)
+      (doseq [group non-magic-groups]
+        (data-perms/set-database-permission! group database :native-query-editing :no))
+      (doseq [group non-admin-groups]
+        (data-perms/set-database-permission! group database :manage-database :no)))))
 
 (t2/define-after-insert :model/Database
   [database]
