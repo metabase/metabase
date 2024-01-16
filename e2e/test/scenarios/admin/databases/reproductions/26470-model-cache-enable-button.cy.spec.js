@@ -9,9 +9,11 @@ describe("issue 26470", { tags: "@external" }, () => {
   });
 
   it("Model Cache enable / disable button should update button text", () => {
+    cy.clock(Date.now());
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
     cy.button("Turn model caching on").click();
-    //Transition from Done takes 5 seconds, so this gives a 2 second buffer
-    cy.button("Turn model caching off", { timeout: 7000 }).should("exist");
+    cy.button(/Done/).should("exist");
+    cy.tick(6000);
+    cy.button("Turn model caching off").should("exist");
   });
 });
