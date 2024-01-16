@@ -116,7 +116,6 @@ const QUERY_FILTER_CREATED_AT = [
     ORDERS.CREATED_AT,
     {
       "base-type": "type/DateTime",
-      "temporal-unit": "month",
     },
   ],
   "2022-08-01",

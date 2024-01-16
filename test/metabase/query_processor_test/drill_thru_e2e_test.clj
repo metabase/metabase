@@ -28,14 +28,20 @@
               quick-filter-drill (m/find-first #(= (:type %) :drill-thru/quick-filter)
                                                (lib/available-drill-thrus query drill-context))]
           (is (some? quick-filter-drill))
-          (let [query' (lib/drill-thru query -1 quick-filter-drill "=")]
-            (is (=? {:stages [{:filters [[:=
+          (let [query' (lib/drill-thru query -1 quick-filter-drill "<")]
+            (is (=? {:stages [{:filters [[:<
                                           {}
-                                          [:field {:temporal-unit :day} (mt/id :products :created_at)]
+                                          [:field {} (mt/id :products :created_at)]
                                           #t "2016-05-30T00:00Z[UTC]"]]}]}
                     query'))
             (mt/with-native-query-testing-context query'
-              (is (= [["2016-05-30T00:00:00Z" 2]]
+              (is (= [["2016-04-26T00:00:00Z" 1]
+                      ["2016-04-28T00:00:00Z" 1]
+                      ["2016-05-02T00:00:00Z" 1]
+                      ["2016-05-04T00:00:00Z" 1]
+                      ["2016-05-11T00:00:00Z" 1]
+                      ["2016-05-12T00:00:00Z" 1]
+                      ["2016-05-24T00:00:00Z" 1]]
                      (mt/rows (qp/process-query query')))))))))))
 
 (deftest ^:parallel distribution-drill-on-longitude-from-sql-source-card-test
