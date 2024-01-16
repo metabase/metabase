@@ -142,17 +142,18 @@
 (defn- update-table-level-data-access-permissions!
   [group-id db-id table-id schema table-perm]
   (let [table {:id table-id :db_id db-id :schema schema}]
-    (case table-perm
-      :all
-      (data-perms/set-table-permission! group-id table :data-access :unrestricted)
+    (if (map? table-perm)
+      (when (#{:all :segmented} (table-perm :query))
+        ;; `:segmented` indicates that the table is sandboxed, but we should set :data-access permissions to
+        ;; :unrestricted and rely on the `sandboxes` table as the source of truth for sandboxing.
+        ;; TODO: other values of `:query` are unused.
+        (data-perms/set-table-permission! group-id table :data-access :unrestricted))
+      (case table-perm
+        :all
+        (data-perms/set-table-permission! group-id table :data-access :unrestricted)
 
-      ;; This indicates that the table is sandboxed, but we should set :data-access permissions to :unrestricted
-      ;; and rely on the `sandboxes` table as the source of truth for sandboxing.
-      {:read :all :query :segmented}
-      (data-perms/set-table-permission! group-id table :data-access :unrestricted)
-
-      :none
-      (data-perms/set-table-permission! group-id table :data-access :no-self-service))))
+        :none
+        (data-perms/set-table-permission! group-id table :data-access :no-self-service)))))
 
 (defn- update-schema-level-data-access-permissions!
   [group-id db-id schema new-schema-perms]
