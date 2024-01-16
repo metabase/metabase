@@ -242,16 +242,19 @@ function DashboardInner(props: DashboardProps) {
   }, [dashboard, selectedTabId]);
 
   const hiddenParameterSlugs = useMemo(() => {
+    if (isEditing) {
+      return ""; // All filters should be visible in edit mode
+    }
+
     const currentTabParameterIds = currentTabDashcards.flatMap(
       dc => dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
     );
-
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
 
     return hiddenParameters.map(p => p.slug).join(",");
-  }, [parameters, currentTabDashcards]);
+  }, [parameters, currentTabDashcards, isEditing]);
 
   const visibleParameters = useMemo(
     () => getVisibleParameters(parameters, hiddenParameterSlugs),
