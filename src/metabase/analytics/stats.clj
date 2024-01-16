@@ -127,12 +127,12 @@
 (defn appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
-  (boolean (not-empty (select-keys (public-settings/application-colors) [:brand :filter :summarize]))))
+  (boolean (seq (select-keys (public-settings/application-colors) [:brand :filter :summarize]))))
 
 (defn appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
-  (boolean (not-empty (dissoc (public-settings/application-colors) :brand :filter :summarize))))
+  (boolean (seq (dissoc (public-settings/application-colors) :brand :filter :summarize))))
 
 (defn- instance-settings
   "Figure out global info about this instance"
