@@ -124,6 +124,16 @@
     (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
     :else                                    :unknown))
 
+(defn appearance-ui-colors-changed?
+  "Returns true if the 'User Interface Colors' have been customized"
+  []
+  (boolean (not-empty (select-keys (public-settings/application-colors) [:brand :filter :summarize]))))
+
+(defn appearance-chart-colors-changed?
+  "Returns true if the 'Chart Colors' have been customized"
+  []
+  (boolean (not-empty (dissoc (public-settings/application-colors) :brand :filter :summarize))))
+
 (defn- instance-settings
   "Figure out global info about this instance"
   []
@@ -149,9 +159,8 @@
    :apperance_loading_message           (not= (public-settings/loading-message) :doing-science)
    :appearance_metabot_greeting         (not (public-settings/show-metabot))
    :apparerance_lighthouse_illustration (not (public-settings/show-lighthouse-illustration))
-   :appearance_ui_colors                (boolean (some #(contains? (public-settings/application-colors) %) [:brand :filter :summarize]))
-   :appearance_chart_colors             (> (count (dissoc (public-settings/application-colors) [:brand :filter :summarize])) 0)
-   })
+   :appearance_ui_colors                (appearance-ui-colors-changed?)
+   :appearance_chart_colors             (appearance-chart-colors-changed?)})
 
 (defn- user-metrics
   "Get metrics based on user records.

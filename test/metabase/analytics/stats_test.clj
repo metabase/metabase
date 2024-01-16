@@ -101,6 +101,48 @@
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
 
+
+(deftest anonymous-usage-stats-test-ee-with-values-changed
+  ; some settings are behind the whitelabel feature flag
+  (mt/with-premium-features #{:whitelabel}
+    (with-redefs [email/email-configured? (constantly false)
+                  slack/slack-configured? (constantly false)]
+      (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
+                                         startup-time-millis          1234.0
+                                         google-auth-enabled          false
+                                         enable-embedding             true
+                                         help-link                    :hidden
+                                         application-logo-url         "http://example.com/logo.png"
+                                         application-favicon-url      "http://example.com/favicon.ico"
+                                         loading-message              :running-query
+                                         show-metabot                 false
+                                         show-lighthouse-illustration false
+                                         application-colors           {:brand "#123456"}]
+        (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+          (let [stats (anonymous-usage-stats)]
+            (is (partial= {:running_on               :unknown
+                           :check_for_updates                   true
+                           :startup_time_millis                 1234.0
+                           :friendly_names                      false
+                           :email_configured                    false
+                           :slack_configured                    false
+                           :sso_configured                      false
+                           :has_sample_data                     true
+                           :enable_embedding                    true
+                           :embedding_app_origin_set            false
+                           :appearance_site_name                true
+                           :appearance_help_link                :hidden
+                           :appearance_logo                     true
+                           :appareance_favicon                  true
+                           :apperance_loading_message           true
+                           :appearance_metabot_greeting         true
+                           :apparerance_lighthouse_illustration true
+                           :appearance_ui_colors                true
+                           :appearance_chart_colors             false}
+                          stats))
+            (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
+                        (-> stats :stats :database :dbms_versions)))))))))
+
 (deftest ^:parallel conversion-test
   (is (= #{true}
          (let [system-stats (get-in (anonymous-usage-stats) [:stats :system])]
