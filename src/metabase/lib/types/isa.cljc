@@ -279,15 +279,6 @@
   [column]
   (clojure.core/isa? (:semantic-type column) :type/ImageURL))
 
-(defn ^:export compatible-type?
-  "Do columns have compatible base types?"
-  [column1 column2]
-  (or
-    (and (string? column1) (string? column2))
-    (and (number? column1) (number? column2))
-    (and (temporal? column1) (temporal? column2))
-    (clojure.core/isa? (:base-type column1) (:base-type column2))))
-
 (defn ^:export has-latitude-and-longitude?
   "Does the collection `columns` contain both a latitude and a longitude column?"
   [columns]

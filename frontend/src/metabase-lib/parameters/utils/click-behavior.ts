@@ -164,7 +164,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
         column: (sourceColumn, sourceQuestion) => {
           const sourceQuery = sourceQuestion.query();
 
-          return Lib.isCompatibleType(
+          return Lib.isAssignableType(
             Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),
             targetColumn,
           );

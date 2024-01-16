@@ -39,7 +39,7 @@ export const isTitle: TypeFn = TYPES.title_QMARK_;
 export const isURL: TypeFn = TYPES.URL_QMARK_;
 export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 
-export function isCompatibleType(
+export function isAssignableType(
   column1: ColumnMetadata,
   column2: ColumnMetadata,
 ): boolean {
