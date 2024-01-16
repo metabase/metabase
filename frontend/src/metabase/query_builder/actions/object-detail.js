@@ -107,7 +107,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const card = getCard(state);
       const queryResult = getFirstQueryResult(state);
 
-      async function getFKCount(card, queryResult, fk) {
+      async function getFKCount(card, fk) {
         const metadata = getMetadata(getState());
         const databaseId = new Question(card, metadata).databaseId();
         const tableId = fk.origin.table_id;
@@ -150,7 +150,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       const fkReferences = {};
       for (let i = 0; i < tableForeignKeys.length; i++) {
         const fk = tableForeignKeys[i];
-        const info = await getFKCount(card, queryResult, fk);
+        const info = await getFKCount(card, fk);
         fkReferences[fk.origin.id] = info;
       }
 
