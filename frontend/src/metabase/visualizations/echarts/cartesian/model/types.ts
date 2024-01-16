@@ -29,6 +29,7 @@ export type RegularSeriesModel = {
   legacySeriesSettingsObjectKey: LegacySeriesSettingsObjectKey;
 
   cardId?: number;
+  cardIndex?: number;
 
   column: DatasetColumn;
   columnIndex: number;

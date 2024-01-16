@@ -2,14 +2,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { EChartsType } from "echarts";
 import type * as React from "react";
 import type { LineSeriesOption } from "echarts/types/dist/echarts";
-import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextWidth } from "metabase/lib/measure-text";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import type {
-  RenderingContext,
-  VisualizationProps,
-} from "metabase/visualizations/types";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
 import {
   CartesianChartLegendLayout,
@@ -112,14 +106,17 @@ export function CartesianChart({
     ],
   );
 
-  const openQuestion = useCallback(() => {
-    if (onChangeCardAndRun) {
-      onChangeCardAndRun({
-        nextCard: card,
-        seriesIndex: 0,
-      });
-    }
-  }, [card, onChangeCardAndRun]);
+  const openQuestion = useCallback(
+    (cardIndex = 0) => {
+      if (onChangeCardAndRun) {
+        onChangeCardAndRun({
+          nextCard: rawSeries[cardIndex].card,
+          seriesIndex: cardIndex,
+        });
+      }
+    },
+    [rawSeries, onChangeCardAndRun],
+  );
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
@@ -299,9 +296,7 @@ export function CartesianChart({
         : undefined;
 
       const clickData = {
-        column: seriesModel.column,
         dimensions,
-        settings,
       };
 
       if (hasBreakout && visualizationIsClickable(clickData)) {
@@ -333,7 +328,7 @@ export function CartesianChart({
           icon={headerIcon}
           // @ts-expect-error will be fixed when LegendCaption gets converted to TypeScript
           actionButtons={actionButtons}
-          onSelectTitle={canSelectTitle ? openQuestion : undefined}
+          onSelectTitle={canSelectTitle ? _event => openQuestion() : undefined}
           width={width}
         />
       )}

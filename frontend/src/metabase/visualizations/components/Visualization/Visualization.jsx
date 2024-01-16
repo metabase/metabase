@@ -232,11 +232,12 @@ class Visualization extends PureComponent {
     const {
       metadata,
       isRawTable,
+      rawSeries,
       getExtraDataForClick = () => ({}),
     } = this.props;
 
     const seriesIndex = clicked.seriesIndex || 0;
-    const card = this.state.series[seriesIndex].card;
+    const card = rawSeries[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 

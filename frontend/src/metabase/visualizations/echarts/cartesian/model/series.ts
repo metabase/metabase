@@ -84,7 +84,7 @@ const getDefaultSeriesName = (
  *
  * @param {SingleSeries} singleSeries - The single card and dataset.
  * @param {CartesianChartColumns} columns - The columns model for the card.
- * @param {number} datasetIndex - Index of a dataset.
+ * @param {number} cardIndex - Index of a card.
  * @param {boolean} hasMultipleCards — Indicates whether the chart has multiple card combined.
  * @param {ComputedVisualizationSettings} settings — Computed visualization settings.
  * @param {RenderingContext} renderingContext - The rendering context.
@@ -93,12 +93,12 @@ const getDefaultSeriesName = (
 export const getCardSeriesModels = (
   { card, data }: SingleSeries,
   columns: CartesianChartColumns,
-  datasetIndex: number,
+  cardIndex: number,
   hasMultipleCards: boolean,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): SeriesModel[] => {
-  const isFirstCard = datasetIndex === 0;
+  const isFirstCard = cardIndex === 0;
   const cardId = card.id ?? null;
   const hasBreakout = "breakout" in columns;
   // TODO: separate scatter plot and combo charts into separate models
@@ -134,6 +134,7 @@ export const getCardSeriesModels = (
         name,
         color,
         cardId,
+        cardIndex,
         column: metric.column,
         columnIndex: metric.index,
         dataKey: getDatasetKey(metric.column, cardId),
@@ -185,6 +186,7 @@ export const getCardSeriesModels = (
       name,
       color,
       cardId,
+      cardIndex,
       column: metric.column,
       columnIndex: metric.index,
       vizSettingsKey,

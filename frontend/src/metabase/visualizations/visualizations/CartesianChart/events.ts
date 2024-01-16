@@ -11,7 +11,6 @@ import type {
 } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getObjectEntries } from "metabase/lib/objects";
-import type { ClickObjectDimension } from "metabase-lib";
 import type {
   ComputedVisualizationSettings,
   OnChangeCardAndRun,
@@ -61,7 +60,7 @@ export const getEventDimensionsData = (
   const seriesModel = chartModel.seriesModels[seriesIndex];
   const dimensionValue = datum[chartModel.dimensionModel.dataKey];
 
-  const dimensions: ClickObjectDimension[] = [
+  const dimensions = [
     {
       column: chartModel.dimensionModel.column,
       value: dimensionValue,
@@ -291,17 +290,24 @@ export const getSeriesClickData = (
 
   const datum = chartModel.dataset[dataIndex];
 
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-  const dimensions = getEventDimensionsData(chartModel, seriesIndex, dataIndex);
-  const column = chartModel.seriesModels[seriesIndex].column;
+  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex).filter(
+    d => d.col.source !== "query-transform",
+  );
+  const dimensions = getEventDimensionsData(
+    chartModel,
+    seriesIndex,
+    dataIndex,
+  ).filter(d => d.column.source !== "query-transform");
+  const seriesModel = chartModel.seriesModels[seriesIndex];
 
   return {
     event: event.event.event,
-    value: datum[chartModel.dimensionModel.dataKey],
-    column,
+    value: datum[seriesModel.dataKey],
+    column: seriesModel.column,
     data,
     dimensions,
     settings,
+    seriesIndex: seriesModel.cardIndex,
   };
 };
 

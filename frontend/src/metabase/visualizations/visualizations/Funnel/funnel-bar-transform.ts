@@ -20,6 +20,7 @@ export const funnelToBarTransform: TransformSeries = (
 
   return rows.map((row, index) => {
     return {
+      originalCard: card,
       card: {
         ...card,
         id: index,

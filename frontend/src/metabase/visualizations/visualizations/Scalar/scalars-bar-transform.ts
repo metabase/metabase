@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import type { TransformSeries } from "metabase/visualizations/components/TransformedVisualization";
-import type { RawSeries } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 import { TYPE } from "metabase-lib/types/constants";
 
 export const scalarToBarTransform: TransformSeries = rawSeries => {
@@ -26,7 +26,7 @@ export const scalarToBarTransform: TransformSeries = rawSeries => {
       rows: [[card.name, data.rows[0][metricColumnIndex]]],
     };
 
-    const transformedCard = {
+    const transformedCard: Card = {
       ...card,
       display: "bar",
       visualization_settings: {
@@ -39,8 +39,9 @@ export const scalarToBarTransform: TransformSeries = rawSeries => {
     };
 
     return {
+      originalCard: card,
       card: transformedCard,
       data: transformedDataset,
     };
-  }) as RawSeries;
+  });
 };
