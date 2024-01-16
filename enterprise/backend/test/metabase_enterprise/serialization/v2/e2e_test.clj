@@ -660,8 +660,8 @@
                       new-c2-id  (t2/select-one-pk :model/Card :name (:name c2))
                       new-c3-id  (t2/select-one-pk :model/Card :name (:name c3))
                       hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
-                                             (t2/hydrate [:dashcards :series])
-                                             :dashcards
+                                             (t2/hydrate [:ordered_cards :series])
+                                             :ordered_cards
                                              (->> (m/index-by :id)))]
                   (testing "Series hydrate on the dashboard correctly"
                     (is (=? {new-dc1-id {:series [{:id new-c2-id}

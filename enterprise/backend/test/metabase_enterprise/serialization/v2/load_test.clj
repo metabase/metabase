@@ -1136,14 +1136,14 @@
                             (t2/count :model/DashboardCardSeries :dashboardcard_id (:dashboardcard_id series-to-be-deleted)))))
                    (serdes.load/load-metabase (ingestion-in-memory extract2))
                    (let [dash1d (-> (t2/select-one :model/Dashboard :name "My Dashboard")
-                                    (t2/hydrate [:dashcards :series]))]
+                                    (t2/hydrate [:ordered_cards :series]))]
                      (testing "Dashboard cards have the same entity ID"
                        (is (= (:entity_id dashcard1s)
-                              (get-in dash1d [:dashcards 0 :entity_id]))))
+                              (get-in dash1d [:ordered_cards 0 :entity_id]))))
                      (testing "The dashboard's series is updated"
                        (is (=? [{:id (:id series-card3d)}
                                 {:id (:id series-card2d)}]
-                               (get-in dash1d [:dashcards 0 :series]))))
+                               (get-in dash1d [:ordered_cards 0 :series]))))
                      (testing "Dashboard card series are correctly updated/deleted in the database"
                        (is (=? [{:position 0
                                  :card_id  (:id series-card3d)}
