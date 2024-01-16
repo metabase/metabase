@@ -1,0 +1,1 @@
+{:hooks {:analyze-call {taoensso.encore/defalias taoensso.encore/defalias}}}
