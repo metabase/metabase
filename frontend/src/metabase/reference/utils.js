@@ -100,7 +100,8 @@ function breakoutWithDefaultTemporalBucket(query, metadata, fieldId) {
     return query;
   }
 
-  return Lib.withDefaultTemporalBucket(query, stageIndex, column);
+  const newColumn = Lib.withDefaultBucket(query, stageIndex, column);
+  return Lib.replaceBreakouts(query, -1, newColumn);
 }
 
 function filterBySegmentId(query, segmentId) {
