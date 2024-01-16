@@ -176,12 +176,12 @@
    [metabase.api.common :refer [*current-user-id*]]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.config :as config]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision
     :as perms-revision
     :refer [PermissionsRevision]]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions.parse :as perms-parse]
    [metabase.permissions.util :as perms.u]
    [metabase.plugins.classloader :as classloader]
