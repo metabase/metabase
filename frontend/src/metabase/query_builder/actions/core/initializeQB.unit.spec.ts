@@ -41,7 +41,6 @@ import { createMockState } from "metabase-types/store/mocks";
 import { createMockEntitiesState } from "__support__/store";
 import * as Lib from "metabase-lib";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
 
 import * as querying from "../querying";
@@ -618,7 +617,7 @@ describe("QB Actions > initializeQB", () => {
         const clone = { ...card };
 
         jest
-          .spyOn(NativeQuery.prototype, "isEditable")
+          .spyOn(Question.prototype, "isQueryEditable")
           .mockReturnValue(hasDatabaseWritePermission);
 
         Snippets.actions.fetchList = jest.fn();
