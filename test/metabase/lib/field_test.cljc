@@ -625,6 +625,7 @@
                :base-type                :type/*
                :id                       4
                :name                     "Field 4"
+               :fk-target-field-id       nil
                :lib/source               :source/card
                :lib/card-id              3
                :lib/source-column-alias  "Field 4"
@@ -635,6 +636,7 @@
               :effective-type          :type/Text
               :id                      4
               :name                    "Field 4"
+              :fk-target-field-id      nil
               :display-name            "Field 4"
               :lib/card-id             3
               :lib/source              :source/card

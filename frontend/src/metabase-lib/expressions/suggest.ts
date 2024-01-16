@@ -48,6 +48,7 @@ type SuggestArgs = {
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
+  expressionPosition?: number;
   getColumnIcon: (column: Lib.ColumnMetadata) => string;
 };
 
@@ -59,6 +60,7 @@ export function suggest({
   metadata,
   reportTimezone,
   startRule,
+  expressionPosition,
   targetOffset = source.length,
 }: SuggestArgs): {
   helpText?: HelpText;
@@ -151,7 +153,7 @@ export function suggest({
 
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
-      ...Lib.expressionableColumns(query, stageIndex, targetOffset).map(
+      ...Lib.expressionableColumns(query, stageIndex, expressionPosition).map(
         column => {
           const displayInfo = Lib.displayInfo(query, stageIndex, column);
 

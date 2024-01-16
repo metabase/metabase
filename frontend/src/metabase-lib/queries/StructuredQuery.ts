@@ -10,7 +10,6 @@ import type {
   Aggregation,
   Breakout,
   DatabaseId,
-  DatasetColumn,
   DatasetQuery,
   DependentMetadataItem,
   ExpressionClause,
@@ -34,7 +33,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import { isSegment } from "metabase-lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
@@ -139,7 +137,8 @@ class StructuredQuery extends AtomicQuery {
    * @returns true if we have metadata for the root source table loaded
    */
   hasMetadata(): boolean {
-    return this.metadata() != null && this.rootTable() != null;
+    const metadata = this.metadata();
+    return metadata != null && metadata.table(this._sourceTableId()) != null;
   }
 
   // Whether the user can modify and run this query
@@ -1260,10 +1259,6 @@ class StructuredQuery extends AtomicQuery {
     }
   }
 
-  fieldReferenceForColumn(column) {
-    return fieldRefForColumn(column);
-  }
-
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }
@@ -1324,25 +1319,6 @@ class StructuredQuery extends AtomicQuery {
       return this.lastSummarizedQuery() || this;
     }
   });
-
-  dimensionForColumn(column: DatasetColumn) {
-    if (column) {
-      const fieldRef = this.fieldReferenceForColumn(column);
-
-      if (fieldRef) {
-        const dimension = this.queries()
-          .flatMap(q => q.dimensions())
-          .find(d => d.isEqual(fieldRef));
-
-        return this.parseFieldReference(
-          fieldRef,
-          dimension?.legacyQuery({ useStructuredQuery: true }),
-        );
-      }
-    }
-
-    return null;
-  }
 
   /**
    * returns the corresponding {Dimension} in the sourceQuery, if any

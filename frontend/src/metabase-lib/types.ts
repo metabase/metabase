@@ -138,6 +138,8 @@ export type ColumnDisplayInfo = {
   isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  isAggregation: boolean;
+  isBreakout: boolean;
   table?: TableInlineDisplayInfo;
 
   breakoutPosition?: number;

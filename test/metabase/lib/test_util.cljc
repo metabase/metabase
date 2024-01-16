@@ -220,7 +220,7 @@
                                   (->> (meta/fields table)
                                        (map (partial meta/field-metadata table))
                                        (sort-by :id)
-                                       (mapv #(if native? (dissoc % :table-id :id) %)))}))])))
+                                       (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
         (meta/tables)))
 
 (defn metadata-provider-with-mock-card [card]

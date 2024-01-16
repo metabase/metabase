@@ -92,7 +92,7 @@ export function DateIntervalPicker({
         <Menu>
           <Menu.Target>
             <Button
-              c="text.2"
+              c="text-dark"
               variant="subtle"
               leftIcon={<Icon name="ellipsis" />}
               aria-label={t`Options`}

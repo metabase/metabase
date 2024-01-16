@@ -229,7 +229,7 @@ const ApiKeyRow = ({ apiKey }: { apiKey: ApiKey }) => {
         <Text weight="bold">{apiKey.name}</Text>
       </td>
       <td>
-        <Text weight="bold" color="text.1">{t`API Key`}</Text>
+        <Text weight="bold" color="text-medium">{t`API Key`}</Text>
       </td>
       <td>{/* api keys don't have real emails */}</td>
       <td className="text-right">

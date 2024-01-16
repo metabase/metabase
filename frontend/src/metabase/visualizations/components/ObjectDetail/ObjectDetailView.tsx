@@ -22,6 +22,7 @@ import { ActionsApi, MetabaseApi } from "metabase/services";
 import { isPK } from "metabase-lib/types/utils/isa";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
@@ -154,7 +155,10 @@ export function ObjectDetailView({
     if (maybeLoading && pkIndex !== undefined) {
       // if we don't have the row in the current data, try to fetch this single row
       const pkField = passedData.cols[pkIndex];
-      const filteredQuestion = question?.filter("=", pkField, zoomedRowID);
+      const filteredQuestion = question
+        ?.legacyQuery({ useStructuredQuery: true })
+        .filter(["=", fieldRefForColumn(pkField), zoomedRowID ?? null])
+        .question();
       MetabaseApi.dataset(filteredQuestion?._card.dataset_query)
         .then(result => {
           if (result?.data?.rows?.length > 0) {
