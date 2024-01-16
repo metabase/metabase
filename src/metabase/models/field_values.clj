@@ -45,7 +45,7 @@
   30)
 
 (def ^Long auto-list-cardinality-threshold
-  "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
+  "Fields with less than this many distinct values should be given a `has_field_values` value of `list`, which means
   the Field should have FieldValues."
   1000)
 
