@@ -1,6 +1,7 @@
 import {
   getApplicationName,
   getIsWhiteLabeling,
+  getShowMetabaseLinks,
   getWhiteLabeledLoadingMessage,
   getCanWhitelabel,
 } from "..";
@@ -59,5 +60,19 @@ describe("getCanWhitelabel (OSS)", () => {
     const { getState } = setup();
 
     expect(getCanWhitelabel(getState())).toBe(false);
+  });
+});
+
+describe("getShowMetabaseLinks (OSS)", () => {
+  it("should return true when show-metabase-links is true", () => {
+    const { getState } = setup({ showMetabaseLinks: true });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
+  });
+
+  it("should return true when show-metabase-links is false", () => {
+    const { getState } = setup({ showMetabaseLinks: false });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
   });
 });

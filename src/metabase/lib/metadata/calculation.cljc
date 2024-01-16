@@ -551,9 +551,9 @@
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
-  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
-  this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
-  check here.)
+  have (1) appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field, and (2) have a numeric
+  `:id`, i.e. be a real database column that can be used in a JOIN condition. (I think we only include this information
+  for Databases that support FKs and joins, so I don't think we need to do an additional DB feature check here.)
 
   Does not include columns from any Tables that are already explicitly joined.
 
@@ -562,6 +562,8 @@
   (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
     (into []
           (comp (filter :fk-target-field-id)
+                (filter :id)
+                (filter (comp number? :id))
                 (map (fn [{source-field-id :id, :keys [fk-target-field-id] :as source}]
                        (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id
