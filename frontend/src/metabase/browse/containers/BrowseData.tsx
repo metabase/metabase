@@ -38,11 +38,8 @@ import {
   LastEditedInfoSeparator,
   ModelCard,
 } from "./BrowseData.styled";
-import {
-  VirtualizedGrid,
-  VirtualizedGridItemProps,
-  VirtualizedGridProps,
-} from "metabase/components/VirtualizedGrid/VirtualizedGrid";
+import { VirtualizedGrid } from "@mierak/react-virtualized-grid";
+import styled from "@emotion/styled";
 
 interface BrowseDataTab {
   label: string;
@@ -187,6 +184,31 @@ export const BrowseDataPage = () => {
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
+const VirtualizedModelGrid = styled(VirtualizedGrid)`
+  &.container {
+    //--grid-gap: 16px;
+    //--grid-height: 100vh;
+    //--grid-columns: '2';
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-gap: 16px;
+    overflow-y: auto;
+    width: 100%;
+    max-height: 100vh;
+    height: var(--grid-height);
+  }
+
+  & .cell {
+    --cell-height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    height: var(--cell-height);
+  }
+`
+
+
 const ModelsTab = ({
   models,
   error,
@@ -203,17 +225,25 @@ const ModelsTab = ({
     return <LoadingAndErrorWrapper loading />;
   }
   return models.length ? (
-    <VirtualizedGrid
-      items={models}
-      itemHeight={160}
-      itemMinWidth={240}
-      // TODO: Change the width
-      renderItem={(props: VirtualizedGridItemProps<Model>) => (
-        <ModelItem {...props} />
+    <VirtualizedModelGrid
+      itemCount={models.length}
+      gridGap={16}
+      rowHeight={160}
+      cellWidth={240}
+      // items={models}
+      // itemHeight={160}
+      // itemMinWidth={240}
+      // // TODO: Change the width
+      // renderItem={(props: VirtualizedGridItemProps<Model>) => (
+      //   <ModelItem {...props} />
+      // )}
+      // gridGapSize={16}
+      // scrollElement={document.getElementsByTagName('main')[0]}
+    >
+      {(index: number, rowIndex: number, columnIndex: number) => (
+        <ModelItem model={models[index]} />
       )}
-      gridGapSize={16}
-      scrollElement={document.getElementsByTagName('main')[0]}
-    />
+    </VirtualizedModelGrid>
   ) : (
     <ContentOfEmptyTab
       title={t`No models here yet`}
@@ -307,11 +337,11 @@ const DatabasesTab = ({
 //   );
 // };
 
-const ModelItem = (props: VirtualizedGridItemProps<Model>) => {
-  const { rowIndex, columnIndex, columnCount, items: models, style } = props;
-  const index = rowIndex * columnCount + columnIndex;
-  if (index >= models.length) return null;
-  const model = models[index];
+const ModelItem = ({ model }: { model: Model }) => {
+  // const { rowIndex, columnIndex, columnCount, items: models, style } = props;
+  // const index = rowIndex * columnCount + columnIndex;
+  // if (index >= models.length) return null;
+  // const model = models[index];
 
   // TODO: temporary workaround
   if (!model) {
@@ -319,7 +349,7 @@ const ModelItem = (props: VirtualizedGridItemProps<Model>) => {
     return null;
   }
   return (
-    <div key={model.id} style={style}>
+    <div key={model.id}>
       <Link
         to={Urls.modelDetail(model)}
         // Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
