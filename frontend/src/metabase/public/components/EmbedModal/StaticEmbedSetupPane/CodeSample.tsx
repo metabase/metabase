@@ -10,7 +10,7 @@ interface CodeSampleProps {
   selectedOptionName: CodeSampleOption["name"];
   source: string;
   languageOptions: CodeSampleOption["name"][];
-  title: string;
+  title?: string;
   textHighlightMode: string;
   highlightedText?: string;
   isHighlightedTextAccent?: boolean;
@@ -37,7 +37,7 @@ export const CodeSample = ({
     <div className={className}>
       {(title || languageOptions.length > 1) && (
         <div className="flex align-center">
-          <h4>{title}</h4>
+          {title && <h4>{title}</h4>}
           {languageOptions.length > 1 ? (
             <Select
               className="AdminSelect--borderless ml-auto"

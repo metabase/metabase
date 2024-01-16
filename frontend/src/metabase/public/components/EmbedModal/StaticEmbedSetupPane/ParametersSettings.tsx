@@ -127,7 +127,7 @@ export const ParametersSettings = ({
               <>
                 <Divider my="2rem" />
                 <StaticEmbedSetupPaneSettingsContentSection
-                  title={t`Preview locked parameters`}
+                  title={t`Previewing locked parameters`}
                 >
                   <Stack spacing="1rem">
                     <Text>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</Text>

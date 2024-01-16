@@ -173,7 +173,7 @@ export const AppearanceSettings = ({
                 // and they're sharing a question metabase#23477
                 <DisplayOptionSection title={t`Download data`}>
                   <Switch
-                    label={t`Enable users to download data from this embed?`}
+                    label={t`Enable users to download data from this embed`}
                     labelPosition="left"
                     size="sm"
                     variant="stretch"

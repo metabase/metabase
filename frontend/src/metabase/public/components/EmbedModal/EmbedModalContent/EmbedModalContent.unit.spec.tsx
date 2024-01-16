@@ -8,12 +8,6 @@ import type { EmbedResource } from "metabase/public/lib/types";
 import type { EmbedModalContentProps } from "./EmbedModalContent";
 import { EmbedModalContent } from "./EmbedModalContent";
 
-const TextEditorMock = ({ value }: { value: string }) => (
-  <div data-testid="text-editor-mock">{value}</div>
-);
-
-jest.mock("metabase/components/TextEditor", () => TextEditorMock);
-
 describe("EmbedModalContent", () => {
   describe("Select Embed Type phase", () => {
     it("should render", () => {

@@ -8,20 +8,60 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 import type { StaticEmbedSetupPaneProps } from "./StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "./StaticEmbedSetupPane";
 
+const TextEditorMock = ({ value }: { value: string }) => (
+  <div data-testid="text-editor-mock">{value}</div>
+);
+
+jest.mock("metabase/components/TextEditor", () => TextEditorMock);
+
 describe("Static Embed Setup phase", () => {
-  describe("Parameters tab", () => {
-    it("should render Code mode by default", () => {
+  describe("Overview tab", () => {
+    it("should render content", () => {
       setup({
         props: {},
+        activeTab: "Overview",
+      });
+
+      expect(screen.getByText("Setting up a static embed")).toBeVisible();
+
+      const link = screen.getByRole("link", {
+        name: "documentation",
+      });
+      expect(link).toBeVisible();
+      expect(link).toHaveAttribute(
+        "href",
+        "https://www.metabase.com/docs/latest/embedding/static-embedding.html",
+      );
+
+      expect(
+        screen.getByText(
+          "Insert this code snippet in your server code to generate the signed embedding URL",
+        ),
+      ).toBeVisible();
+
+      expect(
+        screen.getByText(
+          "Then insert this code snippet in your HTML template or single page app.",
+        ),
+      ).toBeVisible();
+    });
+  });
+
+  describe("Parameters tab", () => {
+    it("should render Code mode by default", () => {
+      const dashboard = createMockDashboard();
+      setup({
+        props: {
+          resource: dashboard,
+        },
         activeTab: "Parameters",
       });
 
       expect(screen.getByLabelText("Code")).toBeChecked();
-      expect(
-        screen.getByText(
-          "If there’s any code you need to change, we’ll show you that here.",
-        ),
-      ).toBeVisible();
+
+      expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+        `// you will need to install via 'npm install jsonwebtoken' or in your package.json var jwt = require("jsonwebtoken"); var METABASE_SITE_URL = "http://localhost:3000"; var METABASE_SECRET_KEY = "my_super_secret_key"; var payload = { resource: { dashboard: 1 }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; var token = jwt.sign(payload, METABASE_SECRET_KEY); var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";`,
+      );
     });
 
     it("should render unsaved parameters", () => {
@@ -64,9 +104,7 @@ describe("Static Embed Setup phase", () => {
         activeTab: "Parameters",
       });
 
-      const parametersSection = screen.getByLabelText(
-        "Enable or lock parameters",
-      );
+      const parametersSection = screen.getByLabelText("Configuring parameters");
       expect(
         within(parametersSection).getByText("My param"),
       ).toBeInTheDocument();
@@ -105,6 +143,7 @@ describe("Static Embed Setup phase", () => {
         props: {
           resource: {
             ...createMockDashboard(),
+            enable_embedding: true,
             embedding_params: {
               old_param: "locked",
             },
@@ -137,7 +176,7 @@ describe("Static Embed Setup phase", () => {
       );
     });
 
-    it("should render code diff on parameters change", () => {
+    it("should render changed code on parameters change", () => {
       const dashboard = createMockDashboard();
       const dateParameter = {
         id: "5cd742ef",
@@ -157,6 +196,12 @@ describe("Static Embed Setup phase", () => {
       userEvent.click(screen.getByLabelText("Month and Year"));
 
       userEvent.click(screen.getByText("Locked"));
+
+      expect(
+        screen.getByText(
+          "In addition to publishing changes, update the params in the payload, like this:",
+        ),
+      ).toBeVisible();
 
       expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
         `var payload = { resource: { dashboard: ${dashboard.id} }, params: { "${dateParameter.slug}": null }, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration };`,
@@ -185,7 +230,7 @@ describe("Static Embed Setup phase", () => {
       });
 
       userEvent.click(
-        within(screen.getByLabelText("Preview locked parameters")).getByRole(
+        within(screen.getByLabelText("Previewing locked parameters")).getByRole(
           "button",
           { name: "Month and Year" },
         ),
@@ -200,17 +245,19 @@ describe("Static Embed Setup phase", () => {
 
   describe("Appearance tab", () => {
     it("should render Code mode by default", () => {
+      const dashboard = createMockDashboard();
       setup({
-        props: {},
+        props: {
+          resource: dashboard,
+        },
         activeTab: "Appearance",
       });
 
       expect(screen.getByLabelText("Code")).toBeChecked();
-      expect(
-        screen.getByText(
-          "If there’s any code you need to change, we’ll show you that here.",
-        ),
-      ).toBeVisible();
+
+      expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+        `// you will need to install via 'npm install jsonwebtoken' or in your package.json var jwt = require("jsonwebtoken"); var METABASE_SITE_URL = "http://localhost:3000"; var METABASE_SECRET_KEY = "my_super_secret_key"; var payload = { resource: { dashboard: 1 }, params: {}, exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration }; var token = jwt.sign(payload, METABASE_SECRET_KEY); var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";`,
+      );
     });
 
     it("should render code diff on settings change", () => {
@@ -222,11 +269,17 @@ describe("Static Embed Setup phase", () => {
       });
 
       userEvent.click(screen.getByText("Transparent"));
+
+      expect(
+        screen.getByText("Here’s the code you’ll need to alter:"),
+      ).toBeVisible();
+
       expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
         `var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#theme=transparent&bordered=true&titled=true";`,
       );
 
       userEvent.click(screen.getByText("Dashboard title"));
+
       expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
         `var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#theme=transparent&bordered=true&titled=false";`,
       );

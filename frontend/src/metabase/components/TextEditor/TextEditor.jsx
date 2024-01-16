@@ -133,9 +133,11 @@ export default class TextEditor extends Component {
     for (let i = 0; i <= this._editor.session.getLength(); i++) {
       this._editor.session.removeGutterDecoration(
         i,
-        this.props.isHighlightedTextAccent
-          ? HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME_ACCENT
-          : HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
+        HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME_ACCENT,
+      );
+      this._editor.session.removeGutterDecoration(
+        i,
+        HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
       );
     }
   }
@@ -163,14 +165,11 @@ export default class TextEditor extends Component {
 
     // misc options, copied from NativeQueryEditor
     this._editor.setOptions({
-      enableBasicAutocompletion: true,
-      enableSnippets: true,
-      enableLiveAutocompletion: true,
       showPrintMargin: false,
       highlightActiveLine: false,
       highlightGutterLine: false,
       showLineNumbers: true,
-      // wrap: true
+      wrap: true,
     });
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
 

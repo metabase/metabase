@@ -105,7 +105,11 @@ export const EmbedCodePane = ({
       <div className={className}>
         <CodeSample
           dataTestId="embed-backend"
-          title={t`In addition to publishing changes, update the params in the payload, like this:`}
+          title={
+            hasCodeDiff
+              ? t`In addition to publishing changes, update the params in the payload, like this:`
+              : undefined
+          }
           selectedOptionName={selectedServerCodeOptionName}
           languageOptions={serverCodeOptions.map(({ name }) => name)}
           source={selectedServerCodeOption.source}
@@ -124,7 +128,9 @@ export const EmbedCodePane = ({
       <div className={className}>
         <CodeSample
           dataTestId="embed-backend"
-          title={t`Here’s the code you’ll need to alter:`}
+          title={
+            hasCodeDiff ? t`Here’s the code you’ll need to alter:` : undefined
+          }
           selectedOptionName={selectedServerCodeOptionName}
           languageOptions={serverCodeOptions.map(({ name }) => name)}
           source={selectedServerCodeOption.source}
