@@ -59,9 +59,10 @@ export const getQuestion = ({
 }) => {
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  let question = Question.create({ databaseId, metadata });
 
   if (!table) {
-    return Question.create({ databaseId, metadata }).card();
+    return question.card();
   }
 
   let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
@@ -82,7 +83,7 @@ export const getQuestion = ({
     query = filterBySegmentId(query, segmentId);
   }
 
-  let question = Question.create({ databaseId, metadata }).setQuery(query);
+  question = question.setQuery(query);
 
   if (visualization) {
     question = question.setDisplay(visualization);
