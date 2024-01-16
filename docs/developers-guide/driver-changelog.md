@@ -4,8 +4,6 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.48.0
-
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
@@ -80,6 +78,10 @@ title: Driver interface changelog
 
 - The arity of multimethod `metabase.driver.sql-jdbc.sync.interface/fallback-metadata-query` has been updated from 3 to 4,
   it now takes an additional `db` argument. The new function arguments are: `[driver db-name-or-nil schema table]`.
+
+- The method `metabase.driver.sql-jdbc.sync.interface/active-tables` that we added in 47 has been updated to require
+  an additional argument: `database`.
+  The new function arglist is `[driver database connection schema-inclusion-filters schema-exclusion-filters]`.
 
 ## Metabase 0.47.0
 
