@@ -188,7 +188,7 @@
     (when (nil? (second (drop-while (comp not #{[:k :export?]} first) options-list)))
       (when-not (contains? ignored-implicit-export? (:value setting-name))
         (hooks/reg-finding! (assoc (meta node)
-                                   :message "Setting definition must provide an explicit value for :export?"
+                                   :message "Setting definition must provide an explicit value for :export? indicating whether the setting should be exported or not with serialization."
                                    :type :metabase/defsetting-must-specify-export))))
 
     {:node (-> (list
