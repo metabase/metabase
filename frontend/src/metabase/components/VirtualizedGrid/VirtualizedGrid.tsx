@@ -60,12 +60,14 @@ export function VirtualizedGrid<ItemType>({
   const containerRef = useRef<any>(null);
 
   // FIXME: Remove this number
-  const containerWidth = containerRef?.current?.clientWidth || 800;
+  const containerWidth = containerRef?.current?.clientWidth;
   console.log('containerRef?.current', containerRef?.current);
 
   useEffect(() => {
     const recomputeGridSize = () => {
       gridRef.current?.recomputeGridSize();
+
+      console.log('gridRef.current?.recomputeGridSize', gridRef.current?.recomputeGridSize);
     };
     window.addEventListener("resize", recomputeGridSize);
     return () => window.removeEventListener("resize", recomputeGridSize);
