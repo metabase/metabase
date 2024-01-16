@@ -8,6 +8,8 @@ import Card from "metabase/components/Card";
 import { GridItem } from "metabase/components/Grid";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 
+import { Tabs } from "metabase/ui";
+
 export const DatabaseCard = styled(Card)`
   padding: 1.5rem;
 
@@ -83,4 +85,26 @@ export const ModelGroupGrid = styled.div`
       color: ${color("brand")};
     }
   }
+`;
+
+export const BrowseTabs = styled(Tabs)`
+  display: flex;
+  flex-flow: column nowrap;
+  flex: 1;
+`;
+
+export const BrowseTabsPanel = styled(Tabs.Panel)`
+  display: flex;
+  flex-flow: column nowrap;
+  flex: 1;
+`;
+
+export const BrowseContainer = styled.div`
+  display: flex;
+  flex: 1;
+  flex-flow: column nowrap;
+`;
+
+export const SimpleBrowseHeader = styled.h2`
+  margin-bottom: 0.35rem;
 `;

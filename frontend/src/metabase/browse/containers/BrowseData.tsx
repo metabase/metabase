@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import styled from "@emotion/styled";
-import type { GridCellProps } from "react-virtualized";
+import type { GridCellProps, Index } from "react-virtualized";
 import {
   Grid as VirtualizedGrid,
   WindowScroller,
@@ -31,12 +31,16 @@ import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import NoResults from "assets/img/no_results.svg";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
+import BrowseHeader from "../components/BrowseHeader";
 import {
   DatabaseCard,
   DatabaseGridItem,
   MultilineEllipsified,
   LastEditedInfoSeparator,
   ModelCard,
+  BrowseContainer,
+  BrowseTabs,
+  BrowseTabsPanel,
 } from "./BrowseData.styled";
 
 interface BrowseDataTab {
@@ -87,27 +91,9 @@ export const BrowseDataPage = () => {
   };
   const currentTab = currentTabId ? tabs[currentTabId] : null;
   return (
-    <div
-      data-testid="database-browser"
-      style={{
-        display: "flex",
-        flex: 1,
-        flexFlow: "column nowrap",
-      }}
-    >
-      <h2
-        className="text-dark"
-        style={{ marginBottom: ".35rem" }}
-      >{t`Browse data`}</h2>
-      <Tabs
-        value={currentTabId}
-        onTabChange={setTabId}
-        style={{
-          display: "flex",
-          flexFlow: "column nowrap",
-          flex: 1,
-        }}
-      >
+    <BrowseContainer data-testid="data-browser">
+      <BrowseHeader crumbs={[]} />
+      <BrowseTabs value={currentTabId} onTabChange={setTabId}>
         <Flex>
           <Tabs.List>
             {Object.entries(tabs).map(([tabId, tab]) => (
@@ -119,16 +105,12 @@ export const BrowseDataPage = () => {
         </Flex>
         <Divider />
         {currentTab && (
-          <Tabs.Panel
-            key={currentTabId}
-            value={currentTabId ?? ""}
-            style={{ display: "flex", flexFlow: "column nowrap", flex: 1 }}
-          >
+          <BrowseTabsPanel key={currentTabId} value={currentTabId ?? ""}>
             {currentTab.component}
-          </Tabs.Panel>
+          </BrowseTabsPanel>
         )}
-      </Tabs>
-    </div>
+      </BrowseTabs>
+    </BrowseContainer>
   );
 };
 
@@ -145,12 +127,17 @@ const ModelsTab = ({
 }) => {
   const gridGapSize = 16;
   const itemMinWidth = 240; // TODO: replace magic number
-  const itemHeight = 160; // TODO: replace magic number?
+  const defaultItemHeight = 160; // TODO: replace magic number?
 
   useEffect(() => {
     // TODO: Is a browser font size change a resize?
     const configureGrid = () => {
-      const gridOptions = getGridOptions(models, gridGapSize, itemMinWidth);
+      const gridOptions = getGridOptions(
+        models,
+        gridGapSize,
+        itemMinWidth,
+        defaultItemHeight,
+      );
       setGridOptions(gridOptions);
     };
     configureGrid();
@@ -164,6 +151,7 @@ const ModelsTab = ({
     columnWidth: number;
     columnCount: number;
     rowCount: number;
+    rowHeight: (params: Index) => number;
   } | null>(null);
 
   if (error) {
@@ -209,12 +197,13 @@ const ModelsTab = ({
     <GridContainer>
       {gridOptions?.gridItems.length ? (
         <SizedVirtualizedGrid
+          data-testid="model-browser"
           width={gridOptions.width}
           columnWidth={gridOptions.columnWidth}
           columnCount={gridOptions.columnCount}
           rowCount={gridOptions.rowCount}
           items={gridOptions.gridItems}
-          itemHeight={itemHeight}
+          rowHeight={gridOptions.rowHeight}
           gridGapSize={gridGapSize}
           renderItem={renderItem}
           // TODO: Probably use a ref
@@ -274,7 +263,7 @@ const DatabasesTab = ({
   }
   // TODO: Virtualize this list too?
   return (
-    <Grid>
+    <Grid data-testid="database-browser">
       {databases.map(database => (
         <DatabaseGridItem key={database.id}>
           <Link
@@ -502,6 +491,7 @@ const getGridOptions = (
   models: ModelWithoutEditInfo[],
   gridGapSize: number,
   itemMinWidth: number,
+  defaultItemHeight: number,
 ) => {
   // TODO: use a ref
   const width =
@@ -545,11 +535,21 @@ const getGridOptions = (
   const columnWidth = calculateItemWidth(width, columnCount);
   const gridItems = addHeadersToItems(sortedModels, columnCount);
   const rowCount = Math.ceil(gridItems.length / columnCount);
+
+  const rowHeight = (props: Index) => {
+    const item = gridItems[props.index];
+    if (gridItemIsGroupHeader(item)) {
+      return 40;
+    }
+    return defaultItemHeight;
+  };
+
   return {
     columnCount,
     columnWidth,
     gridItems,
     rowCount,
+    rowHeight,
     width,
   };
 };
@@ -567,7 +567,7 @@ const SizedVirtualizedGrid = ({
   columnCount,
   columnWidth,
   gridGapSize,
-  itemHeight,
+  rowHeight,
   items,
   renderItem,
   rowCount,
@@ -575,7 +575,7 @@ const SizedVirtualizedGrid = ({
   width,
 }: {
   items: GridItem[];
-  itemHeight: number;
+  rowHeight: (props: Index) => number;
   renderItem: RenderItemFunction;
   gridGapSize: number;
   scrollElement?: HTMLElement;
@@ -609,17 +609,16 @@ const SizedVirtualizedGrid = ({
                 ref={gridRef}
                 autoHeight
                 height={height}
-                rowHeight={itemHeight}
                 isScrolling={isScrolling}
                 scrollTop={scrollTop}
                 onScroll={onChildScroll}
+                rowHeight={rowHeight}
                 cellRenderer={(props: GridCellProps) => {
-                  const fullProps = {
+                  return renderItem({
                     ...props,
                     items,
                     columnCount,
-                  };
-                  return renderItem(fullProps);
+                  });
                 }}
               />
             );

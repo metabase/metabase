@@ -6,6 +6,7 @@ import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+import { SimpleBrowseHeader } from "../containers/BrowseData.styled";
 import {
   BrowseHeaderContent,
   BrowseHeaderRoot,
@@ -16,7 +17,11 @@ export default function BrowseHeader({ crumbs }) {
   return (
     <BrowseHeaderRoot>
       <BrowseHeaderContent>
-        <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+        {crumbs.length > 0 ? (
+          <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+        ) : (
+          <SimpleBrowseHeader className="text-dark">{t`Browse data`}</SimpleBrowseHeader>
+        )}
         <div className="flex flex-align-right">
           <Link
             className="flex flex-align-right"
