@@ -1,49 +1,75 @@
 import _ from "underscore";
-
 import { createSelector } from "@reduxjs/toolkit";
+
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-
-import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
-import {
-  getDashboardId,
-  getDashCardById,
-  getDashcards,
-} from "./selectors-typed";
+import type {
+  Bookmark,
+  Card,
+  DashboardCard,
+  DashboardId,
+  DashCardId,
+} from "metabase-types/api";
+import type {
+  ClickBehaviorSidebarState,
+  EditParameterSidebarState,
+  State,
+} from "metabase-types/store";
 
-export const getIsEditing = state => !!state.dashboard.isEditing;
-export const getClickBehaviorSidebarDashcard = state => {
+type SidebarState = State["dashboard"]["sidebar"];
+
+function isClickBehaviorSidebar(
+  sidebar: SidebarState,
+): sidebar is ClickBehaviorSidebarState {
+  return sidebar.name === SIDEBAR_NAME.clickBehavior;
+}
+
+function isEditParameterSidebar(
+  sidebar: SidebarState,
+): sidebar is EditParameterSidebarState {
+  return sidebar.name === SIDEBAR_NAME.editParameter;
+}
+
+export const getDashboardBeforeEditing = (state: State) =>
+  state.dashboard.isEditing;
+
+export const getIsEditing = (state: State) =>
+  Boolean(getDashboardBeforeEditing(state));
+
+export const getClickBehaviorSidebarDashcard = (state: State) => {
   const { sidebar, dashcards } = state.dashboard;
-  return sidebar.name === SIDEBAR_NAME.clickBehavior
-    ? dashcards[sidebar.props.dashcardId]
+  return isClickBehaviorSidebar(sidebar)
+    ? dashcards[sidebar.props?.dashcardId]
     : null;
 };
-export const getDashboards = state => state.dashboard.dashboards;
-export const getCardData = state => state.dashboard.dashcardData;
-export const getSlowCards = state => state.dashboard.slowCards;
-export const getParameterValues = state => state.dashboard.parameterValues;
-export const getFavicon = state =>
+export const getDashboards = (state: State) => state.dashboard.dashboards;
+export const getCardData = (state: State) => state.dashboard.dashcardData;
+export const getSlowCards = (state: State) => state.dashboard.slowCards;
+export const getParameterValues = (state: State) =>
+  state.dashboard.parameterValues;
+export const getFavicon = (state: State) =>
   state.dashboard.loadingControls?.showLoadCompleteFavicon
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getIsRunning = state =>
+export const getIsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
-export const getIsLoadingComplete = state =>
+export const getIsLoadingComplete = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
-export const getLoadingStartTime = state =>
+export const getLoadingStartTime = (state: State) =>
   state.dashboard.loadingDashCards.startTime;
-export const getLoadingEndTime = state =>
+export const getLoadingEndTime = (state: State) =>
   state.dashboard.loadingDashCards.endTime;
 
 export const getIsSlowDashboard = createSelector(
@@ -57,10 +83,10 @@ export const getIsSlowDashboard = createSelector(
   },
 );
 
-export const getIsAddParameterPopoverOpen = state =>
+export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
 
-export const getSidebar = state => state.dashboard.sidebar;
+export const getSidebar = (state: State) => state.dashboard.sidebar;
 export const getIsSharing = createSelector(
   [getSidebar],
   sidebar => sidebar.name === SIDEBAR_NAME.sharing,
@@ -76,25 +102,38 @@ export const getIsShowDashboardInfoSidebar = createSelector(
   sidebar => sidebar.name === SIDEBAR_NAME.info,
 );
 
-/**
- * @type {(state: import("metabase-types/store").State) => import("metabase-types/api").Dashboard}
- */
+export const getDashboardId = (state: State) => state.dashboard.dashboardId;
+
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
-  (dashboardId, dashboards) => dashboards[dashboardId],
+  (dashboardId, dashboards) =>
+    dashboardId !== null ? dashboards[dashboardId] : undefined,
 );
 
-export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+export const getDashcards = (state: State) => state.dashboard.dashcards;
 
-export const getDashboardById = (state, dashboardId) => {
+export const getDashCardById = (state: State, dashcardId: DashCardId) => {
+  const dashcards = getDashcards(state);
+  return dashcards[dashcardId];
+};
+
+export function getDashCardBeforeEditing(state: State, dashcardId: DashCardId) {
+  const dashboard = getDashboardBeforeEditing(state);
+  return dashboard?.dashcards?.find?.(dashcard => dashcard.id === dashcardId);
+}
+
+export const getLoadingDashCards = (state: State) =>
+  state.dashboard.loadingDashCards;
+
+export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
 
-export const getSingleDashCardData = (state, dashcardId) => {
+export const getSingleDashCardData = (state: State, dashcardId: DashCardId) => {
   const dashcard = getDashCardById(state, dashcardId);
   const cardDataMap = getCardData(state);
-  if (!dashcard || !cardDataMap) {
+  if (!dashcard?.card_id || !cardDataMap) {
     return;
   }
   return cardDataMap?.[dashcard.id]?.[dashcard.card_id]?.data;
@@ -131,11 +170,11 @@ export const getDashboardComplete = createSelector(
   },
 );
 
-export const getAutoApplyFiltersToastId = state =>
+export const getAutoApplyFiltersToastId = (state: State) =>
   state.dashboard.autoApplyFilters.toastId;
-export const getAutoApplyFiltersToastDashboardId = state =>
+export const getAutoApplyFiltersToastDashboardId = (state: State) =>
   state.dashboard.autoApplyFilters.toastDashboardId;
-export const getDraftParameterValues = state =>
+export const getDraftParameterValues = (state: State) =>
   state.dashboard.draftParameterValues;
 
 export const getIsAutoApplyFilters = createSelector(
@@ -176,8 +215,8 @@ export const getCanShowAutoApplyFiltersToast = createSelector(
     isParameterValuesEmpty,
   ) => {
     return (
-      dashboard.can_write &&
-      dashboard.id !== toastDashboardId &&
+      dashboard?.can_write &&
+      dashboard?.id !== toastDashboardId &&
       isAutoApply &&
       isSlowDashboard &&
       !isParameterValuesEmpty
@@ -185,33 +224,45 @@ export const getCanShowAutoApplyFiltersToast = createSelector(
   },
 );
 
-export const getDocumentTitle = state =>
+export const getDocumentTitle = (state: State) =>
   state.dashboard.loadingControls.documentTitle;
 
-export const getIsNavigatingBackToDashboard = state =>
+export const getIsNavigatingBackToDashboard = (state: State) =>
   state.dashboard.isNavigatingBackToDashboard;
 
-export const getIsBookmarked = (state, props) =>
-  props.bookmarks.some(
+type IsBookmarkedSelectorProps = {
+  bookmarks: Bookmark[];
+  dashboardId: DashboardId;
+};
+
+export const getIsBookmarked = (
+  state: State,
+  { bookmarks, dashboardId }: IsBookmarkedSelectorProps,
+) =>
+  bookmarks.some(
     bookmark =>
-      bookmark.type === "dashboard" && bookmark.item_id === props.dashboardId,
+      bookmark.type === "dashboard" && bookmark.item_id === dashboardId,
   );
 
 export const getIsDirty = createSelector(
   [getDashboard, getDashcards],
-  (dashboard, dashcards) =>
-    !!(
-      dashboard &&
-      (dashboard.isDirty ||
-        _.some(
-          dashboard.dashcards,
-          id =>
-            !(dashcards[id].isAdded && dashcards[id].isRemoved) &&
-            (dashcards[id].isDirty ||
-              dashcards[id].isAdded ||
-              dashcards[id].isRemoved),
-        ))
-    ),
+  (dashboard, dashcards) => {
+    if (!dashboard) {
+      return false;
+    }
+
+    if (dashboard.isDirty) {
+      return true;
+    }
+
+    return dashboard.dashcards.some(id => {
+      const dc = dashcards[id];
+      return (
+        !(dc.isAdded && dc.isRemoved) &&
+        (dc.isDirty || dc.isAdded || dc.isRemoved)
+      );
+    });
+  },
 );
 
 export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
@@ -219,9 +270,7 @@ export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
 });
 
 export const getEditingParameterId = createSelector([getSidebar], sidebar => {
-  return sidebar.name === SIDEBAR_NAME.editParameter
-    ? sidebar.props?.parameterId
-    : null;
+  return isEditParameterSidebar(sidebar) ? sidebar.props?.parameterId : null;
 });
 
 export const getIsEditingParameter = createSelector(
@@ -231,14 +280,17 @@ export const getIsEditingParameter = createSelector(
 
 export const getEditingParameter = createSelector(
   [getDashboard, getEditingParameterId],
-  (dashboard, editingParameterId) =>
-    editingParameterId != null
-      ? _.findWhere(dashboard.parameters, { id: editingParameterId })
-      : null,
+  (dashboard, editingParameterId) => {
+    const parameters = dashboard?.parameters || [];
+    return editingParameterId != null
+      ? _.findWhere(parameters, { id: editingParameterId })
+      : null;
+  },
 );
 
-const getCard = (state, props) => props.card;
-const getDashCard = (state, props) => props.dashcard;
+const getCard = (state: State, { card }: { card: Card }) => card;
+const getDashCard = (state: State, { dashcard }: { dashcard: DashboardCard }) =>
+  dashcard;
 
 export const getParameterTarget = createSelector(
   [getEditingParameter, getCard, getDashCard],
@@ -246,11 +298,15 @@ export const getParameterTarget = createSelector(
     if (parameter == null) {
       return null;
     }
-    const mapping = _.findWhere(dashcard.parameter_mappings, {
-      parameter_id: parameter.id,
-      ...(card && card.id && { card_id: card.id }),
-    });
-    return mapping && mapping.target;
+
+    const parameterMappings = dashcard.parameter_mappings || [];
+
+    const lookupProperties = card?.id
+      ? { parameter_id: parameter.id, card_id: card.id }
+      : { parameter_id: parameter.id };
+
+    const mapping = _.findWhere(parameterMappings, lookupProperties);
+    return mapping?.target;
   },
 );
 
@@ -280,3 +336,14 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+export const getTabs = createSelector([getDashboard], dashboard => {
+  if (!dashboard) {
+    return [];
+  }
+  return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
+});
+
+export function getSelectedTabId(state: State) {
+  return state.dashboard.selectedTabId;
+}

@@ -167,51 +167,6 @@
   [_setting]
   [:key])
 
-(def ^:private ^:dynamic *exported-settings*
-  '#{#_application-colors
-     application-favicon-url
-     application-font
-     application-font-files
-     application-logo-url
-     application-name
-     available-fonts
-     available-locales
-     available-timezones
-     breakout-bins-num
-     custom-formatting
-     custom-geojson
-     custom-geojson-enabled
-     enable-embedding
-     enable-nested-queries
-     enable-sandboxes?
-     enable-whitelabeling?
-     enable-xrays
-     hide-embed-branding?
-     humanization-strategy
-     landing-page
-     loading-message
-     aggregated-query-row-limit
-     unaggregated-query-row-limit
-     native-query-autocomplete-match-style
-     persisted-models-enabled
-     report-timezone
-     report-timezone-long
-     report-timezone-short
-     search-typeahead-enabled
-     show-homepage-data
-     show-homepage-pin-message
-     show-homepage-xrays
-     show-lighthouse-illustration
-     show-metabot
-     site-locale
-     site-name
-     source-address-header
-     start-of-week
-     subscription-allowed-domains
-     uploads-enabled
-     uploads-database-id
-     uploads-schema-name})
-
 (declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
@@ -300,6 +255,7 @@
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
+   :export?     s/Bool           ; should this setting be serialized?
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
@@ -325,11 +281,7 @@
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))
-
-   ;; TODO: make this required and deprecate setting/exported-setting
-   (s/optional-key :export?)     s/Bool ; should this setting be serialized?
-   })
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -935,6 +887,7 @@
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :export?        false
                  :sensitive?     false
                  :cache?         true
                  :feature        nil
@@ -1101,6 +1054,10 @@
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
 
+  ###### `:export?`
+
+  Whether this Setting is included when producing a serializing settings export.
+
   ###### `:getter`
 
   A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in turn call functions
@@ -1253,10 +1210,7 @@
   (some? (env-var-value setting)))
 
 (defn- export? [setting-name]
-  (u/or-with some?
-    (:export? (core/get @registered-settings (keyword setting-name)))
-    ;; deprecated, we want to move to always setting this explicitly in the defsetting declaration
-    (contains? *exported-settings* (symbol setting-name))))
+  (:export? (core/get @registered-settings (keyword setting-name))))
 
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
@@ -1293,8 +1247,8 @@
                (when api/*is-superuser?*
                  [:admin]))))
 
-(defn- filtered-user-facing-settings
-  "Docstrings are hard"
+(defn- user-facing-settings-matching
+  "Returns the user facing view of the registered settings satisfying the given predicate"
   [pred options]
   (into
     []
@@ -1318,7 +1272,7 @@
   ;; ignore Database-local values, but not User-local values
   (let [writable-visibilities (current-user-writable-visibilities)]
     (binding [*database-local-values* nil]
-      (filtered-user-facing-settings
+      (user-facing-settings-matching
         (fn [setting]
           (and (contains? writable-visibilities (:visibility setting))
                (not= (:database-local setting) :only)))
@@ -1336,7 +1290,7 @@
   ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
-    (filtered-user-facing-settings
+    (user-facing-settings-matching
       (fn [setting]
         (and (not= (:visibility setting) :internal)
              (allows-site-wide-values? setting)))

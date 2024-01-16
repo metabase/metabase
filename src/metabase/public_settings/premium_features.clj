@@ -305,13 +305,15 @@
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
   :embedding
+  :export? true
   ;; This specific feature DOES NOT require the EE code to be present in order for it to return truthy, unlike
   ;; everything else.
   :getter #(has-feature? :embedding))
 
 (define-premium-feature enable-whitelabeling?
   "Should we allow full whitelabel embedding (reskinning the entire interface?)"
-  :whitelabel)
+  :whitelabel
+  :export? true)
 
 (define-premium-feature enable-audit-app?
   "Should we enable the Audit Logs interface in the Admin UI?"
@@ -331,7 +333,8 @@
 
 (define-premium-feature enable-sandboxes?
   "Should we enable data sandboxes (row-level permissions)?"
-  :sandboxes)
+  :sandboxes
+  :export? true)
 
 (define-premium-feature enable-sso-jwt?
   "Should we enable JWT-based authentication?"

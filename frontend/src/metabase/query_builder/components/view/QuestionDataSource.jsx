@@ -12,10 +12,9 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
 import {
-  isVirtualCardId,
   getQuestionIdFromVirtualTableId,
+  isVirtualCardId,
 } from "metabase-lib/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
 
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import { TablesDivider } from "./QuestionDataSource.styled";
@@ -23,8 +22,6 @@ import { TablesDivider } from "./QuestionDataSource.styled";
 QuestionDataSource.propTypes = {
   question: PropTypes.object,
   originalQuestion: PropTypes.object,
-  subHead: PropTypes.bool,
-  isObjectDetail: PropTypes.bool,
 };
 
 function isMaybeBasedOnDataset(question) {
@@ -33,17 +30,13 @@ function isMaybeBasedOnDataset(question) {
   return isVirtualCardId(sourceTableId);
 }
 
-function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
+function QuestionDataSource({ question, originalQuestion, ...props }) {
   if (!question) {
     return null;
   }
 
-  const variant = subHead ? "subhead" : "head";
-
   if (!question.isStructured() || !isMaybeBasedOnDataset(question)) {
-    return (
-      <DataSourceCrumbs question={question} variant={variant} {...props} />
-    );
+    return <DataSourceCrumbs question={question} {...props} />;
   }
 
   const query = question.query();
@@ -51,13 +44,7 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
   const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
 
   if (originalQuestion?.id() === sourceQuestionId) {
-    return (
-      <SourceDatasetBreadcrumbs
-        model={originalQuestion}
-        variant={variant}
-        {...props}
-      />
-    );
+    return <SourceDatasetBreadcrumbs model={originalQuestion} {...props} />;
   }
 
   return (
@@ -76,18 +63,11 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
                 <SourceDatasetBreadcrumbs
                   model={sourceQuestion}
                   collection={collection}
-                  variant={variant}
                   {...props}
                 />
               );
             }
-            return (
-              <DataSourceCrumbs
-                question={question}
-                variant={variant}
-                {...props}
-              />
-            );
+            return <DataSourceCrumbs question={question} {...props} />;
           }}
         </Collections.Loader>
       )}
@@ -97,17 +77,13 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
 
 DataSourceCrumbs.propTypes = {
   question: PropTypes.object,
-  variant: PropTypes.oneOf(["head", "subhead"]),
-  isObjectDetail: PropTypes.bool,
 };
 
-function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
+function DataSourceCrumbs({ question, ...props }) {
   const parts = getDataSourceParts({
     question,
-    subHead: variant === "subhead",
-    isObjectDetail,
   });
-  return <HeadBreadcrumbs parts={parts} variant={variant} {...props} />;
+  return <HeadBreadcrumbs parts={parts} {...props} />;
 }
 
 SourceDatasetBreadcrumbs.propTypes = {
@@ -155,10 +131,10 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
   );
 }
 
-QuestionDataSource.shouldRender = ({ question, isObjectDetail }) =>
-  getDataSourceParts({ question, isObjectDetail }).length > 0;
+QuestionDataSource.shouldRender = ({ question }) =>
+  getDataSourceParts({ question }).length > 0;
 
-function getDataSourceParts({ question, subHead, isObjectDetail }) {
+function getDataSourceParts({ question }) {
   if (!question) {
     return [];
   }
@@ -178,7 +154,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   const database = question.database();
   if (database) {
     parts.push({
-      icon: !subHead ? "database" : undefined,
+      icon: "database",
       name: database.displayName(),
       href: database.id >= 0 && Urls.browseDatabase(database),
     });
@@ -196,11 +172,9 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   }
 
   if (table) {
-    const hasTableLink = subHead || isObjectDetail;
     if (!isStructuredQuery) {
       return {
         name: table.displayName(),
-        link: hasTableLink ? getTableURL() : "",
       };
     }
 
@@ -209,14 +183,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
       ...query.joins().map(j => j.joinedTable()),
     ].filter(Boolean);
 
-    parts.push(
-      <QuestionTableBadges
-        tables={allTables}
-        subHead={subHead}
-        hasLink={hasTableLink}
-        isLast={!isObjectDetail}
-      />,
-    );
+    parts.push(<QuestionTableBadges tables={allTables} />);
   }
 
   return parts.filter(part => isValidElement(part) || part.name || part.icon);
@@ -224,20 +191,11 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
 
 QuestionTableBadges.propTypes = {
   tables: PropTypes.arrayOf(PropTypes.object).isRequired,
-  hasLink: PropTypes.bool,
-  subHead: PropTypes.bool,
-  isLast: PropTypes.bool,
 };
 
-function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
-  const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
-
+function QuestionTableBadges({ tables }) {
   const parts = tables.map(table => (
-    <HeadBreadcrumbs.Badge
-      key={table.id}
-      to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
-    >
+    <HeadBreadcrumbs.Badge key={table.id} to={""} inactiveColor="text-dark">
       <TableInfoPopover table={table} placement="bottom-start">
         <span>{table.displayName()}</span>
       </TableInfoPopover>
@@ -247,19 +205,11 @@ function QuestionTableBadges({ tables, subHead, hasLink, isLast }) {
   return (
     <HeadBreadcrumbs
       parts={parts}
-      variant={subHead ? "subhead" : "head"}
+      variant="head"
       divider={<TablesDivider>+</TablesDivider>}
       data-testid="question-table-badges"
     />
   );
-}
-
-function getTableURL(table) {
-  if (isVirtualCardId(table.id)) {
-    const cardId = getQuestionIdFromVirtualTableId(table.id);
-    return Urls.question({ id: cardId, name: table.displayName() });
-  }
-  return ML_Urls.getUrl(table.newQuestion());
 }
 
 export default QuestionDataSource;

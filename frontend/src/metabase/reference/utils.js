@@ -57,7 +57,7 @@ export const getQuestion = ({
   visualization,
   metadata,
 }) => {
-  const newQuestion = startNewCard("query", dbId, tableId);
+  const newQuestion = startNewCard(dbId, tableId);
 
   // consider taking a look at Ramda as a possible underscore alternative?
   // http://ramdajs.com/0.21.0/index.html

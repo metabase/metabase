@@ -1,6 +1,11 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetColumn,
+  Field,
+  TableId,
+} from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
   AggregationClause,
@@ -179,4 +184,12 @@ export function returnedColumns(
   stageIndex: number,
 ): ColumnMetadata[] {
   return ML.returned_columns(query, stageIndex);
+}
+
+export function fromLegacyColumn(
+  query: Query,
+  stageIndex: number,
+  columnOrField: DatasetColumn | Field,
+): ColumnMetadata {
+  return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }
