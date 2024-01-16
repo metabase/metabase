@@ -407,7 +407,6 @@
                                                (sql.qp/->honeysql driver table))]]}))
 
 (defn- show-command-sql
-  "Execute the SHOW command and returns a reducible result."
   ;; IMPORTANT: prefer using this command over using the JDBC `.getTables` method because the jdbc is buggy
   ;; it works sometimes but other times randomly.
   ;; we have tried to use it but people reported that some schemas disappear on their instances.
