@@ -271,16 +271,6 @@ const getGridOptions = (
     return width / columnCount;
   };
 
-  // // For testing, increase the number of models
-  // if (models.length && models.length < 100) {
-  //   for (let i = 0; i < 99900; i++) {
-  //     const pushMe = _.clone(models[i]);
-  //     pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
-  //     pushMe.name += ` (${i})`;
-  //     models.push(pushMe);
-  //   }
-  // }
-
   const sortedModels = [...models.map(model => ({ ...model }))].sort(
     sortModels,
   );
