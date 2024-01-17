@@ -1331,7 +1331,7 @@ Type: string<br>
 Default: `"true"`<br>
 Since: v48.4
 
-If this environment variable is present, it will disable the SNI checks in the Jetty web server. Normally you would leave this enabled unless you're terminating the TLS connection on Metabase itself. If this is the case and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider setting this environment variable to false or use another SSL certificate that matches exactly the domain name of the server.
+Setting `MB_JETTY_SKIP_SNI=true` (the default setting) turns off the Server Name Indication (SNI) checks in the Jetty web server. Normally you would leave this enabled. If, however, you're terminating the Transport Layer Security (TLS) connection on Metabase itself, and you're getting an error like `HTTP ERROR 400 Invalid SNI`, consider either setting `MB_JETTY_SKIP_SNI=false`, or use another SSL certificate that exactly matches the domain name of the server.
 
 ### `MB_SOURCE_ADDRESS_HEADER`
 
