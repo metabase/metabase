@@ -150,16 +150,11 @@ declare function DisplayInfoFn(
  * The first two parameters are always a query, and a stage.
  * The third parameter is what you would like to have info about.
  * It just only happens that the thing we're examining is (again) the query itself.
- *
- * @example
- * const query = question.query();
- * const { isEditable, isNative } = Lib.displayInfo(query, -1, query);
- *
  */
 declare function DisplayInfoFn(
   _query: Query,
   _stageIndex: number,
-  queryInfo: Query,
+  query: Query,
 ): QueryDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
