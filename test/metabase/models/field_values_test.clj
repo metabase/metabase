@@ -4,7 +4,7 @@
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing]]
    [java-time.api :as t]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]

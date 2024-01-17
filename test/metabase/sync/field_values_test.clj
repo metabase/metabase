@@ -93,39 +93,39 @@
            valid-linked-filter-id
            old-full-id
            new-full-id]             (t2/insert-returning-pks!
-                                      (t2/table-name FieldValues)
+                                      FieldValues
                                       [;; expired sandbox fieldvalues
                                        {:field_id   field-id
-                                        :type       "sandbox"
+                                        :type       :sandbox
                                         :hash_key   "random-hash-1"
                                         :created_at expired-created-at
                                         :updated_at expired-created-at}
                                        ;; expired linked-filter fieldvalues
                                        {:field_id   field-id
-                                        :type       "linked-filter"
+                                        :type       :linked-filter
                                         :hash_key   "random-hash-2"
                                         :created_at expired-created-at
                                         :updated_at expired-created-at}
                                        ;; valid sandbox fieldvalues
                                        {:field_id   field-id
-                                        :type       "sandbox"
+                                        :type       :sandbox
                                         :hash_key   "random-hash-3"
                                         :created_at now
                                         :updated_at now}
                                        ;; valid linked-filter fieldvalues
                                        {:field_id   field-id
-                                        :type       "linked-filter"
+                                        :type       :linked-filter
                                         :hash_key   "random-hash-4"
                                         :created_at now
                                         :updated_at now}
                                        ;; old full fieldvalues
                                        {:field_id   field-id
-                                        :type       "full"
+                                        :type       :full
                                         :created_at expired-created-at
                                         :updated_at expired-created-at}
                                        ;; new full fieldvalues
                                        {:field_id   field-id
-                                        :type       "full"
+                                        :type       :full
                                         :created_at now
                                         :updated_at now}])]
       (is (= (repeat 2 {:deleted 2})

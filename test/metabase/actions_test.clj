@@ -1,6 +1,6 @@
 (ns metabase.actions-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing]]
    [metabase.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.api.common :refer [*current-user-permissions-set*]]
