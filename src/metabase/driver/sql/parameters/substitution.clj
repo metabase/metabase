@@ -114,9 +114,9 @@
   (when (params.dates/date-type? param-type)
     :day))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod align-temporal-unit-with-param-type-and-value :default
   [driver field param-type _value]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (align-temporal-unit-with-param-type driver field param-type))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
