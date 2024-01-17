@@ -14,6 +14,7 @@ import {
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
 import type {
   VisualizationProps,
@@ -38,6 +39,7 @@ Object.assign(
       ...GRAPH_AXIS_SETTINGS,
       ...GRAPH_DISPLAY_VALUES_SETTINGS,
       ...GRAPH_DATA_SETTINGS,
+      ...TOOLTIP_SETTINGS,
     } as any as VisualizationSettingsDefinitions,
   }),
 );

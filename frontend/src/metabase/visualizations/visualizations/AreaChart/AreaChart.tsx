@@ -14,6 +14,7 @@ import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
   STACKABLE_SETTINGS,
+  TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
 import type {
   ComputedVisualizationSettings,
@@ -39,6 +40,7 @@ Object.assign(
       ...GRAPH_AXIS_SETTINGS,
       ...GRAPH_DISPLAY_VALUES_SETTINGS,
       ...GRAPH_DATA_SETTINGS,
+      ...TOOLTIP_SETTINGS,
     } as any as VisualizationSettingsDefinitions,
     onDisplayUpdate: (settings: ComputedVisualizationSettings) => {
       if (settings["stackable.stack_display"]) {
