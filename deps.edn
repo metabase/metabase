@@ -95,7 +95,7 @@
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.13.0"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.14.0"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.0.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.14.0"
@@ -130,7 +130,8 @@
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.77"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.77"}
-  org.clj-commons/hickory                   {:mvn/version "0.7.3"}              ; Parse HTML into Clojure data structures
+  org.clj-commons/hickory                   {:mvn/version "0.7.3"               ; Parse HTML into Clojure data structures
+                                             :exclusions [org.jsoup/jsoup]}
   org.clojure/clojure                       {:mvn/version "1.11.1"}
   org.clojure/core.async                    {:mvn/version "1.6.681"
                                              :exclusions  [org.clojure/tools.reader]}
@@ -153,6 +154,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "11.0.17"}            ; web server
   org.flatland/ordered                      {:mvn/version "1.15.11"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.4"}             ; JavaScript engine
+  org.jsoup/jsoup                           {:mvn/version "1.17.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.25.1"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   ;; The 3.X line of development for mariadb-java-client only supports the jdbc:mariadb protocol, so use 2.X for now.
