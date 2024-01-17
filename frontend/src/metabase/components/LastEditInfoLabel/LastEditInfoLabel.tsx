@@ -2,8 +2,8 @@ import PropTypes from "prop-types";
 import type { MouseEventHandler } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
-// eslint-disable-next-line no-restricted-imports -- deprecated usage
-import moment from "moment-timezone";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 
 import { getUser } from "metabase/selectors/user";
 import type { NamedUser } from "metabase/lib/user";
@@ -12,6 +12,8 @@ import { TextButton } from "metabase/components/Button.styled";
 import { Tooltip } from "metabase/ui";
 import DateTime from "metabase/components/DateTime";
 import type { CollectionItem, User } from "metabase-types/api";
+
+dayjs.extend(relativeTime);
 
 function mapStateToProps(state: any, props: any) {
   return {
@@ -40,7 +42,6 @@ LastEditInfoLabel.propTypes = {
 
 function formatEditorName(lastEditInfo: NamedUser) {
   const name = getFullName(lastEditInfo);
-
   return name || lastEditInfo.email;
 }
 
@@ -54,17 +55,14 @@ export type CollectionItemWithLastEditedInfo = CollectionItem & {
   };
 };
 
-// TODO: Should there be a fallback to a string like 'Edited 3 months ago' when there's no editor name?
 const defaultLabelFormatter = (
   nameOfLastEditor: string | null | undefined,
-  howLongAgo: string | undefined = "",
+  howLongAgo: string,
 ) => (
   <>
     {nameOfLastEditor ? t`Edited ${howLongAgo} by ${nameOfLastEditor}` : null}
   </>
 );
-
-// TODO: Maybe we can reuse the LastEditInfoLabel component as is without adding the separator; ask Kyle about this
 
 function LastEditInfoLabel({
   item,
@@ -81,22 +79,17 @@ function LastEditInfoLabel({
   fullName: string | null;
   formatLabel: (
     nameOfLastEditor: string | null | undefined,
-    howLongAgo: string | undefined,
+    howLongAgo: string,
   ) => JSX.Element;
 }) {
   const lastEditInfo = item["last-edit-info"];
   const editorId = lastEditInfo?.id;
   const timestamp = lastEditInfo?.timestamp;
 
-  // TODO: Replace moment with dayjs for date handling as moment.js is deprecated.
-  // Not sure how to localize this. Bracket this for now, says Ryan
-  const momentTimestamp = moment(timestamp);
+  const date = dayjs(timestamp);
   const timeLabel =
-    timestamp && momentTimestamp.isValid()
-      ? momentTimestamp.fromNow()
-      : undefined;
+    timestamp && date.isValid() ? date.fromNow() : t`(invalid date)`;
 
-  // TODO: Handle different capitalization of 'you' when name comes first
   fullName ||= formatEditorName(lastEditInfo) || null;
   const editorFullName = editorId === user.id ? t`you` : fullName;
   const label = formatLabel(editorFullName, timeLabel);
@@ -117,9 +110,6 @@ function LastEditInfoLabel({
     </Tooltip>
   ) : null;
 }
-// TODO: Make the tooltip look like the one on Figma (bottom left corner)
-// NOTE: The header is meant to be truncated and ellipsified too
-// NOTE: Verification of a question is an enterprise feature. Enterprise features are loaded through plugins.
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(LastEditInfoLabel);
