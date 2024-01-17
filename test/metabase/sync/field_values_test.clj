@@ -97,25 +97,25 @@
                                       [;; expired sandbox fieldvalues
                                        {:field_id   field-id
                                         :type       "sandbox"
-                                        :hash_key   "random-hash"
+                                        :hash_key   "random-hash-1"
                                         :created_at expired-created-at
                                         :updated_at expired-created-at}
                                        ;; expired linked-filter fieldvalues
                                        {:field_id   field-id
                                         :type       "linked-filter"
-                                        :hash_key   "random-hash"
+                                        :hash_key   "random-hash-2"
                                         :created_at expired-created-at
                                         :updated_at expired-created-at}
                                        ;; valid sandbox fieldvalues
                                        {:field_id   field-id
                                         :type       "sandbox"
-                                        :hash_key   "random-hash"
+                                        :hash_key   "random-hash-3"
                                         :created_at now
                                         :updated_at now}
                                        ;; valid linked-filter fieldvalues
                                        {:field_id   field-id
                                         :type       "linked-filter"
-                                        :hash_key   "random-hash"
+                                        :hash_key   "random-hash-4"
                                         :created_at now
                                         :updated_at now}
                                        ;; old full fieldvalues
