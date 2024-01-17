@@ -33,8 +33,6 @@ export const ComboChart = ({
     renderingContext,
   );
 
-  console.log(JSON.stringify(rawSeries));
-
   const chartModel = getCartesianChartModel(
     rawSeries,
     computedVisualizationSettings,
