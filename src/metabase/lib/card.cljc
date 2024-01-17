@@ -90,9 +90,12 @@
       (when card-or-id
         {:lib/card-id (u/the-id card-or-id)})
       (when *force-broken-card-refs*
-        {::force-broken-id-refs true}
-        #_(when-let [legacy-join-alias (:source-alias col)]
-            {:lib/desired-column-alias (lib.util/format "%s__%s" legacy-join-alias (:name col))}))))))
+        {::force-broken-id-refs true})
+      ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
+      ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
+      ;; treated as FKs unless the metadata is configured accordingly.
+      (when (not= (:semantic-type col) :type/FK)
+        {:fk-target-field-id nil})))))
 
 (def ^:private CardColumnMetadata
   [:merge
