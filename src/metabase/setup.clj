@@ -4,7 +4,6 @@
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
-   [metabase.models.user :refer [User]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
@@ -14,7 +13,8 @@
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
   launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."
   :visibility :public
-  :setter     :none)
+  :setter     :none
+  :audit      :never)
 
 (defn token-match?
   "Function for checking if the supplied string matches our setup token.
@@ -35,6 +35,7 @@
         (setting/set-value-of-type! :string :setup-token mb-setup-token))
       (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (random-uuid)))))
+
 
 (defsetting has-user-setup
   (deferred-tru "A value that is true iff the metabase instance has one or more users registered.")
@@ -60,7 +61,8 @@
                     (if (some? possible-override)
                       possible-override
                       (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                          (let [exists? (t2/exists? User)]
+                          (let [exists? (boolean (seq (t2/select :model/User {:where [:not= :id config/internal-mb-user-id]})))]
                             (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                             exists?))))))
-  :doc        false)
+  :doc        false
+  :audit      :never)

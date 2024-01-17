@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
@@ -13,9 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.test :as mt]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -292,7 +289,7 @@
                                                             :value value
                                                             :options options}})})
                        vec
-                       (update 0 mdb.query/format-sql :h2)
+                       (update 0 (partial driver/prettify-native-form :h2))
                        (update 0 str/split-lines))))))))))
 
 ;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
@@ -323,9 +320,8 @@
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (binding [hx/*honey-sql-version* 2]
-                           (mt/with-metadata-provider meta/metadata-provider
-                             (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params)))))]
+                         (mt/with-metadata-provider meta/metadata-provider
+                           (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -479,10 +475,9 @@
   "Expand parameters inside a top-level native `query`. Not recursive. "
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
-    (binding [hx/*honey-sql-version* 2]
-      (mt/with-metadata-provider meta/metadata-provider
-        (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
-          (assoc query :native inner'))))))
+    (mt/with-metadata-provider meta/metadata-provider
+      (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
+        (assoc query :native inner')))))
 
 (defn- expand* [query]
   (-> (expand** (mbql.normalize/normalize query))

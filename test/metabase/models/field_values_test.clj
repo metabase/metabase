@@ -234,7 +234,7 @@
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp-copy-of-db
         (letfn [(field-values []
                   (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]

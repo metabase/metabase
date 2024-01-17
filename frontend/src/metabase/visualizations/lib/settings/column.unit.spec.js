@@ -97,4 +97,13 @@ describe("column settings", () => {
     expect(time_style).toEqual("h:mm A");
     expect(date_style).toEqual("");
   });
+  it("should set a percentage style to a column with percentage type in its metadata", () => {
+    const series = seriesWithColumn({
+      semantic_type: "type/Percentage",
+    });
+    const defs = { ...columnSettings() };
+    const computed = getComputedSettings(defs, series, {});
+    const { number_style } = computed.column(series[0].data.cols[0]);
+    expect(number_style).toBe("percent");
+  });
 });

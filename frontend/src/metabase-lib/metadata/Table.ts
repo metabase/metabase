@@ -80,17 +80,17 @@ class Table {
     });
   }
 
-  isSavedQuestion() {
-    return this.savedQuestionId() !== null;
-  }
-
   savedQuestionId() {
     const match = String(this.id).match(/card__(\d+)/);
     return match ? parseInt(match[1]) : null;
   }
 
-  query(query = {}) {
-    return (this.question().query() as StructuredQuery).updateQuery(q => ({
+  legacyQuery(query = {}) {
+    return (
+      this.question().legacyQuery({
+        useStructuredQuery: true,
+      }) as StructuredQuery
+    ).updateQuery(q => ({
       ...q,
       ...query,
     }));
@@ -165,16 +165,6 @@ class Table {
       .filter(field => field.isFK() && field.fk_target_field_id)
       .map(field => this.metadata?.field(field.fk_target_field_id)?.table)
       .filter(Boolean) as Table[];
-  }
-
-  primaryKeys(): { field: Field; index: number }[] {
-    const pks: { field: Field; index: number }[] = [];
-    this.getFields().forEach((field, index) => {
-      if (field.isPK()) {
-        pks.push({ field, index });
-      }
-    });
-    return pks;
   }
 
   clone() {

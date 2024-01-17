@@ -9,6 +9,8 @@
    (java.io FileOutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (defn- frontend-message?
   "Whether this i18n `message` comes from a frontend source file."
   [{:keys [source-references]}]
@@ -46,12 +48,15 @@
   (->i18n-map (i18n/po-contents locale)))
 
 (def target-directory
+  "Target directory for frontend i18n resources."
   (u/filename u/project-root-directory "resources" "frontend_client" "app" "locales"))
 
 (defn- target-filename [locale]
   (u/filename target-directory (format "%s.json" (str/replace locale #"-" "_"))))
 
-(defn create-artifact-for-locale! [locale]
+(defn create-artifact-for-locale!
+  "Create an artifact with translated strings for `locale` for frontend (JS) usage."
+  [locale]
   (let [target-file (target-filename locale)]
     (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
       (u/create-directory-unless-exists! target-directory)

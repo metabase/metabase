@@ -6,9 +6,10 @@ import type {
 
 import type { UiParameter } from "metabase-lib/parameters/types";
 
-import { clickBehaviorOptions, getClickBehaviorOptionName } from "../utils";
-import CrossfilterOptions from "../CrossfilterOptions";
-import LinkOptions from "../LinkOptions";
+import { clickBehaviorOptions } from "../utils";
+import { useClickBehaviorOptionName } from "../hooks";
+import { CrossfilterOptions } from "../CrossfilterOptions";
+import { LinkOptions } from "../LinkOptions/LinkOptions";
 import { SidebarItem } from "../SidebarItem";
 import {
   SidebarContentBordered,
@@ -62,7 +63,7 @@ interface ClickBehaviorSidebarMainViewProps {
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
 
-function ClickBehaviorSidebarMainView({
+export function ClickBehaviorSidebarMainView({
   clickBehavior,
   dashboard,
   dashcard,
@@ -70,7 +71,7 @@ function ClickBehaviorSidebarMainView({
   handleShowTypeSelector,
   updateSettings,
 }: ClickBehaviorSidebarMainViewProps) {
-  const clickBehaviorOptionName = getClickBehaviorOptionName(
+  const clickBehaviorOptionName = useClickBehaviorOptionName(
     clickBehavior.type,
     dashcard,
   );
@@ -106,6 +107,3 @@ function ClickBehaviorSidebarMainView({
     </>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ClickBehaviorSidebarMainView;

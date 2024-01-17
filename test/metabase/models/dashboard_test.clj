@@ -104,7 +104,7 @@
        :cards [{:id 1} {:id 2}]}
       {:name  "Next"
        :cards [{:id 1} {:id 3}]}
-      "renamed it from \"Apple\" to \"Next\" and modified the cards."
+      "renamed this Dashboard from \"Apple\" to \"Next\" and modified the cards."
 
       {:name               "Diff Test"
        :auto_apply_filters true}
@@ -435,11 +435,11 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash-id is-creation?]
   (revision/push-revision!
-   :object       (t2/select-one Dashboard :id dash-id)
-   :entity       Dashboard
-   :id           dash-id
-   :user-id      (mt/user->id :crowberto)
-   :is-creation? is-creation?))
+   {:object       (t2/select-one Dashboard :id dash-id)
+    :entity       Dashboard
+    :id           dash-id
+    :user-id      (mt/user->id :crowberto)
+    :is-creation? is-creation?}))
 
 (defn- revert-to-previous-revision
   "Revert to a previous revision for a model.
@@ -452,7 +452,7 @@
   (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:id :desc]]
                                                                                 :limit    n})]
    (assert (= n (count ids)), "There are less revisions than required to revert")
-   (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
+   (revision/revert! {:entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids)})))
 
 (deftest revert-dashboard-with-tabs-basic-test
   (testing "revert adding tabs"
@@ -541,7 +541,7 @@
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
        ;; revert
        (revert-to-previous-revision Dashboard dashboard-id 2)
-       (is (=? [{:id #hawk/malli [:fn pos-int?] :name "Tab 1" :position 0}
+       (is (=? [{:id (mt/malli=? [:fn pos-int?]) :name "Tab 1" :position 0}
                 {:id tab-2-id :name "Tab 2" :position 1}]
                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
 
@@ -634,12 +634,67 @@
      (testing "there are no \"Tab 3\""
        (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3")))))))
 
+(deftest revert-dashboard-skip-archived-or-deleted-card-test
+  (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id}          {:name "A dashboard"}
+                           :model/Card      {will-be-archived-card :id} {}
+                           :model/Card      {will-be-deleted-card :id}  {}
+                           :model/Card      {unchanged-card       :id}  {}]
+    ;; 0. create a dashboard
+    (create-dashboard-revision! dashboard-id true)
+    ;; 1. add 3 cards and 1 text card
+    (t2/insert! :model/DashboardCard
+                [{:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          will-be-archived-card
+                  :row              0
+                  :col              0
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          will-be-deleted-card
+                  :row              4
+                  :col              4
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id     dashboard-id
+                  :dashboard_tab_id nil
+                  :card_id          unchanged-card
+                  :row              0
+                  :col              0
+                  :size_x           4
+                  :size_y           4}
+                 {:dashboard_id           dashboard-id
+                  :dashboard_tab_id       nil
+                  :row                    4
+                  :col                    4
+                  :size_x                 4
+                  :size_y                 4
+                  :visualization_settings {:text "Metabase"}}])
+    (create-dashboard-revision! dashboard-id false)
+
+    ;; 2. delete all the dashcards
+    (t2/delete! :model/DashboardCard :dashboard_id dashboard-id)
+    (create-dashboard-revision! dashboard-id false)
+
+    (t2/delete! :model/Card will-be-deleted-card)
+    (t2/update! :model/Card :id will-be-archived-card {:archived true})
+
+    (testing "revert should not include archived or deleted card ids (#34884)"
+      (revert-to-previous-revision Dashboard dashboard-id 2)
+      (is (=? #{{:card_id                unchanged-card
+                 :visualization_settings {}}
+                {:card_id                nil
+                 :visualization_settings {:text "Metabase"}}}
+              (t2/select-fn-set #(select-keys % [:card_id :visualization_settings])
+                                :model/DashboardCard :dashboard_id dashboard-id))))))
+
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (tu/with-temporary-setting-values [enable-public-sharing true]
       (t2.with-temp/with-temp [Dashboard dashboard {:public_uuid (str (random-uuid))}]
-        (is (schema= u/uuid-regex
-                     (:public_uuid dashboard)))))
+        (is (=? u/uuid-regex
+                (:public_uuid dashboard)))))
 
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
@@ -816,7 +871,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections in the \"default\" namespace"
+               #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
                (t2/insert! Dashboard (assoc (t2.with-temp/with-temp-defaults Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! Dashboard :name dashboard-name)))))
@@ -825,7 +880,7 @@
       (t2.with-temp/with-temp [Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections in the \"default\" namespace"
+             #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
              (t2/update! Dashboard card-id {:collection_id collection-id})))))))
 
 (deftest validate-parameters-test
@@ -909,38 +964,57 @@
 
 (deftest descendants-test
   (testing "dashboard which have parameter's source is another card"
-    (t2.with-temp/with-temp [Field     field     {:name "A field"}
-                             Card      card      {:name "A card"}
-                             Dashboard dashboard {:name       "A dashboard"
-                                                  :parameters [{:id "abc"
-                                                                :type "category"
-                                                                :values_source_type "card"
-                                                                :values_source_config {:card_id     (:id card)
-                                                                                       :value_field [:field (:id field) nil]}}]}]
+    (mt/with-temp
+      [Field     field     {:name "A field"}
+       Card      card      {:name "A card"}
+       Dashboard dashboard {:name       "A dashboard"
+                            :parameters [{:id "abc"
+                                          :type "category"
+                                          :values_source_type "card"
+                                          :values_source_config {:card_id     (:id card)
+                                                                 :value_field [:field (:id field) nil]}}]}]
       (is (= #{["Card" (:id card)]}
              (serdes/descendants "Dashboard" (:id dashboard))))))
 
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
-      (mt/with-temp [Dashboard dashboard {:name "A dashboard"}
-                     DashboardCard _ {:action_id          action-id
-                                      :dashboard_id       (:id dashboard)
-                                      :parameter_mappings []}]
+      (mt/with-temp
+        [Dashboard dashboard {:name "A dashboard"}
+         DashboardCard _ {:action_id          action-id
+                          :dashboard_id       (:id dashboard)
+                          :parameter_mappings []}]
         (is (= #{["Action" action-id]}
                (serdes/descendants "Dashboard" (:id dashboard)))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
-    (t2.with-temp/with-temp [Card          card1     {:name "Card attached to dashcard"}
-                             Card          card2     {:name "Card attached to parameters"}
-                             Dashboard     dashboard {:parameters [{:name "Category Name"
-                                                                    :slug "category_name"
-                                                                    :id   "_CATEGORY_NAME_"
-                                                                    :type "category"}]}
-                             DashboardCard _         {:card_id            (:id card1)
-                                                      :dashboard_id       (:id dashboard)
-                                                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                                            :card_id      (:id card2)
-                                                                            :target       [:dimension (mt/$ids $categories.name)]}]}]
+    (mt/with-temp
+      [Card          card1     {:name "Card attached to dashcard"}
+       Card          card2     {:name "Card attached to parameters"}
+       Dashboard     dashboard {:parameters [{:name "Category Name"
+                                              :slug "category_name"
+                                              :id   "_CATEGORY_NAME_"
+                                              :type "category"}]}
+       DashboardCard _         {:card_id            (:id card1)
+                                :dashboard_id       (:id dashboard)
+                                :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                      :card_id      (:id card2)
+                                                      :target       [:dimension (mt/$ids $categories.name)]}]}]
       (is (= #{["Card" (:id card1)]
                ["Card" (:id card2)]}
+             (serdes/descendants "Dashboard" (:id dashboard))))))
+
+  (testing "dashboard in which its dashcards have series"
+    (mt/with-temp
+      [Card                card1     {:name "Card attached to dashcard"}
+       Card                card2     {:name "Card attached to series in 1st position"}
+       Card                card3     {:name "Card attached to series in 2nd position"}
+       Dashboard           dashboard {:parameters [{:name "Category Name"
+                                                    :slug "category_name"
+                                                    :id   "_CATEGORY_NAME_"
+                                                    :type "category"}]}
+       DashboardCard       dashcard {:card_id (:id card1), :dashboard_id (:id dashboard)}
+       DashboardCardSeries _        {:dashboardcard_id (:id dashcard), :card_id (:id card2), :position 0}
+       DashboardCardSeries _        {:dashboardcard_id (:id dashcard), :card_id (:id card3), :position 1}]
+      (is (= (set (for [card [card1 card2 card3]]
+                    ["Card" (:id card)]))
              (serdes/descendants "Dashboard" (:id dashboard)))))))

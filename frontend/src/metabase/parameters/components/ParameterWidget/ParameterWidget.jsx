@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import PropTypes from "prop-types";
-import { Icon } from "metabase/core/components/Icon";
 import ParameterValueWidget from "../ParameterValueWidget";
 import {
   ParameterContainer,
   ParameterFieldSet,
+  SettingsIcon,
 } from "./ParameterWidget.styled";
 
 export class ParameterWidget extends Component {
@@ -109,7 +109,7 @@ export class ParameterWidget extends Component {
           {dragHandle}
         </div>
         {parameter.name}
-        <Icon className="flex-align-right" name="gear" size={16} />
+        <SettingsIcon name="gear" size={16} />
       </ParameterContainer>
     );
 

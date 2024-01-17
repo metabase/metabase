@@ -42,7 +42,7 @@
   because it relies on [[public-settings/site-uuid]]."
   #'sql.tu.unique-prefix/unique-prefix)
 
-(defn- qualified-db-name
+(defn qualified-db-name
   "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
   time."
   [database-name]
@@ -67,7 +67,7 @@
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
-     {:db (qualified-db-name (u/lower-case-en database-name))})))
+     {:db (qualified-db-name database-name)})))
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake

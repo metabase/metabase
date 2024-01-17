@@ -26,14 +26,14 @@
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
   (let [segment (api/check-500
-                  (first (t2/insert-returning-instances! Segment
-                                                         :table_id    table_id
-                                                         :creator_id  api/*current-user-id*
-                                                         :name        name
-                                                         :description description
-                                                         :definition  definition)))]
-    (-> (events/publish-event! :event/segment-create segment)
-        (t2/hydrate :creator))))
+                 (first (t2/insert-returning-instances! Segment
+                                                        :table_id    table_id
+                                                        :creator_id  api/*current-user-id*
+                                                        :name        name
+                                                        :description description
+                                                        :definition  definition)))]
+    (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
+    (t2/hydrate segment :creator)))
 
 (mu/defn ^:private hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one Segment :id id))
@@ -71,7 +71,7 @@
       (t2/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
-        (assoc <> :actor_id api/*current-user-id*, :revision_message revision_message)))))
+                             {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
 (api/defendpoint PUT "/:id"
   "Update a `Segment` with ID."
@@ -113,10 +113,10 @@
    revision_id ms/PositiveInt}
   (api/write-check Segment id)
   (revision/revert!
-    :entity      Segment
+   {:entity      Segment
     :id          id
     :user-id     api/*current-user-id*
-    :revision-id revision_id))
+    :revision-id revision_id}))
 
 (api/defendpoint GET "/:id/related"
   "Return related entities."

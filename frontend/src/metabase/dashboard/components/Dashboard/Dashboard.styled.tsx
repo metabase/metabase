@@ -3,14 +3,14 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import type { ComponentPropsWithoutRef } from "react";
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import Dashcard from "../DashCard";
+import { DashCard } from "../DashCard/DashCard";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
@@ -63,7 +63,7 @@ export const DashboardBody = styled.div<{ isEditingOrSharing: boolean }>`
     `}
 `;
 
-export const HeaderContainer = styled.header<{
+export const DashboardHeaderContainer = styled.header<{
   isFullscreen: boolean;
   isNightMode: boolean;
 }>`
@@ -104,18 +104,23 @@ export const ParametersAndCardsContainer = styled.div<{
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   isEditing: boolean;
   isSticky: boolean;
+  hasScroll: boolean;
 }>`
   align-items: flex-start;
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
   flex-direction: row;
-  padding-top: ${space(2)};
+  padding-top: ${space(1)};
   padding-bottom: ${space(1)};
   /* z-index should be higher than in dashcards */
   z-index: 3;
   top: 0;
   left: 0;
+
+  ${breakpointMaxSmall} {
+    flex-direction: column;
+  }
 
   ${({ isEditing }) =>
     isEditing &&
@@ -124,27 +129,22 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
     `}
 
   /* isSticky is calculated mostly for border showing, otherwise it could be replaced with css only */
-  ${({ isSticky }) =>
+  ${({ isSticky, hasScroll }) =>
     isSticky &&
     css`
       position: sticky;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid
+        ${hasScroll ? color("border") : color("bg-light")};
     `}
 `;
 
-export const CardsContainer = styled(FullWidthContainer)<{
-  addMarginTop: boolean;
-}>`
-  ${({ addMarginTop }) =>
-    addMarginTop &&
-    css`
-      margin-top: ${space(2)};
-    `}
+export const CardsContainer = styled(FullWidthContainer)`
+  margin-top: 8px;
 
   &.${SAVING_DOM_IMAGE_CLASS} {
     padding-bottom: 20px;
 
-    ${Dashcard.root} {
+    ${DashCard.root} {
       box-shadow: none;
       border: 1px solid ${color("border")};
     }

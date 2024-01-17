@@ -7,8 +7,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt]
-   [schema.core :as s]))
+   [metabase.test :as mt]))
 
 (deftest preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
@@ -21,13 +20,12 @@
                                       :cache-ttl 10)
               run-query        (fn []
                                  (let [results (qp/process-query query)]
-                                   {:cached?  (boolean (:cached results))
+                                   {:cached?  (boolean (:cached (:cache/details results)))
                                     :num-rows (count (mt/rows results))}))
               expected-results (qp/preprocess query)]
           (testing "Check preprocess before caching to make sure results make sense"
-            (is (schema= {:database (s/eq (mt/id))
-                          s/Keyword s/Any}
-                         expected-results)))
+            (is (=? {:database (mt/id)}
+                    expected-results)))
           (testing "Run the query a few of times so we know it's cached"
             (testing "first run"
               (is (= {:cached?  false
@@ -53,7 +51,7 @@
 
 (deftest ^:parallel query->expected-cols-test
   (testing "field_refs in expected columns have the original join aliases (#30648)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
         (let [query
               (mt/mbql-query

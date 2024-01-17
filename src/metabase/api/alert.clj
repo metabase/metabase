@@ -10,6 +10,7 @@
    [metabase.config :as config]
    [metabase.email :as email]
    [metabase.email.messages :as messages]
+   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse]
@@ -152,9 +153,10 @@
                     (-> new-alert-request-body
                         only-alert-keys
                         (pulse/create-alert! api/*current-user-id* alert-card channels)))]
-    (notify-new-alert-created! new-alert)
+   (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
+   (notify-new-alert-created! new-alert)
     ;; return our new Alert
-    new-alert))
+   new-alert))
 
 (defn- notify-on-archive-if-needed!
   "When an alert is archived, we notify all recipients that they are no longer receiving that alert."
@@ -253,10 +255,13 @@
     (api/let-404 [alert-id (u/the-id alert)
                   pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")
                   pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-      (t2/delete! PulseChannelRecipient :id pcr-id))
-    ;; Send emails letting people know they have been unsubscribe
-    (when (email/email-configured?)
-      (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))
+                 (t2/delete! PulseChannelRecipient :id pcr-id))
+    ;; Send emails letting people know they have been unsubscribed
+    (let [user @api/*current-user*]
+      (when (email/email-configured?)
+        (messages/send-you-unsubscribed-alert-email! alert user))
+      (events/publish-event! :event/alert-unsubscribe {:object {:email (:email user)}
+                                                       :user-id api/*current-user-id*}))
     ;; finally, return a 204 No Content
     api/generic-204-no-content))
 

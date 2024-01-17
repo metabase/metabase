@@ -14,7 +14,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { Route } from "metabase/hoc/Title";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 

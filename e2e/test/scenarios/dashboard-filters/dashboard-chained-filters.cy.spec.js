@@ -211,8 +211,8 @@ describe("scenarios > dashboard > chained filter", () => {
               dashboard_id: DASHBOARD_ID,
             }).then(({ body: { id: DASH_CARD_ID } }) => {
               // Connect filter to that question
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}`, {
+                dashcards: [
                   {
                     id: DASH_CARD_ID,
                     card_id: QUESTION_ID,

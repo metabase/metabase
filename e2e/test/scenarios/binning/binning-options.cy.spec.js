@@ -79,6 +79,7 @@ const TIME_BUCKETS = [
   "Week of year",
   "Month of year",
   "Quarter of year",
+  "Don't bin",
 ];
 
 const LONGITUDE_BUCKETS = [
@@ -191,7 +192,8 @@ describe("scenarios > binning > binning options", () => {
   });
 
   context("via time series footer (metabase#11183)", () => {
-    it("should render time series binning options correctly", () => {
+    // TODO: enable again when metabase#35546 is completed
+    it.skip("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

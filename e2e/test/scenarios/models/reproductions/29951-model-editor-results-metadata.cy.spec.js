@@ -1,8 +1,7 @@
 import {
   getNotebookStep,
-  openQuestionActions,
-  popover,
   restore,
+  saveMetadataChanges,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -17,12 +16,12 @@ const questionDetails = {
       CC1: ["+", ["field", ORDERS.TOTAL], 1],
       CC2: ["+", ["field", ORDERS.TOTAL], 1],
     },
-    limit: 5,
+    limit: 2,
   },
   dataset: true,
 };
 
-describe("issue 29951", { requestTimeout: 10000 }, () => {
+describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -33,22 +32,24 @@ describe("issue 29951", { requestTimeout: 10000 }, () => {
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    cy.createQuestion(questionDetails).then(({ body: { id } }) => {
+      cy.visit(`/model/${id}/query`);
+      cy.wait("@publicShema");
+    });
 
-    openQuestionActions();
-    popover().findByText("Edit query definition").click();
-    cy.wait("@publicShema");
     removeExpression("CC2");
     // The UI shows us the "play" icon, indicating we should refresh the query,
     // but the point of this repro is to save without refreshing
     cy.button("Get Answer").should("be.visible");
-    cy.button("Save changes").click();
-    cy.wait(["@updateCard", "@dataset"]);
+    saveMetadataChanges();
+
+    cy.findAllByTestId("header-cell").last().should("have.text", "CC1");
 
     dragColumn(0, 100);
     cy.findByTestId("qb-header").button("Refresh").click();
     cy.wait("@dataset");
-    cy.findByTestId("view-footer").should("contain", "Showing 5 rows");
+    cy.get(".cellData").should("contain", "37.65");
+    cy.findByTestId("view-footer").should("contain", "Showing 2 rows");
   });
 });
 

@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -18,15 +18,9 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each (fn [thunk]
-                      (binding [hx/*honey-sql-version* 2]
-                        (thunk))))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
@@ -204,7 +198,7 @@
             "Felipinho Asklepios"
             #t "2014-12-05T15:15"]
            (-> (sql/format-expr hsql)
-               (update 0 mdb.query/format-sql :oracle)
+               (update 0 (partial driver/prettify-native-form :oracle))
                (update 0 str/split-lines))))))
 
 (defn- dbspec [& _]

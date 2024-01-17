@@ -6,10 +6,12 @@
   (:refer-clojure :exclude [compile])
   (:require
    [humane-are.core :as humane-are]
+   [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
    [mb.hawk.init]
    [mb.hawk.parallel]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.config :as config]
+   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -35,8 +37,10 @@
    [metabase.test.util.i18n :as i18n.tu]
    [metabase.test.util.log :as tu.log]
    [metabase.test.util.misc :as tu.misc]
-   [metabase.test.util.random :as tu.random]
+   [metabase.test.util.public-settings :as tu.public-setings]
+   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.test.util.timezone :as test.tz]
+   [metabase.util.random :as u.random]
    [pjstadig.humane-test-output :as humane-test-output]
    [potemkin :as p]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -79,7 +83,9 @@
   tu.async/keep-me
   tu.log/keep-me
   tu.misc/keep-me
-  tu.random/keep-me
+  tu.public-setings/keep-me
+  tu.thread-local/keep-me
+  u.random/keep-me
   tu/keep-me
   tx.env/keep-me
   tx/keep-me)
@@ -209,10 +215,6 @@
   with-temp
   with-temp-defaults]
 
- [test.redefs
-  with-temp!
-  with-ensure-with-temp-no-transaction!]
-
  [tu
   boolean-ids-and-timestamps
   call-with-paused-query
@@ -220,6 +222,7 @@
   doall-recursive
   file->bytes
   is-uuid-string?
+  latest-audit-log-entry
   let-url
   obj->json->obj
   postwalk-pred
@@ -237,6 +240,8 @@
   with-model-cleanup
   with-non-admin-groups-no-root-collection-for-namespace-perms
   with-non-admin-groups-no-root-collection-perms
+  with-non-admin-groups-no-collection-perms
+  with-all-users-data-perms-graph
   with-temp-env-var-value
   with-temp-dir
   with-temp-file
@@ -244,7 +249,8 @@
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values
-  with-user-in-groups]
+  with-user-in-groups
+  with-verified-cards]
 
  [tu.async
   wait-for-result
@@ -262,10 +268,17 @@
   with-clock
   with-single-admin-user]
 
- [tu.random
+ [tu.public-setings
+  with-premium-features
+  with-additional-premium-features]
+
+ [u.random
   random-name
   random-hash
   random-email]
+
+ [tu.thread-local
+  test-helpers-set-global-values!]
 
  [test.tz
   with-system-timezone-id]
@@ -290,6 +303,14 @@
 
  [tx.env
   set-test-drivers!
-  with-test-drivers])
+  with-test-drivers]
+ [schema-migrations-test.impl
+  with-temp-empty-app-db])
 
-(alter-meta! #'with-temp update :doc #(str % "\n\nNote: this version of [[with-temp]] will execute body in a transaction, for cases where that's not desired, use [[mt/with-temp!]]\n"))
+;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
+(p/import-fn hawk.approx/malli malli=?)
+(p/import-fn hawk.approx/exactly exactly=?)
+
+(alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
+  it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
+  global state of the application database.")

@@ -5,11 +5,15 @@ import { t } from "ttag";
 import cx from "classnames";
 import { color } from "metabase/lib/colors";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon, Box } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
-import { Box } from "metabase/ui";
-import { ListCellItem, FilterContainer } from "./AccordionListCell.styled";
+
+import {
+  ListCellItem,
+  FilterContainer,
+  Content,
+} from "./AccordionListCell.styled";
 
 export const AccordionListCell = ({
   style,
@@ -141,11 +145,8 @@ export const AccordionListCell = ({
         )}
         style={getItemStyles(item, itemIndex)}
       >
-        <span
-          className={cx(
-            "p1 flex-auto flex align-center",
-            isClickable ? "cursor-pointer" : "cursor-default",
-          )}
+        <Content
+          isClickable={isClickable}
           onClick={isClickable ? () => onChange(item) : undefined}
         >
           {icon && (
@@ -166,7 +167,7 @@ export const AccordionListCell = ({
               <LoadingSpinner size={16} borderWidth={2} />
             </Box>
           )}
-        </span>
+        </Content>
         {extra}
         {showItemArrows && (
           <div className="List-item-arrow flex align-center px1">

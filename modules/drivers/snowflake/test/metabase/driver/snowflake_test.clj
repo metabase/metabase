@@ -1,14 +1,18 @@
 (ns metabase.driver.snowflake-test
   (:require
+   [clojure.data.json :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.snowflake :as driver.snowflake]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Table]]
    [metabase.models.database :refer [Database]]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.sync.util :as sync-util]
@@ -19,12 +23,21 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
+(defn- query->native [query]
+  (let [check-sql-fn (fn [_ _ sql & _]
+                       (throw (ex-info "done" {::native-query sql})))]
+    (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
+                  sql-jdbc.execute/execute-statement! check-sql-fn]
+      (try
+        (qp/process-query query)
+        (is false "no statement created")
+        (catch Exception e
+          (-> e u/all-ex-data ::native-query))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -32,8 +45,7 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false
-                                hx/*honey-sql-version*                   2]
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
 (deftest sanity-check-test
@@ -41,41 +53,94 @@
     (is (= [100]
            (mt/first-row
             (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+                               {:aggregation [[:count]]}))))))
+
+(deftest ^:parallel quote-name-test
+  (is (nil? (#'driver.snowflake/quote-name nil)))
+  (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
+  (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
+
+(deftest ^:parallel connection-details->spec-test
+  (let [details {:role nil
+                 :warehouse "COMPUTE_WH"
+                 :additional-options nil
+                 :db "v3_sample-dataset"
+                 :password "passwd"
+                 :quote-db-name false
+                 :let-user-control-scheduling false
+                 :private-key-options "uploaded"
+                 :private-key-source nil
+                 :port nil
+                 :advanced-options true
+                 :private-key-id 1
+                 :schema-filters-type "all"
+                 :account "ls10467.us-east-2.aws"
+                 :private-key-value nil
+                 :tunnel-enabled false
+                 :engine :snowflake
+                 :private-key-creator-id 3
+                 :user "SNOWFLAKE_DEVELOPER"
+                 :private-key-created-at "2024-01-05T19:10:30.861839Z"}]
+    (testing "Database name is quoted iff quoting is requested (#27856)"
+      (are [quote? result] (=? {:db result}
+                               (let [details (assoc details :quote-db-name quote?)]
+                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
+        true "\"v3_sample-dataset\""
+        false "v3_sample-dataset"))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v3_")]
+    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v4_")]
       (testing "Create DB DDL statements"
-        (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
+        (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
       (testing "Create Table DDL statements"
         (is (= (map
                 #(str/replace % #"\s+" " ")
-                ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                ["DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"users\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"categories\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"venues\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
-                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
-                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"checkins\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
-                FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
-                FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
-                FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"products\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"products\" (\"id\" INTEGER AUTOINCREMENT, \"ean\" TEXT,
+                \"title\" TEXT, \"category\" TEXT, \"vendor\" TEXT, \"price\" FLOAT, \"rating\" FLOAT, \"created_at\"
+                TIMESTAMP_TZ, PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"people\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"people\" (\"id\" INTEGER AUTOINCREMENT, \"address\" TEXT,
+                \"email\" TEXT, \"password\" TEXT, \"name\" TEXT, \"city\" TEXT, \"longitude\" FLOAT, \"state\" TEXT,
+                \"source\" TEXT, \"birth_date\" DATE, \"zip\" TEXT, \"latitude\" FLOAT, \"created_at\" TIMESTAMP_TZ,
+                PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"reviews\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"reviews\" (\"id\" INTEGER AUTOINCREMENT, \"product_id\" INTEGER,
+                \"reviewer\" TEXT, \"rating\" INTEGER, \"body\" TEXT, \"created_at\" TIMESTAMP_TZ, PRIMARY KEY (\"id\")) ;"
+                 "DROP TABLE IF EXISTS \"v4_test-data\".\"PUBLIC\".\"orders\";"
+                 "CREATE TABLE \"v4_test-data\".\"PUBLIC\".\"orders\" (\"id\" INTEGER AUTOINCREMENT, \"user_id\" INTEGER,
+                \"product_id\" INTEGER, \"subtotal\" FLOAT, \"tax\" FLOAT, \"total\" FLOAT, \"discount\" FLOAT, \"created_at\"
+                TIMESTAMP_TZ, \"quantity\" INTEGER, PRIMARY KEY (\"id\")) ;"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"gory_id_categories_-1429799958\"
+                FOREIGN KEY (\"category_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"kins_user_id_users_-1503129306\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"users\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_venue_id_venues_55711779\"
+                FOREIGN KEY (\"venue_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"venues\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"reviews\" ADD CONSTRAINT \"roduct_id_products_-1093665274\"
+                FOREIGN KEY (\"product_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"products\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"orders\" ADD CONSTRAINT \"ders_user_id_people_1646240302\"
+                FOREIGN KEY (\"user_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"people\" (\"id\");"
+                 "ALTER TABLE \"v4_test-data\".\"PUBLIC\".\"orders\" ADD CONSTRAINT \"roduct_id_products_-1151848842\"
+                FOREIGN KEY (\"product_id\") REFERENCES \"v4_test-data\".\"PUBLIC\".\"products\" (\"id\");"])
                (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
-                                                                   (update :database-name #(str "v3_" %))))))))))
+                                                                   (update :database-name #(str "v4_" %))))))))))
 
-;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
-;; bug in the JDBC driver -- Cam
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -83,7 +148,11 @@
                       #{{:name "users",      :schema "PUBLIC", :description nil}
                         {:name "venues",     :schema "PUBLIC", :description nil}
                         {:name "checkins",   :schema "PUBLIC", :description nil}
-                        {:name "categories", :schema "PUBLIC", :description nil}}}]
+                        {:name "categories", :schema "PUBLIC", :description nil}
+                        {:name "orders",     :schema "PUBLIC", :description nil}
+                        {:name "people",     :schema "PUBLIC", :description nil}
+                        {:name "products",   :schema "PUBLIC", :description nil}
+                        {:name "reviews",    :schema "PUBLIC", :description nil}}}]
         (testing "should work with normal details"
           (is (= expected
                  (driver/describe-database :snowflake (mt/db)))))
@@ -120,6 +189,29 @@
             (is (= [{:name "example_view"}]
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
+
+(deftest sync-dynamic-tables-test
+  (testing "Should be able to sync dynamic tables"
+    (mt/test-driver :snowflake
+      (mt/dataset (mt/dataset-definition "dynamic-table"
+                    ["metabase_users"
+                     [{:field-name "name" :base-type :type/Text}]
+                     [["mb_qnkhuat"]]])
+        (let [db-id   (:id (mt/db))
+              details (:details (mt/db))
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (jdbc/execute! spec [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
+                                       SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
+                                       (:db details) (:db details) (:db details))])
+          (sync/sync-database! (t2/select-one :model/Database db-id))
+          (testing "both base tables and dynamic tables should be synced"
+            (is (= #{"metabase_fan" "metabase_users"}
+                   (t2/select-fn-set :name :model/Table :db_id db-id)))
+            (testing "the fields for dynamic tables are synced correctly"
+              (is (= #{{:name "name" :base_type :type/Text}
+                       {:name "id" :base_type :type/Number}}
+                     (set (t2/select [:model/Field :name :base_type]
+                                     :table_id (t2/select-one-pk :model/Table :name "metabase_fan" :db_id db-id))))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
@@ -265,7 +357,7 @@
 (deftest first-day-of-week-test
   (mt/test-driver :snowflake
     (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (doseq [[start-of-week friday-int] [[:friday 1]
                                             [:monday 5]
                                             [:sunday 6]]]
@@ -298,3 +390,33 @@
     ;; Special characters
     (is (= "USE ROLE \"Role.123\";"   (driver.sql/set-role-statement :snowflake "Role.123")))
     (is (= "USE ROLE \"$role\";"      (driver.sql/set-role-statement :snowflake "$role")))))
+
+(deftest remark-test
+  (testing "Queries should have a remark formatted as JSON appended to them with additional metadata"
+    (mt/test-driver :snowflake
+      (let [expected-map {"pulseId" nil
+                          "serverId" (public-settings/site-uuid)
+                          "client" "Metabase"
+                          "queryHash" "cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+                          "queryType" "query"
+                          "cardId" 1234
+                          "dashboardId" 5678
+                          "context" "ad-hoc"
+                          "userId" 1000
+                          "databaseId" (mt/id)}
+            result-query (driver/prettify-native-form :snowflake
+                           (query->native
+                             (assoc
+                               (mt/mbql-query users {:limit 2000})
+                               :parameters [{:type   "id"
+                                             :target [:dimension [:field (mt/id :users :id) nil]]
+                                             :value  ["1" "2" "3"]}]
+                               :info {:executed-by  1000
+                                      :card-id      1234
+                                      :dashboard-id 5678
+                                      :context      :ad-hoc
+                                      :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                                 93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            result-comment (second (re-find #"-- (\{.*\})" result-query))
+            result-map (json/read-str result-comment)]
+        (is (= expected-map result-map))))))

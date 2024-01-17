@@ -1,4 +1,4 @@
-import { Route } from "react-router";
+import { Link, Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { within } from "@testing-library/react";
 import type { Database } from "metabase-types/api";
@@ -109,18 +109,36 @@ const JSON_DB = createMockDatabase({
 
 interface SetupOpts {
   databases?: Database[];
+  initialRoute?: string;
 }
 
-const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
+const setup = async ({
+  databases = [SAMPLE_DB],
+  initialRoute = "admin/datamodel",
+}: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
 
-  renderWithProviders(
-    <Route path="admin/datamodel">{getMetadataRoutes()}</Route>,
-    { withRouter: true, initialRoute: "admin/datamodel" },
+  const OtherComponent = () => {
+    return (
+      <>
+        <span>Another route</span>
+        <Link to="admin/datamodel">Link to Datamodel</Link>
+      </>
+    );
+  };
+
+  const { history } = renderWithProviders(
+    <>
+      <Route path="notAdmin" component={OtherComponent} />
+      <Route path="admin/datamodel">{getMetadataRoutes()}</Route>
+    </>,
+    { withRouter: true, initialRoute },
   );
 
   await waitForLoaderToBeRemoved();
+
+  return { history };
 };
 
 describe("MetadataEditor", () => {
@@ -473,6 +491,22 @@ describe("MetadataEditor", () => {
 
       const section = screen.getByLabelText(JSON_FIELD_NESTED.name);
       expect(within(section).getByText("JSON.version")).toBeInTheDocument();
+    });
+  });
+
+  describe("navigation", () => {
+    it("should replace locations in history stack when being routed automatically", async () => {
+      const { history } = await setup({ initialRoute: "notAdmin" });
+
+      expect(screen.getByText("Link to Datamodel")).toBeInTheDocument();
+      userEvent.click(screen.getByText("Link to Datamodel"));
+
+      await waitForLoaderToBeRemoved();
+      expect(screen.getByText("Sample Database")).toBeInTheDocument();
+
+      history?.goBack();
+
+      expect(screen.getByText("Link to Datamodel")).toBeInTheDocument();
     });
   });
 });

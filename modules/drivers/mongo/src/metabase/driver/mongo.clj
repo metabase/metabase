@@ -12,7 +12,7 @@
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.driver.mongo.util :refer [with-mongo-connection]]
+   [metabase.driver.mongo.util :refer [with-mongo-connection] :as mongo.util]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -55,10 +55,16 @@
 (defmethod driver/can-connect? :mongo
   [_ details]
   (with-mongo-connection [^DB conn, details]
-    (= (float (-> (cmd/db-stats conn)
-                  (m.conversion/from-db-object :keywordize)
-                  :ok))
-       1.0)))
+    (let [db-stats (-> (cmd/db-stats conn)
+                       (m.conversion/from-db-object :keywordize))
+          db-names (mg/get-db-names mongo.util/*mongo-client*)]
+      (and
+       ;; 1. check db.dbStats command completes successfully
+       (= (float (:ok db-stats))
+          1.0)
+       ;; 2. check the database is actually on the server
+       ;; (this is required because (1) is true even if the database doesn't exist)
+       (contains? db-names (:db db-stats))))))
 
 (defmethod driver/humanize-connection-error-message
   :mongo
@@ -198,6 +204,29 @@
     {:tables (set (for [collection (disj (mdb/get-collection-names conn) "system.indexes")]
                     {:schema nil, :name collection}))}))
 
+(defmethod driver/describe-table-indexes :mongo
+  [_ database table]
+  (with-mongo-connection [^com.mongodb.DB conn database]
+    ;; using raw DBObject instead of calling `monger/indexes-on`
+    ;; because in case a compound index has more than 8 keys, the `key` returned by
+    ;;`monger/indexes-on` will be a hash-map, and with a hash map we can't determine
+    ;; which key is the first key.
+    (->> (.getIndexInfo (.getCollection conn (:name table)))
+         (map (fn [index]
+                ;; for text indexes, column names are specified in the weights
+                (if (contains? index "textIndexVersion")
+                  (get index "weights")
+                  (get index "key"))))
+         (map (comp name first keys))
+         ;; mongo support multi key index, aka nested fields index, so we need to split the keys
+         ;; and represent it as a list of field names
+         (map #(if (str/includes? % ".")
+                 {:type  :nested-column-index
+                  :value (str/split % #"\.")}
+                 {:type  :normal-column-index
+                  :value %}))
+         set)))
+
 (defn- from-db-object
   "This is mostly a copy of the monger library's own function of the same name with the
   only difference that it uses an ordered map to represent the document. This ensures that
@@ -264,7 +293,8 @@
                               :native-parameters               true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
+                              :test/jvm-timezone-setting       false
+                              :index-info                      true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 ;; We say Mongo supports foreign keys so that the front end can use implicit

@@ -6,9 +6,7 @@
    [metabase.models.permissions :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util :as u]))
 
 (deftest ^:parallel compile-test
   (testing "Can we convert an MBQL query to a native query?"
@@ -27,13 +25,12 @@
   (testing "If query is already native, `compile` should still do stuff like parsing parameters"
     (is (= {:query  "SELECT * FROM VENUES WHERE price = 3;"
             :params []}
-           (binding [hx/*honey-sql-version* 2]
-             (qp/compile
-               {:database   (mt/id)
-                :type       :native
-                :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
-                             :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
-                :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value 3}]})))))
+           (qp/compile
+            {:database   (mt/id)
+             :type       :native
+             :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
+                          :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
+             :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value 3}]}))))
   (testing "If query is already native, `compile` should not execute the query (metabase#13572)"
     ;; 1000,000,000 rows, no way this will finish in 2 seconds if executed
     (let [long-query "SELECT CHECKINS.* FROM CHECKINS LEFT JOIN CHECKINS C2 ON 1=1 LEFT JOIN CHECKINS C3 ON 1=1"]

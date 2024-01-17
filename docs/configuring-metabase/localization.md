@@ -28,6 +28,7 @@ The languages you can currently pick from are:
 - Czech
 - Dutch
 - Farsi/Persian
+- Finnish
 - French
 - German
 - Indonesian
@@ -46,6 +47,8 @@ The languages you can currently pick from are:
 - Turkish
 - Ukrainian
 - Vietnamese
+
+> While Metabase can support languages that read right to left, the Metabase UI is designed around languages that read left to right.
 
 ## Translations
 

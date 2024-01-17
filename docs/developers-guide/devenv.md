@@ -180,7 +180,21 @@ You could also pass a full conection string in as the `mb.db.connection.uri`:
 "-Dmb.db.connection.uri=postgres://<user>:<password>@localhost:5432/<dbname>"
 ```
 
+Besides using environment variables, there is the option to interface with the configuration library [environ](https://github.com/weavejester/environ) directly.
 
+This approach requires creating a `.lein-env` file within your project directory:
+
+```
+{:mb-db-type   "postgres"
+ :mb-db-host   "localhost"
+ :mb-db-user   "<username>"
+ :mb-db-dbname "<dbname>"
+ :mb-db-pass   ""}
+```
+
+Despite the name, this file works fine with `deps.edn` projects. An advantage of this approach versus the global `deps.edn` approach is that it is scoped to this project only. 
+
+Only use this for development, it is not supported for production use. There is already entry in `.gitignore` to prevent you accidentally committing this file.
 
 ### Building drivers
 
@@ -274,24 +288,22 @@ Ran 5 tests containing 147 assertions.
 
 ;; but we also have a lovely test runner with lots of cool options
 some-ns=> (metabase.test-runner/find-and-run-tests-repl {:namespace-pattern ".*pulse.*"})
-Running tests with options {:mode :repl, :namespace-pattern ".*pulse.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
+Running tests with options {:mode :repl, :namespace-pattern ".*pulse.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 3000}
 Excluding directory "dev/src"
 Excluding directory "local/src"
 Looking for test namespaces in directory test
-Looking for test namespaces in directory shared/test
 Finding tests took 1.6 s.
 Excluding directory "test_resources"
 Excluding directory "enterprise/backend/src"
 Looking for test namespaces in directory enterprise/backend/test
 Excluding directory "src"
-Excluding directory "shared/src"
 Excluding directory "resources"
 Running 159 tests
 ...
 
 ;; you can even specify a directory if you're working on a subfeature like that
 some-ns=> (metabase.test-runner/find-and-run-tests-repl {:only "test/metabase/pulse/"})
-Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "shared/src" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/pulse/"}
+Running tests with options {:mode :repl, :namespace-pattern #"^metabase.*", :exclude-directories ["classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :only "test/metabase/pulse/"}
 Running tests in "test/metabase/pulse/"
 Looking for test namespaces in directory test/metabase/pulse
 Finding tests took 37.0 ms.

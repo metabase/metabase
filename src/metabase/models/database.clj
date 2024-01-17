@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.util :as driver.u]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -12,6 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -46,6 +48,29 @@
   (derive ::mi/read-policy.partial-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?))
+
+(defn- should-read-audit-db?
+  "Audit Database should only be fetched if audit app is enabled."
+  [database-id]
+  (and (not (premium-features/enable-audit-app?)) (= database-id perms/audit-db-id)))
+
+(defmethod mi/can-read? Database
+  ([instance]
+   (if (should-read-audit-db? (:id instance))
+     false
+     (mi/current-user-has-partial-permissions? :read instance)))
+  ([model pk]
+   (if (should-read-audit-db? pk)
+     false
+     (mi/current-user-has-partial-permissions? :read model pk))))
+
+(defmethod mi/can-write? :model/Database
+  ([instance]
+   (and (not= (u/the-id instance) perms/audit-db-id)
+        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) instance)))
+  ([model pk]
+   (and (not= pk perms/audit-db-id)
+        ((get-method mi/can-write? ::mi/write-policy.full-perms-for-perms-set) model pk))))
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -366,3 +391,7 @@
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
   ["databases" name name])
+
+(defmethod audit-log/model-details Database
+  [database _event-type]
+  (select-keys database [:id :name :engine]))

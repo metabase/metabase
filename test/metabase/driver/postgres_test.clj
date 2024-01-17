@@ -9,7 +9,6 @@
    [metabase.actions.error :as actions.error]
    [metabase.config :as config]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
@@ -37,8 +36,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]
@@ -52,8 +49,7 @@
                       ;;
                       ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
                       ;;    tests.
-                      (binding [sync-util/*log-exceptions-and-continue?* false
-                                hx/*honey-sql-version*                   2]
+                      (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
 (deftest ^:parallel interval-test
@@ -91,7 +87,7 @@
          (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
-           (update (vec <>) 0 #(str/split-lines (mdb.query/format-sql % :postgres)))))))
+           (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
 
 (defn drop-if-exists-and-create-db!
   "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
@@ -443,7 +439,7 @@
                   "  DATE_TRUNC("
                   "    'month',"
                   "    CAST("
-                  "      (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS timestamp"
+                  "      (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS timestamp"
                   "    )"
                   "  ) AS \"json_alias_test\","
                   "  COUNT(*) AS \"count\""
@@ -453,7 +449,7 @@
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"]
-                 (str/split-lines (mdb.query/format-sql (:query compile-res) :postgres))))
+                 (str/split-lines (driver/prettify-native-form :postgres (:query compile-res)))))
           (is (= ["injection' OR 1=1--' AND released = 1"
                   "injection' OR 1=1--' AND released = 1"]
                  (:params compile-res))))))))
@@ -469,14 +465,14 @@
                                :query    {:source-table 1
                                           :order-by     [[:asc field-ordinary]]}})]
           (is (= ["SELECT"
-                  "  (\"json_alias_test\".\"bob\" # >> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
+                  "  (\"json_alias_test\".\"bob\" #>> array [ ?, ? ] :: text [ ]) :: VARCHAR AS \"json_alias_test\""
                   "FROM"
                   "  \"json_alias_test\""
                   "ORDER BY"
                   "  \"json_alias_test\" ASC"
                   "LIMIT"
                   "  1048575"]
-                 (str/split-lines (mdb.query/format-sql (:query only-order) :postgres)))))))))
+                 (str/split-lines (driver/prettify-native-form :postgres (:query only-order))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
@@ -708,7 +704,7 @@
   (t2.with-temp/with-temp [Database database {:engine :postgres, :details (enums-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)
-    (#'sql-jdbc.conn/set-pool! (u/id database) nil nil)))
+    (driver/notify-database-updated :postgres database)))
 
 (deftest enums-test
   (mt/test-driver :postgres
@@ -1032,7 +1028,7 @@
         (t2.with-temp/with-temp [Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
-            (is (some? (sync/sync-database! database))))
+            (is (some? (sync/sync-database! database {:scan :schema}))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
@@ -1095,7 +1091,7 @@
       (str/replace #"\"" "")
       (str/replace #"public\." "")))
 
-(deftest do-not-cast-to-date-if-column-is-already-a-date-test
+(deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
   (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
     (mt/test-driver :postgres
       (mt/dataset attempted-murders
@@ -1108,22 +1104,26 @@
                       "ORDER BY attempts.date ASC")
                  (some-> (qp/compile query) :query pretty-sql))))))))
 
-(deftest do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
+(deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [query (mt/mbql-query people
                       {:fields [!month.birth_date
                                 !month.created_at
                                 !month.id]
                        :limit  1})]
-          (is (sql= '{:select [DATE_TRUNC ("month" people.birth_date)             AS birth_date
-                               DATE_TRUNC ("month" people.created_at)             AS created_at
-                               ;; non-temporal types should still get casted.
-                               DATE_TRUNC ("month" CAST (people.id AS timestamp)) AS id]
-                      :from   [people]
-                      :limit  [1]}
-                    query)))))))
+          (is (= {:query ["SELECT"
+                          "  DATE_TRUNC('month', \"public\".\"people\".\"birth_date\") AS \"birth_date\","
+                          "  DATE_TRUNC('month', \"public\".\"people\".\"created_at\") AS \"created_at\","
+                          "  DATE_TRUNC('month', CAST(\"public\".\"people\".\"id\" AS timestamp)) AS \"id\""
+                          "FROM"
+                          "  \"public\".\"people\""
+                          "LIMIT"
+                          "  1"]
+                  :params nil}
+                 (-> (qp/compile query)
+                     (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
@@ -1231,44 +1231,64 @@
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
-
 (deftest table-privileges-test
   (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                  [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                   (driver/current-user-table-privileges driver/*driver* (mt/db)))))]
+                                   (set (driver/current-user-table-privileges driver/*driver* (mt/db))))))]
           (try
-            (jdbc/execute! conn-spec (str "CREATE SCHEMA \"dotted.schema\";"
-                                          "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
-                                          "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
-                                          "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
-                                          "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
-                                          "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"))
-            (testing "check that without USAGE privileges on the schema, nothing is returned"
-              (is (= []
-                     (get-privileges))))
-            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-              (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
-              (is (= [{:role   nil
-                       :schema "dotted.schema",
-                       :table  "dotted.table",
-                       :select true,
-                       :update true,
-                       :insert false,
-                       :delete false}]
-                     (get-privileges))))
-            (finally
-              (doseq [stmt ["REVOKE ALL PRIVILEGES ON TABLE \"dotted.schema\".\"dotted.table\" FROM privilege_rows_test_example_role;"
-                            "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
-                            "DROP ROLE privilege_rows_test_example_role;"]]
-                (jdbc/execute! conn-spec stmt)))))))))
+           (jdbc/execute! conn-spec (str
+                                     "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
+                                     "CREATE SCHEMA \"dotted.schema\";"
+                                     "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
+                                     "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
+                                     "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
+                                     "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
+                                     "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
+                                     "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
+                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
+                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
+           (testing "check that without USAGE privileges on the schema, nothing is returned"
+             (is (= #{}
+                    (get-privileges))))
+           (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
+             (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
+             (is (= #{{:role   nil
+                       :schema "dotted.schema"
+                       :table  "dotted.materialized_view"
+                       :update false
+                       :select true
+                       :insert false
+                       :delete false}
+                      {:role   nil
+                       :schema "dotted.schema"
+                       :table  "dotted.view"
+                       :update false
+                       :select true
+                       :insert false
+                       :delete false}
+                      {:role   nil
+                       :schema "dotted.schema"
+                       :table  "dotted.table"
+                       :select true
+                       :update true
+                       :insert false
+                       :delete false}}
+                    (get-privileges))))
+           (finally
+            (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+                          "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+                          "DROP ROLE privilege_rows_test_example_role;"]]
+              (jdbc/execute! conn-spec stmt)))))))))
 
-(deftest set-role-statement-test
+(deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"
     ;; No special characters
     (is (= "SET ROLE MY_ROLE;"        (driver.sql/set-role-statement :postgres "MY_ROLE")))

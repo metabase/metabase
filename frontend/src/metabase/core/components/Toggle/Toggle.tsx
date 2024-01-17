@@ -11,6 +11,7 @@ export interface ToggleProps
   onChange?: (value: boolean) => void;
 }
 
+/** @deprecated use metabase/ui Switch instead */
 const Toggle = forwardRef(function Toggle(
   { className, value, small, color, onChange, ...rest }: ToggleProps,
   ref: Ref<HTMLInputElement>,

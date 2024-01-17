@@ -4,17 +4,34 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.49.0
+
+- The multimethod `metabase.driver/add-columns!` has been added. This method is used to add a column to a table.
+  Currently it only needs to be implemented if the database supports the `:uploads` feature.
+
+- A new driver method has been added `metabase.driver/describe-table-indexes` along with a new feature `:index-info`.
+  This method is used to get a set of column names that are indexed or are the first columns in a composite index.
+
+- `metabase.util.honeysql-extensions`, deprecated in 0.46.0, has been removed. SQL-based drivers using Honey SQL 1
+  are no longer supported. See 0.46.0 notes for more information.
+  `metabase.driver.sql.query-processor/honey-sql-version` is now deprecated and no longer called. All drivers are
+  assumed to use Honey SQL 2.
+
+- The method `metabase.driver.sql-jdbc.sync.interface/active-tables` that we added in 47 has been updated to require
+  an additional argument: `database`.
+  The new function arglist is `[driver database connection schema-inclusion-filters schema-exclusion-filters]`.
+
 ## Metabase 0.48.0
 
 - The MBQL schema in `metabase.mbql.schema` now uses [Malli](https://github.com/metosin/malli) instead of
   [Schema](https://github.com/plumatic/schema). If you were using this namespace in combination with Schema, you'll
   want to update your code to use Malli instead.
-  
+
 - Another driver feature has been added: `:table-privileges`. This feature signals whether we can store
   the table-level privileges for the database on database sync.
-  
-- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get 
-  the set of privileges the database connection's current user has. It needs to be implemented if the database 
+
+- The multimethod `metabase.driver/current-user-table-privileges` has been added. This method is used to get
+  the set of privileges the database connection's current user has. It needs to be implemented if the database
   supports the `:table-privileges` feature.
 
 - The following functions in `metabase.query-processor.store` (`qp.store`) are now deprecated
@@ -70,6 +87,17 @@ title: Driver interface changelog
   removed in 0.51.0 or later. You can easily implement `metabase.driver/db-default-timezone` directly, and use
   `metabase.driver.sql-jdbc.execute/do-with-connection-with-options` to get a `java.sql.Connection` for a Database.
 
+- Added a new multimethod `metabase.driver.sql.parameters.substitution/align-temporal-unit-with-param-type`, which returns
+  a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver. The resulting keyword
+  will be used to call the corresponding `metabase.driver.sql.query-processor/date` implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination.
+
+- The multimethod `metabase.driver.sql-jdbc.execute/inject-remark` has been added. It allows JDBC-based drivers to
+  override the default behavior of how SQL query remarks are added to queries (prepending them as a comment).
+
+- The arity of multimethod `metabase.driver.sql-jdbc.sync.interface/fallback-metadata-query` has been updated from 3 to 4,
+  it now takes an additional `db` argument. The new function arguments are: `[driver db-name-or-nil schema table]`.
+
 ## Metabase 0.47.0
 
 - A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
@@ -107,6 +135,9 @@ title: Driver interface changelog
 - The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
   `database` argument for the arity which previously had one argument. This function might be used in the implementation
   of a driver's multimethods.
+
+- `metabase.driver/prettify-native-form` was added to enable driver developers use native form formatting
+  specific to their driver. For details see the PR [#34991](https://github.com/metabase/metabase/pull/34991).
 
 ## Metabase 0.46.0
 

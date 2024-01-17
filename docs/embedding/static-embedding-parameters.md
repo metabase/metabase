@@ -15,16 +15,16 @@ Parameters are pieces of information that are passed between Metabase and your w
 Parameters can be signed or unsigned.
 
 **Signed parameters**, such as filter names and values, must be added to your server code.
-- [Editable parameters](#adding-a-filter-widget-to-a-signed-embed)
-- [Locked parameters](#restricting-data-in-a-signed-embed)
+- [Editable parameters](#adding-a-filter-widget-to-a-static-embed)
+- [Locked parameters](#restricting-data-in-a-static-embed)
 
 **Unsigned parameters**, such as appearance settings, should be added directly to your iframe's `src` attribute.
 
 - [Default values for editable parameters](#populating-an-embedded-filter-widget-with-a-default-value)
-- [Visibility settings for editable parameters](#hiding-filter-widgets-from-a-signed-embed)
-- [Appearance settings](#customizing-the-appearance-of-a-signed-embed)
+- [Visibility settings for editable parameters](#hiding-filter-widgets-from-a-static-embed)
+- [Appearance settings](#customizing-the-appearance-of-a-static-embed)
 
-## Adding a filter widget to a signed embed
+## Adding a filter widget to a static embed
 
 You can use **editable parameters** to add [filter widgets](https://www.metabase.com/glossary/filter_widget) to embedded dashboards or SQL questions.
 
@@ -37,11 +37,11 @@ You can use **editable parameters** to add [filter widgets](https://www.metabase
 
 Editable parameters are responsible for passing filter values from the embedded filter widget (displayed on the iframe) through to the filters on your original dashboard or SQL question (in your Metabase).
 
-Note that [locked parameters](#restricting-data-in-a-signed-embed) may limit the values that show up in an embedded filter widget.
+Note that [locked parameters](#restricting-data-in-a-static-embed) may limit the values that show up in an embedded filter widget.
 
 ## Populating an embedded filter widget with a default value
 
-If you want to set a default value for your [editable filter widget](#adding-a-filter-widget-to-a-signed-embed), you can pass that default value to the corresponding parameter name in your iframe's `src` attribute:
+If you want to set a default value for your [editable filter widget](#adding-a-filter-widget-to-a-static-embed), you can pass that default value to the corresponding parameter name in your iframe's `src` attribute:
 
 ```
 your_embedding_url?parameter_name=value
@@ -65,9 +65,9 @@ You can set multiple default values for a filter by separating the `key=value` p
 your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
 ```
 
-## Hiding filter widgets from a signed embed
+## Hiding filter widgets from a static embed
 
-If you have a lot of editable parameters (resulting in a lot of filter widgets), you can hide them from your signed embed by adding `#hide_parameters` to the end of the URL in your iframe's `src` attribute:
+If you have a lot of editable parameters (resulting in a lot of filter widgets), you can hide them from your static embed by adding `#hide_parameters` to the end of the URL in your iframe's `src` attribute:
 
 ```
 your_embedding_url#hide_parameters=parameter_name
@@ -99,9 +99,9 @@ Whenever you're adding a parameter to the embedding URL in your iframe's `src` a
 - Parameter _values_ are case-sensitive (the values must match your data).
 - Spaces should be replaced by underscores.
 
-## Restricting data in a signed embed
+## Restricting data in a static embed
 
-If you want to restrict the data that's displayed in an embedded dashboard or SQL question, you can set up a **locked parameter**. A locked parameter filters the data in a dashboard or SQL question _before_ the results are displayed to the end user in a signed embed.
+If you want to restrict the data that's displayed in an embedded dashboard or SQL question, you can set up a **locked parameter**. A locked parameter filters the data in a dashboard or SQL question _before_ the results are displayed to people in a static embed.
 
 1. Go to your dashboard or SQL question. Make sure you've set up a [dashboard filter](../dashboards/filters.md) or [SQL variable](../questions/native-editor/sql-parameters.md).
 2. Click on the **sharing icon** > **Embed this item in an application**.
@@ -113,7 +113,7 @@ If you want to restrict the data that's displayed in an embedded dashboard or SQ
 
 You can use locked parameters to display filtered data based on attributes captured by your web server, such as a username or a tenant ID. For more examples, see the [reference apps repo](https://github.com/metabase/embedding-reference-apps).
 
-Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-signed-embed).
+Locked parameters will apply the selected filter values to your original dashboard or SQL question, but they won't be displayed as filter widgets on your embed. Locked parameters may also limit the values that are shown in your [editable filter widgets](#adding-a-filter-widget-to-a-static-embed).
 
 ## Updating a locked parameter
 
@@ -133,11 +133,11 @@ The values for the locked parameter in your server code should match your filter
 
 ## Locked parameters on dashboards with SQL questions
 
-If your [locked parameter](#restricting-data-in-a-signed-embed) is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to choose a _single_ value for your locked parameter.
+If your [locked parameter](#restricting-data-in-a-static-embed) is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to choose a _single_ value for your locked parameter.
 
 For example, let's say you have a dashboard filter called "Breakfast" with the values "Scrambled eggs", "Bacon", and "Waffles". If the "Breakfast" filter is linked to _any_ SQL questions on the dashboard, you'll only be able to choose _one_ of "Scrambled eggs", "Bacon", or "Waffles" for a locked parameter linked to the "Breakfast" filter.
 
-## Customizing the appearance of a signed embed
+## Customizing the appearance of a static embed
 
 You can change the appearance of an embedded item by adding hash parameters to the end of the URL in your iframe's `src` attribute.
 
@@ -147,7 +147,7 @@ For example, the following embedding URL will display an embedded item in dark m
 your_embedding_url#theme=night&bordered=false&titled=true
 ```
 
-You can preview appearance settings from your question or dashboard's [embedded appearance settings](./static-embedding.md#customizing-the-appearance-of-signed-embeds).
+You can preview appearance settings from your question or dashboard's [embedded appearance settings](./static-embedding.md#customizing-the-appearance-of-static-embeds).
 
 | Parameter name         | Possible values                               |
 | ---------------------- | --------------------------------------------- |

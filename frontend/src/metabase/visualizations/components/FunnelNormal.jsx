@@ -126,7 +126,13 @@ export default class FunnelNormal extends Component {
 
     const initial = infos[0];
 
-    const isClickable = visualizationIsClickable(infos[0].clicked);
+    const isClickable = onVisualizationClick != null;
+
+    const handleClick = e => {
+      if (onVisualizationClick && visualizationIsClickable(infos[0].clicked)) {
+        onVisualizationClick(e);
+      }
+    };
 
     return (
       <FunnelNormalRoot
@@ -168,7 +174,7 @@ export default class FunnelNormal extends Component {
                 infos={infos}
                 hovered={hovered}
                 onHoverChange={onHoverChange}
-                onVisualizationClick={isClickable ? onVisualizationClick : null}
+                onVisualizationClick={handleClick}
               />
               <Info isNarrow={isNarrow}>
                 <Title>

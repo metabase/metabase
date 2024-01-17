@@ -23,7 +23,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -204,15 +203,7 @@
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
-  [:or HybridPulseCard CardRef]
-  #_(s/conditional
-     (fn check-hybrid-pulse-card [maybe-map]
-       (and (map? maybe-map)
-            (some #(contains? maybe-map %) [:name :description :display :collection_id
-                                            :dashboard_id :parameter_mappings])))
-     HybridPulseCard
-     :else
-     CardRef))
+  [:or HybridPulseCard CardRef])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -222,10 +213,15 @@
   [notification-or-id]
   (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
 
+(def ^:dynamic *allow-hydrate-archived-cards*
+  "By default the :cards hydration method only return active cards,
+  but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
+  false)
+
 (mu/defn ^:private cards* :- [:sequential HybridPulseCard]
   [notification-or-id]
   (t2/select
-   Card
+   :model/Card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
                 :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]
@@ -234,7 +230,8 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:= :p.id (u/the-id notification-or-id)]
-                [:= :c.archived false]]
+                (when-not *allow-hydrate-archived-cards*
+                  [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
 (mi/define-simple-hydration-method cards
@@ -508,8 +505,10 @@
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
                 [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
-    ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/pulse-create (retrieve-pulse pulse-id))))
+    ;; return the full Pulse (and record our create event).
+    (u/prog1 (retrieve-pulse pulse-id)
+      (events/publish-event! :event/subscription-create {:object <>
+                                                         :user-id api/*current-user-id*}))))
 
 (defn create-alert!
   "Creates a pulse with the correct fields specified for an alert"
@@ -518,7 +517,7 @@
                (assoc :skip_if_empty true, :creator_id creator-id)
                (create-notification-and-add-cards-and-channels! [card-id] channels))]
     ;; return the full Pulse (and record our create event)
-    (events/publish-event! :event/alert-create (retrieve-alert id))))
+    (retrieve-alert id)))
 
 (mu/defn ^:private notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
@@ -568,8 +567,9 @@
   Returns the updated Pulse or throws an Exception."
   [pulse]
   (update-notification! pulse)
-  ;; fetch the fully updated pulse and return it
-  (retrieve-pulse (u/the-id pulse)))
+  ;; fetch the fully updated pulse, log an update event, and return it
+  (u/prog1 (retrieve-pulse (u/the-id pulse))
+    (events/publish-event! :event/subscription-update {:object <> :user-id api/*current-user-id*})))
 
 (defn- alert->notification
   "Convert an 'Alert` back into the generic 'Notification' format."
@@ -585,8 +585,9 @@
   "Updates the given `alert` and returns it"
   [alert]
   (update-notification! (alert->notification alert))
-  ;; fetch the fully updated pulse and return it
-  (retrieve-alert (u/the-id alert)))
+  ;; fetch the fully updated pulse, log an update event, and return it
+  (u/prog1 (retrieve-alert (u/the-id alert))
+    (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

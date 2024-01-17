@@ -1,4 +1,5 @@
 (ns metabase.lib.drill-thru.distribution-test
+  "See also [[metabase.query-processor-test.drill-thru-e2e-test/distribution-drill-on-longitude-from-sql-source-card-test]]"
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
@@ -18,8 +19,9 @@
           count-col (m/find-first (fn [col]
                                     (= (:display-name col) "Count"))
                                   (lib/returned-columns query))
-          context   {:column count-col
-                     :value  nil}]
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      nil}]
       (is (some? count-col))
       (is (nil? (lib.drill-thru.distribution/distribution-drill query -1 context))))))
 

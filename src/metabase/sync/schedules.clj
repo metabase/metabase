@@ -4,7 +4,7 @@
   `metabase_database` table."
   (:require
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -20,7 +20,7 @@
     {:error/message "Map of expanded schedule maps"}
     [:cache_field_values {:optional true} u.cron/ScheduleMap]
     [:metadata_sync      {:optional true} u.cron/ScheduleMap]]
-   (i18n/deferred-tru "value must be a valid map of schedule maps for a DB.")))
+   (deferred-tru "value must be a valid map of schedule maps for a DB.")))
 
 (def ExpandedSchedulesMap
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.

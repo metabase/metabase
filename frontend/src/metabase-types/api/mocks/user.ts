@@ -23,7 +23,7 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   ...opts,
 });
 
-export const createMockerUserListResult = (
+export const createMockUserListResult = (
   opts?: Partial<UserListResult>,
 ): UserListResult => ({
   id: 1,
@@ -31,6 +31,7 @@ export const createMockerUserListResult = (
   last_name: "Tableton",
   common_name: "Testy Tableton",
   email: "user@metabase.test",
+  personal_collection_id: 2,
   ...opts,
 });
 

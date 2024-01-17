@@ -2,6 +2,7 @@
 import { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { t } from "ttag";
 import visualizations from "metabase/visualizations";
@@ -16,6 +17,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getQuestionUrl } from "../utils";
@@ -28,7 +30,7 @@ import {
   getSegment,
 } from "../selectors";
 
-const emptyStateData = (table, segment) => {
+const emptyStateData = (table, segment, metadata) => {
   return {
     message: t`Questions about this segment will appear here as they're added`,
     icon: "folder",
@@ -37,6 +39,7 @@ const emptyStateData = (table, segment) => {
       dbId: table && table.db_id,
       tableId: segment.table_id,
       segmentId: segment.id,
+      metadata,
     }),
   };
 };
@@ -46,6 +49,7 @@ const mapStateToProps = (state, props) => ({
   entities: getSegmentQuestions(state, props),
   loading: getLoading(state, props),
   loadingError: getError(state, props),
+  metadata: getMetadata(state),
 });
 
 const mapDispatchToProps = {
@@ -60,10 +64,12 @@ class SegmentQuestions extends Component {
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
+    metadata: PropTypes.object.isRequired,
   };
 
   render() {
-    const { entities, style, loadingError, loading } = this.props;
+    const { entities, style, loadingError, loading, table, segment, metadata } =
+      this.props;
 
     return (
       <div style={style} className="full">
@@ -101,7 +107,7 @@ class SegmentQuestions extends Component {
             ) : (
               <div className={S.empty}>
                 <AdminAwareEmptyState
-                  {...emptyStateData(this.props.table, this.props.segment)}
+                  {...emptyStateData(table, segment, metadata)}
                 />
               </div>
             )

@@ -2,13 +2,13 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 import { useAsyncFn } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Button from "metabase/core/components/Button";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { DatabaseId } from "metabase-types/api";
 import { MetabotApi } from "metabase/services";
 import Tooltip from "metabase/core/components/Tooltip";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import {

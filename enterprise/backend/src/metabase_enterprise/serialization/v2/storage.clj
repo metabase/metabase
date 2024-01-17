@@ -1,10 +1,12 @@
 (ns metabase-enterprise.serialization.v2.storage
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [metabase-enterprise.serialization.dump :refer [spit-yaml]]
+            [metabase-enterprise.serialization.dump :refer [spit-yaml!]]
             [metabase.models.serialization :as serdes]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn- escape-segment
   "Given a path segment, which is supposed to be the name of a single file or directory, escape any slashes inside it.
@@ -25,14 +27,14 @@
 
 (defn- store-entity! [opts entity]
   (log/info (trs "Storing {0}" (serdes/log-path-str (:serdes/meta entity))))
-  (spit-yaml (file opts entity) entity))
+  (spit-yaml! (file opts entity) entity))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
   (when (seq settings)
     (let [as-map (into (sorted-map)
                        (for [{:keys [key value]} settings]
                          [key value]))]
-      (spit-yaml (io/file root-dir "settings.yaml") as-map))))
+      (spit-yaml! (io/file root-dir "settings.yaml") as-map))))
 
 (defn store!
   "Helper for storing a serialized database to a tree of YAML files."

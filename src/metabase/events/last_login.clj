@@ -10,7 +10,7 @@
 (derive :event/user-login ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  [topic {:keys [user-id], :as _event}]
+  [topic {:keys [user-id] :as _event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (when user-id
     (try

@@ -1,7 +1,7 @@
 import type { Action } from "@reduxjs/toolkit";
 import { useAsyncFn } from "react-use";
 import { useStore } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { State } from "metabase-types/store";
 
 export interface EntityInfo<TId> {

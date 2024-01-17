@@ -68,8 +68,7 @@
                      :display-name      "Sum of Cans"
                      :long-display-name "Sum of Cans"
                      :effective-type    :type/Integer
-                     :description       "Number of toucans plus number of pelicans"
-                     :selected          true}
+                     :description       "Number of toucans plus number of pelicans"}
                     (lib/display-info query-with-metric metric))
     metric-clause
     metric-metadata))
@@ -97,14 +96,28 @@
          (lib/type-of query-with-metric [:metric {} 1]))))
 
 (deftest ^:parallel available-metrics-test
-  (testing "Should return Metrics with the same Table ID as query's `:source-table`"
-    (is (=? [{:lib/type    :metadata/metric
-              :id          metric-id
-              :name        "Sum of Cans"
-              :table-id    (meta/id :venues)
-              :definition  metric-definition
-              :description "Number of toucans plus number of pelicans"}]
-            (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
+  (let [expected-metric-metadata {:lib/type    :metadata/metric
+                                  :id          metric-id
+                                  :name        "Sum of Cans"
+                                  :table-id    (meta/id :venues)
+                                  :definition  metric-definition
+                                  :description "Number of toucans plus number of pelicans"}]
+    (testing "Should return Metrics with the same Table ID as query's `:source-table`"
+      (is (=? [expected-metric-metadata]
+              (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
+    (testing "Should return the position in the list of aggregations"
+      (let [metrics (lib/available-metrics query-with-metric)]
+        (is (=? [(assoc expected-metric-metadata :aggregation-position 0)]
+                metrics))
+        (testing "Display info should contains aggregation-position"
+          (is (=? [{:name                 "sum_of_cans",
+                    :display-name         "Sum of Cans",
+                    :long-display-name    "Sum of Cans",
+                    :effective-type       :type/Integer,
+                    :description          "Number of toucans plus number of pelicans",
+                    :aggregation-position 0}]
+                  (map #(lib/display-info query-with-metric %)
+                       metrics)))))))
   (testing "query with different Table -- don't return Metrics"
     (is (nil? (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :orders)))))))
 
@@ -130,8 +143,7 @@
                       :display-name      "Sum of Cans"
                       :long-display-name "Sum of Cans"
                       :effective-type    :type/Integer
-                      :description       "Number of toucans plus number of pelicans"
-                      :selected          true}]
+                      :description       "Number of toucans plus number of pelicans"}]
                     (map (partial lib/display-info query')
                          (lib/aggregations query'))))))))))
 

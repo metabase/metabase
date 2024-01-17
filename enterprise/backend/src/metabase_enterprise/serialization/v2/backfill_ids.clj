@@ -14,7 +14,7 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
 
-(defn backfill-ids-for
+(defn backfill-ids-for!
   "Updates all rows of a particular model to have `:entity_id` set, based on the [[serdes/identity-hash]]."
   [model]
   (let [missing (t2/select model :entity_id nil)
@@ -35,7 +35,7 @@
     ;; toucan2 models
     (isa? model :hook/entity-id)))
 
-(defn backfill-ids
+(defn backfill-ids!
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the
   `entity_id` set. If the `entity_id` is NULL, it is set based on the [[serdes/identity-hash]] for that
   row."
@@ -43,4 +43,4 @@
   (doseq [model-name (concat serdes.models/exported-models serdes.models/inlined-models)
           :let [model (t2.model/resolve-model (symbol model-name))]
           :when (has-entity-id? model)]
-    (backfill-ids-for model)))
+    (backfill-ids-for! model)))

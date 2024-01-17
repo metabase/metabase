@@ -14,6 +14,7 @@ module.exports = {
     "@storybook/addon-links",
     "@storybook/addon-a11y",
   ],
+  babel: () => {},
   webpackFinal: storybookConfig => ({
     ...storybookConfig,
     plugins: [...storybookConfig.plugins, new MiniCssExtractPlugin()],

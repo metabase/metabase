@@ -58,6 +58,8 @@
     ;; default is nullable
    [:not-null?         {:optional true} [:maybe :boolean]]
    [:unique?           {:optional true} [:maybe :boolean]]
+   ;; should we create an index for this field?
+   [:indexed?          {:optional true} [:maybe :boolean]]
    [:semantic-type     {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
    [:effective-type    {:optional true} [:maybe ms/FieldType]]
    [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
@@ -683,7 +685,8 @@
    (db-test-env-var driver env-var nil))
 
   ([driver env-var default]
-   (get env/env (db-test-env-var-keyword driver env-var) default)))
+   (or (not-empty (get env/env (db-test-env-var-keyword driver env-var)))
+       default)))
 
 (defn db-test-env-var!
   "Update or the value of a test env var. A `nil` new-value removes the env var value."

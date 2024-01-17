@@ -37,10 +37,10 @@
            (mt/native-query
             {:query "select name from users;"}))))))
 
-(deftest native-referring-question-referring-question-test
+(deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     (mt/with-driver :h2
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (t2.with-temp/with-temp [Card card1 {:dataset_query (mt/mbql-query products)}
                                  Card card2 {:dataset_query {:query {:source-table (str "card__" (u/the-id card1))}
                                                              :database (u/the-id (mt/db))

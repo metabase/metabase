@@ -1,1 +1,2 @@
-export { default as RecentsList } from "./RecentsList";
+export { RecentsList } from "./RecentsList";
+export type { WrappedRecentItem } from "./RecentsList";

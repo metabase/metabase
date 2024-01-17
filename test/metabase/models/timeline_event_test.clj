@@ -8,7 +8,8 @@
     :as timeline-event
     :refer [TimelineEvent]]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- names [timelines]
   (into #{} (comp (mapcat :events) (map :name)) timelines))
@@ -30,3 +31,14 @@
       (testing "all events when specified"
         (is (= #{"un-1" "un-2" "archived-1" "archived-2"}
                (names (timeline-event/include-events [tl-a tl-b] {:events/all? true}))))))))
+
+(deftest balloon-icon-migration-test
+  (testing "timeline events with icon=balloons should use the default icon instead when selected"
+    (mt/with-temp [Timeline tl-a {:icon "balloons"}
+                   Timeline tl-b {:icon "cake"}
+                   TimelineEvent a {:timeline_id (u/the-id tl-a) :icon "balloons"}
+                   TimelineEvent b {:timeline_id (u/the-id tl-b) :icon "cake"}]
+      (is (= timeline-event/default-icon
+             (t2/select-one-fn :icon TimelineEvent (u/the-id a))))
+      (is (= "cake"
+             (t2/select-one-fn :icon TimelineEvent (u/the-id b)))))))

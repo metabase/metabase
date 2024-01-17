@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import mockDate from "mockdate";
 import userEvent from "@testing-library/user-event";
@@ -75,7 +76,7 @@ describe("Calendar", () => {
       expect(
         screen
           .getAllByTestId("calendar-day-name")
-          .map((dayEl, index) => dayEl.textContent),
+          .map(dayEl => dayEl.textContent),
       ).toEqual(["We", "Th", "Fr", "Sa", "Su", "Mo", "Tu"]);
 
       // check that listed dates are correct and start with proper day-of-week

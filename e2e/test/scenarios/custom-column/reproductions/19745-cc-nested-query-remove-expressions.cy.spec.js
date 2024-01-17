@@ -9,6 +9,7 @@ import {
   selectDashboardFilter,
   visitDashboard,
   visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -21,15 +22,13 @@ const questionDetails = {
       "source-table": PRODUCTS_ID,
       aggregation: [
         ["count"],
-        ["sum", ["field", PRODUCTS.PRICE, null]],
-        ["sum", ["field", PRODUCTS.RATING, null]],
+        ["sum", ["field", PRODUCTS.PRICE, { "base-type": "type/Float" }]],
       ],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
+      breakout: [["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }]],
     },
     fields: [
-      ["field", PRODUCTS.CATEGORY, null],
+      ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
       ["field", "sum", { "base-type": "type/Float" }],
-      ["field", "sum_2", { "base-type": "type/Float" }],
       ["expression", "Custom Column"],
     ],
     expressions: {
@@ -74,6 +73,10 @@ function updateQuestionAndSelectFilter(updateExpressions) {
       // this should modify the query and remove the second stage
       openNotebook();
       updateExpressions();
+      visualize();
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByRole("button", { name: "Add or remove columns" }).click();
+      cy.findByLabelText("Count").should("not.be.checked").click();
       updateQuestion();
 
       // as we select all columns in the first stage of the query,

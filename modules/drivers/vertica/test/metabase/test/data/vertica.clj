@@ -38,7 +38,8 @@
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
                               :type/Text           "VARCHAR(1024)"
-                              :type/Time           "TIME"}]
+                              :type/Time           "TIME"
+                              :type/TimeWithTZ     "TIMETZ"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (defn- db-name []
@@ -88,10 +89,12 @@
   ;; escape commas
   (str/escape s {\, "\\,"}))
 
-(defmethod value->csv honeysql.types.SqlCall
-  [call]
-  (throw (ex-info "Cannot insert rows containing HoneySQL calls: insert the appropriate raw value instead"
-                  {:call call})))
+(defmethod value->csv clojure.lang.IPersistentVector
+  [xs]
+  (throw (ex-info (if (keyword? (first xs))
+                    "Cannot insert rows containing HoneySQL calls: insert the appropriate raw value instead"
+                    "Don't know how to convert a vector to CSV")
+                  {:value xs})))
 
 (defn- dump-table-rows-to-csv!
   "Dump a sequence of rows (as vectors) to a CSV file."

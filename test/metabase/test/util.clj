@@ -12,11 +12,11 @@
    [environ.core :as env]
    [java-time.api :as t]
    [mb.hawk.parallel]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.models
     :refer [Card
-            Collection
             Dimension
             Field
             FieldValues
@@ -28,11 +28,12 @@
             User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache :as setting.cache]
-   [metabase.models.timeline :as timeline]
+   [metabase.models.timeline-event :as timeline-event]
    [metabase.plugins.classloader :as classloader]
    [metabase.task :as task]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -40,9 +41,9 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.log :as tu.log]
-   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
+   [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -112,16 +113,19 @@
               :database_id            (data/id)
               :dataset_query          {}
               :display                :table
-              :name                   (tu.random/random-name)
+              :name                   (u.random/random-name)
               :visualization_settings {}}))
 
    :model/Collection
-   (fn [_] (default-created-at-timestamped {:name (tu.random/random-name)}))
+   (fn [_] (default-created-at-timestamped {:name (u.random/random-name)}))
+
+   :model/Action
+   (fn [_] {:creator_id (rasta-id)})
 
    :model/Dashboard
    (fn [_] (default-timestamped
              {:creator_id (rasta-id)
-              :name       (tu.random/random-name)}))
+              :name       (u.random/random-name)}))
 
    :model/DashboardCard
    (fn [_] (default-timestamped
@@ -136,7 +140,7 @@
    :model/DashboardTab
    (fn [_]
      (default-timestamped
-       {:name     (tu.random/random-name)
+       {:name     (u.random/random-name)
         :position 0}))
 
    :model/Database
@@ -144,18 +148,18 @@
              {:details   {}
               :engine    :h2
               :is_sample false
-              :name      (tu.random/random-name)}))
+              :name      (u.random/random-name)}))
 
    :model/Dimension
    (fn [_] (default-timestamped
-             {:name (tu.random/random-name)
+             {:name (u.random/random-name)
               :type "internal"}))
 
    :model/Field
    (fn [_] (default-timestamped
              {:database_type "VARCHAR"
               :base_type     :type/Text
-              :name          (tu.random/random-name)
+              :name          (u.random/random-name)
               :position      1
               :table_id      (data/id :checkins)}))
 
@@ -170,23 +174,22 @@
              {:creator_id  (rasta-id)
               :definition  {}
               :description "Lookin' for a blueberry"
-              :name        "Toucans in the rainforest"
-              :table_id    (data/id :checkins)}))
+              :name        "Toucans in the rainforest"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
              {:creator_id (user-id :crowberto)
-              :name       (tu.random/random-name)
+              :name       (u.random/random-name)
               :content    "1 = 1"}))
 
    :model/PersistedInfo
-   (fn [_] {:question_slug (tu.random/random-name)
-            :query_hash    (tu.random/random-hash)
-            :definition    {:table-name (tu.random/random-name)
+   (fn [_] {:question_slug (u.random/random-name)
+            :query_hash    (u.random/random-hash)
+            :definition    {:table-name        (u.random/random-name)
                             :field-definitions (repeatedly
-                                                4
-                                                #(do {:field-name (tu.random/random-name) :base-type "type/Text"}))}
-            :table_name    (tu.random/random-name)
+                                                 4
+                                                 #(do {:field-name (u.random/random-name) :base-type "type/Text"}))}
+            :table_name    (u.random/random-name)
             :active        true
             :state         "persisted"
             :refresh_begin (t/zoned-date-time)
@@ -194,12 +197,12 @@
             :creator_id    (rasta-id)})
 
    :model/PermissionsGroup
-   (fn [_] {:name (tu.random/random-name)})
+   (fn [_] {:name (u.random/random-name)})
 
    :model/Pulse
    (fn [_] (default-timestamped
              {:creator_id (rasta-id)
-              :name       (tu.random/random-name)}))
+              :name       (u.random/random-name)}))
 
    :model/PulseCard
    (fn [_] {:position    0
@@ -233,14 +236,14 @@
    (fn [_] (default-timestamped
              {:db_id  (data/id)
               :active true
-              :name   (tu.random/random-name)}))
+              :name   (u.random/random-name)}))
 
    :model/TaskHistory
    (fn [_]
      (let [started (t/zoned-date-time)
            ended   (t/plus started (t/millis 10))]
        {:db_id      (data/id)
-        :task       (tu.random/random-name)
+        :task       (u.random/random-name)
         :started_at started
         :ended_at   ended
         :duration   (.toMillis (t/duration started ended))}))
@@ -250,24 +253,24 @@
      (default-timestamped
        {:name       "Timeline of bird squawks"
         :default    false
-        :icon       timeline/DefaultIcon
+        :icon       timeline-event/default-icon
         :creator_id (rasta-id)}))
 
    :model/TimelineEvent
    (fn [_]
      (default-timestamped
        {:name         "default timeline event"
-        :icon         timeline/DefaultIcon
+        :icon         timeline-event/default-icon
         :timestamp    (t/zoned-date-time)
         :timezone     "US/Pacific"
         :time_matters true
         :creator_id   (rasta-id)}))
 
    :model/User
-   (fn [_] {:first_name  (tu.random/random-name)
-            :last_name   (tu.random/random-name)
-            :email       (tu.random/random-email)
-            :password    (tu.random/random-name)
+   (fn [_] {:first_name  (u.random/random-name)
+            :last_name   (u.random/random-name)
+            :email       (u.random/random-email)
+            :password    (u.random/random-name)
             :date_joined (t/zoned-date-time)
             :updated_at  (t/zoned-date-time)})})
 
@@ -556,6 +559,8 @@
        ~@body)))
 
 
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -639,7 +644,7 @@
   [_]
   nil)
 
-(defmethod with-model-cleanup-additional-conditions Collection
+(defmethod with-model-cleanup-additional-conditions :model/Collection
   [_]
   ;; NEVER delete personal collections for the test users.
   [:or
@@ -647,13 +652,42 @@
    [:not-in :personal_owner_id (set (map (requiring-resolve 'metabase.test.data.users/user->id)
                                          @(requiring-resolve 'metabase.test.data.users/usernames)))]])
 
+(defmethod with-model-cleanup-additional-conditions :model/User
+  [_]
+  ;; Don't delete the internal user
+  [:not= :id config/internal-mb-user-id])
+
+(defmethod with-model-cleanup-additional-conditions :model/Database
+  [_]
+  ;; Don't delete the audit database
+  [:not= :id perms/audit-db-id])
+
+(defmulti with-max-model-id-additional-conditions
+  "Additional conditions applied to the query to find the max ID for a model prior to a test run. This can be used to
+  exclude rows which intentionally use non-sequential IDs, like the internal user."
+  {:arglists '([model])}
+  mi/model)
+
+(defmethod with-max-model-id-additional-conditions :default
+  [_]
+  [:not= :id config/internal-mb-user-id])
+
+(defmethod with-max-model-id-additional-conditions :model/User
+  [_]
+  [:not= :id config/internal-mb-user-id])
+
+(defmethod with-max-model-id-additional-conditions :model/Database
+ [_]
+ [:not= :id perms/audit-db-id])
+
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
   (mb.hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
                                      [model (:max-id (t2/select-one [model [(keyword (str "%max." (name (first (t2/primary-keys model)))))
-                                                                            :max-id]]))]))]
+                                                                            :max-id]]
+                                                                    {:where (with-max-model-id-additional-conditions model)}))]))]
     (try
       (testing (str "\n" (pr-str (cons 'with-model-cleanup (map name models))) "\n")
         (f))
@@ -689,7 +723,7 @@
   (testing "Make sure the with-model-cleanup macro actually works as expected"
     (t2.with-temp/with-temp [Card other-card]
       (let [card-count-before (t2/count Card)
-            card-name         (tu.random/random-name)]
+            card-name         (u.random/random-name)]
         (with-model-cleanup [Card]
           (t2/insert! Card (-> other-card (dissoc :id :entity_id) (assoc :name card-name)))
           (testing "Card count should have increased by one"
@@ -704,6 +738,49 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
+(defn do-with-verified-cards
+  "Impl for [[with-verified-cards]]."
+  [card-or-ids thunk]
+  (with-model-cleanup [:model/ModerationReview]
+    (doseq [card-or-id card-or-ids]
+      (doseq [status ["verified" nil "verified"]]
+        ;; create multiple moderation review for a card, but the end result is it's still verified
+        (moderation-review/create-review!
+         {:moderated_item_id   (u/the-id card-or-id)
+          :moderated_item_type "card"
+          :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)
+          :status              status})))
+    (thunk)))
+
+(defmacro with-verified-cards
+  "Execute the body with all `card-or-ids` verified."
+  [card-or-ids & body]
+  `(do-with-verified-cards ~card-or-ids (fn [] ~@body)))
+
+(deftest with-verified-cards-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {}]
+    (with-verified-cards [card-id]
+      (is (=? #{{:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         true
+                 :status              "verified"}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              nil}
+                {:moderated_item_id   card-id
+                 :moderated_item_type :card
+                 :most_recent         false
+                 :status              "verified"}}
+              (t2/select-fn-set #(select-keys % [:moderated_item_id :moderated_item_type :most_recent :status])
+                                :model/ModerationReview
+                                :moderated_item_id card-id
+                                :moderated_item_type "card"))))
+    (testing "everything is cleaned up after the macro"
+      (is (= 0 (t2/count :model/ModerationReview
+                         :moderated_item_id card-id
+                         :moderated_item_type "card"))))))
 
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
@@ -882,6 +959,12 @@
            :namespace (name ~collection-namespace))
     (fn [] ~@body)))
 
+(defmacro with-non-admin-groups-no-collection-perms
+  "Temporarily remove perms for the provided collection for all Groups besides the Admin group (which cannot have them
+  removed)."
+  [collection & body]
+  `(do-with-non-admin-groups-no-collection-perms ~collection (fn [] ~@body)))
+
 (defn do-with-all-users-permission
   "Call `f` without arguments in a context where the ''All Users'' group
   is granted the permission specified by `permission-path`.
@@ -891,6 +974,25 @@
   (t2.with-temp/with-temp [Permissions _ {:group_id (:id (perms-group/all-users))
                                           :object permission-path}]
     (f)))
+
+(defn do-with-all-user-data-perms-graph
+  "Implementation for [[with-all-users-data-perms]]"
+  [graph f]
+  (let [all-users-group-id  (u/the-id (perms-group/all-users))
+        current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
+    (try
+      (with-model-cleanup [Permissions]
+        (u/ignore-exceptions
+         (@#'perms/update-group-permissions! all-users-group-id graph))
+        (f))
+      (finally
+        (u/ignore-exceptions
+         (@#'perms/update-group-permissions! all-users-group-id current-graph))))))
+
+(defmacro with-all-users-data-perms-graph
+  "Runs `body` with data perms for the All Users group temporarily set to the values in `graph`."
+  [graph & body]
+  `(do-with-all-user-data-perms-graph ~graph (fn [] ~@body)))
 
 (defmacro with-all-users-permission
   "Run `body` with the ''All Users'' group being granted the permission
@@ -1071,7 +1173,7 @@
   {:pre [(or (string? filename) (nil? filename))]}
   (let [filename (if (string? filename)
                    filename
-                   (tu.random/random-name))
+                   (u.random/random-name))
         filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") filename))]
     ;; delete file if it already exists
     (io/delete-file (io/file filename) :silently)
@@ -1265,3 +1367,13 @@
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
+
+(defn latest-audit-log-entry
+  "Returns the latest audit log entry, optionally filters on `topic`."
+  ([] (latest-audit-log-entry nil nil))
+  ([topic] (latest-audit-log-entry topic nil))
+  ([topic model-id]
+   (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
+                  {:order-by [[:id :desc]]
+                   :where [:and (when topic [:= :topic (name topic)])
+                                (when model-id [:= :model_id model-id])]})))

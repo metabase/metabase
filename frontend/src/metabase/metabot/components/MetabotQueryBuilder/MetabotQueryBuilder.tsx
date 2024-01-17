@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { getWhiteLabeledLoadingMessage } from "metabase/selectors/whitelabel";
-import { getResponseErrorMessage } from "metabase/core/utils/errors";
+import { getResponseErrorMessage } from "metabase/lib/errors";
 import type { Dataset } from "metabase-types/api";
 import type { MetabotQueryStatus, State } from "metabase-types/store";
 import {

@@ -15,9 +15,13 @@ Metabase is an open-source business intelligence platform. You can use Metabase 
 
 ## First steps
 
+### Metabase Cloud
+
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
+
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
-Run as a JAR, using Docker, or on Metabase Cloud.
+Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/checkout).
 
 ### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 
@@ -43,9 +47,9 @@ Metabase's reference documentation.
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Java versions](./installation-and-operation/java-versions.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Serialization](./installation-and-operation/serialization.md)
+- [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
 
@@ -100,7 +104,7 @@ Metabase's reference documentation.
 
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Data model admin settings](./data-modeling/metadata-editing.md)
+- [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
@@ -151,12 +155,14 @@ Metabase's reference documentation.
 - [Data sandboxes](./permissions/data-sandboxes.md)
 - [Data sandbox examples](./permissions/data-sandbox-examples.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
+- [Notification permissions](./permissions/notifications.md)
 
 ### Embedding
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
 - [Interactive embedding](./embedding/interactive-embedding.md)
+- [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
 - [Static embedding](./embedding/static-embedding.md)
 - [Parameters for static embeds](./embedding/static-embedding-parameters.md)
 
@@ -180,7 +186,7 @@ Metabase's reference documentation.
 ### Tools
 
 - [Tools overview](./usage-and-performance-tools/start.md)
-- [Auditing tools](./usage-and-performance-tools/audit.md)
+- [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
 ### Cloud

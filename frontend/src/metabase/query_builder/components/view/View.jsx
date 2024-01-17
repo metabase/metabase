@@ -5,18 +5,15 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Popover from "metabase/components/Popover";
 import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Toaster from "metabase/components/Toaster";
+import { TimeseriesChrome } from "metabase/querying";
 
 import * as Lib from "metabase-lib";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import AggregationPopover from "../AggregationPopover";
-import BreakoutPopover from "../BreakoutPopover";
 import DatasetEditor from "../DatasetEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -24,20 +21,20 @@ import DataReference from "../dataref/DataReference";
 import { TagEditorSidebar } from "../template_tags/TagEditorSidebar";
 import { SnippetSidebar } from "../template_tags/SnippetSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
-import QueryModals from "../QueryModals";
 
+import QueryModals from "../QueryModals";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
-import TimelineSidebar from "./sidebars/TimelineSidebar";
 
+import TimelineSidebar from "./sidebars/TimelineSidebar";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import NewQuestionView from "./View/NewQuestionView";
-import QueryViewNotebook from "./View/QueryViewNotebook";
 
+import QueryViewNotebook from "./View/QueryViewNotebook";
 import {
   BorderedViewTitleHeader,
   NativeQueryEditorContainer,
@@ -49,80 +46,7 @@ import {
   StyledSyncedParametersList,
 } from "./View.styled";
 
-const DEFAULT_POPOVER_STATE = {
-  aggregationIndex: null,
-  aggregationPopoverTarget: null,
-  breakoutIndex: null,
-  breakoutPopoverTarget: null,
-};
-
 class View extends Component {
-  state = {
-    ...DEFAULT_POPOVER_STATE,
-  };
-
-  onUpdateQuery = (query, options = { run: true }) => {
-    this.props.updateQuestion(query.question(), options);
-  };
-
-  handleAddSeries = e => {
-    this.setState({
-      ...DEFAULT_POPOVER_STATE,
-      aggregationPopoverTarget: e.target,
-    });
-  };
-
-  handleEditSeries = (e, index) => {
-    this.setState({
-      ...DEFAULT_POPOVER_STATE,
-      aggregationPopoverTarget: e.target,
-      aggregationIndex: index,
-    });
-  };
-
-  handleRemoveSeries = (e, index) => {
-    const { query } = this.props;
-    this.onUpdateQuery(query.removeAggregation(index));
-  };
-
-  handleEditBreakout = (e, index) => {
-    this.setState({
-      ...DEFAULT_POPOVER_STATE,
-      breakoutPopoverTarget: e.target,
-      breakoutIndex: index,
-    });
-  };
-
-  handleClosePopover = () => {
-    this.setState({
-      ...DEFAULT_POPOVER_STATE,
-    });
-  };
-
-  onChangeAggregation = aggregation => {
-    const { query } = this.props;
-    const { aggregationIndex } = this.state;
-    if (aggregationIndex != null) {
-      this.onUpdateQuery(
-        query.updateAggregation(aggregationIndex, aggregation),
-      );
-    } else {
-      this.onUpdateQuery(query.aggregate(aggregation));
-    }
-    this.handleClosePopover();
-  };
-
-  onChangeBreakout = breakout => {
-    const { query } = this.props;
-    const { breakoutIndex } = this.state;
-    if (breakoutIndex != null) {
-      this.onUpdateQuery(query.updateBreakout(breakoutIndex, breakout));
-    } else {
-      this.onUpdateQuery(query.breakout(breakout));
-    }
-    this.handleClosePopover();
-  };
-
   getLeftSidebar = () => {
     const {
       isShowingChartSettingsSidebar,
@@ -168,12 +92,10 @@ class View extends Component {
     const isSaved = question.isSaved();
 
     if (isShowingSummarySidebar) {
-      const query = question._getMLv2Query();
-      const legacyQuery = question.query();
+      const query = question.query();
       return (
         <SummarizeSidebar
           query={query}
-          legacyQuery={legacyQuery}
           onQueryChange={nextQuery => {
             const datesetQuery = Lib.toLegacyQuery(nextQuery);
             const nextQuestion = question.setDatasetQuery(datesetQuery);
@@ -231,7 +153,11 @@ class View extends Component {
 
     if (isShowingTemplateTagsEditor) {
       return (
-        <TagEditorSidebar {...this.props} onClose={toggleTemplateTagsEditor} />
+        <TagEditorSidebar
+          {...this.props}
+          query={question.legacyQuery()}
+          onClose={toggleTemplateTagsEditor}
+        />
       );
     }
 
@@ -273,11 +199,14 @@ class View extends Component {
   };
 
   renderHeader = () => {
-    const { query } = this.props;
-    const isStructured = query instanceof StructuredQuery;
+    const { question } = this.props;
+    const query = question.query();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      question.isStructured() &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     return (
       <Motion
@@ -300,8 +229,8 @@ class View extends Component {
   };
 
   renderNativeQueryEditor = () => {
-    const { question, query, card, height, isDirty, isNativeEditorOpen } =
-      this.props;
+    const { question, card, height, isDirty, isNativeEditorOpen } = this.props;
+    const legacyQuery = question.legacyQuery();
 
     // Normally, when users open native models,
     // they open an ad-hoc GUI question using the model as a data source
@@ -310,7 +239,7 @@ class View extends Component {
     // So the model is opened as an underlying native question and the query editor becomes visible
     // This check makes it hide the editor in this particular case
     // More details: https://github.com/metabase/metabase/pull/20161
-    if (question.isDataset() && !query.isEditable()) {
+    if (question.isDataset() && !question.isQueryEditable()) {
       return null;
     }
 
@@ -318,8 +247,9 @@ class View extends Component {
       <NativeQueryEditorContainer>
         <NativeQueryEditor
           {...this.props}
+          query={legacyQuery}
           viewHeight={height}
-          isOpen={query.isEmpty() || isDirty}
+          isOpen={legacyQuery.isEmpty() || isDirty}
           isInitiallyOpen={isNativeEditorOpen}
           datasetQuery={card && card.dataset_query}
         />
@@ -328,26 +258,13 @@ class View extends Component {
   };
 
   renderMain = ({ leftSidebar, rightSidebar }) => {
-    const { query, mode, parameters, isLiveResizable, setParameterValue } =
+    const { question, mode, parameters, isLiveResizable, setParameterValue } =
       this.props;
 
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
     const queryMode = mode && mode.queryMode();
-    const ModeFooter = queryMode && queryMode.ModeFooter;
-    const isStructured = query instanceof StructuredQuery;
-    const isNative = query instanceof NativeQuery;
-
-    const validationError = _.first(query.validate?.());
-
-    const topQuery = isStructured && query.topLevelQuery();
-
-    // only allow editing of series for structured queries
-    const onAddSeries = topQuery ? this.handleAddSeries : null;
-    const onEditSeries = topQuery ? this.handleEditSeries : null;
-    const onRemoveSeries =
-      topQuery && topQuery.hasAggregations() ? this.handleRemoveSeries : null;
-    const onEditBreakout =
-      topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
-
+    const isNative = legacyQuery instanceof NativeQuery;
+    const validationError = _.first(legacyQuery.validate?.());
     const isSidebarOpen = leftSidebar || rightSidebar;
 
     return (
@@ -373,68 +290,19 @@ class View extends Component {
               {...this.props}
               noHeader
               className="spread"
-              onAddSeries={onAddSeries}
-              onEditSeries={onEditSeries}
-              onRemoveSeries={onRemoveSeries}
-              onEditBreakout={onEditBreakout}
               mode={queryMode}
             />
           </StyledDebouncedFrame>
         )}
-
-        {ModeFooter && (
-          <ModeFooter {...this.props} className="flex-no-shrink" />
-        )}
-
+        <TimeseriesChrome {...this.props} className="flex-no-shrink" />
         <ViewFooter {...this.props} className="flex-no-shrink" />
       </QueryBuilderMain>
-    );
-  };
-
-  renderAggregationPopover = () => {
-    const { query } = this.props;
-    const { aggregationPopoverTarget, aggregationIndex } = this.state;
-    return (
-      <Popover
-        isOpen={!!aggregationPopoverTarget}
-        target={aggregationPopoverTarget}
-        onClose={this.handleClosePopover}
-      >
-        <AggregationPopover
-          query={query}
-          aggregation={
-            aggregationIndex >= 0 ? query.aggregations()[aggregationIndex] : 0
-          }
-          onChangeAggregation={this.onChangeAggregation}
-          onClose={this.handleClosePopover}
-        />
-      </Popover>
-    );
-  };
-
-  renderBreakoutPopover = () => {
-    const { query } = this.props;
-    const { breakoutPopoverTarget, breakoutIndex } = this.state;
-    return (
-      <Popover
-        isOpen={!!breakoutPopoverTarget}
-        onClose={this.handleClosePopover}
-        target={breakoutPopoverTarget}
-      >
-        <BreakoutPopover
-          query={query}
-          breakout={breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0}
-          onChangeBreakout={this.onChangeBreakout}
-          onClose={this.handleClosePopover}
-        />
-      </Popover>
     );
   };
 
   render() {
     const {
       question,
-      query,
       databases,
       isShowingNewbModal,
       isShowingTimelineSidebar,
@@ -452,15 +320,18 @@ class View extends Component {
       return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
-    const isStructured = query instanceof StructuredQuery;
+    const query = question.query();
+    const legacyQuery = question.legacyQuery({ useStructuredQuery: true });
 
     const isNewQuestion =
-      isStructured && !query.sourceTableId() && !query.sourceQuery();
+      question.isStructured() &&
+      Lib.sourceTableOrCardId(query) === null &&
+      !legacyQuery.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <NewQuestionView
-          query={query}
+          question={question}
           updateQuestion={updateQuestion}
           className="full-height"
         />
@@ -490,7 +361,7 @@ class View extends Component {
         <QueryBuilderViewRoot className="QueryBuilder">
           {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
-            {isStructured && (
+            {question.isStructured() && (
               <QueryViewNotebook
                 isNotebookContainerOpen={isNotebookContainerOpen}
                 {...this.props}
@@ -519,8 +390,6 @@ class View extends Component {
 
         <QueryModals {...this.props} />
 
-        {isStructured && this.renderAggregationPopover()}
-        {isStructured && this.renderBreakoutPopover()}
         <Toaster
           message={t`Would you like to be notified when this question is done loading?`}
           isShown={isShowingToaster}

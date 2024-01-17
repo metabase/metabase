@@ -99,11 +99,6 @@ export const fetchField = createThunkAction(
   },
 );
 
-export const fetchFieldValues = (id, reload = false) => {
-  deprecated("metabase/redux/metadata fetchFieldValues");
-  return Fields.actions.fetchFieldValues({ id }, reload);
-};
-
 export const updateFieldValues = (fieldId, fieldValuePairs) => {
   deprecated("metabase/redux/metadata updateFieldValues");
   return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);

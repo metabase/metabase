@@ -13,13 +13,20 @@ import {
   setTokenFeatures,
   emailSubscriptionRecipients,
   openEmailPage,
-  setupSubscriptionWithRecipient,
+  setupSubscriptionWithRecipients,
   openPulseSubscription,
   sendEmailAndVisitIt,
+  clickSend,
+  viewEmailPage,
+  openPublicLinkPopoverFromMenu,
+  openEmbedModalFromMenu,
+  getEmbedModalSharingPane,
 } from "e2e/support/helpers";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { admin, normal } = USERS;
 
 describe("scenarios > dashboard > subscriptions", () => {
@@ -28,21 +35,24 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should not allow sharing if there are no dashboard cards", () => {
+  it("should allow sharing if there are no dashboard cards", () => {
     cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
       visitDashboard(DASHBOARD_ID);
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This dashboard is looking empty.");
-
-    cy.icon("share")
-      .closest("a")
-      .should("have.attr", "aria-disabled", "true")
-      .click();
 
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Share this dashboard with people *./i).should("not.exist");
+
+    openPublicLinkPopoverFromMenu();
+    cy.findByTestId("public-link-popover-content").should("be.visible");
+
+    // close link popover
+    cy.icon("share").click();
+
+    openEmbedModalFromMenu();
+    getEmbedModalSharingPane().within(() => {
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Static embed").should("be.visible");
+    });
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
@@ -53,15 +63,27 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    cy.icon("share").closest("a").click();
-
+    openEmbedModalFromMenu();
     // Ensure clicking share icon opens sharing and embedding modal directly,
     // without a menu with sharing and dashboard subscription options.
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
     cy.findByLabelText("subscriptions").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Share this dashboard with people *./i);
+
+    getEmbedModalSharingPane().within(() => {
+      cy.findByText("Public embed").should("be.visible");
+      cy.findByText("Static embed").should("be.visible");
+    });
+  });
+
+  describe("sidebar toggling behavior", () => {
+    it("should allow toggling the sidebar", () => {
+      openDashboardSubscriptions();
+
+      // The sidebar starts open after the method there, so test that clicking the icon closes it
+      cy.findByLabelText("subscriptions").click();
+      sidebar().should("not.exist");
+    });
   });
 
   describe("with no channels set up", () => {
@@ -152,40 +174,86 @@ describe("scenarios > dashboard > subscriptions", () => {
           cy.findByText("Email this dashboard").should("exist");
         });
       });
+
+      it("should send as BCC by default", () => {
+        const ORDERS_DASHBOARD_NAME = "Orders in a dashboard";
+
+        assignRecipients();
+        sidebar().within(() => {
+          clickSend();
+        });
+
+        viewEmailPage(ORDERS_DASHBOARD_NAME);
+
+        cy.get(".main-container").within(() => {
+          cy.findByText("Bcc:").should("exist");
+          cy.findByText(`${admin.email}`).should("exist");
+          cy.findByText(`${normal.email}`).should("exist");
+        });
+      });
+
+      it("should send as CC when opted-in", () => {
+        // opt-in to CC
+        cy.visit("/admin/settings/email");
+        cy.findByTestId("bcc-enabled?-setting")
+          .findByLabelText("CC - Disclose recipients")
+          .click();
+
+        const ORDERS_DASHBOARD_NAME = "Orders in a dashboard";
+
+        assignRecipients();
+        sidebar().within(() => {
+          clickSend();
+        });
+
+        viewEmailPage(ORDERS_DASHBOARD_NAME);
+
+        cy.get(".main-container").within(() => {
+          cy.findByText("Bcc:").should("not.exist");
+          cy.findByText(`${admin.email}`).should("exist");
+          cy.findByText(`${normal.email}`).should("exist");
+        });
+      });
     });
 
     describe("let non-users unsubscribe from subscriptions", () => {
-      it("should allow non-user to unsubscribe from subscription", () => {
-        const nonUserEmail = "non-user@example.com";
-        const dashboardName = "Orders in a dashboard";
+      it(
+        "should allow non-user to unsubscribe from subscription",
+        { tags: "@flaky" },
+        () => {
+          const nonUserEmail = "non-user@example.com";
+          const otherUserEmail = "other-user@example.com";
+          const dashboardName = "Orders in a dashboard";
 
-        visitDashboard(ORDERS_DASHBOARD_ID);
+          visitDashboard(ORDERS_DASHBOARD_ID);
 
-        setupSubscriptionWithRecipient(nonUserEmail);
+          setupSubscriptionWithRecipients([nonUserEmail, otherUserEmail]);
 
-        emailSubscriptionRecipients();
+          emailSubscriptionRecipients();
 
-        openEmailPage(dashboardName).then(() => {
-          cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
-          cy.findByText("Unsubscribe").click();
-          cy.wait("@unsubscribe");
-          cy.contains(
-            `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
-          ).should("exist");
-        });
+          openEmailPage(dashboardName).then(() => {
+            cy.intercept("/api/session/pulse/unsubscribe").as("unsubscribe");
+            cy.findByText("Unsubscribe").click();
+            cy.wait("@unsubscribe");
+            cy.contains(
+              `You've unsubscribed ${nonUserEmail} from the "${dashboardName}" alert.`,
+            ).should("exist");
+          });
 
-        openDashboardSubscriptions();
-        openPulseSubscription();
+          openDashboardSubscriptions();
+          openPulseSubscription();
 
-        sidebar().findByText(nonUserEmail).should("not.exist");
-      });
+          sidebar().findByText(nonUserEmail).should("not.exist");
+          sidebar().findByText(otherUserEmail).should("exist");
+        },
+      );
 
       it("should allow non-user to undo-unsubscribe from subscription", () => {
         const nonUserEmail = "non-user@example.com";
         const dashboardName = "Orders in a dashboard";
         visitDashboard(ORDERS_DASHBOARD_ID);
 
-        setupSubscriptionWithRecipient(nonUserEmail);
+        setupSubscriptionWithRecipients([nonUserEmail]);
 
         emailSubscriptionRecipients();
 
@@ -374,6 +442,38 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(email.html).to.include(TEXT_CARD);
       });
     });
+
+    it(`should load question binned by "Month of year" or similar granularity (metabase#16918)`, () => {
+      const questionDetails = {
+        name: "16918",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "temporal-unit": "month-of-year" },
+            ],
+            ["field", PRODUCTS.CATEGORY, null],
+          ],
+        },
+        display: "line",
+      };
+
+      const dashboardDetails = { name: "Repro Dashboard" };
+
+      cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          assignRecipient({ dashboard_id });
+        },
+      );
+
+      sendEmailAndAssert(email => {
+        expect(email.html).to.include(dashboardDetails.name);
+        expect(email.html).to.include(questionDetails.name);
+      });
+    });
   });
 
   describe("with Slack set up", () => {
@@ -549,7 +649,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
 
         // change default text to sallie
-        cy.visit(`/dashboard/1`);
+        cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
         cy.icon("pencil").click();
         cy.findByTestId("edit-dashboard-parameters-widget-container")
           .findByText("Text")
@@ -636,6 +736,23 @@ function assignRecipient({
   cy.findByPlaceholderText("Enter user names or email addresses")
     .click()
     .type(`${user.first_name} ${user.last_name}{enter}`)
+    .blur(); // blur is needed to close the popover
+}
+
+function assignRecipients({
+  users = [admin, normal],
+  dashboard_id = ORDERS_DASHBOARD_ID,
+} = {}) {
+  openDashboardSubscriptions(dashboard_id);
+  cy.findByText("Email it").click();
+
+  const userInput = users
+    .map(user => `${user.first_name} ${user.last_name}{enter}`)
+    .join("");
+
+  cy.findByPlaceholderText("Enter user names or email addresses")
+    .click()
+    .type(userInput)
     .blur(); // blur is needed to close the popover
 }
 

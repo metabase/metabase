@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
@@ -127,6 +127,7 @@ function MainNavbarView({
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
             role="tree"
+            aria-label="collection-tree"
           />
         </SidebarSection>
 

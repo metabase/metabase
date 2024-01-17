@@ -95,7 +95,7 @@
 (deftest persisted-models-complex-queries-test
   (testing "Can use aggregations and custom columns with persisted models (#28679)"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     [:native (mt/native-query
                                               (mt/compile
@@ -140,7 +140,7 @@
 
   (testing "Can use joins with persisted models (#28902)"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp [Card model {:dataset true
                                      :database_id (mt/id)

@@ -10,24 +10,52 @@ API endpoints for Search.
 
 ## `GET /api/search/`
 
-Search within a bunch of models for the substring `q`.
-  For the list of models, check [[metabase.search.config/all-models]].
+Search for items in Metabase.
+  For the list of supported models, check [[metabase.search.config/all-models]].
 
-  To search in archived portions of models, pass in `archived=true`.
-  To search for tables, cards, and models of a certain DB, pass in a DB id value
-  to `table_db_id`.
-  To specify a list of models, pass in an array to `models`.
-  .
+  Filters:
+  - `archived`: set to true to search archived items only, default is false
+  - `table_db_id`: search for tables, cards, and models of a certain DB
+  - `models`: only search for items of specific models. If not provided, search for all models
+  - `filters_items_in_personal_collection`: only search for items in personal collections
+  - `created_at`: search for items created at a specific timestamp
+  - `created_by`: search for items created by a specific user
+  - `last_edited_at`: search for items last edited at a specific timestamp
+  - `last_edited_by`: search for items last edited by a specific user
+  - `search_native_query`: set to true to search the content of native queries
+  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
+
+  Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
+  - The `created-by` filter supports dashboards, models, actions, and cards.
+  - The `verified` filter supports models and cards.
+
+  A search query that has both filters applied will only return models and cards.
 
 ### PARAMS:
 
-*  **`q`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`filter_items_in_personal_collection`** nullable enum of only, exclude
 
-*  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`table_db_id`** nullable value must be an integer greater than zero.
 
-*  **`table_db_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be a non-blank string. 2) value must be a non-blank string.
+*  **`verified`** nullable true
+
+*  **`created_at`** nullable value must be a non-blank string.
+
+*  **`archived`** nullable boolean
+
+*  **`q`** nullable value must be a non-blank string.
+
+*  **`search_native_query`** nullable true
+
+*  **`models`** nullable enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card, or sequence of enum of dashboard, table, dataset, segment, collection, database, action, indexed-entity, metric, card
+
+*  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+
+*  **`last_edited_at`** nullable value must be a non-blank string.
+
+*  **`context`** nullable enum of search-bar, search-app
 
 ## `GET /api/search/models`
 
@@ -35,9 +63,23 @@ Get the set of models that a search query will return.
 
 ### PARAMS:
 
+*  **`filter_items_in_personal_collection`** 
+
+*  **`created_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+
+*  **`verified`** nullable true
+
+*  **`created_at`** nullable value must be a non-blank string.
+
+*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+
 *  **`q`** 
 
-*  **`archived-string`** 
+*  **`search_native_query`** nullable true
+
+*  **`last_edited_by`** nullable value must be an integer greater than zero., or sequence of value must be an integer greater than zero.
+
+*  **`last_edited_at`** nullable value must be an integer greater than zero.
 
 *  **`table-db-id`** nullable value must be an integer greater than zero.
 

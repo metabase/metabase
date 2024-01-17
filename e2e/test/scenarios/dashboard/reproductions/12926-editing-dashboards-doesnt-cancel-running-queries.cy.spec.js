@@ -1,8 +1,10 @@
 import {
+  addTextBox,
   editDashboard,
   getDashboardCard,
   openQuestionsSidebar,
   popover,
+  removeDashboardCard,
   restore,
   saveDashboard,
   setFilter,
@@ -74,6 +76,20 @@ describe("issue 12926", () => {
 
       getDashboardCard().findByText(queryResult);
     });
+
+    it("should not break virtual cards (metabase#35545)", () => {
+      cy.createDashboard().then(({ body: { id: dashboardId } }) => {
+        visitDashboard(dashboardId);
+      });
+
+      addTextBox("Text card content");
+
+      removeDashboardCard();
+
+      undo();
+
+      getDashboardCard().findByText("Text card content");
+    });
   });
 
   describe("saving a dashboard that retriggers a non saved query (negative id)", () => {
@@ -89,7 +105,7 @@ describe("issue 12926", () => {
 
       openQuestionsSidebar();
       // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery();
+      slowDownCardQuery("cardQuerySlowed");
       sidebar().findByText(questionDetails.name).click();
 
       setFilter("Number", "Equal to");
@@ -97,32 +113,30 @@ describe("issue 12926", () => {
       popover().findByPlaceholderText("Enter a number").type(parameterValue);
       popover().findByText("Add filter").click();
 
-      cy.window().then(win => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
-      });
-
       getDashboardCard().findByText("Select…").click();
       popover().contains(filterDisplayName).eq(0).click();
 
       saveDashboard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.wait("@cardQuerySlowed").then(xhrProxy =>
+        expect(xhrProxy.state).to.eq("Errored"),
+      );
 
       getDashboardCard().findByText(queryResult + parameterValue);
     });
   });
 });
 
-function slowDownCardQuery() {
-  cy.intercept("POST", "api/card/*/query", req => {
+function slowDownCardQuery(as) {
+  cy.intercept("POST", "/api/card/*/query", req => {
     req.on("response", res => {
       res.setDelay(300000);
     });
-  }).as("cardQuerySlowed");
+  }).as(as);
 }
 
 function slowDownDashcardQuery() {
-  cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
     req.on("response", res => {
       res.setDelay(5000);
     });
@@ -130,7 +144,7 @@ function slowDownDashcardQuery() {
 }
 
 function restoreDashcardQuery() {
-  cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query", req => {
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
     // calling req.continue() will make cypress skip all previously added intercepts
     req.continue();
   }).as("dashcardQueryRestored");

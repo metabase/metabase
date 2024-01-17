@@ -1,4 +1,6 @@
 import {
+  getActionCardDetails,
+  getNextUnsavedDashboardCardId,
   restore,
   modal,
   createAction,
@@ -129,6 +131,7 @@ function setupDashboard() {
       dashboard_id: this.dashboardId,
       cards: [
         {
+          id: getNextUnsavedDashboardCardId(),
           card_id: this.modelId,
           // Map dashboard parameter to PRODUCTS.ID
           parameter_mappings: [
@@ -139,22 +142,9 @@ function setupDashboard() {
             },
           ],
         },
-        {
+        getActionCardDetails({
+          label: QUERY_ACTION.name,
           action_id: this.actionId,
-          // Visualization settings when we add an action to a dashboard
-          visualization_settings: {
-            actionDisplayType: "button",
-            "button.label": QUERY_ACTION.name,
-            virtual_card: {
-              archived: false,
-              dataset_query: {},
-              display: "action",
-              name: null,
-              visualization_settings: {},
-            },
-          },
-          size_x: 4,
-          size_y: 1,
           // Map action's ID parameter to dashboard parameter
           parameter_mappings: [
             {
@@ -165,7 +155,7 @@ function setupDashboard() {
               ],
             },
           ],
-        },
+        }),
       ],
     });
   });

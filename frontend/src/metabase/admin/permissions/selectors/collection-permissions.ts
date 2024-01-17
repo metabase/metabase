@@ -9,7 +9,10 @@ import Collections, {
   ROOT_COLLECTION,
 } from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
-import { nonPersonalOrArchivedCollection } from "metabase/collections/utils";
+import {
+  nonPersonalOrArchivedCollection,
+  isInstanceAnalyticsCollection,
+} from "metabase/collections/utils";
 import {
   getGroupNameLocalized,
   isAdminGroup,
@@ -27,6 +30,7 @@ import type {
   CollectionPermissions,
   CollectionId,
 } from "metabase-types/api";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
@@ -250,6 +254,20 @@ export const getCollectionsPermissionEditor = createSelector(
         ),
       ];
 
+      const isIACollection = isInstanceAnalyticsCollection(collection);
+
+      const options = isIACollection
+        ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
+        : [
+            COLLECTION_OPTIONS.write,
+            COLLECTION_OPTIONS.read,
+            COLLECTION_OPTIONS.none,
+          ];
+
+      const disabledTooltip = isIACollection
+        ? PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE
+        : UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+
       return {
         id: group.id,
         name: getGroupNameLocalized(group),
@@ -258,9 +276,7 @@ export const getCollectionsPermissionEditor = createSelector(
             toggleLabel,
             hasChildren,
             isDisabled: isAdmin,
-            disabledTooltip: isAdmin
-              ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-              : null,
+            disabledTooltip: isAdmin ? disabledTooltip : null,
             value: getCollectionPermission(
               permissions,
               group.id,
@@ -268,11 +284,7 @@ export const getCollectionsPermissionEditor = createSelector(
             ),
             warning: getCollectionWarning(group.id, collection, permissions),
             confirmations,
-            options: [
-              COLLECTION_OPTIONS.write,
-              COLLECTION_OPTIONS.read,
-              COLLECTION_OPTIONS.none,
-            ],
+            options,
           },
         ],
       };

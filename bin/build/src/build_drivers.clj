@@ -7,6 +7,8 @@
   (:import
    (java.io File)))
 
+(set! *warn-on-reflection* true)
+
 (defn- all-drivers []
   (->> (.listFiles (io/file (u/filename u/project-root-directory "modules" "drivers")))
        (filter (fn [^File d]                                        ;
@@ -19,7 +21,9 @@
                   (.exists (io/file d "deps.edn")))))
        (map (comp keyword #(.getName ^File %)))))
 
-(defn build-drivers! [edition]
+(defn build-drivers!
+  "Build `edition`(`:ee` or `:oss`) versions of *all* the drivers in `modules/drivers`."
+  [edition]
   (let [edition (or edition :oss)]
     (assert (#{:oss :ee} edition))
     (u/step (format "Building all drivers (%s edition)" (pr-str edition))

@@ -8,7 +8,7 @@ import {
 import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import Fields from "metabase/entities/fields";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWidget";
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 
@@ -95,15 +95,13 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("has_field_values = list", () => {
-      const field = metadata.field(PRODUCTS.CATEGORY);
+      const field = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
 
       it("should call fetchFieldValues", async () => {
         const { fetchFieldValues } = await setup({
           fields: [field],
         });
-        expect(fetchFieldValues).toHaveBeenCalledWith({
-          id: PRODUCTS.CATEGORY,
-        });
+        expect(fetchFieldValues).toHaveBeenCalledWith(field);
       });
 
       it("should not have 'Search the list' as the placeholder text for fields with less or equal than 10 values", async () => {
@@ -123,7 +121,7 @@ describe("FieldValuesWidget", () => {
     });
 
     describe("has_field_values = search", () => {
-      const field = metadata.field(PRODUCTS.VENDOR);
+      const field = metadata.field(PEOPLE.EMAIL);
 
       it("should not call fetchFieldValues", async () => {
         const { fetchFieldValues } = await setup({
@@ -135,7 +133,7 @@ describe("FieldValuesWidget", () => {
       it("should have 'Search by Vendor' as the placeholder text", async () => {
         await setup({ fields: [field] });
         expect(
-          screen.getByPlaceholderText("Search by Vendor"),
+          screen.getByPlaceholderText("Search by Email"),
         ).toBeInTheDocument();
       });
     });
@@ -212,7 +210,7 @@ describe("FieldValuesWidget", () => {
       await setup({
         fields: [
           metadata.field(PRODUCTS.CATEGORY),
-          metadata.field(PRODUCTS.VENDOR),
+          metadata.field(PEOPLE.EMAIL),
         ],
       });
 
@@ -261,12 +259,18 @@ describe("FieldValuesWidget", () => {
       });
 
       expect(screen.getByText(LISTABLE_PK_FIELD_VALUE)).toBeInTheDocument();
-      expect(fetchFieldValues).toHaveBeenCalledWith({
-        id: LISTABLE_PK_FIELD_ID,
-      });
-      expect(fetchFieldValues).not.toHaveBeenCalledWith({
-        id: EXPRESSION_FIELD_ID,
-      });
+      expect(fetchFieldValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: LISTABLE_PK_FIELD_ID,
+          table_id: valuesField.table_id,
+        }),
+      );
+      expect(fetchFieldValues).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: EXPRESSION_FIELD_ID,
+          table_id: expressionField.table_id,
+        }),
+      );
     });
   });
 

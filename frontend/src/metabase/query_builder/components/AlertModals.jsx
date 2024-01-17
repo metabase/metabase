@@ -12,7 +12,7 @@ import ModalContent from "metabase/components/ModalContent";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Radio from "metabase/core/components/Radio";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
@@ -148,7 +148,7 @@ class CreateAlertModalContentInner extends Component {
     }
     if (!hasSeenEducationalScreen) {
       return (
-        <ModalContent onClose={onCancel}>
+        <ModalContent onClose={onCancel} data-testid="alert-education-screen">
           <AlertEducationalScreen
             onProceed={this.proceedFromEducationalScreen}
           />
@@ -286,16 +286,9 @@ class UpdateAlertModalContentInner extends Component {
   onAlertChange = modifiedAlert => this.setState({ modifiedAlert });
 
   onUpdateAlert = async () => {
-    const {
-      question,
-      apiUpdateQuestion,
-      updateAlert,
-      updateUrl,
-      onAlertUpdated,
-    } = this.props;
+    const { question, updateAlert, updateUrl, onAlertUpdated } = this.props;
     const { modifiedAlert } = this.state;
 
-    await apiUpdateQuestion();
     await updateAlert(modifiedAlert);
     await updateUrl(question, { dirty: false });
     onAlertUpdated();
@@ -324,7 +317,7 @@ class UpdateAlertModalContentInner extends Component {
 
     // TODO: Remove PulseEdit css hack
     return (
-      <ModalContent onClose={onCancel}>
+      <ModalContent onClose={onCancel} data-testid="alert-edit">
         <div
           className="PulseEdit ml-auto mr-auto mb4"
           style={{ maxWidth: "550px" }}
@@ -363,7 +356,7 @@ export const UpdateAlertModalContent = connect(
     question: getQuestion(state),
     visualizationSettings: getVisualizationSettings(state),
   }),
-  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
+  { updateAlert, deleteAlert, updateUrl },
 )(UpdateAlertModalContentInner);
 
 export class DeleteAlertSection extends Component {

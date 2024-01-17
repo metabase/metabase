@@ -13,8 +13,9 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel query->collection-name-test
   (testing "query->collection-name"
@@ -107,7 +108,7 @@
                        :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
-              (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
+              (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
                             (qp/compile
                              (mt/mbql-query attempts
@@ -121,39 +122,38 @@
                                         [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
                                          {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   (if (date-arithmetic-supported?)
-                                                           {"datetime" {:$dateTrunc {:date "$datetime"
-                                                                                     :startOfWeek "sunday"
-                                                                                     :timezone tz
-                                                                                     :unit "month"}}
-                                                            "datetime_2" {:$dateTrunc {:date "$datetime"
+                                                           {"datetime"   {:$dateTrunc {:date        "$datetime"
                                                                                        :startOfWeek "sunday"
-                                                                                       :timezone tz
-                                                                                       :unit "day"}}}
-                                                           {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                             :timezone tz}}}
-                                                                               :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                       :month "$$parts.month"
-                                                                                                       :timezone tz}}}}
-                                                            "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                 :timezone tz}}}
-                                                                                   :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                           :month "$$parts.month"
-                                                                                                           :day   "$$parts.day"
-                                                                                                           :timezone tz}}}}})
+                                                                                       :timezone    tz
+                                                                                       :unit        "month"}}
+                                                            "datetime_2" {:$dateTrunc {:date        "$datetime"
+                                                                                       :startOfWeek "sunday"
+                                                                                       :timezone    tz
+                                                                                       :unit        "day"}}}
+                                                           {"datetime"   {:$let {:vars {:parts {:$dateToParts {:date     "$datetime"
+                                                                                                               :timezone tz}}}
+                                                                                 :in   {:$dateFromParts {:year     "$$parts.year"
+                                                                                                         :month    "$$parts.month"
+                                                                                                         :timezone tz}}}}
+                                                            "datetime_2" {:$let {:vars {:parts {:$dateToParts {:date     "$datetime"
+                                                                                                               :timezone tz}}}
+                                                                                 :in   {:$dateFromParts {:year     "$$parts.year"
+                                                                                                         :month    "$$parts.month"
+                                                                                                         :day      "$$parts.day"
+                                                                                                         :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
-                                      {"$project" {"_id"              false
-                                                   "datetime" "$_id.datetime"
-                                                   "datetime_2"   "$_id.datetime_2"
-                                                   "count"            true}}
+                                      {"$project" {"_id"        false
+                                                   "datetime"   "$_id.datetime"
+                                                   "datetime_2" "$_id.datetime_2"
+                                                   "count"      true}}
                                       {"$sort" {"datetime" 1}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
                 (testing "Make sure we can actually run the query"
-                  (is (schema= {:status   (s/eq :completed)
-                                s/Keyword s/Any}
-                               (qp/process-query (mt/native-query query)))))))))))))
+                  (is (=? {:status :completed}
+                          (qp/process-query (mt/native-query query)))))))))))))
 
 (deftest ^:parallel field-filter-relative-time-native-test
   (mt/test-driver :mongo
@@ -534,3 +534,38 @@
 
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
+
+(deftest uniqe-alias-index-test
+  (mt/test-driver
+   :mongo
+   (testing "Field aliases have deterministic unique indices"
+     (let [query (mt/mbql-query
+                  nil
+                  {:joins [{:alias "Products"
+                            :source-table $$products
+                            :condition [:= &Products.products.id $orders.product_id]
+                            :fields :all}
+                           {:alias "People"
+                            :source-table $$people
+                            :condition [:= &People.people.id $orders.user_id]
+                            :fields :all}]
+                   :source-query {:source-table $$orders
+                                  :joins [{:alias "Products"
+                                           :source-table $$products
+                                           :condition [:= &Products.products.id $orders.product_id]
+                                           :fields :all}
+                                          {:alias "People"
+                                           :source-table $$people
+                                           :condition [:= &People.people.id $orders.user_id]
+                                           :fields :all}]}})
+           compiled (qp/compile query)
+           indices (reduce (fn [acc lookup-stage]
+                             (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
+                                   ;; Following expression ensures index is an integer.
+                                   index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                               ;; Following expression tests that index is unique.
+                               (is (not (contains? acc index)))
+                               (conj acc index)))
+                           #{}
+                           (filter #(contains? % "$lookup") (:query compiled)))]
+       (is (= #{1 2 3 4} indices))))))

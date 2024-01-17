@@ -119,9 +119,14 @@ describe("scenarios > admin > settings > public sharing", () => {
 
     cy.get("@dashboardId").then(dashboardId => {
       cy.findByText(expectedDashboardName).click();
+      cy.log(
+        "Sometimes the URL will be updated with the tab ID, so we need to account for that",
+      );
       cy.url().should(
-        "eq",
-        `${location.origin}/dashboard/${dashboardId}-${expectedDashboardSlug}`,
+        "match",
+        new RegExp(
+          `${location.origin}/dashboard/${dashboardId}-${expectedDashboardSlug}*`,
+        ),
       );
       cy.visit("/admin/settings/public-sharing");
     });

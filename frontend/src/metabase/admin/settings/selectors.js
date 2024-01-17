@@ -16,6 +16,8 @@ import { refreshCurrentUser } from "metabase/redux/user";
 
 import { isPersonalCollectionOrChild } from "metabase/collections/utils";
 
+import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
+
 import { updateSetting } from "./settings";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
@@ -24,23 +26,21 @@ import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
-import { EmbeddingCustomizationWidget } from "./components/widgets/EmbeddingCustomizationWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
   PublicLinksActionListing,
-  EmbeddedQuestionListing,
-  EmbeddedDashboardListing,
+  EmbeddedResources,
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
-import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
+import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
-import { FullAppEmbeddingLinkWidget } from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
-import SettingsEmailForm from "./components/SettingsEmailForm";
+import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
+import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import SetupCheckList from "./setup/components/SetupCheckList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import {
@@ -48,8 +48,11 @@ import {
   trackCustomHomepageDashboardEnabled,
 } from "./analytics";
 
-import EmbeddingOption from "./components/widgets/EmbeddingOption";
 import RedirectWidget from "./components/widgets/RedirectWidget";
+import {
+  InteractiveEmbeddingOptionCard,
+  StaticEmbeddingOptionCard,
+} from "./components/widgets/EmbeddingOption";
 
 // This allows plugins to update the settings sections
 function updateSectionsWithPlugins(sections) {
@@ -200,6 +203,49 @@ export const ADMIN_SETTINGS_SECTIONS = {
     component: SettingsEmailForm,
     settings: [
       {
+        key: "email-from-name",
+        display_name: t`From Name`,
+        placeholder: "Metabase",
+        type: "string",
+        required: false,
+      },
+      {
+        key: "email-from-address",
+        display_name: t`From Address`,
+        placeholder: "metabase@yourcompany.com",
+        type: "string",
+        required: true,
+        validations: [["email", t`That's not a valid email address`]],
+      },
+      {
+        key: "email-reply-to",
+        display_name: t`Reply-To Address`,
+        placeholder: "metabase-replies@yourcompany.com",
+        type: "string",
+        required: false,
+        widget: SettingCommaDelimitedInput,
+        validations: [["email_list", t`That's not a valid email address`]],
+      },
+      {
+        key: "bcc-enabled?",
+        display_name: t`Add Recipients as CC or BCC`,
+        description: t`Control the visibility of recipients.`,
+        options: [
+          { value: true, name: t`BCC - Hide recipients` },
+          {
+            value: false,
+            name: t`CC - Disclose recipients`,
+          },
+        ],
+        defaultValue: true,
+        widget: BccToggleWidget,
+      },
+    ],
+  },
+  "email/smtp": {
+    component: SMTPConnectionForm,
+    settings: [
+      {
         key: "email-smtp-host",
         display_name: t`SMTP Host`,
         placeholder: "smtp.yourservice.com",
@@ -237,30 +283,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         placeholder: "Shhh...",
         type: "password",
         getHidden: () => MetabaseSettings.isHosted(),
-      },
-      {
-        key: "email-from-name",
-        display_name: t`From Name`,
-        placeholder: "Metabase",
-        type: "string",
-        required: false,
-      },
-      {
-        key: "email-from-address",
-        display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
-        type: "string",
-        required: true,
-        validations: [["email", t`That's not a valid email address`]],
-      },
-      {
-        key: "email-reply-to",
-        display_name: t`Reply-To Address`,
-        placeholder: "metabase-replies@yourcompany.com",
-        type: "string",
-        required: false,
-        widget: SettingCommaDelimitedInput,
-        validations: [["email_list", t`That's not a valid email address`]],
       },
     ],
   },
@@ -418,14 +440,15 @@ export const ADMIN_SETTINGS_SECTIONS = {
     ],
   },
   "embedding-in-other-applications": {
+    key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
     settings: [
       {
         key: "enable-embedding",
+        display_name: t`Embedding`,
         description: null,
-        widget: EmbeddingLegalese,
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+        widget: EmbeddingSwitchWidget,
         onChanged: async (
           oldValue,
           newValue,
@@ -444,52 +467,19 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
-        key: "enable-embedding",
-        display_name: t`Embedding`,
-        description: jt`Allow questions, dashboards, and more to be embedded. ${(
-          <ExternalLink
-            key="learn-embedding-link"
-            href={MetabaseSettings.learnUrl(
-              "embedding/embedding-charts-and-dashboards.html",
-            )}
-          >
-            {t`Learn more.`}
-          </ExternalLink>
-        )}`,
-        type: "boolean",
-        showActualValue: true,
-        getProps: setting => {
-          if (setting.is_env_setting) {
-            return {
-              tooltip: setting.placeholder,
-              disabled: true,
-            };
-          }
-          return null;
-        },
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
         key: "-static-embedding",
-        widget: EmbeddingOption,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        embedName: t`Static embedding`,
-        embedDescription: t`Embed dashboards, charts, and questions on your app or website with basic filters for insights with limited discovery.`,
-        embedType: "standalone",
+        widget: StaticEmbeddingOptionCard,
       },
       {
         key: "-interactive-embedding",
-        widget: EmbeddingOption,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-        embedName: t`Interactive embedding`,
-        embedDescription: t`With this Pro/Enterprise feature, you can let your customers query, visualize, and drill-down on their data with the full functionality of Metabase in your app or website, complete with your branding. Set permissions with SSO, down to the row- or column-level, so people only see what they need to.`,
-        embedType: "full-app",
+        widget: InteractiveEmbeddingOptionCard,
       },
     ],
   },
   "embedding-in-other-applications/standalone": {
     settings: [
       {
+        key: "-breadcrumb",
         widget: () => {
           return (
             <Breadcrumbs
@@ -518,24 +508,16 @@ export const ADMIN_SETTINGS_SECTIONS = {
           },
         },
       },
+
       {
-        key: "-embedded-dashboards",
-        display_name: t`Embedded Dashboards`,
-        widget: EmbeddedDashboardListing,
+        key: "-embedded-resources",
+        display_name: t`Manage embeds`,
+
+        widget: EmbeddedResources,
         getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
-        key: "-embedded-questions",
-        display_name: t`Embedded Questions`,
-        widget: EmbeddedQuestionListing,
-        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
-      },
-      {
-        widget: EmbeddingCustomizationWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
-      },
-      {
+        key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
@@ -546,6 +528,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   "embedding-in-other-applications/full-app": {
     settings: [
       {
+        key: "-breadcrumbs",
         widget: () => {
           return (
             <Breadcrumbs
@@ -562,15 +545,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
-        widget: FullAppEmbeddingLinkWidget,
-        getHidden: (_, derivedSettings) =>
-          !derivedSettings["enable-embedding"] || PLUGIN_EMBEDDING.isEnabled(),
-      },
-      {
+        key: "-redirect-widget",
         widget: () => (
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
-        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+        getHidden: (_, derivedSettings) =>
+          PLUGIN_EMBEDDING.isEnabled() && derivedSettings["enable-embedding"],
       },
     ],
   },

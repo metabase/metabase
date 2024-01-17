@@ -7,7 +7,7 @@ import {
 } from "metabase/styled-components/theme/media-queries";
 
 import EntityItem from "metabase/components/EntityItem";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Link from "metabase/core/components/Link";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
@@ -19,6 +19,7 @@ export const Table = styled.table<{ canSelect: boolean }>`
   background-color: ${color("white")};
   table-layout: fixed;
   border-collapse: unset;
+  border-radius: 8px;
 
   thead {
     th {

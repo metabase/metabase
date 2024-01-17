@@ -20,6 +20,7 @@ import {
   editDashboard,
   getDashboardCard,
   saveDashboard,
+  getNotebookStep,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -299,14 +300,19 @@ describe("scenarios > models", () => {
       cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filters to narrow your answer").click();
-      selectFromDropdown("Products", { force: true });
-      selectFromDropdown("Price", { force: true });
-      selectFromDropdown("Equal to");
-      selectFromDropdown("Less than");
-      cy.findByPlaceholderText("Enter a number").type("50");
-      cy.button("Add filter").click();
+      getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
+      popover().within(() => {
+        cy.findByText("Product").click();
+        cy.findByText("Price").click();
+        cy.findByDisplayValue("Equal to").click();
+      });
+      cy.findByRole("listbox").findByText("Less than").click();
+      popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("50");
+        cy.button("Add filter").click();
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
@@ -376,7 +382,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q1" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q1",
@@ -403,7 +409,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: 1, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q1" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q1",
@@ -610,9 +616,38 @@ function testDataPickerSearch({
   cy.findByPlaceholderText(inputPlaceholderText).type(query);
   cy.wait("@search");
 
-  cy.findAllByText(/Model in/i).should(models ? "exist" : "not.exist");
-  cy.findAllByText(/Saved question in/i).should(cards ? "exist" : "not.exist");
-  cy.findAllByText(/Table in/i).should(tables ? "exist" : "not.exist");
+  const searchResultItems = cy.findAllByTestId("search-result-item");
+
+  searchResultItems.then($results => {
+    const modelTypes = {};
+
+    for (const htmlElement of $results.toArray()) {
+      const type = htmlElement.getAttribute("data-model-type");
+      if (type in modelTypes) {
+        modelTypes[type] += 1;
+      } else {
+        modelTypes[type] = 1;
+      }
+    }
+
+    if (models) {
+      expect(modelTypes["dataset"]).to.be.greaterThan(0);
+    } else {
+      expect(Object.keys(modelTypes)).not.to.include("dataset");
+    }
+
+    if (cards) {
+      expect(modelTypes["card"]).to.be.greaterThan(0);
+    } else {
+      expect(Object.keys(modelTypes)).not.to.include("card");
+    }
+
+    if (tables) {
+      expect(modelTypes["table"]).to.be.greaterThan(0);
+    } else {
+      expect(Object.keys(modelTypes)).not.to.include("table");
+    }
+  });
 
   cy.icon("close").click();
 }

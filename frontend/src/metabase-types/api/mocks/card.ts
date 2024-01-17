@@ -27,10 +27,12 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   dataset: false,
   can_write: true,
   cache_ttl: null,
+  collection: null,
   collection_id: null,
   last_query_start: null,
   average_query_time: null,
   archived: false,
+  enable_embedding: false,
   ...opts,
 });
 

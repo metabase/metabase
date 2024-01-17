@@ -341,6 +341,12 @@
     (for [dashcard dashcards]
       (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
 
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-or-dashcard-id]
+  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
+           (select-action :id)))
+
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
 (defmethod serdes/extract-query "Action" [_model _opts]
@@ -366,6 +372,9 @@
       (update :type keyword)
       (cond-> (= (:type action) "query")
         (update :database_id serdes/*import-fk-keyed* 'Database :name))))
+
+(defmethod serdes/ingested-model-columns "Action" [_ingested]
+  (into #{} (conj action-columns :database_id :dataset_query :kind :template :response_handle :error_handle :type)))
 
 (defmethod serdes/load-update! "Action" [_model-name ingested local]
   (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))

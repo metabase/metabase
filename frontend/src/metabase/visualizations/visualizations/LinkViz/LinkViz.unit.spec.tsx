@@ -10,6 +10,8 @@ import {
 import {
   setupSearchEndpoints,
   setupRecentViewsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
 import * as domUtils from "metabase/lib/dom";
 import registerVisualizations from "metabase/visualizations/register";
@@ -22,6 +24,7 @@ import {
   createMockRecentItem,
   createMockTable,
   createMockDashboard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
@@ -111,12 +114,13 @@ const searchingDashcard = createMockDashboardCardWithVirtualCard({
   },
 });
 
+const searchCardCollection = createMockCollection();
 const searchCardItem = createMockCollectionItem({
   id: 1,
   model: "card",
   name: "Question Uno",
   display: "pie",
-  collection: createMockCollection(),
+  collection: searchCardCollection,
 });
 
 const setup = (options?: Partial<LinkVizProps>) => {
@@ -241,6 +245,10 @@ describe("LinkViz", () => {
 
     it("clicking a search item should update the entity", async () => {
       setupSearchEndpoints([searchCardItem]);
+      setupUserRecipientsEndpoint({ users: [createMockUser()] });
+      setupCollectionByIdEndpoint({
+        collections: [searchCardCollection],
+      });
 
       const { changeSpy } = setup({
         isEditing: true,

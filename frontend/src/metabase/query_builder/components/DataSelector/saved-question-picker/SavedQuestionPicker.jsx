@@ -4,14 +4,14 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { Tree } from "metabase/components/tree";
 import Collection, {
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
 import {
-  isPersonalCollection,
+  isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
@@ -80,7 +80,7 @@ function SavedQuestionPicker({
     if (currentUser.is_superuser) {
       const otherPersonalCollections = collections.filter(
         collection =>
-          isPersonalCollection(collection) &&
+          isRootPersonalCollection(collection) &&
           collection.personal_owner_id !== currentUser.id,
       );
 

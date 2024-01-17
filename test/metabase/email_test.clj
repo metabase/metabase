@@ -9,6 +9,8 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :refer [prog1]]
+   [metabase.util.retry :as retry]
+   [metabase.util.retry-test :as rt]
    [postal.message :as message])
   (:import
    (java.io File)
@@ -194,9 +196,11 @@
                 @inbox)))
 
 (defn email-to
-  "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
-  ([user-kwd & [email-map]]
-   (let [{:keys [email]} (test.users/fetch-user user-kwd)
+  "Creates a default email map for `user-or-user-kwd`, as would be returned by `with-fake-inbox`."
+  ([user-or-user-kwd & [email-map]]
+   (let [{:keys [email]} (if (keyword? user-or-user-kwd)
+                           (test.users/fetch-user user-or-user-kwd)
+                           user-or-user-kwd)
          to-type         (if (:bcc? email-map) :bcc :to)
          email-map       (dissoc email-map :bcc?)]
      {email [(merge {:from   (if-let [from-name (email/email-from-name)]
@@ -255,15 +259,20 @@
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
       (let [calls (atom nil)]
-        (with-redefs [prometheus/inc #(swap! calls conj %)
+            (let [retry-config (assoc (#'retry/retry-configuration)
+                                  :max-attempts 1
+                                  :initial-interval-millis 1)
+              test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+        (with-redefs [prometheus/inc    #(swap! calls conj %)
+                      retry/decorate    (rt/test-retry-decorate-fn test-retry)
                       email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
           (email/send-message!
-            :subject      "101 Reasons to use Metabase"
-            :recipients   ["test@test.com"]
-            :message-type :html
-            :message      "101. Metabase will make you a better person"))
+           :subject      "101 Reasons to use Metabase"
+           :recipients   ["test@test.com"]
+           :message-type :html
+           :message      "101. Metabase will make you a better person"))
         (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
+        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

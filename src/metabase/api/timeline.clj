@@ -26,7 +26,7 @@
   {name          ms/NonBlankString
    default       [:maybe :boolean]
    description   [:maybe :string]
-   icon          [:maybe timeline/Icons]
+   icon          [:maybe timeline-event/Icon]
    collection_id [:maybe ms/PositiveInt]
    archived      [:maybe :boolean]}
   (collection/check-write-perms-for-collection collection_id)
@@ -34,7 +34,7 @@
             body
             {:creator_id api/*current-user-id*}
             (when-not icon
-              {:icon timeline/DefaultIcon}))]
+              {:icon timeline-event/default-icon}))]
     (first (t2/insert-returning-instances! Timeline tl))))
 
 (api/defendpoint GET "/"
@@ -84,7 +84,7 @@
    name          [:maybe ms/NonBlankString]
    default       [:maybe :boolean]
    description   [:maybe :string]
-   icon          [:maybe timeline/Icons]
+   icon          [:maybe timeline-event/Icon]
    collection_id [:maybe ms/PositiveInt]
    archived      [:maybe :boolean]}
   (let [existing (api/write-check Timeline id)

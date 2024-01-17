@@ -4,9 +4,10 @@
    [clojure.test :refer :all]
    [metabase.models.collection :refer [Collection]]
    [metabase.models.timeline :as timeline :refer [Timeline]]
-   [metabase.models.timeline-event :refer [TimelineEvent]]
+   [metabase.models.timeline-event :refer [TimelineEvent] :as timeline-event]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest timelines-for-collection-test
@@ -36,3 +37,12 @@
                                                            {:timeline/events? true
                                                             :events/all?      true})
                         event-names)))))))))
+
+(deftest balloon-icon-migration-test
+  (testing "timelines with icon=balloons should use the default icon instead when selected"
+    (mt/with-temp [Timeline a {:icon "balloons"}
+                   Timeline b {:icon "cake"}]
+      (is (= timeline-event/default-icon
+             (t2/select-one-fn :icon Timeline (u/the-id a))))
+      (is (= "cake"
+             (t2/select-one-fn :icon Timeline (u/the-id b)))))))

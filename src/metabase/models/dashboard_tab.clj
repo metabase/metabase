@@ -29,7 +29,7 @@
   [_original-model _dest-key _hydrating-model]
   [:dashboard_tab_id])
 
-(methodical/defmethod t2.hydrate/batched-hydrate [:default :ordered-tab-cards]
+(methodical/defmethod t2.hydrate/batched-hydrate [:default :tab-cards]
   "Given a list of tabs, return a seq of ordered tabs, in which each tabs contain a seq of orderd cards."
   [_model _k tabs]
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
@@ -38,8 +38,8 @@
         dashcards         (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids])
         tab-id->dashcards (-> (group-by :dashboard_tab_id dashcards)
                               (update-vals #(sort dashboard-card/dashcard-comparator %)))
-        ordered-tabs      (sort-by :position tabs)]
-    (for [{:keys [id] :as tab} ordered-tabs]
+        tabs              (sort-by :position tabs)]
+    (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id)))))
 
 (defmethod mi/perms-objects-set :model/DashboardTab
@@ -132,6 +132,5 @@
       (update-tabs! current-tabs to-update))
     {:old->new-tab-id old->new-tab-id
      :created-tab-ids (vals old->new-tab-id)
-     :updated-tab-ids (map :id to-update)
      :deleted-tab-ids to-delete-ids
      :total-num-tabs  (reduce + (map count [to-create to-update]))}))

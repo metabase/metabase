@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 

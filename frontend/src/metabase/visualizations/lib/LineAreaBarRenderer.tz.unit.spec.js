@@ -1,6 +1,7 @@
 import "__support__/ui-mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
 
 import _ from "underscore";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import testAcrossTimezones from "__support__/timezones";
 import {

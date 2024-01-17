@@ -15,9 +15,9 @@ import type { UiParameter } from "metabase-lib/parameters/types";
 import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
 import { SidebarItem } from "../SidebarItem";
-import CustomLinkText from "./CustomLinkText";
+import { CustomLinkText } from "./CustomLinkText";
 
-import ValuesYouCanReference from "./ValuesYouCanReference";
+import { ValuesYouCanReference } from "./ValuesYouCanReference";
 import {
   FormDescription,
   DoneButton,
@@ -32,7 +32,7 @@ interface Props {
   updateSettings: (settings: ClickBehavior) => void;
 }
 
-function CustomURLPicker({
+export function CustomURLPicker({
   clickBehavior,
   updateSettings,
   dashcard,
@@ -59,9 +59,7 @@ function CustomURLPicker({
   const handleReset = useCallback(() => {
     updateSettings({
       type: clickBehavior.type,
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
+      // @ts-expect-error allow resetting
       linkType: null,
     });
   }, [clickBehavior, updateSettings]);
@@ -117,6 +115,3 @@ function CustomURLPicker({
     </ModalWithTrigger>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default CustomURLPicker;

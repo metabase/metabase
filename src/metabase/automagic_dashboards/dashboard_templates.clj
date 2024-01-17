@@ -2,6 +2,7 @@
   "Validation, transformation to canonical form, and loading of heuristics."
   (:gen-class)
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.query-processor.util :as qp.util]
@@ -94,7 +95,7 @@
 
 (def ^:private Card
   {Identifier {(s/required-key :title)         LocalizedString
-               (s/required-key :score)         Score
+               (s/required-key :card-score)    Score
                (s/optional-key :visualization) Visualization
                (s/optional-key :text)          LocalizedString
                (s/optional-key :dimensions)    [CardDimension]
@@ -113,6 +114,7 @@
 
 (def ^:private Groups
   {Identifier {(s/required-key :title)            LocalizedString
+               (s/required-key :score)            s/Int
                (s/optional-key :comparison_title) LocalizedString
                (s/optional-key :description)      LocalizedString}})
 
@@ -235,45 +237,45 @@
   (sc/coercer!
     DashboardTemplate
     {[s/Str]         u/one-or-many
-    [OrderByPair]   u/one-or-many
-    OrderByPair     (fn [x]
-                      (if (string? x)
-                        {x "ascending"}
-                        x))
-    Visualization   (fn [x]
-                      (if (string? x)
-                        [x {}]
-                        (first x)))
-    Metric          (comp (with-defaults {:score max-score})
-                          (shorthand-definition :metric))
-    Dimension       (comp (with-defaults {:score max-score})
-                          (shorthand-definition :field_type))
-    Filter          (comp (with-defaults {:score max-score})
-                          (shorthand-definition :filter))
-    Card            (with-defaults {:score  max-score
-                                    :width  populate/default-card-width
-                                    :height populate/default-card-height})
-    [CardDimension] u/one-or-many
-    CardDimension   (fn [x]
-                      (if (string? x)
-                        {x {}}
-                        x))
-    TableType       ->entity
-    FieldType       ->type
-    Identifier      (fn [x]
-                      (if (keyword? x)
-                        (name x)
-                        x))
-    Groups          (partial apply merge)
-    AppliesTo       (fn [x]
-                      (let [[table-type field-type] (str/split x #"\.")]
-                        (if field-type
-                          [(->entity table-type) (->type field-type)]
-                          [(if (-> table-type ->entity table-type?)
-                             (->entity table-type)
-                             (->type table-type))])))
-    LocalizedString (fn [s]
-                      (i18n/->UserLocalizedString s nil {}))}))
+     [OrderByPair]   u/one-or-many
+     OrderByPair     (fn [x]
+                       (if (string? x)
+                         {x "ascending"}
+                         x))
+     Visualization   (fn [x]
+                       (if (string? x)
+                         [x {}]
+                         (first x)))
+     Metric          (comp (with-defaults {:score max-score})
+                           (shorthand-definition :metric))
+     Dimension       (comp (with-defaults {:score max-score})
+                           (shorthand-definition :field_type))
+     Filter          (comp (with-defaults {:score max-score})
+                           (shorthand-definition :filter))
+     Card            (with-defaults {:card-score max-score
+                                     :width      populate/default-card-width
+                                     :height     populate/default-card-height})
+     [CardDimension] u/one-or-many
+     CardDimension   (fn [x]
+                       (if (string? x)
+                         {x {}}
+                         x))
+     TableType       ->entity
+     FieldType       ->type
+     Identifier      (fn [x]
+                       (if (keyword? x)
+                         (name x)
+                         x))
+     Groups          (partial apply merge)
+     AppliesTo       (fn [x]
+                       (let [[table-type field-type] (str/split x #"\.")]
+                         (if field-type
+                           [(->entity table-type) (->type field-type)]
+                           [(if (-> table-type ->entity table-type?)
+                              (->entity table-type)
+                              (->type table-type))])))
+     LocalizedString (fn [s]
+                       (i18n/->UserLocalizedString s nil {}))}))
 
 (def ^:private dashboard-templates-dir "automagic_dashboards/")
 
@@ -285,8 +287,10 @@
   (transduce (map (comp count ancestors)) + (:applies_to dashboard-template)))
 
 (defn- make-dashboard-template
-  [entity-type r]
-  (-> r
+  [entity-type {:keys [cards] :as r}]
+  (-> (cond-> r
+        (seq cards)
+        (update :cards (partial mapv (fn [m] (update-vals m #(set/rename-keys % {:score :card-score}))))))
       (assoc :dashboard-template-name entity-type
              :specificity 0)
       (update :applies_to #(or % entity-type))

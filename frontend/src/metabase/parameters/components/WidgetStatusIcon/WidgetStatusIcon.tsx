@@ -1,18 +1,16 @@
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 type Props = {
   isFullscreen: boolean;
   hasValue: boolean;
-  noReset: boolean;
   noPopover: boolean;
   isFocused: boolean;
   setValue: (value: any) => void;
 };
 
-function WidgetStatusIcon({
+export function WidgetStatusIcon({
   isFullscreen,
   hasValue,
-  noReset,
   noPopover,
   isFocused,
   setValue,
@@ -21,7 +19,7 @@ function WidgetStatusIcon({
     return null;
   }
 
-  if (hasValue && !noReset) {
+  if (hasValue) {
     return (
       <Icon
         name="close"
@@ -63,6 +61,3 @@ function WidgetStatusIcon({
 
   return null;
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default WidgetStatusIcon;

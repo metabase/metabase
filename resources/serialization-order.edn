@@ -1,0 +1,157 @@
+{:settings                       []
+ :serdes/meta                    []
+ :Card                           [:name
+                                  :description
+                                  :entity_id
+                                  :created_at
+                                  :creator_id
+                                  :display
+                                  :archived
+                                  :collection_id
+                                  :collection_preview
+                                  :collection_position
+                                  :query_type
+                                  :dataset
+                                  :cache_ttl
+                                  :database_id
+                                  :table_id
+                                  :enable_embedding
+                                  :embedding_params
+                                  :made_public_by_id
+                                  :public_uuid
+                                  :parameters
+                                  :parameter_mappings
+                                  :dataset_query
+                                  :result_metadata
+                                  :visualization_settings
+                                  :serdes/meta]
+ [:Card :dataset_query]          []
+ [:Card :visualization_settings] []
+ :Collection                     [:name
+                                  :description
+                                  :entity_id
+                                  :slug
+                                  :created_at
+                                  :archived
+                                  :type
+                                  :parent_id
+                                  :personal_owner_id
+                                  :namespace
+                                  :authority_level
+                                  :serdes/meta]
+ :Dashboard                      [:name
+                                  :description
+                                  :entity_id
+                                  :created_at
+                                  :creator_id
+                                  :archived
+                                  :collection_id
+                                  :auto_apply_filters
+                                  :cache_ttl
+                                  :collection_position
+                                  :position
+                                  :enable_embedding
+                                  :embedding_params
+                                  :made_public_by_id
+                                  :public_uuid
+                                  :show_in_getting_started
+                                  :caveats
+                                  :points_of_interest
+                                  :parameters
+                                  :ordered_cards
+                                  :ordered_tabs
+                                  :serdes/meta]
+ [:Dashboard :dashcards]         [:entity_id
+                                  :card_id
+                                  :created_at
+                                  :row
+                                  :col
+                                  :size_x
+                                  :size_y]
+ [:Dashboard
+  :dashcards
+  :visualization_settings]       []
+ :Database                       [:name
+                                  :description
+                                  :engine
+                                  :dbms_version
+                                  :created_at
+                                  :creator_id
+                                  :timezone
+                                  :auto_run_queries
+                                  :cache_ttl
+                                  :refingerprint
+                                  :is_full_sync
+                                  :is_on_demand
+                                  :is_sample
+                                  :is_audit
+                                  :metadata_sync_schedule
+                                  :cache_field_values_schedule
+                                  :settings
+                                  :options
+                                  :caveats
+                                  :points_of_interest
+                                  :initial_sync_status
+                                  :details
+                                  :serdes/meta]
+ [:Database :dbms_version]       [:flavor
+                                  :version]
+ :FieldValue                     [:created_at
+                                  :hash_key
+                                  :has_more_values
+                                  :last_used_at
+                                  :type
+                                  :human_readable_values
+                                  :values
+                                  :serdes/meta]
+ :Field                          [:name
+                                  :display_name
+                                  :description
+                                  :created_at
+                                  :active
+                                  :visibility_type
+                                  :table_id
+                                  :database_type
+                                  :base_type
+                                  :effective_type
+                                  :semantic_type
+                                  :database_is_auto_increment
+                                  :database_required
+                                  :fk_target_field_id
+                                  :dimensions
+                                  :json_unfolding
+                                  :parent_id
+                                  :coercion_strategy
+                                  :preview_display
+                                  :position
+                                  :custom_position
+                                  :database_position
+                                  :has_field_values
+                                  :settings
+                                  :caveats
+                                  :points_of_interest
+                                  :nfc_path
+                                  :fingerprint_version
+                                  :last_analyzed
+                                  :fingerprint
+                                  :serdes/meta]
+ :NativeQuerySnippet             [:name
+                                  :description
+                                  :entity_id
+                                  :created_at]
+ :Table                          [:name
+                                  :display_name
+                                  :description
+                                  :created_at
+                                  :db_id
+                                  :schema
+                                  :entity_type
+                                  :active
+                                  :is_upload
+                                  :field_order
+                                  :visibility_type
+                                  :show_in_getting_started
+                                  :initial_sync_status
+                                  :points_of_interest
+                                  :caveats
+                                  :serdes/meta]}

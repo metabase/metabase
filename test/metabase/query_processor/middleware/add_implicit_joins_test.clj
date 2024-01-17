@@ -11,8 +11,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]
-   [schema.core :as s]))
+   [metabase.util :as u]))
 
 (deftest ^:parallel distinct-fields-test
   (testing "distinct-fields should consider type information unimportant for determining whether two Fields are the same"
@@ -166,7 +165,7 @@
 
 (deftest ^:parallel reuse-existing-joins-e2e-test
   (testing "Should work at arbitrary levels of nesting"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (qp.store/with-metadata-provider (mt/id)
         (doseq [level (range 4)]
           (testing (format "(%d levels of nesting)" level)
@@ -208,9 +207,8 @@
                                                               :base_type    :type/Text
                                                               :id           %products.title
                                                               :field_ref    $product_id->products.title}]))]
-                        (is (schema= {:status   (s/eq :completed)
-                                      s/Keyword s/Any}
-                                     (qp/process-query query-with-metadata)))))))
+                        (is (=? {:status :completed}
+                                (qp/process-query query-with-metadata)))))))
                 (is (= (-> (mt/mbql-query orders
                              {:source-table $$orders
                               :fields       [$id
@@ -235,7 +233,7 @@
 
 (deftest ^:parallel reuse-existing-joins-test-3
   (testing "We DEFINITELY need to reuse joins if adding them again would break the query."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= (lib.tu.macros/mbql-query orders
                {:filter       [:> *count/Integer 5]
                 :fields       [$created-at
@@ -265,7 +263,7 @@
                  :limit        5})))))))
 
 (deftest ^:parallel add-fields-for-reused-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
       (is (= (lib.tu.macros/mbql-query orders
                {:source-query {:source-table $$orders
@@ -334,7 +332,7 @@
 
 (deftest ^:parallel reuse-joins-sanity-check-e2e-test
   (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mt/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :filter       [:and
@@ -586,7 +584,7 @@
 
 (deftest ^:parallel use-source-query-implicit-joins-for-join-conditions-test
   (testing "Implicit join inside a join `:condition` should use implicit join from source query if available (#20519)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (query= (lib.tu.macros/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
@@ -631,7 +629,7 @@
                       :fields       [$product-id->products.category]})))))))
 
 (deftest ^:parallel metadata-join-alias-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
     ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].
     (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"

@@ -14,9 +14,10 @@ import Formula from "metabase/reference/components/Formula";
 import Link from "metabase/core/components/Link";
 
 import * as metadataActions from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as actions from "metabase/reference/reference";
-import { getQuestionUrl } from "../utils";
 
+import { getQuestionUrl } from "../utils";
 import {
   getSegment,
   getTable,
@@ -30,7 +31,7 @@ import {
 
 import S from "../components/Detail.css";
 
-const interestingQuestions = (table, segment) => {
+const interestingQuestions = (table, segment, metadata) => {
   return [
     {
       text: t`Number of ${segment.name}`,
@@ -40,6 +41,7 @@ const interestingQuestions = (table, segment) => {
         tableId: table.id,
         segmentId: segment.id,
         getCount: true,
+        metadata,
       }),
     },
     {
@@ -49,6 +51,7 @@ const interestingQuestions = (table, segment) => {
         dbId: table && table.db_id,
         tableId: table.id,
         segmentId: segment.id,
+        metadata,
       }),
     },
   ];
@@ -62,6 +65,7 @@ const mapStateToProps = (state, props) => {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
+    metadata: getMetadata(state),
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -99,6 +103,7 @@ const propTypes = {
   isFormulaExpanded: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
+  metadata: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -107,6 +112,7 @@ const SegmentDetail = props => {
     style,
     entity,
     table,
+    metadata,
     loadingError,
     loading,
     user,
@@ -158,6 +164,7 @@ const SegmentDetail = props => {
           dbId: table && table.db_id,
           tableId: entity.table_id,
           segmentId: entity.id,
+          metadata,
         })}
         name={t`Details`}
         user={user}
@@ -230,10 +237,7 @@ const SegmentDetail = props => {
                 {!isEditing && (
                   <li className="relative">
                     <UsefulQuestions
-                      questions={interestingQuestions(
-                        props.table,
-                        props.entity,
-                      )}
+                      questions={interestingQuestions(table, entity, metadata)}
                     />
                   </li>
                 )}

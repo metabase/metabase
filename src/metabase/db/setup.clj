@@ -19,10 +19,11 @@
    [metabase.util.honey-sql-2]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [schema.core :as s]
-   [toucan2.jdbc :as t2.jdbc]
-   [toucan2.map-backend.honeysql2 :as t2.honeysql]
+   [toucan2.honeysql2 :as t2.honeysql]
+   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (liquibase.exception LockException)))
@@ -39,7 +40,7 @@
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
   short circuit the setup process and make it clear we can't proceed."
   [liquibase]
-  (when (liquibase/has-unrun-migrations? liquibase)
+  (when (seq (liquibase/unrun-migrations liquibase))
     (log/info (str (trs "Database Upgrade Required")
                    "\n\n"
                    (trs "NOTICE: Your database requires updates to work with this version of Metabase.")
@@ -52,7 +53,7 @@
                    "\n"))
     (throw (Exception. (trs "Database requires manual upgrade.")))))
 
-(s/defn migrate!
+(mu/defn migrate!
   "Migrate the application database specified by `data-source`.
 
   *  `:up`            - Migrate up
@@ -62,17 +63,18 @@
   *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                         (This shouldn't be necessary now that we run migrations inside a transaction, but is
                         available just in case)."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource
-   direction   :- s/Keyword
-   & args      :- [s/Any]]
-  (with-open [conn (.getConnection data-source)]
+  [db-type     :- :keyword
+   data-source :- (ms/InstanceOfClass javax.sql.DataSource)
+   direction   :- :keyword
+   & args]
+  ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
     ;; Set up liquibase and let it do its thing
     (log/info (trs "Setting up Liquibase..."))
     (liquibase/with-liquibase [liquibase conn]
       (try
-       (liquibase/consolidate-liquibase-changesets! db-type conn)
+       (liquibase/consolidate-liquibase-changesets! conn)
        (log/info (trs "Liquibase is ready."))
        (case direction
          :up            (liquibase/migrate-up-if-needed! liquibase)
@@ -98,28 +100,50 @@
          (liquibase/release-lock-if-needed! liquibase)
          (throw e))))))
 
-(s/defn ^:private verify-db-connection
+(mu/defn ^:private verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource]
+  [db-type     :- :keyword
+   data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name db-type))))
   (classloader/require 'metabase.driver.util)
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert (sql-jdbc.conn/can-connect-with-spec? {:datasource data-source}) error-msg)
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
-  (with-open [conn (.getConnection data-source)]
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)]
       (log/info (trs "Successfully verified {0} {1} application database connection."
                      (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
                 (u/emoji "✅")))))
 
-(s/defn ^:private run-schema-migrations!
+(mu/defn ^:private error-if-downgrade-required!
+  [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
+  (log/info (u/format-color 'cyan (trs "Checking if a database downgrade is required...")))
+  (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
+    (liquibase/with-liquibase [liquibase conn]
+      (let [latest-available (liquibase/latest-available-major-version liquibase)
+            latest-applied (liquibase/latest-applied-major-version conn)]
+        ;; `latest-applied` will be `nil` for fresh installs
+        (when (and latest-applied (< latest-available latest-applied))
+          (log/error (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                          "\n\n"
+                          (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                          "\n\n"
+                          (trs "You must run `java -jar metabase.jar migrate down` from version {0}." latest-applied)
+                          "\n\n"
+                          (trs "Once your database has been downgraded, try running the application again.")
+                          "\n\n"
+                          (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade")))
+          (throw (ex-info (trs "Downgrade detected. Please run `migrate down` from version {0}."
+                            latest-applied)
+                          {})))))))
+
+(mu/defn ^:private run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
-  [db-type       :- s/Keyword
-   data-source   :- javax.sql.DataSource
-   auto-migrate? :- (s/maybe s/Bool)]
+  [db-type       :- :keyword
+   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- [:maybe :boolean]]
   (log/info (trs "Running Database Migrations..."))
   (migrate! db-type data-source (if auto-migrate? :up :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
@@ -127,17 +151,18 @@
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
 ;;
 ;; TODO -- consider whether this should be done automatically the first time someone calls `getConnection`
-(s/defn setup-db!
+(mu/defn setup-db!
   "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing;
   use [[metabase.db/setup-db!]] instead, which can be called more than once without issue and is thread-safe."
-  [db-type       :- s/Keyword
-   data-source   :- javax.sql.DataSource
-   auto-migrate? :- (s/maybe s/Bool)]
+  [db-type       :- :keyword
+   data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
+   auto-migrate? :- [:maybe :boolean]]
   (u/profile (trs "Database setup")
     (u/with-us-locale
        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                  setting/*disable-cache*         true]
-         (verify-db-connection   db-type data-source)
+         (verify-db-connection db-type data-source)
+         (error-if-downgrade-required! data-source)
          (run-schema-migrations! db-type data-source auto-migrate?))))
   :done)
 
@@ -166,7 +191,7 @@
          :dialect      ::application-db
          :quoted-snake false})
 
-(reset! t2.jdbc/global-options
+(reset! t2.jdbc.options/global-options
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
 

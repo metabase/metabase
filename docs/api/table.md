@@ -45,13 +45,13 @@ Get metadata about a `Table` useful for running queries.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_sensitive_fields`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`include_hidden_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_hidden_fields`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+*  **`include_editable_data_model`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/table/:id/related`
 
@@ -66,13 +66,27 @@ Return related entities.
 Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend.
 
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
+
 ## `GET /api/table/card__:id/query_metadata`
 
 Return metadata for the 'virtual' table for a Card.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
+
+## `POST /api/table/:id/append-csv`
+
+Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by uploading a CSV file.
+
+### PARAMS:
+
+*  **`id`** value must be an integer greater than zero.
+
+*  **`raw-params`**
 
 ## `POST /api/table/:id/discard_values`
 
@@ -98,21 +112,21 @@ Update all `Table` in `ids`.
 
 ### PARAMS:
 
-*  **`ids`** value must be an array. Each value must be an integer greater than zero. The array cannot be empty.
+*  **`ids`** sequence of value must be an integer greater than zero.
 
-*  **`display_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`display_name`** nullable value must be a non-blank string.
 
-*  **`entity_type`** value may be nil, or if non-nil, value must be a valid entity type (keyword or string).
+*  **`entity_type`** nullable value must be a valid entity type (keyword or string).
 
-*  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `cruft`, `hidden`, `technical`.
+*  **`visibility_type`** nullable enum of technical, hidden, cruft
 
-*  **`description`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`caveats`** value may be nil, or if non-nil, value must be a string.
+*  **`caveats`** nullable string
 
-*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
+*  **`points_of_interest`** nullable string
 
-*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
+*  **`show_in_getting_started`** nullable boolean
 
 ## `PUT /api/table/:id`
 
@@ -120,23 +134,23 @@ Update `Table` with ID.
 
 ### PARAMS:
 
-*  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `cruft`, `hidden`, `technical`.
+*  **`visibility_type`** nullable enum of technical, hidden, cruft
 
-*  **`field_order`** value may be nil, or if non-nil, value must be one of: `alphabetical`, `custom`, `database`, `smart`.
+*  **`field_order`** nullable enum of alphabetical, custom, database, smart
 
-*  **`display_name`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`display_name`** nullable value must be a non-blank string.
 
-*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
+*  **`points_of_interest`** nullable string
 
-*  **`entity_type`** value may be nil, or if non-nil, value must be a valid entity type (keyword or string).
+*  **`entity_type`** nullable value must be a valid entity type (keyword or string).
 
-*  **`description`** value may be nil, or if non-nil, value must be a string.
+*  **`description`** nullable string
 
-*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
+*  **`show_in_getting_started`** nullable boolean
 
-*  **`caveats`** value may be nil, or if non-nil, value must be a string.
+*  **`caveats`** nullable string
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `PUT /api/table/:id/fields/order`
 

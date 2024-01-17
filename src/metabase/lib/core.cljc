@@ -18,6 +18,7 @@
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.filter :as lib.filter]
+   [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.join :as lib.join]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -48,6 +49,7 @@
          lib.expression/keep-me
          lib.field/keep-me
          lib.filter/keep-me
+         lib.filter.update/keep-me
          lib.join/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
@@ -111,13 +113,15 @@
   pivot-columns-for-type
   pivot-types]
  [lib.equality
-  find-column-for-legacy-ref]
+  find-column-for-legacy-ref
+  find-matching-column]
  [lib.expression
   expression
   expressions
   expressions-metadata
   expressionable-columns
   expression-ref
+  with-expression-name
   +
   -
   *
@@ -160,13 +164,12 @@
   lower]
  [lib.fe-util
   expression-clause
-  expression-parts]
+  expression-parts
+  filter-args-display-name]
  [lib.field
   add-field
-  field-id
   fieldable-columns
   fields
-  find-visible-column-for-legacy-ref
   find-visible-column-for-ref
   remove-field
   with-fields]
@@ -193,6 +196,10 @@
   contains does-not-contain
   time-interval
   segment]
+ [lib.filter.update
+  update-lat-lon-filter
+  update-numeric-filter
+  update-temporal-filter]
  [lib.join
   available-join-strategies
   join
@@ -208,7 +215,7 @@
   joinable-columns
   joins
   raw-join-strategy
-  suggested-join-condition
+  suggested-join-conditions
   with-join-alias
   with-join-fields
   with-join-strategy
@@ -255,6 +262,7 @@
  [lib.query
   can-run
   query
+  stage-count
   with-different-table]
  [lib.ref
   ref]
@@ -268,7 +276,8 @@
   available-segments]
  [lib.stage
   append-stage
-  drop-stage]
+  drop-stage
+  drop-stage-if-empty]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval

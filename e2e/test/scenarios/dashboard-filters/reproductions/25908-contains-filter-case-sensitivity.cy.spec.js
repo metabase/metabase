@@ -38,8 +38,8 @@ describe("issue 25908", () => {
           `/api/dashboard/${dashboard_id}/dashcard/${id}/card/${card_id}/query`,
         ).as("dashcardQuery");
 
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,

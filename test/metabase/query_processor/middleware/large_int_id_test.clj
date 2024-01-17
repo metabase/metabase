@@ -125,3 +125,12 @@
         (is (= [["1"]
                 ["2147483647"]]
                (convert-id-to-string rows)))))))
+
+(deftest ^:parallel null-ids-as-strings
+  (testing "Middleware should convert NULL IDs to nil (#13957)"
+    (is (= [["1"]
+            ["2147483647"]
+            [nil]]
+           (convert-id-to-string [[1]
+                                  [Integer/MAX_VALUE]
+                                  [nil]])))))

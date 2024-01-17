@@ -9,10 +9,12 @@
 (defsetting subscription-allowed-domains
   (deferred-tru "Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To specify multiple domains, separate each domain with a comma, with no space in between. To allow all domains, leave the field empty. This setting doesn’t affect existing subscriptions.")
   :visibility :public
+  :export?    true
   :feature    :email-allow-list
   ;; this is a comma-separated string but we're not using `:csv` because it gets serialized to an array which makes it
   ;; inconvenient to use on the frontend.
-  :type       :string)
+  :type       :string
+  :audit      :getter)
 
 (defn- allowed-domains-set
   "Parse [[subscription-allowed-domains]] into a set. `nil` if the Setting is not set or empty."

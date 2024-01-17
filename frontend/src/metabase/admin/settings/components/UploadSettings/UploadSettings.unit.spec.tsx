@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
@@ -553,5 +553,16 @@ describe("Admin > Settings > UploadSetting", () => {
         screen.getByRole("button", { name: "Update settings" }),
       ).toBeInTheDocument();
     });
+  });
+
+  it("should show a warning for h2 databases", async () => {
+    setup();
+    userEvent.click(await screen.findByText("Select a database"));
+
+    userEvent.click(await screen.findByText("Db Cinco")); // h2
+
+    expect(
+      screen.getByText(/uploads to the Sample Database are for testing only/i),
+    ).toBeInTheDocument();
   });
 });

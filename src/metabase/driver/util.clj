@@ -118,11 +118,12 @@
   "Consider [[metabase.driver/can-connect?]] / [[can-connect-with-details?]] to have failed if they were not able to
   successfully connect after this many milliseconds. By default, this is 10 seconds."
   :visibility :internal
+  :export?    false
   :type       :integer
   ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
   ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
   ;;
-  ;; Don't set the timeout too low -- I've have Circle fail when the timeout was 1000ms on *one* occasion.
+  ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
                 3000
                 10000))
@@ -144,7 +145,8 @@
   (if throw-exceptions
     (try
       (u/with-timeout (db-connection-timeout-ms)
-        (driver/can-connect? driver details-map))
+        (or (driver/can-connect? driver details-map)
+            (throw (Exception. "Failed to connect to Database"))))
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e

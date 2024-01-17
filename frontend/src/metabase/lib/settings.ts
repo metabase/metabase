@@ -1,5 +1,6 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import { parseTimestamp } from "metabase/lib/time";
@@ -413,12 +414,6 @@ const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
 const settings = new MetabaseSettings(initValues);
-
-if (typeof window !== "undefined") {
-  (
-    window as Window & { __metabaseSettings?: MetabaseSettings }
-  ).__metabaseSettings = settings;
-}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default settings;

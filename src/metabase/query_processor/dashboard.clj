@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -164,21 +165,25 @@
   [& {:keys [dashboard-id card-id dashcard-id parameters export-format]
       :or   {export-format :api}
       :as   options}]
-  ;; make sure we can read this Dashboard. Card will get read-checked later on inside
-  ;; [[qp.card/run-query-for-card-async]]
-  (api/read-check Dashboard dashboard-id)
-  (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
-  (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
-        options         (merge
-                         {:ignore_cache false
-                          :constraints  (qp.constraints/default-query-constraints)
-                          :context      :dashboard}
-                         options
-                         {:parameters   resolved-params
-                          :dashboard-id dashboard-id})]
-    (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
-                dashboard-id card-id dashcard-id
-                (u/pprint-to-str options))
-    ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
-    (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
-      (m/mapply qp.card/run-query-for-card-async card-id export-format options))))
+  (span/with-span! {:name       "run-query-for-dashcard-async"
+                    :attributes {:dashboard/id dashboard-id
+                                 :dashcard/id  dashcard-id
+                                 :card/id      card-id}}
+    ;; make sure we can read this Dashboard. Card will get read-checked later on inside
+    ;; [[qp.card/run-query-for-card-async]]
+    (api/read-check Dashboard dashboard-id)
+    (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
+    (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
+          options         (merge
+                            {:ignore_cache false
+                             :constraints  (qp.constraints/default-query-constraints)
+                             :context      :dashboard}
+                            options
+                            {:parameters   resolved-params
+                             :dashboard-id dashboard-id})]
+      (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
+                  dashboard-id card-id dashcard-id
+                  (u/pprint-to-str options))
+      ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
+      (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
+        (m/mapply qp.card/run-query-for-card-async card-id export-format options)))))

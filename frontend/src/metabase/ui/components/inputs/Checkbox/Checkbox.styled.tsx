@@ -18,19 +18,19 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
     },
     styles: (
       theme: MantineTheme,
-      { labelPosition }: CheckboxStylesParams,
+      { labelPosition: _labelPosition }: CheckboxStylesParams,
       { size = "md" },
     ) => ({
       root: {
         [`&:has(.${getStylesRef("input")}:disabled)`]: {
           [`.${getStylesRef("label")}`]: {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
           },
           [`.${getStylesRef("description")}`]: {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
           },
           [`.${getStylesRef("icon")}`]: {
-            color: theme.colors.text[0],
+            color: theme.fn.themeColor("text-light"),
           },
         },
       },
@@ -44,37 +44,78 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
         borderRadius: theme.radius.xs,
+        border: `1px solid ${theme.fn.themeColor("bg-dark")}`,
 
         "&:checked": {
-          borderColor: theme.colors.brand[1],
-          backgroundColor: theme.colors.brand[1],
+          borderColor: theme.fn.themeColor("brand"),
+          backgroundColor: theme.fn.themeColor("brand"),
           [`.${getStylesRef("icon")}`]: {
             color: theme.white,
           },
         },
         "&:disabled": {
-          borderColor: theme.colors.border[0],
-          backgroundColor: theme.colors.border[0],
+          borderColor: theme.fn.themeColor("border"),
+          backgroundColor: theme.fn.themeColor("border"),
         },
       },
       label: {
         ref: getStylesRef("label"),
-        color: theme.colors.text[2],
+        color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.md,
-        fontWeight: "bold",
         lineHeight: theme.lineHeight,
       },
       description: {
         ref: getStylesRef("description"),
-        color: theme.colors.text[2],
+        color: theme.fn.themeColor("text-dark"),
         fontSize: theme.fontSizes.sm,
         lineHeight: theme.lineHeight,
         marginTop: theme.spacing.xs,
       },
       icon: {
         ref: getStylesRef("icon"),
-        color: theme.colors.text[0],
+        color: theme.fn.themeColor("text-light"),
       },
     }),
+    variants: {
+      stacked: (theme, { labelPosition }) => ({
+        inner: {
+          position: "relative",
+          zIndex: 0,
+        },
+        label: {
+          paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
+        },
+        description: {
+          paddingLeft: labelPosition === "right" ? "0.75rem" : "0.5rem",
+        },
+        input: {
+          "&:after": {
+            content: "''",
+            border: `1px solid ${theme.fn.themeColor("bg-dark")}`,
+            position: "absolute",
+            top: rem(-4),
+            left: rem(4),
+            height: "100%",
+            width: "100%",
+            borderRadius: rem(4),
+            zIndex: -1,
+            backgroundColor: theme.white,
+            boxSizing: "border-box",
+          },
+
+          "&:checked:not([disabled]):after": {
+            border: `${rem(2)} solid ${theme.fn.themeColor("brand")}`,
+          },
+
+          "&:disabled:after": {
+            border: `${rem(2)} solid ${theme.fn.themeColor("border")}`,
+          },
+        },
+        labelWrapper: {
+          psoition: "relative",
+          top: rem(-2),
+        },
+      }),
+    },
   },
 });

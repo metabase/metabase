@@ -20,15 +20,14 @@ import {
 } from "metabase/admin/utils";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
-import NewUserModal from "metabase/admin/people/containers/NewUserModal";
+import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
 import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
-import EditUserModal from "metabase/admin/people/containers/EditUserModal";
+import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
 import { SettingsEditor } from "metabase/admin/settings/app/components/SettingsEditor";
-import PremiumEmbeddingLicensePage from "metabase/admin/settings/containers/PremiumEmbeddingLicensePage";
 
 //  DB Add / list
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
@@ -171,10 +170,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="settings" component={createAdminRouteGuard("settings")}>
         <IndexRoute component={createAdminRedirect("setup", "general")} />
         <Route title={t`Settings`}>
-          <Route
-            path="premium-embedding-license"
-            component={PremiumEmbeddingLicensePage}
-          />
           <Route path="*" component={SettingsEditor} />
         </Route>
       </Route>

@@ -19,7 +19,7 @@ import {
 } from "metabase/core/components/FormField/FormField.styled";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Sidebar from "metabase/dashboard/components/Sidebar";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
 
 import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
 import ActionViz from "metabase/actions/components/ActionViz";
@@ -48,7 +48,7 @@ interface ActionSidebarProps {
   onClose: () => void;
 }
 
-export function ActionSidebarFn({
+export function ActionSidebar({
   dashboard,
   dashcardId,
   onUpdateVisualizationSettings,
@@ -150,4 +150,7 @@ export function ActionSidebarFn({
   );
 }
 
-export const ActionSidebar = connect(null, mapDispatchToProps)(ActionSidebarFn);
+export const ActionSidebarConnected = connect(
+  null,
+  mapDispatchToProps,
+)(ActionSidebar);

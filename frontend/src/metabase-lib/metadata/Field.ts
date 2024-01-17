@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 
@@ -502,7 +503,9 @@ class FieldInner extends Base {
       return [];
     }
 
-    const { fks } = table.query().fieldOptions();
+    const { fks } = table
+      .legacyQuery({ useStructuredQuery: true })
+      .fieldOptions();
     return fks
       .filter(({ field }) => field.id === this.id)
       .map(({ field, dimension, dimensions }) => ({

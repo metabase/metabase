@@ -94,17 +94,16 @@ export function useJoin(query: Lib.Query, stageIndex: number, join?: Lib.Join) {
 
   const setTable = useCallback(
     (nextTable: Lib.Joinable) => {
-      const suggestedCondition = Lib.suggestedJoinCondition(
+      const suggestedConditions = Lib.suggestedJoinConditions(
         query,
         stageIndex,
         nextTable,
       );
 
-      if (suggestedCondition) {
-        const nextConditions = [suggestedCondition];
-        _setConditions(nextConditions);
+      if (suggestedConditions.length > 0) {
+        _setConditions(suggestedConditions);
 
-        let nextJoin = Lib.joinClause(nextTable, nextConditions);
+        let nextJoin = Lib.joinClause(nextTable, suggestedConditions);
         nextJoin = Lib.withJoinFields(nextJoin, "all");
         nextJoin = Lib.withJoinStrategy(nextJoin, strategy);
 

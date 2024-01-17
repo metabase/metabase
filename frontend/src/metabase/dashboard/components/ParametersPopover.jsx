@@ -4,7 +4,7 @@ import { t } from "ttag";
 import styled from "@emotion/styled";
 import _ from "underscore";
 import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import {
   OptionItemDescription,
@@ -16,7 +16,7 @@ const PopoverBody = styled.div`
   max-width: 300px;
 `;
 
-export default class ParametersPopover extends Component {
+export class ParametersPopover extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};

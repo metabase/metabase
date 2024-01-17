@@ -9,16 +9,14 @@ import {
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import {
-  getNativeDashCardEmptyMappingText,
   isNativeDashCard,
   isVirtualDashCard,
   getVirtualCardType,
@@ -28,8 +26,8 @@ import {
 import { isActionDashCard } from "metabase/actions/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Question from "metabase-lib/Question";
-import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
+import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 
 import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
@@ -50,11 +48,8 @@ import {
   ChevrondownIcon,
   KeyIcon,
   Warning,
-  NativeCardDefault,
-  NativeCardIcon,
-  NativeCardText,
-  NativeCardLink,
 } from "./DashCardCardParameterMapper.styled";
+import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";
 
 function formatSelected({ name, sectionName }) {
   if (sectionName == null) {
@@ -99,8 +94,6 @@ export function DashCardCardParameterMapper({
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
   const hasSeries = dashcard.series && dashcard.series.length > 0;
-  const onlyAcceptsSingleValue =
-    isVariableTarget(target) && !isDateParameter(editingParameter);
   const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
   const selectedMappingOption = _.find(mappingOptions, option =>
     _.isEqual(normalize(option.target), normalize(target)),
@@ -127,7 +120,7 @@ export function DashCardCardParameterMapper({
     }
 
     const question = new Question(card, metadata);
-    return question.query().isEditable();
+    return question.isQueryEditable();
   }, [card, metadata, isVirtual]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
@@ -153,6 +146,8 @@ export function DashCardCardParameterMapper({
           buttonText: formatSelected(selectedMappingOption),
           buttonIcon: (
             <CloseIconButton
+              role="button"
+              aria-label={t`Disconnect`}
               onClick={e => {
                 handleChangeTarget(null);
                 e.stopPropagation();
@@ -234,17 +229,7 @@ export function DashCardCardParameterMapper({
           </TextCardDefault>
         )
       ) : isNative && isDisabled ? (
-        <NativeCardDefault>
-          <NativeCardIcon name="info" />
-          <NativeCardText>
-            {getNativeDashCardEmptyMappingText(editingParameter)}
-          </NativeCardText>
-          <NativeCardLink
-            href={MetabaseSettings.docsUrl(
-              "questions/native-editor/sql-parameters",
-            )}
-          >{t`Learn how`}</NativeCardLink>
-        </NativeCardDefault>
+        <DisabledNativeCardHelpText parameter={editingParameter} />
       ) : (
         <>
           {headerContent && (
@@ -294,16 +279,18 @@ export function DashCardCardParameterMapper({
           </Tooltip>
         </>
       )}
-      {onlyAcceptsSingleValue && (
+      {isVariableTarget(target) && (
         <Warning>
-          {t`This field only accepts a single value because it's used in a SQL query.`}
+          {isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+            ? t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+            : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
         </Warning>
       )}
     </Container>
   );
 }
 
-export default connect(
+export const DashCardCardParameterMapperConnected = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(DashCardCardParameterMapper);

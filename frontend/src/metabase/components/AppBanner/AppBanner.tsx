@@ -15,13 +15,9 @@ interface AppBannerProps {
 
 export const AppBanner = ({ location }: AppBannerProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
-  const tokenStatusStatus = useSelector(
-    state => getSetting(state, "token-status")?.status,
-  );
-  if (shouldRenderPaymentBanner({ isAdmin, tokenStatusStatus })) {
-    return (
-      <PaymentBanner isAdmin={isAdmin} tokenStatusStatus={tokenStatusStatus} />
-    );
+  const tokenStatus = useSelector(state => getSetting(state, "token-status"));
+  if (tokenStatus && shouldRenderPaymentBanner({ isAdmin, tokenStatus })) {
+    return <PaymentBanner isAdmin={isAdmin} tokenStatus={tokenStatus} />;
   }
 
   return <DatabasePromptBanner location={location} />;

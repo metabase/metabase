@@ -28,7 +28,7 @@
           (is (every? nil? (all-eids))))
 
         (testing "backfill now recreates them"
-          (serdes.backfill/backfill-ids-for Collection)
+          (serdes.backfill/backfill-ids-for! Collection)
           (is (every? some? (all-eids))))))))
 
 (deftest no-overwrite-test
@@ -41,7 +41,7 @@
                (t2/select-fn-set :entity_id Collection))))
 
       (testing "backfill"
-        (serdes.backfill/backfill-ids-for Collection)
+        (serdes.backfill/backfill-ids-for! Collection)
         (testing "sets a blank entity_id"
           (is (some? (t2/select-one-fn :entity_id Collection :id c2-id))))
         (testing "does not change the original entity_id"
@@ -57,11 +57,11 @@
                (t2/select-fn-set :entity_id Collection))))
 
       (testing "backfilling twice"
-        (serdes.backfill/backfill-ids-for Collection)
+        (serdes.backfill/backfill-ids-for! Collection)
         (let [first-eid (t2/select-one-fn :entity_id Collection :id c2-id)]
           (t2/update! Collection c2-id {:entity_id nil})
           (is (= #{c1-eid nil}
                  (t2/select-fn-set :entity_id Collection)))
-          (serdes.backfill/backfill-ids-for Collection)
+          (serdes.backfill/backfill-ids-for! Collection)
           (testing "produces the same entity_id both times"
             (is (= first-eid (t2/select-one-fn :entity_id Collection :id c2-id)))))))))

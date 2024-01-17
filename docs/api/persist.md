@@ -18,7 +18,7 @@ Fetch a particular [[PersistedInfo]] by id.
 
 ### PARAMS:
 
-*  **`persisted-info-id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`persisted-info-id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/persist/card/:card-id`
 
@@ -26,7 +26,7 @@ Fetch a particular [[PersistedInfo]] by card-id.
 
 ### PARAMS:
 
-*  **`card-id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`card-id`** nullable value must be an integer greater than zero.
 
 ## `POST /api/persist/disable`
 

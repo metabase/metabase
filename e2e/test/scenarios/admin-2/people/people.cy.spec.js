@@ -7,10 +7,14 @@ import {
   describeEE,
   getFullName,
   setTokenFeatures,
+  createApiKey,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  NORMAL_USER_ID,
+  COLLECTION_GROUP_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { normal, admin, nocollection } = USERS;
 const { ALL_USERS_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -31,6 +35,8 @@ const normalUserName = getFullName(normal);
 
 describe("scenarios > admin > people", () => {
   beforeEach(() => {
+    cy.intercept("GET", "/api/permissions/group").as("getGroups");
+    cy.intercept("GET", "/api/api-key").as("getApiKeys");
     restore();
     cy.signInAsAdmin();
   });
@@ -133,7 +139,8 @@ describe("scenarios > admin > people", () => {
       // first modal
       cy.findByLabelText("First name").type(first_name);
       cy.findByLabelText("Last name").type(last_name);
-      cy.findByLabelText("Email").type(email);
+      //
+      cy.findByLabelText(/Email/).type(email);
       clickButton("Create");
 
       // second modal
@@ -154,7 +161,7 @@ describe("scenarios > admin > people", () => {
       cy.visit("/admin/people");
       clickButton("Invite someone");
 
-      cy.findByLabelText("Email").type(email);
+      cy.findByLabelText(/Email/).type(email);
       clickButton("Create");
 
       // second modal
@@ -176,7 +183,7 @@ describe("scenarios > admin > people", () => {
 
       cy.findByLabelText("First name").type(first_name + "New");
       cy.findByLabelText("Last name").type(last_name + "New");
-      cy.findByLabelText("Email").type(email.toUpperCase());
+      cy.findByLabelText(/Email/).type(email.toUpperCase());
       clickButton("Create");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Email address already in use.");
@@ -319,6 +326,57 @@ describe("scenarios > admin > people", () => {
       assertTableRowsCount(TOTAL_USERS);
     });
 
+    it("should allow group creation and deletion", () => {
+      cy.intercept("POST", "/api/permissions/group").as("createGroup");
+      cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
+
+      cy.visit("/admin/people/groups");
+      cy.wait(["@getGroups", "@getApiKeys"]);
+
+      cy.findByTestId("admin-panel").within(() => {
+        cy.button("Create a group").click();
+        cy.findByPlaceholderText(/something like/i).type("My New Group");
+        cy.button("Add").click();
+        cy.wait(["@createGroup", "@getGroups"]);
+
+        cy.findByText("My New Group").closest("tr").icon("ellipsis").click();
+      });
+
+      popover().findByText("Remove Group").click();
+      modal().button("Remove group").click();
+
+      cy.wait(["@deleteGroup", "@getGroups"]);
+      cy.findByTestId("admin-panel")
+        .findByText("My New Group")
+        .should("not.exist");
+    });
+
+    it("should display api keys included in a group and display a warning when deleting the group", () => {
+      createApiKey("MyApiKey", COLLECTION_GROUP_ID);
+      cy.visit("/admin/people/groups");
+      cy.wait(["@getGroups", "@getApiKeys"]);
+
+      cy.findByTestId("admin-panel")
+        .findByText("collection")
+        .closest("tr")
+        .findByText("(includes 1 API key)");
+
+      cy.findByTestId("admin-panel")
+        .findByText("collection")
+        .closest("tr")
+        .icon("ellipsis")
+        .click();
+
+      popover().findByText("Remove Group").click();
+
+      modal().within(() => {
+        cy.findByText(
+          "Are you sure you want remove this group and its API key?",
+        );
+        cy.button("Remove group and API key");
+      });
+    });
+
     it("should display more than 50 groups (metabase#17200)", () => {
       generateGroups(51);
 
@@ -345,7 +403,7 @@ describe("scenarios > admin > people", () => {
         // first modal
         cy.findByLabelText("First name").type(first_name);
         cy.findByLabelText("Last name").type(last_name);
-        cy.findByLabelText("Email").type(email);
+        cy.findByLabelText(/Email/).type(email);
         clickButton("Create");
 
         // second modal
@@ -396,13 +454,16 @@ describe("scenarios > admin > people", () => {
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
 
-        cy.findByLabelText("Next page").click();
+        // cy.findByLabelText("Next page").click();
+        cy.findByTestId("next-page-btn").click();
         waitForUserRequests();
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Loading...").should("not.exist");
 
         // Page 2
-        cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        cy.findByTestId("people-list-footer")
+          .findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`)
+          .should("be.visible");
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByLabelText("Next page").should("be.disabled");
 
@@ -513,7 +574,7 @@ describeEE("scenarios > admin > people", () => {
     // first modal
     cy.findByLabelText("First name").type(first_name);
     cy.findByLabelText("Last name").type(last_name);
-    cy.findByLabelText("Email").type(email);
+    cy.findByLabelText(/Email/).type(email);
     clickButton("Create");
 
     // second modal

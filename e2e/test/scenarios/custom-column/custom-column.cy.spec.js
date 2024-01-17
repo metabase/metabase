@@ -1,4 +1,5 @@
 import {
+  addCustomColumn,
   restore,
   popover,
   summarize,
@@ -10,6 +11,7 @@ import {
   filter,
   getNotebookStep,
   checkExpressionEditorHelperPopoverPosition,
+  queryBuilderMain,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -23,6 +25,33 @@ describe("scenarios > question > custom column", () => {
 
     restore();
     cy.signInAsNormalUser();
+  });
+
+  it("can see x-ray options when a custom column is present (#16680)", () => {
+    cy.createQuestion(
+      {
+        name: "16680",
+        display: "line",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", "TestColumn"],
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          expressions: { TestColumn: ["+", 1, 1] },
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.get(".dot").eq(5).click({ force: true });
+    popover()
+      .findByText(/Automatic Insights/i)
+      .click();
+    popover().findByText(/X-ray/i);
+    popover()
+      .findByText(/Compare to the rest/i)
+      .click();
   });
 
   it("can create a custom column (metabase#13241)", () => {
@@ -361,7 +390,9 @@ describe("scenarios > question > custom column", () => {
       { visitQuestion: true },
     );
     // Test displays collapsed filter - click on number 1 to expand and show the filter name
-    cy.icon("filter").parent().contains("1").click();
+    cy.findByTestId("filters-visibility-control")
+      .should("have.text", "1")
+      .click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Subtotal is greater than 0/i)
@@ -398,7 +429,7 @@ describe("scenarios > question > custom column", () => {
     cy.findByText("Gizmo2");
   });
 
-  it.skip("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
+  it("should drop custom column (based on a joined field) when a join is removed (metabase#14775)", () => {
     const CE_NAME = "Rounded price";
 
     cy.createQuestion({
@@ -423,29 +454,26 @@ describe("scenarios > question > custom column", () => {
             ["joined-field", "Products", ["field-id", PRODUCTS.PRICE]],
           ],
         },
+        limit: 5,
       },
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
+      cy.findByTestId("step-expression-0-0").contains(CE_NAME);
     });
 
     // Remove join
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data")
-      .parent()
-      .find(".Icon-close")
-      .click({ force: true }); // x is hidden and hover doesn't work so we have to force it
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Join data").should("not.exist");
+    cy.findByTestId("step-join-0-0").realHover().find(".Icon-close").click();
+    cy.findByTestId("step-join-0-0").should("not.exist");
 
     cy.log("Reported failing on 0.38.1-SNAPSHOT (6d77f099)");
-    cy.get("[class*=NotebookCellItem]").contains(CE_NAME).should("not.exist");
+    cy.findByTestId("step-expression-0-0").should("not.exist");
 
     visualize(response => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
+    cy.get(".cellData").should("contain", "37.65");
+    cy.findAllByTestId("header-cell").should("not.contain", CE_NAME);
   });
 
   it("should handle using `case()` when referencing the same column names (metabase#14854)", () => {
@@ -500,9 +528,10 @@ describe("scenarios > question > custom column", () => {
       cy.visit(`/question/${QUESTION_ID}/notebook`);
     });
     summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sum of ...").click();
-    popover().findByText("MyCC [2027]").click();
+    popover().within(() => {
+      cy.findByText("Sum of ...").click();
+      cy.findByText("MyCC [2027]").click();
+    });
     cy.findAllByTestId("notebook-cell-item")
       .contains("Sum of MyCC [2027]")
       .click();
@@ -551,9 +580,9 @@ describe("scenarios > question > custom column", () => {
 
     popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates...").click();
-      enterDateFilter("12/10/2024", 0);
-      enterDateFilter("01/05/2025", 1);
+      cy.findByText("Specific dates…").click();
+      cy.findByLabelText("Start date").clear().type("12/10/2024");
+      cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
     });
 
@@ -564,23 +593,24 @@ describe("scenarios > question > custom column", () => {
 
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {
     openOrdersTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
+    addCustomColumn();
 
     enterCustomColumnDetails({
       formula: `case([Discount] > 0, [Created At], [Product → Created At])`,
       name: "MiscDate",
     });
-
-    cy.button("Done").click();
+    popover().button("Done").click();
 
     filter({ mode: "notebook" });
-    popover().contains("MiscDate").click();
-    popover().findByText("Relative dates...").click();
-    popover().findByText("Past").click();
-    popover().findByText("days").click();
-    popover().last().findByText("years").click();
-    popover().icon("ellipsis").click();
+    popover().within(() => {
+      cy.findByText("MiscDate").click();
+      cy.findByText("Relative dates…").click();
+      cy.findByText("Past").click();
+      cy.findByDisplayValue("days").click();
+    });
+    cy.findByRole("listbox").findByText("years").click();
+
+    popover().findByLabelText("Options").click();
     popover().last().findByText("Include this year").click();
     popover().button("Add filter").click();
 
@@ -588,10 +618,10 @@ describe("scenarios > question > custom column", () => {
       expect(body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("MiscDate Previous 30 Years"); // Filter name
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("MiscDate"); // Column name
+    queryBuilderMain().findByText("MiscDate").should("be.visible");
+    cy.findByTestId("qb-filters-panel")
+      .findByText("MiscDate is in the previous 30 years")
+      .should("be.visible");
   });
 
   it("should allow switching focus with Tab", () => {
@@ -665,12 +695,3 @@ describe("scenarios > question > custom column", () => {
     });
   });
 });
-
-const enterDateFilter = (value, index = 0) => {
-  cy.findAllByTestId("specific-date-picker")
-    .eq(index)
-    .findByRole("textbox")
-    .clear()
-    .type(value)
-    .blur();
-};

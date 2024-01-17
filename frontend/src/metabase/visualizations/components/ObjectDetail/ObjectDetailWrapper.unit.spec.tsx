@@ -12,7 +12,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createProductsTable } from "metabase-types/api/mocks/presets";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 const DATABASE_ID = 1;
 

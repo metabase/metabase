@@ -6,6 +6,7 @@ export const args = {
   description: undefined,
   disabled: false,
   labelPosition: "right",
+  size: "md",
 };
 
 export const argTypes = {
@@ -20,6 +21,14 @@ export const argTypes = {
   },
   labelPosition: {
     options: ["left", "right"],
+    control: { type: "inline-radio" },
+  },
+  size: {
+    options: ["xs", "md", "lg", "xl"],
+    control: { type: "inline-radio" },
+  },
+  variant: {
+    options: ["default", "stacked"],
     control: { type: "inline-radio" },
   },
 };
@@ -147,6 +156,17 @@ DescriptionLeft.args = {
 
 <Canvas>
   <Story name="Description, left position">{DescriptionLeft}</Story>
+</Canvas>
+
+#### Stacked Variant
+
+export const Stacked = StateTemplate.bind({});
+Stacked.args = {
+  variant: "stacked",
+};
+
+<Canvas>
+  <Story name="Stacked">{Stacked}</Story>
 </Canvas>
 
 ## Related components

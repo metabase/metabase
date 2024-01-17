@@ -66,7 +66,7 @@ describe("issue 14793", () => {
 
     dashboardGrid()
       .findByText("How this metric is distributed across different numbers")
-      .should("be.visible");
+      .should("exist");
 
     cy.findByTestId("automatic-dashboard-header")
       .findByText(/^A closer look at/)

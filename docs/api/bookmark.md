@@ -46,10 +46,7 @@ Sets the order of bookmarks for user.
 
 ### PARAMS:
 
-*  **`orderings`** value must be an array. Each value must be a map with schema: (
-  item_id : value must be an integer greater than zero.
-  type : value must be one of: `card`, `collection`, `dashboard`.
-)
+*  **`orderings`** sequence of map where {:type -> <enum of card, dashboard, collection>, :item_id -> <value must be an integer greater than zero.>}
 
 ---
 

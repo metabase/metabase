@@ -15,7 +15,11 @@ export function browseDatabase(database: Database) {
   return appendSlug(`/browse/${database.id}`, slugg(name));
 }
 
-export function browseSchema(table: Table) {
+export function browseSchema(table: {
+  db_id?: Table["db_id"];
+  schema_name: Table["schema_name"] | null;
+  db?: Pick<Database, "id">;
+}) {
   const databaseId = table.db?.id || table.db_id;
   return `/browse/${databaseId}/schema/${encodeURIComponent(
     table.schema_name ?? "",

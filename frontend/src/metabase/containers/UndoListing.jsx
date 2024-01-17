@@ -9,10 +9,12 @@ import { dismissUndo, performUndo } from "metabase/redux/undo";
 import BodyComponent from "metabase/components/BodyComponent";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import {
   CardContent,
   CardContentSide,
   CardIcon,
+  ControlsCardContent,
   DefaultText,
   DismissIcon,
   ToastCard,
@@ -65,11 +67,13 @@ function UndoToast({ undo, onUndo, onDismiss }) {
           role="status"
         >
           <CardContent>
-            <CardContentSide>
+            <CardContentSide maw="75ch">
               {undo.icon && <CardIcon name={undo.icon} color="white" />}
-              {renderMessage(undo)}
+              <Ellipsified showTooltip={false}>
+                {renderMessage(undo)}
+              </Ellipsified>
             </CardContentSide>
-            <CardContentSide>
+            <ControlsCardContent>
               {undo.actions?.length > 0 && (
                 <UndoButton role="button" onClick={onUndo}>
                   {undo.actionLabel ?? t`Undo`}
@@ -78,14 +82,13 @@ function UndoToast({ undo, onUndo, onDismiss }) {
               {undo.canDismiss && (
                 <DismissIcon name="close" onClick={onDismiss} />
               )}
-            </CardContentSide>
+            </ControlsCardContent>
           </CardContent>
         </ToastCard>
       )}
     </Motion>
   );
 }
-
 function UndoListingInner() {
   const dispatch = useDispatch();
   const undos = useSelector(state => state.undo);

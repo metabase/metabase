@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
@@ -17,6 +18,7 @@
 ;;     WHERE qe.card_id IS NOT NULL
 ;;       AND card.database_id IS NOT NULL
 ;;       AND card.table_id IS NOT NULL
+;;       AND db.id != audit-db-id
 ;; )
 ;;
 ;; SELECT (db_name || ' ' || db_schema) AS "schema", count(*) AS executions
@@ -40,7 +42,8 @@
                                     :where     [:and
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
-                                                [:not= :card.table_id nil]]}]]
+                                                [:not= :card.table_id nil]
+                                                [:not= :db.id perms/audit-db-id]]}]]
                :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
                           [:%count.* :executions]]
                :from     [:counts]
@@ -60,6 +63,7 @@
 ;;     WHERE qe.card_id IS NOT NULL
 ;;       AND card.database_id IS NOT NULL
 ;;       AND card.table_id IS NOT NULL
+;;       AND db.id != audit-db-id
 ;; )
 ;;
 ;; SELECT (db_name || ' ' || db_schema) AS "schema", avg(running_time) AS avg_running_time
@@ -84,7 +88,8 @@
                                     :where     [:and
                                                 [:not= :qe.card_id nil]
                                                 [:not= :card.database_id nil]
-                                                [:not= :card.table_id nil]]}]]
+                                                [:not= :card.table_id nil]
+                                                [:not= :db.id perms/audit-db-id]]}]]
                :select   [[(h2x/concat :db_name (h2x/literal " ") :db_schema) :schema]
                           [[:avg :running_time] :avg_running_time]]
                :from     [:counts]
@@ -106,6 +111,7 @@
 ;;     FROM metabase_table t
 ;;     LEFT JOIN metabase_database db
 ;;       ON t.db_id = db.id
+;;     WHERE db.id != audit-db-id
 ;;     GROUP BY db.id, t."schema"
 ;;     ORDER BY db.name ASC, t."schema" ASC
 ;; )
@@ -143,6 +149,7 @@
                                                     [:%count.* :tables]]
                                         :from      [[:metabase_table :t]]
                                         :left-join [[:metabase_database :db] [:= :t.db_id :db.id]]
+                                        :where     [:not= :db.id perms/audit-db-id]
                                         :group-by  [:db.id :t.schema]
                                         :order-by  [[:db.id :asc] [:t.schema :asc]]}]]
                  :select    [:s.database_id

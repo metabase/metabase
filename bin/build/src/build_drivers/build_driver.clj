@@ -7,13 +7,16 @@
    [build-drivers.verify :as verify]
    [metabuild-common.core :as u]))
 
-(defn clean! [driver]
+(set! *warn-on-reflection* true)
+
+(defn- clean! [driver]
   (u/step "Clean"
     (u/delete-file-if-exists! (c/compiled-source-target-dir driver))
     (u/delete-file-if-exists! (c/driver-jar-destination-path driver))))
 
 (defn build-driver!
-  ;; 1-arity that takes just a map is mean for use directly with clojure -X
+  "Build a single driver, if needed.
+  1-arity that takes just a map is meant for use directly with clojure -X."
   ([{:keys [driver edition], :as options}]
    (build-driver! driver edition (dissoc options :driver :edition)))
 

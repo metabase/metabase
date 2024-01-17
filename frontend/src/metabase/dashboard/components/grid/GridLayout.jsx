@@ -7,7 +7,7 @@ import "react-resizable/css/styles.css";
 
 import { generateGridBackground } from "./utils";
 
-function GridLayout({
+export function GridLayout({
   items,
   itemRenderer,
   breakpoints,
@@ -133,5 +133,3 @@ function GridLayout({
     </ReactGridLayout>
   );
 }
-
-export default GridLayout;

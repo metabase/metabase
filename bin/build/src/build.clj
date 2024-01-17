@@ -13,6 +13,8 @@
    [i18n.create-artifacts :as i18n]
    [metabuild-common.core :as u]))
 
+(set! *warn-on-reflection* true)
+
 (defn- edition-from-env-var []
   (case (env/env :mb-edition)
     "oss" :oss
@@ -74,17 +76,16 @@
                         "resources"
                         "license-frontend-third-party.txt") license-text))))
 
-(def uberjar-filename (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
-
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}
-  (u/delete-file-if-exists! uberjar-filename)
+  (u/delete-file-if-exists! uberjar/uberjar-filename)
   (u/step (format "Build uberjar with profile %s" edition)
     (uberjar/uberjar {:edition edition})
-    (u/assert-file-exists uberjar-filename)
+    (u/assert-file-exists uberjar/uberjar-filename)
     (u/announce "Uberjar built successfully.")))
 
-(def all-steps
+(def ^:private all-steps
+  "These build steps are run in order during the build process."
   (ordered-map/ordered-map
    :version      (fn [{:keys [edition version]}]
                    (version-properties/generate-version-properties-file! edition version))

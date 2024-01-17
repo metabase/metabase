@@ -319,10 +319,11 @@
     (doseq [col (lib/filterable-columns query)
             op (lib/filterable-column-operators col)
             :let [filter-clause (case (:short op)
-                                  :between (lib/filter-clause op col 123 456)
+                                  :between (lib/filter-clause op col col col)
                                   (:contains :does-not-contain :starts-with :ends-with) (lib/filter-clause op col "123")
                                   (:is-null :not-null :is-empty :not-empty) (lib/filter-clause op col)
                                   :inside (lib/filter-clause op col 12 34 56 78 90)
+                                  (:< :>) (lib/filter-clause op col col)
                                   (lib/filter-clause op col 123))]]
       (testing (str (:short op) " with " (lib.types.isa/field-type col))
         (is (= op
@@ -459,6 +460,21 @@
         (is (= exp (lib/display-name
                      query -1
                      (lib/expression-clause op args options))))))))
+
+(deftest ^:parallel truncate-frontend-filter-display-names-test
+  (let [created-at (meta/field-metadata :products :created-at)
+        created-at-with #(lib/with-temporal-bucket created-at %1)]
+    (check-display-names
+      [{:clause [:= (created-at-with :year) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Jan 1 – Dec 31, 2023"}
+       {:clause [:= (created-at-with :month) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 1–31, 2023"}
+       {:clause [:= (created-at-with :day) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 2, 2023"}
+       {:clause [:= (created-at-with :hour) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 2, 2023, 12:00 AM – 12:59 AM"}
+       {:clause [:= (created-at-with :minute) "2023-10-02T00:00:00.000Z"]
+        :name "Created At is Oct 2, 2023, 12:00 AM"}])))
 
 (deftest ^:parallel exclude-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)
@@ -669,7 +685,12 @@
        {:clause [:between created-at "2022-09-01" "2023-10-03"],
         :name "Created At is Sep 1, 2022 – Oct 3, 2023"}
        {:clause [:between created-at "2022-09-01T13:00:00" "2023-10-03T01:00:00"],
-        :name "Created At is Sep 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}])))
+        :name "Created At is Sep 1, 2022, 1:00 PM – Oct 3, 2023, 1:00 AM"}
+       {:clause [:between
+                 (lib/with-temporal-bucket created-at :week)
+                 "2023-08-27T00:00:00-06:00"
+                 "2023-11-27T00:00:00-06:00"],
+        :name "Created At is Aug 27, 12:00 AM – Nov 27, 2023, 12:00 AM"}])))
 
 (deftest ^:parallel filter-positions-test
   (let [base (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

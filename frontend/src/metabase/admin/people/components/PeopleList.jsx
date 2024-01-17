@@ -5,7 +5,7 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { usePrevious } from "react-use";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import PaginationControls from "metabase/components/PaginationControls";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
@@ -219,7 +219,10 @@ const PeopleList = ({
       </table>
 
       {hasUsers && (
-        <div className="flex align-center justify-between p2">
+        <div
+          className="flex align-center justify-between p2"
+          data-testid="people-list-footer"
+        >
           <div className="text-medium text-bold">
             {ngettext(
               msgid`${total} person found`,

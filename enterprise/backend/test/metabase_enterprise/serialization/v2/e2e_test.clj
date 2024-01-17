@@ -14,22 +14,21 @@
                             Dashboard
                             DashboardCard
                             Database
-                            ParameterCard
                             Field
+                            ParameterCard
                             Table]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
- (:import
-  (java.io File)
-  (java.nio.file Path)))
+  (:import
+   (java.io File)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -318,7 +317,7 @@
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -419,7 +418,7 @@
 
               (testing "for settings"
                 (let [settings (get @entities "Setting")]
-                  (is (every? @#'setting/exported-settings
+                  (is (every? @#'setting/export?
                               (set (map (comp symbol :key) settings))))
                   (is (= (into {} (for [{:keys [key value]} settings]
                                     [key value]))
@@ -433,91 +432,92 @@
       (ts/with-source-and-dest-dbs
         (ts/with-source-db
           ;; preparation
-          (mt/with-temp!
-            [Database   db1s {:name "my-db"}
-             Collection coll1s {:name "My Collection"}
-             Table      table1s {:name  "CUSTOMERS"
-                                 :db_id (:id db1s)}
-             Field      field1s {:name     "NAME"
-                                 :table_id (:id table1s)}
-             Card       card1s  {:name "Source card"}
-             Card       card2s  {:name "Card with parameter"
-                                 :database_id (:id db1s)
-                                 :table_id (:id table1s)
-                                 :collection_id (:id coll1s)
-                                 :parameters [{:id                   "abc"
-                                               :type                 "category"
-                                               :name                 "CATEGORY"
-                                               :values_source_type   "card"
-                                               ;; card_id is in a different collection with dashboard's collection
-                                               :values_source_config {:card_id     (:id card1s)
-                                                                      :value_field [:field (:id field1s) nil]}}]}
-             Dashboard  dash1s {:name "A dashboard"
-                                :collection_id (:id coll1s)
-                                :parameters [{:id                   "abc"
-                                              :type                 "category"
-                                              :name                 "CATEGORY"
-                                              :values_source_type   "card"
-                                              ;; card_id is in a different collection with dashboard's collection
-                                              :values_source_config {:card_id     (:id card1s)
-                                                                     :value_field [:field (:id field1s) nil]}}]}]
+          (mt/test-helpers-set-global-values!
+            (mt/with-temp
+              [Database   db1s {:name "my-db"}
+               Collection coll1s {:name "My Collection"}
+               Table      table1s {:name  "CUSTOMERS"
+                                   :db_id (:id db1s)}
+               Field      field1s {:name     "NAME"
+                                   :table_id (:id table1s)}
+               Card       card1s  {:name "Source card"}
+               Card       card2s  {:name          "Card with parameter"
+                                   :database_id   (:id db1s)
+                                   :table_id      (:id table1s)
+                                   :collection_id (:id coll1s)
+                                   :parameters    [{:id                   "abc"
+                                                    :type                 "category"
+                                                    :name                 "CATEGORY"
+                                                    :values_source_type   "card"
+                                                    ;; card_id is in a different collection with dashboard's collection
+                                                    :values_source_config {:card_id     (:id card1s)
+                                                                           :value_field [:field (:id field1s) nil]}}]}
+               Dashboard  dash1s {:name          "A dashboard"
+                                  :collection_id (:id coll1s)
+                                  :parameters    [{:id                   "abc"
+                                                   :type                 "category"
+                                                   :name                 "CATEGORY"
+                                                   :values_source_type   "card"
+                                                   ;; card_id is in a different collection with dashboard's collection
+                                                   :values_source_config {:card_id     (:id card1s)
+                                                                          :value_field [:field (:id field1s) nil]}}]}]
 
-            (testing "make sure we insert ParameterCard when insert Dashboard/Card"
-              ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
-              (is (= 2 (t2/count ParameterCard))))
+              (testing "make sure we insert ParameterCard when insert Dashboard/Card"
+                ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+                (is (= 2 (t2/count ParameterCard))))
 
-            (testing "extract and store"
-              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-                (is (= [{:id                   "abc",
-                         :name                 "CATEGORY",
-                         :type                 :category,
-                         :values_source_config {:card_id     (:entity_id card1s),
-                                                :value_field [:field
-                                                              ["my-db" nil "CUSTOMERS" "NAME"]
-                                                              nil]},
-                         :values_source_type "card"}]
-                       (:parameters (first (by-model extraction "Dashboard")))))
+              (testing "extract and store"
+                (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+                  (is (= [{:id                   "abc",
+                           :name                 "CATEGORY",
+                           :type                 :category,
+                           :values_source_config {:card_id     (:entity_id card1s),
+                                                  :value_field [:field
+                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                nil]},
+                           :values_source_type   "card"}]
+                         (:parameters (first (by-model extraction "Dashboard")))))
 
-                (is (= [{:id                   "abc",
-                         :name                 "CATEGORY",
-                         :type                 :category,
-                         :values_source_config {:card_id     (:entity_id card1s),
-                                                :value_field [:field
-                                                              ["my-db" nil "CUSTOMERS" "NAME"]
-                                                              nil]},
-                         :values_source_type "card"}]
-                       (:parameters (first (by-model extraction "Card")))))
+                  (is (= [{:id                   "abc",
+                           :name                 "CATEGORY",
+                           :type                 :category,
+                           :values_source_config {:card_id     (:entity_id card1s),
+                                                  :value_field [:field
+                                                                ["my-db" nil "CUSTOMERS" "NAME"]
+                                                                nil]},
+                           :values_source_type   "card"}]
+                         (:parameters (first (by-model extraction "Card")))))
 
-                (storage/store! (seq extraction) dump-dir)))
+                  (storage/store! (seq extraction) dump-dir)))
 
-           (testing "ingest and load"
-             (ts/with-dest-db
-               ;; ingest
-               (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
-                     "successful"))
+             (testing "ingest and load"
+               (ts/with-dest-db
+                 ;; ingest
+                 (testing "doing ingestion"
+                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                       "successful"))
 
-               (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
-                     card1d (t2/select-one Card :name (:name card1s))
-                     card2d (t2/select-one Card :name (:name card2s))
-                     field1d (t2/select-one Field :name (:name field1s))]
-                 (testing "parameter on dashboard is loaded correctly"
-                   (is (= {:card_id     (:id card1d),
-                           :value_field [:field (:id field1d) nil]}
-                          (-> dash1d
-                              :parameters
-                              first
-                              :values_source_config)))
-                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                 (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
+                       card1d  (t2/select-one Card :name (:name card1s))
+                       card2d  (t2/select-one Card :name (:name card2s))
+                       field1d (t2/select-one Field :name (:name field1s))]
+                   (testing "parameter on dashboard is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> dash1d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                 (testing "parameter on card is loaded correctly"
-                   (is (= {:card_id     (:id card1d),
-                           :value_field [:field (:id field1d) nil]}
-                          (-> card2d
-                              :parameters
-                              first
-                              :values_source_config)))
-                   (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+                   (testing "parameter on card is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> card2d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -602,7 +602,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]
@@ -630,6 +630,43 @@
                            (-> (t2/select-one Dashboard :name dashboard-name)
                                (t2/hydrate :dashcards)
                                dashboard->link-cards)))))))))))))
+
+(deftest dashcards-with-series-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (ts/with-source-and-dest-dbs
+      (ts/with-source-db
+        (t2.with-temp/with-temp
+          [:model/Collection {coll-id :id} {:name "Some Collection"}
+           :model/Card {c1-id :id :as c1} {:name "Some Question", :collection_id coll-id}
+           :model/Card {c2-id :id :as c2} {:name "Series Question A", :collection_id coll-id}
+           :model/Card {c3-id :id :as c3} {:name "Series Question B", :collection_id coll-id}
+           :model/Dashboard {dash-id :id :as dash} {:name "Shared Dashboard", :collection_id coll-id}
+           :model/DashboardCard {dc1-id :id} {:card_id c1-id, :dashboard_id dash-id}
+           :model/DashboardCard _ {:card_id c1-id, :dashboard_id dash-id}
+           :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
+           :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+          (testing "extract and store"
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir)))
+          (testing "ingest and load"
+            (ts/with-dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful"))
+              (testing "Series are loaded correctly"
+                (let [new-dc1-id (t2/select-one-pk :model/DashboardCard :card_id (:id c1))
+                      new-dc2-id (t2/select-one-pk :model/DashboardCard :card_id (:id c2))
+                      new-c2-id  (t2/select-one-pk :model/Card :name (:name c2))
+                      new-c3-id  (t2/select-one-pk :model/Card :name (:name c3))
+                      hydrated-dashcards (-> (t2/select-one :model/Dashboard :name (:name dash))
+                                             (t2/hydrate [:dashcards :series])
+                                             :dashcards
+                                             (->> (m/index-by :id)))]
+                  (testing "Series hydrate on the dashboard correctly"
+                    (is (=? {new-dc1-id {:series [{:id new-c2-id}
+                                                  {:id new-c3-id}]}}
+                            hydrated-dashcards))
+                    (is (not (contains? (hydrated-dashcards new-dc2-id) :series)))))))))))))
 
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
@@ -667,10 +704,10 @@
              (ts/with-dest-db
                ;; ingest
                (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
                      "successful"))
                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :ordered_tabs :dashcards))
+                                       (t2/hydrate :tabs :dashcards))
                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
@@ -684,7 +721,7 @@
                            :dashboard_id (:id new-dashboard)
                            :name         "Tab 2"
                            :position     1}]
-                         (:ordered_tabs new-dashboard)))
+                         (:tabs new-dashboard)))
                  (is (=? [{:card_id          new-card-id-1
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-1}
@@ -702,36 +739,162 @@
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{:serialization}
+      (mt/with-premium-features #{:serialization}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
-                (is (cmd/v2-dump dump-dir {})
+                (is (cmd/v2-dump! dump-dir {})
                     "works"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
-                    (is (cmd/v2-load dump-dir {})
+                    (is (cmd/v2-load! dump-dir {})
                         "works"))))))))))
 
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (premium-features-test/with-premium-features #{}
+      (mt/with-premium-features #{}
         (ts/with-source-and-dest-dbs
           (ts/with-source-db
             ;; preparation
             (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (thrown-with-msg? Exception #"Please upgrade"
-                                      (cmd/v2-dump dump-dir {}))
+                                      (cmd/v2-dump! dump-dir {}))
                     "throws"))
 
               (testing "import (v2-load) command"
                 (ts/with-dest-db
                   (testing "doing ingestion"
                     (is (thrown-with-msg? Exception #"Please upgrade"
-                                          (cmd/v2-load dump-dir {}))
+                                          (cmd/v2-load! dump-dir {}))
                         "throws")))))))))))
+
+(deftest pivot-export-test
+  (testing "Pivot table export and load correctly"
+    (let [old-ids (atom nil)
+          card1s  (atom nil)]
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (ts/with-source-and-dest-dbs
+          (ts/with-source-db
+            (mt/dataset test-data
+              ;; ensuring field ids are stable by loading dataset in db first
+              (mt/db)
+              (mt/$ids nil
+                (t2.with-temp/with-temp
+                  [Collection {coll-id :id}  {:name "Pivot Collection"}
+                   Card       card           {:name          "Pivot Card"
+                                              :collection_id coll-id
+                                              :dataset_query {:type     :query
+                                                              :database (mt/id)
+                                                              :query    {:source-table $$orders
+                                                                         :aggregation  [:sum [:field %orders.id nil]]
+                                                                         :breakout     [[:field %orders.user_id nil]]}}
+                                              :visualization_settings
+                                              {:pivot_table.column_split
+                                               {:rows    [[:field %people.name {:base-type    :type/Text
+                                                                                :source-field %orders.user_id}]]
+                                                :columns [[:field %products.title {:base-type    :type/Text
+                                                                                   :source-field %orders.product_id}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings
+                                               {(format "[\"ref\",[\"field\",%s,null]]" %people.name)
+                                                {:pivot_table.column_sort_order "descending"}}}}]
+                  (reset! old-ids {:people.name       %people.name
+                                   :orders.user_id    %orders.user_id
+                                   :products.title    %products.title
+                                   :orders.product_id %orders.product_id})
+                  (reset! card1s card)
+                  (storage/store! (extract/extract {}) dump-dir)))))
+
+          (ts/with-dest-db
+            ;; ensure there is something in db so that test-data gets different field ids for sure
+            (mt/dataset office-checkins
+              (mt/db))
+
+            (mt/dataset test-data
+              ;; ensuring field ids are stable by loading dataset in db first
+              (mt/db)
+              (mt/$ids nil
+                (testing "Column ids are different in different dbs")
+                (is (not= @old-ids
+                          {:people.name       %people.name
+                           :orders.user_id    %orders.user_id
+                           :products.title    %products.title
+                           :orders.product_id %orders.product_id}))
+
+                (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir))
+
+                (let [viz (t2/select-one-fn :visualization_settings Card :entity_id (:entity_id @card1s))]
+                  (testing "column ids inside pivot table transferred"
+                    (is (= [[:field %people.name {:base-type    :type/Text
+                                                  :source-field %orders.user_id}]]
+                           (get-in viz [:pivot_table.column_split :rows])))
+                    (is (= [[:field %products.title {:base-type    :type/Text
+                                                     :source-field %orders.product_id}]]
+                           (get-in viz [:pivot_table.column_split :columns]))))
+                  (testing "column sort order restored"
+                    (is (= "descending"
+                           (get-in viz [:column_settings
+                                        (format "[\"ref\",[\"field\",%s,null]]" %people.name)
+                                        :pivot_table.column_sort_order])))))))))))))
+
+(deftest exported-settings-test
+  ;; this is the only relevant settings namespace that hadn't been imported already
+  (require 'metabase-enterprise.advanced-config.models.pulse-channel)
+  ;; TODO: delete this, it's here as a temporary measure during migration {} to reassure us that we haven't made a mistake
+  (let [expected-exports
+        '#{application-colors
+           application-favicon-url
+           application-font
+           application-font-files
+           application-logo-url
+           application-name
+           available-fonts
+           available-locales
+           available-timezones
+           breakout-bins-num
+           custom-formatting
+           custom-geojson
+           custom-geojson-enabled
+           enable-embedding
+           enable-nested-queries
+           enable-sandboxes?
+           enable-whitelabeling?
+           enable-xrays
+           hide-embed-branding?
+           humanization-strategy
+           landing-page
+           loading-message
+           aggregated-query-row-limit
+           unaggregated-query-row-limit
+           native-query-autocomplete-match-style
+           persisted-models-enabled
+           report-timezone
+           report-timezone-long
+           report-timezone-short
+           search-typeahead-enabled
+           show-homepage-data
+           show-homepage-pin-message
+           show-homepage-xrays
+           show-lighthouse-illustration
+           show-metabot
+           site-locale
+           site-name
+           source-address-header
+           start-of-week
+           subscription-allowed-domains
+           uploads-enabled
+           uploads-database-id
+           uploads-schema-name}]
+    (testing "We have not had a regression around which settings are exported"
+      (is (= expected-exports
+             (->> @setting/registered-settings
+                  (remove (comp #{:internal} :visibility val))
+                  keys
+                  (filter #'setting/export?)
+                  (map symbol)
+                  set))))))

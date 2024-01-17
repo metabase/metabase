@@ -45,6 +45,8 @@ export const HeaderCaptionContainer = styled.div`
   display: flex;
   padding-right: 2rem;
   right: 0.25rem;
+  display: flex;
+  align-items: center;
 `;
 
 export const HeaderCaption = styled(EditableText)`
@@ -56,7 +58,6 @@ export const HeaderCaption = styled(EditableText)`
 export const HeaderBadges = styled.div`
   display: flex;
   align-items: center;
-  padding-left: 0.5rem;
   border-left: 1px solid transparent;
 
   ${breakpointMaxSmall} {

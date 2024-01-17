@@ -146,6 +146,12 @@ export const field_semantic_types = [
     section: t`Numeric`,
     icon: "int",
   },
+  {
+    id: TYPE.Percentage,
+    name: t`Percentage`,
+    section: t`Numeric`,
+    icon: "int",
+  },
 
   /* Profile */
   {

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 
 const ICON_SIZE = 16;
 
@@ -34,7 +34,7 @@ export default class CollectionOptionsButton extends Component {
               className="text-brand"
               sections={[{ items }]}
               onChange={item => {
-                item.onClick();
+                item.onClick(item);
                 closePopover();
               }}
             />

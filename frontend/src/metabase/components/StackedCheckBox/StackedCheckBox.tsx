@@ -1,5 +1,5 @@
+import type React from "react";
 import { useCallback } from "react";
-import type { ChangeEvent } from "react";
 
 import {
   DEFAULT_CHECKED_COLOR,
@@ -15,7 +15,7 @@ import {
 } from "./StackedCheckBox.styled";
 
 interface StackedCheckBoxPropTypes {
-  label?: string;
+  label?: string | React.ReactNode;
   ariaLabel?: string;
   checked?: boolean;
   disabled?: boolean;
@@ -24,7 +24,8 @@ interface StackedCheckBoxPropTypes {
   size?: number;
   className?: string;
   indeterminate?: boolean;
-  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onClick?: (event: React.MouseEvent<HTMLInputElement>) => void;
 }
 
 export function StackedCheckBox({
@@ -38,6 +39,7 @@ export function StackedCheckBox({
   className,
   indeterminate = false,
   onChange,
+  onClick,
 }: StackedCheckBoxPropTypes) {
   const renderLabel = useCallback(() => {
     if (label == null) {
@@ -61,6 +63,7 @@ export function StackedCheckBox({
         size={size}
         indeterminate={indeterminate}
         onChange={onChange}
+        onClick={onClick}
       />
       <StackedBackground
         checked={checked}

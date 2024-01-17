@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import LogoIcon from "metabase/components/LogoIcon";
-import { Icon } from "metabase/core/components/Icon";
+import { Button, Icon } from "metabase/ui";
 import type { User } from "metabase-types/api";
 import type { AdminPath } from "metabase-types/store";
 import StoreLink from "../StoreLink";
@@ -84,11 +84,13 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
 
   return (
     <AdminMobileNavbar>
-      <Icon
-        name="burger"
-        size={32}
+      <Button
         onClick={() => setMobileNavOpen(prev => !prev)}
-      />
+        variant="subtle"
+        p="0.25rem"
+      >
+        <Icon name="burger" size={32} color="white" />
+      </Button>
       {mobileNavOpen && (
         <AdminMobileNavBarItems>
           {adminPaths.map(({ name, key, path }) => (

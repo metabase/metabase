@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.driver.mongo.util :refer [*mongo-connection*]]
+   [metabase.driver.mongo.util :as mongo.util]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -14,7 +14,8 @@
    [monger.conversion :as m.conversion]
    [monger.util :as m.util])
   (:import
-   (com.mongodb AggregationOptions AggregationOptions$OutputMode BasicDBObject Cursor DB DBObject)
+   (com.mongodb BasicDBObject DB DBObject)
+   (com.mongodb.client AggregateIterable ClientSession MongoDatabase MongoCursor)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
 
@@ -129,24 +130,27 @@
   (when row
     (.keySet row)))
 
-(defn- aggregation-options ^AggregationOptions [timeout-ms]
-  ;; see https://mongodb.github.io/mongo-java-driver/3.7/javadoc/com/mongodb/AggregationOptions.Builder.html
-  (.build (doto (AggregationOptions/builder)
-            (.allowDiskUse true)
-            (.outputMode AggregationOptions$OutputMode/CURSOR)
-            ;; TODO - consider what the best batch size option is here. Not sure what the default is.
-            (.batchSize (int 100))
-            (.maxTime (int timeout-ms) TimeUnit/MILLISECONDS))))
+;; See https://mongodb.github.io/mongo-java-driver/3.12/javadoc/com/mongodb/client/AggregateIterable.html
+(defn- init-aggregate!
+  [^AggregateIterable aggregate
+   ^java.lang.Long timeout-ms]
+  (doto aggregate
+    (.allowDiskUse true)
+    ;; TODO - consider what the best batch size option is here. Not sure what the default is.
+    (.batchSize 100)
+    (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
 
 (defn- ^:dynamic *aggregate*
-  "Execute a MongoDB aggregation query."
-  ^Cursor [^DB db ^String coll stages timeout-ms]
-  (let [coll     (.getCollection db coll)
-        agg-opts (aggregation-options timeout-ms)
-        pipe     (m.util/into-array-list (m.conversion/to-db-object stages))]
-    (.aggregate coll pipe agg-opts)))
+  [^MongoDatabase db
+   ^String coll
+   ^ClientSession session
+   stages timeout-ms]
+  (let [coll      (.getCollection db coll)
+        pipe      (m.util/into-array-list (m.conversion/to-db-object stages))
+        aggregate (.aggregate coll session pipe BasicDBObject)]
+    (init-aggregate! aggregate timeout-ms)))
 
-(defn- reducible-rows [context ^Cursor cursor first-row post-process]
+(defn- reducible-rows [context ^MongoCursor cursor first-row post-process]
   {:pre [(fn? post-process)]}
   (let [has-returned-first-row? (volatile! false)]
     (letfn [(first-row-thunk []
@@ -161,30 +165,57 @@
                 (remaining-rows-thunk)))]
       (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
 
-(defn- reduce-results [native-query query context ^Cursor cursor respond]
-  (try
-    (let [first-row                        (when (.hasNext cursor)
-                                             (.next cursor))
-          {row-col-names       :row
-           unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
-      (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
-      (respond (result-metadata unescaped-col-names)
-               (if-not first-row
-                 []
-                 (reducible-rows context cursor first-row (post-process-row row-col-names)))))
-    (finally
-      (.close cursor))))
+(defn- reduce-results [native-query query context ^MongoCursor cursor respond]
+  (let [first-row (when (.hasNext cursor)
+                    (.next cursor))
+        {row-col-names :row
+         unescaped-col-names :unescaped} (result-col-names native-query query (row-keys first-row))]
+    (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
+    (respond (result-metadata unescaped-col-names)
+             (if-not first-row
+               []
+               (reducible-rows context cursor first-row (post-process-row row-col-names))))))
+
+
+(defn- connection->database
+  ^MongoDatabase
+  [^DB connection]
+  (let [db-name (.getName connection)]
+    (.. connection getMongoClient (getDatabase db-name))))
+
+(defn- start-session!
+  ^ClientSession
+  [^DB connection]
+  (.. connection getMongoClient startSession))
+
+(defn- kill-session!
+  [^MongoDatabase db
+   ^ClientSession session]
+  (let [session-id (.. session getServerSession getIdentifier)
+        kill-cmd (BasicDBObject. "killSessions" [session-id])]
+    (.runCommand db kill-cmd)))
 
 (defn execute-reducible-query
   "Process and run a native MongoDB query."
-  [{{:keys [collection query], :as native-query} :native} context respond]
-  {:pre [(string? collection) (fn? respond)]}
+  [{{query :query collection-name :collection :as native-query} :native} context respond]
+  {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        cursor (*aggregate* *mongo-connection* collection query (qp.context/timeout context))]
-    (a/go
-      (when (a/<! (qp.context/canceled-chan context))
-        ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by
-        ;; `aggregate`)
-        (.close ^Cursor cursor)))
-    (reduce-results native-query query context cursor respond)))
+        client-database (connection->database mongo.util/*mongo-connection*)]
+    (with-open [session ^ClientSession (start-session! mongo.util/*mongo-connection*)]
+      (a/go
+        (when (a/<! (qp.context/canceled-chan context))
+          (kill-session! client-database session)))
+      (let [aggregate ^AggregateIterable (*aggregate* client-database
+                                                      collection-name
+                                                      session
+                                                      query
+                                                      (qp.context/timeout context))]
+        (with-open [^MongoCursor cursor (try (.cursor aggregate)
+                                             (catch Throwable e
+                                               (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                               {:driver :mongo
+                                                                :native native-query
+                                                                :type   qp.error-type/invalid-query}
+                                                               e))))]
+          (reduce-results native-query query context cursor respond))))))

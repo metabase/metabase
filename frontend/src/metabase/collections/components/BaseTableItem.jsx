@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import PropTypes from "prop-types";
+// eslint-disable-next-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -71,9 +72,6 @@ export function BaseTableItem({
       collection.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo = item["last-edit-info"];
-
-    // We don't keep last edit info for pulses
-    // TODO Remove ternary when Pulses are gone (metabase#16519-1)
     const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
@@ -129,7 +127,7 @@ export function BaseTableItem({
                 name="info"
                 size={16}
                 tooltip={
-                  <Markdown dark disallowHeading unstyleLinks>
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
                     {item.description}
                   </Markdown>
                 }
@@ -201,7 +199,6 @@ function getLastEditedBy(lastEditInfo) {
   if (!lastEditInfo) {
     return "";
   }
-
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }

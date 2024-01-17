@@ -16,11 +16,11 @@
    [metabase.api.field :as api.field]
    [metabase.async.util :as async.u]
    [metabase.db.util :as mdb.u]
+   [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -137,14 +137,15 @@
   "Create the `:run` function used for [[run-query-for-card-with-id-async]] and [[public-dashcard-results-async]]."
   [qp-runner export-format]
   (fn [query info]
-    (qp.streaming/streaming-response
-     [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
-     (let [context  (assoc context :reducedf (public-reducedf reducedf))
-           in-chan  (mw.session/as-admin
-                     (qp-runner query info context))
-           out-chan (a/promise-chan (map transform-results))]
-       (async.u/promise-pipe in-chan out-chan)
-       out-chan))))
+    (qp.streaming/streaming-response [{:keys [rff], {:keys [reducedf], :as context} :context}
+                                      export-format
+                                      (u/slugify (:card-name info))]
+      (let [context  (assoc context :reducedf (public-reducedf reducedf))
+            in-chan  (mw.session/as-admin
+                       (qp-runner query info rff context))
+            out-chan (a/promise-chan (map transform-results))]
+        (async.u/promise-pipe in-chan out-chan)
+        out-chan))))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
@@ -231,7 +232,7 @@
   {:pre [(even? (count conditions))]}
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [Dashboard :name :description :id :parameters :auto_apply_filters], :archived false, conditions))
-        (t2/hydrate [:dashcards :card :series :dashcard/action] :ordered_tabs :param_values :param_fields)
+        (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_values :param_fields)
         api.dashboard/add-query-average-durations
         (update :dashcards (fn [dashcards]
                              (for [dashcard dashcards]
@@ -250,7 +251,9 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (dashboard-with-uuid uuid))
+  (u/prog1 (dashboard-with-uuid uuid)
+           (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
+                                                         :object  <>})))
 
 ;; TODO -- this should probably have a name like `run-query-for-dashcard...` so it matches up with
 ;; [[run-query-for-card-with-id-async]]
@@ -309,7 +312,7 @@
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
   (actions.execution/fetch-values
-   (api/check-404 (dashboard-card/dashcard->action dashcard-id))
+   (api/check-404 (action/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
@@ -575,22 +578,22 @@
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
-  [uuid param-key :as {:keys [query-params]}]
+  [uuid param-key :as {constraint-param-key->value :query-params}]
   {uuid      ms/UUIDString
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key query-params))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
-  [uuid param-key query :as {:keys [query-params]}]
+  [uuid param-key query :as {constraint-param-key->value :query-params}]
   {uuid      ms/UUIDString
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key query-params query))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

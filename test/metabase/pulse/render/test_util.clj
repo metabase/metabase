@@ -12,13 +12,18 @@
   (:require
    [clojure.string :as str]
    [clojure.zip :as zip]
+   [hiccup.core :as hiccup]
+   [hickory.core :as hik]
+   [metabase.formatter.datetime :as datetime]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
-   [metabase.pulse.render.datetime :as datetime]
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.js-svg :as js-svg]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [toucan2.core :as t2])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
    (org.apache.batik.dom GenericText)
@@ -481,9 +486,12 @@
         (recur (zip/next (edit-fn loc)))
         (recur (zip/next loc))))))
 
-(defn- img-node?
+(defn- img-node-with-svg?
   [loc]
-  (= (first (zip/node loc)) :img))
+  (let [[tag {:keys [src]}] (zip/node loc)]
+    (and
+     (= tag :img)
+     (str/starts-with? src "<svg"))))
 
 (defn- wrapped-children?
   [loc]
@@ -566,7 +574,7 @@
     (let [content (-> (body/render (render/detect-pulse-chart-type card nil data) :inline "UTC" card nil data)
                       :content)]
       (-> content
-          (edit-nodes img-node? img-node->svg-node)          ;; replace the :img tag with its parsed SVG.
+          (edit-nodes img-node-with-svg? img-node->svg-node)          ;; replace the :img tag with its parsed SVG.
           (edit-nodes wrapped-node? unwrap-node)             ;; eg: ([:div "content"]) -> [:div "content"]
           (edit-nodes wrapped-children? unwrap-children))))) ;; eg: [:tr ([:td 1] [:td 2])] -> [:tr [:td 1] [:td 2]]
 
@@ -598,14 +606,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn nodes-with-text
-  "Returns a list of nodes from the `tree` that contain an exact match of `text` as the last entry of the node.
+  "Returns a list of nodes from the `tree` that includes text `text` as the last entry of the node.
   The tree is assumed to be a valid hiccup-style tree.
 
   `(nodes-with-text \"the text\" [:svg [:tspan [:text \"the text\"]]]) -> ([:text \"the text\"])`"
   [tree text]
   (->> tree
-       (tree-seq vector? (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
-       (filter #(#{text} (last %)))))
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (filter #(and (string? (last %)) (str/includes? (last %) text)))))
+
+(defn nodes-with-exact-text
+  "Returns a list of nodes from the `tree` that exactly matches text `text` as the last entry of the node.
+  The tree is assumed to be a valid hiccup-style tree.
+
+  `(nodes-with-text \"the text\" [:svg [:tspan [:text \"the text\"]]]) -> ([:text \"the text\"])`"
+  [tree text]
+  (->> tree
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (filter #(and (string? (last %)) (= (last %) text)))))
 
 (defn nodes-with-tag
   "Returns a list of nodes from the `tree` that contain an exact match of `tag` as the first entry of the node.
@@ -614,7 +632,7 @@
   `(nodes-with-tag :tspan [:svg [:tspan [:text \"the text\"]]]) -> ([:tspan [:text \"the text\"]])`"
   [tree tag]
   (->> tree
-       (tree-seq vector? (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
+       (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
        (filter #(#{tag} (first %)))))
 
 (defn remove-attrs
@@ -624,3 +642,42 @@
                   (let [[k _m & c] (zip/node loc)]
                     (zip/replace loc (into [k] c))))]
     (edit-nodes tree matcher edit-fn)))
+
+(defn render-card-as-hiccup
+  "Render the card with `card-id` using the static-viz rendering pipeline as a hiccup data structure.
+
+  Redefines some internal rendering functions to keep svg from being rendered into a png."
+  [card-id]
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+        query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
+        results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
+                        :content)]
+        (-> content
+            (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+            (edit-nodes wrapped-node? unwrap-node)    ;; eg: ([:div "content"]) -> [:div "content"]
+            (edit-nodes wrapped-children? unwrap-children))))))
+
+(defn render-card-as-hickory
+  "Render the card with `card-id` using the static-viz rendering pipeline as a hickory data structure.
+  Redefines some internal rendering functions to keep svg from being rendered into a png.
+  Functions from `hickory.select` can be used on the output of this function and are particularly useful for writing test assertions."
+  [card-id]
+  (let [{:keys [visualization_settings] :as card} (t2/select-one :model/Card :id card-id)
+        query                                     (qp.card/query-for-card card [] nil {:process-viz-settings? true} nil)
+        results                                   (qp/process-query (assoc query :viz-settings visualization_settings))]
+    (with-redefs [js-svg/svg-string->bytes       identity
+                  image-bundle/make-image-bundle (fn [_ s]
+                                                   {:image-src   s
+                                                    :render-type :inline})]
+      (let [content (-> (render/render-pulse-card :inline "UTC" card nil results)
+                            :content)]
+        (-> content
+              (edit-nodes img-node-with-svg? img-node->svg-node) ;; replace the :img tag with its parsed SVG.
+              hiccup/html
+              hik/parse
+              hik/as-hickory)))))

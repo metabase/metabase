@@ -6,7 +6,9 @@ import {
   showDashboardCardActions,
   visitDashboard,
 } from "e2e/support/helpers";
-import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe("issue 17879", () => {
   beforeEach(() => {
@@ -21,28 +23,28 @@ describe("issue 17879", () => {
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "month",
-      expectedFilterText: "Created At is April 1–30, 2022",
+      expectedFilterText: "Created At is Apr 1–30, 2022",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - week -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "week",
-      expectedFilterText: "Created At is April 24–30, 2022",
+      expectedFilterText: "Created At is Apr 24–30, 2022",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> day (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is January 1 – December 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
     });
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - year -> month (metabase#17879)", () => {
     setupDashcardAndDrillToQuestion({
       sourceDateUnit: "year",
-      expectedFilterText: "Created At is January 1 – December 31, 2022",
+      expectedFilterText: "Created At is Jan 1 – Dec 31, 2022",
       targetDateUnit: "month",
     });
   });
@@ -58,7 +60,7 @@ function setupDashcardAndDrillToQuestion({
       name: "Q1 - 17879",
       query: {
         "source-table": ORDERS_ID,
-        limit: 3,
+        limit: 5,
       },
     });
   } else {
@@ -70,7 +72,7 @@ function setupDashcardAndDrillToQuestion({
         breakout: [
           ["field", ORDERS.CREATED_AT, { "temporal-unit": targetDateUnit }],
         ],
-        limit: 3,
+        limit: 5,
       },
     });
   }
@@ -87,7 +89,7 @@ function setupDashcardAndDrillToQuestion({
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": sourceDateUnit }],
           ],
-          limit: 3,
+          limit: 5,
         },
       },
     ],
@@ -101,14 +103,12 @@ function setupDashcardAndDrillToQuestion({
     editDashboard(dashboard.id);
 
     showDashboardCardActions();
-    cy.findByTestId("dashboardcard-actions-panel").within(() => {
-      cy.icon("click").click();
-    });
+    cy.findByTestId("dashboardcard-actions-panel").icon("click").click();
 
     cy.findByText("Go to a custom destination").click();
     cy.findByText("Saved question").click();
     cy.findByText("Q1 - 17879").click();
-    cy.findByText("Orders → Created At").click();
+    cy.findByText("Created At").click();
 
     popover().within(() => {
       cy.findByText("Created At").click();

@@ -5,8 +5,7 @@ runs:
     - name: Prepare Node.js
       uses: actions/setup-node@v3
       with:
-        node-version-file: '.nvmrc'
-        cache: 'yarn'
+        node-version-file: ".nvmrc"
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: |

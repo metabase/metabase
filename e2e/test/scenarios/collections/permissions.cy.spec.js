@@ -9,9 +9,12 @@ import {
   openCollectionMenu,
   openCollectionItemMenu,
   modal,
+  setTokenFeatures,
+  sidebar,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
+import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const PERMISSIONS = {
@@ -430,6 +433,37 @@ describe("collection permissions", () => {
     cy.findByText("Save").click();
 
     cy.findByTestId("select-button").findByText("Our analytics");
+  });
+
+  it("should load the collection permissions admin pages", () => {
+    cy.signInAsAdmin();
+    setTokenFeatures("all");
+    cy.intercept("GET", "/api/collection/graph").as("permissionsGraph");
+    cy.intercept("GET", "/api/permissions/group").as("permissionsGroups");
+
+    cy.visit("/admin/permissions/collections");
+    cy.get("main").findByText("Select a collection to see its permissions");
+
+    cy.visit("/admin/permissions/collections/root");
+    cy.wait(["@permissionsGraph", "@permissionsGroups"]);
+
+    cy.findByTestId("permissions-editor").findByText(
+      "Permissions for Our analytics",
+    );
+    cy.findByTestId("permission-table");
+
+    cy.visit(`/admin/permissions/collections/${FIRST_COLLECTION_ID}`);
+    cy.wait(["@permissionsGraph", "@permissionsGroups"]);
+    cy.findByTestId("permissions-editor").findByText(
+      "Permissions for First collection",
+    );
+    cy.findByTestId("permission-table");
+
+    sidebar().findByText("Metabase analytics").click();
+    cy.findByTestId("permissions-editor").findByText(
+      "Permissions for Metabase analytics",
+    );
+    cy.findByTestId("permission-table");
   });
 });
 

@@ -1,5 +1,10 @@
 import fetchMock from "fetch-mock";
-import type { Field, FieldId, FieldValuesResult } from "metabase-types/api";
+import type {
+  Field,
+  FieldId,
+  FieldValue,
+  FieldValuesResult,
+} from "metabase-types/api";
 import { PERMISSION_ERROR } from "./constants";
 
 export function setupFieldEndpoints(field: Field) {
@@ -32,10 +37,10 @@ export function setupFieldsValuesEndpoints(fieldsValues: FieldValuesResult[]) {
   fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
 }
 
-export function setupFieldSearchValuesEndpoints<T>(
+export function setupFieldSearchValuesEndpoints(
   fieldId: FieldId,
   searchValue: string,
-  result: T[] = [],
+  result: FieldValue[] = [],
 ) {
   fetchMock.get(
     {

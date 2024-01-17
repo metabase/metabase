@@ -52,7 +52,8 @@ describe("issue 16756", () => {
     // The previous filter value should reset
     cy.location("search").should("eq", "?filter=");
 
-    // Set the date to the 15th of whichever the month and year are when this tests runs
+    cy.log("Set the date to the 15th of October 2023");
+    cy.clock(new Date("2023-10-31"), ["Date"]);
     filterWidget().click();
 
     popover().contains("15").click();

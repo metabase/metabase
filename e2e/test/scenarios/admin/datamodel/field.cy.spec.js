@@ -4,7 +4,7 @@ import {
   visitAlias,
   popover,
   resetTestTable,
-  startNewQuestion,
+  openTable,
   resyncDatabase,
 } from "e2e/support/helpers";
 import {
@@ -16,7 +16,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-// [quarantine] - intermittently failing, possibly due to a "flickering" element (re-rendering)
 describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
     restore();
@@ -134,39 +133,42 @@ describe("scenarios > admin > datamodel > field", () => {
       cy.contains("Title");
     });
 
-    // [quarantined]: flake, blocking 3rd party PR
-    it.skip("allows 'Custom mapping' null values", () => {
+    it("allows 'Custom mapping' null values", () => {
+      const dbId = 2;
+      const remappedNullValue = "nothin";
+
       restore("withSqlite");
       cy.signInAsAdmin();
-      const dbId = 2;
+
       withDatabase(
         dbId,
-        ({ number_with_nulls: { num }, number_with_nulls_ID }) =>
-          cy.visit(
-            `/admin/datamodel/database/${dbId}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${number_with_nulls_ID}/field/${num}/general`,
-          ),
+        ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
+          cy.request("GET", `/api/database/${dbId}/schemas`).then(
+            ({ body }) => {
+              const [schema] = body;
+
+              cy.visit(
+                `/admin/datamodel/database/${dbId}/schema/${dbId}:${schema}/table/${NUMBER_WITH_NULLS_ID}/field/${NUM}/general`,
+              );
+            },
+          );
+
+          cy.log("Change `null` to custom mapping");
+          cy.findByRole("heading", { name: "Display values" })
+            .closest("section")
+            .findByText("Use original value")
+            .click();
+          popover().findByText("Custom mapping").click();
+
+          cy.findByDisplayValue("null").clear().type(remappedNullValue);
+          cy.button("Save").click();
+          cy.button("Saved!").should("be.visible");
+
+          cy.log("Make sure custom mapping appears in QB");
+          openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
+          cy.get(".cellData").should("contain", remappedNullValue);
+        },
       );
-
-      // change to custom mapping
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Use original value").click();
-      popover().findByText("Custom mapping").click();
-
-      // update text for nulls from "null" to "nothin"
-      cy.get("input[value=null]").clear().type("nothin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Save").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved!");
-
-      // check that it appears in QB
-      startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("sqlite").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Number With Nulls").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("nothin");
     });
   });
 });

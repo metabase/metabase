@@ -4,7 +4,6 @@ import * as Lib from "metabase-lib";
 import {
   columnFinder,
   createQuery,
-  findAggregationOperator,
   findBinningStrategy,
   findTemporalBucket,
 } from "metabase-lib/test-helpers";
@@ -35,14 +34,14 @@ function createQueryWithBinning(bucketName = "10 bins") {
   return { query, columnInfo: Lib.displayInfo(query, 0, columnWithBinning) };
 }
 
-function createQueryWithTemporalBreakout() {
+function createQueryWithTemporalBreakout(bucketName: string) {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
     Lib.breakoutableColumns(initialQuery, 0),
   );
   const column = findColumn("ORDERS", "CREATED_AT");
-  const bucket = findTemporalBucket(initialQuery, column, "Quarter");
+  const bucket = findTemporalBucket(initialQuery, column, bucketName);
   const columnWithTemporalBucket = Lib.withTemporalBucket(column, bucket);
   const query = Lib.breakout(initialQuery, 0, columnWithTemporalBucket);
   return {
@@ -51,31 +50,14 @@ function createQueryWithTemporalBreakout() {
   };
 }
 
-function applyAggregation(
-  query: Lib.Query,
-  operatorShortName: string,
-  stageIndex = 0,
-): Lib.Query {
-  const operator = findAggregationOperator(query, operatorShortName);
-
-  const findColumn = columnFinder(
-    query,
-    Lib.aggregationOperatorColumns(operator),
-  );
-  const column = findColumn("ORDERS", "TOTAL");
-  const clause = Lib.aggregationClause(operator, column);
-
-  return Lib.aggregate(query, stageIndex, clause);
-}
-
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
 
   render(
     <BreakoutStep
       step={step}
+      stageIndex={step.stageIndex}
       query={step.query}
-      topLevelQuery={step.topLevelQuery}
       color="summarize"
       isLastOpened={false}
       reportTimezone="UTC"
@@ -83,7 +65,7 @@ function setup(step = createMockNotebookStep()) {
     />,
   );
 
-  function getNextQuery() {
+  function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
     return lastCall[0];
   }
@@ -110,7 +92,7 @@ describe("BreakoutStep", () => {
   it("should render a breakout correctly", () => {
     const { query, columnInfo } = createQueryWithBreakout();
     const columnName = columnInfo.displayName;
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByText(columnName));
 
@@ -121,7 +103,7 @@ describe("BreakoutStep", () => {
 
   it("shouldn't show already used columns when adding a new breakout", () => {
     const { query, columnInfo } = createQueryWithBreakout();
-    setup(createMockNotebookStep({ topLevelQuery: query }));
+    setup(createMockNotebookStep({ query }));
 
     userEvent.click(getIcon("add"));
 
@@ -143,7 +125,7 @@ describe("BreakoutStep", () => {
   it("should change a breakout column", () => {
     const { query, columnInfo } = createQueryWithBreakout();
     const { getRecentBreakoutClause } = setup(
-      createMockNotebookStep({ topLevelQuery: query }),
+      createMockNotebookStep({ query }),
     );
 
     userEvent.click(screen.getByText(columnInfo.displayName));
@@ -155,9 +137,7 @@ describe("BreakoutStep", () => {
 
   it("should remove a breakout", () => {
     const { query } = createQueryWithBreakout();
-    const { getNextQuery } = setup(
-      createMockNotebookStep({ topLevelQuery: query }),
-    );
+    const { getNextQuery } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(getIcon("close"));
 
@@ -194,7 +174,7 @@ describe("BreakoutStep", () => {
 
     it("should highlight selected binning strategy", async () => {
       const { query } = createQueryWithBinning();
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Tax: 10 bins"));
       const option = screen.getByRole("option", { name: "Tax" });
@@ -207,9 +187,7 @@ describe("BreakoutStep", () => {
 
     it("shouldn't update a query when clicking a selected binned column", async () => {
       const { query } = createQueryWithBinning();
-      const { updateQuery } = setup(
-        createMockNotebookStep({ topLevelQuery: query }),
-      );
+      const { updateQuery } = setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Tax: 10 bins"));
       userEvent.click(screen.getByText("Tax"));
@@ -217,9 +195,9 @@ describe("BreakoutStep", () => {
       expect(updateQuery).not.toHaveBeenCalled();
     });
 
-    it("should highlight the 'Do not bin' option when a column is not binned", async () => {
+    it("should highlight the `Don't bin` option when a column is not binned", async () => {
       const { query, columnInfo } = createQueryWithBinning("Don't bin");
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText(columnInfo.displayName));
       const option = screen.getByRole("option", {
@@ -260,8 +238,8 @@ describe("BreakoutStep", () => {
     });
 
     it("should highlight selected temporal bucket", async () => {
-      const { query } = createQueryWithTemporalBreakout();
-      setup(createMockNotebookStep({ topLevelQuery: query }));
+      const { query } = createQueryWithTemporalBreakout("Quarter");
+      setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
       const option = screen.getByRole("option", { name: "Created At" });
@@ -272,44 +250,36 @@ describe("BreakoutStep", () => {
       ).toHaveAttribute("aria-selected", "true");
     });
 
+    it("should handle `Don't bin` option for temporal bucket (metabase#19684)", async () => {
+      const { query } = createQueryWithTemporalBreakout("Don't bin");
+      setup(createMockNotebookStep({ query }));
+
+      userEvent.click(screen.getByText("Created At"));
+      const option = screen.getByRole("option", {
+        name: "Created At",
+      });
+
+      expect(within(option).getByText("Unbinned")).toBeInTheDocument();
+
+      userEvent.click(within(option).getByLabelText("Temporal bucket"));
+
+      // click on More... item as Don't bin is hidden
+      // userEvent.click closes popup
+      fireEvent.click(await screen.findByText("More…"));
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Don't bin" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
     it("shouldn't update a query when clicking a selected column with temporal bucketing", async () => {
-      const { query } = createQueryWithTemporalBreakout();
-      const { updateQuery } = setup(
-        createMockNotebookStep({ topLevelQuery: query }),
-      );
+      const { query } = createQueryWithTemporalBreakout("Quarter");
+      const { updateQuery } = setup(createMockNotebookStep({ query }));
 
       userEvent.click(screen.getByText("Created At: Quarter"));
       userEvent.click(screen.getByText("Created At"));
 
       expect(updateQuery).not.toHaveBeenCalled();
-    });
-
-    it("should support binning for nested numeric fields (metabase#13764)", () => {
-      const { query: queryWithBreakout, initialQuery } =
-        createQueryWithBreakout();
-      const query = applyAggregation(queryWithBreakout, "avg");
-
-      setup(
-        createMockNotebookStep({
-          topLevelQuery: Lib.appendStage(query),
-          stageIndex: 1,
-          itemIndex: null,
-          type: "summarize",
-          previous: createMockNotebookStep({
-            topLevelQuery: initialQuery,
-            stageIndex: 0,
-          }),
-        }),
-      );
-
-      userEvent.click(screen.getByText("Pick a column to group by"));
-
-      const option = screen.getByLabelText("Average of Total");
-      expect(option).toBeInTheDocument();
-
-      // TODO [13764]: Enable this test after resolving the issue in MBQLv2
-      // userEvent.hover(option);
-      // expect(within(option).getByText("Auto bin")).toBeInTheDocument();
     });
   });
 });

@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
+   [metabase.embed.settings :as embed.settings]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings :as public-settings]
    [metabase.server.request.util :as request.u]
@@ -119,8 +120,8 @@
 
 (defn- embedding-app-origin
   []
-  (when (and (public-settings/enable-embedding) (public-settings/embedding-app-origin))
-    (public-settings/embedding-app-origin)))
+  (when (and (embed.settings/enable-embedding) (embed.settings/embedding-app-origin))
+    (embed.settings/embedding-app-origin)))
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
@@ -133,7 +134,8 @@
     (str "Base-64 encoded public key for this site''s SSL certificate. "
          "Specify this to enable HTTP Public Key Pinning. "
          "See {0} for more information.")
-    "http://mzl.la/1EnfqBf"))
+    "http://mzl.la/1EnfqBf")
+  :audit :getter)
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn- first-embedding-app-origin

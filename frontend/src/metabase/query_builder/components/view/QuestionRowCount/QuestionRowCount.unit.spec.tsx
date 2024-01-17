@@ -12,7 +12,7 @@ import {
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
@@ -46,12 +46,12 @@ type SetupOpts = {
 
 function patchQuestion(question: Question) {
   if (question.isStructured()) {
-    const query = question._getMLv2Query();
+    const query = question.query();
     const [sampleColumn] = Lib.orderableColumns(query, 0);
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
     return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
   } else {
-    const query = question.query() as NativeQuery;
+    const query = question.legacyQuery() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
   }
 }

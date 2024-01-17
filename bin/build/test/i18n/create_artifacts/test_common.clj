@@ -1,6 +1,6 @@
 (ns i18n.create-artifacts.test-common)
 
-(def singular-message-frontend
+(def ^:private singular-message-frontend
   {:id                "No table description yet"
    :id-plural         nil
    :str               "No hay una descripción de la tabla"
@@ -10,7 +10,7 @@
    :source-references ["frontend/src/metabase/admin/datamodel/components/database/MetadataTable.jsx:136"]
    :comment           nil})
 
-(def singular-message-backend
+(def ^:private singular-message-backend
   {:id                "No table description yet"
    :id-plural         nil
    :str               "No hay una descripción de la tabla"
@@ -20,7 +20,7 @@
    :source-references ["metabase/models/table.clj"]
    :comment           nil})
 
-(def singular-template-message-frontend
+(def ^:private singular-template-message-frontend
   {:id                "Count of {0}"
    :id-plural         nil
    :str               "Número de {0}"
@@ -30,7 +30,7 @@
    :source-references ["frontend/src/metabase/reference/databases/TableDetail.jsx:38"]
    :comment           nil})
 
-(def singular-template-message-backend
+(def ^:private singular-template-message-backend
   {:id                "Count of {0}"
    :id-plural         nil
    :str               "Número de {0}"
@@ -40,7 +40,7 @@
    :source-references ["src/metabase/models/table.clj:80"]
    :comment           nil})
 
-(def plural-message-frontend
+(def ^:private plural-message-frontend
   {:id                "{0} Queryable Table"
    :id-plural         "{0} Queryable Tables"
    :str               nil
@@ -50,7 +50,7 @@
    :source-references ["frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:77"]
    :comment           nil})
 
-(def plural-message-backend
+(def ^:private plural-message-backend
   {:id               "{0} table"
    :id-plural        "{0} tables"
    :str               nil
@@ -60,7 +60,7 @@
    :source-references ["src/metabase/automagic_dashboards/core.clj"]
    :comment           nil})
 
-(def plural-message-frontend-with-empty
+(def ^:private plural-message-frontend-with-empty
   {:id                "{0} metric"
    :id-plural         "{0} metrics"
    :str               nil
@@ -70,7 +70,7 @@
    :source-references ["frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:20"]
    :comment           nil})
 
-(def plural-message-backend-with-empty
+(def ^:private plural-message-backend-with-empty
   {:id                "{0} metric"
    :id-plural         "{0} metrics"
    :str               nil
@@ -80,7 +80,7 @@
    :source-references ["src/metabase/automagic_dashboards/core.clj"]
    :comment           nil})
 
-(def messages
+(def ^:private messages
   [singular-message-frontend
    singular-message-backend
    singular-template-message-frontend
@@ -91,6 +91,7 @@
    plural-message-backend-with-empty])
 
 (def po-contents
+  "Contents of a `.po` file."
   {:headers  {"MIME-Version"              "1.0",
               "Content-Type"              "text/plain; charset=UTF-8",
               "Content-Transfer-Encoding" "8bit",

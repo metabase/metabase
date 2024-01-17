@@ -11,14 +11,13 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :refer [Card]]
+   [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
@@ -47,19 +46,54 @@
 
 (declare root-collection)
 
-(defn- remove-other-users-personal-collections
+(defn- location-from-collection-id-clause
+  "Clause to restrict which collections are being selected based off collection-id. If collection-id is nil,
+   then restrict to the children and the grandchildren of the root collection. If collection-id is an an integer,
+   then restrict to that collection's parents and children."
+  [collection-id]
+  (if collection-id
+    [:and
+     [:like :location (str "%/" collection-id "/%")]
+     [:not [:like :location (str "%/" collection-id "/%/%/%")]]]
+    [:not [:like :location "/%/%/"]]))
+
+(defn- remove-other-users-personal-subcollections
   [user-id collections]
-  (let [personal-ids (into #{} (comp (filter :personal_owner_id)
-                                     (remove (comp #{user-id} :personal_owner_id))
-                                     (map :id))
-                           collections)
-        prefixes     (into #{} (map (fn [id] (format "/%d/" id))) personal-ids)
-        personal?    (fn [{^String location :location id :id}]
-                       (or (personal-ids id)
-                           (prefixes (re-find #"^/\d+/" location))))]
-    (if (seq prefixes)
-      (remove personal? collections)
-      collections)))
+  (let [personal-ids         (set (t2/select-fn-set :id :model/Collection
+                                                    {:where
+                                                     [:and [:!= :personal_owner_id nil] [:!= :personal_owner_id user-id]]}))
+        personal-descendant? (fn [collection]
+                               (let [first-parent-collection-id (-> collection
+                                                                    :location
+                                                                    collection/location-path->ids
+                                                                    first)]
+                                 (personal-ids first-parent-collection-id)))]
+    (remove personal-descendant? collections)))
+
+(defn- select-collections
+  "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
+  the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
+  is not necessary.
+
+  For archived, we can either pass in include both (when archived is nil), include only archived is true, or archived is false."
+  [archived exclude-other-user-collections namespace shallow collection-id]
+  (cond->>
+   (t2/select :model/Collection
+              {:where [:and
+                       (when (some? archived)
+                         [:= :archived archived])
+                       (when shallow
+                         (location-from-collection-id-clause collection-id))
+                       (when exclude-other-user-collections
+                         [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
+                       (perms/audit-namespace-clause :namespace namespace)
+                       (collection/visible-collection-ids->honeysql-filter-clause
+                        :id
+                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+               ;; Order NULL collection types first so that audit collections are last
+               :order-by [[[[:case [:= :type nil] 0 :else 1]] :asc]
+                          [:%lower.name :asc]]})
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -74,18 +108,8 @@
   {archived                       [:maybe ms/BooleanValue]
    exclude-other-user-collections [:maybe ms/BooleanValue]
    namespace                      [:maybe ms/NonBlankString]}
-  (as-> (t2/select Collection
-                   {:where    [:and
-                               [:= :archived archived]
-                               [:= :namespace namespace]
-                               (collection/visible-collection-ids->honeysql-filter-clause
-                                :id
-                                (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                    :order-by [[:%lower.name :asc]]}) collections
-    ;; Remove other users' personal collections
-    (if exclude-other-user-collections
-      (remove-other-users-personal-collections api/*current-user-id* collections)
-      collections)
+  (as->
+   (select-collections archived exclude-other-user-collections namespace false nil) collections
     ;; include Root Collection at beginning or results if archived isn't `true`
     (if archived
       collections
@@ -93,13 +117,33 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write)
+    (t2/hydrate collections :can_write :is_personal)
     ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (for [collection collections]
       (-> collection
           (dissoc ::collection.root/is-root?)
           collection/personal-collection-with-ui-details))))
+
+(defn- shallow-tree-from-collection-id
+  "Returns only a shallow Collection in the provided collection-id, e.g.
+
+  location: /1/
+  ```
+  [{:name     \"A\"
+    :location \"/1/\"
+    :children 1}
+    ...
+    {:name     \"H\"
+     :location \"/1/\"}]
+
+  If the collection-id is nil, then we default to the root collection.
+  ```"
+  [colls]
+  (->> colls
+       (map collection/personal-collection-with-ui-details)
+       (collection/collections->tree nil)
+       (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
@@ -122,33 +166,25 @@
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
-  [exclude-archived exclude-other-user-collections namespace]
+  [exclude-archived exclude-other-user-collections namespace shallow collection-id]
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
-   namespace                      [:maybe ms/NonBlankString]}
-  (let [exclude-archived? exclude-archived
-        exclude-other-user-collections? exclude-other-user-collections
-        coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
-                                (update acc (if dataset :dataset :card) conj collection_id))
-                              {:dataset #{}
-                               :card    #{}}
-                              (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
-                                                          :from            [:report_card]
-                                                          :where           [:= :archived false]}))
-        colls (cond->>
-                (t2/select Collection
-                  {:where [:and
-                           (when exclude-archived?
-                             [:= :archived false])
-                           [:= :namespace namespace]
-                           (collection/visible-collection-ids->honeysql-filter-clause
-                            :id
-                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
-                exclude-other-user-collections?
-                (remove-other-users-personal-collections api/*current-user-id*))
-        colls-with-details (map collection/personal-collection-with-ui-details colls)]
-    (collection/collections->tree coll-type-ids colls-with-details)))
-
+   namespace                      [:maybe ms/NonBlankString]
+   shallow                        [:maybe :boolean]
+   collection-id                  [:maybe ms/PositiveInt]}
+  (let [archived    (if exclude-archived false nil)
+        collections (select-collections archived exclude-other-user-collections namespace shallow collection-id)]
+    (if shallow
+      (shallow-tree-from-collection-id collections)
+      (let [collection-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
+                                          (update acc (if dataset :dataset :card) conj collection_id))
+                                        {:dataset #{}
+                                         :card    #{}}
+                                        (mdb.query/reducible-query {:select-distinct [:collection_id :dataset]
+                                                                    :from            [:report_card]
+                                                                    :where           [:= :archived false]}))
+            collections-with-details (map collection/personal-collection-with-ui-details collections)]
+        (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
@@ -330,17 +366,10 @@
                     dataset?
                     (conj :c.database_id))
        :from      [[:report_card :c]]
-       ;; todo: should there be a flag, or a realized view?
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Card")]]} :r]
-                   [:= :r.model_id :c.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :c.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -419,16 +448,10 @@
                    [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
        :from      [[:report_dashboard :d]]
-       :left-join [[{:select    [:r1.*]
-                     :from      [[:revision :r1]]
-                     :left-join [[:revision :r2] [:and
-                                                  [:= :r1.model_id :r2.model_id]
-                                                  [:= :r1.model :r2.model]
-                                                  [:< :r1.id :r2.id]]]
-                     :where     [:and
-                                 [:= :r2.id nil]
-                                 [:= :r1.model (h2x/literal "Dashboard")]]} :r]
-                   [:= :r.model_id :d.id]
+       :left-join [[:revision :r] [:and
+                                   [:= :r.model_id :d.id]
+                                   [:= :r.most_recent true]
+                                   [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
                    [:= :collection_id (:id collection)]
@@ -460,7 +483,7 @@
   (-> (assoc (collection/effective-children-query
               collection
               [:= :archived archived?]
-              [:= :namespace (u/qualified-name collection-namespace)]
+              (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
               (snippets-collection-filter-clause))
              ;; We get from the effective-children-query a normal set of columns selected:
              ;; want to make it fit the others to make UNION ALL work
@@ -697,7 +720,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
-      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
+      (t2/hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write :is_personal)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -885,15 +908,15 @@
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
        (collection/perms-for-archiving collection-before-update)))))
 
-(defn- maybe-send-archived-notificaitons!
+(defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer
   which will not cause the archive notification code to fire. This will delete the relevant alerts and notify the
   users just as if they had be archived individually via the card API."
-  [collection-before-update collection-updates]
+  [& {:keys [collection-before-update collection-updates actor]}]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
                             {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
-      (api.card/delete-alert-and-notify-archived! alerts))))
+      (card/delete-alert-and-notify-archived! {:alerts alerts :actor actor}))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -925,7 +948,9 @@
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications
-    (maybe-send-archived-notificaitons! collection-before-update collection-updates))
+    (maybe-send-archived-notifications! {:collection-before-update collection-before-update
+                                         :collection-updates       collection-updates
+                                         :actor                    @api/*current-user*}))
   ;; finally, return the updated object
   (collection-detail (t2/select-one Collection :id id)))
 

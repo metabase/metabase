@@ -1,4 +1,4 @@
-import reducer from "./reducers";
+import { dashboardReducers as reducer } from "./reducers";
 import {
   INITIALIZE,
   SET_EDITING_DASHBOARD,
@@ -8,6 +8,7 @@ import {
   SET_DASHBOARD_ATTRIBUTES,
   FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
+  FETCH_CARD_DATA_PENDING,
 } from "./actions";
 
 describe("dashboard reducers", () => {
@@ -345,6 +346,27 @@ describe("dashboard reducers", () => {
         },
         dashcardData: { 3: { 1: {} } },
       });
+    });
+
+    it("should not have duplicated elements in loadingIds on pending (metabase#33692, metabase#34767)", () => {
+      const result = reducer(
+        {
+          ...initState,
+          loadingDashCards: {
+            loadingIds: [3],
+            loadingStatus: "running",
+            startTime: 100,
+          },
+        },
+        {
+          type: FETCH_CARD_DATA_PENDING,
+          payload: {
+            dashcard_id: 3,
+            card_id: 1,
+          },
+        },
+      );
+      expect(result.loadingDashCards.loadingIds).toEqual([3]);
     });
   });
 });

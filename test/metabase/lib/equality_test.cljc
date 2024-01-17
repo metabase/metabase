@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -254,6 +255,21 @@
              (lib.equality/find-matching-column a-ref cols)
              (lib.equality/find-matching-column query -1 a-ref cols))))))
 
+(deftest ^:parallel find-matching-column-from-column-test
+  (let [query (-> lib.tu/venues-query
+                  (lib/breakout (meta/field-metadata :venues :id)))
+        filterable-cols (lib/filterable-columns query)
+        matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-position (lib/breakoutable-columns query)) filterable-cols)
+        matched-from-ref (lib.equality/find-matching-column query -1 (first (lib/breakouts query)) filterable-cols)]
+    (is (=?
+          {:id (meta/id :venues :id)}
+          matched-from-ref))
+    (is (=?
+          {:id (meta/id :venues :id)}
+          matched-from-col))
+    (is (= matched-from-ref
+           matched-from-col))))
+
 (deftest ^:parallel find-matching-column-by-name-test
   (testing "find-matching-column should find columns based on matching name"
     (let [query    (lib/append-stage lib.tu/query-with-join)
@@ -469,6 +485,14 @@
         [#js ["field" (meta/id :venues :name) nil]
          #js ["field" (meta/id :venues :name) #js {}]])))
 
+(deftest ^:parallel find-column-for-legacy-ref-match-by-name-test
+  (testing "Make sure fallback matching by name works correctly"
+    (is (=? {:name "NAME"}
+            (lib/find-column-for-legacy-ref
+             lib.tu/venues-query
+             [:field (meta/id :venues :name) nil]
+             [(dissoc (meta/field-metadata :venues :name) :id :table-id)])))))
+
 (deftest ^:parallel find-column-for-legacy-ref-expression-test
   (are [legacy-ref] (=? {:name "expr", :lib/source :source/expressions}
                         (lib/find-column-for-legacy-ref
@@ -500,3 +524,42 @@
       #?@(:cljs
           [#js ["aggregation" 0]
            #js ["aggregation" 0 #js {}]]))))
+
+(deftest ^:parallel implicitly-joinable-columns-test
+  (testing "implicit join columns in eg. a breakout should be matched"
+    (let [base             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                               (lib/aggregate (lib/count))
+                               (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year)))
+          vis              (lib/visible-columns base)
+          base-user-source (m/find-first #(= (:id %) (meta/id :people :source)) vis)
+          base-category    (m/find-first #(= (:id %) (meta/id :products :category)) vis)
+          query            (-> base
+                               (lib/breakout base-user-source)
+                               (lib/breakout base-category))
+          returned         (map #(assoc %1 :source-alias %2)
+                                (lib/returned-columns query)
+                                [nil "PEOPLE__via__USER_ID" "PRODUCTS__via__PRODUCT_ID" nil])]
+      (is (= :source/implicitly-joinable (:lib/source base-user-source)))
+      (is (= :source/implicitly-joinable (:lib/source base-category)))
+      (is (= 4 (count returned)))
+      (is (= (map :name returned)
+             (for [col returned]
+               (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned))))))))
+
+(deftest ^:parallel field-refs-to-custom-expressions-test
+  (testing "custom columns that wrap a Field have `:id` - prefer matching `[:field {} 7]` to the regular field (#35839)"
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                         (lib/expression "CA" (meta/field-metadata :orders :created-at)))
+          columns    (lib/visible-columns query)
+          created-at (m/find-first #(= (:name %) "CREATED_AT") columns)
+          ca-expr    (m/find-first #(= (:name %) "CA") columns)]
+      (testing "different columns"
+        (is (not= created-at ca-expr))
+        (testing "but both have the ID"
+          (is (= (:id created-at) (:id ca-expr)))))
+
+      (testing "both refs should match correctly"
+        (is (= created-at
+               (lib.equality/find-matching-column (lib/ref created-at) columns)))
+        (is (= ca-expr
+               (lib.equality/find-matching-column (lib/ref ca-expr)    columns)))))))

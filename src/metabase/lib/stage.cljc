@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -16,7 +15,6 @@
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -155,7 +153,11 @@
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
            ;; of problem at this point in time.
-           (dissoc ::lib.field/temporal-unit))))))
+           ;;
+           ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
+           ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
+           ;; to generate `:expression` or `:field` refs.
+           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
@@ -245,30 +247,6 @@
    (when include-joined?
      (lib.join/all-joins-visible-columns query stage-number unique-name-fn))))
 
-(defn- ref-to? [[tag _opts pointer :as clause] column]
-  (case tag
-    :field (if (or (number? pointer) (string? pointer))
-             (= pointer (:id column))
-             (throw (ex-info "unknown type of :field ref in lib.stage/ref-to?"
-                             {:clause clause
-                              :column column})))
-    :expression (= pointer (:name column))
-    (throw (ex-info "unknown clause in lib.stage/ref-to?"
-                    {:clause clause
-                     :column column}))))
-
-(defn- mark-selected-breakouts [query stage-number columns]
-  (if-let [breakouts (:breakout (lib.util/query-stage query stage-number))]
-    (for [column columns]
-      (if-let [match (m/find-first #(ref-to? % column) breakouts)]
-        (let [binning        (lib.binning/binning match)
-              {:keys [unit]} (lib.temporal-bucket/temporal-bucket match)]
-          (cond-> column
-            binning (lib.binning/with-binning binning)
-            unit    (lib.temporal-bucket/with-temporal-bucket unit)))
-        column))
-    columns))
-
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
@@ -280,7 +258,7 @@
                       (or (not (:source-card (lib.util/query-stage query stage-number)))
                           (:include-implicitly-joinable-for-source-card? options)))
              (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
-         (mark-selected-breakouts query stage-number))))
+         vec)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
@@ -356,8 +334,15 @@
   (update query :stages conj {:lib/type :mbql.stage/mbql}))
 
 (mu/defn drop-stage :- ::lib.schema/query
-  "Drops the final stage in the pipeline"
+  "Drops the final stage in the pipeline, will no-op if it is the only stage"
   [query]
-  (when (= 1 (count (:stages query)))
-    (throw (ex-info (i18n/tru "Cannot drop the only stage") {:stages (:stages query)})))
-  (update query :stages (comp vec butlast)))
+  (if (= 1 (count (:stages query)))
+    query
+    (update query :stages pop)))
+
+(mu/defn drop-stage-if-empty :- ::lib.schema/query
+  "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
+  [query :- ::lib.schema/query]
+  (if (empty? (dissoc (lib.util/query-stage query -1) :lib/type))
+    (drop-stage query)
+    query))

@@ -6,8 +6,6 @@ title: Basic actions
 
 Basic actions are "implicit" [actions](./introduction.md) that do things that people typically want to do when interacting with a database: Create, Update, Delete. Basic actions auto-track the schema of the source table backing the model. By auto-track the schema, we mean that Metabase will create action forms for people to fill out that include all of the fields from the primary source table that underlies that model.
 
-Basic actions are only available for models that "wrap" a single table in a database (so, no joins or custom columns in the model definition).
-
 If you only want to give people the option to update a subset of columns, or update columns in multiple tables, you can write a [custom action](./custom.md).
 
 ## Creating basic actions
@@ -18,7 +16,13 @@ Once actions are enabled, you can create basic actions on a new or existing [mod
 2. On the model detail page, click on the **Actions** tab.
 3. Click on the **...** next to the **New Action** and select **Create basic actions**.
 
-> If your model includes a join or a custom column, or otherwise doesn't map to a single raw table in your database, Metabase cannot create these basic actions.
+### Basic action limitations
+
+Basic actions are only available for "basic" models:
+
+- Models built using the graphical query builder. Basic actions are unavailable for models created with native queries (SQL).
+- The model must "wrap" a single raw table in a database. The query should simply select that table in the data step of the notebook editor, and nothing more: no joins, no custom columns, no filters or summarization, no sorting.
+- The underlying table can only have one primary (entity) key.
 
 ## Basic action types
 
@@ -55,6 +59,12 @@ See [Actions in dashboards](../dashboards/actions.md).
 ## Archiving basic actions
 
 Because basic actions are made of magic, you cannot archive them. You can just toggle them on or off. From the model detail page, next to the **New action** button, click on the **...** menu and click **Disable basic actions**.
+
+## Basic actions from object detail view
+
+If you have basic actions enabled for a model, you can click on an individual record to view its object detail. From that object detail model, you can click on the ellipses (**...**) and select update or delete to modify that specific record.
+
+![Update record from object detail view](./images/update-record.png)
 
 ## Further reading
 

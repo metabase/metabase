@@ -203,7 +203,7 @@
         (format "at %s -> %s" (str/join "/" v) k))
       (::unresolved-names model))))))
 
-(defmulti load
+(defmulti load!
   "Load an entity of type `model` stored at `path` in the context `context`.
 
    Passing in parent entities as context instead of decoding them from the path each time,
@@ -212,7 +212,7 @@
   (fn [path _context]
     (terminal-dir path)))
 
-(defn- load-dimensions
+(defn- load-dimensions!
   [path context]
   (maybe-upsert-many! context Dimension
     (for [dimension (yaml/from-file (str path "/dimensions.yaml"))]
@@ -220,7 +220,7 @@
           (update :human_readable_field_id (comp :field fully-qualified-name->context))
           (update :field_id (comp :field fully-qualified-name->context))))))
 
-(defmethod load "databases"
+(defmethod load! "databases"
   [path context]
   (doseq [path (list-dirs path)]
     ;; If we failed to load the DB no use in trying to load its tables
@@ -229,10 +229,10 @@
               :let [context (merge context {:database db
                                             :schema   (when (not= inner-path path)
                                                         (terminal-dir path))})]]
-        (load (str inner-path "/tables") context)
-        (load-dimensions inner-path context)))))
+        (load! (str inner-path "/tables") context)
+        (load-dimensions! inner-path context)))))
 
-(defmethod load "tables"
+(defmethod load! "tables"
   [path context]
   (let [paths     (list-dirs path)
         table-ids (maybe-upsert-many! context Table
@@ -242,19 +242,19 @@
     (doseq [[path table-id] (map vector paths table-ids)
             :when table-id]
       (let [context (assoc context :table table-id)]
-        (load (str path "/fields") context)))
+        (load! (str path "/fields") context)))
     ;; ... then everything else so we don't have issues with cross-table referencess
     (doseq [[path table-id] (map vector paths table-ids)
             :when table-id]
       (let [context (assoc context :table table-id)]
-        (load (str path "/fks") context)
-        (load (str path "/metrics") context)
-        (load (str path "/segments") context)))))
+        (load! (str path "/fks") context)
+        (load! (str path "/metrics") context)
+        (load! (str path "/segments") context)))))
 
 (def ^:private fully-qualified-name->card-id
   (comp :card fully-qualified-name->context))
 
-(defn- load-fields
+(defn- load-fields!
   [path context]
   (let [fields       (slurp-dir path)
         field-values (map :values fields)
@@ -271,15 +271,15 @@
             :when field-id]
         (assoc field-value :field_id field-id)))))
 
-(defmethod load "fields"
+(defmethod load! "fields"
   [path context]
-  (load-fields path context))
+  (load-fields! path context))
 
-(defmethod load "fks"
+(defmethod load! "fks"
   [path context]
-  (load-fields path context))
+  (load-fields! path context))
 
-(defmethod load "metrics"
+(defmethod load! "metrics"
   [path context]
   (maybe-upsert-many! context Metric
     (for [metric (slurp-dir path)]
@@ -289,7 +289,7 @@
           (assoc-in [:definition :source-table] (:table context))
           (update :definition mbql-fully-qualified-names->ids)))))
 
-(defmethod load "segments"
+(defmethod load! "segments"
   [path context]
   (maybe-upsert-many! context Segment
     (for [metric (slurp-dir path)]
@@ -452,7 +452,7 @@
     ;; for a deprecated feature
     (m/update-existing-in p [:values_source_config :card_id] fully-qualified-name->card-id)))
 
-(defn load-dashboards
+(defn load-dashboards!
   "Loads `dashboards` (which is a sequence of maps parsed from a YAML dump of dashboards) in a given `context`."
   {:added "0.40.0"}
   [context dashboards]
@@ -532,14 +532,14 @@
              "Retrying dashboards for collection %s: %s"
              (or (:collection context) "root")
              (str/join ", " (map :name revisit-dashboards)))
-            (load-dashboards (assoc context :mode :update) revisit-dashboards)))))))
+            (load-dashboards! (assoc context :mode :update) revisit-dashboards)))))))
 
-(defmethod load "dashboards"
+(defmethod load! "dashboards"
   [path context]
   (binding [names/*suppress-log-name-lookup-exception* true]
-    (load-dashboards context (slurp-dir path))))
+    (load-dashboards! context (slurp-dir path))))
 
-(defn- load-pulses [pulses context]
+(defn- load-pulses! [pulses context]
   (let [cards       (map :cards pulses)
         channels    (map :channels pulses)
         pulse-ids   (maybe-upsert-many! context Pulse
@@ -579,12 +579,12 @@
         (fn []
           (log/infof "Reloading pulses from collection %d" (:collection context))
           (let [pulse-indexes (map ::pulse-index revisit)]
-            (load-pulses (map (partial nth pulses) pulse-indexes) (assoc context :mode :update))))))))
+            (load-pulses! (map (partial nth pulses) pulse-indexes) (assoc context :mode :update))))))))
 
-(defmethod load "pulses"
+(defmethod load! "pulses"
   [path context]
   (binding [names/*suppress-log-name-lookup-exception* true]
-    (load-pulses (slurp-dir path) context)))
+    (load-pulses! (slurp-dir path) context)))
 
 (defn- resolve-source-query [query]
   (if (:source-query query)
@@ -654,7 +654,7 @@
                              :database (:database_id card)})
       (dissoc ::unresolved-names)))
 
-(defn load-cards
+(defn load-cards!
   "Loads cards in a given `context`, from a given sequence of `paths` (strings).  If specified, then `only-cards` (maps
   having the structure of cards loaded from YAML dumps) will be used instead of loading data from `paths` (to serve as
   a retry mechanism)."
@@ -690,12 +690,12 @@
         (fn []
           (log/infof "Attempting to reload cards in collection %d" (:collection context))
           (let [revisit-indexes (::revisit-index grouped-cards)]
-            (load-cards (assoc context :mode :update) paths (mapv (partial nth cards) revisit-indexes))))))))
+            (load-cards! (assoc context :mode :update) paths (mapv (partial nth cards) revisit-indexes))))))))
 
-(defmethod load "cards"
+(defmethod load! "cards"
   [path context]
   (binding [names/*suppress-log-name-lookup-exception* true]
-    (load-cards context (list-dirs path) nil)))
+    (load-cards! context (list-dirs path) nil)))
 
 (defn- pre-insert-user
   "A function called on each User instance before it is inserted (via upsert)."
@@ -725,7 +725,7 @@
             (log/infof "Password reset email generated for user ID %d (%s)" user-id email)))
         user-id)))
 
-(defmethod load "users"
+(defmethod load! "users"
   [path context]
   ;; Currently we only serialize the new owner user, so it's fine to ignore mode setting
   ;; add :post-insert-fn post-insert-user back to start sending password reset emails
@@ -747,7 +747,7 @@
           (make-reload-fn (for [reload-fn new-fns]
                             (reload-fn))))))))
 
-(defn- load-collections
+(defn- load-collections!
   [path context]
   (let [subdirs      (list-dirs path)
         by-ns        (group-by #(let [[_ coll-ns] (re-matches #".*/:([^:/]+)" %)]
@@ -767,32 +767,32 @@
                                                         (maybe-upsert-many! context Collection)
                                                         first))]
                          (log/infof "Processing collection at path %s" path)
-                         [(load (str path "/collections") context)
-                          (load (str path "/cards") context)
-                          (load (str path "/pulses") context)
-                          (load (str path "/dashboards") context)
-                          (load (str path "/snippets") context)]))
+                         [(load! (str path "/collections") context)
+                          (load! (str path "/cards") context)
+                          (load! (str path "/pulses") context)
+                          (load! (str path "/dashboards") context)
+                          (load! (str path "/snippets") context)]))
         load-ns-fns  (for [[coll-ns [coll-ns-path]] ns-paths]
                        (do (log/infof "Loading %s namespace for collection at path %s" coll-ns coll-ns-path)
-                           (load-collections coll-ns-path (assoc context :collection-namespace coll-ns))))]
+                           (load-collections! coll-ns-path (assoc context :collection-namespace coll-ns))))]
     (make-reload-fn (concat (apply concat results) ; these are each sequences, so need to flatten those first
                             load-ns-fns))))
 
-(defmethod load "collections"
+(defmethod load! "collections"
   [path context]
-  (load-collections path context))
+  (load-collections! path context))
 
 (defn- prepare-snippet [context snippet]
   (assoc snippet :creator_id    (default-user-id)
                  :collection_id (:collection context)))
 
-(defmethod load "snippets"
+(defmethod load! "snippets"
   [path context]
   (let [paths       (list-dirs path)
         snippets    (map (partial prepare-snippet context) (slurp-many paths))]
     (maybe-upsert-many! context NativeQuerySnippet snippets)))
 
-(defn load-settings
+(defn load-settings!
   "Load a dump of settings."
   [path context]
   (doseq [[k v] (yaml/from-file (str path "/settings.yaml"))

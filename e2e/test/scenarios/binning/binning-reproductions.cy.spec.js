@@ -162,9 +162,7 @@ describe("binning related reproductions", () => {
     getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
-    popover()
-      .findByText(/Question \d/)
-      .click();
+    popover().findByText("18646").click();
 
     popover().within(() => {
       cy.findByRole("option", { name: "CREATED_AT" })
@@ -174,7 +172,7 @@ describe("binning related reproductions", () => {
     });
 
     getNotebookStep("summarize").findByText(
-      "Question 5 - Product → Created At: Month",
+      "18646 - Product → Created At: Month",
     );
 
     visualize();

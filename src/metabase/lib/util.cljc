@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -41,10 +42,10 @@
   "Returns true if this is a clause."
   [clause]
   (and (vector? clause)
-       (> (count clause) 1)
        (keyword? (first clause))
-       (map? (second clause))
-       (contains? (second clause) :lib/uuid)))
+       (let [opts (get clause 1)]
+         (and (map? opts)
+              (contains? opts :lib/uuid)))))
 
 (defn clause-of-type?
   "Returns true if this is a clause."
@@ -77,18 +78,38 @@
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
   [clause]
   (when (clause? clause)
-    (get-in clause [1 :lib/expression-name])))
+    (:lib/expression-name (lib.options/options clause))))
 
-(defn named-expression-clause
+(defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (assoc-in
-    (if (clause? clause)
-      clause
-      [:value {:lib/uuid (str (random-uuid))
-               :effective-type (lib.schema.expression/type-of clause)}
-       clause])
-    [1 :lib/expression-name] a-name))
+  (-> (if (clause? clause)
+        clause
+        [:value {:lib/uuid (str (random-uuid))
+                 :effective-type (lib.schema.expression/type-of clause)}
+         clause])
+      (lib.options/update-options (fn [opts]
+                                    (-> opts
+                                        (assoc :lib/expression-name a-name)
+                                        (dissoc :name :display-name))))))
+
+(defmulti custom-name-method
+  "Implementation for [[custom-name]]."
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defn custom-name
+  "Return the user supplied name of `x`, if any."
+  [x]
+  (custom-name-method x))
+
+(defmethod custom-name-method :default
+  [x]
+  ;; We assume that clauses only get a :display-name option if the user explicitly specifies it.
+  ;; Expressions from the :expressions clause of pMBQL queries have custom names by default.
+  (when (clause? x)
+    ((some-fn :display-name :lib/expression-name) (lib.options/options x))))
 
 (defn replace-clause
   "Replace the `target-clause` in `stage` `location` with `new-clause`.
@@ -97,17 +118,18 @@
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
   (let [new-clause (if (= :expressions (first location))
-                     (named-expression-clause new-clause (expression-name target-clause))
+                     (top-level-expression-clause new-clause (or (custom-name new-clause)
+                                                             (expression-name target-clause)))
                      new-clause)]
     (m/update-existing-in
-      stage
-      location
-      (fn [clause-or-clauses]
-        (->> (for [clause clause-or-clauses]
-               (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
-                 new-clause
-                 clause))
-             vec)))))
+     stage
+     location
+     (fn [clause-or-clauses]
+       (->> (for [clause clause-or-clauses]
+              (if (= (lib.options/uuid clause) (lib.options/uuid target-clause))
+                new-clause
+                clause))
+            vec)))))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
@@ -115,7 +137,7 @@
    If `location` contains no clause with `target-clause` no removal happens.
    If the the location is empty, dissoc it from stage.
    For the [:fields] location if only expressions remain, dissoc from stage."
-  [stage location target-clause]
+  [stage location target-clause stage-number]
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (lib.options/uuid target-clause)
@@ -133,6 +155,7 @@
                         {:error ::cannot-remove-final-join-condition
                          :conditions (get-in stage location)
                          :join (get-in stage (pop location))
+                         :stage-number stage-number
                          :stage stage}))
 
         (= [:joins :fields] [first-loc last-loc])
@@ -279,16 +302,17 @@
   [query stage-number]
   (not (previous-stage-number query stage-number)))
 
-(defn next-stage-number
+(mu/defn next-stage-number :- [:maybe :int]
   "The index of the next stage, if there is one. `nil` if there is no next stage."
-  [{:keys [stages], :as _query} stage-number]
+  [{:keys [stages], :as _query} :- :map
+   stage-number                 :- :int]
   (let [stage-number (if (neg? stage-number)
                        (+ (count stages) stage-number)
                        stage-number)]
     (when (< (inc stage-number) (count stages))
       (inc stage-number))))
 
-(mu/defn query-stage :- ::lib.schema/stage
+(mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
   [query        :- LegacyOrPMBQLQuery

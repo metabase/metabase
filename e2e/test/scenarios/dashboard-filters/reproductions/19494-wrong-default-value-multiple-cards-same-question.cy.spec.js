@@ -5,6 +5,7 @@ import {
   saveDashboard,
   visitDashboard,
   updateDashboardCards,
+  undoToast,
 } from "e2e/support/helpers";
 
 import {
@@ -69,9 +70,11 @@ describe("issue 19494", () => {
 
     connectFilterToCard({ filterName: "Card 1 Filter", cardPosition: 0 });
     setDefaultFilter("Doohickey");
+    undoToast().findByText("Undo auto-connection").click();
 
     connectFilterToCard({ filterName: "Card 2 Filter", cardPosition: -1 });
     setDefaultFilter("Gizmo");
+    undoToast().findByText("Undo auto-connection").click();
 
     saveDashboard();
 

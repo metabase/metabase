@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import Tooltip from "metabase/core/components/Tooltip";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
@@ -9,7 +9,7 @@ import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils"
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
 import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
 
-import MappingEditor from "../MappingEditor";
+import { MappingEditor } from "../MappingEditor";
 
 interface AttributeMappingEditorProps {
   value: any;
@@ -56,8 +56,6 @@ const AttributeMappingEditor = ({
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     renderValueInput={({ value, onChange }) =>
       !shouldUseSavedQuestion && policy.table_id != null ? (
         <div style={{ minWidth: 200 }}>

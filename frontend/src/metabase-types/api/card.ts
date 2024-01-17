@@ -4,16 +4,23 @@ import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { UserInfo } from "./user";
+import type { Collection } from "./collection";
+import type { SmartScalarComparison } from "./visualization-settings";
 
-export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
+export interface Card<Q extends DatasetQuery = DatasetQuery>
+  extends UnsavedCard<Q> {
   id: CardId;
   name: string;
   description: string | null;
   dataset: boolean;
   public_uuid: string | null;
+
+  /* Indicates whether static embedding for this card has been published */
+  enable_embedding: boolean;
   can_write: boolean;
 
   database_id?: DatabaseId;
+  collection?: Collection | null;
   collection_id: number | null;
 
   result_metadata: Field[];
@@ -41,7 +48,7 @@ export interface PublicCard {
 
 export type CardDisplayType = string;
 
-export interface UnsavedCard<Q = DatasetQuery> {
+export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   display: CardDisplayType;
   dataset_query: Q;
   parameters?: Parameter[];
@@ -128,6 +135,12 @@ export type VisualizationSettings = {
 
   "table.column_formatting"?: ColumnFormattingSetting[];
   "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
+
+  // Scalar Settings
+  "scalar.comparisons"?: SmartScalarComparison[];
+  "scalar.field"?: string;
+  "scalar.switch_positive_negative"?: boolean;
+  "scalar.compact_primary_number"?: boolean;
 
   [key: string]: any;
 };

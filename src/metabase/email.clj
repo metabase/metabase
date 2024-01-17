@@ -7,6 +7,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.retry :as retry]
    [postal.core :as postal]
    [postal.support :refer [make-props]])
   (:import
@@ -23,11 +24,13 @@
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
   :default    "notifications@metabase.com"
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting bcc-enabled?
   (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
@@ -43,40 +46,46 @@
 
 (defsetting email-reply-to
   (deferred-tru "The email address you want the replies to go to, if different from the from address.")
-  :type :json
+  :type       :json
   :visibility :settings-manager
-  :setter (fn [new-value]
-           (if (validate-reply-to-addresses new-value)
-             (setting/set-value-of-type! :json :email-reply-to new-value)
-             (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+  :audit      :getter
+  :setter     (fn [new-value]
+               (if (validate-reply-to-addresses new-value)
+                 (setting/set-value-of-type! :json :email-reply-to new-value)
+                 (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-smtp-username
   (deferred-tru "SMTP username.")
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-smtp-password
   (deferred-tru "SMTP password.")
   :visibility :settings-manager
-  :sensitive? true)
+  :sensitive? true
+  :audit      :getter)
 
 (defsetting email-smtp-port
   (deferred-tru "The port your SMTP server uses for outgoing emails.")
   :type       :integer
-  :visibility :settings-manager)
+  :visibility :settings-manager
+  :audit      :getter)
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
   :type       :keyword
   :default    :none
   :visibility :settings-manager
-  :setter  (fn [new-value]
-             (when (some? new-value)
-               (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
-             (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
+  :audit      :raw-value
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:tls :ssl :none :starttls} (keyword new-value))))
+                (setting/set-value-of-type! :keyword :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 
@@ -125,35 +134,42 @@
         (and (sequential? message) (every? map? message))
         (string? message)))]])
 
-(mu/defn send-message-or-throw!
+(defn send-message-or-throw!
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
-  does not catch and swallow thrown exceptions, it will bubble up."
+  does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
+  the caller has its own retry logic."
   {:style/indent 0}
-  [{:keys [subject recipients message-type message] :as email} :- EmailMessage]
+  [{:keys [subject recipients message-type message] :as email}]
   (try
-   (when-not (email-smtp-host)
-     (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
-   ;; Now send the email
-   (let [to-type (if (:bcc? email) :bcc :to)]
-     (send-email! (smtp-settings)
-                  (merge
-                   {:from    (if-let [from-name (email-from-name)]
-                               (str from-name " <" (email-from-address) ">")
-                               (email-from-address))
-                    to-type  recipients
-                    :subject subject
-                    :body    (case message-type
-                               :attachments message
-                               :text        message
-                               :html        [{:type    "text/html; charset=utf-8"
-                                              :content message}])}
-                   (when-let [reply-to (email-reply-to)]
-                     {:reply-to reply-to}))))
-   (catch Throwable e
-     (prometheus/inc :metabase-email/message-errors)
-     (throw e))
-   (finally
-    (prometheus/inc :metabase-email/messages))))
+    (when-not (email-smtp-host)
+      (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
+    ;; Now send the email
+    (let [to-type (if (:bcc? email) :bcc :to)]
+      (send-email! (smtp-settings)
+                   (merge
+                    {:from    (if-let [from-name (email-from-name)]
+                                (str from-name " <" (email-from-address) ">")
+                                (email-from-address))
+                     to-type  recipients
+                     :subject subject
+                     :body    (case message-type
+                                :attachments message
+                                :text        message
+                                :html        [{:type    "text/html; charset=utf-8"
+                                               :content message}])}
+                    (when-let [reply-to (email-reply-to)]
+                      {:reply-to reply-to}))))
+    (catch Throwable e
+      (prometheus/inc :metabase-email/message-errors)
+      (when (not= :smtp-host-not-set (:cause (ex-data e)))
+        (throw e)))
+    (finally
+      (prometheus/inc :metabase-email/messages))))
+
+(mu/defn send-email-retrying!
+  "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
+  [email :- EmailMessage]
+  ((retry/decorate send-message-or-throw!) email))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
@@ -167,16 +183,16 @@
   either `:text` or `:html` or `:attachments`.
 
     (email/send-message!
-     :subject      \"[Metabase] Password Reset Request\"
-     :recipients   [\"cam@metabase.com\"]
-     :message-type :text
-     :message      \"How are you today?\")
+     {:subject      \"[Metabase] Password Reset Request\"
+      :recipients   [\"cam@metabase.com\"]
+      :message-type :text
+      :message      \"How are you today?\")}
 
   Upon success, this returns the `:message` that was just sent. (TODO -- confirm this.) This function will catch and
   log any exception, returning a [[SMTPStatus]]."
   [& {:as msg-args}]
   (try
-    (send-message-or-throw! msg-args)
+    (send-email-retrying! msg-args)
     (catch Throwable e
       (log/warn e (trs "Failed to send email"))
       {::error e})))
@@ -197,8 +213,6 @@
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
   in `:security`."
   [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
-  {:pre [(string? host)
-         (integer? port)]}
   (try
     (let [ssl?    (= (keyword security) :ssl)
           proto   (if ssl? "smtps" "smtp")

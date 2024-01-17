@@ -179,7 +179,9 @@ describe("Database", () => {
       const database = setup();
       const question = database.question();
 
-      expect(question.query()).toBeInstanceOf(StructuredQuery);
+      expect(question.legacyQuery({ useStructuredQuery: true })).toBeInstanceOf(
+        StructuredQuery,
+      );
       expect(question.metadata()).toEqual(database.metadata);
     });
 
@@ -202,7 +204,7 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion();
 
-      expect(question.query()).toBeInstanceOf(NativeQuery);
+      expect(question.legacyQuery()).toBeInstanceOf(NativeQuery);
       expect(question.metadata()).toBe(database.metadata);
     });
 
@@ -210,7 +212,7 @@ describe("Database", () => {
       const database = setup();
       const question = database.nativeQuestion({ query: "SELECT 1" });
 
-      const query = question.query() as NativeQuery;
+      const query = question.legacyQuery() as NativeQuery;
       expect(query.queryText()).toBe("SELECT 1");
     });
   });

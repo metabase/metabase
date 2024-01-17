@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import * as Errors from "metabase/core/utils/errors";
+import * as Errors from "metabase/lib/errors";
 import type { SettingDefinition } from "metabase-types/api";
 
 const REQUIRED_SCHEMA = {

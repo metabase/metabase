@@ -1,4 +1,5 @@
 import type {
+  Collection,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -14,12 +15,13 @@ export type DashboardId = number | string;
 
 export interface Dashboard {
   id: DashboardId;
+  collection?: Collection | null;
   collection_id: number | null;
   name: string;
   description: string | null;
   model?: string;
   dashcards: (DashboardCard | ActionDashboardCard)[];
-  ordered_tabs?: DashboardOrderedTab[];
+  tabs?: DashboardTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
@@ -32,6 +34,10 @@ export interface Dashboard {
   };
   auto_apply_filters: boolean;
   archived: boolean;
+  public_uuid: string | null;
+
+  /* Indicates whether static embedding for this dashboard has been published */
+  enable_embedding: boolean;
 }
 
 export type DashCardId = number;
@@ -70,7 +76,7 @@ export type DashboardCard = BaseDashboardCard & {
 
 export type DashboardTabId = number;
 
-export type DashboardOrderedTab = {
+export type DashboardTab = {
   id: DashboardTabId;
   dashboard_id: DashboardId;
   entity_id: string;

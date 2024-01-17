@@ -102,7 +102,10 @@ class ChartSettings extends Component {
   }
 
   handleShowSection = section => {
-    this.setState({ currentSection: section, currentWidget: null });
+    this.setState({
+      currentSection: section,
+      currentWidget: null,
+    });
   };
 
   // allows a widget to temporarily replace itself with a different widget

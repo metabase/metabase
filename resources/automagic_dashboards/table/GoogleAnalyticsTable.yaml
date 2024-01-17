@@ -44,8 +44,10 @@ dashboard_filters:
 groups:
 - Overview:
     title: Summary
+    score: 90
 - SessionsBreakdown:
     title: Sessions
+    score: 80
 cards:
   - SessionsOverTime:
       title: Sessions and unique users per day

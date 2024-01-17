@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotNull } from "metabase/lib/types";
 
 import type { State } from "metabase-types/store";
 import type Database from "metabase-lib/metadata/Database";

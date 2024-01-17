@@ -34,25 +34,22 @@ describeEE(
       visitQuestion(ORDERS_QUESTION_ID);
 
       cy.icon("bell").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Set up an alert").click();
+      cy.button("Set up an alert").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email alerts to:")
-        .parent()
-        .within(() => addEmailRecipient(deniedEmail));
-
+      cy.findByRole("heading", { name: "Email" })
+        .closest("li")
+        .within(() => {
+          addEmailRecipient(deniedEmail);
+          cy.findByText(alertError);
+        });
       cy.button("Done").should("be.disabled");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(alertError);
     });
 
-    // Adding test on Quarantine to understand a bit better some H2 Lock issue.
-    it.skip("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
+    it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.icon("subscription").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Email it").click();
+
+      cy.findByRole("heading", { name: "Email it" }).click();
 
       sidebar().within(() => {
         addEmailRecipient(deniedEmail);

@@ -15,7 +15,7 @@ const Crumb = ({ children }) => (
 );
 
 const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
-  <BrowserCrumbsRoot>
+  <BrowserCrumbsRoot data-testid="browsercrumbs">
     {crumbs
       .filter(c => c)
       .map((crumb, index, crumbs) => (

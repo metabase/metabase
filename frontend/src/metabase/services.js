@@ -188,7 +188,6 @@ export const ModelIndexApi = {
 };
 
 export const DashboardApi = {
-  list: GET("/api/dashboard"),
   // creates a new empty dashboard
   create: POST("/api/dashboard"),
   // saves a complete transient dashboard
@@ -196,7 +195,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  updateCardsAndTabs: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
@@ -454,6 +452,8 @@ export const PermissionsApi = {
   groups: GET("/api/permissions/group"),
   groupDetails: GET("/api/permissions/group/:id"),
   graph: GET("/api/permissions/graph"),
+  graphForGroup: GET("/api/permissions/graph/group/:groupId"),
+  graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
   createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
@@ -601,4 +601,13 @@ export const MetabotApi = {
   databasePrompt: POST("/api/metabot/database/:databaseId"),
   databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
   sendFeedback: POST("/api/metabot/feedback"),
+};
+
+export const ApiKeysApi = {
+  list: GET("/api/api-key"),
+  create: POST("/api/api-key"),
+  count: GET("/api/api-key/count"),
+  delete: DELETE("/api/api-key/:id"),
+  edit: PUT("/api/api-key/:id"),
+  regenerate: PUT("/api/api-key/:id/regenerate"),
 };

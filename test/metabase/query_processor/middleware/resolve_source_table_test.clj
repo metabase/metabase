@@ -40,7 +40,7 @@
     (is (= {:tables #{"VENUES"}}
            (resolve-and-return-store-contents (mt/mbql-query venues))))))
 
-(deftest validate-database-test
+(deftest ^:parallel validate-database-test
   (testing "If the Table does not belong to the current Database, does it throw an Exception?"
     (t2.with-temp/with-temp [Database {database-id :id} {}
                              Table    {table-id :id}    {:db_id database-id}]

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type { State } from "metabase-types/store";
@@ -60,7 +60,7 @@ const MetabotQueryEditor = ({
     <NativeQueryEditor
       cancelQueryOnLeave={false}
       question={question}
-      query={question.query()}
+      query={question.legacyQuery({ useStructuredQuery: true })}
       viewHeight={height}
       resizable={false}
       hasParametersList={false}

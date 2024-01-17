@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import {
@@ -17,7 +17,7 @@ function prefixIfNeeded(values, prefix, otherLists) {
   );
 }
 
-const ValuesYouCanReference = withUserAttributes(
+export const ValuesYouCanReference = withUserAttributes(
   ({ dashcard, parameters, userAttributes }) => {
     const columnMetadata = dashcard.card.result_metadata || [];
     const columns = columnMetadata?.filter(isMappableColumn).map(c => c.name);
@@ -69,5 +69,3 @@ const ValuesYouCanReference = withUserAttributes(
     );
   },
 );
-
-export default ValuesYouCanReference;

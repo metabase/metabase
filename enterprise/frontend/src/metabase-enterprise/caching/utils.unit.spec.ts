@@ -1,4 +1,4 @@
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
 import {
   createMockCard,

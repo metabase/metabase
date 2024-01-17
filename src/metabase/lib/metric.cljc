@@ -9,7 +9,6 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.shared.util.i18n :as i18n]
@@ -71,26 +70,11 @@
         (lib.metadata.calculation/display-name query stage-number metric-metadata style))
       (fallback-display-name)))
 
-(mu/defn ^:private aggregating-by-metric? :- :boolean
-  "Whether a given stage of a query currently includes a `:metric` ref clause in its aggregations."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   metric-id    :- ::lib.schema.id/metric]
-  (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)]
-    (boolean
-     (some (fn [[tag :as clause]]
-             (when (= tag :metric)
-               (let [[_tag _opts id] clause]
-                 (= id metric-id))))
-           aggregations))))
-
 (defmethod lib.metadata.calculation/display-info-method :metadata/metric
-  [query stage-number {:keys [id description], :as metric-metadata}]
+  [query stage-number metric-metadata]
   (merge
    ((get-method lib.metadata.calculation/display-info-method :default) query stage-number metric-metadata)
-   {:description description}
-   (when (aggregating-by-metric? query stage-number id)
-     {:selected true})))
+   (select-keys metric-metadata [:description :aggregation-position])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]
@@ -109,6 +93,22 @@
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} lib.metadata/MetricMetadata]]
   "Get a list of Metrics that you may consider using as aggregations for a query. Only Metrics that have the same
   `table-id` as the `source-table` for this query will be suggested."
-  [query :- ::lib.schema/query]
-  (when-let [source-table-id (lib.util/source-table-id query)]
-    (not-empty (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id))))
+  ([query]
+   (available-metrics query -1))
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (when-let [source-table-id (lib.util/source-table-id query)]
+     (let [metrics (lib.metadata.protocols/metrics (lib.metadata/->metadata-provider query) source-table-id)
+           metric-aggregations (into {}
+                                     (keep-indexed (fn [index aggregation-clause]
+                                                     (when (lib.util/clause-of-type? aggregation-clause :metric)
+                                                       [(get aggregation-clause 2) index])))
+                                     (:aggregation (lib.util/query-stage query stage-number)))]
+       (cond
+         (empty? metrics)             nil
+         (empty? metric-aggregations) (vec metrics)
+         :else                        (mapv (fn [metric-metadata]
+                                              (let [aggregation-pos (-> metric-metadata :id metric-aggregations)]
+                                                (cond-> metric-metadata
+                                                  aggregation-pos (assoc :aggregation-position aggregation-pos))))
+                                            metrics))))))

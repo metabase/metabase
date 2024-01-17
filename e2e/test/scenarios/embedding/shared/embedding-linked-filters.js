@@ -54,8 +54,8 @@ export function mapNativeDashboardParameters({
   card_id,
   dashboard_id,
 } = {}) {
-  return cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-    cards: [
+  return cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+    dashcards: [
       {
         id,
         card_id,
@@ -121,8 +121,8 @@ export function mapGUIDashboardParameters(id, card_id, dashboard_id) {
     },
   ];
 
-  cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-    cards: [
+  cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+    dashcards: [
       {
         id,
         card_id,

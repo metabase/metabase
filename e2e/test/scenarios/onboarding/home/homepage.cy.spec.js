@@ -253,7 +253,7 @@ describe("scenarios > home > custom homepage", () => {
 
         //Ensure that child dashboards of personal collections do not
         //appear in search
-        cy.findByRole("button", { name: /search/ }).click();
+        cy.findByRole("button", { name: "Search" }).click();
         cy.findByPlaceholderText("Search").type("das{enter}");
         cy.findByText("Orders in a dashboard").should("exist");
         cy.findByText("nested dash").should("not.exist");
@@ -287,6 +287,32 @@ describe("scenarios > home > custom homepage", () => {
       cy.request("PUT", "/api/setting/custom-homepage-dashboard", {
         value: ORDERS_DASHBOARD_ID,
       });
+    });
+
+    it("should not flash the homescreen before redirecting (#37089)", () => {
+      cy.intercept(
+        {
+          url: `/api/dashboard/${ORDERS_DASHBOARD_ID}`,
+          method: "GET",
+          middleware: true,
+        },
+        req => {
+          req.continue(res => {
+            res.delay = 1000;
+            res.send();
+          });
+        },
+      );
+
+      cy.visit("/");
+      cy.findByRole("heading", { name: "Loading..." }).should("exist");
+      cy.findByRole("heading", { name: "Loading...", timeout: 5000 }).should(
+        "not.exist",
+      );
+
+      //Ensure that when the loading header is gone, we are no longer on the home page
+      cy.findByTestId("home-page", { timeout: 0 }).should("not.exist");
+      cy.url().should("include", "/dashboard/");
     });
 
     it("should redirect you if you do not have permissions for set dashboard", () => {

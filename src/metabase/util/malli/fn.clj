@@ -5,9 +5,13 @@
    [malli.core :as mc]
    [malli.destructure :as md]
    [malli.error :as me]
+   [metabase.config :as config]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-default-schemas
   "Malli normally generates wacky default schemas when you use destructuring in an argslist; this never seems to work
@@ -146,17 +150,29 @@
 (defn- validate [error-context schema value error-type]
   (when *enforce*
     (when-let [error (mr/explain schema value)]
-      (let [humanized (me/humanize error)]
-        (throw (ex-info (case error-type
-                          ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                          ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
-                        (merge
-                         {:type      error-type
-                          :error     error
-                          :humanized humanized
-                          :schema    schema
-                          :value     value}
-                         error-context)))))))
+      (let [humanized (me/humanize error)
+            details   (merge
+                        {:type      error-type
+                         :error     error
+                         :humanized humanized
+                         :schema    schema
+                         :value     value}
+                        error-context)]
+        (if (or config/is-dev?
+              config/is-test?)
+          ;; In dev and test, throw an exception.
+          (throw (ex-info (case error-type
+                            ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
+                            ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                          details))
+          ;; In prod, log a warning.
+          (log/warn
+            (case error-type
+              ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
+                                         (pr-str humanized))
+              ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
+                                         (pr-str humanized)))
+            details))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
@@ -218,6 +234,23 @@
       (list* `apply '&f arg-names)
       (list* '&f arg-names))))
 
+(defn fixup-stacktrace
+  "If exception is thrown from the [[validate]] machinery, remove those stack trace elements so the top of the stack is
+  the calling function."
+  [^Exception e]
+  (if (#{::invalid-input ::invalid-output} (-> e ex-data :type))
+    (let [trace (.getStackTrace e)
+          cleaned (when trace
+                    (into-array StackTraceElement
+                                (drop-while (comp #{(.getName (class validate))
+                                                    (.getName (class validate-input))
+                                                    (.getName (class validate-output))}
+                                                  #(.getClassName ^StackTraceElement %))
+                                            trace)))]
+      (doto e
+        (.setStackTrace cleaned)))
+    e))
+
 (defn- instrumented-arity [error-context [_=> input-schema output-schema]]
   (let [input-schema           (if (= input-schema :cat)
                                  [:cat]
@@ -230,7 +263,12 @@
                                  `(->> ~result-form
                                        (validate-output ~error-context ~output-schema))
                                  result-form)]
-    `(~arglist ~@input-validation-forms ~result-form)))
+    `(~arglist
+      (try
+        ~@input-validation-forms
+        ~result-form
+        (catch Exception ~'error
+          (throw (fixup-stacktrace ~'error)))))))
 
 (defn- instrumented-fn-tail [error-context [schema-type :as schema]]
   (case schema-type
@@ -257,8 +295,39 @@
   `(let [~'&f ~(deparameterized-fn-form parsed)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
+;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
+
+(defn instrument-ns?
+  "Used to track namespaces to not enforce malli schemas on with `mu.fn/fn`."
+  [namespace]
+  (let [lib-and-middleware [#"^metabase\.lib\..*"
+                            #"^metabase\.query-processor\.middleware\..*"]
+        matches?           (core/fn [namespace regexes]
+                             (let [n (-> namespace ns-name str)]
+                               (some #(re-matches % n) regexes)))
+        ;; empty but placeholder for any namespaces we want to never instrument (in prod)
+        ad-hoc             #{}
+        m                  (meta namespace)]
+    (cond (:instrument/always m)                  true
+          (:instrument/never m)                   false
+          (matches? namespace lib-and-middleware) false
+          (contains? ad-hoc (ns-name namespace))  false
+          :else                                   true)))
+
+(def ^:private ^:dynamic *skip-ns-decision-fn*
+  "Returns true to skip the emission of malli schema validation code in mu.fn/fn and mu/defn."
+  (core/fn skip-ns-decision-fn
+    [namespace]
+    (and config/is-prod?
+         (let [instrument? (instrument-ns? namespace)]
+           (when-not instrument?
+             (log/info "skipping instrumentation of var in " (ns-name namespace)))
+           (not instrument?)))))
+
 (defmacro fn
-  "Malli version of [[schema.core/fn]]. A form like
+  "Malli version of [[schema.core/fn]].
+
+  Unless it's in a skipped namespace during prod, a form like:
 
     (fn :- :int [x :- :int] (inc x))
 
@@ -277,6 +346,8 @@
   for [[metabase.util.malli/defmethod]] it will be something like
 
     {:fn-name 'whatever/my-multimethod, :dispatch-value :field}
+
+  If compiled in a namespace in [[namespaces-toskip]], during `config/is-prod?`, it will be emitted as a vanilla clojure.core/fn form.
 
   Known issue: this version of `fn` does not capture the optional function name and make it available, e.g. you can't
   do
@@ -306,7 +377,11 @@
   problem for another day. The passed function name comes back from [[mc/parse]] as `:name` if we want to attempt to
   fix this later."
   [& fn-tail]
-  (let [error-context (if (symbol? (first fn-tail))
-                        {:fn-name (list 'quote (first fn-tail))}
-                        {})]
-    (instrumented-fn-form error-context (parse-fn-tail fn-tail))))
+  (let [parsed (parse-fn-tail fn-tail)
+        skip? (*skip-ns-decision-fn* *ns*)]
+    (if skip?
+      (deparameterized-fn-form parsed)
+      (let [error-context (if (symbol? (first fn-tail))
+                            ;; We want the quoted symbol of first fn-tail:
+                            {:fn-name (list 'quote (first fn-tail))} {})]
+        (instrumented-fn-form error-context parsed)))))

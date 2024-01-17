@@ -42,7 +42,7 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
+  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   (concat
    [:model/Database
@@ -94,7 +94,9 @@
     :model/ModelIndex
     :model/ModelIndexValue
     ;; 48+
-    :model/TablePrivileges]
+    :model/TablePrivileges
+    :model/AuditLog
+    :model/RecentViews]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))

@@ -32,7 +32,7 @@
   "Make sure temporal bucketing of Fields (i.e., `:datetime-field` clauses) in this query is valid given the combination
   of Field base-type and unit. For example, you should not be allowed to bucket a `:type/Date` Field by `:minute`."
   [query]
-  (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (mbql.u/match query [:field _ (_ :guard :temporal-unit)])]
+  (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (mbql.u/match (:query query) [:field _ (_ :guard :temporal-unit)])]
     (let [base-type (if (integer? id-or-name)
                       (:base-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
                       base-type)

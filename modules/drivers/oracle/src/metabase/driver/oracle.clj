@@ -45,6 +45,10 @@
                               :convert-timezone true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
+(defmethod driver/prettify-native-form :oracle
+  [_ native-form]
+  (sql.u/format-sql-and-fix-params :plsql native-form))
+
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
@@ -178,11 +182,7 @@
   [_driver]
   :oracle)
 
-(defmethod sql.qp/honey-sql-version :oracle
-  [_driver]
-  2)
-
-;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
+;;; Oracle mod is a function like mod(x, y) rather than an operator like x mod y
 (defn- format-mod
   [_fn [x y]]
   (let [[x-sql & x-args] (sql/format-expr x {:nested true})

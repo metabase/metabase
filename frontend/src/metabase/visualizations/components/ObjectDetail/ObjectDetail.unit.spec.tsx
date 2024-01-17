@@ -23,7 +23,7 @@ import {
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
 import { createMockEntitiesState } from "__support__/store";
-import { checkNotNull } from "metabase/core/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 
 import type { Field } from "metabase-types/api";
 

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.api.card-test]]."
   (:require
+   [cheshire.core :as json]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card Dashboard Database]]
@@ -10,7 +11,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn run-query-for-card
@@ -22,7 +22,7 @@
     (qp.card/run-query-for-card-async
      card-id :api
      :run (fn [query info]
-            (qp/process-query (assoc query :async? false) info)))))
+            (qp/process-query (assoc query :async? false, :info info))))))
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
@@ -55,7 +55,9 @@
                      Card card {:database_id (u/the-id db)}]
         (is (= nil (:cache-ttl (#'qp.card/query-for-card card {} {} {} {:dashboard-id (u/the-id dash)}))))))))
 
-(defn- field-filter-query []
+(defn field-filter-query
+  "A query with a Field Filter parameter"
+  []
   {:database (mt/id)
    :type     :native
    :native   {:template-tags {"date" {:id           "_DATE_"
@@ -66,7 +68,9 @@
                                       :widget-type  :date/all-options}}
               :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
 
-(defn- non-field-filter-query []
+(defn non-field-filter-query
+  "A query with a parameter that is not a Field Filter"
+  []
   {:database (mt/id)
    :type     :native
    :native   {:template-tags {"id"
@@ -78,6 +82,25 @@
                                :default      "1"}}
               :query         "SELECT *\nFROM ORDERS\nWHERE id = {{id}}"}})
 
+(defn non-parameter-template-tag-query
+  "A query with template tags that aren't parameters"
+  []
+  (assoc (non-field-filter-query)
+         "abcdef"
+         {:id           "abcdef"
+          :name         "#1234"
+          :display-name "#1234"
+          :type         :card
+          :card-id      1234}
+
+         "xyz"
+         {:id           "xyz"
+          :name         "snippet: My Snippet"
+          :display-name "Snippet: My Snippet"
+          :type         :snippet
+          :snippet-name "My Snippet"
+          :snippet-id   1}))
+
 (deftest card-template-tag-parameters-test
   (testing "Card with a Field filter parameter"
     (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (field-filter-query)}]
@@ -88,21 +111,7 @@
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id)))))
   (testing "Should ignore native query snippets and source card IDs"
-    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (assoc (non-field-filter-query)
-                                                                       "abcdef"
-                                                                       {:id           "abcdef"
-                                                                        :name         "#1234"
-                                                                        :display-name "#1234"
-                                                                        :type         :card
-                                                                        :card-id      1234}
-
-                                                                       "xyz"
-                                                                       {:id           "xyz"
-                                                                        :name         "snippet: My Snippet"
-                                                                        :display-name "Snippet: My Snippet"
-                                                                        :type         :snippet
-                                                                        :snippet-name "My Snippet"
-                                                                        :snippet-id   1})}]
+    (t2.with-temp/with-temp [Card {card-id :id} {:dataset_query (non-parameter-template-tag-query)}]
       (is (= {"id" :number}
              (#'qp.card/card-template-tag-parameters card-id))))))
 
@@ -125,15 +134,14 @@
                                                          :type  :date/single
                                                          :value "2016-01-01"}])))
       (testing "As an API request"
-        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
-                      :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
-                      :allowed-parameters (s/eq ["date"])
-                      s/Keyword           s/Any}
-                     (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
-                                           {:parameters [{:id    "_FAKE_"
-                                                          :name  "fake"
-                                                          :type  :date/single
-                                                          :value "2016-01-01"}]})))))
+        (is (=? {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
+                 :invalid-parameter  {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"}
+                 :allowed-parameters ["date"]}
+                (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                      {:parameters [{:id    "_FAKE_"
+                                                     :name  "fake"
+                                                     :type  :date/single
+                                                     :value "2016-01-01"}]})))))
 
     (testing "Should disallow parameters with types not allowed for the widget type"
       (letfn [(validate [param-type]
@@ -165,3 +173,14 @@
                                                                 :name  "date"
                                                                 :type  :date/single
                                                                 :value "2016-01-01"}]})))))))
+
+(deftest bad-viz-settings-should-still-work-test
+  (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
+    (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query venues
+                                                                                  {:aggregation [[:count]]})
+                                                        :visualization_settings {:column_settings {(json/generate-string
+                                                                                                    [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
+                                                                                                   {:date_abbreviate true
+                                                                                                    :some_other_key [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
+      (is (= [[100]]
+             (mt/rows (run-query-for-card card-id)))))))

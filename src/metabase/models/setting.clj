@@ -82,6 +82,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.config :as config]
+   [metabase.events :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting.cache :as setting.cache]
@@ -95,9 +96,11 @@
    [schema.core :as s]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang Keyword Symbol)
-   (java.io StringWriter)
-   (java.time.temporal Temporal)))
+    (clojure.lang Keyword Symbol)
+    (com.fasterxml.jackson.core JsonParseException)
+    (com.fasterxml.jackson.core.io JsonEOFException)
+    (java.io StringWriter)
+    (java.time.temporal Temporal)))
 
 ;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
 ;;; other things we need for `:json` settings
@@ -134,7 +137,9 @@
   #{"-site-url"
     "enable-advanced-humanization"
     "metabot-enabled"
-    "ldap-sync-admin-group"})
+    "ldap-sync-admin-group"
+    "user-recent-views"
+    "most-recently-viewed-dashboard"})
 
 (def ^:dynamic *allow-retired-setting-names*
   "A dynamic val that controls whether it's allowed to use retired settings.
@@ -162,51 +167,12 @@
   [_setting]
   [:key])
 
-(def ^:private exported-settings
-  '#{application-colors
-     application-favicon-url
-     application-font
-     application-font-files
-     application-logo-url
-     application-name
-     available-fonts
-     available-locales
-     available-timezones
-     breakout-bins-num
-     custom-formatting
-     custom-geojson
-     custom-geojson-enabled
-     enable-embedding
-     enable-nested-queries
-     enable-sandboxes?
-     enable-whitelabeling?
-     enable-xrays
-     hide-embed-branding?
-     humanization-strategy
-     landing-page
-     loading-message
-     max-results-bare-rows
-     native-query-autocomplete-match-style
-     persisted-models-enabled
-     report-timezone
-     report-timezone-long
-     report-timezone-short
-     search-typeahead-enabled
-     show-homepage-data
-     show-homepage-pin-message
-     show-homepage-xrays
-     show-lighthouse-illustration
-     show-metabot
-     site-locale
-     site-name
-     source-address-header
-     start-of-week
-     subscription-allowed-domains})
+(declare export?)
 
 (defmethod serdes/extract-all "Setting" [_model _opts]
   (for [{:keys [key value]} (admin-writable-site-wide-settings
                              :getter (partial get-value-of-type :string))
-        :when (contains? exported-settings (symbol key))]
+        :when (export? key)]
     {:serdes/meta [{:model "Setting" :id (name key)}]
      :key key
      :value value}))
@@ -289,6 +255,7 @@
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
+   :export?     s/Bool           ; should this setting be serialized?
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
@@ -307,7 +274,14 @@
 
    ;; Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
    ;; exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
-   :enabled?    (s/maybe clojure.lang.IFn)})
+   :enabled?    (s/maybe clojure.lang.IFn)
+
+   ;; Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
+   ;; `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
+   ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
+   ;; the default getter or a custom one.
+   ;; (default: `:no-value`)
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -375,11 +349,6 @@
 (defn- user-local-only? [setting]
   (= (:user-local (resolve-setting setting)) :only))
 
-(defn- allows-site-wide-values? [setting]
-  (and
-   (not (database-local-only? setting))
-   (not (user-local-only? setting))))
-
 (defn- allows-database-local-values? [setting]
   (#{:only :allowed} (:database-local (resolve-setting setting))))
 
@@ -390,6 +359,16 @@
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
+
+(defn- allows-site-wide-values? [setting]
+  (and
+   (not (database-local-only? setting))
+   (not (user-local-only? setting))))
+
+(defn- site-wide-only? [setting]
+  (and
+   (not (allows-database-local-values? setting))
+   (not (allows-user-local-values? setting))))
 
 (defn- user-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
@@ -511,6 +490,13 @@
                       (core/get cache (setting-name setting-definition-or-name))))))]
         (not-empty v)))))
 
+(defn- realize
+  "Parsing a setting may result in a lazy value. Use this to ensure we finish parsing."
+  [value]
+  (when (coll? value)
+    (dorun (map realize value)))
+  value)
+
 (defn default-value
   "Get the `:default` value of `setting-definition-or-name` if one was specified."
   [setting-definition-or-name]
@@ -551,7 +537,7 @@
   ([setting-definition-or-name pred parse-fn]
    (let [parse     (fn [v]
                      (try
-                       (parse-fn v)
+                       (realize (parse-fn v))
                        (catch Throwable e
                          (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
                            (throw (ex-info (tru "Error parsing Setting {0}: {1}" setting-name (ex-message e))
@@ -601,6 +587,10 @@
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name integer? #(Long/parseLong ^String %)))
 
+(defmethod get-value-of-type :positive-integer
+  [_setting-type setting-definition-or-name]
+  (get-raw-value setting-definition-or-name pos-int? #(Long/parseLong ^String %)))
+
 (defmethod get-value-of-type :double
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
@@ -615,7 +605,7 @@
 
 (defmethod get-value-of-type :json
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? #(json/parse-string % true)))
+  (get-raw-value setting-definition-or-name coll? #(json/parse-string-strict % true)))
 
 (defmethod get-value-of-type :csv
   [_setting-type setting-definition-or-name]
@@ -668,6 +658,14 @@
 (defn- obfuscated-value? [v]
   (when (seq v)
     (boolean (re-matches #"^\*{10}.{2}$" v))))
+
+(defn obfuscate-value
+  "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
+  value is what's expected (e.g. the correct password).
+
+    (obfuscate-value \"sensitivePASSWORD123\") ;; -> \"**********23\""
+  [s]
+  (str "**********" (str/join (take-last 2 (str s)))))
 
 (defmulti set-value-of-type!
   "Set the value of a `setting-type` `setting-definition-or-name`. A `nil` value deletes the current value of the
@@ -758,6 +756,16 @@
                       (re-matches #"^-?\d+$" new-value))))
      (str new-value))))
 
+(defmethod set-value-of-type! :positive-integer
+  [_setting-type setting-definition-or-name new-value]
+  (set-value-of-type!
+   :string setting-definition-or-name
+   (when new-value
+     (assert (or (pos-int? new-value)
+                 (and (string? new-value)
+                      (re-matches #"^[1-9]\d*$" new-value))))
+     (str new-value))))
+
 (defmethod set-value-of-type! :double
   [_setting-type setting-definition-or-name new-value]
   (set-value-of-type!
@@ -802,6 +810,36 @@
 (defn- default-setter-for-type [setting-type]
   (partial set-value-of-type! (keyword setting-type)))
 
+(defn- audit-setting-change!
+  [{:keys [name audit sensitive?]} previous-value new-value]
+  (let [maybe-obfuscate #(cond-> % sensitive? obfuscate-value)]
+    (events/publish-event!
+     :event/setting-update
+     {:details (merge {:key name}
+                      (when (not= audit :no-value)
+                        {:previous-value (maybe-obfuscate previous-value)
+                         :new-value      (maybe-obfuscate new-value)}))
+      :user-id api/*current-user-id*
+      :model  :model/Setting})))
+
+(defn- should-audit?
+  "Returns true if the setting change should be written to the `audit_log`."
+  [setting]
+  (not= (:audit setting) :never))
+
+(defn- set-with-audit-logging!
+  "Calls the setting's setter with `new-value`, and then writes the change to the `audit_log` table if necessary."
+  [{:keys [setter getter audit] :as setting} new-value]
+  (if (should-audit? setting)
+    (let [audit-value-fn #(condp = audit
+                            :no-value  nil
+                            :raw-value (get-raw-value setting)
+                            :getter    (getter))
+          previous-value (audit-value-fn)]
+      (u/prog1 (setter new-value)
+        (audit-setting-change! setting previous-value (audit-value-fn))))
+    (setter new-value)))
+
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
   just updates the Settings cache and writes its value to the DB.
@@ -813,7 +851,7 @@
     (mandrill-api-key \"xyz123\")"
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache? enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
-        name                                                  (setting-name setting)]
+        name                                                 (setting-name setting)]
     (when (and feature (not (has-feature? feature)))
       (throw (ex-info (tru "Setting {0} is not enabled because feature {1} is not available" name feature) setting)))
     (when (and enabled? (not (enabled?)))
@@ -823,7 +861,7 @@
     (when (= setter :none)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
-      (setter new-value))))
+      (set-with-audit-logging! setting new-value))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -849,13 +887,16 @@
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :export?        false
                  :sensitive?     false
                  :cache?         true
                  :feature        nil
                  :database-local :never
                  :user-local     :never
                  :deprecated     nil
-                 :enabled?       nil}
+                 :enabled?       nil
+                 ;; Disable auditing by default for user- or database-local settings
+                 :audit          (if (site-wide-only? setting) :no-value :never)}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)
@@ -977,10 +1018,10 @@
   "Defines a new Setting that will be added to the DB at some point in the future.
   Conveniently can be used as a getter/setter as well
 
-    (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
-    (mandrill-api-key)            ; get the value
-    (mandrill-api-key! new-value) ; update the value
-    (mandrill-api-key! nil)       ; delete the value
+  (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
+  (mandrill-api-key)            ; get the value
+  (mandrill-api-key! new-value) ; update the value
+  (mandrill-api-key! nil)       ; delete the value
 
   A setting can be set from the Admin Panel or via the corresponding env var, eg. `MB_MANDRILL_API_KEY` for the
   example above.
@@ -1012,6 +1053,10 @@
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
+
+  ###### `:export?`
+
+  Whether this Setting is included when producing a serializing settings export.
 
   ###### `:getter`
 
@@ -1063,7 +1108,15 @@
 
   ###### `enabled?`
   Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
-  exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled."
+  exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
+
+  ###### `audit`
+  Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
+  `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
+  should be used for most non-sensitive settings, and will log the value returned by its getter, which may be
+  the default getter or a custom one. `:raw-value` will audit the raw string value of the setting in the database.
+  (default: `:no-value` for most settings; `:never` for user- and database-local settings, settings with no setter,
+  and `:sensitive` settings.)"
   {:style/indent 1}
   [setting-symbol description & {:as options}]
   {:pre [(symbol? setting-symbol)
@@ -1117,14 +1170,6 @@
       (setting.cache/restore-cache!)
       (throw e))))
 
-(defn obfuscate-value
-  "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
-  value is what's expected (e.g. the correct password).
-
-    (obfuscate-value \"sensitivePASSWORD123\") ;; -> \"**********23\""
-  [s]
-  (str "**********" (str/join (take-last 2 (str s)))))
-
 (defn user-facing-value
   "Get the value of a Setting that should be displayed to a User (i.e. via `/api/setting/` endpoints): for Settings set
   via env vars, or Settings whose value has not been set (i.e., Settings whose value is the same as the default value)
@@ -1161,18 +1206,24 @@
       :else
       parsed-value)))
 
+(defn- set-via-env-var? [setting]
+  (some? (env-var-value setting)))
+
+(defn- export? [setting-name]
+  (:export? (core/get @registered-settings (keyword setting-name))))
+
 (defn- user-facing-info
   [{:keys [default description], k :name, :as setting} & {:as options}]
-  (let [set-via-env-var? (boolean (env-var-value setting))]
+  (let [from-env? (set-via-env-var? setting)]
     {:key            k
      :value          (try
                        (m/mapply user-facing-value setting options)
                        (catch Throwable e
                          (log/error e (trs "Error fetching value of Setting"))))
-     :is_env_setting set-via-env-var?
+     :is_env_setting from-env?
      :env_name       (env-var-name setting)
      :description    (str (description))
-     :default        (if set-via-env-var?
+     :default        (if from-env?
                        (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
@@ -1196,6 +1247,15 @@
                (when api/*is-superuser?*
                  [:admin]))))
 
+(defn- user-facing-settings-matching
+  "Returns the user facing view of the registered settings satisfying the given predicate"
+  [pred options]
+  (into
+    []
+    (comp (filter pred)
+          (map #(m/mapply user-facing-info % options)))
+    (sort-by :name (vals @registered-settings))))
+
 (defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
@@ -1212,13 +1272,11 @@
   ;; ignore Database-local values, but not User-local values
   (let [writable-visibilities (current-user-writable-visibilities)]
     (binding [*database-local-values* nil]
-      (into
-       []
-       (comp (filter (fn [setting]
-                       (and (contains? writable-visibilities (:visibility setting))
-                            (not= (:database-local setting) :only))))
-             (map #(m/mapply user-facing-info % options)))
-       (sort-by :name (vals @registered-settings))))))
+      (user-facing-settings-matching
+        (fn [setting]
+          (and (contains? writable-visibilities (:visibility setting))
+               (not= (:database-local setting) :only)))
+        options))))
 
 (defn admin-writable-site-wide-settings
   "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
@@ -1232,13 +1290,11 @@
   ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
-    (into
-     []
-     (comp (filter (fn [setting]
-                     (and (not= (:visibility setting) :internal)
-                          (allows-site-wide-values? setting))))
-           (map #(m/mapply user-facing-info % options)))
-     (sort-by :name (vals @registered-settings)))))
+    (user-facing-settings-matching
+      (fn [setting]
+        (and (not= (:visibility setting) :internal)
+             (allows-site-wide-values? setting)))
+      options)))
 
 (defn can-read-setting?
   "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
@@ -1269,3 +1325,75 @@
            (map (fn [[setting-name]]
                   [setting-name (get setting-name)])))
      @registered-settings)))
+
+(defn- redact-parse-ex
+  "Substitute an opaque exception to ensure no sensitive information in the raw value is exposed"
+  [ex]
+  (ex-info (trs "Error of type {0} thrown while parsing a setting" (type ex))
+           {:ex-type (type ex)}))
+
+(defmulti may-contain-raw-token?
+  "Indicate whether we must redact an exception to avoid leaking sensitive env vars"
+  (fn [_ex setting] (:type setting)))
+
+;; fallback to redaction if we have not defined behaviour for a given format
+(defmethod may-contain-raw-token? :default [_ _] false)
+
+(defmethod may-contain-raw-token? :boolean [_ _] false)
+
+;; Non EOF exceptions will mention the next character
+(defmethod may-contain-raw-token? :csv [ex _] (not (instance? java.io.EOFException ex)))
+
+;; Number parsing exceptions will quote the entire input
+(defmethod may-contain-raw-token? :double [_ _] true)
+(defmethod may-contain-raw-token? :integer [_ _] true)
+(defmethod may-contain-raw-token? :positive-integer [_ _] true)
+
+;; Date parsing may quote the entire input, or a particular sub-portion, e.g. a misspelled month name
+(defmethod may-contain-raw-token? :timestamp [_ _] true)
+
+;; Keyword parsing can never fail, but let's be paranoid
+(defmethod may-contain-raw-token? :keyword [_ _] true)
+
+(defmethod may-contain-raw-token? :json [ex _]
+  (cond
+    (instance? JsonEOFException ex) false
+    (instance? JsonParseException ex) true
+    :else (do (log/warn ex "Unexpected exception while parsing JSON")
+              ;; err on the side of caution
+              true)))
+
+(defn- redact-sensitive-tokens [ex raw-value]
+  (if (may-contain-raw-token? ex raw-value)
+    (redact-parse-ex ex)
+    ex))
+
+(defn- validate-setting
+  "Test whether the value configured for a given setting can be parsed as the expected type.
+   Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
+  [setting]
+  (try
+    (get-value-of-type (:type setting) setting)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (let [parse-error (or (ex-cause e) e)
+            parse-error (redact-sensitive-tokens parse-error setting)
+            env-var? (set-via-env-var? setting)]
+        (assoc (select-keys setting [:name :type])
+          :parse-error parse-error
+          :env-var? env-var?)))))
+
+(defn validate-settings-formatting!
+  "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
+
+   Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
+  []
+  (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
+    (if (:env-var? invalid-setting)
+      (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
+                           (u/upper-case-en (name (:type invalid-setting)))
+                           (name (:name invalid-setting)))
+                      (dissoc invalid-setting :parse-error)
+                      (:parse-error invalid-setting)))
+      (log/warn (:parse-error invalid-setting)
+                (format "Unable to parse setting %s" (:name invalid-setting))))))

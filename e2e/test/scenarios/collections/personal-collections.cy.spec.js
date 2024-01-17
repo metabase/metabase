@@ -62,15 +62,13 @@ describe("personal collections", () => {
       });
 
       cy.visit("/collection/root");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Your personal collection");
+      cy.findByRole("tree").findByText("Your personal collection");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
       popover().findByText("Other users' personal collections").click();
       cy.location("pathname").should("eq", "/collection/users");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/All personal collections/i);
+      cy.findByTestId("browsercrumbs").findByText(/All personal collections/i);
       Object.values(USERS).forEach(user => {
         const FULL_NAME = `${user.first_name} ${user.last_name}`;
         cy.findByText(FULL_NAME);

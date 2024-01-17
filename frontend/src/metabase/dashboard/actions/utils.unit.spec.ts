@@ -2,7 +2,12 @@ import {
   createMockDashboard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
-import { hasDashboardChanged, haveDashboardCardsChanged } from "./utils";
+import { createMockCard } from "./../../../metabase-types/api/mocks/card";
+import {
+  getDashCardMoveToTabUndoMessage,
+  hasDashboardChanged,
+  haveDashboardCardsChanged,
+} from "./utils";
 
 describe("dashboard > actions > utils", () => {
   describe("hasDashboardChanged", () => {
@@ -199,6 +204,51 @@ describe("dashboard > actions > utils", () => {
       const endTime = performance.now();
 
       expect(endTime - startTime).toBeLessThan(100); // 100 ms (locally this was 6 ms)
+    });
+  });
+
+  describe("getDashCardMoveToTabUndoMessage", () => {
+    it("should return the correct message for dashCard with a name", () => {
+      const dashCard = createMockDashboardCard({
+        card: createMockCard({ name: "foo" }),
+      });
+      expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe("Card moved: foo");
+    });
+
+    it("should return the correct message for a link dashCard", () => {
+      const dashCard = createMockDashboardCard({
+        card: createMockCard({ name: undefined }),
+        visualization_settings: { virtual_card: { display: "link" } },
+      });
+      expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe("Link card moved");
+    });
+
+    it("should return the correct message for an action dashCard", () => {
+      const dashCard = createMockDashboardCard({
+        card: createMockCard({ name: undefined }),
+        visualization_settings: { virtual_card: { display: "action" } },
+      });
+      expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe(
+        "Action card moved",
+      );
+    });
+
+    it("should return the correct message for a text dashCard", () => {
+      const dashCard = createMockDashboardCard({
+        card: createMockCard({ name: undefined }),
+        visualization_settings: { virtual_card: { display: "text" } },
+      });
+      expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe("Text card moved");
+    });
+
+    it("should return the correct message for a heading dashCard", () => {
+      const dashCard = createMockDashboardCard({
+        card: createMockCard({ name: undefined }),
+        visualization_settings: { virtual_card: { display: "heading" } },
+      });
+      expect(getDashCardMoveToTabUndoMessage(dashCard)).toBe(
+        "Heading card moved",
+      );
     });
   });
 });

@@ -6,6 +6,7 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.permissions :as perms]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (set! *warn-on-reflection* true)
@@ -155,5 +156,7 @@
                            [:metabase_database :db] [:= :qe.database_id :db.id]
                            [:metabase_table :t] [:= :card.table_id :t.id]
                            [:core_user :u] [:= :qe.executor_id :u.id]]
-               :where     (common/query-execution-is-download :qe)
+               :where     [:and
+                           (common/query-execution-is-download :qe)
+                           [:not= :card.database_id perms/audit-db-id]]
                :order-by  [[:qe.started_at :desc]]})})

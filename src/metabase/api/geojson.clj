@@ -21,9 +21,11 @@
 (defsetting custom-geojson-enabled
   (deferred-tru "Whether or not the use of custom GeoJSON is enabled.")
   :visibility :admin
+  :export?    true
   :type       :boolean
   :setter     :none
-  :default    true)
+  :default    true
+  :audit      :getter)
 
 (def ^:private CustomGeoJSON
   [:map-of :keyword [:map {:closed true}
@@ -106,7 +108,9 @@
                (when new-value
                  (validate-geojson new-value))
                (setting/set-value-of-type! :json :custom-geojson new-value)))
-  :visibility :public)
+  :visibility :public
+  :export?    true
+  :audit      :raw-value)
 
 (def ^:private connection-timeout-ms 8000)
 

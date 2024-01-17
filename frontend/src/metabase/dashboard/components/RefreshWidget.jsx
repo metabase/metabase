@@ -6,7 +6,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/core/components/Tooltip";
 import CountdownIcon from "metabase/components/icons/CountdownIcon";
 
-import { DashboardHeaderButton } from "metabase/dashboard/containers/DashboardHeader.styled";
+import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import {
   RefreshOptionIcon,
   RefreshOptionItem,
@@ -24,7 +24,7 @@ const OPTIONS = [
   { name: t`60 minutes`, period: 60 * 60 },
 ];
 
-export default class RefreshWidget extends Component {
+export class RefreshWidget extends Component {
   constructor(props) {
     super(props);
 

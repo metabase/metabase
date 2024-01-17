@@ -1,10 +1,42 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries
+  "\"See this month by weeks\" type of transform.
+
+  Entry points:
+
+  - Cell
+
+  - Pivot cell
+
+  - Legend item
+
+  Requirements:
+
+  - `dimensions` have a date column with `year`, `quarter`, `month`, `week`, `day`, `hour` temporal unit. For other
+    units, or when there is no temporal bucketing this drill cannot be applied. Changing `hour` to `minute` ends the
+    sequence. Only the first matching column would be used in query transformation.
+
+  - `displayInfo` returns `displayName` with `See this {0} by {1}` string using the current and the next available
+    temporal unit.
+
+  Query transformation:
+
+  - Remove breakouts for `dimensions`. Please note that with regular cells and pivot cells it would mean removing all
+    breakouts; but with legend item clicks it would remove the breakout for the legend item column only.
+
+  - Add a filter based on columns and values from `dimensions`. Take temporal units and binning strategies into
+    account
+    https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
+
+  - Add a breakout based on the date column (from requirements), using the next (more granular) temporal unit.
+
+  Question transformation:
+
+  - Set default display"
   (:require
-   [medley.core :as m]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
@@ -25,26 +57,18 @@
   (zipmap (drop-last valid-current-units)
           (drop 1 valid-current-units)))
 
-(defn- is-ref-for-source-column? [a-ref column]
-  (and (lib.util/clause-of-type? a-ref :field)
-       (let [[_field _opts id-or-name] a-ref]
-         (if (integer? id-or-name)
-           (= id-or-name (:id column))
-           (and (if-let [join-alias (lib.join.util/current-join-alias a-ref)]
-                  (= join-alias (lib.join.util/current-join-alias column))
-                  true)
-                (= id-or-name (:lib/source-column-alias column)))))))
-
-(mu/defn ^:private matching-breakout-ref :- [:maybe :mbql.clause/field]
+(mu/defn ^:private matching-breakout-dimension :- [:maybe ::lib.schema.drill-thru/context.row.value]
   [query        :- ::lib.schema/query
    stage-number :- :int
-   column       :- lib.metadata/ColumnMetadata]
-  (let [breakouts (lib.breakout/breakouts query stage-number)]
-    (m/find-first (fn [breakout]
-                    (and (is-ref-for-source-column? breakout column)
-                         (= (lib.temporal-bucket/temporal-bucket breakout)
-                            (lib.temporal-bucket/temporal-bucket column))))
-                  breakouts)))
+   dimensions   :- [:sequential ::lib.schema.drill-thru/context.row.value]]
+  (first (for [breakout (lib.breakout/breakouts query stage-number)
+               :when (and (lib.util/clause-of-type? breakout :field)
+                          (lib.temporal-bucket/temporal-bucket breakout))
+               {:keys [column] :as dimension} dimensions
+               :when (and (lib.equality/find-matching-column breakout [column])
+                          (= (lib.temporal-bucket/temporal-bucket breakout)
+                             (lib.temporal-bucket/temporal-bucket column)))]
+           (assoc dimension :column-ref breakout))))
 
 (mu/defn ^:private next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [column :- lib.metadata/ColumnMetadata]
@@ -68,28 +92,27 @@
   For example: The month of a year, days or weeks of a quarter, smaller lat/long regions, etc.
 
   This is different from the `:drill-thru/zoom` type, which is for showing the details of a single object."
-  ;; TODO: This naming is confusing. Fix it?
-  [query                  :- ::lib.schema/query
-   stage-number           :- :int
-   {:keys [column value]} :- ::lib.schema.drill-thru/context]
+  [query                              :- ::lib.schema/query
+   stage-number                       :- :int
+   {:keys [dimensions], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
-             column
-             (some? value)
-             (matching-breakout-ref query stage-number column))
-    (when-let [next-unit (next-breakout-unit column)]
-      {:lib/type     :metabase.lib.drill-thru/drill-thru
-       :display-name (describe-next-unit next-unit)
-       :type         :drill-thru/zoom-in.timeseries
-       :column       column
-       :value        value
-       :next-unit    next-unit})))
+             (not-empty dimensions))
+    (when-let [{:keys [value], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
+      (when value
+        (when-let [next-unit (next-breakout-unit (:column dimension))]
+          {:lib/type     :metabase.lib.drill-thru/drill-thru
+           :display-name (describe-next-unit next-unit)
+           :type         :drill-thru/zoom-in.timeseries
+           :dimension    dimension
+           :next-unit    next-unit})))))
 
 (mu/defmethod lib.drill-thru.common/drill-thru-method :drill-thru/zoom-in.timeseries
-  [query                            :- ::lib.schema/query
-   stage-number                     :- :int
-   {:keys [column value next-unit]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
-  (let [breakout     (matching-breakout-ref query stage-number column)
-        new-breakout (lib.temporal-bucket/with-temporal-bucket breakout next-unit)]
+  [query                         :- ::lib.schema/query
+   stage-number                  :- :int
+   {:keys [dimension next-unit]} :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries]
+  (let [{:keys [column value]} dimension
+        old-breakout           (:column-ref dimension)
+        new-breakout           (lib.temporal-bucket/with-temporal-bucket old-breakout next-unit)]
     (-> query
-      (lib.filter/filter stage-number (lib.filter/= column value))
-      (lib.remove-replace/replace-clause stage-number breakout new-breakout))))
+        (lib.filter/filter stage-number (lib.filter/= column value))
+        (lib.remove-replace/replace-clause stage-number old-breakout new-breakout))))

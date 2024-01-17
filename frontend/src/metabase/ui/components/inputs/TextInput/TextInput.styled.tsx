@@ -1,4 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
+import { getSize } from "@mantine/core";
 
 export const getTextInputOverrides =
   (): MantineThemeOverride["components"] => ({
@@ -6,9 +7,15 @@ export const getTextInputOverrides =
       defaultProps: {
         size: "md",
       },
-      styles: theme => ({
+      styles: (theme, _, { size = "md" }) => ({
         wrapper: {
-          marginTop: theme.spacing.xs,
+          "&:not(:only-child)": {
+            marginTop: theme.spacing.xs,
+          },
+        },
+        label: {
+          color: theme.fn.themeColor("text-medium"),
+          fontSize: getSize({ size, sizes: theme.fontSizes }),
         },
       }),
     },

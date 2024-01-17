@@ -20,6 +20,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -29,10 +30,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -64,73 +62,74 @@
    :remappings {:user ["variable" [:field (mt/id :checkins :user_id) nil]]}})
 
 (defn- format-honeysql [honeysql]
-  (let [honeysql (cond-> honeysql
-                   (= driver/*driver* :sqlserver)
-                   (assoc :modifiers ["TOP 1000"])
+  (let [add-top-1000 (fn [honeysql]
+                       (-> honeysql
+                           (dissoc :select)
+                           (assoc :select-top (into [[:inline 1000]] (:select honeysql)))))
+        honeysql     (cond-> honeysql
+                       (= driver/*driver* :sqlserver)
+                       add-top-1000
 
-                   ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
-                   ;; have one.) HACK
-                   (= driver/*driver* :sparksql)
-                   (update :from (fn [[table]]
-                                   [[table [(sql.qp/->honeysql
-                                             :sparksql
-                                             (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
+                       ;; SparkSQL has to have an alias source table (or at least our driver is written as if it has to
+                       ;; have one.) HACK
+                       (= driver/*driver* :sparksql)
+                       (update :from (fn [[table]]
+                                       [[table [(sql.qp/->honeysql
+                                                 :sparksql
+                                                 (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
     (first (sql.qp/format-honeysql driver/*driver* honeysql))))
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
-    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-      {:query (mt/native-query
-                {:query
-                 (format-honeysql
-                  {:select   [:*]
-                   :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
-                   :where    [:=
-                              (identifier :venues :category_id)
-                              #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{cat}}")]
-                   :order-by [[(identifier :venues :id) :asc]]})
+    {:query (mt/native-query
+              {:query
+               (format-honeysql
+                {:select   [:*]
+                 :from     [[(identifier :venues)]]
+                 :where    [:=
+                            (identifier :venues :category_id)
+                            [:raw "{{cat}}"]]
+                 :order-by [[(identifier :venues :id) :asc]]})
 
-                 :template_tags
-                 {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-       :remappings {:cat ["variable" ["template-tag" "cat"]]}})))
+               :template_tags
+               {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+     :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
-    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-      {:query (mt/native-query
-                {:query
-                 (format-honeysql
-                  {:select    [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins :id))
-                               (sql.qp/maybe-wrap-unaliased-expr (identifier :checkins :user_id))
-                               (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :name))
-                               (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :category_id))]
-                   :from      [(sql.qp/maybe-wrap-unaliased-expr (identifier :checkins))]
-                   :left-join [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))
-                               [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                   :where     [:=
-                               (identifier :checkins :user_id)
-                               #_{:clj-kondo/ignore [:deprecated-var]} (hx/raw "{{user}}")]
-                   :order-by  [[(identifier :checkins :id) :asc]]})
+    {:query (mt/native-query
+              {:query
+               (format-honeysql
+                {:select    [[(identifier :checkins :id)]
+                             [(identifier :checkins :user_id)]
+                             [(identifier :venues :name)]
+                             [(identifier :venues :category_id)]]
+                 :from      [[(identifier :checkins)]]
+                 :left-join [[(identifier :venues)]
+                             [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
+                 :where     [:=
+                             (identifier :checkins :user_id)
+                             [:raw "{{user}}"]]
+                 :order-by  [[(identifier :checkins :id) :asc]]})
 
-                 :template_tags
-                 {"user" {:name         "user"
-                          :display-name "User ID"
-                          :type         :number
-                          :required     true}}})
-       :remappings {:user ["variable" ["template-tag" "user"]]}})))
+               :template_tags
+               {"user" {:name         "user"
+                        :display-name "User ID"
+                        :type         :number
+                        :required     true}}})
+     :remappings {:user ["variable" ["template-tag" "user"]]}}))
 
 (defn- venue-names-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-      {:query (mt/native-query
-                {:query
-                 (format-honeysql
-                  {:select   [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues :id))
-                              (sql.qp/maybe-wrap-unaliased-expr (identifier :venues :name))]
-                   :from     [(sql.qp/maybe-wrap-unaliased-expr (identifier :venues))]
-                   :order-by [[(identifier :venues :id) :asc]]})})})))
+    {:query (mt/native-query
+              {:query
+               (format-honeysql
+                {:select   [[(identifier :venues :id)]
+                            [(identifier :venues :name)]]
+                 :from     [[(identifier :venues)]]
+                 :order-by [[(identifier :venues :id) :asc]]})})}))
 
 (defn- run-venues-count-query []
   (mt/format-rows-by [int]
@@ -164,10 +163,9 @@
     (remove-metadata (dissoc &match :source-metadata))))
 
 (defn- apply-row-level-permissions [query]
-  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version (or driver/*driver* :h2))]
-    (-> (qp.store/with-metadata-provider (mt/id)
-          (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
-        remove-metadata)))
+  (-> (qp.store/with-metadata-provider (mt/id)
+        (#'row-level-restrictions/apply-sandboxing (mbql.normalize/normalize query)))
+      remove-metadata))
 
 (deftest middleware-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
@@ -628,8 +626,8 @@
                                       :checkins {}}
                          :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
-                                                       :group_id (:id &group)
-                                                       :table_id (mt/id :venues))]
+                                                    :group_id (:id &group)
+                                                    :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
@@ -646,17 +644,13 @@
                        :order-by [[:asc $id]]
                        :limit    3})))))
           (testing "After running the query the first time, result_metadata should have been saved for the GTAP Card"
-            (is (schema= [(s/one {:name         (s/eq "ID")
-                                  :base_type    (s/eq :type/BigInteger)
-                                  :display_name (s/eq "ID")
-                                  s/Keyword     s/Any}
-                                 "ID col")
-                          (s/one {:name         (s/eq "NAME")
-                                  :base_type    (s/eq :type/Text)
-                                  :display_name (s/eq "Name")
-                                  s/Keyword     s/Any}
-                                 "NAME col")]
-                         (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
+            (is (=? [{:name         "ID"
+                      :base_type    :type/BigInteger
+                      :display_name "ID"}
+                     {:name         "NAME"
+                      :base_type    :type/Text
+                      :display_name "Name"}]
+                    (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
 
 (defn- do-with-sql-gtap [sql f]
   (met/with-gtaps (mt/$ids
@@ -735,7 +729,7 @@
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
-                   (:cached result)))
+                   (:cached (:cache/details result))))
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Cache entry should be saved within 5 seconds"
@@ -746,7 +740,7 @@
         (testing "Run it again, should be cached"
           (let [result (run-query)]
             (is (= true
-                   (:cached result)))
+                   (:cached (:cache/details result))))
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"
@@ -757,13 +751,13 @@
                      (:login_attributes @api/*current-user*)))
               (let [result (run-query)]
                 (is (= nil
-                       (:cached result)))
+                       (:cached (:cache/details result))))
                 (is (= [[9]]
                        (mt/rows result)))))))))))
 
 (deftest remapped-fks-test
   (testing "Sandboxing should work with remapped FK columns (#14629)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; set up GTAP against reviews
       (met/with-gtaps (mt/$ids reviews
                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
@@ -775,15 +769,13 @@
                                                            (mt/id :products)))
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
-            (is (schema= {:status   (s/eq :completed)
-                          s/Keyword s/Any}
-                         (mt/run-mbql-query products {:limit 10}))))
+            (is (=? {:status :completed}
+                    (mt/run-mbql-query products {:limit 10}))))
           (testing "Try the sandbox without remapping in place"
             (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
-              (is (schema= {:status    (s/eq :completed)
-                            :row_count (s/eq 8)
-                            s/Keyword  s/Any}
-                           result))
+              (is (=? {:status    :completed
+                       :row_count 8}
+                      result))
               (is (= [1
                       1
                       "christ"
@@ -795,10 +787,9 @@
           (testing "Ok, add remapping and it should still work"
             (mt/with-column-remappings [reviews.product_id products.title]
               (let [result (mt/run-mbql-query reviews {:order-by [[:asc $id]]})]
-                (is (schema= {:status    (s/eq :completed)
-                              :row_count (s/eq 8)
-                              s/Keyword  s/Any}
-                             result))
+                (is (=? {:status    :completed
+                         :row_count 8}
+                        result))
                 (is (= [1
                         1
                         "christ"
@@ -812,7 +803,7 @@
 (deftest sandboxing-linked-table-perms
   (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
            permissions for the linked table (#15105)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (met/with-gtaps (mt/$ids orders
                         {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
                          :attributes {"user_id" 1}})
@@ -825,7 +816,7 @@
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
     ;; Sandbox ORDERS and PRODUCTS
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (met/with-gtaps (mt/$ids nil
                         {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                       :products {:remappings {:user_cat [:dimension $products.category]}}}
@@ -841,22 +832,18 @@
                                       :alias        "products"}]
                        :limit       10})]
           (testing "Should be able to run the query"
-            (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
-                                      s/Keyword s/Any}
-                          :status    (s/eq :completed)
-                          :row_count (s/eq 2)
-                          s/Keyword  s/Any}
-                         (qp/process-query query))))
+            (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
+                     :status    :completed
+                     :row_count 2}
+                    (qp/process-query query))))
           (testing "should be able to save the query as a Card and run it"
             (mt/with-temp [Collection {collection-id :id} {}
                            Card       {card-id :id} {:dataset_query query, :collection_id collection-id}]
               (perms/grant-collection-read-permissions! &group collection-id)
-              (is (schema= {:data      {:rows     (s/eq [[nil 5] ["Widget" 6]])
-                                        s/Keyword s/Any}
-                            :status    (s/eq "completed")
-                            :row_count (s/eq 2)
-                            s/Keyword  s/Any}
-                           (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
+              (is (=? {:data      {:rows     [[nil 5] ["Widget" 6]]}
+                       :status    "completed"
+                       :row_count 2}
+                      (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))
           (letfn [(test-drill-thru []
                     (testing "Drill-thru question should work"
                       (let [drill-thru-query
@@ -884,23 +871,21 @@
                         (testing "As an admin"
                           (mt/with-test-user :crowberto
                             (test-preprocessing)
-                            (is (schema= {:status    (s/eq :completed)
-                                          :row_count (s/eq 10)
-                                          s/Keyword  s/Any}
-                                         (qp/process-query drill-thru-query)))))
+                            (is (=? {:status    :completed
+                                     :row_count 10}
+                                    (qp/process-query drill-thru-query)))))
                         (testing "As a sandboxed user"
                           (test-preprocessing)
-                          (is (schema= {:status    (s/eq :completed)
-                                        :row_count (s/eq 6)
-                                        s/Keyword  s/Any}
-                                       (qp/process-query drill-thru-query)))))))]
+                          (is (=? {:status    :completed
+                                   :row_count 6}
+                                  (qp/process-query drill-thru-query)))))))]
             (test-drill-thru)
             (mt/with-column-remappings [orders.product_id products.title]
               (test-drill-thru))))))))
 
 (deftest drill-thru-on-implicit-joins-test
   (testing "drill-through should work on implicit joined tables with sandboxes should have correct metadata (#13641)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; create Sandbox on ORDERS
       (met/with-gtaps (mt/$ids nil
                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
@@ -916,20 +901,13 @@
                                    :order-by    [[:asc $product_id->products.category]]
                                    :limit       5})]
                       (letfn [(test-metadata []
-                                (is (schema= {:status   (s/eq :completed)
-                                              :data     {:results_metadata
-                                                         {:columns  [(s/one {:name      (s/eq "CATEGORY")
-                                                                             :field_ref (s/eq (mt/$ids $orders.product_id->products.category))
-                                                                             s/Keyword  s/Any}
-                                                                            "results metadata for products.category")
-                                                                     (s/one {:name      (s/eq "count")
-                                                                             :field_ref (s/eq [:aggregation 0])
-                                                                             s/Keyword  s/Any}
-                                                                            "results metadata for count aggregation")]
-                                                          s/Keyword s/Any}
-                                                         s/Keyword s/Any}
-                                              s/Keyword s/Any}
-                                             (qp/process-query query))))]
+                                (is (=? {:status :completed
+                                         :data   {:results_metadata
+                                                  {:columns [{:name      "CATEGORY"
+                                                              :field_ref (mt/$ids $orders.product_id->products.category)}
+                                                             {:name      "count"
+                                                              :field_ref [:aggregation 0]}]}}}
+                                        (qp/process-query query))))]
                         (testing "as an admin"
                           (mt/with-test-user :crowberto
                             (test-metadata)))
@@ -937,12 +915,11 @@
                           (test-metadata)))))
                   (testing "Drill-thru question should work"
                     (letfn [(test-drill-thru-query []
-                              (is (schema= {:status   (s/eq :completed)
-                                            s/Keyword s/Any}
-                                           (mt/run-mbql-query orders
-                                             {:filter   [:= $product_id->products.category "Doohickey"]
-                                              :order-by [[:asc $product_id->products.category]]
-                                              :limit    5}))))]
+                              (is (=? {:status :completed}
+                                      (mt/run-mbql-query orders
+                                        {:filter   [:= $product_id->products.category "Doohickey"]
+                                         :order-by [[:asc $product_id->products.category]]
+                                         :limit    5}))))]
                       (testing "as admin"
                         (mt/with-test-user :crowberto
                           (test-drill-thru-query)))
@@ -969,7 +946,7 @@
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [mbql-sandbox-results (met/with-gtaps {:gtaps      (mt/$ids
                                                                 {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
                                                                  :products {:remappings {"user_cat" [:dimension $products.category]}}})
@@ -1023,7 +1000,7 @@
                     ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
                     :presto-jdbc)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (met/with-gtaps {:gtaps      (mt/$ids
                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
@@ -1063,7 +1040,7 @@
             query     (t2/select-one-fn :dataset_query Card :id card-id)
             run-query (fn []
                         (let [results (qp/process-query (assoc query :cache-ttl 100))]
-                          {:cached?  (boolean (:cached results))
+                          {:cached?  (boolean (:cached (:cache/details results)))
                            :num-rows (count (mt/rows results))}))]
         (mt/with-temporary-setting-values [enable-query-caching  true
                                            query-caching-min-ttl 0]
@@ -1085,7 +1062,7 @@
 
 (deftest persistence-disabled-when-sandboxed
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
       ;; confusing when `(mt/id)` and friends change value halfway through the test
       (met/with-gtaps {:gtaps {:products
@@ -1135,3 +1112,14 @@
                     (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
                                             (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
+
+(deftest is-sandboxed-success-test
+  (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
+    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+      (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
+                                          :table_id      (mt/id :categories)
+                                          :dataset_query (mt/mbql-query categories)}]
+        (let [query (:dataset_query card)]
+          (process-userland-query-test/with-query-execution [qe query]
+            (qp/process-userland-query query)
+            (is (:is_sandboxed (qe)))))))))

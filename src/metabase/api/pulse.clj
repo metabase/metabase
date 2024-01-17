@@ -4,11 +4,13 @@
    [clojure.set :refer [difference]]
    [compojure.core :refer [GET POST PUT]]
    [hiccup.core :refer [html]]
+   [hiccup.page :refer [html5]]
    [metabase.api.alert :as api.alert]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.config :as config]
    [metabase.email :as email]
+   [metabase.events :as events]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
@@ -22,6 +24,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.pulse]
+   [metabase.pulse.preview :as preview]
    [metabase.pulse.render :as render]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -136,8 +139,10 @@
      ;; check that and fix it if needed
      (api/maybe-reconcile-collection-position! pulse-data)
      ;; ok, now create the Pulse
-     (api/check-500
-      (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
+     (let [pulse (api/check-500
+                  (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
+       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+       pulse))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
@@ -265,12 +270,33 @@
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
     {:status 200
-     :body   (html
+     :body   (html5
               [:html
                [:body {:style "margin: 0;"}
                 (binding [render/*include-title*   true
                           render/*include-buttons* true]
                   (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
+
+(api/defendpoint GET "/preview_dashboard/:id"
+  "Get HTML rendering of a Dashboard with `id`.
+
+  This endpoint relies on a custom middleware defined in `metabase.pulse.preview/style-tag-nonce-middleware` to
+  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
+  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
+  [id]
+  {id ms/PositiveInt}
+  (api/read-check :model/Dashboard id)
+  {:status  200
+   :headers {"Content-Type" "text/html"}
+   :body    (preview/style-tag-from-inline-styles
+             (html5
+               [:head
+                [:meta {:charset "utf-8"}]
+                [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
+                        :rel  "stylesheet"
+                        :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
+               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
+                (preview/render-dashboard-to-html id)]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -329,4 +355,7 @@
     (t2/delete! PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(api/define-routes)
+(def ^:private style-nonce-middleware
+  (partial preview/style-tag-nonce-middleware "/api/pulse/preview_dashboard"))
+
+(api/define-routes style-nonce-middleware)

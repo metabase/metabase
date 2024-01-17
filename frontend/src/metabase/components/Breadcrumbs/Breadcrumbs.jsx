@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import cx from "classnames";
-import { Icon } from "metabase/core/components/Icon";
+import { Icon } from "metabase/ui";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import S from "./Breadcrumbs.css";
 
@@ -33,7 +33,10 @@ export default class Breadcrumbs extends Component {
     const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
 
     return (
-      <section className={cx(className, breadcrumbsClass)}>
+      <section
+        data-testid="breadcrumbs"
+        className={cx(className, breadcrumbsClass)}
+      >
         {crumbs.length <= 1 && placeholder ? (
           <span className={cx(breadcrumbClass, S.breadcrumbPage)}>
             {placeholder}

@@ -5,7 +5,9 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
+   [metabase.events :as events]
    [metabase.integrations.common :as integrations.common]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
@@ -39,9 +41,10 @@
   :model/User)
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :author]  [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :creator] [_original-model _k] :model/User)
-(methodical/defmethod t2/model-for-automagic-hydration [:default :user]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :creator]    [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :updated_by] [_original-model _k] :model/User)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :user]       [_original-model _k] :model/User)
 
 (doto :model/User
   (derive :metabase/model)
@@ -50,7 +53,11 @@
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
    :settings         mi/transform-encrypted-json
-   :sso_source       mi/transform-keyword})
+   :sso_source       mi/transform-keyword
+   :type             mi/transform-keyword})
+
+(def ^:private allowed-user-types
+  #{:internal :personal :api-key})
 
 (def ^:private insert-default-values
   {:date_joined  :%now
@@ -84,6 +91,9 @@
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
+  (when-let [user-type (:type user)]
+    (assert
+     (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
@@ -317,7 +327,8 @@
    [:email                             ms/Email]
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
-   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]])
+   [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
@@ -341,6 +352,11 @@
   [new-user :- NewUser invitor :- Invitor setup? :- :boolean]
   ;; create the new user
   (u/prog1 (insert-new-user! new-user)
+    (events/publish-event! :event/user-invited
+                           {:object
+                            (assoc <>
+                                   :invite_method "email"
+                                   :sso_source (:sso_source new-user))})
     (send-welcome-email! <> invitor setup?)))
 
 (mu/defn create-new-google-auth-user!
@@ -422,3 +438,20 @@
   (deferred-tru "The last version for which a user dismissed the 'What's new?' modal.")
   :user-local :only
   :type :string)
+
+;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
+
+(defmethod audit-log/model-details :model/User
+  [entity event-type]
+  (case event-type
+    :user-update               (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :user-invited              (select-keys (t2/hydrate entity :user_group_memberships)
+                                            [:groups :first_name :last_name :email
+                                             :invite_method :sso_source
+                                             :user_group_memberships])
+    :password-reset-initiated  (select-keys entity [:token])
+    :password-reset-successful (select-keys entity [:token])
+    {}))

@@ -12,6 +12,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
@@ -52,7 +53,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like
   [_ database-type]
-  (condp re-matches (name database-type)
+  (condp re-matches (u/lower-case-en (name database-type))
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
     #"smallint"         :type/Integer
@@ -73,10 +74,6 @@
     #"array.*"          :type/Array
     #"map"              :type/Dictionary
     #".*"               :type/*))
-
-(defmethod sql.qp/honey-sql-version :hive-like
-  [_driver]
-  2)
 
 (defmethod sql.qp/current-datetime-honeysql-form :hive-like
   [_]

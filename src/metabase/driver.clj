@@ -54,6 +54,8 @@
 (defsetting report-timezone
   (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :visibility :settings-manager
+  :export?    true
+  :audit      :getter
   :setter
   (fn [new-value]
     (setting/set-value-of-type! :string :report-timezone new-value)
@@ -62,6 +64,7 @@
 (defsetting report-timezone-short
   "Current report timezone abbreviation"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (fn [] (short-timezone-name (report-timezone)))
   :doc        false)
@@ -69,6 +72,7 @@
 (defsetting report-timezone-long
   "Current report timezone string"
   :visibility :public
+  :export?    true
   :setter     :none
   :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
@@ -315,6 +319,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti describe-table-indexes
+  "Returns a set of map containing information about the indexes of a table.
+  Currently we only sync single column indexes or the first column of a composite index.
+  Results should match the [[metabase.sync.interface/TableIndexMetadata]] schema."
+  {:added "0.49.0" :arglists '([driver database table])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti escape-entity-name-for-metadata
   "escaping for when calling `.getColumns` or `.getTables` on table names or schema names. Useful for when a database
   driver has difference escaping rules for table or schema names when used from metadata.
@@ -531,7 +543,10 @@
     :connection-impersonation-requires-role
 
     ;; Does the driver require specifying a collection (table) for native queries? (mongo)
-    :native-requires-specified-collection})
+    :native-requires-specified-collection
+
+    ;; Does the driver support column(s) support storing index info
+    :index-info})
 
 
 (defmulti supports?
@@ -640,6 +655,30 @@
   {:added "0.32.0", :arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti prettify-native-form
+  "Pretty-format native form presumably coming from compiled query.
+  Used eg. in the API endpoint `/dataset/native`, to present the user with a nicely formatted query.
+
+  # How to use and extend this method?
+
+  At the time of writing, this method acts as identity for nosql drivers. However, story with sql drivers is a bit
+  different. To extend it for sql drivers, developers could use [[metabase.driver.sql.util/format-sql]]. Function
+  in question is implemented in a way, that developers, implemnting this multimethod can:
+  - Avoid implementing it completely, if their driver keyword representation corresponds to key in
+    [[metabase.driver.sql.util/dialects]] (eg. `:postgres`).
+  - Ignore implementing it, if it is sufficient to format their drivers native form with dialect corresponding
+    to `:standardsql`'s value from the dialects map (eg `:h2`).
+  - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
+    representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
+  - Completly reimplement this method with their special formatting code."
+  {:added "0.47.0", :arglists '([driver native-form]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod prettify-native-form ::driver
+ [_ native-form]
+ native-form)
 
 (defmulti splice-parameters-into-native-query
   "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
@@ -851,6 +890,10 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:dynamic *insert-chunk-rows*
+  "The number of rows to insert at a time when uploading data to a database. This can be bound for testing purposes."
+  nil)
+
 (defmulti table-name-length-limit
   "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
@@ -870,9 +913,24 @@
   :hierarchy #'hierarchy)
 
 (defmulti insert-into!
-  "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
-   `column-names`."
+  "Insert `values` into a table named `table-name`. `values` is a lazy sequence of rows, where each row's order matches
+   `column-names`.
+
+  The types in `values` may include:
+  - java.lang.String
+  - java.lang.Double
+  - java.math.BigInteger
+  - java.lang.Boolean
+  - java.time.LocalDate
+  - java.time.LocalDateTime
+  - java.time.OffsetDateTime"
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti add-columns!
+  "Add columns given by `col->type` to a table named `table-name`. If the table doesn't exist it will throw an error."
+  {:added "0.49.0", :arglists '([driver db-id table-name col->type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

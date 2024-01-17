@@ -28,6 +28,7 @@
 (defsetting google-auth-client-id
   (deferred-tru "Client ID for Google Sign-In.")
   :visibility :public
+  :audit      :getter
   :setter     (fn [client-id]
                 (if (seq client-id)
                   (let [trimmed-client-id (str/trim client-id)]
@@ -49,6 +50,7 @@
   (deferred-tru "Is Google Sign-in currently enabled?")
   :visibility :public
   :type       :boolean
+  :audit      :getter
   :getter     (fn []
                 (if-some [value (setting/get-value-of-type :boolean :google-auth-enabled)]
                   value
@@ -113,12 +115,23 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
+(defn- maybe-update-google-user!
+  "Update google user if the first or list name changed."
+  [user first-name last-name]
+  (when (or (not= first-name (:first_name user))
+            (not= last-name (:last_name user)))
+    (t2/update! :model/User (:id user) {:first_name first-name
+                                        :last_name  last-name}))
+  (assoc user :first_name first-name :last_name last-name))
+
 (mu/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
   [first-name last-name email]
-  (or (t2/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
+  (let [existing-user (t2/select-one [User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
+    (if existing-user
+      (maybe-update-google-user! existing-user first-name last-name)
       (google-auth-create-new-user! {:first_name first-name
                                      :last_name  last-name
-                                     :email      email})))
+                                     :email      email}))))
 
 (defn do-google-auth
   "Call to Google to perform an authentication"

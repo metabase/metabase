@@ -1,16 +1,18 @@
 name: Fuzzing
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - 'master'
       - 'release-**'
+    paths:
+      - 'frontend/src/metabase-lib/expressions/**'
   pull_request:
-    paths-ignore:
-    - 'docs/**'
+    paths:
+      - 'frontend/src/metabase-lib/expressions/**'
 
 jobs:
-
   fe-fuzz-tokenizer:
     runs-on: ubuntu-22.04
     timeout-minutes: 15

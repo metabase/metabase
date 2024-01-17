@@ -10,17 +10,16 @@ import type {
   Aggregation,
   Breakout,
   DatabaseId,
-  DatasetColumn,
   DatasetQuery,
   DependentMetadataItem,
   ExpressionClause,
   Filter,
   Join,
-  OrderBy,
   TableId,
   StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -34,7 +33,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase-lib/operators/utils";
 import { TYPE } from "metabase-lib/types/constants";
-import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import { isSegment } from "metabase-lib/queries/utils/filter";
 import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
@@ -47,8 +45,7 @@ import Dimension, {
 import DimensionOptions from "metabase-lib/DimensionOptions";
 import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
-import * as ML from "../v2";
-import type { Limit, Query } from "../types";
+import type { Query } from "../types";
 
 import type Segment from "../metadata/Segment";
 import type Database from "../metadata/Database";
@@ -89,9 +86,6 @@ export interface DimensionOption {
 export const isSegmentOption = (content: any): content is SegmentOption =>
   content?.filter && isSegment(content.filter);
 
-export const isDimensionOption = (content: any): content is DimensionOption =>
-  !!content?.dimension;
-
 export interface SegmentOption {
   name: string;
   filter: ["segment", number];
@@ -127,42 +121,31 @@ class StructuredQuery extends AtomicQuery {
   }
 
   private getMLv2Query(): Query {
-    return this.question()._getMLv2Query();
-  }
-
-  private updateWithMLv2(nextQuery: Query) {
-    const nextMLv1Query = ML.toLegacyQuery(nextQuery);
-    return this.setDatasetQuery(nextMLv1Query);
+    return this.question().query();
   }
 
   /* Query superclass methods */
 
   /**
-   * @returns true if this is new query that hasn't been modified yet.
-   */
-  isEmpty() {
-    return !this.databaseId();
-  }
-
-  /**
    * @returns true if this query is in a state where it can be run.
    */
   canRun() {
-    return !!(this.sourceTableId() || this.sourceQuery());
+    return !!(this._sourceTableId() || this.sourceQuery());
   }
 
   /**
    * @returns true if we have metadata for the root source table loaded
    */
-  hasMetadata() {
-    return this.metadata() && !!this.rootTable();
+  hasMetadata(): boolean {
+    const metadata = this.metadata();
+    return metadata != null && metadata.table(this._sourceTableId()) != null;
   }
 
-  /**
-   * @returns true if this query is in a state where it can be edited. Must have database and table set, and metadata for the table loaded.
-   */
-  isEditable() {
-    return !this.readOnly() && this.hasMetadata();
+  // Whether the user can modify and run this query
+  // Determined based on availability of database and source table metadata
+  // For queries based on questions expects virtual table metadata for the source card
+  isEditable(): boolean {
+    return this._database() != null && this.hasMetadata();
   }
 
   /* AtomicQuery superclass methods */
@@ -171,23 +154,25 @@ class StructuredQuery extends AtomicQuery {
    * @returns all tables in the currently selected database that can be used.
    */
   tables(): Table[] | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return (database && database.tables) || null;
   }
 
   /**
    * @returns the currently selected database ID, if any is selected.
+   * @deprecated Use MLv2
    */
-  databaseId(): DatabaseId | null | undefined {
+  _databaseId(): DatabaseId | null | undefined {
     // same for both structured and native
     return this._structuredDatasetQuery.database;
   }
 
   /**
    * @returns the currently selected database metadata, if a database is selected and loaded.
+   * @deprecated Use MLv2
    */
-  database(): Database | null | undefined {
-    const databaseId = this.databaseId();
+  _database(): Database | null | undefined {
+    const databaseId = this._databaseId();
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
@@ -195,15 +180,8 @@ class StructuredQuery extends AtomicQuery {
    * @returns the database engine object, if a database is selected and loaded.
    */
   engine(): string | null | undefined {
-    const database = this.database();
+    const database = this._database();
     return database && database.engine;
-  }
-
-  /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly() {
-    return !this.database();
   }
 
   /* Methods unique to this query type */
@@ -218,16 +196,12 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns the underlying MBQL query object
    */
-  query(): StructuredQueryObject {
+  legacyQuery(): StructuredQueryObject {
     return this._structuredDatasetQuery.query;
   }
 
   setQuery(query: StructuredQueryObject): StructuredQuery {
     return this._updateQuery(() => query, []);
-  }
-
-  clearQuery() {
-    return this._updateQuery(() => ({}));
   }
 
   updateQuery(
@@ -247,7 +221,7 @@ class StructuredQuery extends AtomicQuery {
    * @returns a new query with the provided Database ID set.
    */
   setDatabaseId(databaseId: DatabaseId): StructuredQuery {
-    if (databaseId !== this.databaseId()) {
+    if (databaseId !== this._databaseId()) {
       // TODO: this should reset the rest of the query?
       return new StructuredQuery(
         this._originalQuestion,
@@ -263,21 +237,19 @@ class StructuredQuery extends AtomicQuery {
 
   /**
    * @returns the table ID, if a table is selected.
+   * @deprecated Use MLv2
    */
-  sourceTableId(): TableId | null | undefined {
-    return this.query()?.["source-table"];
-  }
-
-  sourceTable(): Table | null | undefined {
-    const tableId = this.sourceTableId();
-    return tableId != null ? this._metadata.table(tableId) : null;
+  private _sourceTableId(): TableId | null | undefined {
+    const query = this.getMLv2Query();
+    const sourceTableId = Lib.sourceTableOrCardId(query);
+    return sourceTableId;
   }
 
   /**
    * @returns a new query with the provided Table ID set.
    */
   setSourceTableId(tableId: TableId): StructuredQuery {
-    if (tableId !== this.sourceTableId()) {
+    if (tableId !== this._sourceTableId()) {
       return new StructuredQuery(
         this._originalQuestion,
         chain(this.datasetQuery())
@@ -293,77 +265,16 @@ class StructuredQuery extends AtomicQuery {
   }
 
   /**
-   * @deprecated: use sourceTableId
-   */
-  tableId(): TableId | null | undefined {
-    return this.sourceTableId();
-  }
-
-  /**
-   * @deprecated: use setSourceTableId
-   */
-  setTableId(tableId: TableId): StructuredQuery {
-    return this.setSourceTableId(tableId);
-  }
-
-  /**
-   * @deprecated: use setSourceTableId
-   */
-  setTable(table: Table): StructuredQuery {
-    return this.setSourceTableId(table.id);
-  }
-
-  /**
-   *
-   */
-  setDefaultQuery(): StructuredQuery {
-    const table = this.table();
-
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (
-      table &&
-      table.entity_type === "entity/GoogleAnalyticsTable" &&
-      !this.isEmpty() &&
-      !this.hasAnyClauses()
-    ) {
-      // NOTE: shold we check that a
-      const dateField = _.findWhere(table.fields, {
-        name: "ga:date",
-      });
-
-      if (dateField) {
-        return this.filter([
-          "time-interval",
-          ["field", dateField.id, null],
-          -365,
-          "day",
-        ])
-          .aggregate(["metric", "ga:users"])
-          .aggregate(["metric", "ga:pageviews"])
-          .breakout([
-            "field",
-            dateField.id,
-            {
-              "temporal-unit": "week",
-            },
-          ]);
-      }
-    }
-
-    return this;
-  }
-
-  /**
    * @returns the table object, if a table is selected and loaded.
    */
   table = _.once((): Table | null => {
-    return getStructuredQueryTable(this);
+    return getStructuredQueryTable(this.question(), this);
   });
 
   /**
    * Removes invalid clauses from the query (and source-query, recursively)
    */
-  clean(): StructuredQuery {
+  clean({ skipFilters = false } = {}): StructuredQuery {
     if (!this.hasMetadata()) {
       console.warn("Warning: can't clean query without metadata!");
       return this;
@@ -374,15 +285,10 @@ class StructuredQuery extends AtomicQuery {
     const sourceQuery = query.sourceQuery();
 
     if (sourceQuery) {
-      query = query.setSourceQuery(sourceQuery.clean());
+      query = query.setSourceQuery(sourceQuery.clean({ skipFilters }));
     }
 
-    return query
-      .cleanJoins()
-      .cleanExpressions()
-      .cleanFilters()
-      .cleanFields()
-      .cleanEmpty();
+    return query.cleanJoins().cleanExpressions().cleanFields().cleanEmpty();
   }
 
   /**
@@ -506,7 +412,7 @@ class StructuredQuery extends AtomicQuery {
     const query = this.getMLv2Query();
     const stageIndex = this.getQueryStageIndex();
 
-    const hasJoins = ML.joins(query, stageIndex).length > 0;
+    const hasJoins = Lib.joins(query, stageIndex).length > 0;
 
     return (
       hasJoins ||
@@ -514,9 +420,9 @@ class StructuredQuery extends AtomicQuery {
       this.hasFilters() ||
       this.hasAggregations() ||
       this.hasBreakouts() ||
-      this.hasSorts() ||
+      this._hasSorts() ||
       this.hasLimit() ||
-      this.hasFields()
+      this._hasFields()
     );
   }
 
@@ -536,17 +442,17 @@ class StructuredQuery extends AtomicQuery {
     return this.breakouts().length > 0;
   }
 
-  hasSorts() {
+  _hasSorts() {
     const query = this.getMLv2Query();
-    return ML.orderBys(query).length > 0;
+    return Lib.orderBys(query).length > 0;
   }
 
   hasLimit(stageIndex = this.queries().length - 1) {
     const query = this.getMLv2Query();
-    return ML.hasLimit(query, stageIndex);
+    return Lib.hasLimit(query, stageIndex);
   }
 
-  hasFields() {
+  _hasFields() {
     return this.fields().length > 0;
   }
 
@@ -594,7 +500,7 @@ class StructuredQuery extends AtomicQuery {
    * @deprecated use metabase-lib v2 to manage joins
    */
   joins = _.once((): JoinWrapper[] => {
-    return Q.getJoins(this.query()).map(
+    return Q.getJoins(this.legacyQuery({ useStructuredQuery: true })).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
   });
@@ -609,7 +515,7 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @deprecated use metabase-lib v2 to manage joins
    */
-  removeJoin(index) {
+  removeJoin(_index) {
     return this._updateQuery(Q.removeJoin, arguments);
   }
 
@@ -619,7 +525,9 @@ class StructuredQuery extends AtomicQuery {
    * @returns an array of MBQL @type {Aggregation}s.
    */
   aggregations = _.once((): AggregationWrapper[] => {
-    return Q.getAggregations(this.query()).map(
+    return Q.getAggregations(
+      this.legacyQuery({ useStructuredQuery: true }),
+    ).map(
       (aggregation, index) => new AggregationWrapper(aggregation, index, this),
     );
   });
@@ -650,15 +558,6 @@ class StructuredQuery extends AtomicQuery {
 
   aggregationOperator(short: string): AggregationOperator {
     return this.aggregationOperatorsLookup()[short];
-  }
-
-  /**
-   * @returns an array of aggregation options for the currently selected table
-   */
-  aggregationOperatorsWithoutRows(): AggregationOperator[] {
-    return this.aggregationOperators().filter(
-      option => option.short !== "rows",
-    );
   }
 
   /**
@@ -728,28 +627,31 @@ class StructuredQuery extends AtomicQuery {
     return formatExpression(expression, {
       quotes,
       ...options,
-      query: this,
+      legacyQuery: this,
     });
   }
 
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Aggregation} added.
    */
-  addAggregation(aggregation: Aggregation): StructuredQuery {
+  addAggregation(_aggregation: Aggregation): StructuredQuery {
     return this._updateQuery(Q.addAggregation, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Aggregation} updated at the provided index.
    */
-  updateAggregation(index: number, aggregation: Aggregation): StructuredQuery {
+  updateAggregation(
+    _index: number,
+    _aggregation: Aggregation,
+  ): StructuredQuery {
     return this._updateQuery(Q.updateAggregation, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the aggregation at the provided index removed.
    */
-  removeAggregation(index: number): StructuredQuery {
+  removeAggregation(_index: number): StructuredQuery {
     return this._updateQuery(Q.removeAggregation, arguments);
   }
 
@@ -766,11 +668,11 @@ class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Breakout}s.
    */
   breakouts = _.once((): BreakoutWrapper[] => {
-    if (this.query() == null) {
+    if (this.legacyQuery({ useStructuredQuery: true }) == null) {
       return [];
     }
 
-    return Q.getBreakouts(this.query()).map(
+    return Q.getBreakouts(this.legacyQuery({ useStructuredQuery: true })).map(
       (breakout, index) => new BreakoutWrapper(breakout, index, this),
     );
   });
@@ -804,7 +706,7 @@ class StructuredQuery extends AtomicQuery {
     }
 
     return isValidation
-      ? this.dimensionOptionsForValidation(filter)
+      ? this._dimensionOptionsForValidation(filter)
       : this.dimensionOptions(filter);
   }
 
@@ -813,6 +715,10 @@ class StructuredQuery extends AtomicQuery {
    */
   canAddBreakout() {
     return this.breakoutOptions().count > 0;
+  }
+
+  canNest(): boolean {
+    return Boolean(this._database()?.hasFeature("nested-queries"));
   }
 
   /**
@@ -826,21 +732,21 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Breakout} added.
    */
-  addBreakout(breakout: Breakout) {
+  addBreakout(_breakout: Breakout) {
     return this._updateQuery(Q.addBreakout, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Breakout} updated at the provided index.
    */
-  updateBreakout(index: number, breakout: Breakout) {
+  updateBreakout(_index: number, _breakout: Breakout) {
     return this._updateQuery(Q.updateBreakout, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the breakout at the provided index removed.
    */
-  removeBreakout(index: number) {
+  removeBreakout(_index: number) {
     return this._updateQuery(Q.removeBreakout, arguments);
   }
 
@@ -857,18 +763,10 @@ class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Filter}s.
    */
   filters = _.once((): FilterWrapper[] => {
-    return Q.getFilters(this.query()).map(
+    return Q.getFilters(this.legacyQuery({ useStructuredQuery: true })).map(
       (filter, index) => new FilterWrapper(filter, index, this),
     );
   });
-
-  /**
-   * @returns An array of MBQL @type {Filter}s from the last two query stages
-   */
-  topLevelFilters(stages = 2): FilterWrapper[] {
-    const queries = this.queries().slice(-stages);
-    return [].concat(...queries.map(q => q.filters()));
-  }
 
   filterFieldOptionSections(
     filter?: (Filter | FilterWrapper) | null | undefined,
@@ -977,7 +875,7 @@ class StructuredQuery extends AtomicQuery {
    */
   canAddFilter() {
     return (
-      Q.canAddFilter(this.query()) &&
+      Q.canAddFilter(this.legacyQuery({ useStructuredQuery: true })) &&
       (this.filterDimensionOptions().count > 0 ||
         this.filterSegmentOptions().length > 0)
     );
@@ -986,21 +884,21 @@ class StructuredQuery extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Filter} added.
    */
-  addFilter(filter: Filter | FilterWrapper) {
+  addFilter(_filter: Filter | FilterWrapper) {
     return this._updateQuery(Q.addFilter, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Filter} updated at the provided index.
    */
-  updateFilter(index: number, filter: Filter | FilterWrapper) {
+  updateFilter(_index: number, _filter: Filter | FilterWrapper) {
     return this._updateQuery(Q.updateFilter, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the filter at the provided index removed.
    */
-  removeFilter(index: number) {
+  removeFilter(_index: number) {
     return this._updateQuery(Q.removeFilter, arguments);
   }
 
@@ -1018,63 +916,9 @@ class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.clearSegments, arguments);
   }
 
-  // SORTS
-  /**
-   * @deprecated use the orderBys function from metabase-lib v2
-   */
-  sorts = _.once((): OrderBy[] => {
-    return Q.getOrderBys(this.query());
-  });
-
-  /**
-   * @deprecated use the orderBy function from metabase-lib v2
-   */
-  addSort(orderBy: OrderBy) {
-    return this._updateQuery(Q.addOrderBy, arguments);
-  }
-
-  /**
-   * @deprecated use the clearOrderBys function from metabase-lib v2
-   */
-  clearSort() {
-    return this._updateQuery(Q.clearOrderBy, arguments);
-  }
-
-  /**
-   * @deprecated use the replaceClause function from metabase-lib v2
-   */
-  replaceSort(orderBy: OrderBy) {
-    return this.clearSort().addSort(orderBy);
-  }
-
-  // LIMIT
-  /**
-   * @deprecated use metabase-lib v2's currentLimit function
-   */
-  limit(stageIndex = this.queries().length - 1): Limit {
-    const query = this.getMLv2Query();
-    return ML.currentLimit(query, stageIndex);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2's limit function
-   */
-  updateLimit(limit: Limit, stageIndex = this.queries().length - 1) {
-    const query = this.getMLv2Query();
-    const nextQuery = ML.limit(query, stageIndex, limit);
-    return this.updateWithMLv2(nextQuery);
-  }
-
-  /**
-   * @deprecated use metabase-lib v2's limit function
-   */
-  clearLimit() {
-    return this.updateLimit(null);
-  }
-
   // EXPRESSIONS
   expressions = _.once((): ExpressionClause => {
-    return Q.getExpressions(this.query());
+    return Q.getExpressions(this.legacyQuery({ useStructuredQuery: true }));
   });
 
   addExpression(name, expression) {
@@ -1084,51 +928,8 @@ class StructuredQuery extends AtomicQuery {
 
     // extra logic for adding expressions in fields clause
     // TODO: push into query/expression?
-    if (query.hasFields() && query.isRaw()) {
+    if (query._hasFields() && query.isRaw()) {
       query = query.addField(["expression", uniqueName]);
-    }
-
-    return query;
-  }
-
-  updateExpression(name, expression, oldName) {
-    const isRename = oldName && oldName !== name;
-    const uniqueName = isRename
-      ? getUniqueExpressionName(this.expressions(), name)
-      : name;
-
-    let query = this._updateQuery(Q.updateExpression, [
-      uniqueName,
-      expression,
-      oldName,
-    ]);
-
-    // extra logic for renaming expressions in fields clause
-    // TODO: push into query/expression?
-    if (isRename) {
-      const index = query._indexOfField(["expression", oldName]);
-
-      if (index >= 0) {
-        query = query.updateField(index, ["expression", uniqueName]);
-      }
-    }
-
-    return query;
-  }
-
-  removeExpression(name) {
-    let query = this._updateQuery(Q.removeExpression, arguments);
-
-    // extra logic for removing expressions in fields clause
-    // TODO: push into query/expression?
-    const index = query._indexOfField(["expression", name]);
-
-    if (index >= 0) {
-      query = query.removeField(index);
-    }
-
-    if (!query.hasExpressions() && query.isRaw()) {
-      query = query.clearFields();
     }
 
     return query;
@@ -1161,45 +962,23 @@ class StructuredQuery extends AtomicQuery {
   // FIELDS
   fields() {
     // FIMXE: implement field functions in query lib
-    return this.query().fields || [];
+    return this.legacyQuery({ useStructuredQuery: true }).fields || [];
   }
 
-  addField(name, expression) {
+  addField(_name, _expression) {
     return this._updateQuery(Q.addField, arguments);
   }
 
-  updateField(index, field) {
+  updateField(_index, _field) {
     return this._updateQuery(Q.updateField, arguments);
   }
 
-  removeField(name) {
+  removeField(_name) {
     return this._updateQuery(Q.removeField, arguments);
   }
 
   clearFields() {
     return this._updateQuery(Q.clearFields, arguments);
-  }
-
-  setFields(fields) {
-    return this._updateQuery(q => ({ ...q, fields }));
-  }
-
-  /**
-   * Returns dimension options that can appear in the `fields` clause
-   */
-  fieldsOptions(
-    dimensionFilter: DimensionFilterFn = dimension => true,
-  ): DimensionOptions {
-    if (this.isBareRows() && !this.hasBreakouts()) {
-      return this.dimensionOptions(dimensionFilter);
-    }
-
-    // TODO: allow adding fields connected by broken out PKs?
-    return new DimensionOptions({
-      count: 0,
-      dimensions: [],
-      fks: [],
-    });
   }
 
   // DIMENSION OPTIONS
@@ -1231,7 +1010,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilterFn = dimension => true,
+    dimensionFilter: DimensionFilterFn = _dimension => true,
   ): DimensionOptions {
     const dimensionOptions = {
       count: 0,
@@ -1312,8 +1091,8 @@ class StructuredQuery extends AtomicQuery {
    *
    * ⚠️ Should ONLY be used for clauses' `isValid` checks.
    */
-  dimensionOptionsForValidation(
-    dimensionFilter: DimensionFilter = dimension => true,
+  _dimensionOptionsForValidation(
+    dimensionFilter: DimensionFilter = _dimension => true,
   ): DimensionOptions {
     const baseOptions = this.dimensionOptions(dimensionFilter);
 
@@ -1349,7 +1128,7 @@ class StructuredQuery extends AtomicQuery {
   }
 
   // FIELD OPTIONS
-  fieldOptions(fieldFilter: FieldFilterFn = field => true): DimensionOptions {
+  fieldOptions(fieldFilter: FieldFilterFn = _field => true): DimensionOptions {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
       return !field || (field.isDimension() && fieldFilter(field));
@@ -1374,7 +1153,7 @@ class StructuredQuery extends AtomicQuery {
 
   expressionDimensions = _.once((): Dimension[] => {
     return Object.entries(this.expressions()).map(
-      ([expressionName, expression]) => {
+      ([expressionName, _expression]) => {
         return new ExpressionDimension(
           expressionName,
           null,
@@ -1403,7 +1182,7 @@ class StructuredQuery extends AtomicQuery {
   });
 
   fieldDimensions = _.once(() => {
-    return this.fields().map((fieldClause, index) =>
+    return this.fields().map((fieldClause, _index) =>
       this.parseFieldReference(fieldClause),
     );
   });
@@ -1415,7 +1194,7 @@ class StructuredQuery extends AtomicQuery {
       const aggregations = this.aggregationDimensions();
       const breakouts = this.breakoutDimensions();
       return [...breakouts, ...aggregations];
-    } else if (this.hasFields()) {
+    } else if (this._hasFields()) {
       const fields = this.fieldDimensions();
       const joined = this.joinedDimensions();
       return [...fields, ...joined];
@@ -1480,10 +1259,6 @@ class StructuredQuery extends AtomicQuery {
     }
   }
 
-  fieldReferenceForColumn(column) {
-    return fieldRefForColumn(column);
-  }
-
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }
@@ -1499,7 +1274,9 @@ class StructuredQuery extends AtomicQuery {
    * The (wrapped) source query, if any
    */
   sourceQuery = _.once((): StructuredQuery | null | undefined => {
-    const sourceQuery = this.query()?.["source-query"];
+    const sourceQuery = this.legacyQuery({ useStructuredQuery: true })?.[
+      "source-query"
+    ];
 
     if (sourceQuery) {
       return new NestedStructuredQuery(
@@ -1544,68 +1321,6 @@ class StructuredQuery extends AtomicQuery {
   });
 
   /**
-   * Returns the corresponding {Dimension} in the "top-level" {StructuredQuery}
-   */
-  topLevelDimension(dimension: Dimension): Dimension | null | undefined {
-    const topQuery = this.topLevelQuery();
-    let query = this;
-
-    while (query) {
-      if (query === topQuery) {
-        return dimension;
-      } else {
-        dimension = query.dimensionForSourceQuery(dimension);
-        query = query.sourceQuery();
-      }
-    }
-
-    return null;
-  }
-
-  dimensionForColumn(column: DatasetColumn) {
-    if (column) {
-      const fieldRef = this.fieldReferenceForColumn(column);
-
-      if (fieldRef) {
-        const dimension = this.queries()
-          .flatMap(q => q.dimensions())
-          .find(d => d.isEqual(fieldRef));
-
-        return this.parseFieldReference(fieldRef, dimension?.query());
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
-   */
-  topLevelColumn(column: DatasetColumn): DatasetColumn | null | undefined {
-    const dimension = this.topLevelDimensionForColumn(column);
-
-    if (dimension) {
-      const topDimension = this.topLevelDimension(dimension);
-
-      if (topDimension) {
-        return topDimension.column();
-      }
-    }
-
-    return null;
-  }
-
-  topLevelDimensionForColumn(column) {
-    if (column) {
-      const fieldRef = this.fieldReferenceForColumn(column);
-
-      if (fieldRef) {
-        return this.parseFieldReference(fieldRef);
-      }
-    }
-  }
-
-  /**
    * returns the corresponding {Dimension} in the sourceQuery, if any
    */
   dimensionForSourceQuery(dimension: Dimension): Dimension | null | undefined {
@@ -1641,13 +1356,6 @@ class StructuredQuery extends AtomicQuery {
     return this.rootQuery().table();
   });
 
-  /**
-   * returns the original Table ID at the beginning of the nested queries
-   */
-  rootTableId(): TableId | null | undefined {
-    return this.rootQuery().sourceTableId();
-  }
-
   setSourceQuery(
     sourceQuery: StructuredQuery | StructuredQueryObject,
   ): StructuredQuery {
@@ -1656,7 +1364,7 @@ class StructuredQuery extends AtomicQuery {
         return this;
       }
 
-      sourceQuery = sourceQuery.query();
+      sourceQuery = sourceQuery.legacyQuery({ useStructuredQuery: true });
     }
 
     // TODO: if the source query is modified in ways that make the parent query invalid we should "clean" those clauses
@@ -1698,7 +1406,7 @@ class StructuredQuery extends AtomicQuery {
       }
     }
 
-    const dbId = this.databaseId();
+    const dbId = this._databaseId();
     if (dbId) {
       addDependency({
         type: "schema",
@@ -1706,7 +1414,7 @@ class StructuredQuery extends AtomicQuery {
       });
     }
 
-    const tableId = this.sourceTableId();
+    const tableId = this._sourceTableId();
     if (tableId) {
       addDependency({
         type: "table",
@@ -1781,6 +1489,8 @@ class NestedStructuredQuery extends StructuredQuery {
   });
 
   parentQuery() {
-    return this._parent.setSourceQuery(this.query());
+    return this._parent.setSourceQuery(
+      this.legacyQuery({ useStructuredQuery: true }),
+    );
   }
 }

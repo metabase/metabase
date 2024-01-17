@@ -1,3 +1,4 @@
+import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
   Engine,
   EngineField,
@@ -130,20 +131,27 @@ export const createMockSettingDefinition = (
   ...opts,
 });
 
-export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+export const createMockSettings = (
+  opts?: Partial<Settings | EnterpriseSettings>,
+): EnterpriseSettings => ({
   "admin-email": "admin@metabase.test",
   "anon-tracking-enabled": false,
+  "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
   "application-name": "Metabase",
   "available-fonts": [],
   "available-locales": null,
+  "bcc-enabled?": true,
   "cloud-gateway-ips": null,
   "custom-formatting": {},
   "custom-homepage": false,
   "custom-homepage-dashboard": null,
+  "help-link": "metabase",
+  "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
   "email-configured?": false,
+  "embedding-app-origin": "",
   "enable-embedding": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
@@ -185,12 +193,14 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   "search-typeahead-enabled": true,
   "setup-token": null,
   "session-cookies": null,
+  "session-cookie-samesite": "lax",
   "snowplow-enabled": false,
   "show-database-syncing-modal": false,
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
   "show-lighthouse-illustration": true,
+  "show-metabase-links": true,
   "show-metabot": true,
   "site-locale": "en",
   "site-url": "http://localhost:3000",

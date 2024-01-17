@@ -42,7 +42,7 @@ Create a new GTAP.
 
 *  **`table_id`** value must be an integer greater than zero.
 
-*  **`card_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`card_id`** nullable value must be an integer greater than zero.
 
 *  **`group_id`** value must be an integer greater than zero.
 
@@ -67,9 +67,9 @@ Update a GTAP entry. The only things you're allowed to update for a GTAP are the
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`card_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+*  **`card_id`** nullable value must be an integer greater than zero.
 
 ---
 

@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import type { LocationDescriptor } from "history";
 
-import type { IconName, IconProps } from "metabase/core/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
+import { WithVizSettingsData } from "metabase/dashboard/hoc/WithVizSettingsData";
 import { getVisualizationRaw } from "metabase/visualizations";
 
 import {
@@ -36,9 +36,9 @@ import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
 } from "./types";
-import ClickBehaviorSidebarOverlay from "./ClickBehaviorSidebarOverlay";
-import DashCardMenu from "./DashCardMenu";
-import DashCardParameterMapper from "./DashCardParameterMapper";
+import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
+import { DashCardMenuConnected } from "./DashCardMenu/DashCardMenu";
+import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import {
   VirtualDashCardOverlayRoot,
   VirtualDashCardOverlayText,
@@ -63,7 +63,6 @@ interface DashCardVisualizationProps {
 
   expectedDuration: number;
   isSlow: CardSlownessStatus;
-  isAction: boolean;
 
   isPreviewing: boolean;
   isEmbed: boolean;
@@ -97,7 +96,7 @@ const WrappedVisualization = WithVizSettingsData(
   connect(null, mapDispatchToProps)(Visualization),
 );
 
-function DashCardVisualization({
+export function DashCardVisualization({
   dashcard,
   dashboard,
   series,
@@ -110,7 +109,6 @@ function DashCardVisualization({
   totalNumGridCols,
   expectedDuration,
   error,
-  isAction,
   headerIcon,
   isSlow,
   isPreviewing,
@@ -190,7 +188,7 @@ function DashCardVisualization({
   const renderActionButtons = useCallback(() => {
     const mainSeries = series[0] as unknown as Dataset;
 
-    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
+    const shouldShowDashCardMenu = DashCardMenuConnected.shouldRender({
       question,
       result: mainSeries,
       isXray,
@@ -204,7 +202,7 @@ function DashCardVisualization({
     }
 
     return (
-      <DashCardMenu
+      <DashCardMenuConnected
         question={question}
         result={mainSeries}
         dashcardId={dashcard.id}
@@ -228,9 +226,6 @@ function DashCardVisualization({
 
   return (
     <WrappedVisualization
-      // Visualization has to be converted to TypeScript before we can remove the ts-ignore
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       className={cx("flex-full overflow-hidden", {
         "pointer-events-none": isEditingDashboardLayout,
       })}
@@ -252,7 +247,6 @@ function DashCardVisualization({
       errorIcon={error?.icon}
       showTitle
       isDashboard
-      isAction={isAction}
       isSlow={isSlow}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}
@@ -268,6 +262,3 @@ function DashCardVisualization({
     />
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DashCardVisualization;

@@ -1,4 +1,10 @@
-import { getIsWhiteLabeling, getWhiteLabeledLoadingMessage } from "..";
+import {
+  getApplicationName,
+  getCanWhitelabel,
+  getIsWhiteLabeling,
+  getShowMetabaseLinks,
+  getWhiteLabeledLoadingMessage,
+} from "..";
 import type { SetupOpts } from "./setup";
 import { setup as baseSetup } from "./setup";
 
@@ -43,5 +49,41 @@ describe("getIsWhiteLabeling (EE with token)", () => {
     const { getState } = setup({ applicationName: "something else" });
 
     expect(getIsWhiteLabeling(getState())).toBe(true);
+  });
+});
+
+describe("getApplicationName (EE with token)", () => {
+  it("should return Metabase when application-name is unchanged", () => {
+    const { getState } = setup();
+
+    expect(getApplicationName(getState())).toBe("Metabase");
+  });
+
+  it("should return the application when application-name is changed", () => {
+    const { getState } = setup({ applicationName: "something else" });
+
+    expect(getApplicationName(getState())).toBe("something else");
+  });
+});
+
+describe("getCanWhitelabel (EE with token)", () => {
+  it("should return true", () => {
+    const { getState } = setup();
+
+    expect(getCanWhitelabel(getState())).toBe(true);
+  });
+});
+
+describe("getShowMetabaseLinks (EE with token)", () => {
+  it("should return true when show-metabase-links is true", () => {
+    const { getState } = setup({ showMetabaseLinks: true });
+
+    expect(getShowMetabaseLinks(getState())).toBe(true);
+  });
+
+  it("should return false when show-metabase-links is false", () => {
+    const { getState } = setup({ showMetabaseLinks: false });
+
+    expect(getShowMetabaseLinks(getState())).toBe(false);
   });
 });

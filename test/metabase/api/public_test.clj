@@ -12,24 +12,17 @@
    [metabase.api.pivots :as api.pivots]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
+   [metabase.events.view-log-test :as view-log-test]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            Collection
-            Database
-            Dashboard
-            DashboardCard
-            DashboardCardSeries
-            Dimension
-            Field
-            FieldValues]]
+    :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
+            Database Dimension Field FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]
    [throttle.core :as throttle]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -173,6 +166,105 @@
                  (update-in [category-name-id :values] count)
                  (update category-name-id #(into {} %))))))))
 
+(defn card-with-snippet-and-card-template-tags []
+  {:enable_embedding true
+   :dataset_query
+   {:database (mt/id)
+    :type     :native
+    :native   {:query         "select {{snippet: all}} from {{#1-card}}"
+               :template-tags {:a           {:type         "date"
+                                             :name         "a"
+                                             :display-name "a"
+                                             :id           "a"
+                                             :default      "A TAG"}
+                               "snippet: all" {:type         :snippet,
+                                               :name         "snippet: all",
+                                               :id           (str (random-uuid)),
+                                               :snippet-name "all",
+                                               :display-name "Snippet: All",
+                                               :snippet-id   1}
+                               "1-card"       {:type         :card,
+                                               :name         "1-card",
+                                               :id           (str (random-uuid)),
+                                               :display-name "1 Card",
+                                               :card-id      1}}}}
+   :embedding_params {:a "enabled"}})
+
+(defn card-with-embedded-params []
+  {:enable_embedding true
+   :dataset_query    {:database (mt/id)
+                      :type     :native
+                      :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                                                 :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
+                                                 :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
+                                                 :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
+   :parameters       [{:type "date", :name "a", :display_name "a" :id "a" :default "A param"}
+                      {:type "date", :name "b", :display_name "b" :id "b" :default "B param"}
+                      {:type "date", :name "c", :display_name "c" :id "c" :default "C param"
+                       :values_source_type "static-list" :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
+   :embedding_params {:a "locked", :b "disabled", :c "enabled", :d "enabled"}})
+
+(deftest get-card-parameters-should-work-with-legacy-template-tags
+  ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+  ;; because doing such migration is costly.
+  ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+  ;; that why we need to keep concat both of them then dedupe by id
+  (testing "parameters should get from both template-tags and card.parameters"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card card (assoc (card-with-embedded-params) :public_uuid (str (random-uuid)))]
+        (is (= [{:type         "date/single",
+                 :name         "a",
+                 :display_name "a",
+                 :id           "a",
+                 :default      "A TAG",
+                 :target       ["variable" ["template-tag" "a"]],
+                 :slug         "a"}
+                {:type         "date/single",
+                 :name         "b",
+                 :display_name "b",
+                 :id           "b",
+                 :default      "B TAG",
+                 :target       ["variable" ["template-tag" "b"]],
+                 :slug         "b"}
+                ;; the parameter with id = "c" exists in both card.parameters and tempalte-tags should have info
+                ;; merge of both places
+                {:type                 "date/single",
+                 :name                 "c",
+                 :display_name         "c",
+                 :slug                 "c",
+                 ;; order importance: the default from template-tag is in the final result
+                 :default              "C TAG",
+                 :values_source_type   "static-list",
+                 :id                   "c",
+                 :target               ["variable" ["template-tag" "c"]],
+                 :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
+                ;; the parameter id = "d" is in template-tags, but not card.parameters,
+                ;; when fetching card we should get it returned
+                {:id      "d",
+                 :type    "date/single",
+                 :target  ["variable" ["template-tag" "d"]],
+                 :name    "d",
+                 :slug    "d",
+                 :default "D TAG"}]
+               (:parameters (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))
+
+(deftest get-card-parameters-should-exclude-non-parameter-template-tags
+  ;; in 44 we added card.parameters but we didn't migrate template-tags to parameters
+  ;; because doing such migration is costly.
+  ;; so there are cards where some parameters in template-tags does not exist in card.parameters
+  ;; that why we need to keep concat both of them, but exclude non-parameter template-tags
+  (testing "parameters should exclude non-parameter template-tags"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Card card (assoc (card-with-snippet-and-card-template-tags) :public_uuid (str (random-uuid)))]
+        (is (= [; this corresponds to the only template tag that is a parameter
+                {:type         "date/single",
+                 :name         "a",
+                 :id           "a",
+                 :default      "A TAG",
+                 :target       ["variable" ["template-tag" "a"]],
+                 :slug         "a"}]
+               (:parameters (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))
+
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------
 
 (defn card-query-url
@@ -213,7 +305,7 @@
                  (mt/rows (client/client :get 202 (str "public/card/" uuid "/query"))))))
 
         (testing ":json download response format"
-          (is (= [{:Count 100}]
+          (is (= [{:Count "100"}]
                  (client/client :get 200 (str "public/card/" uuid "/query/json")))))
 
         (testing ":csv download response format"
@@ -242,20 +334,18 @@
   (testing "JSON-encoded MBQL parameters passed as a query parameter should work (#17019)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-card [{uuid :public_uuid} {:dataset_query (native-query-with-template-tag)}]
-        (is (schema= {:status     (s/eq "completed")
-                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
-                                                       :name  "venue_id"
-                                                       :slug  "venue_id"
-                                                       :type  "number"
-                                                       :value 2}])
-                                   s/Keyword   s/Any}
-                      s/Keyword   s/Any}
-                     (client/client :get 202 (str "public/card/" uuid "/query")
-                                    :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                               :name  "venue_id"
-                                                               :slug  "venue_id"
-                                                               :type  "number"
-                                                               :value 2}])))))
+        (is (=? {:status     "completed"
+                 :json_query {:parameters [{:id    "_VENUE_ID_"
+                                            :name  "venue_id"
+                                            :slug  "venue_id"
+                                            :type  "number"
+                                            :value 2}]}}
+                (client/client :get 202 (str "public/card/" uuid "/query")
+                               :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                          :name  "venue_id"
+                                                          :slug  "venue_id"
+                                                          :type  "number"
+                                                          :value 2}])))))
 
       ;; see longer explanation in [[metabase.mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
@@ -268,15 +358,13 @@
                                                                                   :name         "foo"
                                                                                   :display-name "Filter"
                                                                                   :type         :text}}}}}]
-          (is (schema= {:status   (s/eq "completed")
-                        :data     {:rows     (s/eq [["456"]])
-                                   s/Keyword s/Any}
-                        s/Keyword s/Any}
-                       (client/client :get 202 (format "public/card/%s/query" uuid)
-                                     :parameters (json/encode [{:type   "category"
-                                                                      :value  "456"
-                                                                      :target ["variable" ["template-tag" "foo"]]
-                                                                      :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
+          (is (=? {:status "completed"
+                   :data   {:rows [["456"]]}}
+                  (client/client :get 202 (format "public/card/%s/query" uuid)
+                                 :parameters (json/encode [{:type   "category"
+                                                            :value  "456"
+                                                            :target ["variable" ["template-tag" "foo"]]
+                                                            :id     "ed1fd39e-2e35-636f-ec44-8bf226cca5b0"}])))))))))
 
 (deftest execute-public-card-with-default-parameters-test
   (testing "GET /api/public/card/:uuid/query with parameters with default values"
@@ -296,20 +384,18 @@
                                                                    :type         :dimension,
                                                                    :widget-type  :id}}}}}
                           (shared-obj))]
-        (is (schema= {:status     (s/eq "completed")
-                      :json_query {:parameters (s/eq [{:id    "_VENUE_ID_"
-                                                       :name  "venue_id"
-                                                       :slug  "venue_id"
-                                                       :type  "number"
-                                                       :value 2}])
-                                   s/Keyword   s/Any}
-                      s/Keyword   s/Any}
-                     (client/client :get 202 (card-query-url card "")
-                                    :parameters (json/encode [{:id    "_VENUE_ID_"
-                                                               :name  "venue_id"
-                                                               :slug  "venue_id"
-                                                               :type  "number"
-                                                               :value 2}]))))
+        (is (=? {:status     "completed"
+                 :json_query {:parameters [{:id    "_VENUE_ID_"
+                                            :name  "venue_id"
+                                            :slug  "venue_id"
+                                            :type  "number"
+                                            :value 2}]}}
+                (client/client :get 202 (card-query-url card "")
+                               :parameters (json/encode [{:id    "_VENUE_ID_"
+                                                          :name  "venue_id"
+                                                          :slug  "venue_id"
+                                                          :type  "number"
+                                                          :value 2}]))))
         (testing "the default should apply if no param value is provided"
           (is (= [[1]]
                  (mt/rows (client/client :get 202 (card-query-url card "")
@@ -388,17 +474,18 @@
 
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
-  (mt/with-temporary-setting-values [enable-public-sharing true]
-    (mt/with-temp! [Card {uuid :public_uuid} (card-with-date-field-filter)]
-      ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [client/*url-prefix* ""]
-        (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
-          (is (= "count\n107\n"
-                 (client/real-client :get 200 (str "public/question/" uuid ".csv")
-                                :parameters (json/encode [{:id     "_DATE_"
-                                                           :type   :date/quarter-year
-                                                           :target [:dimension [:template-tag :date]]
-                                                           :value  "Q1-2014"}])))))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
+        ;; make sure the URL doesn't include /api/ at the beginning like it normally would
+        (binding [client/*url-prefix* ""]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+            (is (= "count\n107\n"
+                   (client/real-client :get 200 (str "public/question/" uuid ".csv")
+                                       :parameters (json/encode [{:id     "_DATE_"
+                                                                  :type   :date/quarter-year
+                                                                  :target [:dimension [:template-tag :date]]
+                                                                  :value  "Q1-2014"}]))))))))))
 
 (defn- card-with-trendline []
   (assoc (shared-obj)
@@ -435,26 +522,37 @@
 
 (defn- fetch-public-dashboard [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
-      (select-keys [:name :dashcards :ordered_tabs])
+      (select-keys [:name :dashcards :tabs])
       (update :name boolean)
       (update :dashcards count)
-      (update :ordered_tabs count)))
+      (update :tabs count)))
 
 (deftest get-public-dashboard-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard-and-card [dash card]
-        (is (= {:name true, :dashcards 1, :ordered_tabs 0}
+        (is (= {:name true, :dashcards 1, :tabs 0}
                (fetch-public-dashboard dash)))
         (testing "We shouldn't see Cards that have been archived"
           (t2/update! Card (u/the-id card) {:archived true})
-          (is (= {:name true, :dashcards 0, :ordered_tabs 0}
+          (is (= {:name true, :dashcards 0, :tabs 0}
                  (fetch-public-dashboard dash)))))
-      (testing "dashboard with tabs should return ordered_tabs"
+      (testing "dashboard with tabs should return tabs"
        (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
-         (is (= {:name true, :dashcards 2, :ordered_tabs 2}
+         (is (= {:name true, :dashcards 2, :tabs 2}
                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+
+(deftest public-dashboard-logs-view-test
+  (testing "Viewing a public dashboard logs the correct view log event."
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-dashboard-and-card [dash _]
+        (fetch-public-dashboard dash)
+        (is (partial=
+             {:model      "dashboard"
+              :model_id   (:id dash)
+              :has_access true}
+             (view-log-test/latest-view nil (:id dash))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -590,22 +688,19 @@
                (mt/rows (client/client :get 202 (dashcard-url dash card dashcard)))))
 
         (testing "with parameters"
-          (is (schema= {:json_query {:parameters (s/eq [{:id      "_VENUE_ID_"
-                                                         :name    "Venue ID"
-                                                         :slug    "venue_id"
-                                                         :target  ["dimension" ["field" (mt/id :venues :id) nil]]
-                                                         :value   [10]
-                                                         :type    "id"}])
-                                     s/Keyword   s/Any}
-                        :data       {:rows     (s/eq [[1]])
-                                     s/Keyword s/Any}
-                        s/Keyword   s/Any}
-                       (client/client :get 202 (dashcard-url dash card dashcard)
-                                      :parameters (json/encode [{:name   "Venue ID"
-                                                                 :slug   :venue_id
-                                                                 :target [:dimension (mt/id :venues :id)]
-                                                                 :value  [10]
-                                                                 :id     "_VENUE_ID_"}])))))))))
+          (is (=? {:json_query {:parameters [{:id     "_VENUE_ID_"
+                                              :name   "Venue ID"
+                                              :slug   "venue_id"
+                                              :target ["dimension" ["field" (mt/id :venues :id) nil]]
+                                              :value  [10]
+                                              :type   "id"}]}
+                   :data       {:rows [[1]]}}
+                  (client/client :get 202 (dashcard-url dash card dashcard)
+                                 :parameters (json/encode [{:name   "Venue ID"
+                                                            :slug   :venue_id
+                                                            :target [:dimension (mt/id :venues :id)]
+                                                            :value  [10]
+                                                            :id     "_VENUE_ID_"}])))))))))
 
 (deftest execute-public-dashcard-with-default-parameters-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id with parameters with default values"
@@ -1472,7 +1567,7 @@
 
 (deftest pivot-public-card-test
   (mt/test-drivers (api.pivots/applicable-drivers)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "GET /api/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-card [{uuid :public_uuid} (api.pivots/pivot-card)]
@@ -1495,7 +1590,7 @@
 (deftest pivot-public-dashcard-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     (mt/test-drivers (api.pivots/applicable-drivers)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-temporary-setting-values [enable-public-sharing true]
           (with-temp-public-dashboard [dash {:parameters [{:id      "_STATE_"
                                                            :name    "State"
@@ -1514,9 +1609,8 @@
                           (apply client/client :get 202 (pivot-dashcard-url dash card dashcard) query-parameters))]
                   (testing "without parameters"
                     (let [result (results)]
-                      (is (schema= {:status   (s/eq "completed")
-                                    s/Keyword s/Any}
-                                   result))
+                      (is (=? {:status "completed"}
+                              result))
                       ;; [[metabase.api.public/transform-results]] should remove `row_count`
                       (testing "row_count isn't included in public endpoints"
                         (is (nil? (:row_count result))))
@@ -1533,9 +1627,8 @@
                                                                      :slug   :state
                                                                      :target [:dimension (mt/$ids $orders.user_id->people.state)]
                                                                      :value  ["CA" "WA"]}]))]
-                      (is (schema= {:status   (s/eq "completed")
-                                    s/Keyword s/Any}
-                                   result))
+                      (is (=? {:status "completed"}
+                              result))
                       (testing "row_count isn't included in public endpoints"
                         (is (nil? (:row_count result))))
                       (is (= 6 (count (get-in result [:data :cols]))))
