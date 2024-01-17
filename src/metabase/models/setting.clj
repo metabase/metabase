@@ -622,13 +622,13 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any."
   [setting-definition-or-name]
-  (let [{:keys [cache? type enabled? default feature] :as setting} (resolve-setting setting-definition-or-name)
-        disable-cache?                                             (or *disable-cache* (not cache?))]
+  (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
+        disable-cache?                                   (or *disable-cache* (not cache?))]
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
       (binding [*disable-cache* disable-cache?]
-        (get-value-of-type type setting)))))
+        (getter)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -964,13 +964,17 @@
    :doc        (setting-fn-docstring setting)})
 
 (defn setting-fn
-  "Impl for [[defsetting]]. Create the automatically defined `setter` function for Settings defined by [[defsetting]]."
-  [setting]
-  (fn setting-setter* [new-value]
-    ;; need to qualify this or otherwise the reader gets this confused with the set! used for things like
-    ;; (set! *warn-on-reflection* true)
-    ;; :refer-clojure :exclude doesn't seem to work in this case
-    (metabase.models.setting/set! setting new-value)))
+  "Impl for [[defsetting]]. Create the automatically defined `getter-or-setter` function for Settings defined
+  by [[defsetting]]."
+  [getter-or-setter setting]
+  (case getter-or-setter
+    :getter (fn setting-getter* []
+              (get setting))
+    :setter (fn setting-setter* [new-value]
+              ;; need to qualify this or otherwise the reader gets this confused with the set! used for things like
+              ;; (set! *warn-on-reflection* true)
+              ;; :refer-clojure :exclude doesn't seem to work in this case
+              (metabase.models.setting/set! setting new-value))))
 
 ;; The next few functions are for validating the Setting description (i.e., docstring) at macroexpansion time. They
 ;; check that the docstring is a valid deferred i18n form (e.g. [[metabase.util.i18n/deferred-tru]]) so the Setting
@@ -1142,10 +1146,10 @@
         ;; create a symbol for the Setting definition from [[register-setting!]]
         setting-definition-symbol (gensym "setting-")]
     `(let [~setting-definition-symbol (register-setting! ~definition-form)]
-       (-> (def ~setting-getter-fn-symbol (:getter ~setting-definition-symbol))
+       (-> (def ~setting-getter-fn-symbol (setting-fn :getter ~setting-definition-symbol))
            (alter-meta! merge (setting-fn-metadata :getter ~setting-definition-symbol)))
        ~(when-not (= (:setter options) :none)
-          `(-> (def ~setting-setter-fn-symbol (setting-fn ~setting-definition-symbol))
+          `(-> (def ~setting-setter-fn-symbol (setting-fn :setter ~setting-definition-symbol))
                (alter-meta! merge (setting-fn-metadata :setter ~setting-definition-symbol)))))))
 
 
