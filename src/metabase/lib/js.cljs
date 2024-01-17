@@ -24,6 +24,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.stage :as lib.stage]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -1188,3 +1189,8 @@
   "Add or update a filter against `temporal-column`. Modify the temporal unit for any breakouts."
   [a-query temporal-column stage-number start end]
   (lib.core/update-temporal-filter a-query temporal-column stage-number start end))
+
+(defn ^:export valid-filter-for?
+  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`."
+  [src-column dst-column]
+  (lib.types.isa/valid-filter-for? src-column dst-column))
