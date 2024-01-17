@@ -125,11 +125,11 @@ export const GridContainer = styled.div`
     &:not(:first-of-type) {
       border-top: 1px solid #f0f0f0;
     }
-    width: calc(100% - 16px) !important;
+    width: calc(100% - 1rem) !important;
     display: flex;
     flex-flow: column nowrap;
     justify-content: flex-end;
     padding-bottom: 1rem;
-    margin-right: 16px;
+    margin-right: 1rem;
   }
 `;

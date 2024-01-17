@@ -61,7 +61,7 @@ export const BrowseDataPage = () => {
     },
   };
   const currentTab = currentTabId ? tabs[currentTabId] : null;
-  // TODO: "Learn about our data" goes off screen when viewport is narrow
+
   return (
     <BrowseContainer data-testid="data-browser">
       <BrowseHeader />
