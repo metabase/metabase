@@ -99,7 +99,7 @@ class ParameterValueWidget extends Component {
     } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
-    const noPopover = isTextWidget(parameter);
+    const noPopover = hasNoPopover(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
@@ -288,6 +288,15 @@ Widget.propTypes = {
   onPopoverClose: PropTypes.func.isRequired,
   onFocusChanged: PropTypes.func.isRequired,
 };
+
+function hasNoPopover(parameter) {
+  // This is needed because isTextWidget check isn't complete,
+  // and returns true for dates too.
+  if (DATE_WIDGETS[parameter.type]) {
+    return false;
+  }
+  return isTextWidget(parameter);
+}
 
 function isTextWidget(parameter) {
   const canQuery = getQueryType(parameter) !== "none";
