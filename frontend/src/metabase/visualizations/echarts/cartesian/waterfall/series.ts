@@ -11,6 +11,7 @@ import type {
 import { checkNumber } from "metabase/lib/types";
 import type { ChartDataset, SeriesModel } from "../model/types";
 import { buildEChartsLabelOptions } from "../option/series";
+import { createWaterfallSeriesIdForECharts } from "../utils/id";
 import { DATASET_DIMENSIONS } from "./constants";
 
 /**
@@ -89,6 +90,10 @@ export function buildEChartsWaterfallSeries(
 
   return [
     {
+      id: createWaterfallSeriesIdForECharts(
+        seriesModel,
+        DATASET_DIMENSIONS.barOffset,
+      ),
       type: "bar",
       stack: "waterfall_stack",
       silent: true,
@@ -108,6 +113,10 @@ export function buildEChartsWaterfallSeries(
       },
     },
     {
+      id: createWaterfallSeriesIdForECharts(
+        seriesModel,
+        DATASET_DIMENSIONS.increase,
+      ),
       type: "bar",
       stack: "waterfall_stack",
       encode: {
@@ -120,6 +129,10 @@ export function buildEChartsWaterfallSeries(
       label: increaseLabelOptions,
     },
     {
+      id: createWaterfallSeriesIdForECharts(
+        seriesModel,
+        DATASET_DIMENSIONS.decrease,
+      ),
       type: "bar",
       stack: "waterfall_stack",
       encode: {
@@ -132,6 +145,10 @@ export function buildEChartsWaterfallSeries(
       label: decreaseLabelOptions,
     },
     {
+      id: createWaterfallSeriesIdForECharts(
+        seriesModel,
+        DATASET_DIMENSIONS.total,
+      ),
       type: "bar",
       stack: "waterfall_stack",
       encode: {
