@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -123,11 +124,23 @@
                        (assoc :source-card 999999999)
                        (dissoc :source-table))))))
     (testing "on native queries"
-      (let [editable (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
-            bad-db   (assoc editable :database 999999999)]
+      ;; Logic for the native-query borrowed from metabase.lib.native/has-write-permission-test
+      (let [editable     (lib/native-query (lib.tu/mock-metadata-provider
+                                            meta/metadata-provider
+                                            {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
+                                           "select * from x;")
+            bad-db       (assoc editable :database 999999999)
+            none-perm-db (assoc editable :native-permissions :none)
+            no-perm-db   (dissoc editable :native-permissions)]
         (is (= {:is-native   true
                 :is-editable true}
                (lib/display-info editable -1 editable)))
         (is (= {:is-native   true
                 :is-editable false}
-               (lib/display-info bad-db -1 bad-db)))))))
+               (lib/display-info bad-db -1 bad-db)))
+        (is (= {:is-native   true
+                :is-editable false}
+               (lib/display-info none-perm-db -1 none-perm-db)))
+        (is (= {:is-native   true
+                :is-editable false}
+               (lib/display-info no-perm-db -1 no-perm-db)))))))
