@@ -271,7 +271,8 @@
                 [:variable  [:template-tag (:name tag)]])
      :name    (:display-name tag)
      :slug    (:name tag)
-     :default (:default tag)}))
+     :default (:default tag)
+     :required (:required tag)}))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
