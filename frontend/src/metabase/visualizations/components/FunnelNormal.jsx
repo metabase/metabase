@@ -15,14 +15,13 @@ import {
   Subtitle,
   Title,
 } from "metabase/visualizations/components/FunnelNormal.styled";
-import { findSeriesByKey } from "metabase/visualizations/lib/series";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 export default class FunnelNormal extends Component {
   render() {
     const {
       className,
-      series,
+      rawSeries,
       gridSize,
       hovered,
       onHoverChange,
@@ -31,14 +30,23 @@ export default class FunnelNormal extends Component {
       settings,
     } = this.props;
 
-    const dimensionIndex = 0;
-    const metricIndex = 1;
-    const cols = series[0].data.cols;
-    const rows = settings["funnel.rows"]
+    const [series] = rawSeries;
+    const {
+      data: { cols, rows },
+    } = series;
+
+    const dimensionIndex = cols.findIndex(
+      col => col.name === settings["funnel.dimension"],
+    );
+    const metricIndex = cols.findIndex(
+      col => col.name === settings["funnel.metric"],
+    );
+
+    const sortedRows = settings["funnel.rows"]
       ? settings["funnel.rows"]
           .filter(fr => fr.enabled)
-          .map(fr => findSeriesByKey(series, fr.key).data.rows[0])
-      : series.map(s => s.data.rows[0]);
+          .map(fr => rows.find(row => row[dimensionIndex] === fr.key))
+      : rows;
 
     const isNarrow = gridSize && gridSize.width < 7;
     const isShort = gridSize && gridSize.height <= 5;
@@ -61,7 +69,7 @@ export default class FunnelNormal extends Component {
     // Initial infos (required for step calculation)
     let infos = [
       {
-        value: rows[0][metricIndex],
+        value: sortedRows[0][metricIndex],
         graph: {
           startBottom: 0.0,
           startTop: 1.0,
@@ -71,9 +79,9 @@ export default class FunnelNormal extends Component {
       },
     ];
 
-    let remaining = rows[0][metricIndex];
+    let remaining = sortedRows[0][metricIndex];
 
-    rows.map((row, rowIndex) => {
+    sortedRows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
 
       infos[rowIndex + 1] = {
@@ -142,11 +150,11 @@ export default class FunnelNormal extends Component {
         <FunnelStep isFirst>
           <Head isNarrow={isNarrow}>
             <Ellipsified data-testid="funnel-chart-header">
-              {formatDimension(rows[0][dimensionIndex])}
+              {formatDimension(sortedRows[0][dimensionIndex])}
             </Ellipsified>
           </Head>
           <FunnelStart isNarrow={isNarrow}>
-            <Title>{formatMetric(rows[0][metricIndex])}</Title>
+            <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
             <Subtitle>{getFriendlyName(cols[metricIndex])}</Subtitle>
           </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
@@ -163,7 +171,7 @@ export default class FunnelNormal extends Component {
             <FunnelStep key={index}>
               <Head isNarrow={isNarrow}>
                 <Ellipsified data-testid="funnel-chart-header">
-                  {formatDimension(rows[index + 1][dimensionIndex])}
+                  {formatDimension(sortedRows[index + 1][dimensionIndex])}
                 </Ellipsified>
               </Head>
               <GraphSection
@@ -181,7 +189,7 @@ export default class FunnelNormal extends Component {
                 </Title>
                 <Subtitle>
                   <Ellipsified>
-                    {formatMetric(rows[index + 1][metricIndex])}
+                    {formatMetric(sortedRows[index + 1][metricIndex])}
                   </Ellipsified>
                 </Subtitle>
               </Info>

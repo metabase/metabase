@@ -20,10 +20,10 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import { scalarToBarTransform } from "metabase/visualizations/visualizations/Scalar/scalars-bar-transform";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
+import { scalarToBarTransform } from "./scalars-bar-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
