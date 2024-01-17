@@ -141,9 +141,7 @@
 (defn reset-init! []
   (setting/set! :test-setting-custom-init nil))
 
-(defn fresh-init-setting []
-  (reset-init!)
-  (setting/resolve-setting :test-setting-custom-init))
+(def custom-init-setting (setting/resolve-setting :test-setting-custom-init))
 
 (deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
@@ -158,7 +156,7 @@
   ;; not sure about this - perhaps it should initialize it?
   (testing "`user-facing-value` should return `nil` for a Setting with init, where it has not yet been called"
     (is (= nil
-           (setting/user-facing-value (fresh-init-setting))))))
+           (setting/user-facing-value custom-init-setting)))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
@@ -168,16 +166,16 @@
 
 (deftest custom-init-test
   (testing "The custom :init hook will fire when expected, and the value will be saved"
-    (let [s (fresh-init-setting)]
-      (is (nil? (setting/get s)))
-      (let [val (setting/get-or-init! s)]
+    (mt/discard-setting-changes [test-setting-custom-init]
+      (is (nil? (setting/get custom-init-setting)))
+      (let [val (setting/get-or-init! custom-init-setting)]
         (is (some? val))
-        (is (= val (setting/get s))))))
+        (is (= val (setting/get custom-init-setting))))))
 
   (testing "The implicit getter function will call init"
-    (let [s (fresh-init-setting)]
+    (mt/discard-setting-changes [test-setting-custom-init]
       (is (some? (test-setting-custom-init)))
-      (is (= (test-setting-custom-init) (setting/get s))))))
+      (is (= (test-setting-custom-init) (setting/get custom-init-setting))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")

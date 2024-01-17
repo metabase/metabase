@@ -375,20 +375,15 @@
 
 (def test-setting (setting/resolve-setting :test-uuid-nonce))
 
-(defn reset-nonce! [] (setting/set! test-setting nil))
-
-(defn fresh-setting []
-  (reset-nonce!)
-  test-setting)
-
 (deftest lazy-uuid-nonce-test
     (testing "Reading the setting through the low level API does not initialize it"
-      (reset-nonce!)
-        (is (nil? (setting/get-raw-value (fresh-setting))))
-        (is (nil? (setting/get-value-of-type ::public-settings/uuid-nonce (fresh-setting))))
-        (is (nil? (setting/get (fresh-setting)))))
+      (mt/discard-setting-changes [test-uuid-nonce]
+        (is (nil? (setting/get-raw-value test-setting)))
+        (is (nil? (setting/get-value-of-type ::public-settings/uuid-nonce test-setting)))
+        (is (nil? (setting/get test-setting)))))
 
     (testing "Using the public getter will initialize it"
-      (is (some? (setting/get-or-init! (fresh-setting))))
-      (is (some? (do (reset-nonce!)
-                     (test-uuid-nonce))))))
+      (mt/discard-setting-changes [test-uuid-nonce]
+        (is (some? (setting/get-or-init! test-setting))))
+      (mt/discard-setting-changes [test-uuid-nonce]
+        (is (some? (test-uuid-nonce))))))

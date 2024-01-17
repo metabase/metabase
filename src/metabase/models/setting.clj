@@ -652,10 +652,11 @@
   "Fetch the value of `setting-definition-or-name`. If the value is not set, initialize it using the :init hook."
   [setting-definition-or-name]
   (let [setting (resolve-setting setting-definition-or-name)]
-    (or (get setting)
-        (when-let [init-value (call-me-maybe (:init setting))]
-          (metabase.models.setting/set! setting init-value)
-          init-value))))
+    (u/or-with some?
+      (get setting)
+      (when-let [init-value (call-me-maybe (:init setting))]
+        (metabase.models.setting/set! setting init-value)
+        init-value))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
