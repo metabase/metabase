@@ -98,7 +98,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
 
   const styles: Record<string, CSSProperties> = {
     root: {
-      fontSize: "12px",
+      fontSize: "14px",
     },
     icon: {
       fontSize: "14px",
