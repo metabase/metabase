@@ -154,9 +154,8 @@
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (u/prog1 (merge {:type :full :hash_key ""}
-                  field-values)
-    (assert-valid-human-readable-values field-values)
+  (u/prog1 (update (merge {:type :full} field-values) :hash_key str)
+           (assert-valid-human-readable-values field-values)
     (assert-valid-field-values-type field-values)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field is deleted
     (when (= (:type <>) :full)
