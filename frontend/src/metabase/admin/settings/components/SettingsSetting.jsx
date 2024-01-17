@@ -68,7 +68,7 @@ export default class SettingsSetting extends Component {
           <SettingHeader id={settingId} setting={setting} />
         )}
         <SettingContent>
-          {setting.is_env_setting ? (
+          {setting.is_env_setting && !setting.forceRenderWidget ? (
             <SettingEnvVarMessage>
               {jt`This has been set by the ${(
                 <ExternalLink href={getEnvVarDocsUrl(setting.env_name)}>

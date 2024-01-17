@@ -6,6 +6,7 @@ import { Button } from "metabase/ui";
 import { isNotNull } from "metabase/lib/types";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
+import type { SettingDefinition } from "metabase-types/api";
 import {
   CardBadge,
   CardDescription,
@@ -15,9 +16,9 @@ import {
   CardTitle,
 } from "./AuthCard.styled";
 
-export interface AuthSetting {
+export type AuthSetting = Omit<SettingDefinition, "value"> & {
   value: boolean | null;
-}
+};
 
 export interface AuthCardProps {
   setting: AuthSetting;
@@ -41,6 +42,8 @@ const AuthCard = ({
   onDeactivate,
 }: AuthCardProps) => {
   const isEnabled = setting.value ?? false;
+  const isEnvSetting = setting.is_env_setting;
+
   const [isOpened, setIsOpened] = useState(false);
 
   const handleOpen = useCallback(() => {
@@ -63,8 +66,9 @@ const AuthCard = ({
       description={description}
       isEnabled={isEnabled}
       isConfigured={isConfigured}
+      setting={setting}
     >
-      {isConfigured && (
+      {isConfigured && !isEnvSetting && (
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}
@@ -90,6 +94,7 @@ interface AuthCardBodyProps {
   isConfigured: boolean;
   badgeText?: string;
   buttonText?: string;
+  setting: AuthSetting;
   children?: ReactNode;
 }
 
@@ -101,10 +106,12 @@ export const AuthCardBody = ({
   isConfigured,
   badgeText,
   buttonText,
+  setting,
   children,
 }: AuthCardBodyProps) => {
   const badgeContent = badgeText ?? (isEnabled ? t`Active` : t`Paused`);
   const buttonLabel = buttonText ?? (isConfigured ? t`Edit` : t`Set up`);
+  const { is_env_setting: isEnvSetting, env_name } = setting;
 
   return (
     <CardRoot>
@@ -114,6 +121,9 @@ export const AuthCardBody = ({
           <CardBadge isEnabled={isEnabled} data-testid="card-badge">
             {badgeContent}
           </CardBadge>
+        )}
+        {isEnvSetting && (
+          <CardBadge isEnabled>{t`Set with env var $${env_name}`}</CardBadge>
         )}
         {children}
       </CardHeader>
