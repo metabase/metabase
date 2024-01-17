@@ -29,6 +29,10 @@ export function getWaterfallLabelFormatters(
   renderingContext: RenderingContext,
 ) {
   const valueFormatter = (value: unknown) => {
+    if (value == null) {
+      return "";
+    }
+
     const formattedValue = renderingContext.formatValue(
       Math.abs(checkNumber(value)),
       {

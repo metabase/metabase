@@ -4,7 +4,7 @@ import {
   assertMultiMetricColumns,
   type CartesianChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
-import { checkNumber } from "metabase/lib/types";
+import { isNumber } from "metabase/lib/types";
 
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
@@ -24,7 +24,8 @@ export function getWaterfallDataset(
   // Step 1: calculate runningSums, negativeTranslation beforehand
   let runningSums: number[] = [];
   rows.forEach((row, index) => {
-    const value = checkNumber(row[columns.metrics[0].index]);
+    const rawMetric = row[columns.metrics[0].index];
+    const value = isNumber(rawMetric) ? rawMetric : 0;
 
     if (index === 0) {
       runningSums.push(value);

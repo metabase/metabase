@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 
 import type { RawSeries, RowValue, RowValues } from "metabase-types/api";
-import { checkNotNull, checkNumber } from "metabase/lib/types";
+import { checkNumber } from "metabase/lib/types";
 import {
   assertMultiMetricColumns,
   type CartesianChartColumns,
@@ -73,7 +73,12 @@ function getSortedAggregatedRows(
 
   rows.forEach(row => {
     const dimension = row[columns.dimension.index];
-    const currMetric = checkNumber(row[columns.metrics[0].index]);
+    const rawMetric = row[columns.metrics[0].index];
+    if (rawMetric == null) {
+      return;
+    }
+
+    const currMetric = checkNumber(rawMetric);
     const existingMetric = dimensionMetricMap.get(dimension);
 
     const newMetric = currMetric + (existingMetric ?? 0);
@@ -90,7 +95,7 @@ function getSortedAggregatedRows(
       return;
     }
 
-    const metric = checkNotNull(dimensionMetricMap.get(dimension));
+    const metric = dimensionMetricMap.get(dimension) ?? null;
     const newRow = [...row];
     newRow[columns.metrics[0].index] = metric;
 
@@ -112,10 +117,13 @@ function getWaterfallTotal(
 ) {
   const columns = assertMultiMetricColumns(cardColumns);
 
-  return rows.reduce(
-    (sum, row) => (sum += checkNumber(row[columns.metrics[0].index])),
-    0,
-  );
+  return rows.reduce((sum, row) => {
+    const metric = row[columns.metrics[0].index];
+    if (metric == null) {
+      return sum;
+    }
+    return sum + checkNumber(metric);
+  }, 0);
 }
 
 export function getWaterfallChartModel(
