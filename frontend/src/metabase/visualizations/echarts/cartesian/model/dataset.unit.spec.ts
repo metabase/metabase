@@ -35,7 +35,6 @@ const createMockSeriesModel = (
   columnIndex: index,
 });
 
-
 const createMockDimensionModel = (
   dataKey: DataKey,
   index: number,
