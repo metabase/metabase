@@ -4,7 +4,8 @@ import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import AppBarLogo from "./AppBarLogo";
+import { AppBarToggle } from "./AppBarToggle";
+import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarLeftContainer,
   AppBarRightContainer,
@@ -31,7 +32,6 @@ const AppBarLarge = ({
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
-  isLogoVisible,
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
@@ -44,16 +44,13 @@ const AppBarLarge = ({
 
   return (
     <AppBarRoot isNavBarOpen={isNavBarVisible}>
-      <AppBarLeftContainer
-        isNavBarEnabled={isNavBarEnabled}
-        isLogoVisible={isLogoVisible}
-      >
-        <AppBarLogo
-          isLogoVisible={isLogoVisible}
-          isNavBarOpen={isNavBarVisible}
+      <AppBarLeftContainer>
+        <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}
+          isNavBarOpen={isNavBarOpen}
           onToggleClick={onToggleNavbar}
         />
+        <AppBarLogo />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >

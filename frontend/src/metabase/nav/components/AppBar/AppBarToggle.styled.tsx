@@ -12,7 +12,20 @@ interface SidebarButtonProps {
 
 export const SidebarButton = styled.button<SidebarButtonProps>`
   cursor: pointer;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+
+  ${({ isSmallAppBar }) =>
+    isSmallAppBar
+      ? css`
+          border-radius: 6px;
+          padding: 0.5rem 0;
+        `
+      : css`
+          padding: 1rem 0;
+        `}
 
   ${({ isNavBarEnabled, isLogoVisible, isSmallAppBar }) =>
     isLogoVisible && !isSmallAppBar
@@ -35,7 +48,6 @@ interface SidebarIconProps {
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
   color: ${color("brand")};
   display: block;
-  transform: translateY(2px) translateX(2px);
 
   ${props =>
     !props.isLogoVisible &&

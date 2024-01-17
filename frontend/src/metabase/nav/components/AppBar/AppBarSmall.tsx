@@ -3,8 +3,8 @@ import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { ProfileLink } from "../ProfileLink";
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import AppBarToggle from "./AppBarToggle";
-import AppBarLogo from "./AppBarLogo";
+import { AppBarToggle } from "./AppBarToggle";
+import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,
@@ -49,10 +49,6 @@ const AppBarSmall = ({
     isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
-  const handleLogoClick = useCallback(() => {
-    onCloseNavbar();
-  }, [onCloseNavbar]);
-
   const handleSearchActive = useCallback(() => {
     setSearchActive(true);
     onCloseNavbar();
@@ -91,11 +87,7 @@ const AppBarSmall = ({
             )}
           </AppBarMainContainer>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
-            <AppBarLogo
-              isSmallAppBar
-              isLogoVisible={isLogoVisible}
-              onLogoClick={handleLogoClick}
-            />
+            <AppBarLogo onLogoClick={onCloseNavbar} />
           </AppBarLogoContainer>
         </AppBarHeader>
       )}

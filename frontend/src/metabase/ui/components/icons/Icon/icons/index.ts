@@ -155,6 +155,8 @@ import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import history_component from "./history.svg?component";
 import history_source from "./history.svg?source";
+import hamburger_menu_component from "./hamburger_menu.svg?component";
+import hamburger_menu_source from "./hamburger_menu.svg?source";
 import home_component from "./home.svg?component";
 import home_source from "./home.svg?source";
 import horizontal_bar_component from "./horizontal_bar.svg?component";
@@ -670,6 +672,10 @@ export const Icons = {
   history: {
     component: history_component,
     source: history_source,
+  },
+  hamburger_menu: {
+    component: hamburger_menu_component,
+    source: hamburger_menu_source,
   },
   home: {
     component: home_component,
