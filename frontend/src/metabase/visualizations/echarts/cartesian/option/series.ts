@@ -393,7 +393,10 @@ export const buildEChartsSeries = (
     .flat()
     .filter(isNotNull);
 
-  if (settings["stackable.stack_type"] === "stacked") {
+  if (
+    settings["stackable.stack_type"] === "stacked" &&
+    settings["graph.show_values"]
+  ) {
     series.push(
       // @ts-expect-error TODO: figure out ECharts series option types
       ...getStackTotalsSeries(chartModel, settings, series, renderingContext),

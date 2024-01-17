@@ -324,6 +324,18 @@ export const STACKABLE_SETTINGS = {
   },
 };
 
+export const TOOLTIP_SETTINGS = {
+  "graph.tooltip_type": {
+    getDefault: (series, settings) => {
+      return settings["stackable.stack_type"] != null
+        ? "series_comparison"
+        : "default";
+    },
+    hidden: true,
+    readDependencies: ["stackable.stack_display"],
+  },
+};
+
 export const GRAPH_TREND_SETTINGS = {
   "graph.show_trendline": {
     section: t`Display`,
