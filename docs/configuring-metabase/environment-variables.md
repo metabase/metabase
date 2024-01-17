@@ -1325,6 +1325,14 @@ Since: v42.0
 
 Set the system files channel used by Metabase to store images. This channel has to be public, and is not intended to be used by humans. The Slack App has to be invited into this channel.
 
+### `MB_JETTY_SNI_CHECK`
+
+Type: string<br>
+Default: `"true"`<br>
+Since: v48.4
+
+Enable or disable the SNI checks in the Jetty web server. Normally you would leave this enabled unless you're terminating the TLS connection on Metabase itself. If this is the case and you're getting  an error like `HTTP ERROR 400 Invalid SNI`, consider setting this environment variable to false or use another SSL certificate that matches exactly the domain name of the server.
+
 ### `MB_SOURCE_ADDRESS_HEADER`
 
 Type: string<br>
