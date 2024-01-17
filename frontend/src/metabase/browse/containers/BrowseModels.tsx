@@ -32,14 +32,12 @@ import {
   MultilineEllipsified,
 } from "./BrowseData.styled";
 
-interface ModelWithoutEditInfo extends CollectionItem {
+interface Model extends CollectionItem {
   last_editor_common_name?: string | undefined;
   creator_common_name?: string | undefined;
   last_edited_at?: string | undefined;
   created_at?: string | undefined;
 }
-
-type Model = CollectionItemWithLastEditedInfo;
 
 type RenderItemFunction = (
   props: GridCellProps & {
@@ -99,7 +97,7 @@ export const BrowseModels = ({
 
   const getRowHeight = ({ index: rowIndex }: { index: number }) => {
     const cellIndex = rowIndex * columnCount;
-    return gridItemIsInGroupHeaderRow(items[cellIndex])
+    return gridItemIsInHeaderRow(items[cellIndex])
       ? headerHeight
       : defaultItemHeight;
   };
@@ -162,7 +160,7 @@ const ModelCell = ({
   if (index >= models.length) {
     return null;
   }
-  const model = models[index];
+  const model = addLastEditInfo(models[index]);
   return (
     <Link
       key={model.id}
@@ -258,7 +256,7 @@ const sortModels = (a: Model, b: Model) => {
   return 0;
 };
 
-const ModelGroupHeader = ({
+const CollectionHeader = ({
   groupLabel,
   style,
 }: {
@@ -314,19 +312,19 @@ const addHeadersToItems = (
   return gridItems;
 };
 
-const gridItemIsGroupHeader = (item: GridItem): item is HeaderGridItem =>
+const gridItemIsHeader = (item: GridItem): item is HeaderGridItem =>
   item !== "blank" &&
   item !== "header-blank" &&
   (item as Model).model === undefined;
 
-const gridItemIsInGroupHeaderRow = (item: GridItem) =>
-  gridItemIsGroupHeader(item) || item === "header-blank";
+const gridItemIsInHeaderRow = (item: GridItem) =>
+  gridItemIsHeader(item) || item === "header-blank";
 
 const gridItemIsBlank = (item: GridItem) =>
   item === "blank" || item === "header-blank";
 
 const getGridOptions = (
-  models: ModelWithoutEditInfo[],
+  models: Model[],
   gridGapSize: number,
   itemMinWidth: number,
 ) => {
@@ -353,20 +351,7 @@ const getGridOptions = (
   //   }
   // }
 
-  const modelsWithHistory: Model[] = models.map(
-    (model: ModelWithoutEditInfo) => {
-      const lastEditInfo = {
-        full_name: model.last_editor_common_name ?? model.creator_common_name,
-        timestamp: model.last_edited_at ?? model.created_at ?? "",
-      };
-      const item: Model = {
-        ...model,
-        "last-edit-info": lastEditInfo,
-      };
-      return item;
-    },
-  );
-  const sortedModels = modelsWithHistory.sort(sortModels);
+  const sortedModels = models.sort(sortModels);
 
   const columnCount = calculateColumnCount(width);
   const columnWidth = calculateItemWidth(width, columnCount);
@@ -397,9 +382,9 @@ const renderItem: RenderItemFunction = ({
   if (gridItemIsBlank(item)) {
     return <div style={style}></div>;
   }
-  if (gridItemIsGroupHeader(item)) {
+  if (gridItemIsHeader(item)) {
     return (
-      <ModelGroupHeader
+      <CollectionHeader
         groupLabel={item.collection?.name || "Untitled collection"}
         style={style}
       />
@@ -416,3 +401,11 @@ const renderItem: RenderItemFunction = ({
     );
   }
 };
+
+const addLastEditInfo = (model: Model): CollectionItemWithLastEditedInfo => ({
+  ...model,
+  "last-edit-info": {
+    full_name: model.last_editor_common_name ?? model.creator_common_name,
+    timestamp: model.last_edited_at ?? model.created_at ?? "",
+  },
+});
