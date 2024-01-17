@@ -23,7 +23,8 @@
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
                                 (qp/process-query-and-save-with-max-results-constraints!
-                                 (assoc query :middleware {:process-viz-settings? true
+                                 (assoc query :middleware {:skip-results-metadata? true
+                                                           :process-viz-settings? true
                                                            :js-int-to-string?     false})
                                  (merge {:executed-by pulse-creator-id
                                          :context     :pulse
