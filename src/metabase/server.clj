@@ -29,7 +29,7 @@
     :trust-password  (config/config-str :mb-jetty-ssl-truststore-password)
     :client-auth     (when (config/config-bool :mb-jetty-ssl-client-auth)
                        :need)
-    :sni-host-check? (when (config/config-str :mb-jetty-sni-check)
+    :sni-host-check? (when (config/config-str :mb-jetty-skip-sni)
                        false)}))
 
 (defn- jetty-config []
