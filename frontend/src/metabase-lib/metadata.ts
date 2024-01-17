@@ -144,6 +144,18 @@ declare function DisplayInfoFn(
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
+/**
+ * Even though it seems weird to pass the same query two times,
+ * this function follows the same pattern as the other displayInfo functions.
+ * The first two parameters are always a query, and a stage.
+ * The third parameter is what you would like to have info about.
+ * It just only happens that the thing we're examining is (again) the query itself.
+ *
+ * @example
+ * const query = question.query();
+ * const { isEditable, isNative } = Lib.displayInfo(query, -1, query);
+ *
+ */
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
