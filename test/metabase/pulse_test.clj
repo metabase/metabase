@@ -983,7 +983,7 @@
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
-    (mt/dataset test-data
+    (mt/dataset sample-dataset
       (let [q               {:database (mt/id)
                              :type     :query
                              :query
