@@ -108,13 +108,12 @@
            :waterfall} display-type)
         (chart-type :isomorphic "display-type is %s" display-type)
 
-        (#{:scalar
-           :smartscalar
+        (#{:smartscalar
            :row
-           :funnel
            :progress
            :gauge
-           :table} display-type)
+           :table
+           :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (= display-type :pie)
