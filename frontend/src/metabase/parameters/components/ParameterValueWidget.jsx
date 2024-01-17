@@ -1,4 +1,4 @@
-import { createRef, Component, useCallback } from "react";
+import { createRef, Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
