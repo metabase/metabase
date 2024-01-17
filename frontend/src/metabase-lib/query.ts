@@ -48,8 +48,8 @@ export function stageCount(query: Query): number {
   return ML.stage_count(query);
 }
 
-export const isStageEmpty = (query: Query, stageIndex: number): boolean => {
-  return ML.is_stage_empty(query, stageIndex);
+export const hasClauses = (query: Query, stageIndex: number): boolean => {
+  return ML.has_clauses(query, stageIndex);
 };
 
 export function appendStage(query: Query): Query {

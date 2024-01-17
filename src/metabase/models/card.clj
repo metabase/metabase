@@ -379,7 +379,7 @@
   "A model with implicit action supported iff they are a raw table,
   meaning there are no clauses such as filter, limit, breakout...
 
-  The list of clauses should match [[metabase.lib.stage/is-stage-empty]]."
+  It should be the inverse of [[metabase.lib.stage/has-clauses]]."
   [{dataset-query :dataset_query :as _card}]
   (and (= :query (:type dataset-query))
        (every? #(nil? (get-in dataset-query [:query %]))

@@ -1132,10 +1132,10 @@
   [a-query stage-number a-ref columns]
   (lib.core/find-matching-column a-query stage-number a-ref columns))
 
-(defn ^:export is-stage-empty
-  "Is the given query stage empty of clauses?"
+(defn ^:export has-clauses
+  "Does given query stage have any clauses?"
   [a-query stage-number]
-  (lib.core/is-stage-empty a-query stage-number))
+  (lib.core/has-clauses a-query stage-number))
 
 (defn ^:export stage-count
   "Returns the count of stages in query"
