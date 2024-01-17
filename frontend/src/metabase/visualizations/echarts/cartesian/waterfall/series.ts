@@ -9,7 +9,7 @@ import type {
 } from "metabase/visualizations/types";
 
 import { checkNumber } from "metabase/lib/types";
-import type { GroupedDataset, SeriesModel } from "../model/types";
+import type { ChartDataset, SeriesModel } from "../model/types";
 import { buildEChartsLabelOptions } from "../option/series";
 import { DATASET_DIMENSIONS } from "./constants";
 
@@ -23,7 +23,7 @@ import { DATASET_DIMENSIONS } from "./constants";
 export function getWaterfallLabelFormatters(
   total: number,
   seriesModel: SeriesModel,
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) {
@@ -52,7 +52,7 @@ export function getWaterfallLabelFormatters(
 
 export function buildEChartsWaterfallSeries(
   seriesModel: SeriesModel,
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   total: number,
   renderingContext: RenderingContext,
