@@ -63,6 +63,13 @@ BarOrdinalXScale.args = {
   renderingContext,
 };
 
+export const BarStackedTotalFormattedValues = Template.bind({});
+BarStackedTotalFormattedValues.args = {
+  rawSeries: data.barStackedTotalFormattedValues as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SplitYAxis = Template.bind({});
 SplitYAxis.args = {
   rawSeries: data.autoYSplit as any,

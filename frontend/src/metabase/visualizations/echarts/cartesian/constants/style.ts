@@ -8,6 +8,11 @@ export const CHART_STYLE = {
     size: 12,
     weight: 600,
   },
+  seriesLabels: {
+    weight: 600,
+    size: 12,
+    offset: 4,
+  },
   axisName: {
     size: 14,
     weight: 600,

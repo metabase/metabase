@@ -1,21 +1,28 @@
+import _ from "underscore";
 import type { RegisteredSeriesOption } from "echarts";
 import type { SeriesLabelOption } from "echarts/types/src/util/types";
 
 import type { CallbackDataParams } from "echarts/types/dist/shared";
+import type { LabelLayoutOptionCallbackParams } from "echarts/types/dist/echarts";
 import type {
   SeriesModel,
   CartesianChartModel,
   DataKey,
+  StackTotalDataKey,
+  ChartDataset,
+  Datum,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { SeriesSettings } from "metabase-types/api";
+import type { RowValue, SeriesSettings } from "metabase-types/api";
 import { isNotNull } from "metabase/lib/types";
 import { getMetricDisplayValueGetter } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 
+import { getObjectValues } from "metabase/lib/objects";
+import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { buildEChartsWaterfallSeries } from "../waterfall/series";
 import { checkWaterfallChartModel } from "../waterfall/utils";
@@ -51,14 +58,16 @@ export const buildEChartsLabelOptions = (
   seriesModel: SeriesModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
+  show?: boolean,
+  position?: "top" | "bottom" | "inside",
 ): SeriesLabelOption => {
   return {
     silent: true,
-    show: settings["graph.show_values"],
-    position: "top",
+    show,
+    position,
     fontFamily: renderingContext.fontFamily,
-    fontWeight: 900,
-    fontSize: 12,
+    fontWeight: CHART_STYLE.seriesLabels.weight,
+    fontSize: CHART_STYLE.seriesLabels.size,
     color: renderingContext.getColor("text-dark"),
     textBorderColor: renderingContext.getColor("white"),
     textBorderWidth: 3,
@@ -67,8 +76,8 @@ export const buildEChartsLabelOptions = (
 };
 
 const buildEChartsBarSeries = (
+  dataset: ChartDataset,
   seriesModel: SeriesModel,
-  seriesSettings: SeriesSettings,
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
@@ -102,15 +111,38 @@ const buildEChartsBarSeries = (
     zlevel: CHART_STYLE.series.zIndex,
     yAxisIndex,
     barGap: 0,
-    barWidth,
     stack: stackName,
+    barWidth,
     encode: {
       y: seriesModel.dataKey,
       x: dimensionDataKey,
     },
-    label: buildEChartsLabelOptions(seriesModel, settings, renderingContext),
-    labelLayout: {
-      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+    label: buildEChartsLabelOptions(
+      seriesModel,
+      settings,
+      renderingContext,
+      settings["graph.show_values"] && settings["stackable.stack_type"] == null,
+    ),
+    labelLayout: params => {
+      const { dataIndex, rect } = params;
+      if (dataIndex == null) {
+        return {};
+      }
+
+      const labelValue = dataset[dataIndex][seriesModel.dataKey];
+      if (typeof labelValue !== "number") {
+        return {};
+      }
+
+      const barHeight = rect.height;
+      const labelOffset =
+        barHeight / 2 +
+        CHART_STYLE.seriesLabels.size / 2 +
+        CHART_STYLE.seriesLabels.offset;
+      return {
+        hideOverlap: settings["graph.label_value_frequency"] === "fit",
+        dy: labelValue < 0 ? labelOffset : -labelOffset,
+      };
     },
     itemStyle: {
       color: seriesModel.color,
@@ -163,7 +195,13 @@ const buildEChartsLineAreaSeries = (
       y: seriesModel.dataKey,
       x: dimensionDataKey,
     },
-    label: buildEChartsLabelOptions(seriesModel, settings, renderingContext),
+    label: buildEChartsLabelOptions(
+      seriesModel,
+      settings,
+      renderingContext,
+      settings["graph.show_values"] && stackName == null,
+      "top",
+    ),
     labelLayout: {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
     },
@@ -173,15 +211,122 @@ const buildEChartsLineAreaSeries = (
   };
 };
 
+const generateStackOption = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  signKey: StackTotalDataKey,
+  stackDataKeys: DataKey[],
+  seriesOptionFromStack: EChartsSeriesOption,
+  renderingContext: RenderingContext,
+) => {
+  const seriesModel = chartModel.seriesModels.find(
+    s => s.dataKey === stackDataKeys[0],
+  );
+
+  if (!seriesModel) {
+    return null;
+  }
+
+  const stackName = seriesOptionFromStack.stack;
+
+  return {
+    yAxisIndex: seriesOptionFromStack.yAxisIndex,
+    silent: true,
+    symbolSize: 0,
+    lineStyle: {
+      opacity: 0,
+    },
+    type: seriesOptionFromStack.type,
+    id: `${stackName}_${signKey}`,
+    stack: stackName,
+    encode: {
+      y: signKey,
+      x: chartModel.dimensionModel.dataKey,
+    },
+    label: {
+      ...seriesOptionFromStack.label,
+      position: signKey === "positiveStackTotal" ? "top" : "bottom",
+      show: true,
+      formatter: (
+        params: LabelLayoutOptionCallbackParams & { data: Datum },
+      ) => {
+        let stackValue: number | null = null;
+        stackDataKeys.forEach(stackDataKeys => {
+          const seriesValue = params.data[stackDataKeys];
+          if (
+            typeof seriesValue === "number" &&
+            ((signKey === "positiveStackTotal" && seriesValue > 0) ||
+              (signKey === "negativeStackTotal" && seriesValue < 0))
+          ) {
+            stackValue = (stackValue ?? 0) + seriesValue;
+          }
+        });
+
+        if (stackValue === null) {
+          return " ";
+        }
+
+        const valueGetter = getMetricDisplayValueGetter(settings);
+        const valueFormatter = (value: RowValue) =>
+          renderingContext.formatValue(valueGetter(value), {
+            ...(settings.column?.(seriesModel.column) ?? {}),
+            jsx: false,
+            compact: settings["graph.label_value_formatting"] === "compact",
+          });
+
+        return valueFormatter(stackValue);
+      },
+    },
+    labelLayout: {
+      hideOverlap: settings["graph.label_value_frequency"] === "fit",
+    },
+    zlevel: CHART_STYLE.series.zIndex,
+  };
+};
+
+export const getStackTotalsSeries = (
+  chartModel: CartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesOptions: EChartsSeriesOption[],
+  renderingContext: RenderingContext,
+) => {
+  const seriesByStackName = _.groupBy(
+    seriesOptions.filter(s => s.stack != null),
+    "stack",
+  );
+
+  return getObjectValues(seriesByStackName).flatMap(seriesOptions => {
+    const stackDataKeys = seriesOptions // we set string dataKeys as series IDs
+      .map(s => s.id)
+      .filter(isNotNull) as string[];
+    const firstSeriesInStack = seriesOptions[0];
+
+    return [
+      generateStackOption(
+        chartModel,
+        settings,
+        "positiveStackTotal",
+        stackDataKeys,
+        firstSeriesInStack,
+        renderingContext,
+      ),
+      generateStackOption(
+        chartModel,
+        settings,
+        "negativeStackTotal",
+        stackDataKeys,
+        firstSeriesInStack,
+        renderingContext,
+      ),
+    ];
+  });
+};
+
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
-): (
-  | RegisteredSeriesOption["line"]
-  | RegisteredSeriesOption["bar"]
-  | RegisteredSeriesOption["scatter"]
-)[] => {
+): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
     (acc, seriesModel) => {
       acc[seriesModel.dataKey] = settings.series(
@@ -198,7 +343,7 @@ export const buildEChartsSeries = (
 
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
-  return chartModel.seriesModels
+  const series = chartModel.seriesModels
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = getSeriesYAxisIndex(seriesModel, chartModel);
@@ -217,8 +362,8 @@ export const buildEChartsSeries = (
           );
         case "bar":
           return buildEChartsBarSeries(
+            chartModel.transformedDataset,
             seriesModel,
-            seriesSettings,
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
@@ -247,4 +392,14 @@ export const buildEChartsSeries = (
     })
     .flat()
     .filter(isNotNull);
+
+  if (settings["stackable.stack_type"] === "stacked") {
+    series.push(
+      // @ts-expect-error TODO: figure out ECharts series option types
+      ...getStackTotalsSeries(chartModel, settings, series, renderingContext),
+    );
+  }
+
+  // @ts-expect-error TODO: figure out ECharts series option types
+  return series;
 };
