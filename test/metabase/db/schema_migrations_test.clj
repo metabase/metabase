@@ -281,11 +281,29 @@
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [migrate!]
       (let [[pg-db-id
-             mysql-db-id] (t2/insert-returning-pks! Database [{:name "PG Database"    :engine "postgres"}
-                                                              {:name "MySQL Database" :engine "mysql"}])
+             mysql-db-id] (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                    [{:name "PG Database"
+                                                      :engine "postgres"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details "{}"}
+                                                     {:name "MySQL Database"
+                                                      :engine "mysql"
+                                                      :created_at :%now
+                                                      :updated_at :%now
+                                                      :details "{}"}])
             [pg-table-id
-             mysql-table-id] (t2/insert-returning-pks! Table [{:db_id pg-db-id    :name "PG Table"    :active true}
-                                                              {:db_id mysql-db-id :name "MySQL Table" :active true}])
+             mysql-table-id] (t2/insert-returning-pks! (t2/table-name :model/Table)
+                                                       [{:db_id pg-db-id
+                                                         :name "PG Table"
+                                                         :created_at :%now
+                                                         :updated_at :%now
+                                                         :active true}
+                                                        {:db_id mysql-db-id
+                                                         :name "MySQL Table"
+                                                         :created_at :%now
+                                                         :updated_at :%now
+                                                         :active true}])
             [pg-field-1-id
              pg-field-2-id
              pg-field-3-id
