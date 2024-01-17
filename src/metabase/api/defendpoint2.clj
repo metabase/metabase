@@ -11,7 +11,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [ring.middleware.multipart-params :as mp]
-   [metabase.util.malli.describe :as umd]))
+   [metabase.util.malli.describe :as umd]
+   [malli.error :as me]
+   [metabase.util.malli :as mu]))
 
 ;;; almost a copy of malli.experimental.lite, but optional is defined by [:maybe]
 
@@ -94,8 +96,10 @@
              "\n\nYou must be a superuser to do this.")
            (for [[k param->schema] schemas]
              (str (case k
-                    :query-params "\n\n### Query Parameters\n"
-                    :body-params  "\n\n### Body Parameters\n")
+                    :path-params      "\n\n### Path Parameters\n"
+                    :query-params     "\n\n### Query Parameters\n"
+                    :body-params      "\n\n### Body Parameters\n"
+                    :multipart-params "\n\n### `multipart/form-data` Parameters")
                   (str/join "\n"
                             (for [[param schema] param->schema]
                               (format "- **`%s`** - %s"
@@ -110,7 +114,8 @@
    (mtx/key-transformer {:decode keyword})
    internal/defendpoint-transformer
    (mtx/default-value-transformer)
-   mtx/strip-extra-keys-transformer))
+   (when config/is-prod?
+     mtx/strip-extra-keys-transformer)))
 
 (defn make-coercer-mw
   "Middleware"
@@ -123,12 +128,21 @@
            (handler (into req (for [[k coercer] coercers]
                                 [k (coercer (get req k))])))
            (catch clojure.lang.ExceptionInfo e
-             (let [data (ex-data e)]
-               (if (= ::mc/invalid-input (:type data))
-                 (throw (ex-info (str "Invalid fields: " (->> data :data :explain :errors (map :in) (map name) (str/join ", ")))
-                                 {:status-code     400
-                                  :errors          (-> data :data :explain)
-                                  :specific-errors (-> data :data :explain)}))
+             (let [{:keys [data type]} (ex-data e)]
+               (if (= ::mc/invalid-input type)
+                 (let [explanation (-> (assoc data :errors (-> data :explain :errors))
+                                       me/with-spell-checking
+                                       (me/humanize {:wrap mu/humanize-include-value}))]
+                   ;; TODO: honestly it feels inadequate a bit, actual error message and value/schema being separated
+                   ;; in two different keys. Maybe we can figure out how to merge them? Why do errors in exception do
+                   ;; not contain an error message?
+                   (throw (ex-info (str "Invalid fields: " (str/join ", " (keys explanation)))
+                                   {:status-code     400
+                                    :errors          explanation
+                                    :specific-errors (->> data
+                                                          :explain
+                                                          :errors
+                                                          (mapv #(update % :schema pr-str)))})))
                  (throw e))))))
         ([req respond raise]
          ;; TODO: implement
