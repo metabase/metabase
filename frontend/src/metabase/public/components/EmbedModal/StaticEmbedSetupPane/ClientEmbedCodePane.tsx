@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { t } from "ttag";
-import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
+import type { ClientCodeSampleConfig } from "metabase/public/lib/types";
+
 import { CodeSample } from "./CodeSample";
 
 import "ace/mode-html";
@@ -8,12 +8,17 @@ import "ace/mode-jsx";
 import "ace/mode-jade";
 import "ace/mode-html_ruby";
 
-export const ClientEmbedCodePane = (): JSX.Element | null => {
-  const clientCodeOptions = getEmbedClientCodeExampleOptions();
+interface ClientEmbedCodePaneProps {
+  clientCodeOptions: ClientCodeSampleConfig[];
+  selectedClientCodeOptionName: string;
+  setSelectedClientCodeOptionName: (languageName: string) => void;
+}
 
-  const [selectedClientCodeOptionName, setSelectedClientCodeOptionName] =
-    useState(clientCodeOptions[0].name);
-
+export const ClientEmbedCodePane = ({
+  clientCodeOptions,
+  selectedClientCodeOptionName,
+  setSelectedClientCodeOptionName,
+}: ClientEmbedCodePaneProps): JSX.Element | null => {
   const selectedClientCodeOption = clientCodeOptions.find(
     ({ name }) => name === selectedClientCodeOptionName,
   );

@@ -1,10 +1,15 @@
 import { jt, t } from "ttag";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Box, Center, Stack, Text } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-import type { EmbedResourceType } from "metabase/public/lib/types";
+import type {
+  EmbedResourceType,
+  ServerCodeSampleConfig,
+} from "metabase/public/lib/types";
+import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 
 import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
@@ -13,15 +18,35 @@ import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPa
 export interface OverviewSettingsProps {
   resourceType: EmbedResourceType;
   serverEmbedCodeSlot: ReactNode;
+  selectedServerCodeOption: ServerCodeSampleConfig | undefined;
 }
 
 export const OverviewSettings = ({
   resourceType,
   serverEmbedCodeSlot,
+  selectedServerCodeOption,
 }: OverviewSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
+
+  const clientCodeOptions = getEmbedClientCodeExampleOptions();
+
+  const [selectedClientCodeOptionName, setSelectedClientCodeOptionName] =
+    useState(clientCodeOptions[0].name);
+
+  useEffect(() => {
+    if (selectedServerCodeOption) {
+      const { embedOption } = selectedServerCodeOption;
+
+      if (
+        embedOption &&
+        clientCodeOptions.find(({ name }) => name === embedOption)
+      ) {
+        setSelectedClientCodeOptionName(embedOption);
+      }
+    }
+  }, [clientCodeOptions, selectedServerCodeOption]);
 
   const staticEmbedDocsLink = (
     <ExternalLink key="doc" href={docsUrl}>{t`documentation`}</ExternalLink>
@@ -44,7 +69,11 @@ export const OverviewSettings = ({
         <Stack spacing="2rem" className="flex-full w-full">
           {serverEmbedCodeSlot}
 
-          <ClientEmbedCodePane />
+          <ClientEmbedCodePane
+            clientCodeOptions={clientCodeOptions}
+            selectedClientCodeOptionName={selectedClientCodeOptionName}
+            setSelectedClientCodeOptionName={setSelectedClientCodeOptionName}
+          />
 
           <Box my="1rem">
             <Center>

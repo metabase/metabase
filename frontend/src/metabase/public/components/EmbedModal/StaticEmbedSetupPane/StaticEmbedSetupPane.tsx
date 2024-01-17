@@ -94,6 +94,10 @@ export const StaticEmbedSetupPane = ({
   const [selectedServerCodeOptionName, setSelectedServerCodeOptionName] =
     useState(serverCodeOptions[0].name);
 
+  const selectedServerCodeOption = serverCodeOptions.find(
+    ({ name }) => name === selectedServerCodeOptionName,
+  );
+
   const hasSettingsChanges = !_.isEqual(
     initialEmbeddingParams,
     embeddingParams,
@@ -154,6 +158,7 @@ export const StaticEmbedSetupPane = ({
         <Tabs.Panel value={TABS.Overview}>
           <OverviewSettings
             resourceType={resourceType}
+            selectedServerCodeOption={selectedServerCodeOption}
             serverEmbedCodeSlot={
               <ServerEmbedCodePane
                 className="flex-full w-full"

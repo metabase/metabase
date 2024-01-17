@@ -44,7 +44,6 @@ export type ClientCodeSampleConfig = {
   name: string;
   source: string;
   mode: string;
-  embedOption?: string;
 };
 
 export type ServerCodeSampleConfig = {
@@ -53,6 +52,7 @@ export type ServerCodeSampleConfig = {
   parametersSource: string;
   getIframeQuerySource: string;
   mode: string;
+  embedOption?: string;
 };
 
 export type CodeSampleOption = ClientCodeSampleConfig | ServerCodeSampleConfig;

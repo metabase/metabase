@@ -1,77 +1,85 @@
-import type { CodeSampleParameters } from "./types";
+import type {
+  CodeSampleParameters,
+  EmbeddingDisplayOptions,
+  EmbeddingParameters,
+} from "./types";
 import { optionsToHashParams } from "./embed";
 
 export const node = {
-  getParametersSource: ({ params }: CodeSampleParameters) =>
+  getParametersSource: (params: EmbeddingParameters) =>
     `params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},`,
 
-  getIframeQuerySource: ({
+  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
+    JSON.stringify(optionsToHashParams(displayOptions)),
+
+  getServerSource: ({
+    siteUrl,
+    secretKey,
     resourceType,
+    resourceId,
+    params,
     displayOptions,
   }: CodeSampleParameters) =>
-    `var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${JSON.stringify(
-      optionsToHashParams(displayOptions),
-    )};`,
-
-  getServerSource: (sampleParameters: CodeSampleParameters) =>
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
 var jwt = require("jsonwebtoken");
 
-var METABASE_SITE_URL = ${JSON.stringify(sampleParameters.siteUrl)};
-var METABASE_SECRET_KEY = ${JSON.stringify(sampleParameters.secretKey)};
+var METABASE_SITE_URL = ${JSON.stringify(siteUrl)};
+var METABASE_SECRET_KEY = ${JSON.stringify(secretKey)};
 
 var payload = {
-  resource: { ${sampleParameters.resourceType}: ${
-      sampleParameters.resourceId
-    } },
-  ${node.getParametersSource(sampleParameters)}
+  resource: { ${resourceType}: ${resourceId} },
+  ${node.getParametersSource(params)}
   exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-${node.getIframeQuerySource(sampleParameters)}`,
+var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${node.getIframeQuerySource(
+      displayOptions,
+    )};`,
 };
 
 export const python = {
-  getParametersSource: ({ params }: CodeSampleParameters) =>
+  getParametersSource: (params: EmbeddingParameters) =>
     `"params": {
     ${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + ": " + JSON.stringify(value))
       .join(",\n    ")}
   },`,
 
-  getIframeQuerySource: ({
+  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
+    JSON.stringify(optionsToHashParams(displayOptions)),
+
+  getServerSource: ({
+    siteUrl,
+    secretKey,
     resourceType,
+    resourceId,
+    params,
     displayOptions,
   }: CodeSampleParameters) =>
-    `iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${JSON.stringify(
-      optionsToHashParams(displayOptions),
-    )}`,
-
-  getServerSource: (sampleParameters: CodeSampleParameters) =>
     `# You'll need to install PyJWT via pip 'pip install PyJWT' or your project packages file
 
 import jwt
 import time
 
-METABASE_SITE_URL = ${JSON.stringify(sampleParameters.siteUrl)}
-METABASE_SECRET_KEY = ${JSON.stringify(sampleParameters.secretKey)}
+METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
+METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
 payload = {
-  "resource": {"${sampleParameters.resourceType}": ${
-      sampleParameters.resourceId
-    }},
-  ${python.getParametersSource(sampleParameters)}
+  "resource": {"${resourceType}": ${resourceId}},
+  ${python.getParametersSource(params)}
   "exp": round(time.time()) + (60 * 10) # 10 minute expiration
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
-${python.getIframeQuerySource(sampleParameters)}`,
+iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${python.getIframeQuerySource(
+      displayOptions,
+    )}`,
 };
 
 export const ruby = {
-  getParametersSource: ({ params }: CodeSampleParameters) =>
+  getParametersSource: (params: EmbeddingParameters) =>
     `:params => {
     ${Object.entries(params)
       .map(
@@ -83,62 +91,68 @@ export const ruby = {
       .join(",\n    ")}
   },`,
 
-  getIframeQuerySource: ({
+  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
+    JSON.stringify(optionsToHashParams(displayOptions)),
+
+  getServerSource: ({
+    siteUrl,
+    secretKey,
     resourceType,
+    resourceId,
+    params,
     displayOptions,
   }: CodeSampleParameters) =>
-    `iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${JSON.stringify(
-      optionsToHashParams(displayOptions),
-    )}`,
-
-  getServerSource: (sampleParameters: CodeSampleParameters) =>
     `# you will need to install 'jwt' gem first via 'gem install jwt' or in your project Gemfile
 
 require 'jwt'
 
-METABASE_SITE_URL = ${JSON.stringify(sampleParameters.siteUrl)}
-METABASE_SECRET_KEY = ${JSON.stringify(sampleParameters.secretKey)}
+METABASE_SITE_URL = ${JSON.stringify(siteUrl)}
+METABASE_SECRET_KEY = ${JSON.stringify(secretKey)}
 
 payload = {
-  :resource => {:${sampleParameters.resourceType} => ${
-      sampleParameters.resourceId
-    }},
-  ${ruby.getParametersSource(sampleParameters)}
+  :resource => {:${resourceType} => ${resourceId}},
+  ${ruby.getParametersSource(params)}
   :exp => Time.now.to_i + (60 * 10) # 10 minute expiration
 }
 token = JWT.encode payload, METABASE_SECRET_KEY
 
-${ruby.getIframeQuerySource(sampleParameters)}`,
+iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${ruby.getIframeQuerySource(
+      displayOptions,
+    )}`,
 };
 
 export const closure = {
-  getParametersSource: ({ params }: CodeSampleParameters) =>
+  getParametersSource: (params: EmbeddingParameters) =>
     `:params   {${Object.entries(params)
       .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
       .join(",\n              ")}}`,
 
-  getIframeQuerySource: ({
+  getIframeQuerySource: (displayOptions: EmbeddingDisplayOptions) =>
+    JSON.stringify(optionsToHashParams(displayOptions)),
+
+  getServerSource: ({
+    siteUrl,
+    secretKey,
     resourceType,
+    resourceId,
+    params,
     displayOptions,
   }: CodeSampleParameters) =>
-    `(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token ${JSON.stringify(
-      optionsToHashParams(displayOptions),
-    )}))`,
-
-  getServerSource: (sampleParameters: CodeSampleParameters) =>
     `(require '[buddy.sign.jwt :as jwt])
 
-(def metabase-site-url   ${JSON.stringify(sampleParameters.siteUrl)})
-(def metabase-secret-key ${JSON.stringify(sampleParameters.secretKey)})
+(def metabase-site-url   ${JSON.stringify(siteUrl)})
+(def metabase-secret-key ${JSON.stringify(secretKey)})
 
 (def payload
-  {:resource {:${sampleParameters.resourceType} ${sampleParameters.resourceId}}
-   ${closure.getParametersSource(sampleParameters)}
+  {:resource {:${resourceType} ${resourceId}}
+   ${closure.getParametersSource(params)}
    :exp      (+ (int (/ (System/currentTimeMillis) 1000)) (* 60 10))}) ; 10 minute expiration
 
 (def token (jwt/sign payload metabase-secret-key))
 
-${closure.getIframeQuerySource(sampleParameters)}`,
+(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token ${closure.getIframeQuerySource(
+      displayOptions,
+    )}))`,
 };
 
 export const getHtmlSource = ({ iframeUrl }: { iframeUrl: string }) =>

@@ -21,8 +21,10 @@ export default class TextEditor extends Component {
     value: PropTypes.string,
     defaultValue: PropTypes.string,
     readOnly: PropTypes.bool,
-    highlightedText: PropTypes.string,
-    highlightedRowNumsText: PropTypes.arrayOf(PropTypes.string),
+    highlightedText: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.arrayOf(PropTypes.string),
+    ]),
     onChange: PropTypes.func,
     className: PropTypes.string,
   };
@@ -34,7 +36,7 @@ export default class TextEditor extends Component {
 
   editorRef = createRef();
 
-  highlightedTextMarkerId = null;
+  highlightedTextMarkerIds = [];
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     if (
@@ -64,16 +66,14 @@ export default class TextEditor extends Component {
     element.classList[this.props.readOnly ? "add" : "remove"]("read-only");
 
     // highlightedText
+    this._removeTextHighlight();
     const { highlightedText } = this.props;
     if (highlightedText != null) {
-      this._addTextHighlight(highlightedText);
-    } else {
-      this._removeTextHighlight();
-    }
-
-    const { highlightedRowNumsText } = this.props;
-    if (highlightedRowNumsText != null) {
-      highlightedRowNumsText.forEach(text => this._addRowNumsHighlight(text));
+      if (Array.isArray(highlightedText)) {
+        highlightedText.forEach(text => this._addTextHighlight(text));
+      } else {
+        this._addTextHighlight(highlightedText);
+      }
     }
 
     this._updateSize();
@@ -98,29 +98,14 @@ export default class TextEditor extends Component {
     this._editor.selection.clearSelection();
 
     if (textRange) {
-      this._removeTextHighlight();
-
-      this.highlightedTextMarkerId = this._editor.session.addMarker(
+      const highlightedTextMarkerId = this._editor.session.addMarker(
         textRange,
         HIGHLIGHTED_CODE_ROW_CLASSNAME,
-        "fullLine",
+        "text",
         true,
       );
+      this.highlightedTextMarkerIds.push(highlightedTextMarkerId);
 
-      for (let i = textRange.start.row; i <= textRange.end.row; i++) {
-        this._editor.session.addGutterDecoration(
-          i,
-          HIGHLIGHTED_CODE_ROW_NUMBER_CLASSNAME,
-        );
-      }
-    }
-  }
-
-  _addRowNumsHighlight(textToHighlight) {
-    const textRange = this._editor.find(textToHighlight);
-    this._editor.selection.clearSelection();
-
-    if (textRange) {
       for (let i = textRange.start.row; i <= textRange.end.row; i++) {
         this._editor.session.addGutterDecoration(
           i,
@@ -131,9 +116,10 @@ export default class TextEditor extends Component {
   }
 
   _removeTextHighlight() {
-    if (this.highlightedTextMarkerId) {
-      this._editor.session.removeMarker(this.highlightedTextMarkerId);
-    }
+    this.highlightedTextMarkerIds.forEach(highlightedTextMarkerId => {
+      this._editor.session.removeMarker(highlightedTextMarkerId);
+    });
+    this.highlightedTextMarkerIds = [];
 
     for (let i = 0; i <= this._editor.session.getLength(); i++) {
       this._editor.session.removeGutterDecoration(

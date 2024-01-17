@@ -75,7 +75,7 @@ export const ServerEmbedCodePane = ({
     displayOptions,
   );
 
-  const highlightedRowNumsText =
+  const highlightedText =
     hasParametersCodeDiff || hasAppearanceCodeDiff
       ? ([
           hasParametersCodeDiff && selectedServerCodeOption.parametersSource,
@@ -94,7 +94,7 @@ export const ServerEmbedCodePane = ({
         languageOptions={serverCodeOptions.map(({ name }) => name)}
         source={selectedServerCodeOption.source}
         textHighlightMode={selectedServerCodeOption.mode}
-        highlightedRowNumsText={highlightedRowNumsText}
+        highlightedText={highlightedText}
         onChangeOption={setSelectedServerCodeOptionName}
       />
     );
@@ -114,8 +114,7 @@ export const ServerEmbedCodePane = ({
         languageOptions={serverCodeOptions.map(({ name }) => name)}
         source={selectedServerCodeOption.source}
         textHighlightMode={selectedServerCodeOption.mode}
-        highlightedText={selectedServerCodeOption.parametersSource}
-        highlightedRowNumsText={highlightedRowNumsText}
+        highlightedText={highlightedText}
         onChangeOption={setSelectedServerCodeOptionName}
       />
     );
@@ -135,8 +134,7 @@ export const ServerEmbedCodePane = ({
         languageOptions={serverCodeOptions.map(({ name }) => name)}
         source={selectedServerCodeOption.source}
         textHighlightMode={selectedServerCodeOption.mode}
-        highlightedText={selectedServerCodeOption.getIframeQuerySource}
-        highlightedRowNumsText={highlightedRowNumsText}
+        highlightedText={highlightedText}
         onChangeOption={setSelectedServerCodeOptionName}
       />
     );
