@@ -27,7 +27,9 @@ const TEST_GROUPS = [
   createMockGroup({ name: "All Users" }),
 ];
 
-const setup = async () => {
+const setup = async ({
+  initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
+} = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
@@ -50,7 +52,7 @@ const setup = async () => {
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/admin/permissions/data/group/${TEST_DATABASE.id}`,
+      initialRoute,
     },
   );
 
@@ -80,8 +82,16 @@ describe("GroupsPermissionsPage", function () {
 
       await editDatabasePermission();
 
-      expect(screen.getByText("Cancel")).toBeInTheDocument();
-      expect(screen.getByText("Save changes")).toBeInTheDocument();
+      await expect(screen.getByText("Cancel")).toBeInTheDocument();
+      await expect(screen.getByText("Save changes")).toBeInTheDocument();
+    });
+
+    it.only("should be able to render group permissions for a DB when a schema is provided", async () => {
+      await setup({
+        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${TEST_DATABASE.id}/schema/PUBLIC`,
+      });
+
+      screen.logTestingPlaygroundURL();
     });
   });
 
