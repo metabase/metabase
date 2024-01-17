@@ -202,3 +202,7 @@ export function fromLegacyColumn(
 ): ColumnMetadata {
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }
+
+export function queryDisplayInfo(query: Query): QueryDisplayInfo {
+  return displayInfo(query, -1, query);
+}
