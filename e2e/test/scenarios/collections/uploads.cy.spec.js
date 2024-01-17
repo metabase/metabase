@@ -46,6 +46,7 @@ describeWithSnowplow(
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
       cy.intercept("PUT", "/api/setting").as("saveSettings");
+      cy.intercept("GET", "/api/database").as("databaseList");
 
       restore("postgres-writable");
       cy.signInAsAdmin();
@@ -78,7 +79,7 @@ describeWithSnowplow(
         .button("Enable uploads")
         .click();
 
-      cy.wait("@saveSettings");
+      cy.wait(["@saveSettings", "@databaseList"]);
 
       uploadFile(testFile, "postgres");
 
