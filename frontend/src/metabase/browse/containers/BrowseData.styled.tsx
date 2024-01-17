@@ -110,7 +110,10 @@ export const CenteredEmptyState = styled(EmptyState)`
 
 export const GridContainer = styled.div`
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+
   ${breakpointMinSmall} {
     padding-bottom: 1rem;
   }
@@ -133,11 +136,11 @@ export const CollectionHeaderContainer = styled.div`
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
-  width: calc(100% - 1rem) !important;
+  grid-column: 1 / -1;
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
-  padding: 1rem 0;
+  padding-top: 1rem;
   margin-right: 1rem;
   a {
     display: flex;
