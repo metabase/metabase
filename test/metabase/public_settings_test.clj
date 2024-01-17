@@ -370,3 +370,14 @@
             (public-settings/show-metabase-links! true)))
 
         (is (= true (public-settings/show-metabase-links)))))))
+
+(setting/defsetting test-uuid-nonce "" :type ::public-settings/uuid-nonce)
+
+(deftest lazy-uuid-nonce-test
+  (setting/set! :test-uuid-nonce nil)
+  (let [setting (setting/resolve-setting :test-uuid-nonce)]
+    (testing "Reading the setting through the low level API does not initialize it"
+      (is (nil? (setting/get-value-of-type ::public-settings/uuid-nonce setting)))
+      (is (nil? (setting/get setting))))
+    (testing "Using the public getter will initialize it"
+      (is (some? (test-uuid-nonce))))))
