@@ -4,12 +4,14 @@
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -60,6 +62,29 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))}]
     (merge defaults table)))
+
+(defn- set-new-table-permissions!
+  [table]
+  (t2/with-transaction [_conn]
+    (let [all-users-group  (perms-group/all-users)
+          non-magic-groups (perms-group/non-magic-groups)
+          non-admin-groups (conj non-magic-groups all-users-group)]
+      ;; Data access permissions
+      (data-perms/set-table-permission! all-users-group table :data-access :unrestricted)
+      (doseq [group non-magic-groups]
+        (data-perms/set-table-permission! group table :data-access :no-self-service))
+      ;; Download permissions
+      (data-perms/set-table-permission! all-users-group table :download-results :one-million-rows)
+      (doseq [group non-magic-groups]
+        (data-perms/set-table-permission! group table :download-results :no))
+      ;; Table metadata management
+      (doseq [group non-admin-groups]
+        (data-perms/set-table-permission! group table :manage-table-metadata :no)))))
+
+(t2/define-after-insert :model/Table
+  [table]
+  (u/prog1 table
+   (set-new-table-permissions! table)))
 
 (t2/define-before-delete :model/Table
   [{:keys [db_id schema id]}]
