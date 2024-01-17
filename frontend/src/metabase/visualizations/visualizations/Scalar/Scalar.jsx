@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
+import { useRef } from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -19,6 +19,7 @@ import {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { scalarToBarTransform } from "metabase/visualizations/visualizations/Scalar/scalars-bar-transform";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { TITLE_ICON_SIZE } from "./constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
@@ -33,33 +34,34 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .value();
 }
 
-// Scalar visualization shows a single number
-// Multiseries Scalar is transformed to a Funnel
-export class Scalar extends Component {
-  static uiName = t`Number`;
-  static identifier = "scalar";
-  static iconName = "number";
-  static canSavePng = false;
+function getScalarColumnIndex(cols, settings) {
+  const columnIndex = _.findIndex(
+    cols,
+    col => col.name === settings["scalar.field"],
+  );
+  return columnIndex < 0 ? 0 : columnIndex;
+}
 
-  static noHeader = true;
-  static supportsSeries = true;
+Object.assign(Scalar, {
+  uiName: t`Number`,
+  identifier: "scalar",
+  iconName: "number",
+  canSavePng: false,
 
-  static minSize = getMinSize("scalar");
-  static defaultSize = getDefaultSize("scalar");
+  noHeader: true,
+  supportsSeries: true,
 
-  static isSensible({ cols, rows }) {
+  minSize: getMinSize("scalar"),
+  defaultSize: getDefaultSize("scalar"),
+
+  isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.length === 1;
-  }
+  },
 
-  static checkRenderable([
-    {
-      data: { cols, rows },
-    },
-  ]) {
-    // scalar can always be rendered, nothing needed here
-  }
+  // scalar can always be rendered, nothing needed here
+  checkRenderable: () => {},
 
-  static settings = {
+  settings: {
     ...fieldSetting("scalar.field", {
       title: t`Field to show`,
       getDefault: ([
@@ -117,134 +119,129 @@ export class Scalar extends Component {
       // widget: "number",
     },
     click_behavior: {},
+  },
+});
+
+export function Scalar(props) {
+  const {
+    actionButtons,
+    series: [
+      {
+        card,
+        data: { cols, rows },
+      },
+    ],
+    isDashboard,
+    onChangeCardAndRun,
+    settings,
+    visualizationIsClickable,
+    onVisualizationClick,
+    height,
+    width,
+    gridSize,
+    totalNumGridCols,
+    fontFamily,
+    rawSeries,
+  } = props;
+  const scalarRef = useRef();
+  const renderingContext = useBrowserRenderingContext(fontFamily);
+
+  if (rawSeries.length > 1) {
+    return (
+      <TransformedVisualization
+        transformSeries={scalarToBarTransform}
+        originalProps={props}
+        VisualizationComponent={BarChart}
+        renderingContext={renderingContext}
+      />
+    );
+  }
+
+  const columnIndex = getScalarColumnIndex(cols, settings);
+  const value = rows[0] && rows[0][columnIndex];
+  const column = cols[columnIndex];
+
+  const formatOptions = {
+    ...legacyScalarSettingsToFormatOptions(settings),
+    ...settings.column(column),
+    jsx: true,
   };
 
-  _getColumnIndex(cols, settings) {
-    const columnIndex = _.findIndex(
-      cols,
-      col => col.name === settings["scalar.field"],
-    );
-    return columnIndex < 0 ? 0 : columnIndex;
-  }
+  const { displayValue, fullScalarValue } = compactifyValue(
+    value,
+    width,
+    formatOptions,
+  );
 
-  render() {
-    const {
-      actionButtons,
-      series: [
-        {
-          card,
-          data: { cols, rows },
-        },
-      ],
-      isDashboard,
-      onChangeCardAndRun,
-      settings,
-      visualizationIsClickable,
-      onVisualizationClick,
-      height,
-      width,
-      gridSize,
-      totalNumGridCols,
-      fontFamily,
-      rawSeries,
-    } = this.props;
+  const clicked = {
+    value,
+    column,
+    data: rows[0].map((value, index) => ({ value, col: cols[index] })),
+    settings,
+  };
+  const isClickable = onVisualizationClick != null;
 
-    if (rawSeries.length > 1) {
-      return (
-        <TransformedVisualization
-          transformSeries={scalarToBarTransform}
-          originalProps={this.props}
-          VisualizationComponent={BarChart}
-        />
-      );
+  const showSmallTitle =
+    !!settings["card.title"] &&
+    isDashboard &&
+    (gridSize?.width < 2 || gridSize?.height < 2);
+
+  const titleLinesCount = getTitleLinesCount(height);
+
+  const handleClick = () => {
+    if (
+      scalarRef.current &&
+      onVisualizationClick &&
+      visualizationIsClickable(clicked)
+    ) {
+      onVisualizationClick({ ...clicked, element: scalarRef.current });
     }
+  };
 
-    const columnIndex = this._getColumnIndex(cols, settings);
-    const value = rows[0] && rows[0][columnIndex];
-    const column = cols[columnIndex];
+  return (
+    <ScalarWrapper>
+      <div className="Card-title absolute top right p1 px2">
+        {actionButtons}
+      </div>
+      <ScalarContainer
+        className="fullscreen-normal-text fullscreen-night-text"
+        data-testid="scalar-container"
+        tooltip={fullScalarValue}
+        alwaysShowTooltip={fullScalarValue !== displayValue}
+        isClickable={isClickable}
+      >
+        <span onClick={handleClick} ref={scalarRef}>
+          <ScalarValue
+            fontFamily={fontFamily}
+            gridSize={gridSize}
+            height={getValueHeight(height, { isDashboard, showSmallTitle })}
+            totalNumGridCols={totalNumGridCols}
+            value={displayValue}
+            width={getValueWidth(width)}
+          />
+        </span>
+      </ScalarContainer>
 
-    const formatOptions = {
-      ...legacyScalarSettingsToFormatOptions(settings),
-      ...settings.column(column),
-      jsx: true,
-    };
-
-    const { displayValue, fullScalarValue } = compactifyValue(
-      value,
-      width,
-      formatOptions,
-    );
-
-    const clicked = {
-      value,
-      column,
-      data: rows[0].map((value, index) => ({ value, col: cols[index] })),
-      settings,
-    };
-    const isClickable = onVisualizationClick != null;
-
-    const showSmallTitle =
-      !!settings["card.title"] &&
-      isDashboard &&
-      (gridSize?.width < 2 || gridSize?.height < 2);
-
-    const titleLinesCount = getTitleLinesCount(height);
-
-    const handleClick = () => {
-      if (
-        this._scalar &&
-        onVisualizationClick &&
-        visualizationIsClickable(clicked)
-      ) {
-        onVisualizationClick({ ...clicked, element: this._scalar });
-      }
-    };
-
-    return (
-      <ScalarWrapper>
-        <div className="Card-title absolute top right p1 px2">
-          {actionButtons}
-        </div>
-        <ScalarContainer
-          className="fullscreen-normal-text fullscreen-night-text"
-          data-testid="scalar-container"
-          tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== displayValue}
-          isClickable={isClickable}
-        >
-          <span onClick={handleClick} ref={scalar => (this._scalar = scalar)}>
-            <ScalarValue
-              fontFamily={fontFamily}
-              gridSize={gridSize}
-              height={getValueHeight(height, { isDashboard, showSmallTitle })}
-              totalNumGridCols={totalNumGridCols}
-              value={displayValue}
-              width={getValueWidth(width)}
-            />
-          </span>
-        </ScalarContainer>
-
-        {isDashboard &&
-          (showSmallTitle ? (
-            <LabelIcon
-              data-testid="scalar-title-icon"
-              name="ellipsis"
-              tooltip={settings["card.title"]}
-              size={TITLE_ICON_SIZE}
-            />
-          ) : (
-            <ScalarTitle
-              lines={titleLinesCount}
-              title={settings["card.title"]}
-              description={settings["card.description"]}
-              onClick={
-                onChangeCardAndRun
-                  ? () => onChangeCardAndRun({ nextCard: card })
-                  : undefined
-              }
-            />
-          ))}
-      </ScalarWrapper>
-    );
-  }
+      {isDashboard &&
+        (showSmallTitle ? (
+          <LabelIcon
+            data-testid="scalar-title-icon"
+            name="ellipsis"
+            tooltip={settings["card.title"]}
+            size={TITLE_ICON_SIZE}
+          />
+        ) : (
+          <ScalarTitle
+            lines={titleLinesCount}
+            title={settings["card.title"]}
+            description={settings["card.description"]}
+            onClick={
+              onChangeCardAndRun
+                ? () => onChangeCardAndRun({ nextCard: card })
+                : undefined
+            }
+          />
+        ))}
+    </ScalarWrapper>
+  );
 }

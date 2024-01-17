@@ -6,6 +6,7 @@ import type {
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import { ChartCaptionRoot } from "./ChartCaption.styled";
 
 interface ChartCaptionProps {
@@ -13,8 +14,8 @@ interface ChartCaptionProps {
   settings: VisualizationSettings;
   icon?: IconProps;
   actionButtons?: ReactNode;
-  width: number;
-  onChangeCardAndRun: (data: Record<string, unknown>) => void;
+  width?: number;
+  onChangeCardAndRun: OnChangeCardAndRun;
 }
 
 const ChartCaption = ({
@@ -48,6 +49,7 @@ const ChartCaption = ({
       title={title}
       description={description}
       icon={icon}
+      // @ts-expect-error will be fixed when LegendCaption gets converted to TypeScript
       actionButtons={actionButtons}
       onSelectTitle={canSelectTitle ? handleSelectTitle : undefined}
       width={width}
