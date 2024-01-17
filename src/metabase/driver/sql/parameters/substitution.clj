@@ -93,7 +93,7 @@
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type`, `value` and the given driver.
   The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
   implementation to convert the `field`.
-  Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination."
+  Returns `nil` if the conversion is not necessary for this `field`, `param-type` and `value` combination."
   {:added "0.49.0" :arglists '([driver field param-type value])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
