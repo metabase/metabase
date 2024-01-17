@@ -123,7 +123,7 @@
                        ; source-card not visible
                        (assoc :source-card 999999999)
                        (dissoc :source-table))))))
-    (testing "on native queries"
+    (testing "on native queries (#37765)"
       (let [editable              (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
             ;; Logic for the native-query mock borrowed from metabase.lib.native/has-write-permission-test
             mock-db-native-perms #(lib/native-query (lib.tu/mock-metadata-provider
