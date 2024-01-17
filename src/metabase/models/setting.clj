@@ -252,6 +252,7 @@
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
    :setter      clojure.lang.IFn
+   :init        clojure.lang.IFn ; an init function can be used to seed initial values
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
@@ -620,12 +621,41 @@
   if any."
   [setting-definition-or-name]
   (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
-        disable-cache?                                   (or *disable-cache* (not cache?))]
+        disable-cache? (or *disable-cache* (not cache?))]
     (if (or (and feature (not (has-feature? feature)))
             (and enabled? (not (enabled?))))
       default
       (binding [*disable-cache* disable-cache?]
         (getter)))))
+
+(defmulti init-value-of-type
+  "Generate an initial value of `setting-definition-or-name` as a value of type `setting-type`, to use as a seed the
+  first time the Setting is accessed. If no value is returned then the Setting is left uninitialized.
+
+  Impls should return values of the correct type (e.g. the `:boolean` impl should only return [[Boolean]] values)."
+  {:arglists '([setting-type setting-definition-or-name])}
+  (fn [setting-type _]
+    (keyword setting-type)))
+
+(defmethod init-value-of-type :default
+  [_setting-type _setting-definition-or-name]
+  nil)
+
+(defn- default-init-for-type [setting-type]
+  (partial init-value-of-type (keyword setting-type)))
+
+(declare set!)
+
+(defn- call-me-maybe [f] (when f (f)))
+
+(defn get-or-init!
+  "Fetch the value of `setting-definition-or-name`. If the value is not set, initialize it using the :init hook."
+  [setting-definition-or-name]
+  (let [setting (resolve-setting setting-definition-or-name)]
+    (or (get setting)
+        (when-let [init-value (call-me-maybe (:init setting))]
+          (metabase.models.setting/set! setting init-value)
+          init-value))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -885,6 +915,7 @@
                  :on-change      nil
                  :getter         (partial (default-getter-for-type setting-type) setting-name)
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
+                 :init           (partial (default-init-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
                  :export?        false
@@ -966,7 +997,7 @@
   [getter-or-setter setting]
   (case getter-or-setter
     :getter (fn setting-getter* []
-              (get setting))
+              (get-or-init! setting))
     :setter (fn setting-setter* [new-value]
               ;; need to qualify this or otherwise the reader gets this confused with the set! used for things like
               ;; (set! *warn-on-reflection* true)

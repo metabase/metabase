@@ -122,16 +122,21 @@
   :audit      :never)
 
 ;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
+
+;; it would be nice to just derive ::uuid-nonce from :string, but we cannot derive from a non-namespaced keyword,
+;; and we would also need to improve the macro to permit derived keys
+
 (defmethod setting/get-value-of-type ::uuid-nonce
   [_ setting]
-  (or (setting/get-value-of-type :string setting)
-      (let [value (str (random-uuid))]
-        (setting/set-value-of-type! :string setting value)
-        value)))
+  (setting/get-value-of-type :string setting))
 
 (defmethod setting/set-value-of-type! ::uuid-nonce
   [_ setting new-value]
   (setting/set-value-of-type! :string setting new-value))
+
+(defmethod setting/init-value-of-type ::uuid-nonce
+  [_ _]
+  (str (random-uuid)))
 
 (defmethod setting/default-tag-for-type ::uuid-nonce
   [_]

@@ -66,6 +66,11 @@
   :setter     :none
   :getter     (constantly true))
 
+(defsetting test-setting-custom-init
+  "Test setting - this only shows up in dev (0)"
+  :type       :string
+  :init       (constantly "truly-random"))
+
 (def ^:private ^:dynamic *enabled?* false)
 
 (defsetting test-enabled-setting-no-default
@@ -133,6 +138,13 @@
     (is (= "[Default Value]"
            (test-setting-2)))))
 
+(defn reset-init! []
+  (setting/set! :test-setting-custom-init nil))
+
+(defn fresh-init-setting []
+  (reset-init!)
+  (setting/resolve-setting :test-setting-custom-init))
+
 (deftest user-facing-value-test
   (testing "`user-facing-value` should return `nil` for a Setting that is using the default value"
     (test-setting-2! nil)
@@ -142,13 +154,30 @@
     (is (= true
            (test-setting-calculated-getter)))
     (is (= true
-           (setting/user-facing-value :test-setting-calculated-getter)))))
+           (setting/user-facing-value :test-setting-calculated-getter))))
+  ;; not sure about this - perhaps it should initialize it?
+  (testing "`user-facing-value` should return `nil` for a Setting with init, where it has not yet been called"
+    (is (= nil
+           (setting/user-facing-value (fresh-init-setting))))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
     (testing "Sanity check: getter should be defined"
       (is (some? (resolve `test-setting-calculated-getter))))
     (is (not (resolve `test-setting-calculated-getter!)))))
+
+(deftest custom-init-test
+  (testing "The custom :init hook will fire when expected, and the value will be saved"
+    (let [s (fresh-init-setting)]
+      (is (nil? (setting/get s)))
+      (let [val (setting/get-or-init! s)]
+        (is (some? val))
+        (is (= val (setting/get s))))))
+
+  (testing "The implicit getter function will call init"
+    (let [s (fresh-init-setting)]
+      (is (some? (test-setting-custom-init)))
+      (is (= (test-setting-custom-init) (setting/get s))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
