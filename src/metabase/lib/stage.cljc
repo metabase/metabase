@@ -349,6 +349,6 @@
 (mu/defn drop-stage-if-empty :- ::lib.schema/query
   "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
   [query :- ::lib.schema/query]
-  (if (has-clauses query -1)
+  (if-not (has-clauses query -1)
     (drop-stage query)
     query))
