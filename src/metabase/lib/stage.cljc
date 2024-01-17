@@ -332,7 +332,7 @@
   "Does given query stage have any clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card)))
+  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
