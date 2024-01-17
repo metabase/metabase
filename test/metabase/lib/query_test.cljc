@@ -128,19 +128,12 @@
       (let [editable     (lib/native-query (lib.tu/mock-metadata-provider
                                             meta/metadata-provider
                                             {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
-                                           "select * from x;")
-            bad-db       (assoc editable :database 999999999)
-            none-perm-db (assoc editable :native-permissions :none)
-            no-perm-db   (dissoc editable :native-permissions)]
-        (is (= {:is-native   true
-                :is-editable true}
-               (lib/display-info editable -1 editable)))
-        (is (= {:is-native   true
-                :is-editable false}
-               (lib/display-info bad-db -1 bad-db)))
-        (is (= {:is-native   true
-                :is-editable false}
-               (lib/display-info none-perm-db -1 none-perm-db)))
-        (is (= {:is-native   true
-                :is-editable false}
-               (lib/display-info no-perm-db -1 no-perm-db)))))))
+                                           "select * from x;")]
+        (are [editable? query] (= {:is-native   true
+                                   :is-editable editable?}
+                                  (mu/disable-enforcement
+                                   (lib/display-info query -1 query)))
+          true  editable
+          false (assoc editable :database 999999999)          ; database unknown - no permissions
+          false (assoc editable :native-permissions :none)    ; native-permissions explicitly set to :none
+          false (dissoc editable :native-permissions))))))    ; native-permissions not found on the database
