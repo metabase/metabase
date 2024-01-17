@@ -23,7 +23,7 @@ import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardAp
 import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
 
 /* Browse data */
-import BrowseApp from "metabase/browse/components/BrowseApp";
+import { BrowseApp } from "metabase/browse/components/BrowseApp";
 import { BrowseDataPage } from "metabase/browse/containers/BrowseData";
 import SchemaBrowser from "metabase/browse/containers/SchemaBrowser";
 import TableBrowser from "metabase/browse/containers/TableBrowser";
