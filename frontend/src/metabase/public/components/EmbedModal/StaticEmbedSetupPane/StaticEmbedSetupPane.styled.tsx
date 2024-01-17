@@ -17,6 +17,9 @@ const SettingsAsideBlock = styled.div`
   padding: 2rem;
   border-right: 1px solid ${color("border")};
   background-color: ${color("white")};
+
+  height: 45.125rem;
+  overflow-y: auto;
 `;
 
 const PreviewAreaBlock = styled.div`

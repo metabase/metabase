@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 import { useState } from "react";
-import { Tabs } from "metabase/ui";
+import { Stack, Tabs } from "metabase/ui";
 import type { ActivePreviewPane } from "metabase/public/components/EmbedModal";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
@@ -121,7 +121,7 @@ export const StaticEmbedSetupPane = ({
   };
 
   return (
-    <div className="flex flex-column full-height">
+    <Stack spacing={0}>
       <EmbedModalContentStatusBar
         resourceType={resourceType}
         isPublished={resource.enable_embedding}
@@ -131,65 +131,63 @@ export const StaticEmbedSetupPane = ({
         onDiscard={handleDiscard}
       />
 
-      <div className="flex flex-full">
-        <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
-          <Tabs.List p="0 1.5rem">
-            <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
-            <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
-            <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
-          </Tabs.List>
-          <Tabs.Panel value={TABS.Overview}>
-            <OverviewSettings
-              resource={resource}
-              resourceType={resourceType}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={previewParametersBySlug}
-              displayOptions={displayOptions}
-            />
-          </Tabs.Panel>
-          <Tabs.Panel value={TABS.Parameters}>
-            <ParametersSettings
-              activePane={activePane}
-              resource={resource}
-              resourceType={resourceType}
-              resourceParameters={resourceParameters}
-              embeddingParams={embeddingParams}
-              lockedParameters={lockedParameters}
-              parameterValues={parameterValues}
-              iframeUrl={iframeUrl}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={previewParametersBySlug}
-              initialPreviewParameters={initialPreviewParameters}
-              displayOptions={displayOptions}
-              onChangeEmbeddingParameters={setEmbeddingParams}
-              onChangeParameterValue={(id: string, value: string) =>
-                setParameterValues(state => ({
-                  ...state,
-                  [id]: value,
-                }))
-              }
-              onChangePane={setActivePane}
-            />
-          </Tabs.Panel>
-          <Tabs.Panel value={TABS.Appearance}>
-            <AppearanceSettings
-              activePane={activePane}
-              resource={resource}
-              resourceType={resourceType}
-              iframeUrl={iframeUrl}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={previewParametersBySlug}
-              displayOptions={displayOptions}
-              onChangePane={setActivePane}
-              onChangeDisplayOptions={setDisplayOptions}
-            />
-          </Tabs.Panel>
-        </Tabs>
-      </div>
-    </div>
+      <Tabs defaultValue={TABS.Overview} data-testid="embedding-preview">
+        <Tabs.List p="0 1.5rem">
+          <Tabs.Tab value={TABS.Overview}>{t`Overview`}</Tabs.Tab>
+          <Tabs.Tab value={TABS.Parameters}>{t`Parameters`}</Tabs.Tab>
+          <Tabs.Tab value={TABS.Appearance}>{t`Appearance`}</Tabs.Tab>
+        </Tabs.List>
+        <Tabs.Panel value={TABS.Overview}>
+          <OverviewSettings
+            resource={resource}
+            resourceType={resourceType}
+            siteUrl={siteUrl}
+            secretKey={secretKey}
+            params={previewParametersBySlug}
+            displayOptions={displayOptions}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value={TABS.Parameters}>
+          <ParametersSettings
+            activePane={activePane}
+            resource={resource}
+            resourceType={resourceType}
+            resourceParameters={resourceParameters}
+            embeddingParams={embeddingParams}
+            lockedParameters={lockedParameters}
+            parameterValues={parameterValues}
+            iframeUrl={iframeUrl}
+            siteUrl={siteUrl}
+            secretKey={secretKey}
+            params={previewParametersBySlug}
+            initialPreviewParameters={initialPreviewParameters}
+            displayOptions={displayOptions}
+            onChangeEmbeddingParameters={setEmbeddingParams}
+            onChangeParameterValue={(id: string, value: string) =>
+              setParameterValues(state => ({
+                ...state,
+                [id]: value,
+              }))
+            }
+            onChangePane={setActivePane}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value={TABS.Appearance}>
+          <AppearanceSettings
+            activePane={activePane}
+            resource={resource}
+            resourceType={resourceType}
+            iframeUrl={iframeUrl}
+            siteUrl={siteUrl}
+            secretKey={secretKey}
+            params={previewParametersBySlug}
+            displayOptions={displayOptions}
+            onChangePane={setActivePane}
+            onChangeDisplayOptions={setDisplayOptions}
+          />
+        </Tabs.Panel>
+      </Tabs>
+    </Stack>
   );
 };
 
