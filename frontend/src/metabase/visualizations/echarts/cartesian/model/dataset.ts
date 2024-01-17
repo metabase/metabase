@@ -84,7 +84,6 @@ export const getDatasetKey = (
  * @param {DatasetColumn[]} columns - The columns of the raw dataset.
  * @param {RowValue[]} row - The raw row of values.
  * @param {number} cardId - The ID of the card.
- * @param {number} dimensionIndex - The dimension column index.
  * @param {number} breakoutIndex - The breakout column index for charts with two dimension columns selected.
  */
 const aggregateColumnValuesForDatum = (
@@ -92,14 +91,9 @@ const aggregateColumnValuesForDatum = (
   columns: DatasetColumn[],
   row: RowValue[],
   cardId: number,
-  dimensionIndex: number,
   breakoutIndex?: number,
 ): void => {
   columns.forEach((column, columnIndex) => {
-    if (columnIndex === dimensionIndex) {
-      return;
-    }
-
     const rowValue = row[columnIndex];
 
     if (breakoutIndex == null || columnIndex === breakoutIndex) {
@@ -149,15 +143,11 @@ export const getJoinedCardsDataset = (
     } = cardSeries;
     const columns = cardsColumns[index];
 
-    const cardId = card.id;
-
-    const dimensionIndex = columns.dimension.index;
-
     const breakoutIndex =
       "breakout" in columns ? columns.breakout.index : undefined;
 
     for (const row of rows) {
-      const dimensionValue = row[dimensionIndex];
+      const dimensionValue = row[columns.dimension.index];
 
       // Get the existing datum by the dimension value if exists
       const datum = groupedData.get(dimensionValue) ?? {
@@ -168,14 +158,7 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
-      aggregateColumnValuesForDatum(
-        datum,
-        cols,
-        row,
-        cardId,
-        dimensionIndex,
-        breakoutIndex,
-      );
+      aggregateColumnValuesForDatum(datum, cols, row, card.id, breakoutIndex);
     }
   });
 
