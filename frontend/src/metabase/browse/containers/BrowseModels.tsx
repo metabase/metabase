@@ -207,6 +207,7 @@ const ModelCell = ({
   );
 };
 
+/** Sort models by (in descending order of priority): collection name, collection id, model name, model id. */
 const sortModels = (a: Model, b: Model) => {
   const fallbackSortValue = Number.MAX_SAFE_INTEGER;
 
@@ -264,7 +265,7 @@ const ModelGroupHeader = ({
   groupLabel: string;
   style: React.CSSProperties;
 }) => (
-  <div className="model-group-header" style={{ ...style }}>
+  <div className="model-group-header" style={style}>
     <h4>{groupLabel}</h4>
   </div>
 );
@@ -289,7 +290,7 @@ const addHeadersToItems = (
       models[i - 1]?.collection?.id !== model.collection?.id;
 
     const firstModelInItsCollection =
-      i === 0 || collectionIdChanged || !model.collection?.id;
+      i === 0 || collectionIdChanged || model.collection?.id === undefined;
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
@@ -298,7 +299,7 @@ const addHeadersToItems = (
       };
       gridItems.push(
         // So that the model group header appears at the start of the row,
-        // add zero or more blank items to fill in the rest of the row
+        // add zero or more blank items to fill in the rest of the previous row
         ...(columnIndex > 0
           ? Array(columnCount - columnIndex).fill("blank")
           : []),
@@ -319,7 +320,7 @@ const gridItemIsGroupHeader = (item: GridItem): item is HeaderGridItem =>
   (item as Model).model === undefined;
 
 const gridItemIsInGroupHeaderRow = (item: GridItem) =>
-  item === "header-blank" || gridItemIsGroupHeader(item);
+  gridItemIsGroupHeader(item) || item === "header-blank";
 
 const gridItemIsBlank = (item: GridItem) =>
   item === "blank" || item === "header-blank";
@@ -352,7 +353,6 @@ const getGridOptions = (
   //   }
   // }
 
-  // Sort models by (in descending order of priority): collection name, collection id, model name, model id.
   const modelsWithHistory: Model[] = models.map(
     (model: ModelWithoutEditInfo) => {
       const lastEditInfo = {
