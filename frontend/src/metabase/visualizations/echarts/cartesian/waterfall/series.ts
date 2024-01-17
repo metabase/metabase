@@ -75,6 +75,7 @@ export function buildEChartsWaterfallSeries(
     seriesModel,
     settings,
     renderingContext,
+    settings["graph.show_values"],
   );
   const increaseLabelOptions = {
     ...baseLabelOptions,
