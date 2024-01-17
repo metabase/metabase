@@ -5170,6 +5170,31 @@ databaseChangeLog:
 
   - changeSet:
       id: v49.2024-01-17T13:55:14
+      author: crisptrutski
+      comment: Prepare  fieldvalues
+      changes:
+        - sql:
+            sql: UPDATE metabase_fieldvalues SET hash_key = '' WHERE hash_key IS NULL;
+      rollback:
+        - sql:
+            sql: UPDATE metabase_fieldvalues SET hash_key = NULL WHERE hash_key = '';
+
+  - changeSet:
+      id: v49.2024-01-17T13:55:16
+      author: crisptrutski
+      comment: Prepare  fieldvalues
+      changes:
+        - addNotNullConstraint:
+            tableName: metabase_fieldvalues
+            columnName: hash_key
+            defaultNullValue: ""
+      rollback:
+        - dropNotNullConstraint:
+            tableName: metabase_fieldvalues
+            columnName: hash_key
+
+  - changeSet:
+      id: v49.2024-01-17T14:11:05
       author: crisptruski
       comment: Add unique constraint on fieldvalues
       changes:

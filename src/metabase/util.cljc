@@ -549,7 +549,7 @@
     m))
 
 (defn index-of
-  "Return index of the first element in `coll` for which `pred` reutrns true."
+  "Return index of the first element in `coll` for which `pred` returns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
@@ -562,7 +562,7 @@
        (re-matches #"[0-9a-f]{64}" new-value)))
 
 (defn topological-sort
-  "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
+  "Topologically sorts vertexes in graph g. Graph is a map of vertexes to edges. Optionally takes an
    additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 

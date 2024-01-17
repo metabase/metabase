@@ -23,20 +23,21 @@
   There is also more written about how these are used for remapping in the docstrings
   for [[metabase.models.params.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
   (:require
-   [java-time.api :as t]
-   [malli.core :as mc]
-   [medley.core :as m]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.plugins.classloader :as classloader]
-   [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
-   [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+    [clojure.string :as str]
+    [java-time.api :as t]
+    [malli.core :as mc]
+    [medley.core :as m]
+    [metabase.models.interface :as mi]
+    [metabase.models.serialization :as serdes]
+    [metabase.plugins.classloader :as classloader]
+    [metabase.public-settings.premium-features :refer [defenterprise]]
+    [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
+    [metabase.util.i18n :refer [trs tru]]
+    [metabase.util.log :as log]
+    [metabase.util.malli.schema :as ms]
+    [methodical.core :as methodical]
+    [toucan2.core :as t2]))
 
 (def ^Long category-cardinality-threshold
   "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
@@ -93,10 +94,25 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
+(def ^:private transform-blank-as-null
+  {:in str
+   :out #(when-not (str/blank? %) %)})
+
+;; TODO make this a unit test
+#_(let [{:keys [in out]} transform-blank-as-null]
+  (assert (= "" (in nil)))
+  (assert (= "" (in "")))
+  (assert (= "1" (in "1")))
+
+  (assert (= nil (out nil)))
+  (assert (= nil (out "")))
+  (assert (= "1" (out "1"))))
+
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization
    :values                mi/transform-json
-   :type                  mi/transform-keyword})
+   :type                  mi/transform-keyword
+   :hash_key              transform-blank-as-null})
 
 (defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
   (when-not (mc/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
