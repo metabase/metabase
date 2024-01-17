@@ -157,8 +157,8 @@ declare function DisplayInfoFn(
  *
  */
 declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
+  _query: Query,
+  _stageIndex: number,
   queryInfo: Query,
 ): QueryDisplayInfo;
 
