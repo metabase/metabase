@@ -95,8 +95,7 @@ const BrowseDatabases = ({
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
-  }
-  if (isLoading) {
+  } else if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
