@@ -15,7 +15,7 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models :refer [Database User]]
+   [metabase.models :refer [User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting]
@@ -27,7 +27,7 @@
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
-   [clojure.lang ExceptionInfo]))
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -83,16 +83,18 @@
                                     ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
                                     ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -150,16 +152,18 @@
                              {"field_ref" ["field" 42 {"source-field" 41}]}
                              {"field_ref" ["aggregation" 0]}
                              {"field_ref" ["expression" "expr"]}]
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! Database {:name       "DB"
-                                                            :engine     "h2"
-                                                            :created_at :%now
-                                                            :updated_at :%now
-                                                            :details    "{}"})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -223,16 +227,18 @@
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
                                     ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -673,11 +679,12 @@
                                                         :email       "howard@aircraft.com"
                                                         :password    "superstrong"
                                                         :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -762,11 +769,12 @@
                                                                :email       "howard@aircraft.com"
                                                                :password    "superstrong"
                                                                :date_joined :%now})
-            database-id (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
             card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                   {:name                   "My Saved Question"
                                                    :created_at             :%now
@@ -895,11 +903,12 @@
                                                                       :email       "howard@aircraft.com"
                                                                       :password    "superstrong"
                                                                       :date_joined :%now})
-            database-id        (t2/insert-returning-pks! :model/Database {:name       "DB"
-                                                                          :engine     "h2"
-                                                                          :created_at :%now
-                                                                          :updated_at :%now
-                                                                          :details    "{}"})
+            database-id        (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
             [card-id]          (t2/insert-returning-pks! (t2/table-name :model/Card)
                                                          {:name                   "My Saved Question"
                                                           :created_at             :%now
@@ -947,39 +956,66 @@
                     json/parse-string
                     (get-in ["cards" 0 "visualization_settings"])))))))))
 
+(defn- create-data-permissions-table
+  "Manually creates the data_permissions table which is needed for the Databases in the test below to be inserted
+  without error. This table was added *after* the migrations being tested, but that test relies on the type
+  transformations being applied for :model/Database, so the instances need to be inserted via model name instead of
+  table name, which also ends up running `define-after-insert`. So we need to manually create data_permissions, or else
+  the test will error. (Other tests create Databases via the table name instead of the model name, so they don't have
+  this issue.)"
+  []
+  (t2/query ["CREATE TABLE data_permissions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                group_id INT NOT NULL,
+                type VARCHAR(64) NOT NULL,
+                db_id INT NOT NULL,
+                schema VARCHAR(254),
+                table_id INT,
+                perm_value VARCHAR(64) NOT NULL,
+                CONSTRAINT fk_data_permissions_ref_permissions_group
+                    FOREIGN KEY (group_id) REFERENCES permissions_group(id)
+                    ON DELETE CASCADE,
+                CONSTRAINT fk_data_permissions_ref_db_id
+                    FOREIGN KEY (db_id) REFERENCES metabase_database(id)
+                    ON DELETE CASCADE,
+                CONSTRAINT fk_data_permissions_ref_table_id
+                    FOREIGN KEY (table_id) REFERENCES metabase_table(id)
+                    ON DELETE CASCADE);"]))
+
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test
         (fn [encrypted?]
           (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+            (create-data-permissions-table)
             (let [default-db                {:name       "DB"
                                              :engine     "postgres"
                                              :created_at :%now
                                              :updated_at :%now}
                   success-id                (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  (json/generate-string {:persist-models-enabled true})
-                                                             :settings {:database-enable-actions true}})))
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/generate-string {:persist-models-enabled true})
+                                                            :settings {:database-enable-actions true}})))
                   options-nil-settings-id   (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  (json/generate-string {:persist-models-enabled true})
-                                                             :settings nil})))
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/generate-string {:persist-models-enabled true})
+                                                            :settings nil})))
                   options-empty-settings-id (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  (json/generate-string {:persist-models-enabled true})
-                                                             :settings {}})))
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  (json/generate-string {:persist-models-enabled true})
+                                                            :settings {}})))
                   nil-options-id            (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  nil
-                                                             :settings {:database-enable-actions true}})))
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  nil
+                                                            :settings {:database-enable-actions true}})))
                   empty-options-id          (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  "{}"
-                                                             :settings {:database-enable-actions true}})))]
+                                                    :model/Database
+                                                    (merge default-db
+                                                           {:options  "{}"
+                                                            :settings {:database-enable-actions true}})))]
               (testing "fowward migration\n"
                 (when encrypted?
                   (testing "make sure the settings is encrypted before the migration"
@@ -1320,11 +1356,12 @@
                                                                :email       "howard@aircraft.com"
                                                                :password    "superstrong"
                                                                :date_joined :%now})
-                [database-id]  (t2/insert-returning-pks! Database {:name       "DB"
-                                                                   :engine     "h2"
-                                                                   :created_at :%now
-                                                                   :updated_at :%now
-                                                                   :details    "{}"})
+                [database-id]  (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                         {:name       "DB"
+                                                          :engine     "h2"
+                                                          :created_at :%now
+                                                          :updated_at :%now
+                                                          :details    "{}"})
                 [card-id]      (t2/insert-returning-pks!
                                 :model/Card
                                 {:visualization_settings card-vis
