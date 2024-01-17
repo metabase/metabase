@@ -168,6 +168,14 @@ TrendComboLog.args = {
   renderingContext,
 };
 
+export const CombinedBarTimeSeriesDifferentGranularityWithBreakout =
+  Template.bind({});
+CombinedBarTimeSeriesDifferentGranularityWithBreakout.args = {
+  rawSeries: data.combinedBarTimeSeriesDifferentGranularityWithBreakout as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
