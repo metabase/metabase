@@ -24,6 +24,7 @@ import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
 import { Text } from "metabase/ui";
+import { space } from "metabase/styled-components/theme";
 import {
   CenteredEmptyState,
   GridContainer,
@@ -52,17 +53,18 @@ type RenderItemFunction = (
  * but there are other values added in, to generate headers and blank cells */
 type GridItem = Model | HeaderGridItem | "blank" | "header-blank";
 
-export const BrowseModels = ({
-  data,
-}: {
-  data: ReturnType<typeof useSearchListQuery>;
-}) => {
-  const { data: models = [], error, isLoading } = data;
+const emptyArray: Model[] = [];
 
-  const gridGapSize = 16;
-  const itemMinWidth = 240; // TODO: replace magic number
-  const defaultItemHeight = 160; // TODO: replace magic number?
-  const headerHeight = 48; // TODO: replace magic number?
+export const BrowseModels = ({
+  data: models = emptyArray,
+  error,
+  isLoading,
+}: ReturnType<typeof useSearchListQuery>) => {
+  const rem = parseInt(space(2));
+  const gridGapSize = rem;
+  const itemMinWidth = 15 * rem;
+  const defaultItemHeight = 10 * rem;
+  const headerHeight = 3 * rem;
 
   useEffect(() => {
     const configureGrid = () => {
@@ -72,7 +74,7 @@ export const BrowseModels = ({
     configureGrid();
     window.addEventListener("resize", configureGrid);
     return () => window.removeEventListener("resize", configureGrid);
-  }, [models]);
+  }, [models, gridGapSize, itemMinWidth]);
 
   const [gridOptions, setGridOptions] = useState<{
     gridItems: GridItem[];
@@ -189,7 +191,7 @@ const ModelCell = ({
           // TODO: Simplify the formatLabel prop
           formatLabel={(
             fullName: string | undefined = "",
-            timeLabel: string | undefined = "",
+            timeLabel: string,
           ) => (
             <>
               {fullName}
@@ -272,10 +274,7 @@ interface HeaderGridItem {
   collection: Collection | null | undefined;
 }
 
-const addHeadersToItems = (
-  models: Model[],
-  columnCount: number,
-): GridItem[] => {
+const makeGridItems = (models: Model[], columnCount: number): GridItem[] => {
   const gridItems: GridItem[] = [];
   for (
     let i = 0, columnIndex = 0;
@@ -289,22 +288,21 @@ const addHeadersToItems = (
 
     const firstModelInItsCollection =
       i === 0 || collectionIdChanged || model.collection?.id === undefined;
+
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
-      const groupHeader: HeaderGridItem = {
+      const header: HeaderGridItem = {
         collection: model.collection,
       };
-      gridItems.push(
-        // So that the model group header appears at the start of the row,
-        // add zero or more blank items to fill in the rest of the previous row
-        ...(columnIndex > 0
-          ? Array(columnCount - columnIndex).fill("blank")
-          : []),
-        groupHeader,
-        // Fill in the rest of the header row with blank items
-        ...Array(columnCount - 1).fill("header-blank"),
-      );
+      // So that the collection header appears at the start of the row,
+      // add zero or more blank items to fill in the rest of the previous row
+      if (columnIndex > 0) {
+        gridItems.push(...Array(columnCount - columnIndex).fill("blank"));
+      }
+      gridItems.push(header);
+      // Fill in the rest of the header row with blank items
+      gridItems.push(...Array(columnCount - 1).fill("header-blank"));
       columnIndex = 0;
     }
     gridItems.push(model);
@@ -343,7 +341,7 @@ const getGridOptions = (
 
   // // For testing, increase the number of models
   // if (models.length && models.length < 100) {
-  //   for (let i = 0; i < 999; i++) {
+  //   for (let i = 0; i < 99900; i++) {
   //     const pushMe = _.clone(models[i]);
   //     pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
   //     pushMe.name += ` (${i})`;
@@ -351,11 +349,13 @@ const getGridOptions = (
   //   }
   // }
 
-  const sortedModels = models.sort(sortModels);
+  const sortedModels = [...models.map(model => ({ ...model }))].sort(
+    sortModels,
+  );
 
   const columnCount = calculateColumnCount(width);
   const columnWidth = calculateItemWidth(width, columnCount);
-  const gridItems = addHeadersToItems(sortedModels, columnCount);
+  const gridItems = makeGridItems(sortedModels, columnCount);
   const rowCount = Math.ceil(gridItems.length / columnCount);
 
   return {

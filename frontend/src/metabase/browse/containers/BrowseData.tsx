@@ -19,6 +19,7 @@ import {
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
+import type Database from "metabase-lib/metadata/Database";
 import BrowseHeader from "../components/BrowseHeader";
 import {
   DatabaseCard,
@@ -44,6 +45,7 @@ export const BrowseDataPage = () => {
     },
     reload: true,
   });
+
   const databases = useDatabaseListQuery({
     reload: true,
   });
@@ -53,11 +55,11 @@ export const BrowseDataPage = () => {
   const tabs: Record<string, BrowseDataTab> = {
     models: {
       label: t`Models`,
-      component: <BrowseModels data={models} />,
+      component: <BrowseModels {...models} />,
     },
     databases: {
       label: t`Databases`,
-      component: <BrowseDatabases data={databases} />,
+      component: <BrowseDatabases {...databases} />,
     },
   };
   const currentTab = currentTabId ? tabs[currentTabId] : null;
@@ -88,13 +90,13 @@ export const BrowseDataPage = () => {
 
 // NOTE: The minimum mergeable version does not need to include the verified badges
 
-const BrowseDatabases = ({
-  data,
-}: {
-  data: ReturnType<typeof useDatabaseListQuery>;
-}) => {
-  const { data: databases = [], error, isLoading } = data;
+const emptyArray: Database[] = [];
 
+const BrowseDatabases = ({
+  data: databases = emptyArray,
+  error,
+  isLoading,
+}: ReturnType<typeof useDatabaseListQuery>) => {
   if (error) {
     return <LoadingAndErrorWrapper error />;
   } else if (isLoading) {
