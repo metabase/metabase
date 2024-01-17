@@ -124,16 +124,17 @@
                        (assoc :source-card 999999999)
                        (dissoc :source-table))))))
     (testing "on native queries"
-      ;; Logic for the native-query borrowed from metabase.lib.native/has-write-permission-test
-      (let [editable     (lib/native-query (lib.tu/mock-metadata-provider
-                                            meta/metadata-provider
-                                            {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions :write})})
-                                           "select * from x;")]
+      (let [editable              (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
+            ;; Logic for the native-query mock borrowed from metabase.lib.native/has-write-permission-test
+            mock-db-native-perms #(lib/native-query (lib.tu/mock-metadata-provider
+                                                     meta/metadata-provider
+                                                     {:database (merge (lib.metadata/database meta/metadata-provider) {:native-permissions %})})
+                                                    "select * from x;")]
         (are [editable? query] (= {:is-native   true
                                    :is-editable editable?}
                                   (mu/disable-enforcement
                                    (lib/display-info query -1 query)))
           true  editable
-          false (assoc editable :database 999999999)          ; database unknown - no permissions
-          false (assoc editable :native-permissions :none)    ; native-permissions explicitly set to :none
-          false (dissoc editable :native-permissions))))))    ; native-permissions not found on the database
+          false (assoc editable :database 999999999)    ; database unknown - no permissions
+          false (mock-db-native-perms :none)            ; native-permissions explicitly set to :none
+          false (mock-db-native-perms nil))))))         ; native-permissions not found on the database
