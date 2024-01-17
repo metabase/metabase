@@ -5187,11 +5187,13 @@ databaseChangeLog:
         - addNotNullConstraint:
             tableName: metabase_fieldvalues
             columnName: hash_key
+            columnDataType: varchar(32)
             defaultNullValue: ""
       rollback:
         - dropNotNullConstraint:
             tableName: metabase_fieldvalues
             columnName: hash_key
+            columnDataType: varchar(32)
 
   - changeSet:
       id: v49.2024-01-17T14:11:05
