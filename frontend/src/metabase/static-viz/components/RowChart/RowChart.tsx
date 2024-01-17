@@ -106,14 +106,14 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
 
   return (
     <svg width={WIDTH} height={fullChartHeight} fontFamily="Lato">
-      {legend.items.length > 0 && (
-        <Legend
-          items={legend.items}
-          top={CHART_PADDING}
-          fontSize={LEGEND_FONT.size}
-          fontWeight={LEGEND_FONT.weight}
-        />
-      )}
+      {/*{legend.items.length > 0 && (*/}
+      {/*  <Legend*/}
+      {/*    items={legend.items}*/}
+      {/*    top={CHART_PADDING}*/}
+      {/*    fontSize={LEGEND_FONT.size}*/}
+      {/*    fontWeight={LEGEND_FONT.weight}*/}
+      {/*  />*/}
+      {/*)}*/}
       <Group top={legendHeight}>
         <RowChart
           width={WIDTH}
