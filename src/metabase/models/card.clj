@@ -261,18 +261,18 @@
         :when                         (and tag-type
                                            (or (contains? mbql.s/raw-value-template-tag-types tag-type)
                                                (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
-    {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)   :date/single
-                                    (= tag-type :string) :string/=
-                                    (= tag-type :number) :number/=
-                                    :else                :category))
-     :target  (if (= tag-type :dimension)
-                [:dimension [:template-tag (:name tag)]]
-                [:variable  [:template-tag (:name tag)]])
-     :name    (:display-name tag)
-     :slug    (:name tag)
-     :default (:default tag)
-     :required (:required tag)}))
+    {:id       (:id tag)
+     :type     (or widget-type (cond (= tag-type :date)   :date/single
+                                     (= tag-type :string) :string/=
+                                     (= tag-type :number) :number/=
+                                     :else                :category))
+     :target   (if (= tag-type :dimension)
+                 [:dimension [:template-tag (:name tag)]]
+                 [:variable  [:template-tag (:name tag)]])
+     :name     (:display-name tag)
+     :slug     (:name tag)
+     :default  (:default tag)
+     :required (boolean (:required tag))}))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
