@@ -34,7 +34,7 @@
   "If `user-provisioning-enabled?` is false, then we should throw an error when attempting to create a new user."
   []
   (when (not (sso-settings/user-provisioning-enabled?))
-    (throw (trs "Unable to create new SSO user. user provisioning must be enabled."))))
+    (throw (ex-info (trs "Unable to create new SSO user, user provisioning must be enabled.") {}))))
 
 (mu/defn create-new-sso-user!
   "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.models.user`. We need

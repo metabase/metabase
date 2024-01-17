@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.enhancements.integrations.ldap :as ldap-ee]
+   [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.user :as user :refer [User]]
    [metabase.test :as mt]
@@ -247,3 +248,13 @@
                  :common_name      "jane.miller@metabase.com"}
                 (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
        (finally (t2/delete! User :email "jane.miller@metabase.com"))))))
+
+(deftest ldap-no-user-provisioning-test
+  (mt/with-premium-features #{:sso-ldap}
+    (ldap.test/with-ldap-server
+      (testing "an error is thrown when a new user is fetched and user provisioning is not enabled"
+        (with-redefs [sso-settings/user-provisioning-enabled? (constantly false)]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Unable to create new SSO user, user provisioning must be enabled."
+               (ldap/fetch-or-create-user! (ldap/find-user "jsmith1")))))))))

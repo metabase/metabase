@@ -1,5 +1,6 @@
 (ns metabase-enterprise.sso.integrations.sso-utils-test
   (:require [clojure.test :refer :all]
+            [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.test :as mt]))
 
@@ -46,4 +47,18 @@
          (thrown-with-msg?
           clojure.lang.ExceptionInfo
           #"Error creating new SSO user"
+          (sso-utils/create-new-sso-user! user-attributes)))))))
+
+(deftest create-new-sso-user-no-user-provisioning-test
+  (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
+    (with-redefs [sso-settings/user-provisioning-enabled? (constantly false)]
+      (let [user-attributes {:first_name       "Test"
+                             :last_name        "User"
+                             :email            "create-new-sso-user-test@metabase.com"
+                             :sso_source       :jwt
+                             :login_attributes {:foo "bar"}}]
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Unable to create new SSO user, user provisioning must be enabled."
           (sso-utils/create-new-sso-user! user-attributes)))))))
