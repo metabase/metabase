@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as db]))
 
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
@@ -14,6 +15,8 @@
                                                                 :schema "PUBLIC"}
                  :model/Table            {table-id-3 :id}      {:db_id database-id-1
                                                                 :schema nil}]
+    ;; Clear default perms for the group
+    (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "data-access permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
@@ -85,6 +88,8 @@
                                                                 :schema "PUBLIC"}
                  :model/Table            {table-id-3 :id}      {:db_id database-id-1
                                                                 :schema nil}]
+    ;; Clear default perms for the group
+    (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "download permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
@@ -148,6 +153,8 @@
                                                                 :schema "PUBLIC"}
                  :model/Table            {table-id-3 :id}      {:db_id database-id-1
                                                                 :schema nil}]
+    ;; Clear default perms for the group
+    (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "data model editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
@@ -207,6 +214,8 @@
 (deftest update-details-perms!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                  :model/Database         {database-id-1 :id}   {}]
+    ;; Clear default perms for the group
+    (db/delete! :model/DataPermissions :group_id group-id-1)
     (testing "database details editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
