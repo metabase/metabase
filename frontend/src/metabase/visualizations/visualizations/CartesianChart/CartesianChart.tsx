@@ -2,15 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { EChartsType } from "echarts";
 import type * as React from "react";
 import type { LineSeriesOption } from "echarts/types/dist/echarts";
-import { color } from "metabase/lib/colors";
-import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
-import type {
-  RenderingContext,
-  VisualizationProps,
-} from "metabase/visualizations/types";
-import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRenderer,
@@ -28,40 +20,35 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
-import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
 import type {
   EChartsSeriesBrushEndEvent,
   EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
+import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
+import { useModelsAndOption } from "./use-models-and-option";
 
-export function CartesianChart({
-  rawSeries,
-  series: transformedSeries,
-  isPlaceholder,
-  settings,
-  card,
-  fontFamily,
-  width,
-  showTitle,
-  headerIcon,
-  actionButtons,
-  isQueryBuilder,
-  isFullscreen,
-  timelineEvents = [],
-  selectedTimelineEventIds = [],
-  hovered,
-  visualizationIsClickable,
-  onChangeCardAndRun,
-  onHoverChange,
-  onVisualizationClick,
-  onSelectTimelineEvents,
-  onDeselectTimelineEvents,
-  onOpenTimelines,
-}: VisualizationProps) {
-  const seriesToRender = useMemo(
-    () => (isPlaceholder ? transformedSeries : rawSeries),
-    [isPlaceholder, rawSeries, transformedSeries],
-  );
+export function CartesianChart(props: VisualizationProps) {
+  const {
+    rawSeries,
+    settings,
+    card,
+    width,
+    showTitle,
+    headerIcon,
+    actionButtons,
+    isQueryBuilder,
+    isFullscreen,
+    selectedTimelineEventIds = [],
+    hovered,
+    visualizationIsClickable,
+    onChangeCardAndRun,
+    onHoverChange,
+    onVisualizationClick,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onOpenTimelines,
+  } = props;
+  const { chartModel, timelineEventsModel, option } = useModelsAndOption(props);
 
   const isBrushing = useRef<boolean>();
   const chartRef = useRef<EChartsType>();
@@ -70,54 +57,8 @@ export function CartesianChart({
   const title = settings["card.title"] || card.name;
   const description = settings["card.description"];
 
-  const renderingContext: RenderingContext = useMemo(
-    () => ({
-      getColor: color,
-      formatValue: (value, options) => String(formatValue(value, options)),
-      measureText: measureTextWidth,
-      fontFamily: fontFamily,
-    }),
-    [fontFamily],
-  );
-
-  const chartModel = useMemo(
-    () => getCartesianChartModel(seriesToRender, settings, renderingContext),
-    [seriesToRender, renderingContext, settings],
-  );
-
-  const timelineEventsModel = useMemo(
-    () =>
-      getTimelineEventsModel(
-        chartModel,
-        timelineEvents,
-        settings,
-        width,
-        renderingContext,
-      ),
-    [chartModel, timelineEvents, settings, width, renderingContext],
-  );
-
   const legendItems = useMemo(() => getLegendItems(chartModel), [chartModel]);
   const hasLegend = legendItems.length > 1;
-
-  const option = useMemo(
-    () =>
-      getCartesianChartOption(
-        chartModel,
-        timelineEventsModel,
-        selectedTimelineEventIds,
-        settings,
-        true,
-        renderingContext,
-      ),
-    [
-      chartModel,
-      renderingContext,
-      selectedTimelineEventIds,
-      settings,
-      timelineEventsModel,
-    ],
-  );
 
   const openQuestion = useCallback(() => {
     if (onChangeCardAndRun) {
@@ -155,13 +96,20 @@ export function CartesianChart({
             return;
           }
 
-          onHoverChange?.(getSeriesHoverData(chartModel, settings, event));
+          onHoverChange?.(
+            getSeriesHoverData(chartModel, settings, event, card.display),
+          );
         },
       },
       {
         eventName: "click",
         handler: (event: EChartsSeriesMouseEvent) => {
-          const clickData = getSeriesClickData(chartModel, settings, event);
+          const clickData = getSeriesClickData(
+            chartModel,
+            settings,
+            event,
+            card.display,
+          );
 
           if (timelineEventsModel && event.name === "timeline-event") {
             onOpenTimelines?.();
@@ -219,6 +167,7 @@ export function CartesianChart({
       rawSeries,
       selectedTimelineEventIds,
       settings,
+      card.display,
       timelineEventsModel,
       visualizationIsClickable,
       onChangeCardAndRun,
@@ -248,7 +197,9 @@ export function CartesianChart({
       // is different from one in chartModel.seriesModels
       const eChartsSeriesIndex = (
         option?.series as LineSeriesOption[]
-      ).findIndex(series => series.id === seriesId);
+      ).findIndex(
+        series => getSeriesIdFromECharts(series.id, card.display) === seriesId,
+      );
 
       chart.dispatchAction({
         type: "highlight",
@@ -264,7 +215,7 @@ export function CartesianChart({
         });
       };
     },
-    [chartModel.seriesModels, hovered, option?.series],
+    [chartModel.seriesModels, hovered, option?.series, card.display],
   );
 
   const handleInit = useCallback((chart: EChartsType) => {

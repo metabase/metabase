@@ -134,6 +134,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   marginBottom?: string;
   getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
   persistDefault?: boolean;
+  inline?: boolean;
   props?: TProps;
   getProps?: (
     series: Series,

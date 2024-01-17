@@ -24,7 +24,7 @@ import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
 import Table from "./visualizations/Table";
 import { Text } from "./visualizations/Text";
-import WaterfallChart from "./visualizations/WaterfallChart";
+import { WaterfallChart } from "./visualizations/WaterfallChart";
 
 export default function () {
   registerVisualization(Scalar);
