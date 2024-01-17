@@ -363,7 +363,9 @@ export default class NativeQuery extends AtomicQuery {
     });
   }
 
-  variables(variableFilter: VariableFilter = () => true): Variable[] {
+  variables(
+    variableFilter: VariableFilter = () => true,
+  ): TemplateTagVariable[] {
     return this.templateTags()
       .filter(tag => tag.type !== "dimension")
       .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))

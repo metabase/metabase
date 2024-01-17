@@ -8,7 +8,7 @@ import LineAreaBarChart from "metabase/static-viz/components/LineAreaBarChart";
 import Funnel from "metabase/static-viz/components/FunnelChart";
 import type { ColorPalette } from "metabase/lib/colors/types";
 
-export type StaticChartType =
+export type LegacyStaticChartType =
   | "categorical/donut"
   | "progress"
   | "row"
@@ -17,13 +17,19 @@ export type StaticChartType =
   | "combo-chart"
   | "funnel";
 
-export interface StaticChartProps {
-  type: StaticChartType;
+export interface LegacyStaticChartProps {
+  type: LegacyStaticChartType;
   options: any;
   colors?: ColorPalette;
 }
 
-const StaticChart = ({ type, options }: StaticChartProps) => {
+/**
+ * @deprecated use StaticChart instead
+ */
+export const LegacyStaticChart = ({
+  type,
+  options,
+}: LegacyStaticChartProps) => {
   const getColor = createColorGetter(options.colors);
   const chartProps = { ...options, getColor };
 
@@ -44,6 +50,3 @@ const StaticChart = ({ type, options }: StaticChartProps) => {
       return <Funnel {...chartProps} />;
   }
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default StaticChart;

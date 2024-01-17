@@ -1,6 +1,7 @@
 import { t } from "ttag";
+import { getPlan } from "metabase/common/utils/plan";
 import Link from "metabase/core/components/Link";
-import { getIsPaidPlan } from "metabase/selectors/settings";
+import { getIsPaidPlan, getSetting } from "metabase/selectors/settings";
 import { Text, Group, Stack, Box } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -12,6 +13,9 @@ import {
 
 const useCTAText = () => {
   const isPaidPlan = useSelector(getIsPaidPlan);
+  const plan = useSelector(state =>
+    getPlan(getSetting(state, "token-features")),
+  );
 
   if (isPaidPlan) {
     return {
@@ -26,7 +30,7 @@ const useCTAText = () => {
     showProBadge: true,
     description: t`Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.`,
     linkText: t`Learn more`,
-    url: "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-modal",
+    url: `https://www.metabase.com/product/embedded-analytics?utm_source=${plan}&utm_media=static-embed-popover`,
     target: "_blank",
   };
 };
