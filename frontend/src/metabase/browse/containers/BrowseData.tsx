@@ -20,7 +20,6 @@ import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
 import Link from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import {
@@ -42,6 +41,7 @@ import {
   BrowseContainer,
   BrowseTabs,
   BrowseTabsPanel,
+  BigEmptyState,
 } from "./BrowseData.styled";
 
 interface BrowseDataTab {
@@ -73,7 +73,7 @@ export const BrowseDataPage = () => {
       label: t`Models`,
       component: (
         <ModelsTab
-          models={models.data ?? []}
+          models={[]} // models.data ?? []}
           isLoading={models.isLoading}
           error={models.error}
         />
@@ -213,9 +213,10 @@ const ModelsTab = ({
           width={gridOptions.width}
         />
       ) : (
-        <ContentOfEmptyTab
+        <BigEmptyState
           title={t`No models here yet`}
           message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+          illustrationElement={<img src={NoResults} />}
         />
       )}
     </GridContainer>
@@ -241,10 +242,12 @@ const GridContainer = styled.div`
     &:not(:first-of-type) {
       border-top: 1px solid #f0f0f0;
     }
+    width: calc(100% - 16px) !important;
     display: flex;
     flex-flow: column nowrap;
     justify-content: flex-end;
     padding-bottom: 1rem;
+    margin-right: 16px;
   }
 `;
 
@@ -264,7 +267,12 @@ const DatabasesTab = ({
     return <LoadingAndErrorWrapper loading />;
   }
   if (!databases.length) {
-    return <ContentOfEmptyTab title={t`No databases here yet`} />;
+    return (
+      <BigEmptyState
+        title={t`No databases here yet`}
+        illustrationElement={<img src={NoResults} />}
+      />
+    );
   }
   // TODO: Virtualize this list too?
   return (
@@ -353,42 +361,12 @@ const ModelCell = ({
   );
 };
 
-const ContentOfEmptyTab = ({
-  title,
-  message = "",
-}: {
-  title: string;
-  message?: string;
-}) => {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: 1,
-        height: "100%",
-        width: "100%",
-      }}
-    >
-      <EmptyState
-        title={title}
-        message={message}
-        illustrationElement={<img src={NoResults} />}
-      />
-    </div>
-  );
-};
-
 const sortModels = (a: Model, b: Model) => {
   const sortLast = Number.MAX_SAFE_INTEGER;
-  const nameA = a.name || sortLast;
-  const nameB = b.name || sortLast;
 
-  // Sort first on the name of the model's parent collection
-  const collectionNameA = a.collection?.name || sortLast;
-  const collectionNameB = b.collection?.name || sortLast;
+  // Sort first on the name of the model's parent collection, case insensitive
+  const collectionNameA = a.collection?.name.toLowerCase() || sortLast;
+  const collectionNameB = b.collection?.name.toLowerCase() || sortLast;
 
   if (collectionNameA < collectionNameB) {
     return -1;
@@ -407,6 +385,9 @@ const sortModels = (a: Model, b: Model) => {
   if (collectionIdA > collectionIdB) {
     return 1;
   }
+
+  const nameA = a.name.toLowerCase() || sortLast;
+  const nameB = b.name.toLowerCase() || sortLast;
 
   // If the two collection ids are the same, sort on the names of the models
   if (nameA < nameB) {
@@ -436,13 +417,11 @@ const ModelGroupHeader = ({
 }: {
   groupLabel: string;
   style: React.CSSProperties;
-}) => {
-  return (
-    <div className="model-group-header" style={{ ...style, width: "100%" }}>
-      <h4>{groupLabel}</h4>
-    </div>
-  );
-};
+}) => (
+  <div className="model-group-header" style={{ ...style }}>
+    <h4>{groupLabel}</h4>
+  </div>
+);
 
 interface HeaderGridItem {
   collection: Collection | null | undefined;
