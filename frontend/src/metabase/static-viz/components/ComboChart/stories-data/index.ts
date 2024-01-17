@@ -1,4 +1,5 @@
 import lineLinearXScale from "./line-linear-x-scale.json";
+import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
@@ -20,6 +21,7 @@ import trendComboLog from "./trend-combo-log.json";
 
 export const data = {
   lineLinearXScale,
+  lineLinearXScaleUnsorted,
   barLinearXScale,
   barHistogramXScale,
   barOrdinalXScale,
