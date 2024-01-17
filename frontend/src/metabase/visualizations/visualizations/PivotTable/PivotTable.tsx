@@ -208,23 +208,37 @@ function PivotTable({
       setHeaderWidths({
         leftHeaderWidths: null,
         totalLeftHeaderWidths: null,
-        valueHeaderWidths: {},
+        valueHeaderWidths,
       });
       return;
     }
 
     if (columnsChanged) {
-      setHeaderWidths({
-        ...getLeftHeaderWidths({
-          rowIndexes: pivoted?.rowIndexes,
-          getColumnTitle: idx => getColumnTitle(idx),
-          leftHeaderItems: pivoted?.leftHeaderItems,
-          fontFamily: fontFamily,
-        }),
-        valueHeaderWidths: {},
+      const newLeftHeaderWidths = getLeftHeaderWidths({
+        rowIndexes: pivoted?.rowIndexes,
+        getColumnTitle: idx => getColumnTitle(idx),
+        leftHeaderItems: pivoted?.leftHeaderItems,
+        fontFamily: fontFamily,
+      });
+
+      setHeaderWidths({ ...newLeftHeaderWidths, valueHeaderWidths });
+
+      onUpdateVisualizationSettings({
+        "pivot_table.column_widths": {
+          ...newLeftHeaderWidths,
+          valueHeaderWidths,
+        },
       });
     }
-  }, [pivoted, fontFamily, getColumnTitle, columnsChanged, setHeaderWidths]);
+  }, [
+    onUpdateVisualizationSettings,
+    valueHeaderWidths,
+    pivoted,
+    fontFamily,
+    getColumnTitle,
+    columnsChanged,
+    setHeaderWidths,
+  ]);
 
   const handleColumnResize = (
     columnType: "value" | "leftHeader",
