@@ -10,7 +10,7 @@ export function withDefaultBucket(
   query: Query,
   stageIndex: number,
   column: ColumnMetadata,
-) {
+): ColumnMetadata {
   if (isBinnable(query, stageIndex, column)) {
     const isBinned = binning(column) != null;
     return isBinned ? column : withDefaultBinning(query, stageIndex, column);
