@@ -5155,16 +5155,24 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-01-16T12:50:35
       author: crisptruski
-      comment: Add unique constraint on fieldvalues
+      comment: Prepare  fieldvalues
       changes:
         - modifyDataType:
             tableName: metabase_fieldvalues
             columnName: hash_key
+            # we only need 11 characters to fit any 32 bit number, but we leave space in case the hash scheme changes
             newDataType: varchar(32)
-#        - modifyDataType:
-#            tableName: metabase_fieldvalues
-#            columnName: hash_key
-#            newDataType: integer
+      rollback:
+        - modifyDataType:
+            tableName: metabase_fieldvalues
+            columnName: hash_key
+            newDataType: ${text.type}
+
+  - changeSet:
+      id: v49.2024-01-17T13:55:14
+      author: crisptruski
+      comment: Add unique constraint on fieldvalues
+      changes:
         - addUniqueConstraint:
             tableName: metabase_fieldvalues
             constraintName: unique_metabase_fieldvalues_field_id_type_hash_key
@@ -5173,10 +5181,6 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: metabase_fieldvalues
             constraintName: unique_metabase_fieldvalues_field_id_type_hash_key
-        - modifyDataType:
-            tableName: metabase_fieldvalues
-            columnName: hash_key
-            newDataType: ${text.type}
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
