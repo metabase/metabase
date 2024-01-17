@@ -340,6 +340,41 @@
                                     ;; match up. Therefore de-dupe with `frequencies` rather than simply `set`.
                                     (assoc inner-query :fields (frequencies fields)))))))
 
+(defn- compare-legacy-field-refs
+  [[key1 id1 opts1]
+   [key2 id2 opts2]]
+  ;; A mismatch of `:base-type` or `:effective-type` when both x and y have values for it is a failure.
+  ;; If either ref does not have the `:base-type` or `:effective-type` set, that key is ignored.
+  (letfn [(clean-opts [o1 o2]
+            (not-empty
+              (cond-> o1
+                (not (:base-type o2))      (dissoc :base-type)
+                (not (:effective-type o2)) (dissoc :effective-type))))]
+    (= [key1 id1 (clean-opts opts1 opts2)]
+       [key2 id2 (clean-opts opts2 opts1)])))
+
+(defn- query=* [x y]
+  (cond
+    (and (vector? x)
+         (vector? y)
+         (= (first x) (first y) :field))
+    (compare-legacy-field-refs x y)
+
+    ;; Otherwise this is a duplicate of clojure.core/=.
+    (and (map? x) (map? y))
+    (and (= (set (keys x)) (set (keys y)))
+         (every? (fn [[k v]]
+                   (query=* v (get y k)))
+                 x))
+
+    (and (sequential? x) (sequential? y))
+    (and (= (count x) (count y))
+         (every? true? (map query=* x y)))
+
+    ;; Either mismatched map/sequence/nil/etc., or primitives like strings.
+    ;; Either way, = does the right thing.
+    :else (= x y)))
+
 (defn ^:export query=
   "Returns whether the provided queries should be considered equal.
 
@@ -354,7 +389,7 @@
   ([query1 query2 field-ids]
    (let [n1 (prep-query-for-equals query1 field-ids)
          n2 (prep-query-for-equals query2 field-ids)]
-     (= n1 n2))))
+     (query=* n1 n2))))
 
 (defn ^:export group-columns
   "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
