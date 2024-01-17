@@ -4,6 +4,7 @@ import type {
   DataKey,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
+  CardDisplayType,
   CardId,
   RawSeries,
   TimelineEvent,
@@ -28,6 +29,7 @@ import type {
 } from "metabase/visualizations/echarts/types";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 import {
@@ -199,8 +201,10 @@ export const getSeriesHoverData = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
+  display: CardDisplayType,
 ) => {
-  const { dataIndex, seriesId } = event;
+  const { dataIndex, seriesId: rawSeriesId } = event;
+  const seriesId = getSeriesIdFromECharts(rawSeriesId, display);
   const seriesIndex = chartModel.seriesModels.findIndex(
     seriesModel => seriesModel.dataKey === seriesId,
   );
@@ -280,8 +284,10 @@ export const getSeriesClickData = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
+  display: CardDisplayType,
 ) => {
-  const { seriesId, dataIndex } = event;
+  const { seriesId: rawSeriesId, dataIndex } = event;
+  const seriesId = getSeriesIdFromECharts(rawSeriesId, display);
   const seriesIndex = chartModel.seriesModels.findIndex(
     seriesModel => seriesModel.dataKey === seriesId,
   );
