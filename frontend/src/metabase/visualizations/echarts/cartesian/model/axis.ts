@@ -4,7 +4,7 @@ import type {
   AxisFormatter,
   DataKey,
   Extent,
-  GroupedDataset,
+  ChartDataset,
   SeriesExtents,
   SeriesModel,
   XAxisModel,
@@ -269,7 +269,7 @@ export const getYAxisSplit = (
 
 const calculateStackedExtent = (
   seriesKeys: DataKey[],
-  data: GroupedDataset,
+  data: ChartDataset,
 ): Extent => {
   let min = 0;
   let max = 0;
@@ -296,7 +296,7 @@ const calculateStackedExtent = (
 
 function calculateNonStackedExtent(
   seriesKeys: DataKey[],
-  data: GroupedDataset,
+  data: ChartDataset,
 ): Extent {
   let min = Infinity;
   let max = -Infinity;
@@ -369,7 +369,7 @@ export const getYAxisLabel = (
 
 function getYAxisExtent(
   seriesKeys: DataKey[],
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
   stackType?: StackType,
 ): Extent {
   if (dataset.length === 0) {
@@ -387,7 +387,7 @@ function getYAxisExtent(
 
 function getYAxisModel(
   seriesKeys: DataKey[],
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   renderingContext: RenderingContext,
@@ -414,7 +414,7 @@ function getYAxisModel(
 
 export function getYAxesModels(
   seriesModels: SeriesModel[],
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
   isAutoSplitSupported: boolean,
