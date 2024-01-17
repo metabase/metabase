@@ -1,35 +1,23 @@
 import { jt, t } from "ttag";
-import { Text } from "metabase/ui";
+import type { ReactNode } from "react";
+import { Box, Center, Stack, Text } from "metabase/ui";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { useSelector } from "metabase/lib/redux";
-import type {
-  EmbeddingDisplayOptions,
-  EmbeddingParameters,
-  EmbedResource,
-  EmbedResourceType,
-} from "metabase/public/lib/types";
+import type { EmbedResourceType } from "metabase/public/lib/types";
 
-import { EmbedCodePane } from "./EmbedCodePane";
+import { ClientEmbedCodePane } from "./ClientEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
 export interface OverviewSettingsProps {
-  resource: EmbedResource;
   resourceType: EmbedResourceType;
-  siteUrl: string;
-  secretKey: string;
-  params: EmbeddingParameters;
-  displayOptions: EmbeddingDisplayOptions;
+  serverEmbedCodeSlot: ReactNode;
 }
 
 export const OverviewSettings = ({
-  resource,
   resourceType,
-  siteUrl,
-  secretKey,
-  params,
-  displayOptions,
+  serverEmbedCodeSlot,
 }: OverviewSettingsProps): JSX.Element => {
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
@@ -53,17 +41,24 @@ export const OverviewSettings = ({
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={
-        <EmbedCodePane
-          className="flex-full w-full"
-          variant="overview"
-          resource={resource}
-          resourceType={resourceType}
-          siteUrl={siteUrl}
-          secretKey={secretKey}
-          params={params}
-          displayOptions={displayOptions}
-          withExamplesLink
-        />
+        <Stack spacing="2rem" className="flex-full w-full">
+          {serverEmbedCodeSlot}
+
+          <ClientEmbedCodePane />
+
+          <Box my="1rem">
+            <Center>
+              <h4>{jt`More ${(
+                <ExternalLink
+                  key="examples"
+                  href="https://github.com/metabase/embedding-reference-apps"
+                >
+                  {t`examples on GitHub`}
+                </ExternalLink>
+              )}`}</h4>
+            </Center>
+          </Box>
+        </Stack>
       }
     />
   );

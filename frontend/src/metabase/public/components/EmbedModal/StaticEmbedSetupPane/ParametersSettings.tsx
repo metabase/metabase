@@ -1,17 +1,15 @@
 import { t } from "ttag";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useMemo } from "react";
 import type { IconName } from "metabase/ui";
-import { Icon, Box, Divider, Stack, Text } from "metabase/ui";
+import { Box, Divider, Icon, Stack, Text } from "metabase/ui";
 import Select, { Option } from "metabase/core/components/Select";
-
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {
   EmbeddingDisplayOptions,
   EmbeddingParameters,
   EmbeddingParametersValues,
-  EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
 } from "metabase/public/lib/types";
@@ -21,7 +19,6 @@ import type {
   ActivePreviewPane,
   EmbedResourceParameterWithValue,
 } from "./types";
-import { EmbedCodePane } from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
@@ -29,7 +26,6 @@ import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPa
 export interface ParametersSettingsProps {
   activePane: ActivePreviewPane;
 
-  resource: EmbedResource;
   resourceType: EmbedResourceType;
   resourceParameters: EmbedResourceParameter[];
 
@@ -38,11 +34,8 @@ export interface ParametersSettingsProps {
   parameterValues: EmbeddingParametersValues;
 
   iframeUrl: string;
-  siteUrl: string;
-  secretKey: string;
-  params: EmbeddingParameters;
-  initialPreviewParameters: EmbeddingParameters;
   displayOptions: EmbeddingDisplayOptions;
+  serverEmbedCodeSlot: ReactNode;
 
   onChangeEmbeddingParameters: (parameters: EmbeddingParameters) => void;
   onChangeParameterValue: (id: string, value: string) => void;
@@ -52,18 +45,14 @@ export interface ParametersSettingsProps {
 
 export const ParametersSettings = ({
   activePane,
-  resource,
   resourceType,
   resourceParameters,
-  initialPreviewParameters,
   embeddingParams,
   lockedParameters,
   parameterValues,
-  displayOptions,
   iframeUrl,
-  siteUrl,
-  secretKey,
-  params,
+  displayOptions,
+  serverEmbedCodeSlot,
   onChangeEmbeddingParameters,
   onChangeParameterValue,
   onChangePane,
@@ -172,17 +161,7 @@ export const ParametersSettings = ({
               isTransparent={displayOptions.theme === "transparent"}
             />
           ) : activePane === "code" ? (
-            <EmbedCodePane
-              className="flex-full w-full"
-              variant="parameters"
-              resource={resource}
-              resourceType={resourceType}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              initialPreviewParameters={initialPreviewParameters}
-              params={params}
-              displayOptions={displayOptions}
-            />
+            serverEmbedCodeSlot
           ) : null}
         </>
       }

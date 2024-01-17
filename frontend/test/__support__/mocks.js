@@ -23,6 +23,7 @@ jest.mock("ace/mode-javascript", () => {}, { virtual: true });
 jest.mock("ace/mode-json", () => {}, { virtual: true });
 jest.mock("ace/mode-clojure", () => {}, { virtual: true });
 jest.mock("ace/mode-ruby", () => {}, { virtual: true });
+jest.mock("ace/mode-python", () => {}, { virtual: true });
 jest.mock("ace/mode-html", () => {}, { virtual: true });
 jest.mock("ace/mode-jsx", () => {}, { virtual: true });
 jest.mock("ace/mode-jade", () => {}, { virtual: true });

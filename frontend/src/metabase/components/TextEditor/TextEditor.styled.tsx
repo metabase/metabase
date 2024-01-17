@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export const TextEditorRoot = styled.div`
   color: #000;
@@ -102,22 +102,10 @@ export const TextEditorRoot = styled.div`
   .highlighted-code-marker {
     position: absolute;
 
-    opacity: 0.3;
-    background: ${color("accent4")};
+    background: ${alpha(color("accent4"), 0.3)};
   }
 
   .highlighted-code-marker-row-number {
-    background: ${color("accent4")};
-  }
-
-  .highlighted-code-marker-accent {
-    position: absolute;
-
-    opacity: 0.3;
-    background: ${color("accent5")};
-  }
-
-  .highlighted-code-marker-row-number-accent {
-    background: ${color("accent5")};
+    background: ${alpha(color("accent4"), 0.5)};
   }
 `;

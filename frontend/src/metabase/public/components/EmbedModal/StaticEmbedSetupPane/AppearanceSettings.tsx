@@ -1,5 +1,6 @@
 import { jt, t } from "ttag";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+
 import { Divider, SegmentedControl, Stack, Switch, Text } from "metabase/ui";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl, getSetting } from "metabase/selectors/settings";
@@ -11,13 +12,10 @@ import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { PreviewModeSelector } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/PreviewModeSelector";
 import type {
   EmbeddingDisplayOptions,
-  EmbeddingParameters,
-  EmbedResource,
   EmbedResourceType,
 } from "metabase/public/lib/types";
 
 import type { ActivePreviewPane } from "./types";
-import { EmbedCodePane } from "./EmbedCodePane";
 import PreviewPane from "./PreviewPane";
 import {
   DisplayOptionSection,
@@ -35,13 +33,10 @@ const DEFAULT_THEME = THEME_OPTIONS[0].value;
 export interface AppearanceSettingsProps {
   activePane: ActivePreviewPane;
 
-  resource: EmbedResource;
   resourceType: EmbedResourceType;
   iframeUrl: string;
-  siteUrl: string;
-  secretKey: string;
-  params: EmbeddingParameters;
   displayOptions: EmbeddingDisplayOptions;
+  serverEmbedCodeSlot: ReactNode;
 
   onChangePane: (pane: ActivePreviewPane) => void;
   onChangeDisplayOptions: (displayOptions: EmbeddingDisplayOptions) => void;
@@ -49,13 +44,10 @@ export interface AppearanceSettingsProps {
 
 export const AppearanceSettings = ({
   activePane,
-  resource,
   resourceType,
   iframeUrl,
-  siteUrl,
-  secretKey,
-  params,
   displayOptions,
+  serverEmbedCodeSlot,
 
   onChangePane,
   onChangeDisplayOptions,
@@ -217,16 +209,7 @@ export const AppearanceSettings = ({
               isTransparent={displayOptions.theme === "transparent"}
             />
           ) : activePane === "code" ? (
-            <EmbedCodePane
-              className="flex-full w-full"
-              variant="appearance"
-              resource={resource}
-              resourceType={resourceType}
-              siteUrl={siteUrl}
-              secretKey={secretKey}
-              params={params}
-              displayOptions={displayOptions}
-            />
+            serverEmbedCodeSlot
           ) : null}
         </>
       }

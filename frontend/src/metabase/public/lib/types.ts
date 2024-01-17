@@ -51,7 +51,7 @@ export type ServerCodeSampleConfig = {
   name: string;
   source: string;
   parametersSource: string;
-  iframeUrlSource: string;
+  getIframeQuerySource: string;
   mode: string;
 };
 

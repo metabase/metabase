@@ -5,15 +5,13 @@ export const node = {
   getParametersSource: ({ params }: CodeSampleParameters) =>
     `params: ${JSON.stringify(params, null, 2).split("\n").join("\n  ")},`,
 
-  getIframeUrlSource: ({
+  getIframeQuerySource: ({
     resourceType,
     displayOptions,
   }: CodeSampleParameters) =>
-    `var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
-      optionsToHashParams(displayOptions)
-        ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
-        : ""
-    };`,
+    `var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${JSON.stringify(
+      optionsToHashParams(displayOptions),
+    )};`,
 
   getServerSource: (sampleParameters: CodeSampleParameters) =>
     `// you will need to install via 'npm install jsonwebtoken' or in your package.json
@@ -32,7 +30,7 @@ var payload = {
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-${node.getIframeUrlSource(sampleParameters)}`,
+${node.getIframeQuerySource(sampleParameters)}`,
 };
 
 export const python = {
@@ -43,15 +41,13 @@ export const python = {
       .join(",\n    ")}
   },`,
 
-  getIframeUrlSource: ({
+  getIframeQuerySource: ({
     resourceType,
     displayOptions,
   }: CodeSampleParameters) =>
-    `iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
-      optionsToHashParams(displayOptions)
-        ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
-        : ""
-    }`,
+    `iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${JSON.stringify(
+      optionsToHashParams(displayOptions),
+    )}`,
 
   getServerSource: (sampleParameters: CodeSampleParameters) =>
     `# You'll need to install PyJWT via pip 'pip install PyJWT' or your project packages file
@@ -71,7 +67,7 @@ payload = {
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
-${python.getIframeUrlSource(sampleParameters)}`,
+${python.getIframeQuerySource(sampleParameters)}`,
 };
 
 export const ruby = {
@@ -87,15 +83,13 @@ export const ruby = {
       .join(",\n    ")}
   },`,
 
-  getIframeUrlSource: ({
+  getIframeQuerySource: ({
     resourceType,
     displayOptions,
   }: CodeSampleParameters) =>
-    `iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token${
-      optionsToHashParams(displayOptions)
-        ? " + " + JSON.stringify(optionsToHashParams(displayOptions))
-        : ""
-    }`,
+    `iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${JSON.stringify(
+      optionsToHashParams(displayOptions),
+    )}`,
 
   getServerSource: (sampleParameters: CodeSampleParameters) =>
     `# you will need to install 'jwt' gem first via 'gem install jwt' or in your project Gemfile
@@ -114,7 +108,7 @@ payload = {
 }
 token = JWT.encode payload, METABASE_SECRET_KEY
 
-${ruby.getIframeUrlSource(sampleParameters)}`,
+${ruby.getIframeQuerySource(sampleParameters)}`,
 };
 
 export const closure = {
@@ -123,15 +117,13 @@ export const closure = {
       .map(([key, value]) => JSON.stringify(key) + " " + JSON.stringify(value))
       .join(",\n              ")}}`,
 
-  getIframeUrlSource: ({
+  getIframeQuerySource: ({
     resourceType,
     displayOptions,
   }: CodeSampleParameters) =>
-    `(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token${
-      optionsToHashParams(displayOptions)
-        ? " " + JSON.stringify(optionsToHashParams(displayOptions))
-        : ""
-    }))`,
+    `(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token ${JSON.stringify(
+      optionsToHashParams(displayOptions),
+    )}))`,
 
   getServerSource: (sampleParameters: CodeSampleParameters) =>
     `(require '[buddy.sign.jwt :as jwt])
@@ -146,7 +138,7 @@ export const closure = {
 
 (def token (jwt/sign payload metabase-secret-key))
 
-${closure.getIframeUrlSource(sampleParameters)}`,
+${closure.getIframeQuerySource(sampleParameters)}`,
 };
 
 export const getHtmlSource = ({ iframeUrl }: { iframeUrl: string }) =>

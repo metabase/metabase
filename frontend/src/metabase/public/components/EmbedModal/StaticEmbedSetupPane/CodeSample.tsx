@@ -13,7 +13,7 @@ interface CodeSampleProps {
   title?: string;
   textHighlightMode: string;
   highlightedText?: string;
-  isHighlightedTextAccent?: boolean;
+  highlightedRowNumsText?: string[];
 
   dataTestId?: string;
   className?: string;
@@ -29,7 +29,7 @@ export const CodeSample = ({
   dataTestId,
   textHighlightMode,
   highlightedText,
-  isHighlightedTextAccent,
+  highlightedRowNumsText,
   className,
   onChangeOption,
 }: CodeSampleProps): JSX.Element => {
@@ -67,7 +67,7 @@ export const CodeSample = ({
           sizeToFit
           readOnly
           highlightedText={highlightedText}
-          isHighlightedTextAccent={isHighlightedTextAccent}
+          highlightedRowNumsText={highlightedRowNumsText}
         />
         {source && (
           <CopyButtonContainer>
