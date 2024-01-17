@@ -86,8 +86,7 @@ export const BrowseModels = ({
 
   if (error) {
     return <LoadingAndErrorWrapper error />;
-  }
-  if (isLoading || !gridOptions) {
+  } else if (isLoading || !gridOptions) {
     return (
       <LoadingAndErrorWrapper loading style={{ display: "flex", flex: 1 }} />
     );
@@ -114,13 +113,7 @@ export const BrowseModels = ({
 
   return (
     <GridContainer>
-      {items.length === 0 ? (
-        <CenteredEmptyState
-          title={t`No models here yet`}
-          message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-          illustrationElement={<img src={NoResults} />}
-        />
-      ) : (
+      {items.length ? (
         <WindowScroller scrollElement={scrollElement}>
           {({ height, isScrolling, onChildScroll, scrollTop }) => (
             <AutoSizer disableHeight>
@@ -141,6 +134,12 @@ export const BrowseModels = ({
             </AutoSizer>
           )}
         </WindowScroller>
+      ) : (
+        <CenteredEmptyState
+          title={t`No models here yet`}
+          message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+          illustrationElement={<img src={NoResults} />}
+        />
       )}
     </GridContainer>
   );
