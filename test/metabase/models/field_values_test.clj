@@ -157,13 +157,16 @@
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
-    (t2.with-temp/with-temp [FieldValues fv {:field_id (mt/id :venues :id)
-                                             :values   (json/generate-string ["1" "2" "3"])}]
-      (is (t2/query-one {:update :metabase_fieldvalues
-                         :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
-                         :where  [:= :id (:id fv)]}))
-      (is (= ["a" "b" "c"]
-             (:human_readable_values (t2/select-one FieldValues :id (:id fv))))))))
+    (let [field-id (mt/id :venues :id)]
+      ;; hack: clean up from previous tests
+      (t2/delete! FieldValues :field_id field-id)
+      (t2.with-temp/with-temp [FieldValues fv {:field_id field-id
+                                               :values   (json/generate-string ["1" "2" "3"])}]
+        (is (t2/query-one {:update :metabase_fieldvalues
+                           :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                           :where  [:= :id (:id fv)]}))
+        (is (= ["a" "b" "c"]
+               (:human_readable_values (t2/select-one FieldValues :id (:id fv)))))))))
 
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
