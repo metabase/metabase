@@ -677,6 +677,13 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(s/defmethod render :funnel :- formatter/RenderedPulseCard
+  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  (let [viz-settings (get-in card [:visualization_settings])]
+    (if (= (get viz-settings :funnel.type) "bar")
+      (render :javascript_visualization render-type timezone-id card dashcard data)
+      (render :funnel_normal render-type timezone-id card dashcard data))))
+
 (mu/defmethod render :empty :- formatter/RenderedPulseCard
   [_chart-type render-type _timezone-id _card _dashcard _data]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
