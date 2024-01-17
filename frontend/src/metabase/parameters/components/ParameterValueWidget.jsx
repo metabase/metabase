@@ -292,7 +292,7 @@ Widget.propTypes = {
 function hasNoPopover(parameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter.type)) {
+  if (isDateParameter(parameter)) {
     return false;
   }
   return isTextWidget(parameter);
