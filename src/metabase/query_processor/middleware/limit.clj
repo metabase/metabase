@@ -39,7 +39,6 @@
     (add-limit max-rows query)
     query))
 
-
 ;;;; Post-processing
 
 (defn- limit-xform [max-rows rf]

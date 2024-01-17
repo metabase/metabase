@@ -59,16 +59,34 @@
 (defn- merge-default-constraints [constraints]
   (merge (default-query-constraints) constraints))
 
-(defn- add-default-userland-constraints*
+(defn add-constraints
   "Add default values of `:max-results` and `:max-results-bare-rows` to `:constraints` map `m`."
+  [query]
+  (update query :constraints (comp ensure-valid-constraints merge-default-constraints)))
+
+(defn- should-add-userland-constraints? [query]
+  (get-in query [:middleware ::add-userland-constraints?]))
+
+(defn maybe-add-default-userland-constraints
+  "If the query is marked as requiring userland constraints, actually calculate the constraints and add them to the
+  query."
+  [query]
+  (cond-> query
+    (should-add-userland-constraints? query) add-constraints))
+
+(defn- mark-needs-default-userland-constraints*
+  "Marks the query as requiring userland constraints. Note that we can't actually calculate the constraints yet, because
+  of this middleware's position in the middleware stack (we don't yet have access to db-local settings). So this is a
+  bit awkward: we mark the query as needing userland constraints, then later the
+  `maybe-add-default-userland-constraints` middleware actually calculates the relevant constraints"
   [{{:keys [add-default-userland-constraints?]} :middleware, :as query}]
   (cond-> query
-    add-default-userland-constraints? (update :constraints (comp ensure-valid-constraints merge-default-constraints))))
+    add-default-userland-constraints? (update :middleware assoc ::add-userland-constraints? true)))
 
-(defn add-default-userland-constraints
+(defn mark-needs-default-userland-constraints
   "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
   use with [[metabase.query-processor/process-query-and-save-with-max-results-constraints!]], which ultimately powers
   most QP API endpoints."
   [qp]
   (fn [query rff context]
-    (qp (add-default-userland-constraints* query) rff context)))
+    (qp (mark-needs-default-userland-constraints* query) rff context)))
