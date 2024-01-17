@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import styled from "@emotion/styled";
-import type { GridCellProps, Index } from "react-virtualized";
+import type { GridCellProps } from "react-virtualized";
 import {
   Grid as VirtualizedGrid,
   WindowScroller,
@@ -13,10 +13,6 @@ import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Grid } from "metabase/components/Grid";
-
-// const VirtualizedGrid = _Grid as unknown as FC<GridProps>;
-// const WindowScroller = _WindowScroller as unknown as FC<WindowScrollerProps>;
-// const AutoSizer = _AutoSizer as unknown as FC<AutoSizerProps>;
 
 import Link from "metabase/core/components/Link";
 
@@ -128,16 +124,12 @@ const ModelsTab = ({
   const gridGapSize = 16;
   const itemMinWidth = 240; // TODO: replace magic number
   const defaultItemHeight = 160; // TODO: replace magic number?
+  const headerHeight = 48; // TODO: replace magic number?
 
   useEffect(() => {
     // TODO: Is a browser font size change a resize?
     const configureGrid = () => {
-      const gridOptions = getGridOptions(
-        models,
-        gridGapSize,
-        itemMinWidth,
-        defaultItemHeight,
-      );
+      const gridOptions = getGridOptions(models, gridGapSize, itemMinWidth);
       setGridOptions(gridOptions);
     };
     configureGrid();
@@ -151,7 +143,6 @@ const ModelsTab = ({
     columnWidth: number;
     columnCount: number;
     rowCount: number;
-    rowHeight: (params: Index) => number;
   } | null>(null);
 
   if (error) {
@@ -171,6 +162,9 @@ const ModelsTab = ({
     const index = rowIndex * columnCount + columnIndex;
     const item = items[index];
     if (!item) {
+      return null;
+    }
+    if (gridItemIsBlank(item)) {
       return <div style={style}></div>;
     }
     if (gridItemIsGroupHeader(item)) {
@@ -197,17 +191,20 @@ const ModelsTab = ({
     <GridContainer>
       {gridOptions?.gridItems.length ? (
         <SizedVirtualizedGrid
-          data-testid="model-browser"
-          width={gridOptions.width}
-          columnWidth={gridOptions.columnWidth}
           columnCount={gridOptions.columnCount}
-          rowCount={gridOptions.rowCount}
-          items={gridOptions.gridItems}
-          rowHeight={gridOptions.rowHeight}
+          columnWidth={gridOptions.columnWidth}
+          data-testid="model-browser"
+          defaultItemHeight={defaultItemHeight}
           gridGapSize={gridGapSize}
+          headerHeight={headerHeight}
+          items={gridOptions.gridItems}
           renderItem={renderItem}
-          // TODO: Probably use a ref
-          scrollElement={document.getElementsByTagName("main")[0]}
+          rowCount={gridOptions.rowCount}
+          scrollElement={
+            // TODO: Probably use a ref
+            document.getElementsByTagName("main")[0]
+          }
+          width={gridOptions.width}
         />
       ) : (
         <ContentOfEmptyTab
@@ -377,7 +374,7 @@ const ContentOfEmptyTab = ({
 };
 
 const sortModels = (a: Model, b: Model) => {
-  const sortLast = Number.MAX_SAFE_INTEGER; // assume sortLast is a fallback value for sorting
+  const sortLast = Number.MAX_SAFE_INTEGER;
   const nameA = a.name || sortLast;
   const nameB = b.name || sortLast;
 
@@ -446,9 +443,7 @@ interface HeaderGridItem {
 /** The objects used to construct the grid.
  * Most of these are models but there are other objects added in too,
  * to generate headers and blank cells (represented by null). */
-type GridItem = Model | HeaderGridItem | null;
-
-const makeBlankItems = (count: number) => Array(count).fill(null);
+type GridItem = Model | HeaderGridItem | "blank" | "header-blank";
 
 const addHeadersToItems = (
   models: Model[],
@@ -473,10 +468,12 @@ const addHeadersToItems = (
       gridItems.push(
         // So that the model group header appears at the start of the row,
         // add zero or more blank items to fill in the rest of the row
-        ...(columnIndex > 0 ? makeBlankItems(columnCount - columnIndex) : []),
+        ...(columnIndex > 0
+          ? Array(columnCount - columnIndex).fill("blank")
+          : []),
         groupHeader,
-        // Fill in the rest of the row with blank items
-        ...makeBlankItems(columnCount - 1),
+        // Fill in the rest of the header row with blank items
+        ...Array(columnCount - 1).fill("header-blank"),
       );
     }
     gridItems.push(model);
@@ -485,13 +482,20 @@ const addHeadersToItems = (
 };
 
 const gridItemIsGroupHeader = (item: GridItem): item is HeaderGridItem =>
-  item !== null && (item as Model).model === undefined;
+  item !== "blank" &&
+  item !== "header-blank" &&
+  (item as Model).model === undefined;
+
+const gridItemIsInGroupHeaderRow = (item: GridItem) =>
+  item === "header-blank" || gridItemIsGroupHeader(item);
+
+const gridItemIsBlank = (item: GridItem) =>
+  item === "blank" || item === "header-blank";
 
 const getGridOptions = (
   models: ModelWithoutEditInfo[],
   gridGapSize: number,
   itemMinWidth: number,
-  defaultItemHeight: number,
 ) => {
   // TODO: use a ref
   const width =
@@ -505,15 +509,15 @@ const getGridOptions = (
     return width / columnCount;
   };
 
-  // For testing, increase the number of models
-  if (models.length && models.length < 100) {
-    for (let i = 0; i < 999; i++) {
-      const pushMe = _.clone(models[i]);
-      pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
-      pushMe.name += ` (${i})`;
-      models.push(pushMe);
-    }
-  }
+  // // For testing, increase the number of models
+  // if (models.length && models.length < 100) {
+  //   for (let i = 0; i < 999; i++) {
+  //     const pushMe = _.clone(models[i]);
+  //     pushMe.name = pushMe.name.replace(/\s\(\d+\)$/, "");
+  //     pushMe.name += ` (${i})`;
+  //     models.push(pushMe);
+  //   }
+  // }
 
   // Sort models by (in descending order of priority): collection name, collection id, model name, model id.
   const modelsWithEditInfo: Model[] = models.map(
@@ -536,20 +540,11 @@ const getGridOptions = (
   const gridItems = addHeadersToItems(sortedModels, columnCount);
   const rowCount = Math.ceil(gridItems.length / columnCount);
 
-  const rowHeight = (props: Index) => {
-    const item = gridItems[props.index];
-    if (gridItemIsGroupHeader(item)) {
-      return 40;
-    }
-    return defaultItemHeight;
-  };
-
   return {
     columnCount,
     columnWidth,
     gridItems,
     rowCount,
-    rowHeight,
     width,
   };
 };
@@ -561,28 +556,30 @@ type RenderItemFunction = (
     groupLabel?: string;
     items: GridItem[];
   },
-) => JSX.Element;
+) => JSX.Element | null;
 
 const SizedVirtualizedGrid = ({
   columnCount,
   columnWidth,
+  defaultItemHeight,
   gridGapSize,
-  rowHeight,
+  headerHeight,
   items,
   renderItem,
   rowCount,
   scrollElement,
   width,
 }: {
-  items: GridItem[];
-  rowHeight: (props: Index) => number;
-  renderItem: RenderItemFunction;
+  columnCount: number;
+  columnWidth: number;
+  defaultItemHeight: number;
   gridGapSize: number;
+  headerHeight: number;
+  items: GridItem[];
+  renderItem: RenderItemFunction;
+  rowCount: number;
   scrollElement?: HTMLElement;
   width: number;
-  columnWidth: number;
-  columnCount: number;
-  rowCount: number;
 }): JSX.Element => {
   const gridRef = useRef<VirtualizedGrid | null>(null);
 
@@ -612,14 +609,19 @@ const SizedVirtualizedGrid = ({
                 isScrolling={isScrolling}
                 scrollTop={scrollTop}
                 onScroll={onChildScroll}
-                rowHeight={rowHeight}
-                cellRenderer={(props: GridCellProps) => {
-                  return renderItem({
+                rowHeight={({ index: rowIndex }: { index: number }) => {
+                  const cellIndex = rowIndex * columnCount;
+                  return gridItemIsInGroupHeaderRow(items[cellIndex])
+                    ? headerHeight
+                    : defaultItemHeight;
+                }}
+                cellRenderer={(props: GridCellProps) =>
+                  renderItem({
                     ...props,
                     items,
                     columnCount,
-                  });
-                }}
+                  })
+                }
               />
             );
           }}
