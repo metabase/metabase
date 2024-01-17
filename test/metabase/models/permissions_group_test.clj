@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.permissions-test-util :as perm-test-util]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
@@ -12,6 +13,7 @@
     :refer [PermissionsGroupMembership]]
    [metabase.models.user :refer [User]]
    [metabase.permissions.util :as perms.u]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -140,3 +142,17 @@
           ;; Only check this for dbs with permissions
           (when (contains? dbs-in-perms db-id)
             (is (= #{db-id} (->> graph :groups vals (mapcat keys) set)))))))))
+
+(deftest set-default-permission-values!-test
+  (testing "A new group has no permissions for any DBs by default"
+    (mt/with-temp [:model/Database         {db-id :id}    {}
+                   :model/PermissionsGroup {group-id :id} {}]
+      (is
+       (= {group-id
+           {db-id
+            {:data-access :no-self-service,
+             :download-results :no,
+             :manage-table-metadata :no,
+             :native-query-editing :no,
+             :manage-database :no}}}
+          (data-perms/data-permissions-graph :group-id group-id :db-id db-id))))))
