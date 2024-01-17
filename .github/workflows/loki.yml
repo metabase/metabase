@@ -1,0 +1,80 @@
+name: Loki Visual Regression Testing
+
+on: [pull_request]
+
+jobs:
+  visual-test:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+        ports:
+          - 2376:2376
+        env:
+          DOCKER_TLS_CERTDIR: /certs
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /tmp/docker-certs:/certs/client
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
+      - name: Build Storybook
+        run: yarn build-storybook
+
+      - name: Serve Storybook
+        run: yarn http-server storybook-static -p 6006 &
+        shell: bash
+
+      - name: Wait for Storybook to become available
+        run: |
+          echo "Waiting for Storybook to be served..."
+          while ! curl --silent --fail http://localhost:6006; do
+            sleep 5
+            echo "Retrying..."
+          done
+          echo "Storybook is being served!"
+
+      - name: Run Loki Visual Tests
+        run: |
+          yarn loki test
+
+      - name: Generate Visual Report on Failure
+        if: failure()
+        run: yarn visual:report
+
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: loki-report
+          path: .loki/
+          if-no-files-found: ignore
+
+      - name: Post Comment with Report Link
+        if: failure()
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const runUrl = `https://github.com/metabase/metabase/actions/runs/${{ github.run_id }}`
+            const comment = `🚨 Visual Regression Tests failed. Get the [report artifact](${runUrl})`
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            })

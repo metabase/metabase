@@ -1,0 +1,73 @@
+name: Update Loki Snapshots
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  check-label-and-update-snapshot:
+    if: contains(github.event.pull_request.labels.*.name, 'loki-update')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+
+      - name: Compile CLJS
+        run: yarn build-pure:cljs
+
+      - name: Build Storybook
+        run: yarn build-storybook
+
+      - name: Serve Storybook
+        run: yarn http-server storybook-static -p 6006 &
+        shell: bash
+
+      - name: Wait for Storybook to become available
+        run: |
+          echo "Waiting for Storybook to be served..."
+          while ! curl --silent --fail http://localhost:6006; do
+            sleep 5
+            echo "Retrying..."
+          done
+          echo "Storybook is being served!"
+
+      - name: Update Loki Snapshots
+        run: yarn test-visual:loki-update
+
+      - uses: tibdex/github-app-token@v2.1.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "Metabase bot"
+          git config --global user.email "metabase-bot@metabase.com"
+          git add .loki/**
+          git commit -m "Update Loki Snapshots"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+
+      - name: Post Comment
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Snapshots have been updated"
+            })
