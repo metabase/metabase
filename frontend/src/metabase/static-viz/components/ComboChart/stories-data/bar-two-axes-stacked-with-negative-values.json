@@ -1,0 +1,624 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 38,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            64,
+            {
+              "base-type": "type/Text",
+              "source-field": 37
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 64,
+          "visibility_type": "normal",
+          "display_name": "Product → Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Average of Total with negative",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 20,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -25.01883071513849,
+                "q1": -8.265793584324337,
+                "q3": 36.15967901936148,
+                "max": 41.1472155869155,
+                "sd": 23.54601680410227,
+                "avg": 17.204487651704788
+              }
+            }
+          }
+        }
+      ],
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "bar-two-axes-stacked-with-negative-values-stacked",
+      "creator_id": 1,
+      "updated_at": "2024-01-16T21:07:48.754757-03:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "expressions": {
+            "Total with negative": [
+              "case",
+              [
+                [
+                  [
+                    ">",
+                    [
+                      "field",
+                      39,
+                      {
+                        "base-type": "type/Float"
+                      }
+                    ],
+                    78
+                  ],
+                  [
+                    "field",
+                    39,
+                    {
+                      "base-type": "type/Float"
+                    }
+                  ]
+                ]
+              ],
+              {
+                "default": [
+                  "-",
+                  0,
+                  [
+                    "field",
+                    39,
+                    {
+                      "base-type": "type/Float"
+                    }
+                  ]
+                ]
+              }
+            ]
+          },
+          "aggregation": [
+            [
+              "avg",
+              [
+                "expression",
+                "Total with negative"
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            [
+              "field",
+              64,
+              {
+                "base-type": "type/Text",
+                "source-field": 37
+              }
+            ]
+          ]
+        }
+      },
+      "id": 162,
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "uVJnyVECmRpZCBB1kHQ1R",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.show_goal": false,
+        "graph.show_values": true,
+        "graph.series_order_dimension": "CATEGORY",
+        "graph.y_axis.scale": "linear",
+        "graph.label_value_frequency": "fit",
+        "graph.metrics": [
+          "avg"
+        ],
+        "graph.label_value_formatting": "auto",
+        "graph.series_order": [
+          {
+            "key": "Doohickey",
+            "color": "#88BF4D",
+            "enabled": true,
+            "name": "Doohickey"
+          },
+          {
+            "key": "Gadget",
+            "color": "#F9D45C",
+            "enabled": true,
+            "name": "Gadget"
+          },
+          {
+            "key": "Gizmo",
+            "color": "#A989C5",
+            "enabled": true,
+            "name": "Gizmo"
+          },
+          {
+            "key": "Widget",
+            "color": "#F2A86F",
+            "enabled": true,
+            "name": "Widget"
+          }
+        ],
+        "series_settings": {
+          "Gizmo": {
+            "display": "bar",
+            "axis": "right",
+            "line.interpolate": "linear",
+            "line.marker_enabled": null,
+            "line.missing": "interpolate",
+            "show_series_values": true
+          },
+          "Gadget": {
+            "display": "bar",
+            "axis": "right",
+            "line.interpolate": "linear",
+            "line.marker_enabled": null,
+            "line.missing": "interpolate",
+            "show_series_values": true
+          }
+        },
+        "graph.dimensions": [
+          "CREATED_AT",
+          "CATEGORY"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "metabase_version": "v1.48.1-SNAPSHOT (6934865)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2024-01-16T21:02:28.348713-03:00",
+      "public_uuid": null
+    },
+    "data": {
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            38,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 38,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "table_id": 8,
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 37,
+          "field_ref": [
+            "field",
+            64,
+            {
+              "base-type": "type/Text",
+              "source-field": 37
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 64,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Product → Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PRODUCTS__via__PRODUCT_ID"
+        },
+        {
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Total with negative",
+          "source": "aggregation",
+          "field_ref": [
+            "aggregation",
+            0
+          ],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"source\".\"CREATED_AT\") AS \"CREATED_AT\", \"source\".\"PRODUCTS__via__PRODUCT_ID__CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", AVG(\"source\".\"Total with negative\") AS \"avg\" FROM (SELECT \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" AS \"PRODUCT_ID\", \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\", \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\", CASE WHEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" > 78 THEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" ELSE 0 - \"PUBLIC\".\"ORDERS\".\"TOTAL\" END AS \"Total with negative\", \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", \"PRODUCTS__via__PRODUCT_ID\".\"ID\" AS \"PRODUCTS__via__PRODUCT_ID__ID\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"PRODUCTS__via__PRODUCT_ID\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"PRODUCTS__via__PRODUCT_ID\".\"ID\") AS \"source\" GROUP BY DATE_TRUNC('year', \"source\".\"CREATED_AT\"), \"source\".\"PRODUCTS__via__PRODUCT_ID__CATEGORY\" ORDER BY DATE_TRUNC('year', \"source\".\"CREATED_AT\") ASC, \"source\".\"PRODUCTS__via__PRODUCT_ID__CATEGORY\" ASC",
+        "params": null
+      },
+      "viz-settings": {
+        "graph.show_goal": false,
+        "graph.show_values": true,
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "graph.series_order_dimension": "CATEGORY",
+        "graph.y_axis.scale": "linear",
+        "graph.label_value_frequency": "fit",
+        "graph.metrics": [
+          "avg"
+        ],
+        "graph.label_value_formatting": "auto",
+        "graph.series_order": [
+          {
+            "key": "Doohickey",
+            "color": "#88BF4D",
+            "enabled": true,
+            "name": "Doohickey"
+          },
+          {
+            "key": "Gadget",
+            "color": "#F9D45C",
+            "enabled": true,
+            "name": "Gadget"
+          },
+          {
+            "key": "Gizmo",
+            "color": "#A989C5",
+            "enabled": true,
+            "name": "Gizmo"
+          },
+          {
+            "key": "Widget",
+            "color": "#F2A86F",
+            "enabled": true,
+            "name": "Widget"
+          }
+        ],
+        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "series_settings": {
+          "Gizmo": {
+            "display": "bar",
+            "axis": "right"
+          },
+          "Gadget": {
+            "display": "bar",
+            "axis": "right"
+          }
+        },
+        "graph.dimensions": [
+          "CREATED_AT",
+          "CATEGORY"
+        ],
+        "stackable.stack_type": "stacked"
+      },
+      "results_timezone": "America/Montevideo",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              38,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 38,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              64,
+              {
+                "base-type": "type/Text",
+                "source-field": 37
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 64,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Average of Total with negative",
+            "field_ref": [
+              "aggregation",
+              0
+            ],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 20,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -25.01883071513849,
+                  "q1": -8.265793584324337,
+                  "q3": 36.15967901936148,
+                  "max": 41.1472155869155,
+                  "sd": 23.54601680410227,
+                  "avg": 17.204487651704788
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null,
+      "rows": [
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Doohickey",
+          -17.223465277480326
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Gadget",
+          -13.551016151218196
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Gizmo",
+          11.766175703905454
+        ],
+        [
+          "2022-01-01T00:00:00-03:00",
+          "Widget",
+          -8.300098001441754
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Doohickey",
+          -25.01883071513849
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Gadget",
+          -8.482822417191935
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Gizmo",
+          -8.23148916720692
+        ],
+        [
+          "2023-01-01T00:00:00-03:00",
+          "Widget",
+          -6.791809016018082
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Doohickey",
+          29.87776597143223
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Gadget",
+          34.939040051113736
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Gizmo",
+          35.505214703850605
+        ],
+        [
+          "2024-01-01T00:00:00-03:00",
+          "Widget",
+          36.81414333487234
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Doohickey",
+          24.60392384643569
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Gadget",
+          40.43924528814757
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Gizmo",
+          38.63242829314229
+        ],
+        [
+          "2025-01-01T00:00:00-03:00",
+          "Widget",
+          33.47069332869943
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Doohickey",
+          31.835187705698154
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Gadget",
+          41.1472155869155
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Gizmo",
+          32.76309655012521
+        ],
+        [
+          "2026-01-01T00:00:00-03:00",
+          "Widget",
+          39.8951534154533
+        ]
+      ]
+    }
+  }
+]
