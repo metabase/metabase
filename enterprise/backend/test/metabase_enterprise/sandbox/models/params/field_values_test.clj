@@ -1,6 +1,6 @@
 (ns metabase-enterprise.sandbox.models.params.field-values-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest testing is]]
    [java-time :as t]
    [metabase-enterprise.sandbox.models.group-table-access-policy
     :refer [GroupTableAccessPolicy]]
