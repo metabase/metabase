@@ -94,7 +94,7 @@
   The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
   implementation to convert the `field`.
   Returns `nil` if the conversion is not necessary for this `field` and `param-type` combination."
-  {:added "0.48.0" :arglists '([driver field param-type value])}
+  {:added "0.49.0" :arglists '([driver field param-type value])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
