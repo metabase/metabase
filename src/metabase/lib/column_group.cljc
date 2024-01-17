@@ -101,7 +101,7 @@
        ;; This is very intentional: one table might have several FKs to one foreign table, each with different
        ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
        ;; See #30109 for more details.
-       (assoc field-info :fk-reference-name (lib.util/strip-id (:display-name field-info)))))
+       (update field-info :display-name lib.util/strip-id)))
    {:is-from-join           false
     :is-implicitly-joinable true}))
 
@@ -177,3 +177,7 @@
   "Get the columns associated with a column group"
   [column-group :- ColumnGroup]
   (::columns column-group))
+
+(defmethod lib.metadata.calculation/display-name-method :metadata/column-group
+  [query stage-number column-group _display-name-style]
+  (:display-name (lib.metadata.calculation/display-info query stage-number column-group)))
