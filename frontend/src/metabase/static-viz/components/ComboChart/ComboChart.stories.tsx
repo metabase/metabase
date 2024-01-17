@@ -56,6 +56,20 @@ BarOrdinalXScale.args = {
   renderingContext,
 };
 
+export const BarTwoAxesStackedWithNegativeValues = Template.bind({});
+BarTwoAxesStackedWithNegativeValues.args = {
+  rawSeries: data.barTwoAxesStackedWithNegativeValues as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarBreakoutWithLineSeriesStackedRightAxisOnly = Template.bind({});
+BarBreakoutWithLineSeriesStackedRightAxisOnly.args = {
+  rawSeries: data.barBreakoutWithLineSeriesStackedRightAxisOnly as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SplitYAxis = Template.bind({});
 SplitYAxis.args = {
   rawSeries: data.autoYSplit as any,

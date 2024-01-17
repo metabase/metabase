@@ -2,6 +2,8 @@ import lineLinearXScale from "./line-linear-x-scale.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
+import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
+import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
@@ -23,6 +25,8 @@ export const data = {
   barLinearXScale,
   barHistogramXScale,
   barOrdinalXScale,
+  barTwoAxesStackedWithNegativeValues,
+  barBreakoutWithLineSeriesStackedRightAxisOnly,
   autoYSplit,
   messedUpAxis,
   trendSingleSeriesLine,
