@@ -13,7 +13,7 @@ import {
   BrowserHeaderIconContainer,
 } from "./BrowseHeader.styled";
 
-export default function BrowseHeader({ crumbs }) {
+export default function BrowseHeader({ crumbs = [] }) {
   return (
     <BrowseHeaderRoot>
       <BrowseHeaderContent>

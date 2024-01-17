@@ -1,30 +1,35 @@
 import { useEffect, useRef, useState } from "react";
+
 import _ from "underscore";
-import { t } from "ttag";
 import styled from "@emotion/styled";
+import { t } from "ttag";
+
 import type { GridCellProps } from "react-virtualized";
+
 import {
   Grid as VirtualizedGrid,
   WindowScroller,
   AutoSizer,
 } from "react-virtualized";
+import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import type { Collection, CollectionItem } from "metabase-types/api";
-import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
-import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import { color } from "metabase/lib/colors";
+
+import { Divider, Flex, Tabs, Icon, Text } from "metabase/ui";
 import { Grid } from "metabase/components/Grid";
-
 import Link from "metabase/core/components/Link";
+import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
+import EmptyState from "metabase/components/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import EmptyState from "metabase/components/EmptyState";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
+import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
+
 import NoResults from "assets/img/no_results.svg";
 import type { default as IDatabase } from "metabase-lib/metadata/Database";
 import BrowseHeader from "../components/BrowseHeader";
@@ -86,9 +91,10 @@ export const BrowseDataPage = () => {
     },
   };
   const currentTab = currentTabId ? tabs[currentTabId] : null;
+  // TODO: "Learn about our data" goes off screen when viewport is narrow
   return (
     <BrowseContainer data-testid="data-browser">
-      <BrowseHeader crumbs={[]} />
+      <BrowseHeader />
       <BrowseTabs value={currentTabId} onTabChange={setTabId}>
         <Flex>
           <Tabs.List>
@@ -217,14 +223,14 @@ const ModelsTab = ({
 };
 
 const GridContainer = styled.div`
-  flex: 1;
-  width: 100%;
+  // flex: 1;
+  // width: 100%;
 
   > div {
     height: unset !important;
   }
 
-  overflow: hidden !important;
+  //overflow: hidden !important;
 
   .ReactVirtualized__Grid,
   .ReactVirtualized__Grid__innerScrollContainer {
@@ -232,7 +238,9 @@ const GridContainer = styled.div`
   }
 
   .model-group-header {
-    border-top: 1px solid #f0f0f0;
+    &:not(:first-of-type) {
+      border-top: 1px solid #f0f0f0;
+    }
     display: flex;
     flex-flow: column nowrap;
     justify-content: flex-end;
@@ -456,10 +464,12 @@ const addHeadersToItems = (
     i++, columnIndex = (columnIndex + 1) % columnCount
   ) {
     const model = models[i];
-    const connectionIdChanged =
+
+    const collectionIdChanged =
       models[i - 1]?.collection?.id !== model.collection?.id;
+
     const firstModelInItsCollection =
-      i === 0 || connectionIdChanged || !model.collection?.id;
+      i === 0 || collectionIdChanged || !model.collection?.id;
     // Before the first model in a given collection, add an item that represents the header of the collection
     if (firstModelInItsCollection) {
       const groupHeader: HeaderGridItem = {
@@ -475,6 +485,7 @@ const addHeadersToItems = (
         // Fill in the rest of the header row with blank items
         ...Array(columnCount - 1).fill("header-blank"),
       );
+      columnIndex = 0;
     }
     gridItems.push(model);
   }
@@ -499,7 +510,8 @@ const getGridOptions = (
 ) => {
   // TODO: use a ref
   const width =
-    document.querySelector("[data-testid='browse-data']")?.clientWidth ?? 0;
+    (document.querySelector("[data-testid='browse-data']")?.clientWidth ?? 0) -
+    gridGapSize;
 
   const calculateColumnCount = (width: number) => {
     return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
@@ -595,36 +607,34 @@ const SizedVirtualizedGrid = ({
     <WindowScroller scrollElement={scrollElement}>
       {({ height, isScrolling, onChildScroll, scrollTop }) => (
         <AutoSizer disableHeight>
-          {() => {
-            return (
-              <VirtualizedGrid
-                rowCount={rowCount}
-                columnCount={columnCount}
-                columnWidth={columnWidth}
-                width={width}
-                gap={gridGapSize}
-                ref={gridRef}
-                autoHeight
-                height={height}
-                isScrolling={isScrolling}
-                scrollTop={scrollTop}
-                onScroll={onChildScroll}
-                rowHeight={({ index: rowIndex }: { index: number }) => {
-                  const cellIndex = rowIndex * columnCount;
-                  return gridItemIsInGroupHeaderRow(items[cellIndex])
-                    ? headerHeight
-                    : defaultItemHeight;
-                }}
-                cellRenderer={(props: GridCellProps) =>
-                  renderItem({
-                    ...props,
-                    items,
-                    columnCount,
-                  })
-                }
-              />
-            );
-          }}
+          {() => (
+            <VirtualizedGrid
+              rowCount={rowCount}
+              columnCount={columnCount}
+              columnWidth={columnWidth}
+              width={width}
+              gap={gridGapSize}
+              ref={gridRef}
+              autoHeight
+              height={height}
+              isScrolling={isScrolling}
+              scrollTop={scrollTop}
+              onScroll={onChildScroll}
+              rowHeight={({ index: rowIndex }: { index: number }) => {
+                const cellIndex = rowIndex * columnCount;
+                return gridItemIsInGroupHeaderRow(items[cellIndex])
+                  ? headerHeight
+                  : defaultItemHeight;
+              }}
+              cellRenderer={(props: GridCellProps) =>
+                renderItem({
+                  ...props,
+                  items,
+                  columnCount,
+                })
+              }
+            />
+          )}
         </AutoSizer>
       )}
     </WindowScroller>

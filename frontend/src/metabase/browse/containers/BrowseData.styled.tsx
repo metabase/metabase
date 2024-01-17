@@ -107,4 +107,5 @@ export const BrowseContainer = styled.div`
 
 export const SimpleBrowseHeader = styled.h2`
   margin-bottom: 0.35rem;
+  margin-right: 1rem;
 `;
