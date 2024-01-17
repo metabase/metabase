@@ -8,7 +8,7 @@ import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { ComboChart } from "./visualizations/ComboChart";
 import { DashCardPlaceholder } from "./visualizations/DashCardPlaceholder";
-import Funnel from "./visualizations/Funnel";
+import { Funnel } from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
 import { Heading } from "./visualizations/Heading";
 import { LineChart } from "./visualizations/LineChart";
