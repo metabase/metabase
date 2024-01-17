@@ -678,6 +678,11 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
+          // Since the question is transient, it needs to be saved
+          if (test.case === "question") {
+            cy.button("Save").click();
+          }
+
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Public link")
             .parent()
@@ -701,6 +706,11 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
+          // Since the question is transient, it needs to be saved
+          if (test.case === "question") {
+            cy.button("Save").click();
+          }
+
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText(/Embed in your application/).click();
 
