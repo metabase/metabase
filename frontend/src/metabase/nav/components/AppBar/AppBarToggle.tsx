@@ -17,7 +17,11 @@ export function AppBarToggle({
   isLogoVisible,
   isNavBarOpen,
   onToggleClick,
-}: AppBarToggleProps): JSX.Element {
+}: AppBarToggleProps): JSX.Element | null {
+  if (!isNavBarEnabled) {
+    return null;
+  }
+
   return (
     <Tooltip
       label={getSidebarTooltipLabel(isNavBarOpen)}

@@ -32,6 +32,7 @@ const AppBarLarge = ({
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
+  isLogoVisible,
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
@@ -50,7 +51,7 @@ const AppBarLarge = ({
           isNavBarOpen={isNavBarOpen}
           onToggleClick={onToggleNavbar}
         />
-        <AppBarLogo />
+        <AppBarLogo isLogoVisible={isLogoVisible} />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >

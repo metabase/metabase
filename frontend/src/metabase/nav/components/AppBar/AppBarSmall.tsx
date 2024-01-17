@@ -64,13 +64,12 @@ const AppBarSmall = ({
         <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
           <AppBarMainContainer>
             <AppBarToggleContainer>
-              {isNavBarEnabled && (
-                <AppBarToggle
-                  isSmallAppBar
-                  isNavBarOpen={isNavBarVisible}
-                  onToggleClick={onToggleNavbar}
-                />
-              )}
+              <AppBarToggle
+                isSmallAppBar
+                isNavBarEnabled={isNavBarEnabled}
+                isNavBarOpen={isNavBarVisible}
+                onToggleClick={onToggleNavbar}
+              />
             </AppBarToggleContainer>
             <AppBarSearchContainer>
               {isSearchVisible && (
@@ -87,7 +86,10 @@ const AppBarSmall = ({
             )}
           </AppBarMainContainer>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
-            <AppBarLogo onLogoClick={onCloseNavbar} />
+            <AppBarLogo
+              isLogoVisible={isLogoVisible}
+              onLogoClick={onCloseNavbar}
+            />
           </AppBarLogoContainer>
         </AppBarHeader>
       )}
