@@ -30,18 +30,36 @@
    [:sso_source       [:enum :saml :jwt]]
    [:login_attributes [:maybe :map]]])
 
-(defn check-user-provisioning
+(defn- maybe-throw-user-provisioning
+  [user-provisioning-type]
+  (when (not user-provisioning-type)
+    (throw (ex-info (trs "Sorry, but you''ll need a {0} account to view this page. Please contact your administrator."
+                         (u/slugify (public-settings/site-name))) {}))))
+
+(defmulti check-user-provisioning
   "If `user-provisioning-enabled?` is false, then we should throw an error when attempting to create a new user."
-  []
-  (when (not (sso-settings/user-provisioning-enabled?))
-    (throw (ex-info (trs "Unable to create new SSO user, user provisioning must be enabled.") {}))))
+  {:arglists '([model])}
+  keyword)
+
+(defmethod check-user-provisioning :saml
+  [_]
+  (maybe-throw-user-provisioning (sso-settings/saml-user-provisioning-enabled?)))
+
+(defmethod check-user-provisioning :ldap
+  [_]
+  (maybe-throw-user-provisioning (sso-settings/ldap-user-provisioning-enabled?)))
+
+(defmethod check-user-provisioning :jwt
+  [_]
+  (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
+
 
 (mu/defn create-new-sso-user!
   "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.models.user`. We need
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it."
   [user :- UserAttributes]
-  (check-user-provisioning)
+  (check-user-provisioning (:sso_source user))
   (try
     (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
       (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))

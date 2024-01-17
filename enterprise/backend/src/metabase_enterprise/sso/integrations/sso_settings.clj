@@ -23,12 +23,27 @@
 (def ^:private ^{:arglists '([group-mappings])} validate-group-mappings
   (mc/validator GroupMappings))
 
-(defsetting user-provisioning-enabled?
-  (deferred-tru "When we enable user provisioning, we automatically create a Metabase account on signin for users who
+(defsetting saml-user-provisioning-enabled?
+  (deferred-tru "When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
 don''t have one.")
   :type    :boolean
   :default true
-  :feature :public
+  :feature :sso-saml
+  :audit   :getter)
+
+(defsetting jwt-user-provisioning-enabled?
+  (deferred-tru "When we enable JWT user provisioning, we automatically create a Metabase account on JWT signin for users who
+don''t have one.")
+  :type    :boolean
+  :default true
+  :feature :sso-jwt
+  :audit   :getter)
+
+(defsetting ldap-user-provisioning-enabled?
+  (deferred-tru "When we enable LDAP user provisioning, we automatically create a Metabase account on LDAP signin for users who
+don''t have one.")
+  :type    :boolean
+  :default true
   :audit   :getter)
 
 (defsetting saml-identity-provider-uri

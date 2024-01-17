@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
+            [metabase.public-settings :as public-settings]
             [metabase.test :as mt]))
 
 (deftest check-sso-redirect-test
@@ -49,9 +50,10 @@
           #"Error creating new SSO user"
           (sso-utils/create-new-sso-user! user-attributes)))))))
 
-(deftest create-new-sso-user-no-user-provisioning-test
+(deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
-    (with-redefs [sso-settings/user-provisioning-enabled? (constantly false)]
+    (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
+                  public-settings/site-name (constantly "test")]
       (let [user-attributes {:first_name       "Test"
                              :last_name        "User"
                              :email            "create-new-sso-user-test@metabase.com"
@@ -60,5 +62,20 @@
         (is
          (thrown-with-msg?
           clojure.lang.ExceptionInfo
-          #"Unable to create new SSO user, user provisioning must be enabled."
+          #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
+          (sso-utils/create-new-sso-user! user-attributes)))))))
+
+(deftest create-new-saml-user-no-user-provisioning-test
+  (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
+    (with-redefs [sso-settings/saml-user-provisioning-enabled? (constantly false)
+                  public-settings/site-name (constantly "test")]
+      (let [user-attributes {:first_name       "Test"
+                             :last_name        "User"
+                             :email            "create-new-sso-user-test@metabase.com"
+                             :sso_source       :saml
+                             :login_attributes {:foo "bar"}}]
+        (is
+         (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (sso-utils/create-new-sso-user! user-attributes)))))))
