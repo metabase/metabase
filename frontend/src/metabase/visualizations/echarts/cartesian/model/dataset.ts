@@ -25,6 +25,10 @@ import { isNotNull } from "metabase/lib/types";
 import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
 
 import { getXAxisType } from "../option/axis";
+import {
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+} from "metabase/visualizations/echarts/cartesian/constants/dataset";
 
 /**
  * Sums two metric column values.
@@ -329,6 +333,16 @@ export const getTransformedDataset = (
         applySquareRootScaling,
       ),
     },
+    {
+      condition: settings["stackable.stack_type"] != null,
+      fn: datum => {
+        return {
+          ...datum,
+          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
+          [NEGATIVE_STACK_TOTAL_DATA_KEY]: -Number.MIN_VALUE,
+        };
+      },
+    },
   ]);
 };
 
@@ -424,7 +438,7 @@ export const getMetricDisplayValueGetter = (
 export const getSortedSeriesModels = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
-) => {
+): SeriesModel[] => {
   const breakoutSeriesOrder = settings["graph.series_order"];
   if (breakoutSeriesOrder == null || breakoutSeriesOrder.length === 0) {
     return seriesModels;

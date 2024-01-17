@@ -1,3 +1,5 @@
+import type { RegisteredSeriesOption } from "echarts";
+
 export interface Padding {
   top: number;
   left: number;
@@ -15,3 +17,8 @@ export interface ChartMeasurements {
   padding: Padding;
   ticksDimensions: TicksDimensions;
 }
+
+export type EChartsSeriesOption =
+  | RegisteredSeriesOption["line"]
+  | RegisteredSeriesOption["bar"]
+  | RegisteredSeriesOption["scatter"];
