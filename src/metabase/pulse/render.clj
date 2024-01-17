@@ -103,10 +103,10 @@
         (#{:scalar
            :smartscalar
            :row
-           :funnel
            :progress
            :gauge
-           :table} display-type)
+           :table
+           :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
         (#{:smartscalar
