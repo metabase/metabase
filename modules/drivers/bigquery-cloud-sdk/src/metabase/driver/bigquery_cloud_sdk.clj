@@ -98,7 +98,8 @@
     (cond
       (not success?)
       false
-      ;; if the datasets are filtered throw an exception with a message that we can show to the user
+      ;; if the datasets are filtered and we don't find any matches, throw an exception with a message that we can show
+      ;; to the user
       (and (not= (:dataset-filters-type details) "all")
            (nil? (first datasets)))
       (throw (Exception. (tru "Looks like we cannot find any matching datasets.")))
