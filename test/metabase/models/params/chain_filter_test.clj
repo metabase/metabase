@@ -605,12 +605,14 @@
           fvs              (t2/select FieldValues :field_id field-id)]
       (t2/delete! FieldValues :field_id field-id)
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
-      ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
+      ;; from changing this to `nil` if the field is `auto-list` and exceeds thresholds
       (t2/update! Field field-id {:has_field_values "list"})
       (try
         (thunk)
         (finally
          (t2/update! Field field-id {:has_field_values has_field_values})
+         ;; paranoia due to https://github.com/metabase/metabase/actions/runs/7559357145/job/20583009098?pr=37794
+         (t2/delete! FieldValues :field_id field-id)
          (t2/insert! FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field
