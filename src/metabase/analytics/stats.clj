@@ -124,7 +124,7 @@
     (config/config-str :database-url)        :heroku ;; Putting this last as 'database-url' seems least specific
     :else                                    :unknown))
 
-(def ^:private ui-colors [:brand :filter :summarize])
+(def ^:private ui-colors #{:brand :filter :summarize})
 
 (defn appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
