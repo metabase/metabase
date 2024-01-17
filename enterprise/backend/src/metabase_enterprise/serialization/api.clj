@@ -118,25 +118,27 @@
 (defendpoint2 POST "/export"
   "Serialize and retrieve Metabase instance.
 
-  Parameters:
-  - `dirname`: str, name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)
-  - `all_collections`: bool, serialize all collections (default: true, unless you specify `collection`)
-  - `collection`: array of int, db id of a collection to serialize
-  - `settings`: bool, if Metabase settings should be serialized (default: `true`)
-  - `data_model`: bool, if Metabase data model should be serialized (default: `true`)
-  - `field_values`: bool, if cached field values should be serialized (default: `false`)
-  - `database_secrets`: bool, if details how to connect to each db should be serialized (default: `false`)
-
   Outputs .tar.gz file with serialization results and an `export.log` file.
   On error just returns serialization logs."
-  [{:query-params {collection       [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} ms/PositiveInt]]
-                   all_collections  [:and {:default true} ms/BooleanValue]
-                   settings         [:and {:default true} ms/BooleanValue]
-                   data_model       [:and {:default true} ms/BooleanValue]
-                   field_values     [:maybe ms/BooleanValue]
-                   database_secrets [:maybe ms/BooleanValue]
-                   dirname          [:maybe string?]
-                   :as query}}]
+  [{:query-params {collection       [:maybe {:mb/doc "[int], db id of a collection to serialize"}
+                                     (ms/QueryVector ms/PositiveInt)]
+                   all_collections  [:and {:mb/doc "bool, serialize all collections, discarded when `collection` is specified"
+                                           :default true}
+                                     ms/BooleanValue]
+                   settings         [:and {:mb/doc "bool, if Metabase settings should be serialized"
+                                           :default true}
+                                     ms/BooleanValue]
+                   data_model       [:and {:mb/doc "bool, if Metabase data model should be serialized"
+                                           :default true}
+                                     ms/BooleanValue]
+                   field_values     [:and {:mb/doc "bool, if cached field values should be serialized"
+                                           :default false}
+                                     ms/BooleanValue]
+                   database_secrets [:and {:mb/doc "bool, if details how to connect to each db should be serialized"
+                                           :default false}
+                                     ms/BooleanValue]
+                   dirname          [:maybe {:mb/doc "string, name of a directory and an archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
+                                     string?]}}]
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)

@@ -10,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [ring.middleware.multipart-params :as mp]))
+   [ring.middleware.multipart-params :as mp]
+   [metabase.util.malli.describe :as umd]))
 
 ;;; almost a copy of malli.experimental.lite, but optional is defined by [:maybe]
 
@@ -72,6 +73,38 @@
        ~'value      (get-in ~'req1 [:body-params :some :inner :value])
        ~'req        ~'req1]))
 
+;;; Documentation
+
+(defn- schema-dox [schema]
+  (let [opts (when (vector? schema) (second schema))]
+    (if (map? opts)
+      (str (:mb/doc opts (umd/describe schema))
+           (when (:default opts)
+             (format " (default: %s)" (:default opts))))
+      (umd/describe schema))))
+
+(defn route-dox
+  "Prints a markdown route doc for defendpoint2"
+  [method route docstr schemas body]
+  (let [route-str (#'internal/endpoint-name method route)]
+    (apply str
+           (format "## `%s`\n\n" route-str)
+           (u/add-period docstr)
+           (when (#'internal/contains-superuser-check? body)
+             "\n\nYou must be a superuser to do this.")
+           (for [[k param->schema] schemas]
+             (str (case k
+                    :query-params "\n\n### Query Parameters\n"
+                    :body-params  "\n\n### Body Parameters\n")
+                  (str/join "\n"
+                            (for [[param schema] param->schema]
+                              (format "- **`%s`** - %s"
+                                      (name param)
+                                      #_{:clj-kondo/ignore [:discouraged-var]}
+                                      (schema-dox (eval schema))))))))))
+
+;;; Schema handling
+
 (def ^:private MTX
   (mtx/transformer
    (mtx/key-transformer {:decode keyword})
@@ -102,20 +135,20 @@
          (comment req respond raise)
          )))))
 
+;;; Macro
+
 (defn- parse-defendpoint-args [args]
   (let [{:keys [method route docstr args body] :as parsed} (s/conform ::defendpoint-args args)]
     (when (= parsed ::s/invalid)
       (throw (ex-info (str "Invalid defendpoint args: " (s/explain-str ::defendpoint-args args))
                       (s/explain-data ::defendpoint-args args))))
-    (let [fn-name   (internal/route-fn-name method route)
-          schemas   (make-schemas (first args))
-          req-sym   (:as (first args) (gensym "req"))
-          bindings  (make-bindings req-sym (first args))
-          args      (into [req-sym] (rest args))
-          #_#_
-          docstr    (internal/route-dox method route docstr args
-                                        schemas
-                                        body)]
+    (let [fn-name      (internal/route-fn-name method route)
+          orig-schemas (first args)
+          schemas      (make-schemas orig-schemas)
+          req-sym      (gensym "req")
+          bindings     (make-bindings req-sym (first args))
+          args         (into [req-sym] (rest args))
+          docstr       (route-dox method route docstr orig-schemas body)]
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
