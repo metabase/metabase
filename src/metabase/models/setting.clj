@@ -255,6 +255,7 @@
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
+   :export?     s/Bool           ; should this setting be serialized?
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
@@ -280,11 +281,7 @@
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))
-
-   ;; TODO: make this required and deprecate setting/exported-setting
-   (s/optional-key :export?)     s/Bool ; should this setting be serialized?
-   })
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -890,6 +887,7 @@
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :export?        false
                  :sensitive?     false
                  :cache?         true
                  :feature        nil
@@ -1055,6 +1053,10 @@
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
+
+  ###### `:export?`
+
+  Whether this Setting is included when producing a serializing settings export.
 
   ###### `:getter`
 
