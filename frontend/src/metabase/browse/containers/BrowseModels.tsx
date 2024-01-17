@@ -50,9 +50,8 @@ type RenderItemFunction = (
   },
 ) => JSX.Element | null;
 
-/** The objects used to construct the grid.
- * Most of these are models but there are other objects added in too,
- * to generate headers and blank cells (represented by null). */
+/** The objects used to construct the grid. Most of these are models,
+ * but there are other values added in, to generate headers and blank cells */
 type GridItem = Model | HeaderGridItem | "blank" | "header-blank";
 
 export const BrowseModels = ({
