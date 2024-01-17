@@ -38,6 +38,7 @@ import type {
   SegmentDisplayInfo,
   TableDisplayInfo,
   TableMetadata,
+  QueryDisplayInfo,
 } from "./types";
 
 export function metadataProvider(
@@ -139,6 +140,18 @@ declare function DisplayInfoFn(
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
+/**
+ * Even though it seems weird to pass the same query two times,
+ * this function follows the same pattern as the other displayInfo functions.
+ * The first two parameters are always a query, and a stage.
+ * The third parameter is what you would like to have info about.
+ * It just only happens that the thing we're examining is (again) the query itself.
+ */
+declare function DisplayInfoFn(
+  _query: Query,
+  _stageIndex: number,
+  query: Query,
+): QueryDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema

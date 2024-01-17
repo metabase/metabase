@@ -507,3 +507,8 @@ export interface FieldValuesSearchInfo {
   searchFieldId: FieldId | null;
   hasFieldValues: FieldValuesType;
 }
+
+export type QueryDisplayInfo = {
+  isNative: boolean;
+  isEditable: boolean;
+};
