@@ -595,42 +595,6 @@
          :render/text (str (format-cell timezone-id last-value metric-col viz-settings)
                            "\n" (trs "Nothing to compare to."))}))))
 
-(s/defmethod render :waterfall :- formatter/RenderedPulseCard
-  [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [[x-axis-rowfn
-         y-axis-rowfn] (formatter/graphing-column-row-fns card data)
-        [x-col y-col]  ((juxt x-axis-rowfn y-axis-rowfn) cols)
-        rows           (map (juxt x-axis-rowfn y-axis-rowfn)
-                            (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
-        labels         (x-and-y-axis-label-info x-col y-col viz-settings)
-        waterfall-type (if (isa? (-> cols x-axis-rowfn :effective_type) :type/Temporal)
-                         :timeseries
-                         :categorical)
-        show-total     (if (nil? (:waterfall.show_total viz-settings))
-                         true
-                         (:waterfall.show_total viz-settings))
-        settings       (-> (->js-viz x-col y-col viz-settings)
-                           (update :colors assoc
-                                   :waterfallTotal (:waterfall.total_color viz-settings)
-                                   :waterfallPositive (:waterfall.increase_color viz-settings)
-                                   :waterfallNegative (:waterfall.decrease_color viz-settings))
-                           (assoc :showTotal show-total)
-                           (assoc :show_values (boolean (:graph.show_values viz-settings))))
-        image-bundle   (image-bundle/make-image-bundle
-                        render-type
-                        (js-svg/waterfall rows
-                                          labels
-                                          settings
-                                          waterfall-type))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
-
 (s/defmethod render :funnel :- formatter/RenderedPulseCard
   [_ render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
