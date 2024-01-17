@@ -56,7 +56,7 @@ export type DimensionModel = {
 };
 
 export type Datum = Record<DataKey, RowValue>;
-export type GroupedDataset = Datum[];
+export type ChartDataset = Datum[];
 export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type AxisFormatter = (value: RowValue) => string;
@@ -80,8 +80,8 @@ export type CartesianChartModel = {
   dimensionModel: DimensionModel;
   seriesModels: SeriesModel[];
   columnByDataKey: Record<DataKey, DatasetColumn>;
-  dataset: GroupedDataset;
-  transformedDataset: GroupedDataset;
+  dataset: ChartDataset;
+  transformedDataset: ChartDataset;
 
   leftAxisModel: YAxisModel | null;
   rightAxisModel: YAxisModel | null;
