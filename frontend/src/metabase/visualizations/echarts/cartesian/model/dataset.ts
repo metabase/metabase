@@ -4,13 +4,14 @@ import type {
   RawSeries,
   RowValue,
   SingleSeries,
+  XAxisScale,
 } from "metabase-types/api";
 import type {
   CartesianChartModel,
   DataKey,
   DimensionModel,
   Extent,
-  GroupedDataset,
+  ChartDataset,
   SeriesExtents,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -118,12 +119,12 @@ const aggregateColumnValuesForDatum = (
  *
  * @param {RawSeries} rawSeries - An array of raw cards merged with raw datasets.
  * @param {CartesianChartColumns[]} cardsColumns - The column descriptors of each card.
- * @returns {Record<DataKey, RowValue>[]} The aggregated dataset.
+ * @returns {ChartDataset} The aggregated dataset.
  */
 export const getJoinedCardsDataset = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],
-): Record<DataKey, RowValue>[] => {
+): ChartDataset => {
   if (rawSeries.length === 0 || cardsColumns.length === 0) {
     return [];
   }
@@ -177,9 +178,118 @@ export const getJoinedCardsDataset = (
   return Array.from(groupedData.values());
 };
 
+type TransformFn = (
+  record: Record<DataKey, RowValue>,
+  index: number,
+  dataset: ChartDataset,
+) => Record<DataKey, RowValue>;
+
+type ConditionalTransform = {
+  condition: boolean;
+  fn: TransformFn;
+};
+
+export const transformDataset = (
+  dataset: ChartDataset,
+  transforms: (TransformFn | ConditionalTransform)[],
+): ChartDataset => {
+  // Filter out transforms that don't apply
+  const effectiveTransforms = transforms
+    .map(transform => {
+      if (typeof transform === "function") {
+        return transform;
+      } else if (transform.condition) {
+        return transform.fn;
+      } else {
+        return null;
+      }
+    })
+    .filter(isNotNull);
+
+  // Apply the filtered transforms
+  return dataset.map((record, index) => {
+    return effectiveTransforms.reduce((acc, transform) => {
+      return transform(acc, index, dataset);
+    }, record);
+  });
+};
+
+const getNumberOrZero = (value: RowValue): number =>
+  typeof value === "number" ? value : 0;
+
+export const computeTotal = (
+  row: Record<DataKey, RowValue>,
+  keys: DataKey[],
+): number => keys.reduce((total, key) => total + getNumberOrZero(row[key]), 0);
+
+export const getNormalizedDatasetTransform = (
+  seriesDataKeys: DataKey[],
+  dimensionKey: DataKey,
+): TransformFn => {
+  return datum => {
+    const total = computeTotal(datum, seriesDataKeys);
+
+    // Copy the dimension value
+    const normalizedDatum: Record<DataKey, RowValue> = {
+      [dimensionKey]: datum[dimensionKey],
+    };
+
+    // Compute normalized values for metrics
+    return seriesDataKeys.reduce((acc, key) => {
+      const numericValue = getNumberOrZero(datum[key]);
+      acc[key] = numericValue / total;
+      return acc;
+    }, normalizedDatum);
+  };
+};
+
+export const getKeyBasedDatasetTransform = (
+  keys: DataKey[],
+  valueTransform: (value: RowValue) => RowValue,
+): TransformFn => {
+  return datum => {
+    const transformedRecord = { ...datum };
+    for (const key of keys) {
+      if (key in datum) {
+        transformedRecord[key] = valueTransform(datum[key]);
+      }
+    }
+    return transformedRecord;
+  };
+};
+
+export const getNullReplacerTransform = (
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+): TransformFn => {
+  const replaceNullsWithZeroDataKeys = seriesModels.reduce(
+    (seriesDataKeys, seriesModel) => {
+      const shouldReplaceNullsWithZeros =
+        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
+          "line.missing"
+        ] === "zero";
+
+      if (shouldReplaceNullsWithZeros) {
+        seriesDataKeys.push(seriesModel.dataKey);
+      }
+
+      return seriesDataKeys;
+    },
+    [] as DataKey[],
+  );
+
+  return getKeyBasedDatasetTransform(
+    replaceNullsWithZeroDataKeys,
+    (value: RowValue) => {
+      return value === null ? 0 : value;
+    },
+  );
+};
+
 export const applySquareRootScaling = (value: RowValue): RowValue => {
   if (typeof value === "number") {
-    return Math.sqrt(value);
+    const sign = value > 0 ? 1 : -1;
+    return sign * Math.sqrt(Math.abs(value));
   }
 
   return value;
@@ -188,81 +298,80 @@ export const applySquareRootScaling = (value: RowValue): RowValue => {
 /**
  * Modifies the dataset for visualization according to the specified visualization settings.
  *
- * @param {Record<DataKey, RowValue>[]} dataset The dataset to be transformed.
+ * @param {ChartDataset} dataset The dataset to be transformed.
  * @param {SeriesModel[]} seriesModels Array of series models.
  * @param {ComputedVisualizationSettings} settings Computed visualization settings.
  * @param {DimensionModel} dimensionModel The dimension model.
- * @returns {Record<DataKey, RowValue>[]} A transformed dataset.
+ * @returns {ChartDataset} A transformed dataset.
  */
 export const getTransformedDataset = (
-  dataset: Record<DataKey, RowValue>[],
+  dataset: ChartDataset,
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
   dimensionModel: DimensionModel,
-): Record<DataKey, RowValue>[] => {
+): ChartDataset => {
   const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
-  const seriesDataKeysSet = new Set(seriesDataKeys);
 
-  let transformedDataset = replaceValues(
-    dataset,
-    getNullReplacerFunction(settings, seriesModels),
-  );
+  return transformDataset(dataset, [
+    getNullReplacerTransform(settings, seriesModels),
+    {
+      condition: settings["stackable.stack_type"] === "normalized",
+      fn: getNormalizedDatasetTransform(seriesDataKeys, dimensionModel.dataKey),
+    },
+    {
+      condition: settings["graph.y_axis.scale"] === "pow",
+      fn: getKeyBasedDatasetTransform(seriesDataKeys, applySquareRootScaling),
+    },
+    {
+      condition: settings["graph.x_axis.scale"] === "pow",
+      fn: getKeyBasedDatasetTransform(
+        [dimensionModel.dataKey],
+        applySquareRootScaling,
+      ),
+    },
+  ]);
+};
 
-  if (settings["stackable.stack_type"] === "normalized") {
-    transformedDataset = getNormalizedDataset(
-      transformedDataset,
-      seriesDataKeys,
-      dimensionModel.dataKey,
-    );
+export const sortDataset = (
+  dataset: ChartDataset,
+  dimensionKey: DataKey,
+  xAxisScale?: XAxisScale,
+) => {
+  if (xAxisScale === "timeseries") {
+    return sortByDimension(dataset, dimensionKey, (left, right) => {
+      if (typeof left === "string" && typeof right === "string") {
+        return dayjs(left).valueOf() - dayjs(right).valueOf();
+      }
+      return 0;
+    });
   }
 
-  if (settings["graph.y_axis.scale"] === "pow") {
-    transformedDataset = replaceValues(
-      transformedDataset,
-      (dataKey: DataKey, value: RowValue) =>
-        seriesDataKeysSet.has(dataKey) ? applySquareRootScaling(value) : value,
-    );
+  if (xAxisScale !== "ordinal") {
+    return sortByDimension(dataset, dimensionKey, (left, right) => {
+      if (typeof left === "number" && typeof right === "number") {
+        return left - right;
+      }
+      return 0;
+    });
   }
 
-  // only scatter plot can have `pow` for `x_axis.scale`
-  if (settings["graph.x_axis.scale"] === "pow") {
-    transformedDataset = replaceValues(
-      transformedDataset,
-      (dataKey: string, value: RowValue) =>
-        dataKey === dimensionModel.dataKey
-          ? applySquareRootScaling(value)
-          : value,
-    );
-  }
-
-  if (settings["graph.x_axis.scale"] === "timeseries") {
-    transformedDataset = sortTimeSeriesDataset(
-      transformedDataset,
-      dimensionModel.dataKey,
-    );
-  }
-  return transformedDataset;
+  return dataset;
 };
 
 /**
  * Sorts a dataset by the specified time-series dimension.
  * @param {Record<DataKey, RowValue>[]} dataset The dataset to be sorted.
  * @param {DataKey} dimensionKey The time-series dimension key.
+ * @param compareFn Sort compare function.
  * @returns A sorted dataset.
  */
-const sortTimeSeriesDataset = (
+const sortByDimension = (
   dataset: Record<DataKey, RowValue>[],
   dimensionKey: DataKey,
+  compareFn: (a: RowValue, b: RowValue) => number,
 ): Record<DataKey, RowValue>[] => {
   return dataset.sort((left, right) => {
-    const leftValue = left[dimensionKey];
-    const rightValue = right[dimensionKey];
-
-    if (typeof leftValue === "string" && typeof rightValue === "string") {
-      return dayjs(leftValue).valueOf() - dayjs(rightValue).valueOf();
-    }
-
-    return 0;
+    return compareFn(left[dimensionKey], right[dimensionKey]);
   });
 };
 
@@ -292,8 +401,13 @@ export const getMetricDisplayValueGetter = (
 ) => {
   const isPowerScale = settings["graph.y_axis.scale"] === "pow";
 
-  const powerScaleGetter = (value: RowValue) =>
-    typeof value === "number" ? Math.pow(value, 2) : value;
+  const powerScaleGetter = (value: RowValue) => {
+    if (typeof value !== "number") {
+      return value;
+    }
+    const sign = value > 0 ? 1 : -1;
+    return Math.pow(value, 2) * sign;
+  };
 
   return isPowerScale ? powerScaleGetter : (value: RowValue) => value;
 };
@@ -360,92 +474,15 @@ export const replaceValues = (
 };
 
 /**
- * Creates a replacer function that replaces null values with zeros for specified series.
- *
- * @param {ComputedVisualizationSettings} settings - The computed visualization settings.
- * @param {SeriesModel[]} seriesModels - The series models for the chart.
- * @returns {ReplacerFn} A replacer function that replaces null values with zeros for specified series.
- */
-export const getNullReplacerFunction = (
-  settings: ComputedVisualizationSettings,
-  seriesModels: SeriesModel[],
-): ReplacerFn => {
-  const replaceNullsWithZeroDataKeys = seriesModels.reduce(
-    (seriesDataKeys, seriesModel) => {
-      const shouldReplaceNullsWithZeros =
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-          "line.missing"
-        ] === "zero";
-
-      if (shouldReplaceNullsWithZeros) {
-        seriesDataKeys.add(seriesModel.dataKey);
-      }
-
-      return seriesDataKeys;
-    },
-    new Set<DataKey>(),
-  );
-
-  return (dataKey, value) => {
-    if (replaceNullsWithZeroDataKeys.has(dataKey) && value === null) {
-      return 0;
-    }
-
-    return value;
-  };
-};
-
-const getNumericValue = (value: RowValue): number =>
-  typeof value === "number" ? value : 0;
-
-export const computeTotal = (
-  row: Record<DataKey, RowValue>,
-  keys: DataKey[],
-): number => keys.reduce((total, key) => total + getNumericValue(row[key]), 0);
-
-/**
- * Creates a new normalized dataset for the specified series keys, where the values of each series
- * are represented as percentages of their total sum for a given dimension value.
- * This normalized dataset is necessary for rendering normalized stacked bar and area charts,
- * where each series value contributes to a percentage of the whole for that specific dimension value.
- *
- * @param {Record<DataKey, RowValue>[]} groupedData - The original non-normalized dataset.
- * @param {DataKey[]} normalizedSeriesKeys - The keys of the series to normalize.
- * @param {DataKey} dimensionKey - The key of the dimension value to include in the normalized dataset.
- * @returns {Record<DataKey, RowValue>[]} The normalized dataset.
- */
-export const getNormalizedDataset = (
-  groupedData: Record<DataKey, RowValue>[],
-  normalizedSeriesKeys: DataKey[],
-  dimensionKey: DataKey,
-): Record<DataKey, RowValue>[] => {
-  return groupedData.map(row => {
-    const total = computeTotal(row, normalizedSeriesKeys);
-
-    // Copy the dimension value
-    const normalizedDatum: Record<DataKey, RowValue> = {
-      [dimensionKey]: row[dimensionKey],
-    };
-
-    // Compute normalized values for metrics
-    return normalizedSeriesKeys.reduce((acc, key) => {
-      const numericValue = getNumericValue(row[key]);
-      acc[key] = numericValue / total;
-      return acc;
-    }, normalizedDatum);
-  });
-};
-
-/**
  * Calculates the minimum and maximum values (extents) for each series in the dataset.
  *
  * @param {DataKey[]} keys - The keys of the series to calculate extents for.
- * @param {GroupedDataset} dataset - The dataset containing the series data.
+ * @param {ChartDataset} dataset - The dataset containing the series data.
  * @returns {SeriesExtents} Series extent by a series data key.
  */
 export const getDatasetExtents = (
   keys: DataKey[],
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
 ): SeriesExtents => {
   const extents: SeriesExtents = {};
 
@@ -515,7 +552,7 @@ export const getCardsColumnByDataKeyMap = (
 
 export const getBubbleSizeDomain = (
   seriesModels: SeriesModel[],
-  dataset: GroupedDataset,
+  dataset: ChartDataset,
 ): Extent | null => {
   const bubbleSizeDataKeys = seriesModels
     .map(seriesModel =>

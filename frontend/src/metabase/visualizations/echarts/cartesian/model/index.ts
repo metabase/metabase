@@ -16,6 +16,7 @@ import {
   getJoinedCardsDataset,
   getSortedSeriesModels,
   getTransformedDataset,
+  sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getXAxisModel,
@@ -98,6 +99,11 @@ export const getCartesianChartModel = (
     default:
       dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
   }
+  dataset = sortDataset(
+    dataset,
+    dimensionModel.dataKey,
+    settings["graph.x_axis.scale"],
+  );
 
   const transformedDataset = getTransformedDataset(
     dataset,
