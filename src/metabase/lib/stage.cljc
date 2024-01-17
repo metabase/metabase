@@ -332,8 +332,7 @@
   "Is the given query stage empty of clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
-  (every? #(nil? (get (lib.util/query-stage query stage-number) %))
-          [:expressions :filters :limit :breakout :aggregation :joins :order-by :fields]))
+  (empty? (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card)))
 
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
