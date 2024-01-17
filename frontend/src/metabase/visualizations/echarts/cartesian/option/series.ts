@@ -18,7 +18,7 @@ import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants
 
 import { buildEChartsScatterSeries } from "../scatter/series";
 import { buildEChartsWaterfallSeries } from "../waterfall/series";
-import type { WaterfallChartModel } from "../waterfall/types";
+import { checkWaterfallChartModel } from "../waterfall/utils";
 import { getSeriesYAxisIndex } from "./utils";
 
 export function getDataLabelFormatter(
@@ -240,7 +240,7 @@ export const buildEChartsSeries = (
             seriesModel,
             chartModel.dataset,
             settings,
-            (chartModel as WaterfallChartModel).total, // TODO remove the typecast later after refactoring
+            checkWaterfallChartModel(chartModel).total,
             renderingContext,
           );
       }
