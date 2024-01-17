@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { cloneElement, useContext, useEffect, useState } from "react";
 
 import _ from "underscore";
 import { t } from "ttag";
@@ -11,12 +11,13 @@ import {
   AutoSizer,
 } from "react-virtualized";
 import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import type { Collection, CollectionItem } from "metabase-types/api";
+import type { CollectionItem } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
@@ -45,13 +46,9 @@ type RenderItemFunction = (
     columnCount: number;
     gridGapSize?: number;
     groupLabel?: string;
-    items: GridItem[];
+    cells: Cell[];
   },
 ) => JSX.Element | null;
-
-/** The objects used to construct the grid. Most of these are models,
- * but there are other values added in, to generate headers and blank cells */
-type GridItem = Model | HeaderGridItem | "blank" | "header-blank";
 
 const emptyArray: Model[] = [];
 
@@ -60,6 +57,9 @@ export const BrowseModels = ({
   error,
   isLoading,
 }: ReturnType<typeof useSearchListQuery>) => {
+  // This provides a ref to the <main> rendered by AppContent in App.tsx
+  const contentViewport = useContext(ContentViewportContext);
+
   const rem = parseInt(space(2));
   const gridGapSize = rem;
   const itemMinWidth = 15 * rem;
@@ -68,16 +68,24 @@ export const BrowseModels = ({
 
   useEffect(() => {
     const configureGrid = () => {
-      const gridOptions = getGridOptions(models, gridGapSize, itemMinWidth);
+      if (!contentViewport) {
+        return;
+      }
+      const gridOptions = getGridOptions(
+        models,
+        gridGapSize,
+        itemMinWidth,
+        contentViewport,
+      );
       setGridOptions(gridOptions);
     };
     configureGrid();
     window.addEventListener("resize", configureGrid);
     return () => window.removeEventListener("resize", configureGrid);
-  }, [models, gridGapSize, itemMinWidth]);
+  }, [models, gridGapSize, itemMinWidth, contentViewport]);
 
   const [gridOptions, setGridOptions] = useState<{
-    gridItems: GridItem[];
+    cells: Cell[];
     width: number;
     columnWidth: number;
     columnCount: number;
@@ -92,14 +100,11 @@ export const BrowseModels = ({
     );
   }
 
-  // TODO: Probably use a ref
-  const scrollElement = document.getElementsByTagName("main")[0];
-
-  const { gridItems: items, columnCount } = gridOptions;
+  const { cells, columnCount } = gridOptions;
 
   const getRowHeight = ({ index: rowIndex }: { index: number }) => {
     const cellIndex = rowIndex * columnCount;
-    return gridItemIsInHeaderRow(items[cellIndex])
+    return cellIsInHeaderRow(cells[cellIndex])
       ? headerHeight
       : defaultItemHeight;
   };
@@ -107,14 +112,14 @@ export const BrowseModels = ({
   const cellRenderer = (props: GridCellProps) =>
     renderItem({
       ...props,
-      items,
+      cells,
       columnCount,
     });
 
   return (
     <GridContainer>
-      {items.length ? (
-        <WindowScroller scrollElement={scrollElement}>
+      {cells.length && contentViewport ? (
+        <WindowScroller scrollElement={contentViewport}>
           {({ height, isScrolling, onChildScroll, scrollTop }) => (
             <AutoSizer disableHeight>
               {() => (
@@ -145,24 +150,13 @@ export const BrowseModels = ({
   );
 };
 
-const ModelCell = ({
-  rowIndex,
-  columnIndex,
-  columnCount,
-  items: models,
-  style,
-}: {
-  rowIndex: number;
-  columnIndex: number;
-  columnCount: number;
-  items: Model[];
-  style: React.CSSProperties;
-}) => {
-  const index = rowIndex * columnCount + columnIndex;
-  if (index >= models.length) {
-    return null;
-  }
-  const model = addLastEditInfo(models[index]);
+interface ModelCellProps {
+  model: Model;
+  style?: React.CSSProperties;
+}
+
+const ModelCell = ({ model, style }: ModelCellProps) => {
+  const modelWithHistory = addLastEditInfo(model);
   return (
     <Link
       key={model.id}
@@ -185,8 +179,8 @@ const ModelCell = ({
         </Text>
         <LastEditInfoLabel
           prefix={null}
-          item={model}
-          fullName={model["last-edit-info"].full_name}
+          item={modelWithHistory}
+          fullName={modelWithHistory["last-edit-info"].full_name}
           className={"last-edit-info-label-button"}
           // TODO: Simplify the formatLabel prop
           formatLabel={(
@@ -263,19 +257,24 @@ const CollectionHeader = ({
   style,
 }: {
   groupLabel: string;
-  style: React.CSSProperties;
+  style?: React.CSSProperties;
 }) => (
   <div className="model-group-header" style={style}>
     <h4>{groupLabel}</h4>
   </div>
 );
 
-interface HeaderGridItem {
-  collection: Collection | null | undefined;
-}
+const BlankCell = (props: { style?: React.CSSProperties }) => (
+  <div {...props} />
+);
+const BlankCellInHeader = (props: { style?: React.CSSProperties }) => (
+  <div {...props} />
+);
 
-const makeGridItems = (models: Model[], columnCount: number): GridItem[] => {
-  const gridItems: GridItem[] = [];
+type Cell = React.ReactElement | null;
+
+const makeCells = (models: Model[], columnCount: number): Cell[] => {
+  const cells: Cell[] = [];
   for (
     let i = 0, columnIndex = 0;
     i < models.length;
@@ -292,44 +291,37 @@ const makeGridItems = (models: Model[], columnCount: number): GridItem[] => {
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
-      const header: HeaderGridItem = {
-        collection: model.collection,
-      };
+      const header = (
+        <CollectionHeader
+          groupLabel={model.collection?.name || "Untitled collection"}
+        />
+      );
       // So that the collection header appears at the start of the row,
       // add zero or more blank items to fill in the rest of the previous row
       if (columnIndex > 0) {
-        gridItems.push(...Array(columnCount - columnIndex).fill("blank"));
+        cells.push(...Array(columnCount - columnIndex).fill(<BlankCell />));
       }
-      gridItems.push(header);
+      cells.push(header);
       // Fill in the rest of the header row with blank items
-      gridItems.push(...Array(columnCount - 1).fill("header-blank"));
+      cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
       columnIndex = 0;
     }
-    gridItems.push(model);
+    cells.push(<ModelCell model={model} />);
   }
-  return gridItems;
+  return cells;
 };
 
-const gridItemIsHeader = (item: GridItem): item is HeaderGridItem =>
-  item !== "blank" &&
-  item !== "header-blank" &&
-  (item as Model).model === undefined;
-
-const gridItemIsInHeaderRow = (item: GridItem) =>
-  gridItemIsHeader(item) || item === "header-blank";
-
-const gridItemIsBlank = (item: GridItem) =>
-  item === "blank" || item === "header-blank";
+const cellIsInHeaderRow = (item: Cell) =>
+  item?.type === CollectionHeader || item?.type === BlankCellInHeader;
 
 const getGridOptions = (
   models: Model[],
   gridGapSize: number,
   itemMinWidth: number,
+  contentViewport: HTMLElement,
 ) => {
-  // TODO: use a ref
-  const width =
-    (document.querySelector("[data-testid='browse-data']")?.clientWidth ?? 0) -
-    gridGapSize;
+  const browseAppRoot = contentViewport.children[0];
+  const width = browseAppRoot.clientWidth - gridGapSize;
 
   const calculateColumnCount = (width: number) => {
     return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
@@ -355,13 +347,13 @@ const getGridOptions = (
 
   const columnCount = calculateColumnCount(width);
   const columnWidth = calculateItemWidth(width, columnCount);
-  const gridItems = makeGridItems(sortedModels, columnCount);
-  const rowCount = Math.ceil(gridItems.length / columnCount);
+  const cells = makeCells(sortedModels, columnCount);
+  const rowCount = Math.ceil(cells.length / columnCount);
 
   return {
     columnCount,
     columnWidth,
-    gridItems,
+    cells,
     rowCount,
     width,
   };
@@ -370,36 +362,16 @@ const getGridOptions = (
 const renderItem: RenderItemFunction = ({
   columnCount,
   columnIndex,
-  items,
+  cells,
   rowIndex,
   style,
 }) => {
   const index = rowIndex * columnCount + columnIndex;
-  const item = items[index];
-  if (!item) {
-    return null;
-  }
-  if (gridItemIsBlank(item)) {
-    return <div style={style}></div>;
-  }
-  if (gridItemIsHeader(item)) {
-    return (
-      <CollectionHeader
-        groupLabel={item.collection?.name || "Untitled collection"}
-        style={style}
-      />
-    );
-  } else {
-    return (
-      <ModelCell
-        rowIndex={rowIndex}
-        columnIndex={columnIndex}
-        columnCount={columnCount}
-        items={items as Model[]}
-        style={style}
-      />
-    );
-  }
+  const cell = cells[index];
+  return cell
+    ? // Render the component with the style prop provided by the grid
+      cloneElement(cell as React.ReactElement, { style })
+    : null;
 };
 
 const addLastEditInfo = (model: Model): CollectionItemWithLastEditedInfo => ({

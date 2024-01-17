@@ -22,7 +22,7 @@ export default function BrowseHeader({ crumbs = [] }) {
         ) : (
           <SimpleBrowseHeader className="text-dark">{t`Browse data`}</SimpleBrowseHeader>
         )}
-        <div className="flex flex-align-right">
+        <div className="flex flex-align-right" style={{ flexBasis: "40.0%" }}>
           <Link
             className="flex flex-align-right"
             to="reference"

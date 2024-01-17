@@ -111,7 +111,14 @@ export const CenteredEmptyState = styled(EmptyState)`
 export const GridContainer = styled.div`
   flex: 1;
   display: flex;
+  ${breakpointMinSmall} {
+    padding-bottom: 1rem;
+  }
+  ${breakpointMinMedium} {
+    padding-bottom: 3rem;
+  }
 
+  // TODO: Check this applies in the expected way
   > div {
     height: unset !important;
   }
@@ -121,6 +128,7 @@ export const GridContainer = styled.div`
     overflow: visible !important;
   }
 
+  // TODO: Move to separate styled component
   .model-group-header {
     &:not(:first-of-type) {
       border-top: 1px solid #f0f0f0;
