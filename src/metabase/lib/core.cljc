@@ -69,6 +69,7 @@
  [lib.aggregation
   aggregate
   aggregation-clause
+  aggregation-column
   aggregation-ref
   aggregation-operator-columns
   aggregations
@@ -96,6 +97,7 @@
   with-binning]
  [lib.breakout
   breakout
+  breakout-column
   breakoutable-columns
   breakouts
   breakouts-metadata]
