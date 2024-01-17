@@ -3,6 +3,7 @@ import type {
   DatasetData,
   RowValue,
   RawSeries,
+  DatasetColumn,
 } from "metabase-types/api";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
@@ -21,23 +22,25 @@ import {
 } from "metabase/visualizations/shared/settings/series";
 
 export const getSeriesVizSettingsKey = (
-  columnNameOrFormattedBreakoutValue: string,
-  isFirstCard: boolean,
+  column: DatasetColumn,
   hasMultipleCards: boolean,
   metricsCount: number,
-  isBreakoutSeries: boolean,
+  breakoutName: string | null,
   cardName?: string,
 ): VizSettingsKey => {
+  const isBreakoutSeries = breakoutName != null;
   const isSingleMetricCard = metricsCount === 1 && !isBreakoutSeries;
 
   // When multiple cards are combined and one of them is a single metric card without a breakout,
   // the default series name is the card name.
   if (hasMultipleCards && isSingleMetricCard) {
-    return cardName ?? columnNameOrFormattedBreakoutValue;
+    return cardName ?? column.name;
   }
-  // When multiple cards are combined on a dashboard, all cards
-  // except the first include the card name in the viz settings key.
-  const prefix = isFirstCard || cardName == null ? "" : `${cardName}: `;
+
+  const prefix = hasMultipleCards && cardName != null ? `${cardName}: ` : "";
+  const columnNameOrFormattedBreakoutValue =
+    breakoutName ?? (hasMultipleCards ? column.display_name : column.name);
+
   return prefix + columnNameOrFormattedBreakoutValue;
 };
 
@@ -108,11 +111,10 @@ export const getCardSeriesModels = (
   if (!hasBreakout) {
     return columns.metrics.map(metric => {
       const vizSettingsKey = getSeriesVizSettingsKey(
-        metric.column.name,
-        isFirstCard,
+        metric.column,
         hasMultipleCards,
         columns.metrics.length,
-        false,
+        null,
         card.name,
       );
       const legacySeriesSettingsObjectKey =
@@ -159,11 +161,10 @@ export const getCardSeriesModels = (
     });
 
     const vizSettingsKey = getSeriesVizSettingsKey(
-      formattedBreakoutValue,
-      isFirstCard,
+      metric.column,
       hasMultipleCards,
       1,
-      true,
+      formattedBreakoutValue,
       card.name,
     );
     const legacySeriesSettingsObjectKey =
