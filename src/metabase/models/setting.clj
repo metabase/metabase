@@ -549,7 +549,6 @@
      (when (pred v)
        v))))
 
-;; TODO: perhaps rename to read-value-of-type, along with "get-raw-value' ?
 (defmulti get-value-of-type
   "Get the value of `setting-definition-or-name` as a value of type `setting-type`. This is used as the default getter
   for Settings with `setting-type`.
@@ -612,9 +611,7 @@
   [_setting-type setting-definition-or-name]
   (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
 
-(defmulti getter-for-type "blah blah" keyword)
-
-(defmethod getter-for-type :default [setting-type]
+(defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
 
 (defn get
@@ -886,7 +883,7 @@
                  :type           setting-type
                  :default        default
                  :on-change      nil
-                 :getter         (partial (getter-for-type setting-type) setting-name)
+                 :getter         (partial (default-getter-for-type setting-type) setting-name)
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin

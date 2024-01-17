@@ -121,22 +121,17 @@
   :default    false
   :audit      :never)
 
+;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
 (defmethod setting/get-value-of-type ::uuid-nonce
   [_ setting]
-  (setting/get-value-of-type :string setting))
+  (or (setting/get-value-of-type :string setting)
+      (let [value (str (random-uuid))]
+        (setting/set-value-of-type! :string setting value)
+        value)))
 
 (defmethod setting/set-value-of-type! ::uuid-nonce
   [_ setting new-value]
-  ;; Protect against overriding here? Makes testing harder
   (setting/set-value-of-type! :string setting new-value))
-
-;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
-(defmethod setting/getter-for-type ::uuid-nonce [_]
-  (fn [setting]
-    (or (setting/get-value-of-type :string setting)
-        (let [value (str (random-uuid))]
-          (setting/set-value-of-type! :string setting value)
-          value))))
 
 (defmethod setting/default-tag-for-type ::uuid-nonce
   [_]
