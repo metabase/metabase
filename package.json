@@ -20,7 +20,6 @@
     "@mantine/core": "^6.0.13",
     "@mantine/dates": "^6.0.13",
     "@mantine/hooks": "^6.0.13",
-    "@mierak/react-virtualized-grid": "^0.0.5-ALPHA",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^1.9.3",
     "@snowplow/browser-tracker": "^3.1.6",

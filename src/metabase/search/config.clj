@@ -17,6 +17,7 @@
   :type       :boolean
   :default    true
   :visibility :authenticated
+  :export?    true
   :audit      :getter)
 
 (def ^:dynamic *db-max-results*
