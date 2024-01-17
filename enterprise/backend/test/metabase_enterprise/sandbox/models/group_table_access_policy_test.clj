@@ -128,7 +128,7 @@
 
 (deftest add-sandboxes-to-permissions-graph-test
   (testing "Sandbox definitions in the DB are automatically added to the permissions graph"
-    (premium-features-test/with-premium-features #{:sandboxes}
+    (mt/with-premium-features #{:sandboxes}
       (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
                                                    :group_id (u/the-id (perms-group/all-users))}]
         (is (= {(u/the-id (perms-group/all-users))
