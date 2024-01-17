@@ -97,7 +97,7 @@ export const SimpleBrowseHeader = styled.h2`
   margin-right: 1rem;
 `;
 
-export const BigEmptyState = styled(EmptyState)`
+export const CenteredEmptyState = styled(EmptyState)`
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -105,4 +105,30 @@ export const BigEmptyState = styled(EmptyState)`
   justify-content: center;
   width: 100%;
   height: 100%;
+`;
+
+export const GridContainer = styled.div`
+  flex: 1;
+  display: flex;
+
+  > div {
+    height: unset !important;
+  }
+
+  .ReactVirtualized__Grid,
+  .ReactVirtualized__Grid__innerScrollContainer {
+    overflow: visible !important;
+  }
+
+  .model-group-header {
+    &:not(:first-of-type) {
+      border-top: 1px solid #f0f0f0;
+    }
+    width: calc(100% - 16px) !important;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-end;
+    padding-bottom: 1rem;
+    margin-right: 16px;
+  }
 `;
