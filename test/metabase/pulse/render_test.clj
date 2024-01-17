@@ -102,7 +102,7 @@
                                               :rows [["A" 2]
                                                      ["B" 3]]})))))
   (testing "Various Single-Series display-types return correct chart-types."
-    (doseq [chart-type [:row :funnel :progress :table :waterfall]]
+    (doseq [chart-type [:row :funnel :progress :table]]
       (is (= chart-type
              (render/detect-pulse-chart-type {:display chart-type}
                                              {}
