@@ -249,7 +249,8 @@
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
-        old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
+        old-field-values (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])
+        old-field-values (map #(update % :hash_key str) old-field-values)]
     (t2/insert! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values
             :let                                       [field-name (get old-field-id->name old-field-id)]]

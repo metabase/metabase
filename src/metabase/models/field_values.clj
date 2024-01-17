@@ -129,7 +129,7 @@
                        :stauts-code 400})))
 
     (when (and (= type :full)
-               hash_key)
+               (not (str/blank? hash_key)))
       (throw (ex-info (tru "Full FieldValues shouldn't have hash_key.")
                       {:type        type
                        :hash_key    hash_key
@@ -154,7 +154,7 @@
 
 (t2/define-before-insert :model/FieldValues
   [{:keys [field_id] :as field-values}]
-  (u/prog1 (merge {:type :full}
+  (u/prog1 (merge {:type :full :hash_key ""}
                   field-values)
     (assert-valid-human-readable-values field-values)
     (assert-valid-field-values-type field-values)
@@ -411,6 +411,7 @@
                     :field_id              (u/the-id field)
                     :has_more_values       has_more_values
                     :values                values
+                    :hash_key ""
                     :human_readable_values human-readable-values)
         ::fv-created)
 
