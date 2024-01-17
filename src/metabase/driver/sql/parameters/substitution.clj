@@ -89,15 +89,6 @@
   [_driver t]
   (make-stmt-subs "?" [t]))
 
-(defmulti align-temporal-unit-with-param-type-and-value
-  "Returns a suitable temporal unit conversion keyword for `field`, `param-type`, `value` and the given driver.
-  The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
-  implementation to convert the `field`.
-  Returns `nil` if the conversion is not necessary for this `field`, `param-type` and `value` combination."
-  {:added "0.49.0" :arglists '([driver field param-type value])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defmulti align-temporal-unit-with-param-type
   "Returns a suitable temporal unit conversion keyword for `field`, `param-type` and the given driver.
   The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
@@ -108,15 +99,25 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod align-temporal-unit-with-param-type-and-value :default
-  [_driver _field param-type _value]
+(defmulti align-temporal-unit-with-param-type-and-value
+  "Returns a suitable temporal unit conversion keyword for `field`, `param-type`, `value` and the given driver.
+  The resulting keyword will be used to call the corresponding `metabase.driver.sql.query-processor/date`
+  implementation to convert the `field`.
+  Returns `nil` if the conversion is not necessary for this `field`, `param-type` and `value` combination."
+  {:added "0.49.0" :arglists '([driver field param-type value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
+(defmethod align-temporal-unit-with-param-type :default
+  [_driver _field param-type]
   (when (params.dates/date-type? param-type)
     :day))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod align-temporal-unit-with-param-type :default
-  [driver _field param-type]
-  (align-temporal-unit-with-param-type-and-value driver param-type nil))
+(defmethod align-temporal-unit-with-param-type-and-value :default
+  [driver field param-type _value]
+  (align-temporal-unit-with-param-type driver field param-type))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -177,8 +178,8 @@
     String   (u.date/parse x (qp.timezone/report-timezone-id-if-supported))
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
-             {:type      qp.error-type/invalid-parameter
-              :parameter x}))))
+                    {:type      qp.error-type/invalid-parameter
+                     :parameter x}))))
 
 (defmethod ->replacement-snippet-info [:sql Date]
   [driver {:keys [s]}]
@@ -209,7 +210,6 @@
                            [start end])]
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
-
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
@@ -332,14 +332,12 @@
     :else
     (field-filter->replacement-snippet-info driver field-filter)))
 
-
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_ {:keys [query params]}]
   {:prepared-statement-args (not-empty params)
    :replacement-snippet     (sql.qp/make-nestable-sql query)})
-
 
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
 
