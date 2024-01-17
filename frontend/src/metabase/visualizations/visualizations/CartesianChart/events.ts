@@ -31,6 +31,7 @@ import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
 import { checkWaterfallChartModel } from "metabase/visualizations/echarts/cartesian/waterfall/utils";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isStructured } from "metabase-lib/queries/utils/card";
 import Question from "metabase-lib/Question";
 import {
@@ -130,7 +131,7 @@ export const getEventColumnsData = (
 
       return {
         key: col.display_name, // TODO: use the title from the viz settings
-        value,
+        value: value ?? NULL_DISPLAY_VALUE,
         col,
       };
     })
@@ -139,11 +140,10 @@ export const getEventColumnsData = (
   if (isBreakoutSeries) {
     eventData.push({
       key: seriesModel.breakoutColumn.display_name,
-      value: seriesModel.breakoutValue,
+      value: seriesModel.breakoutValue ?? NULL_DISPLAY_VALUE,
       col: seriesModel.breakoutColumn,
     });
   }
-
   return eventData;
 };
 
