@@ -127,17 +127,23 @@ export const GridContainer = styled.div`
   .ReactVirtualized__Grid__innerScrollContainer {
     overflow: visible !important;
   }
+`;
 
-  // TODO: Move to separate styled component
-  .model-group-header {
-    &:not(:first-of-type) {
-      border-top: 1px solid #f0f0f0;
-    }
-    width: calc(100% - 1rem) !important;
+export const CollectionHeaderContainer = styled.div`
+  &:not(:first-of-type) {
+    border-top: 1px solid #f0f0f0;
+  }
+  width: calc(100% - 1rem) !important;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  padding: 1rem 0;
+  margin-right: 1rem;
+  a {
     display: flex;
-    flex-flow: column nowrap;
-    justify-content: flex-end;
-    padding-bottom: 1rem;
-    margin-right: 1rem;
+    flex-flow: row nowrap;
+    &:hover h4 {
+      color: ${color("brand")};
+    }
   }
 `;

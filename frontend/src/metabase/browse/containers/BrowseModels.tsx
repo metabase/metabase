@@ -11,7 +11,7 @@ import {
   AutoSizer,
 } from "react-virtualized";
 import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
-import type { CollectionItem } from "metabase-types/api";
+import type { Collection, CollectionItem } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
 import Link from "metabase/core/components/Link";
@@ -24,10 +24,11 @@ import type { useSearchListQuery } from "metabase/common/hooks";
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
-import { Text } from "metabase/ui";
+import { Icon, Text } from "metabase/ui";
 import { space } from "metabase/styled-components/theme";
 import {
   CenteredEmptyState,
+  CollectionHeaderContainer,
   GridContainer,
   LastEditedInfoSeparator,
   ModelCard,
@@ -161,7 +162,7 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
     <Link
       key={model.id}
       style={style}
-      to={Urls.modelDetail(model)}
+      to={Urls.model(model)}
       // FIXME: Not sure that 'Model Click' is right; this is modeled on the database grid which has 'Database Click'
       data-metabase-event={`${ANALYTICS_CONTEXT};Model Click`}
     >
@@ -253,16 +254,32 @@ const sortModels = (a: Model, b: Model) => {
 };
 
 const CollectionHeader = ({
-  groupLabel,
+  collection,
   style,
 }: {
-  groupLabel: string;
+  collection?: Collection | null;
   style?: React.CSSProperties;
-}) => (
-  <div className="model-group-header" style={style}>
-    <h4>{groupLabel}</h4>
-  </div>
-);
+}) => {
+  const MaybeLink = ({ children }: { children: React.ReactNode }) =>
+    collection ? (
+      <Link to={Urls.collection(collection)}>{children}</Link>
+    ) : (
+      <>{children}</>
+    );
+  return (
+    <CollectionHeaderContainer style={style}>
+      <MaybeLink>
+        <Icon
+          name="folder"
+          color={"text-dark"}
+          size={16}
+          style={{ marginRight: "0.33rem" }}
+        />
+        <h4>{collection?.name || "Untitled collection"}</h4>
+      </MaybeLink>
+    </CollectionHeaderContainer>
+  );
+};
 
 const BlankCell = (props: { style?: React.CSSProperties }) => (
   <div {...props} />
@@ -291,11 +308,7 @@ const makeCells = (models: Model[], columnCount: number): Cell[] => {
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
-      const header = (
-        <CollectionHeader
-          groupLabel={model.collection?.name || "Untitled collection"}
-        />
-      );
+      const header = <CollectionHeader collection={model.collection} />;
       // So that the collection header appears at the start of the row,
       // add zero or more blank items to fill in the rest of the previous row
       if (columnIndex > 0) {
