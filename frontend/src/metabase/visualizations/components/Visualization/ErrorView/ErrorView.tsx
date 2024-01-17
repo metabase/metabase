@@ -21,7 +21,10 @@ export function ErrorView({
       <Tooltip tooltip={error} isEnabled={isSmall}>
         <StyledIcon name={icon} size={50} />
       </Tooltip>
-      {!isSmall && <ShortMessage>{error}</ShortMessage>}
+      {!isSmall &&
+        error
+          .split("\n")
+          .map(line => <ShortMessage key={line}>{line}</ShortMessage>)}
     </Root>
   );
 }

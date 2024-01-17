@@ -207,10 +207,21 @@ export function getDashcardResultsError(datasets: Dataset[]) {
 
   const errors = datasets.map(s => s.error).filter(Boolean);
   if (errors.length > 0) {
+    const tokenExpired = errors.some(error =>
+      error?.data?.startsWith("Token is expired"),
+    );
+    if (tokenExpired) {
+      return {
+        message: t`The embed token has expired. Please reload the page.\nContact your admin if the problem persists.`,
+        icon: "warning" as const,
+      };
+    }
+
     if (IS_EMBED_PREVIEW) {
       const message = errors[0]?.data || getGenericErrorMessage();
       return { message, icon: "warning" as const };
     }
+
     return {
       message: getGenericErrorMessage(),
       icon: "warning" as const,
