@@ -38,8 +38,8 @@
    :download-results      {:model :model/Table :values [:one-million-rows :ten-thousand-rows :no]}
    :manage-table-metadata {:model :model/Table :values [:yes :no]}
 
-   :native-query-editing {:model :model/Database :values [:yes :no]}
-   :manage-database      {:model :model/Database :values [:yes :no]}})
+   :native-query-editing  {:model :model/Database :values [:yes :no]}
+   :manage-database       {:model :model/Database :values [:yes :no]}})
 
 (def PermissionType
   "Malli spec for valid permission types."
