@@ -199,6 +199,31 @@
               #"Cannot initialize setting before the db is set up"
               (setting/get :test-setting-custom-init)))))))
 
+(def ^:private fancy-type
+  {:type :json
+   :setter :none
+   :init str
+   :bloop? true})
+
+(deftest type-mixin-test
+  (testing "The interaction between different :type values and the remaining options"
+    (let [expand            #'setting/expand-setting-type
+          explicit-settings {:bloop? false :blep? 'obviously}
+          with-basic-type   (assoc explicit-settings :type :json)
+          with-map          (assoc explicit-settings :type fancy-type)
+          with-var          (assoc explicit-settings :type (symbol ::fancy-type))]
+      (testing "There's no magic when using regular keyword types"
+        (is (= with-basic-type (expand with-basic-type))))
+      (let [expected {:type   :json
+                      :setter :none
+                      :init   str
+                      :bloop? false
+                      :blep?  'obviously}]
+        (testing "You can use explicit maps for the mixin behaviour"
+          (is (= expected (expand with-map))))
+        (testing "You can use var references for the mixing behaviour"
+          (is (= expected (expand with-var))))))))
+
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
   (is (= "FANCY NEW VALUE <3"
