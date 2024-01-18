@@ -612,7 +612,7 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype._syncNativeQuerySettings", () => {
+  describe.only("Question.prototype._syncNativeQuerySettings", () => {
     let question;
     const cols = [
       {
@@ -727,7 +727,7 @@ describe("Question", () => {
         });
       });
 
-      it("should handle the mutation of extraneous column props", () => {
+      it.only("should handle the mutation of extraneous column props", () => {
         question._syncNativeQuerySettings({
           data: {
             cols: [
