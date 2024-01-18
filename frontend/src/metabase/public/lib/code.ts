@@ -16,14 +16,14 @@ import {
 export const getEmbedClientCodeExampleOptions =
   (): ClientCodeSampleConfig[] => [
     {
-      name: "Mustache",
-      source: getHtmlSource({ iframeUrl: `"{{iframeUrl}}"` }),
-      mode: "ace/mode/html",
-    },
-    {
       name: "Pug / Jade",
       source: getPugSource({ iframeUrl: `iframeUrl` }),
       mode: "ace/mode/jade",
+    },
+    {
+      name: "Mustache",
+      source: getHtmlSource({ iframeUrl: `"{{iframeUrl}}"` }),
+      mode: "ace/mode/html",
     },
     {
       name: "ERB",
@@ -62,6 +62,7 @@ export const getEmbedServerCodeExampleOptions = (
     parametersSource: python.getParametersSource(params.params),
     getIframeQuerySource: python.getIframeQuerySource(params.displayOptions),
     mode: "ace/mode/python",
+    embedOption: "Pug / Jade",
   },
   {
     name: "Clojure",
@@ -69,6 +70,7 @@ export const getEmbedServerCodeExampleOptions = (
     parametersSource: closure.getParametersSource(params.params),
     getIframeQuerySource: closure.getIframeQuerySource(params.displayOptions),
     mode: "ace/mode/clojure",
+    embedOption: "Pug / Jade",
   },
 ];
 

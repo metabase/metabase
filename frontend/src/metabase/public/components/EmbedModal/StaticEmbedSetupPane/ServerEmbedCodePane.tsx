@@ -9,13 +9,14 @@ import type {
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
 
-import { DEFAULT_DISPLAY_OPTIONS } from "./config";
-import { CodeSample } from "./CodeSample";
-
 import "ace/mode-clojure";
 import "ace/mode-javascript";
 import "ace/mode-ruby";
 import "ace/mode-python";
+
+import { DEFAULT_DISPLAY_OPTIONS } from "./config";
+import { CodeSample } from "./CodeSample";
+import type { TextHighlightConfig } from "./types";
 
 type EmbedCodePaneProps = {
   siteUrl: string;
@@ -57,32 +58,18 @@ export const ServerEmbedCodePane = ({
     return null;
   }
 
-  const hasParametersCodeDiff =
-    !_.isEqual(initialPreviewParameters, params) &&
-    selectedServerCodeOption.parametersSource !==
-      getEmbedServerCodeExampleOptions({
-        siteUrl,
-        secretKey,
-        resourceType,
-        resourceId: resource.id,
-        params: initialPreviewParameters,
-        displayOptions,
-      }).find(({ name }) => name === selectedServerCodeOptionName)
-        ?.parametersSource;
-
-  const hasAppearanceCodeDiff = !_.isEqual(
-    DEFAULT_DISPLAY_OPTIONS,
-    displayOptions,
-  );
-
-  const highlightedText =
-    hasParametersCodeDiff || hasAppearanceCodeDiff
-      ? ([
-          hasParametersCodeDiff && selectedServerCodeOption.parametersSource,
-          hasAppearanceCodeDiff &&
-            selectedServerCodeOption.getIframeQuerySource,
-        ].filter(Boolean) as string[])
-      : undefined;
+  const { hasParametersCodeDiff, hasAppearanceCodeDiff, highlightedText } =
+    getHighlightedCode({
+      initialPreviewParameters,
+      params,
+      selectedServerCodeOption,
+      selectedServerCodeOptionName,
+      siteUrl,
+      secretKey,
+      resourceType,
+      resource,
+      displayOptions,
+    });
 
   if (variant === "overview") {
     return (
@@ -142,3 +129,65 @@ export const ServerEmbedCodePane = ({
 
   return null;
 };
+
+function getHighlightedCode({
+  initialPreviewParameters,
+  params,
+  selectedServerCodeOption,
+  selectedServerCodeOptionName,
+  siteUrl,
+  secretKey,
+  resourceType,
+  resource,
+  displayOptions,
+}: {
+  siteUrl: string;
+  secretKey: string;
+  resource: EmbedResource;
+  resourceType: EmbedResourceType;
+  params: EmbeddingParameters;
+  displayOptions: EmbeddingDisplayOptions;
+  initialPreviewParameters: EmbeddingParameters;
+
+  selectedServerCodeOption: ServerCodeSampleConfig;
+  selectedServerCodeOptionName: string;
+}) {
+  const hasParametersCodeDiff =
+    !_.isEqual(initialPreviewParameters, params) &&
+    selectedServerCodeOption.parametersSource !==
+      getEmbedServerCodeExampleOptions({
+        siteUrl,
+        secretKey,
+        resourceType,
+        resourceId: resource.id,
+        params: initialPreviewParameters,
+        displayOptions,
+      }).find(({ name }) => name === selectedServerCodeOptionName)
+        ?.parametersSource;
+
+  const hasAppearanceCodeDiff = !_.isEqual(
+    DEFAULT_DISPLAY_OPTIONS,
+    displayOptions,
+  );
+
+  const highlightedText: TextHighlightConfig[] = [];
+  if (hasParametersCodeDiff) {
+    highlightedText.push({
+      text: selectedServerCodeOption.parametersSource,
+      mode: "fullLine",
+    });
+  }
+
+  if (hasAppearanceCodeDiff) {
+    highlightedText.push({
+      text: selectedServerCodeOption.getIframeQuerySource,
+      mode: "text",
+    });
+  }
+
+  return {
+    hasParametersCodeDiff,
+    hasAppearanceCodeDiff,
+    highlightedText: highlightedText.length ? highlightedText : undefined,
+  };
+}

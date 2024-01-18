@@ -2,7 +2,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import { useState } from "react";
 import { Stack, Tabs } from "metabase/ui";
-import type { ActivePreviewPane } from "metabase/public/components/EmbedModal";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { checkNotNull } from "metabase/lib/types";
@@ -23,6 +22,7 @@ import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { ParametersSettings } from "./ParametersSettings";
 import { AppearanceSettings } from "./AppearanceSettings";
 import { OverviewSettings } from "./OverviewSettings";
+import type { ActivePreviewPane } from "./types";
 
 const TABS = {
   Overview: "overview",

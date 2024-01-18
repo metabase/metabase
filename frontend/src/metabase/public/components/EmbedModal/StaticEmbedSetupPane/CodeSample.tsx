@@ -4,6 +4,7 @@ import CopyButton from "metabase/components/CopyButton";
 import AceEditor from "metabase/components/TextEditor";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 
+import type { TextHighlightConfig } from "./types";
 import { CopyButtonContainer } from "./CodeSample.styled";
 
 interface CodeSampleProps {
@@ -12,7 +13,7 @@ interface CodeSampleProps {
   languageOptions: CodeSampleOption["name"][];
   title?: string;
   textHighlightMode: string;
-  highlightedText?: string | string[];
+  highlightedText?: TextHighlightConfig[];
 
   dataTestId?: string;
   className?: string;

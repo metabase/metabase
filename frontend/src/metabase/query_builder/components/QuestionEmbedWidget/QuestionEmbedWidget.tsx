@@ -8,7 +8,6 @@ import {
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { EmbedResource } from "metabase/public/lib/types";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 
 import {

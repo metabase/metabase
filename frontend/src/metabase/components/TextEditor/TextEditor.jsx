@@ -21,10 +21,7 @@ export default class TextEditor extends Component {
     value: PropTypes.string,
     defaultValue: PropTypes.string,
     readOnly: PropTypes.bool,
-    highlightedText: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.arrayOf(PropTypes.string),
-    ]),
+    highlightedText: PropTypes.arrayOf(PropTypes.object),
     onChange: PropTypes.func,
     className: PropTypes.string,
   };
@@ -69,11 +66,9 @@ export default class TextEditor extends Component {
     this._removeTextHighlight();
     const { highlightedText } = this.props;
     if (highlightedText != null) {
-      if (Array.isArray(highlightedText)) {
-        highlightedText.forEach(text => this._addTextHighlight(text));
-      } else {
-        this._addTextHighlight(highlightedText);
-      }
+      highlightedText.forEach(({ text, mode }) =>
+        this._addTextHighlight(text, mode),
+      );
     }
 
     this._updateSize();
@@ -93,7 +88,7 @@ export default class TextEditor extends Component {
     this._editor.resize();
   }
 
-  _addTextHighlight(textToHighlight) {
+  _addTextHighlight(textToHighlight, mode) {
     const textRange = this._editor.find(textToHighlight);
     this._editor.selection.clearSelection();
 
@@ -101,7 +96,7 @@ export default class TextEditor extends Component {
       const highlightedTextMarkerId = this._editor.session.addMarker(
         textRange,
         HIGHLIGHTED_CODE_ROW_CLASSNAME,
-        "text",
+        mode || "fullLine",
         true,
       );
       this.highlightedTextMarkerIds.push(highlightedTextMarkerId);

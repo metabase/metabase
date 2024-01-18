@@ -21,6 +21,8 @@ export interface OverviewSettingsProps {
   selectedServerCodeOption: ServerCodeSampleConfig | undefined;
 }
 
+const clientCodeOptions = getEmbedClientCodeExampleOptions();
+
 export const OverviewSettings = ({
   resourceType,
   serverEmbedCodeSlot,
@@ -29,8 +31,6 @@ export const OverviewSettings = ({
   const docsUrl = useSelector(state =>
     getDocsUrl(state, { page: "embedding/static-embedding" }),
   );
-
-  const clientCodeOptions = getEmbedClientCodeExampleOptions();
 
   const [selectedClientCodeOptionName, setSelectedClientCodeOptionName] =
     useState(clientCodeOptions[0].name);
@@ -46,7 +46,7 @@ export const OverviewSettings = ({
         setSelectedClientCodeOptionName(embedOption);
       }
     }
-  }, [clientCodeOptions, selectedServerCodeOption]);
+  }, [selectedServerCodeOption]);
 
   const staticEmbedDocsLink = (
     <ExternalLink key="doc" href={docsUrl}>{t`documentation`}</ExternalLink>
