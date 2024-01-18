@@ -4196,6 +4196,29 @@ databaseChangeLog:
                   remarks: 'Hash of normalized query, calculated in middleware.cache'
 
   - changeSet:
+      id: v48.00-067
+      author: qnkhuat
+      comment: 'Add unique constraint idx_databasechangelog_id_author_filename'
+      preConditions:
+        - onFail: MARK_RAN
+        # If we're dumping the migration as a SQL file or trying to force-migrate we can't check the preconditions
+        # so just go ahead and skip the entire thing. This is a non-critical migration
+        - onUpdateSQL: IGNORE
+        - and:
+          - sqlCheck:
+              expectedResult: 0
+              sql: SELECT count(*) FROM (SELECT count(*) FROM DATABASECHANGELOG GROUP BY ID, AUTHOR, FILENAME HAVING count(*) > 1) t1
+          - not:
+            - indexExists:
+                tableName: ${databasechangelog.name}
+                indexName: idx_databasechangelog_id_author_filename
+      changes:
+        - addUniqueConstraint:
+            constraintName: idx_databasechangelog_id_author_filename
+            tableName: ${databasechangelog.name}
+            columnNames: id, author, filename
+
+  - changeSet:
       id: v49.00-000
       author: qnkhuat
       comment: Remove leagcy pulses
