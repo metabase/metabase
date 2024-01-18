@@ -167,7 +167,7 @@
 (deftest custom-init-test
   (testing "The custom :init hook will fire when expected, and the value will be saved"
     (mt/discard-setting-changes [test-setting-custom-init]
-      (is (nil? (setting/get custom-init-setting)))
+      (is (= nil (setting/get custom-init-setting)))
       (let [val (setting/get-or-init! custom-init-setting)]
         (is (some? val))
         (is (= val (setting/get custom-init-setting))))))
@@ -175,7 +175,12 @@
   (testing "The implicit getter function will call init"
     (mt/discard-setting-changes [test-setting-custom-init]
       (is (some? (test-setting-custom-init)))
-      (is (= (test-setting-custom-init) (setting/get custom-init-setting))))))
+      (is (= (test-setting-custom-init) (setting/get custom-init-setting)))))
+
+  (testing "Validation does not initialize the setting"
+    (mt/discard-setting-changes [test-setting-custom-init]
+      (setting/validate-settings-formatting!)
+      (is (= nil (setting/get custom-init-setting))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
