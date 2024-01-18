@@ -95,7 +95,7 @@ const aggregateColumnValuesForDatum = (
   breakoutIndex?: number,
 ): void => {
   columns.forEach((column, columnIndex) => {
-    // The dimension values should hot be aggregated, only metrics
+    // The dimension values should not be aggregated, only metrics
     if (columnIndex === dimensionIndex) {
       return;
     }
