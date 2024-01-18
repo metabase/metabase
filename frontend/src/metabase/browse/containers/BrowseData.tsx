@@ -42,6 +42,7 @@ export const BrowseDataPage = () => {
   const models = useSearchListQuery({
     query: {
       models: ["dataset"],
+      filter_items_in_personal_collection: "exclude",
     },
     reload: true,
   });
