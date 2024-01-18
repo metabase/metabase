@@ -454,12 +454,26 @@ export class NativeQueryEditor extends Component<
         }
 
         try {
+          let skip = false;
+          if (prefix.length <= 1 && prefix !== lastAutoComplete.prefix) {
+            // ACE triggers an autocomplete when the user starts typing that is
+            // not caught by debouncing _retriggerAutocomplete.
+            // Here we prevent it from running initially (iff the prefix is just on character).
+            // It will run eventually, even if the prefix is only on character, after the user stops typing.
+            skip = true;
+            lastAutoComplete = {
+              timestamp: 0,
+              prefix,
+              results: lastAutoComplete.results,
+            };
+          }
+
           let { results, timestamp } = lastAutoComplete;
           const cacheHit =
             Date.now() - timestamp < AUTOCOMPLETE_CACHE_DURATION &&
             lastAutoComplete.prefix === prefix;
 
-          if (!cacheHit) {
+          if (!cacheHit && !skip) {
             // Get models and fields from tables
             // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
             const apiResults = await this.props.autocompleteResultsFn(prefix);
