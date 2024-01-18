@@ -22,13 +22,13 @@ import { isEmpty } from "metabase/lib/validate";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
-import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
-
-import { getXAxisType } from "../option/axis";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { isMetric, isNumeric } from "metabase-lib/types/utils/isa";
+
+import { getXAxisType } from "../option/axis";
 
 /**
  * Sums two metric column values.
@@ -91,9 +91,14 @@ const aggregateColumnValuesForDatum = (
   columns: DatasetColumn[],
   row: RowValue[],
   cardId: number,
+  dimensionIndex: number,
   breakoutIndex?: number,
 ): void => {
   columns.forEach((column, columnIndex) => {
+    // The dimension values should not be aggregated, only metrics
+    if (columnIndex === dimensionIndex) {
+      return;
+    }
     const rowValue = row[columnIndex];
 
     if (breakoutIndex == null || columnIndex === breakoutIndex) {
@@ -143,11 +148,12 @@ export const getJoinedCardsDataset = (
     } = cardSeries;
     const columns = cardsColumns[index];
 
+    const dimensionIndex = columns.dimension.index;
     const breakoutIndex =
       "breakout" in columns ? columns.breakout.index : undefined;
 
     for (const row of rows) {
-      const dimensionValue = row[columns.dimension.index];
+      const dimensionValue = row[dimensionIndex];
 
       // Get the existing datum by the dimension value if exists
       const datum = groupedData.get(dimensionValue) ?? {
@@ -158,7 +164,14 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
-      aggregateColumnValuesForDatum(datum, cols, row, card.id, breakoutIndex);
+      aggregateColumnValuesForDatum(
+        datum,
+        cols,
+        row,
+        card.id,
+        dimensionIndex,
+        breakoutIndex,
+      );
     }
   });
 
