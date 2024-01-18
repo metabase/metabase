@@ -22,6 +22,7 @@ export const CHART_STYLE = {
     x: 8,
     y: 12,
   },
+  symbolSize: 6,
   timelineEvents: {
     height: 14,
     minDistance: 16,
