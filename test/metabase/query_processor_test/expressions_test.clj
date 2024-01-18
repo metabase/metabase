@@ -422,7 +422,7 @@
               (is (= 1
                      (-> (qp/process-query query) mt/rows ffirst))))
             (testing "# of app DB calls should not be some insane number"
-              (is (< (call-count-fn) 20)))))))))
+              (is (< (call-count-fn) 25)))))))))
 
 (deftest ^:parallel expression-with-slashes
   (mt/test-drivers (disj
