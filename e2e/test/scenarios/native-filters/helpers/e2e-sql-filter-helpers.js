@@ -62,7 +62,7 @@ export function setDefaultValue(value) {
  * Toggle the required SQL filter on or off. It is off by default.
  */
 export function toggleRequired() {
-  cy.findByText("Required?").parent().find("input").click();
+  cy.findByText("Always require a value").click();
 }
 
 // FILTER QUERY
