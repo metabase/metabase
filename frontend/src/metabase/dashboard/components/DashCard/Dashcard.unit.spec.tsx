@@ -84,7 +84,6 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
-      fetchCardData={jest.fn()}
       onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       onRemove={jest.fn()}

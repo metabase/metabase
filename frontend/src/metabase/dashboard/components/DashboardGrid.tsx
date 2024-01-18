@@ -494,7 +494,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
         dashcardData={this.props.dashcardData}
         parameterValues={this.props.parameterValues}
         slowCards={this.props.slowCards}
-        fetchCardData={this.props.fetchCardData}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
         markNewCardSeen={this.props.markNewCardSeen}
