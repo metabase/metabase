@@ -23,12 +23,12 @@ import SnippetCollections from "./snippet-collections";
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default createEntity({
   name: "search",
   path: "/api/search",
 
   api: {
-    // TODO: See if I can type these anys
     list: async (query: any = {}) => {
       if (query.collection) {
         const {
