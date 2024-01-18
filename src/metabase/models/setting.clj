@@ -489,10 +489,13 @@
 (defn- db-value [setting-definition-or-name]
   (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name)))
 
-(def ^:private db-is-set-up?
-  (or (requiring-resolve 'metabase.db/db-is-set-up?)
+(defn- call-me-maybe [f]
+  (when f (f)))
+
+(defn- db-is-set-up? []
+  (or (call-me-maybe (requiring-resolve 'metabase.db/db-is-set-up?))
       ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
-      (constantly false)))
+      false))
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
@@ -515,8 +518,7 @@
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
 (defn- init! [setting-definition-or-name]
-  (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)
-        call-me-maybe              (fn [f] (when f (f)))]
+  (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)]
     (when init
       (when (not (db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
