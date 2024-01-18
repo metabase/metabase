@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import cx from "classnames";
 import { Icon } from "metabase/ui";
 
@@ -12,5 +13,17 @@ export function WidgetStatusIcon({ name, onClick }: Props) {
     name === "close" && "cursor-pointer",
   );
 
-  return <Icon name={name} onClick={onClick} size={12} className={classes} />;
+  const handleOnClick = useCallback(
+    e => {
+      if (onClick) {
+        e.stopPropagation();
+        onClick();
+      }
+    },
+    [onClick],
+  );
+
+  return (
+    <Icon name={name} onClick={handleOnClick} size={12} className={classes} />
+  );
 }
