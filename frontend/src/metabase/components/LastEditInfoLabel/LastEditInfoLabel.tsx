@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import type { MouseEventHandler } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -15,6 +14,16 @@ import type { CollectionItem, User } from "metabase-types/api";
 
 dayjs.extend(relativeTime);
 
+export type CollectionItemWithLastEditInfo = CollectionItem & {
+  "last-edit-info": {
+    id?: number;
+    timestamp: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+  };
+};
+
 export const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);
   const howLongAgo =
@@ -29,39 +38,10 @@ function mapStateToProps(state: any, props: any) {
   };
 }
 
-LastEditInfoLabel.propTypes = {
-  item: PropTypes.shape({
-    "last-edit-info": PropTypes.shape({
-      id: PropTypes.number,
-      email: PropTypes.string,
-      first_name: PropTypes.string,
-      last_name: PropTypes.string,
-      timestamp: PropTypes.string,
-    }).isRequired,
-  }),
-  prefix: PropTypes.string,
-  user: PropTypes.shape({
-    id: PropTypes.number,
-  }).isRequired,
-  onClick: PropTypes.func,
-  className: PropTypes.string,
-};
-
 function formatEditorName(lastEditInfo: NamedUser) {
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }
-
-export type CollectionItemWithLastEditInfo = CollectionItem & {
-  "last-edit-info": {
-    id?: number;
-    timestamp: string;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string;
-  };
-};
-
 function LastEditInfoLabel({
   item,
   user,

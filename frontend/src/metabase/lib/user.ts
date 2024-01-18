@@ -5,7 +5,7 @@ export function getFullName(user: NamedUser): string | null {
 }
 
 export interface NamedUser {
-  first_name?: string;
-  last_name?: string;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string;
 }
