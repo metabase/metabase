@@ -7,6 +7,7 @@ import {
   saveDashboard,
   setFilter,
   visitDashboard,
+  selectDashboardFilter,
 } from "e2e/support/helpers";
 import {
   ORDERS_DASHBOARD_ID,
@@ -57,6 +58,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
   it(`should work when set as the default filter`, () => {
     setFilter("Number", "Equal to");
+    selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
