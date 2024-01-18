@@ -262,8 +262,8 @@ describe("TagEditorParam", () => {
       const tag = createMockTemplateTag();
       const { setTemplateTag } = setup({ tag });
 
-      const toggle = screen.getByRole("switch", { name: "Required?" });
-      userEvent.click(toggle);
+      const toggleLabel = screen.getByText("Always require a value");
+      userEvent.click(toggleLabel);
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
@@ -275,8 +275,8 @@ describe("TagEditorParam", () => {
       const tag = createMockTemplateTag({ required: true, default: "abc" });
       const { setTemplateTag } = setup({ tag });
 
-      const toggle = screen.getByRole("switch", { name: "Required?" });
-      userEvent.click(toggle);
+      const toggleLabel = screen.getByText("Always require a value");
+      userEvent.click(toggleLabel);
 
       expect(setTemplateTag).toHaveBeenCalledWith({
         ...tag,
