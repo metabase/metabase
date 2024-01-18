@@ -1286,7 +1286,7 @@
                  "The CSV file contains extra columns that are not in the table: \"extra_column_two\", \"extra_column_one\"."
 
                  [""]
-                 "The CSV file contains extra columns that are not in the table: \"id\", \"name\"."
+                 "The CSV file is missing columns that are in the table: \"id\", \"name\"."
 
                  ["_mb_row_id,extra 1, extra 2"]
                  "The CSV file contains extra columns that are not in the table: \"extra_2\", \"extra_1\". The CSV file is missing columns that are in the table: \"id\", \"name\"."}]
