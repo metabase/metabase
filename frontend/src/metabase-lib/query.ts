@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type LegacyMetadata from "./metadata/Metadata";
 import type {
   CardMetadata,
   Clause,
@@ -11,7 +12,6 @@ import type {
   SegmentMetadata,
   TableMetadata,
 } from "./types";
-import type LegacyMetadata from "./metadata/Metadata";
 
 export function fromLegacyQuery(
   databaseId: DatabaseId,
@@ -47,6 +47,10 @@ export function suggestedName(query: Query): string {
 export function stageCount(query: Query): number {
   return ML.stage_count(query);
 }
+
+export const hasClauses = (query: Query, stageIndex: number): boolean => {
+  return ML.has_clauses(query, stageIndex);
+};
 
 export function appendStage(query: Query): Query {
   return ML.append_stage(query);
