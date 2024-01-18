@@ -53,13 +53,11 @@
   [_]
   (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
 
-
 (mu/defn create-new-sso-user!
   "This function is basically the same thing as the `create-new-google-auth-user` from `metabase.models.user`. We need
   to refactor the `core_user` table structure and the function used to populate it so that the enterprise product can
   reuse it."
   [user :- UserAttributes]
-  (check-user-provisioning (:sso_source user))
   (try
     (u/prog1 (first (t2/insert-returning-instances! User (merge user {:password (str (random-uuid))})))
       (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
