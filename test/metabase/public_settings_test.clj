@@ -370,26 +370,3 @@
             (public-settings/show-metabase-links! true)))
 
         (is (= true (public-settings/show-metabase-links)))))))
-
-(setting/defsetting test-uuid-nonce "nonce sequitur"
-  :type       :string
-  :setter     :none
-  :init       setting/random-uuid-str)
-
-(def test-setting (setting/resolve-setting :test-uuid-nonce))
-
-#_ {:clj-kondo/ignore [:unresolved-namespace]}
-(comment
-  (metabase.models.setting.cache/restore-cache!)
-  (get (keys (metabase.models.setting.cache/cache)) "site-uuid")
-  (#'setting/db-value test-setting)
-  (setting/set! test-setting nil :bypass-read-only? true)
-  )
-
-(deftest lazy-uuid-nonce-test
-  (testing "Accessing an uninitialized setting withi"
-    (mt/discard-setting-changes [test-uuid-nonce]
-      (is (= nil (#'setting/db-value test-setting)))
-      (is (some? (setting/get test-setting)))
-      (is (= (setting/get test-setting)
-             (test-uuid-nonce))))))
