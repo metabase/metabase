@@ -21,7 +21,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; TODO: it would be nice to detct and discard the changes to *all* settings defined in this namespace
+;; TODO: it would be nice to detect and discard the changes to *all* settings defined in this namespace
 (use-fixtures :each (fn [thunk] (mt/discard-setting-changes [:test-setting-custom-init] (thunk))))
 
 ;; ## TEST SETTINGS DEFINITIONS
