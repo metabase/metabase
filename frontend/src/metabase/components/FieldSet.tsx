@@ -1,13 +1,21 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type React from "react";
 
-export default function FieldSet({
+interface FieldSetProps {
+  className?: string;
+  legend?: string;
+  required?: boolean;
+  noPadding?: boolean;
+  children: React.ReactNode;
+}
+
+export function FieldSet({
   className = "border-brand",
   legend,
-  required,
-  noPadding,
+  required = false,
+  noPadding = false,
   children,
-}) {
+}: FieldSetProps) {
   const fieldSetClassName = cx("bordered rounded", { "px2 pb2": !noPadding });
 
   return (
