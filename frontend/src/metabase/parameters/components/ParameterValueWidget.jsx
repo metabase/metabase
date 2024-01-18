@@ -58,6 +58,8 @@ class ParameterValueWidget extends Component {
     className: PropTypes.string,
     parameters: PropTypes.array,
     dashboard: PropTypes.object,
+    question: PropTypes.object,
+    setQBDefaultParameterValue: PropTypes.func,
   };
 
   state = { isFocused: false };
@@ -92,6 +94,21 @@ class ParameterValueWidget extends Component {
       return null;
     }
 
+    const canReset =
+      this.props.parameter.required &&
+      this.props.parameter.default &&
+      this.props.value !== this.props.parameter.default;
+    if (this.isInsideNativeQuery() && canReset) {
+      return (
+        <WidgetStatusIcon
+          name="refresh"
+          onClick={() =>
+            this.props.setQBDefaultParameterValue(this.props.parameter.id)
+          }
+        />
+      );
+    }
+
     if (this.props.value != null) {
       return (
         <WidgetStatusIcon
@@ -108,6 +125,10 @@ class ParameterValueWidget extends Component {
     // This is required to keep input width constant
     return <WidgetStatusIcon name="empty" />;
   };
+
+  isInsideNativeQuery() {
+    return Boolean(this.props.question?.isNative());
+  }
 
   render() {
     const { parameter, value, isEditing, placeholder, className } = this.props;
