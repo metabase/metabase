@@ -328,6 +328,12 @@
                                               (lib.util/query-stage query previous-stage-number)
                                               style)))))
 
+(mu/defn has-clauses? :- :boolean
+  "Does given query stage have any clauses?"
+  [query        :- ::lib.schema/query
+   stage-number :- :int]
+  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
+
 (mu/defn append-stage :- ::lib.schema/query
   "Adds a new blank stage to the end of the pipeline"
   [query]
@@ -343,6 +349,6 @@
 (mu/defn drop-stage-if-empty :- ::lib.schema/query
   "Drops the final stage in the pipeline IF the stage is empty of clauses, otherwise no-op"
   [query :- ::lib.schema/query]
-  (if (empty? (dissoc (lib.util/query-stage query -1) :lib/type))
+  (if-not (has-clauses? query -1)
     (drop-stage query)
     query))

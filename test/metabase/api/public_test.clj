@@ -218,14 +218,16 @@
                  :id           "a",
                  :default      "A TAG",
                  :target       ["variable" ["template-tag" "a"]],
-                 :slug         "a"}
+                 :slug         "a"
+                 :required     false}
                 {:type         "date/single",
                  :name         "b",
                  :display_name "b",
                  :id           "b",
                  :default      "B TAG",
                  :target       ["variable" ["template-tag" "b"]],
-                 :slug         "b"}
+                 :slug         "b"
+                 :required     false}
                 ;; the parameter with id = "c" exists in both card.parameters and tempalte-tags should have info
                 ;; merge of both places
                 {:type                 "date/single",
@@ -234,18 +236,20 @@
                  :slug                 "c",
                  ;; order importance: the default from template-tag is in the final result
                  :default              "C TAG",
+                 :required             false
                  :values_source_type   "static-list",
                  :id                   "c",
                  :target               ["variable" ["template-tag" "c"]],
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}
                 ;; the parameter id = "d" is in template-tags, but not card.parameters,
                 ;; when fetching card we should get it returned
-                {:id      "d",
-                 :type    "date/single",
-                 :target  ["variable" ["template-tag" "d"]],
-                 :name    "d",
-                 :slug    "d",
-                 :default "D TAG"}]
+                {:id       "d",
+                 :type     "date/single",
+                 :target   ["variable" ["template-tag" "d"]],
+                 :name     "d",
+                 :slug     "d",
+                 :default  "D TAG"
+                 :required false}]
                (:parameters (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))
 
 (deftest get-card-parameters-should-exclude-non-parameter-template-tags
@@ -262,7 +266,8 @@
                  :id           "a",
                  :default      "A TAG",
                  :target       ["variable" ["template-tag" "a"]],
-                 :slug         "a"}]
+                 :slug         "a"
+                 :required     false}]
                (:parameters (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))
 
 ;;; ------------------------- GET /api/public/card/:uuid/query (and JSON/CSV/XSLX versions) --------------------------

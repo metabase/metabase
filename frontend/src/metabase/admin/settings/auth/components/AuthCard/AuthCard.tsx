@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
+import { Button } from "metabase/ui";
 import { isNotNull } from "metabase/lib/types";
-import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import {
@@ -88,32 +88,39 @@ interface AuthCardBodyProps {
   description: string;
   isEnabled: boolean;
   isConfigured: boolean;
+  badgeText?: string;
+  buttonText?: string;
   children?: ReactNode;
 }
 
-const AuthCardBody = ({
+export const AuthCardBody = ({
   type,
   title,
   description,
   isEnabled,
   isConfigured,
+  badgeText,
+  buttonText,
   children,
 }: AuthCardBodyProps) => {
+  const badgeContent = badgeText ?? (isEnabled ? t`Active` : t`Paused`);
+  const buttonLabel = buttonText ?? (isConfigured ? t`Edit` : t`Set up`);
+
   return (
     <CardRoot>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {isConfigured && (
-          <CardBadge isEnabled={isEnabled}>
-            {isEnabled ? t`Active` : t`Paused`}
+          <CardBadge isEnabled={isEnabled} data-testid="card-badge">
+            {badgeContent}
           </CardBadge>
         )}
         {children}
       </CardHeader>
       <CardDescription>{description}</CardDescription>
-      <Button as={Link} to={`/admin/settings/authentication/${type}`}>
-        {isConfigured ? t`Edit` : t`Set up`}
-      </Button>
+      <Link to={`/admin/settings/authentication/${type}`}>
+        <Button>{buttonLabel}</Button>
+      </Link>
     </CardRoot>
   );
 };
@@ -166,7 +173,12 @@ const AuthCardModal = ({
         title={t`Deactivate ${name}?`}
         footer={[
           <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-          <Button key="submit" danger onClick={onDeactivate}>
+          <Button
+            key="submit"
+            onClick={onDeactivate}
+            variant="filled"
+            color="error"
+          >
             {t`Deactivate`}
           </Button>,
         ]}

@@ -490,7 +490,6 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
@@ -500,7 +499,7 @@ class Question {
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
+    return this.isStructured() && !Lib.hasClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
@@ -996,14 +995,13 @@ class Question {
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean
-      ? this.legacyQuery({ useStructuredQuery: true }).clean()
-      : this.legacyQuery({ useStructuredQuery: true });
+    const query = clean ? Lib.dropStageIfEmpty(this.query()) : this.query();
+
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
       collection_id: this._card.collection_id,
-      dataset_query: query.datasetQuery(),
+      dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
       parameters: this._card.parameters,
       dataset: this._card.dataset,

@@ -89,16 +89,36 @@ class ParameterValueWidget extends Component {
     return this.trigger.current;
   };
 
+  getWidgetStatusIcon = () => {
+    if (this.props.isFullscreen) {
+      return null;
+    }
+
+    if (this.props.value != null) {
+      return (
+        <WidgetStatusIcon
+          name="close"
+          onClick={() => this.props.setValue(null)}
+        />
+      );
+    }
+
+    const noPopover = hasNoPopover(this.props.parameter);
+
+    if (noPopover && this.state.isFocused) {
+      return <WidgetStatusIcon name="enter_or_return" />;
+    }
+
+    if (!noPopover) {
+      return <WidgetStatusIcon name="chevrondown" />;
+    }
+
+    // This is required to keep input width constant
+    return <WidgetStatusIcon name="empty" />;
+  };
+
   render() {
-    const {
-      parameter,
-      value,
-      setValue,
-      isEditing,
-      placeholder,
-      isFullscreen,
-      className,
-    } = this.props;
+    const { parameter, value, isEditing, placeholder, className } = this.props;
     const { isFocused } = this.state;
     const hasValue = value != null;
     const noPopover = hasNoPopover(parameter);
@@ -126,13 +146,7 @@ class ParameterValueWidget extends Component {
             onFocusChanged={this.onFocusChanged}
             onPopoverClose={this.onPopoverClose}
           />
-          <WidgetStatusIcon
-            isFullscreen={isFullscreen}
-            hasValue={hasValue}
-            noPopover={noPopover}
-            isFocused={isFocused}
-            setValue={setValue}
-          />
+          {this.getWidgetStatusIcon()}
         </div>
       );
     } else {
@@ -169,13 +183,7 @@ class ParameterValueWidget extends Component {
                   placeholder={placeholderText}
                 />
               </div>
-              <WidgetStatusIcon
-                isFullscreen={isFullscreen}
-                hasValue={hasValue}
-                noPopover={noPopover}
-                isFocused={isFocused}
-                setValue={setValue}
-              />
+              {this.getWidgetStatusIcon()}
             </div>
           }
           target={this.getTargetRef}
