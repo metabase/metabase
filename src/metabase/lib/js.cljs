@@ -1135,7 +1135,7 @@
 (defn ^:export has-clauses
   "Does given query stage have any clauses?"
   [a-query stage-number]
-  (lib.core/has-clauses a-query stage-number))
+  (lib.core/has-clauses? a-query stage-number))
 
 (defn ^:export stage-count
   "Returns the count of stages in query"

@@ -278,7 +278,7 @@
   append-stage
   drop-stage
   drop-stage-if-empty
-  has-clauses]
+  has-clauses?]
  [lib.temporal-bucket
   describe-temporal-unit
   describe-temporal-interval
