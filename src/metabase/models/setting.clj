@@ -522,13 +522,17 @@
     (when init
       (when (not (db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
+      ;; We do not need to interact with the restore-cache-lock as it is OK to race with it.
       (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
         (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
-        (u/or-with some?
-          ;; perhaps another process initialized this setting while we were waiting for the lock
-          (read-setting setting)
-          (when-let [init-value (call-me-maybe init)]
-            (metabase.models.setting/set! setting init-value :bypass-read-only? true)))))))
+        (try
+          (u/or-with some?
+            ;; perhaps another process initialized this setting while we were waiting for the lock
+            (read-setting setting)
+            (when-let [init-value (call-me-maybe init)]
+              (metabase.models.setting/set! setting init-value :bypass-read-only? true)))
+          (finally
+            (.unlock init-lock)))))))
 
 (defn- db-or-cache-or-init-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
