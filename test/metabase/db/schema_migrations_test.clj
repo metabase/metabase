@@ -946,7 +946,7 @@
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
-                                         :db_id db-id :table_id nil :group_id group-id :type "native-query-editing"))))
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))
 
         (testing "Native query editing explicitly allowed"
           (clear-permissions!)
@@ -955,11 +955,11 @@
           (migrate!)
           (is (= "yes" (t2/select-one-fn :perm_value
                                          (t2/table-name :model/DataPermissions)
-                                         :db_id db-id :table_id nil :group_id group-id :type "native-query-editing"))))
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))
 
         (testing "Native query editing not allowed"
           (clear-permissions!)
           (migrate!)
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
-                                        :db_id db-id :table_id nil :group_id group-id :type "native-query-editing"))))))))
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))))))
