@@ -312,15 +312,10 @@
     message))
 
 (defmethod driver/db-default-timezone :h2
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "select current_timestamp();")
-                 rset (.executeQuery stmt)]
-       (when (.next rset)
-         (when-let [zoned-date-time (.getObject rset 1 java.time.ZonedDateTime)]
-           (t/zone-id zoned-date-time)))))))
+  [_driver _database]
+  ;; Based on this answer https://stackoverflow.com/a/18883531 and further experiments, h2 uses timezone of the jvm
+  ;; where the driver is loaded.
+  (System/getProperty "user.timezone"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
