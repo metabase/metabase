@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.models.group-table-access-policy
+    :as sandboxes
     :refer [GroupTableAccessPolicy]]
    [metabase.models :refer [Card]]
    [metabase.models.permissions-group :as perms-group]
@@ -124,3 +125,18 @@
                    (f
                     (-> (vec (qp/query->expected-cols (mt/mbql-query venues)))
                         (assoc-in [0 :base_type] :type/BigInteger)))))))))))
+
+(deftest add-sandboxes-to-permissions-graph-test
+  (testing "Sandbox definitions in the DB are automatically added to the permissions graph"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [GroupTableAccessPolicy _gtap {:table_id (mt/id :venues)
+                                                   :group_id (u/the-id (perms-group/all-users))}]
+        (is (= {(u/the-id (perms-group/all-users))
+                {(mt/id)
+                 {:data
+                  {:schemas
+                   {"PUBLIC"
+                    {(mt/id :venues)
+                     {:query :segmented
+                      :read :all}}}}}}}
+               (sandboxes/add-sandboxes-to-permissions-graph {})))))))
