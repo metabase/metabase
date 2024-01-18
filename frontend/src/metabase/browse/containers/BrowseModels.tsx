@@ -68,7 +68,7 @@ export const BrowseModels = ({
   const { cells = [] } = gridOptions;
 
   return cells.length ? (
-    <GridContainer>{cells}</GridContainer>
+    <GridContainer role="grid">{cells}</GridContainer>
   ) : (
     <CenteredEmptyState
       title={t`No models here yet`}
@@ -81,9 +81,10 @@ export const BrowseModels = ({
 interface ModelCellProps {
   model: Model;
   style?: React.CSSProperties;
+  collectionHtmlId: string;
 }
 
-const ModelCell = ({ model, style }: ModelCellProps) => {
+const ModelCell = ({ model, style, collectionHtmlId }: ModelCellProps) => {
   const modelWithHistory = addLastEditInfo(model);
   const lastEdit = modelWithHistory["last-edit-info"];
   const lastEditorName = lastEdit.full_name;
@@ -93,7 +94,7 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
 
   return (
     <Link
-      aria-labelledby={headingId}
+      aria-labelledby={`${collectionHtmlId} ${headingId}`}
       key={model.id}
       style={style}
       to={Urls.model(model)}
@@ -191,9 +192,11 @@ const sortModels = (a: Model, b: Model) => {
 const CollectionHeader = ({
   collection,
   style,
+  id,
 }: {
   collection?: Collection | null;
   style?: React.CSSProperties;
+  id: string;
 }) => {
   const MaybeLink = ({ children }: { children: React.ReactNode }) =>
     collection ? (
@@ -202,7 +205,7 @@ const CollectionHeader = ({
       <>{children}</>
     );
   return (
-    <CollectionHeaderContainer style={style}>
+    <CollectionHeaderContainer id={id} role="heading" style={style}>
       <MaybeLink>
         <Icon
           name="folder"
@@ -229,22 +232,31 @@ const makeCells = (models: Model[]): Cell[] => {
     const firstModelInItsCollection =
       i === 0 || collectionIdChanged || model.collection?.id === undefined;
 
+    const collectionHtmlId = model?.collection?.id
+      ? `collection-${model.collection?.id}`
+      : `item-${cells.length}`;
+
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
+      // This id is used by aria-labelledby
       const header = (
         <CollectionHeader
           collection={model.collection}
-          key={
-            model?.collection?.id
-              ? `collection-${model.collection.id}`
-              : cells.length
-          }
+          key={collectionHtmlId}
+          id={collectionHtmlId}
         />
       );
       cells.push(header);
     }
-    cells.push(<ModelCell key={`model-${model.id}`} model={model} />);
+
+    cells.push(
+      <ModelCell
+        collectionHtmlId={collectionHtmlId}
+        key={`model-${model.id}`}
+        model={model}
+      />,
+    );
   }
   return cells;
 };
