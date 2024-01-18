@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import Button from "metabase/core/components/Button";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
