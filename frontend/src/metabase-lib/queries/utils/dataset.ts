@@ -5,6 +5,7 @@ import type {
   FieldReference,
   TableColumnOrderSetting,
 } from "metabase-types/api";
+import * as Lib from "metabase-lib";
 import Dimension from "metabase-lib/Dimension";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
@@ -53,21 +54,31 @@ export function findColumnIndexForColumnSetting(
 }
 
 export function findColumnSettingIndexForColumn(
+  query: Lib.Query,
   columnSettings: TableColumnOrderSetting[],
   column: DatasetColumn,
 ) {
-  const fieldRef = fieldRefForColumn(column);
-  const normalizedFieldRef = fieldRef ? normalizeFieldRef(fieldRef) : undefined;
-  if (normalizedFieldRef == null) {
-    return columnSettings.findIndex(
-      columnSetting => columnSetting.name === column.name,
-    );
-  }
-  const index = columnSettings.findIndex(
-    columnSetting =>
-      columnSetting.fieldRef &&
-      _.isEqual(normalizedFieldRef, normalizeFieldRef(columnSetting.fieldRef)),
+  // ignore settings without fieldRef but preserve indexes
+  const items = columnSettings.reduce<
+    { fieldRef: FieldReference; settingIndex: number }[]
+  >((items, { fieldRef }, settingIndex) => {
+    if (fieldRef != null) {
+      items.push({ fieldRef, settingIndex });
+    }
+    return items;
+  }, []);
+
+  // first try to find by fieldRef
+  const itemIndexes = Lib.findColumnIndexesFromLegacyRefs(
+    query,
+    -1,
+    [column],
+    items.map(({ fieldRef }) => fieldRef),
   );
 
-  return index;
+  const itemIndex = itemIndexes.find(index => index >= 0);
+
+  if (itemIndex != null) {
+    return items[itemIndex].settingIndex;
+  }
 }
