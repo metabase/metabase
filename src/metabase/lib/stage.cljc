@@ -328,7 +328,7 @@
                                               (lib.util/query-stage query previous-stage-number)
                                               style)))))
 
-(mu/defn has-clauses :- :boolean
+(mu/defn has-clauses? :- :boolean
   "Does given query stage have any clauses?"
   [query        :- ::lib.schema/query
    stage-number :- :int]
