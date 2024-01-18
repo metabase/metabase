@@ -150,13 +150,42 @@ const buildEChartsBarSeries = (
   };
 };
 
+function getShowSymbol(
+  seriesModel: SeriesModel,
+  seriesSettings: SeriesSettings,
+  dataset: ChartDataset,
+  chartWidth: number,
+) {
+  // "line.marker_enabled" correponds to the "Show dots on lines" series setting
+  // and can be true, false, or undefined
+  // true = on
+  // false = off
+  // undefined = auto
+  const isNotAuto = seriesSettings["line.marker_enabled"] != null;
+  if (isNotAuto) {
+    return seriesSettings["line.marker_enabled"];
+  }
+  if (chartWidth <= 0) {
+    return false;
+  }
+  const numDots =
+    seriesSettings["line.missing"] !== "none"
+      ? dataset.length
+      : dataset.filter(datum => datum[seriesModel.dataKey] != null).length;
+
+  // symbolSize is the dot's diameter
+  return chartWidth / numDots > CHART_STYLE.symbolSize;
+}
+
 const buildEChartsLineAreaSeries = (
   seriesModel: SeriesModel,
   seriesSettings: SeriesSettings,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   dimensionDataKey: string,
   yAxisIndex: number,
   hasMultipleSeries: boolean,
+  chartWidth: number,
   renderingContext: RenderingContext,
 ): RegisteredSeriesOption["line"] => {
   const display = seriesSettings?.display ?? "line";
@@ -183,8 +212,8 @@ const buildEChartsLineAreaSeries = (
     id: seriesModel.dataKey,
     type: "line",
     yAxisIndex,
-    showSymbol: seriesSettings["line.marker_enabled"] !== false,
-    symbolSize: 6,
+    showSymbol: getShowSymbol(seriesModel, seriesSettings, dataset, chartWidth),
+    symbolSize: CHART_STYLE.symbolSize,
     smooth: seriesSettings["line.interpolate"] === "cardinal",
     connectNulls: seriesSettings["line.missing"] === "interpolate",
     step:
@@ -325,6 +354,7 @@ export const getStackTotalsSeries = (
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
+  chartWidth: number,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = chartModel.seriesModels.reduce(
@@ -354,10 +384,12 @@ export const buildEChartsSeries = (
           return buildEChartsLineAreaSeries(
             seriesModel,
             seriesSettings,
+            chartModel.dataset,
             settings,
             chartModel.dimensionModel.dataKey,
             yAxisIndex,
             hasMultipleSeries,
+            chartWidth,
             renderingContext,
           );
         case "bar":

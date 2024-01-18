@@ -77,6 +77,7 @@ export function useModelsAndOption({
           timelineEventsModel,
           selectedTimelineEventIds,
           settings,
+          width,
           true,
           renderingContext,
         );
@@ -86,6 +87,7 @@ export function useModelsAndOption({
           timelineEventsModel,
           selectedTimelineEventIds,
           settings,
+          width,
           true,
           renderingContext,
         );
@@ -97,6 +99,7 @@ export function useModelsAndOption({
     selectedTimelineEventIds,
     settings,
     timelineEventsModel,
+    width,
   ]);
 
   return { chartModel, timelineEventsModel, option };
