@@ -204,15 +204,12 @@ class Question {
   }
 
   isNative(): boolean {
-    return (
-      this.legacyQuery({ useStructuredQuery: true }) instanceof NativeQuery
-    );
+    const { isNative } = Lib.queryDisplayInfo(this.query());
+    return isNative;
   }
 
   isStructured(): boolean {
-    return (
-      this.legacyQuery({ useStructuredQuery: true }) instanceof StructuredQuery
-    );
+    return !this.isNative();
   }
 
   /**
