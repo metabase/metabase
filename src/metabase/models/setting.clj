@@ -100,7 +100,9 @@
     (com.fasterxml.jackson.core JsonParseException)
     (com.fasterxml.jackson.core.io JsonEOFException)
     (java.io StringWriter)
-    (java.time.temporal Temporal)))
+    (java.time.temporal Temporal)
+    (java.util.concurrent TimeUnit)
+    (java.util.concurrent.locks ReentrantLock)))
 
 ;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
 ;;; other things we need for `:json` settings
@@ -513,15 +515,20 @@
                 ;; the cache and must hit the db while the cache populates
                 (db-value setting)))))))))
 
+(defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
+
 (defn- init! [setting-definition-or-name]
   (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)]
     (when init
       (when (not (db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
-      ;; TODO we need to spin on a lock on initializing the cache and initializing the db
-      ;;  once we have the lock, we
-      (when-let [init-value (call-me-maybe init)]
-        (metabase.models.setting/set! setting init-value :bypass-read-only? true)))))
+      (if-not (.tryLock init-lock 30 TimeUnit/SECONDS)
+        (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
+        (u/or-with some?
+          ;; perhaps another process initialized this setting while we were waiting for the lock
+          (db-or-cache-value setting)
+          (when-let [init-value (call-me-maybe init)]
+            (metabase.models.setting/set! setting init-value :bypass-read-only? true)))))))
 
 (defn- db-or-cache-or-init-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
