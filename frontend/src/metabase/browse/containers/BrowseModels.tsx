@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import _ from "underscore";
 import { t } from "ttag";
@@ -10,7 +10,6 @@ import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
 import type { useSearchListQuery } from "metabase/common/hooks";
 
@@ -18,7 +17,6 @@ import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
 import { Icon, Text } from "metabase/ui";
-import { space } from "metabase/styled-components/theme";
 import {
   CenteredEmptyState,
   CollectionHeaderContainer,
@@ -42,37 +40,18 @@ export const BrowseModels = ({
   error,
   isLoading,
 }: ReturnType<typeof useSearchListQuery>) => {
-  // This provides a ref to the <main> rendered by AppContent in App.tsx
-  const contentViewport = useContext(ContentViewportContext);
-
-  const rem = parseInt(space(2));
-  const gridGapSize = rem;
-  const itemMinWidth = 15 * rem;
-
   useEffect(() => {
     const configureGrid = () => {
-      if (!contentViewport) {
-        return;
-      }
-      const gridOptions = getGridOptions(
-        models,
-        gridGapSize,
-        itemMinWidth,
-        contentViewport,
-      );
+      const gridOptions = getGridOptions(models);
       setGridOptions(gridOptions);
     };
     configureGrid();
     window.addEventListener("resize", configureGrid);
     return () => window.removeEventListener("resize", configureGrid);
-  }, [models, gridGapSize, itemMinWidth, contentViewport]);
+  }, [models]);
 
   const [gridOptions, setGridOptions] = useState<{
     cells: Cell[];
-    width: number;
-    columnWidth: number;
-    columnCount: number;
-    rowCount: number;
   } | null>(null);
 
   if (error) {
@@ -85,18 +64,14 @@ export const BrowseModels = ({
 
   const { cells } = gridOptions;
 
-  return (
-    <GridContainer>
-      {cells ? (
-        cells
-      ) : (
-        <CenteredEmptyState
-          title={t`No models here yet`}
-          message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
-          illustrationElement={<img src={NoResults} />}
-        />
-      )}
-    </GridContainer>
+  return cells ? (
+    <GridContainer>{cells}</GridContainer>
+  ) : (
+    <CenteredEmptyState
+      title={t`No models here yet`}
+      message={t`Models help curate data to make it easier to find answers to questions all in one place.`}
+      illustrationElement={<img src={NoResults} />}
+    />
   );
 };
 
@@ -134,6 +109,7 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
           className={"last-edit-info-label-button"}
           // TODO: Simplify the formatLabel prop
           formatLabel={(
+            // TODO: Use first name and last initial
             fullName: string | undefined = "",
             timeLabel: string,
           ) => (
@@ -254,39 +230,10 @@ const makeCells = (models: Model[]): Cell[] => {
   return cells;
 };
 
-const getGridOptions = (
-  models: Model[],
-  gridGapSize: number,
-  itemMinWidth: number,
-  contentViewport: HTMLElement,
-) => {
-  const browseAppRoot = contentViewport.children[0];
-  const width = browseAppRoot.clientWidth - gridGapSize;
-
-  const calculateColumnCount = (width: number) => {
-    return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
-  };
-
-  const calculateItemWidth = (width: number, columnCount: number) => {
-    return width / columnCount;
-  };
-
-  const sortedModels = [...models.map(model => ({ ...model }))].sort(
-    sortModels,
-  );
-
-  const columnCount = calculateColumnCount(width);
-  const columnWidth = calculateItemWidth(width, columnCount);
+const getGridOptions = (models: Model[]) => {
+  const sortedModels = models.sort(sortModels);
   const cells = makeCells(sortedModels);
-  const rowCount = Math.ceil(cells.length / columnCount);
-
-  return {
-    columnCount,
-    columnWidth,
-    cells,
-    rowCount,
-    width,
-  };
+  return { cells };
 };
 
 const addLastEditInfo = (model: Model): CollectionItemWithLastEditedInfo => ({
