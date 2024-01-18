@@ -203,11 +203,17 @@ class Question {
     return query;
   }
 
+  /**
+   * @deprecated use MLv2
+   */
   isNative(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
     return isNative;
   }
 
+  /**
+   * @deprecated use MLv2
+   */
   isStructured(): boolean {
     return !this.isNative();
   }
