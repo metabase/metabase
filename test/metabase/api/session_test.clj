@@ -660,3 +660,18 @@
                   :model_id nil
                   :details  {:email "test@metabase.com"}}
                  (mt/latest-audit-log-entry :subscription-unsubscribe-undo))))))))
+
+
+(public-settings/site-uuid)
+
+(deftest stable-site-uuid-test
+  (reset-throttlers!)
+
+  (testing "Site uuid is stable across restarts"
+    (mt/discard-setting-changes [:site-uuid]
+      (mt/with-test-user :crowberto
+        (is (= nil
+               ;(set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
+               (:site-uuid (mt/user-http-request :crowberto :get 200 "session/properties")))))))
+
+)
