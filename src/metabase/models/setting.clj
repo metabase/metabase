@@ -493,9 +493,8 @@
   (when f (f)))
 
 (defn- db-is-set-up? []
-  (or (call-me-maybe (requiring-resolve 'metabase.db/db-is-set-up?))
-      ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
-      false))
+  ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
+  (call-me-maybe (requiring-resolve 'metabase.db/db-is-set-up?)))
 
 (defn- db-or-cache-value
   "Get the value, if any, of `setting-definition-or-name` from the DB (using / restoring the cache as needed)."
@@ -509,11 +508,11 @@
           (do
             (setting.cache/restore-cache-if-needed!)
             (let [cache (setting.cache/cache)]
-              (u/or-with some?
-                (core/get cache (setting-name setting-definition-or-name))
+              (if (nil? cache)
                 ;; If another thread is populating the cache for the first time, we will have a nil value for
                 ;; the cache and must hit the db while the cache populates
-                (db-value setting)))))))))
+                (db-value setting)
+                (core/get cache (setting-name setting-definition-or-name))))))))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
