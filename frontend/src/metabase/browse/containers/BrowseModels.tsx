@@ -222,10 +222,19 @@ const makeCells = (models: Model[]): Cell[] => {
     // Before the first model in a given collection,
     // add an item that represents the header of the collection
     if (firstModelInItsCollection) {
-      const header = <CollectionHeader collection={model.collection} />;
+      const header = (
+        <CollectionHeader
+          collection={model.collection}
+          key={
+            model?.collection?.id
+              ? `collection-${model.collection.id}`
+              : cells.length
+          }
+        />
+      );
       cells.push(header);
     }
-    cells.push(<ModelCell model={model} />);
+    cells.push(<ModelCell key={`model-${model.id}`} model={model} />);
   }
   return cells;
 };
