@@ -2,17 +2,18 @@ import { isValidElement } from "react";
 import { t } from "ttag";
 import PropTypes from "prop-types";
 
-import * as Lib from "metabase-lib";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import { isNotNull } from "metabase/lib/types";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
-
 import Tooltip from "metabase/core/components/Tooltip";
-
 import TableInfoPopover from "metabase/components/MetadataInfo/TableInfoPopover";
+
+import * as Lib from "metabase-lib";
 import {
   getQuestionIdFromVirtualTableId,
+  getQuestionVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/metadata/utils/saved-questions";
 
@@ -139,19 +140,17 @@ function getDataSourceParts({ question }) {
     return [];
   }
 
-  const isStructuredQuery = question.isStructured();
-  const query = isStructuredQuery
-    ? question.legacyQuery({ useStructuredQuery: true }).rootQuery()
-    : question.legacyQuery();
-
   const hasDataPermission = question.isQueryEditable();
   if (!hasDataPermission) {
     return [];
   }
 
   const parts = [];
+  const query = question.query();
+  const metadata = question.metadata();
+  const isStructured = question.isStructured();
 
-  const database = question.database();
+  const database = metadata.database(Lib.databaseID(query));
   if (database) {
     parts.push({
       icon: "database",
@@ -160,7 +159,9 @@ function getDataSourceParts({ question }) {
     });
   }
 
-  const table = query.table();
+  const table = isStructured
+    ? metadata.table(Lib.sourceTableOrCardId(query))
+    : question.legacyQuery().table();
   if (table && table.hasSchema()) {
     const isBasedOnSavedQuestion = isVirtualCardId(table.id);
     if (!isBasedOnSavedQuestion) {
@@ -172,7 +173,7 @@ function getDataSourceParts({ question }) {
   }
 
   if (table) {
-    if (!isStructuredQuery) {
+    if (!isStructured) {
       return {
         name: table.displayName(),
       };
@@ -180,8 +181,20 @@ function getDataSourceParts({ question }) {
 
     const allTables = [
       table,
-      ...query.joins().map(j => j.joinedTable()),
-    ].filter(Boolean);
+      ...Lib.joins(query, -1)
+        .map(join => Lib.pickerInfo(query, Lib.joinedThing(query, join)))
+        .map(pickerInfo => {
+          if (pickerInfo?.tableId != null) {
+            return metadata.table(pickerInfo.tableId);
+          }
+
+          if (pickerInfo?.cardId != null) {
+            return metadata.table(getQuestionVirtualTableId(pickerInfo.cardId));
+          }
+
+          return undefined;
+        }),
+    ].filter(isNotNull);
 
     parts.push(<QuestionTableBadges tables={allTables} />);
   }

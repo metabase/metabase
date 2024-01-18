@@ -163,17 +163,9 @@ function getQuery(query: Lib.Query, isDefaultAggregationRemoved: boolean) {
   const shouldAddDefaultAggregation =
     !hasAggregations && !isDefaultAggregationRemoved;
 
-  const operator = Lib.availableAggregationOperators(query, STAGE_INDEX).find(
-    operator => {
-      const { shortName } = Lib.displayInfo(query, STAGE_INDEX, operator);
-      return shortName === "count";
-    },
-  );
-
-  if (operator && shouldAddDefaultAggregation) {
-    const clause = Lib.aggregationClause(operator);
-    return Lib.aggregate(query, STAGE_INDEX, clause);
+  if (!shouldAddDefaultAggregation) {
+    return query;
   }
 
-  return query;
+  return Lib.aggregateByCount(query);
 }
