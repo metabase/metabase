@@ -672,6 +672,10 @@ const TITLE_LOCALES_BN = {
     'en' : 'Hold Posts',
     'bn' : 'সংরক্ষিত পদ'
   },
+  'total.vacant.post' : {
+    'en' : 'Total vacant post',
+    'bn' : 'মোট শূণ্যপদ'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
