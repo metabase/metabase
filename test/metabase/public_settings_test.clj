@@ -371,19 +371,24 @@
 
         (is (= true (public-settings/show-metabase-links)))))))
 
-(setting/defsetting test-uuid-nonce "nonce sequitur" :type ::public-settings/uuid-nonce)
+(setting/defsetting test-uuid-nonce "nonce sequitur"
+  :type :string
+  :init public-settings/random-uuid-str)
 
 (def test-setting (setting/resolve-setting :test-uuid-nonce))
 
-(deftest lazy-uuid-nonce-test
-    (testing "Reading the setting through the low level API does not initialize it"
-      (mt/discard-setting-changes [test-uuid-nonce]
-        (is (nil? (setting/get-raw-value test-setting)))
-        (is (nil? (setting/get-value-of-type ::public-settings/uuid-nonce test-setting)))
-        (is (nil? (setting/get test-setting)))))
+#_ {:clj-kondo/ignore [:unresolved-namespace]}
+(comment
+  (metabase.models.setting.cache/restore-cache!)
+  (get (keys (metabase.models.setting.cache/cache)) "site-uuid")
+  (#'setting/db-value test-setting)
+  (setting/set! test-setting nil :bypass-read-only? true)
+  )
 
-    (testing "Using the public getter will initialize it"
-      (mt/discard-setting-changes [test-uuid-nonce]
-        (is (some? (setting/get-or-init! test-setting))))
-      (mt/discard-setting-changes [test-uuid-nonce]
-        (is (some? (test-uuid-nonce))))))
+(deftest lazy-uuid-nonce-test
+  (testing "Accessing an uninitialized setting withi"
+    (mt/discard-setting-changes [test-uuid-nonce]
+      (is (= nil (#'setting/db-value test-setting)))
+      (is (some? (setting/get test-setting)))
+      (is (= (setting/get test-setting)
+             (test-uuid-nonce))))))

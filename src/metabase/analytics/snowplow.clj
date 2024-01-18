@@ -75,7 +75,8 @@
          "This is a public setting since some analytics events are sent prior to initial setup."))
   :visibility :public
   :setter     :none
-  :type       ::public-settings/uuid-nonce
+  :type       :string
+  :init       public-settings/random-uuid-str
   :doc        false)
 
 (defsetting snowplow-available

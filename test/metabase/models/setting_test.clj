@@ -168,7 +168,7 @@
   (testing "The custom :init hook will fire when expected, and the value will be saved"
     (mt/discard-setting-changes [test-setting-custom-init]
       (is (= nil (setting/get custom-init-setting)))
-      (let [val (setting/get-or-init! custom-init-setting)]
+      (let [val (setting/get custom-init-setting)]
         (is (some? val))
         (is (= val (setting/get custom-init-setting))))))
 
@@ -197,7 +197,7 @@
   (testing "Initialized value is stored in the database"
     (mt/discard-setting-changes [test-setting-custom-init]
       (is (= nil (setting/get custom-init-setting)))
-      (let [orig-uuid (setting/get-or-init! custom-init-setting)]
+      (let [orig-uuid (setting/get custom-init-setting)]
         (is (some? orig-uuid))
         (testing "We can clear the value by erasing the cache"
           (swap! (#'setting.cache/cache*) dissoc "test-setting-custom-init")
