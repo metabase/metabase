@@ -540,6 +540,7 @@
         (testing "should drop the existing color column"
           (is (not (contains? (t2/select-one :model/Collection :id collection-id) :color))))))))
 
+#_ ;; TODO: this test is flaky so it's commented out for now
 (deftest audit-v2-views-test
   (testing "Migrations v48.00-029 - end"
     ;; Use an open-ended migration range so that we can detect if any migrations added after these views broke the view

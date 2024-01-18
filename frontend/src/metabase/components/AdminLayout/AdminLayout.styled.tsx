@@ -6,7 +6,7 @@ export const AdminWrapper = styled.div`
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0 2rem;
+  padding-left: 2rem;
 `;
 
 export const AdminNotifications = styled.div`

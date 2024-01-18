@@ -58,7 +58,7 @@ describe("InteractiveEmbeddingCTA", () => {
 
     expect(screen.getByTestId("interactive-embedding-cta")).toHaveAttribute(
       "href",
-      "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=CTA&utm_campaign=embed-modal",
+      "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=static-embed-popover",
     );
   });
 });

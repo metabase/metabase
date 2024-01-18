@@ -255,6 +255,7 @@
    :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
+   :export?     s/Bool           ; should this setting be serialized?
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
    :deprecated  (s/maybe s/Str)  ; if non-nil, contains the Metabase version in which this setting was deprecated
 
@@ -280,11 +281,7 @@
    ;; should be used for most non-sensitive settings, and will log the value returned by its getter, which may be a
    ;; the default getter or a custom one.
    ;; (default: `:no-value`)
-   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))
-
-   ;; TODO: make this required and deprecate setting/exported-setting
-   (s/optional-key :export?)     s/Bool ; should this setting be serialized?
-   })
+   :audit       (s/maybe (s/enum :never :no-value :raw-value :getter))})
 
 (defonce ^{:doc "Map of loaded defsettings"}
   registered-settings
@@ -890,6 +887,7 @@
                  :setter         (partial (default-setter-for-type setting-type) setting-name)
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
+                 :export?        false
                  :sensitive?     false
                  :cache?         true
                  :feature        nil
@@ -1055,6 +1053,10 @@
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
+
+  ###### `:export?`
+
+  Whether this Setting is included when producing a serializing settings export.
 
   ###### `:getter`
 
@@ -1330,36 +1332,18 @@
   (ex-info (trs "Error of type {0} thrown while parsing a setting" (type ex))
            {:ex-type (type ex)}))
 
-(defmulti may-contain-raw-token?
-  "Indicate whether we must redact an exception to avoid leaking sensitive env vars"
-  (fn [_ex setting] (:type setting)))
+(defn- may-contain-raw-token? [ex setting]
+  (case (:type setting)
+    :json
+    (cond
+      (instance? JsonEOFException ex) false
+      (instance? JsonParseException ex) true
+      :else (do (log/warn ex "Unexpected exception while parsing JSON")
+                ;; err on the side of caution
+                true))
 
-;; fallback to redaction if we have not defined behaviour for a given format
-(defmethod may-contain-raw-token? :default [_ _] false)
-
-(defmethod may-contain-raw-token? :boolean [_ _] false)
-
-;; Non EOF exceptions will mention the next character
-(defmethod may-contain-raw-token? :csv [ex _] (not (instance? java.io.EOFException ex)))
-
-;; Number parsing exceptions will quote the entire input
-(defmethod may-contain-raw-token? :double [_ _] true)
-(defmethod may-contain-raw-token? :integer [_ _] true)
-(defmethod may-contain-raw-token? :positive-integer [_ _] true)
-
-;; Date parsing may quote the entire input, or a particular sub-portion, e.g. a misspelled month name
-(defmethod may-contain-raw-token? :timestamp [_ _] true)
-
-;; Keyword parsing can never fail, but let's be paranoid
-(defmethod may-contain-raw-token? :keyword [_ _] true)
-
-(defmethod may-contain-raw-token? :json [ex _]
-  (cond
-    (instance? JsonEOFException ex) false
-    (instance? JsonParseException ex) true
-    :else (do (log/warn ex "Unexpected exception while parsing JSON")
-              ;; err on the side of caution
-              true)))
+    ;; TODO: handle the remaining formats explicitly
+    true))
 
 (defn- redact-sensitive-tokens [ex raw-value]
   (if (may-contain-raw-token? ex raw-value)
@@ -1370,16 +1354,17 @@
   "Test whether the value configured for a given setting can be parsed as the expected type.
    Returns an map containing the exception if an issue is encountered, or nil if the value passes validation."
   [setting]
-  (try
-    (get-value-of-type (:type setting) setting)
-    nil
-    (catch clojure.lang.ExceptionInfo e
-      (let [parse-error (or (ex-cause e) e)
-            parse-error (redact-sensitive-tokens parse-error setting)
-            env-var? (set-via-env-var? setting)]
-        (assoc (select-keys setting [:name :type])
-          :parse-error parse-error
-          :env-var? env-var?)))))
+  (when (= :json (:type setting))
+    (try
+      (get-value-of-type (:type setting) setting)
+      nil
+      (catch clojure.lang.ExceptionInfo e
+        (let [parse-error (or (ex-cause e) e)
+              parse-error (redact-sensitive-tokens parse-error setting)
+              env-var? (set-via-env-var? setting)]
+          (assoc (select-keys setting [:name :type])
+            :parse-error parse-error
+            :env-var? env-var?))))))
 
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
@@ -1389,7 +1374,7 @@
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
-                           (u/upper-case-en (name (:type invalid-setting)))
+                           #_:clj-kondo/ignore (str/upper-case (name (:type invalid-setting)))
                            (name (:name invalid-setting)))
                       (dissoc invalid-setting :parse-error)
                       (:parse-error invalid-setting)))

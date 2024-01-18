@@ -21,7 +21,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
-      ...getSelectInputOverrides(theme),
+      ...getSelectInputOverrides(theme, size),
       ...getSelectItemsOverrides(theme, size),
     }),
   },
@@ -29,6 +29,7 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
 
 export const getSelectInputOverrides = (
   theme: MantineTheme,
+  size: MantineSize | number,
 ): Record<string, CSSObject> => {
   return {
     root: {
@@ -43,6 +44,7 @@ export const getSelectInputOverrides = (
     label: {
       color: theme.fn.themeColor("text-medium"),
       ref: getStylesRef("label"),
+      fontSize: getSize({ size, sizes: theme.fontSizes }),
     },
     description: {
       ref: getStylesRef("description"),
@@ -53,7 +55,9 @@ export const getSelectInputOverrides = (
     wrapper: {
       ref: getStylesRef("wrapper"),
       color: theme.fn.themeColor("text-dark"),
-
+      "&:not(:only-child)": {
+        marginTop: theme.spacing.xs,
+      },
       [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,
         pointerEvents: "auto",

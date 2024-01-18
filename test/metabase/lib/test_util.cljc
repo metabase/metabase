@@ -190,38 +190,42 @@
                                                     :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})
 
+(defn make-mock-cards
+  "Create mock cards against a set of tables in meta/metadata-provider. See [[mock-cards]]"
+  [metadata-provider table-key-and-ids]
+  (into {}
+        (comp (mapcat (fn [[table table-id]]
+                        [{:table table, :table-id table-id :metadata? true,  :native? false, :card-name table}
+                         {:table table, :table-id table-id :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
+                         {:table table, :table-id table-id :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
+              (map-indexed (fn [idx {:keys [table table-id metadata? native? card-name]}]
+                             [card-name
+                              (merge
+                                {:lib/type      :metadata/card
+                                 :id            (inc idx)
+                                 :database-id   (:id (lib.metadata/database metadata-provider))
+                                 :name          (str "Mock " (name table) " card")
+                                 :dataset-query (if native?
+                                                  {:database (:id (lib.metadata/database metadata-provider))
+                                                   :type     :native
+                                                   :native   {:query (str "SELECT * FROM " (name table))}}
+                                                  {:database (:id (lib.metadata/database metadata-provider))
+                                                   :type     :query
+                                                   :query    {:source-table table-id}})}
+                                (when metadata?
+                                  {:result-metadata
+                                   (->> (lib.metadata/fields metadata-provider table-id)
+                                        (sort-by :id)
+                                        (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
+        table-key-and-ids))
+
 (def mock-cards
   "Map of mock MBQL query Card against the test tables. There are three versions of the Card for each table:
 
   * `:venues`, a Card WITH `:result-metadata`
   * `:venues/no-metadata`, a Card WITHOUT `:result-metadata`
   * `:venues/native`, a Card with `:result-metadata` and a NATIVE query."
-  (into {}
-        (comp (mapcat (fn [table]
-                        [{:table table, :metadata? true,  :native? false, :card-name table}
-                         {:table table, :metadata? true,  :native? true,  :card-name (keyword (name table) "native")}
-                         {:table table, :metadata? false, :native? false, :card-name (keyword (name table) "no-metadata")}]))
-              (map-indexed (fn [idx {:keys [table metadata? native? card-name]}]
-                             [card-name
-                              (merge
-                               {:lib/type      :metadata/card
-                                :id            (inc idx)
-                                :database-id   (meta/id)
-                                :name          (str "Mock " (name table) " card")
-                                :dataset-query (if native?
-                                                 {:database (meta/id)
-                                                  :type     :native
-                                                  :native   {:query (str "SELECT * FROM " (name table))}}
-                                                 {:database (meta/id)
-                                                  :type     :query
-                                                  :query    {:source-table (meta/id table)}})}
-                               (when metadata?
-                                 {:result-metadata
-                                  (->> (meta/fields table)
-                                       (map (partial meta/field-metadata table))
-                                       (sort-by :id)
-                                       (mapv #(if native? (dissoc % :table-id :id) %)))}))])))
-        (meta/tables)))
+  (make-mock-cards meta/metadata-provider (map (juxt identity (comp :id meta/table-metadata)) (meta/tables))))
 
 (defn metadata-provider-with-mock-card [card]
   (lib/composed-metadata-provider
