@@ -78,7 +78,6 @@ export function useModelsAndOption({
           selectedTimelineEventIds,
           settings,
           width,
-          true,
           renderingContext,
         );
       default:
@@ -88,7 +87,6 @@ export function useModelsAndOption({
           selectedTimelineEventIds,
           settings,
           width,
-          true,
           renderingContext,
         );
     }
