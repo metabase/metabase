@@ -26,7 +26,7 @@ import {
 import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 
 interface DashboardHeaderViewProps {
-  editingTitle: string;
+  editingTitle?: string;
   editingSubtitle?: string;
   editingButtons?: JSX.Element[];
   editWarning?: string;
