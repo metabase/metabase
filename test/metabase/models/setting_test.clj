@@ -21,6 +21,9 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+;; TODO: it would be nice to detct and discard the changes to *all* settings defined in this namespace
+(use-fixtures :each (fn [thunk] (mt/discard-setting-changes [:test-setting-custom-init] (thunk))))
+
 ;; ## TEST SETTINGS DEFINITIONS
 
 (defsetting test-setting-1
@@ -154,8 +157,7 @@
            (setting/user-facing-value :test-setting-calculated-getter))))
 
   (testing "`user-facing-value` will initialize pending values"
-    (mt/discard-setting-changes [test-setting-custom-init]
-      (is (some? (setting/user-facing-value custom-init-setting))))))
+    (is (some? (setting/user-facing-value custom-init-setting)))))
 
 (deftest do-not-define-setter-function-for-setter-none-test
   (testing "Settings with `:setter` `:none` should not have a setter function defined"
@@ -163,27 +165,21 @@
       (is (some? (resolve `test-setting-calculated-getter))))
     (is (not (resolve `test-setting-calculated-getter!)))))
 
-(comment
-  (#'setting/db-or-cache-value custom-init-setting)
-  )
+(defn- get-setting-via-db []
+  (#'setting/read-setting :test-setting-custom-init))
 
-(deftest custom-init-test
-  ;; Some other pre-existing test is initializing this value, this is a stop gap until we fix its hygiene
-  (#'setting/set! custom-init-setting nil :bypass-read-only? true)
+(deftest setting-initialization-test
+  (testing "The value will be initialized and saved"
+    (is (= nil (get-setting-via-db)))
+    (let [val (setting/get custom-init-setting)]
+      (is (some? val))
+      (is (= val (test-setting-custom-init)))
+      (is (= val (get-setting-via-db))))))
 
-  (let [get-via-db #(#'setting/read-setting :test-setting-custom-init)]
-    (testing "The value will be initialized and saved"
-      (mt/discard-setting-changes [test-setting-custom-init]
-        (is (= nil (get-via-db)))
-        (let [val (setting/get custom-init-setting)]
-          (is (some? val))
-          (is (= val (test-setting-custom-init)))
-          (is (= val (get-via-db))))))
-
-    (testing "Validation does not initialize the setting"
-      (mt/discard-setting-changes [test-setting-custom-init]
-        (setting/validate-settings-formatting!)
-        (is (= nil (get-via-db)))))))
+(deftest validate-without-initialization-test
+  (testing "Validation does not initialize the setting"
+    (setting/validate-settings-formatting!)
+    (is (= nil (get-setting-via-db)))))
 
 (deftest init-requires-db-test
   (testing "We will fail instead of implicitly initializing a setting if the db is not ready"
