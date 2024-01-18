@@ -38,6 +38,7 @@ export const DatabaseGridItem = styled(GridItem)`
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
+  margin-right: 1rem;
 
   &:hover h4 {
     color: ${color("brand")};
@@ -107,9 +108,8 @@ export const CenteredEmptyState = styled(EmptyState)`
 `;
 
 export const GridContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 1rem;
+  flex: 1;
+  display: flex;
 
   ${breakpointMinSmall} {
     padding-bottom: 1rem;
@@ -141,4 +141,11 @@ export const CollectionHeaderLink = styled(Link)`
   &:hover * {
     color: ${color("brand")};
   }
+  grid-column: 1 / -1;
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
+  padding-top: 1rem;
+  margin-right: 1rem;
+  width: calc(100% - 1rem) !important;
 `;

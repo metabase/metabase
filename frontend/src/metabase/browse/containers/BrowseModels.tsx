@@ -1,3 +1,5 @@
+import { useEffect, useState, useContext, cloneElement } from "react";
+
 import _ from "underscore";
 import cx from "classnames";
 import { c, t } from "ttag";
@@ -5,6 +7,13 @@ import dayjs from "dayjs";
 import updateLocale from "dayjs/plugin/updateLocale";
 import relativeTime from "dayjs/plugin/relativeTime";
 
+import type { GridCellProps } from "react-virtualized";
+
+import {
+  Grid as VirtualizedGrid,
+  WindowScroller,
+  AutoSizer,
+} from "react-virtualized";
 import type { Card, Collection, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
@@ -16,7 +25,8 @@ import type { useSearchListQuery } from "metabase/common/hooks";
 import { Box, Group, Icon, Text, Title, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { sortModels } from "metabase/browse/utils";
-import NoResults from "assets/img/no_results.svg";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { space } from "metabase/styled-components/theme";
 import {
   CenteredEmptyState,
   CollectionHeaderContainer,
@@ -26,6 +36,7 @@ import {
   ModelCard,
   MultilineEllipsified,
 } from "./BrowseData.styled";
+import NoResults from "assets/img/no_results.svg";
 
 dayjs.extend(updateLocale);
 dayjs.extend(relativeTime);
@@ -85,6 +96,15 @@ dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
 //   };
 // });
 
+type RenderItemFunction = (
+  props: GridCellProps & {
+    columnCount: number;
+    gridGapSize?: number;
+    groupLabel?: string;
+    cells: Cell[];
+  },
+) => JSX.Element | null;
+
 const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
@@ -92,9 +112,44 @@ export const BrowseModels = ({
   error,
   isLoading,
 }: ReturnType<typeof useSearchListQuery<SearchResult>>) => {
-  const groupedModels = _.groupBy(models, model => model.collection.id);
+  // This provides a ref to the <main> rendered by AppContent in App.tsx
+  const contentViewport = useContext(ContentViewportContext);
 
-  if (error || isLoading) {
+  const rem = parseInt(space(2));
+  const gridGapSize = rem;
+  const itemMinWidth = 15 * rem;
+  const defaultItemHeight = 10 * rem;
+  const headerHeight = 3 * rem;
+
+  useEffect(() => {
+    const configureGrid = () => {
+      if (!contentViewport) {
+        return;
+      }
+      const gridOptions = getGridOptions(
+        models,
+        gridGapSize,
+        itemMinWidth,
+        contentViewport,
+      );
+      setGridOptions(gridOptions);
+    };
+    configureGrid();
+    window.addEventListener("resize", configureGrid);
+    return () => window.removeEventListener("resize", configureGrid);
+  }, [models, gridGapSize, itemMinWidth, contentViewport]);
+
+  const [gridOptions, setGridOptions] = useState<{
+    cells: Cell[];
+    columnCount: number;
+    rowCount: number;
+    width: number;
+    columnWidth: number;
+  } | null>(null);
+
+  if (error) {
+    return <LoadingAndErrorWrapper error />;
+  } else if (isLoading || !gridOptions) {
     return (
       <LoadingAndErrorWrapper
         error={error}
@@ -104,16 +159,48 @@ export const BrowseModels = ({
     );
   }
 
-  if (models.length) {
+  const { cells = [], columnCount } = gridOptions;
+
+  const getRowHeight = ({ index: rowIndex }: { index: number }) => {
+    const cellIndex = rowIndex * columnCount;
+    return cellIsInHeaderRow(cells[cellIndex])
+      ? headerHeight
+      : defaultItemHeight;
+  };
+
+  const cellRenderer = (props: GridCellProps) =>
+    renderItem({
+      ...props,
+      cells,
+      columnCount,
+    });
+
+  if (cells.length && contentViewport) {
     return (
       <GridContainer role="grid">
-        {Object.values(groupedModels).map((models, index) => (
-          <ModelGroup
-            index={index}
-            models={models}
-            key={`modelgroup-${index}`}
-          />
-        ))}
+        <WindowScroller scrollElement={contentViewport}>
+          {({ height, isScrolling, onChildScroll, scrollTop }) => (
+            <AutoSizer disableHeight>
+              {() => (
+                <VirtualizedGrid
+                  data-testid="model-browser"
+                  columnCount={gridOptions.columnCount}
+                  rowCount={gridOptions.rowCount}
+                  width={gridOptions.width}
+                  columnWidth={gridOptions.columnWidth}
+                  gap={gridGapSize}
+                  autoHeight
+                  height={height}
+                  isScrolling={isScrolling}
+                  scrollTop={scrollTop}
+                  onScroll={onChildScroll}
+                  rowHeight={getRowHeight}
+                  cellRenderer={cellRenderer}
+                />
+              )}
+            </AutoSizer>
+          )}
+        </WindowScroller>
       </GridContainer>
     );
   }
@@ -130,37 +217,6 @@ export const BrowseModels = ({
         </Box>
       }
     />
-  );
-};
-
-const ModelGroup = ({
-  models,
-  index,
-}: {
-  models: SearchResult[];
-  index: number;
-}) => {
-  const sortedModels = models.sort(sortModels);
-  const collection = models[0].collection;
-
-  /** This id is used by aria-labelledby */
-  const collectionHtmlId = `collection-${collection?.id ?? `index-${index}`}`;
-
-  return (
-    <>
-      <CollectionHeader
-        collection={models[0].collection}
-        key={collectionHtmlId}
-        id={collectionHtmlId}
-      />
-      {sortedModels.map(model => (
-        <ModelCell
-          model={model}
-          collectionHtmlId={collectionHtmlId}
-          key={`model-${model.id}`}
-        />
-      ))}
-    </>
   );
 };
 
@@ -272,4 +328,118 @@ const CollectionHeader = ({
       </MaybeLink>
     </CollectionHeaderContainer>
   );
+};
+
+type Cell = React.ReactElement | null;
+
+const BlankCell = (props: { style?: React.CSSProperties }) => (
+  <div {...props} />
+);
+const BlankCellInHeader = (props: { style?: React.CSSProperties }) => (
+  <div {...props} />
+);
+
+const makeCells = (models: SearchResult[], columnCount: number): Cell[] => {
+  const cells: Cell[] = [];
+  for (
+    let i = 0, columnIndex = 0;
+    i < models.length;
+    i++, columnIndex = (columnIndex + 1) % columnCount
+  ) {
+    const model = models[i];
+
+    const collectionIdChanged =
+      models[i - 1]?.collection?.id !== model.collection?.id;
+
+    const firstModelInItsCollection =
+      i === 0 || collectionIdChanged || model.collection?.id === undefined;
+
+    /** This id is used by aria-labelledby */
+    const collectionHtmlId = model?.collection?.id
+      ? `collection-${model.collection?.id}`
+      : `item-${cells.length}`;
+
+    // Before the first model in a given collection,
+    // add an item that represents the header of the collection
+    if (firstModelInItsCollection) {
+      const header = (
+        <CollectionHeader
+          collection={model.collection}
+          key={collectionHtmlId}
+          id={collectionHtmlId}
+        />
+      );
+      // So that the collection header appears at the start of the row,
+      // add zero or more blank items to fill in the rest of the previous row
+      if (columnIndex > 0) {
+        cells.push(...Array(columnCount - columnIndex).fill(<BlankCell />));
+      }
+      cells.push(header);
+      // Fill in the rest of the header row with blank items
+      cells.push(...Array(columnCount - 1).fill(<BlankCellInHeader />));
+      columnIndex = 0;
+    }
+
+    cells.push(
+      <ModelCell
+        collectionHtmlId={collectionHtmlId}
+        key={`model-${model.id}`}
+        model={model}
+      />,
+    );
+  }
+  return cells;
+};
+
+const getGridOptions = (
+  models: SearchResult[],
+  gridGapSize: number,
+  itemMinWidth: number,
+  contentViewport: HTMLElement,
+) => {
+  const browseAppRoot = contentViewport.children[0];
+  const width = browseAppRoot.clientWidth - gridGapSize;
+
+  const calculateColumnCount = (width: number) => {
+    return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));
+  };
+
+  const calculateItemWidth = (width: number, columnCount: number) => {
+    return width / columnCount;
+  };
+
+  const sortedModels = [...models.map(model => ({ ...model }))].sort(
+    sortModels,
+  );
+
+  const columnCount = calculateColumnCount(width);
+  const columnWidth = calculateItemWidth(width, columnCount);
+  const cells = makeCells(sortedModels, columnCount);
+  const rowCount = Math.ceil(cells.length / columnCount);
+
+  return {
+    columnCount,
+    columnWidth,
+    cells,
+    rowCount,
+    width,
+  };
+};
+
+const cellIsInHeaderRow = (item: Cell) =>
+  item?.type === CollectionHeader || item?.type === BlankCellInHeader;
+
+const renderItem: RenderItemFunction = ({
+  columnCount,
+  columnIndex,
+  cells,
+  rowIndex,
+  style,
+}) => {
+  const index = rowIndex * columnCount + columnIndex;
+  const cell = cells[index];
+  return cell
+    ? // Render the component with the style prop provided by the grid
+      cloneElement(cell as React.ReactElement, { style })
+    : null;
 };
