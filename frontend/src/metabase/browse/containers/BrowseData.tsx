@@ -50,7 +50,7 @@ export const BrowseDataPage = () => {
     reload: true,
   });
 
-  // TODO: Poll these endpoints until it's clear we have loaded all the data
+  // NOTE: Should I poll these endpoints until it's clear we have loaded all the data?
 
   const tabs: Record<string, BrowseDataTab> = {
     models: {
@@ -103,7 +103,6 @@ const BrowseDatabases = ({
     return <LoadingAndErrorWrapper loading />;
   }
 
-  // TODO: Virtualize this list too?
   return databases.length ? (
     <Grid data-testid="database-browser">
       {databases.map(database => (
