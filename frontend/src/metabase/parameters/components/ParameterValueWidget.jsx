@@ -92,7 +92,7 @@ class ParameterValueWidget extends Component {
       return null;
     }
 
-    if (this.value != null) {
+    if (this.props.value != null) {
       return (
         <WidgetStatusIcon
           name="close"
