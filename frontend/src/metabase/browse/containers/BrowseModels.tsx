@@ -89,8 +89,11 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
   const lastEditorName = lastEdit.full_name;
   const howLongAgo = getHowLongAgo(lastEdit.timestamp);
 
+  const headingId = `heading-for-model-${model.id}`;
+
   return (
     <Link
+      aria-labelledby={headingId}
       key={model.id}
       style={style}
       to={Urls.model(model)}
@@ -99,7 +102,9 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
     >
       <ModelCard>
         <h4 className="text-wrap" style={{ lineHeight: "16px" }}>
-          <MultilineEllipsified>{model.name}</MultilineEllipsified>
+          <MultilineEllipsified id={headingId}>
+            {model.name}
+          </MultilineEllipsified>
         </h4>
         <Text size="xs" style={{ height: "32px" }}>
           <MultilineEllipsified

@@ -29,11 +29,12 @@ export function setupDatabaseUsageInfo(
 export function setupDatabasesEndpoints(
   dbs: Database[],
   { hasSavedQuestions = true } = {},
+  query: object = { saved: true },
 ) {
   fetchMock.get(
     {
       url: "path:/api/database",
-      query: { saved: true },
+      query,
       overwriteRoutes: false,
     },
     hasSavedQuestions ? [...dbs, SAVED_QUESTIONS_DATABASE] : dbs,

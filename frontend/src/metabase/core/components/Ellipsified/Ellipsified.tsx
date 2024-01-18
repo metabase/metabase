@@ -17,6 +17,7 @@ interface EllipsifiedProps {
   lines?: number;
   placement?: Placement;
   "data-testid"?: string;
+  id?: string;
 }
 
 export const Ellipsified = ({
@@ -30,6 +31,7 @@ export const Ellipsified = ({
   lines,
   placement = "top",
   "data-testid": dataTestId,
+  id,
 }: EllipsifiedProps) => {
   const canSkipTooltipRendering = !showTooltip && !alwaysShowTooltip;
   const { isTruncated, ref } = useIsTruncated<HTMLDivElement>({
@@ -49,6 +51,7 @@ export const Ellipsified = ({
         lines={lines}
         style={style}
         data-testid={dataTestId}
+        id={id}
       >
         {children}
       </EllipsifiedRoot>
