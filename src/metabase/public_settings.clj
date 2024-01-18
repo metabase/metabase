@@ -147,6 +147,7 @@
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
   :visibility :authenticated
+  ;; TODO: this should be implict for a ::uuid-nonce
   :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
   :type       ::uuid-nonce
