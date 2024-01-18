@@ -114,13 +114,13 @@ describe("BrowseDataPage", () => {
       originalOffsetWidth,
     );
   });
+
   it("has the models tab selected by default", async () => {
     setup({ models: 1, databases: 0 });
     expect(
       await screen.findByRole("tab", { name: "Models", selected: true }),
     ).toBeInTheDocument();
   });
-
   it("displays models in the models tab", async () => {
     const modelCount = 10;
     setup({ models: modelCount, databases: 0 });

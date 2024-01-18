@@ -37,13 +37,8 @@ export const DatabaseGridItem = styled(GridItem)`
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
-<<<<<<< HEAD
   padding-bottom: 1rem;
   margin-right: 1rem;
-||||||| parent of 13ca017467 (Restore virtualization to BrowseModels)
-=======
-  margin-right: 1rem;
->>>>>>> 13ca017467 (Restore virtualization to BrowseModels)
 
   &:hover h4 {
     color: ${color("brand")};
@@ -114,17 +109,8 @@ export const CenteredEmptyState = styled(EmptyState)`
 
 export const GridContainer = styled.div`
   flex: 1;
-<<<<<<< HEAD
   display: flex;
 
-||||||| parent of 13ca017467 (Restore virtualization to BrowseModels)
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-  gap: 1rem;
-
-=======
-  display: flex;
->>>>>>> 13ca017467 (Restore virtualization to BrowseModels)
   ${breakpointMinSmall} {
     padding-bottom: 1rem;
   }
@@ -146,7 +132,6 @@ export const CollectionHeaderContainer = styled.div`
   &:not(:first-of-type) {
     border-top: 1px solid #f0f0f0;
   }
-<<<<<<< HEAD
   // Kludge so we can use grid-gap: 1rem
   position: relative;
   top: 0.5rem;
@@ -157,11 +142,6 @@ export const CollectionHeaderLink = styled(Link)`
     color: ${color("brand")};
   }
   grid-column: 1 / -1;
-||||||| parent of 13ca017467 (Restore virtualization to BrowseModels)
-  grid-column: 1 / -1;
-=======
-  width: calc(100% - 1rem) !important;
->>>>>>> 13ca017467 (Restore virtualization to BrowseModels)
   display: flex;
   flex-flow: row nowrap;
   align-items: center;
