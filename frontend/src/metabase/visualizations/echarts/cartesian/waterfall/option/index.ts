@@ -19,7 +19,6 @@ export function getWaterfallOption(
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption {
   const baseOption = getCartesianChartOption(
@@ -28,7 +27,6 @@ export function getWaterfallOption(
     selectedTimelineEventsIds,
     settings,
     chartWidth,
-    isAnimated,
     renderingContext,
   );
 

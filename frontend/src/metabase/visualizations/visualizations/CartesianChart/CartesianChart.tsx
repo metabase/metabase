@@ -39,7 +39,7 @@ export function CartesianChart(props: VisualizationProps) {
     actionButtons,
     isQueryBuilder,
     isFullscreen,
-    selectedTimelineEventIds = [],
+    selectedTimelineEventIds,
     hovered,
     visualizationIsClickable,
     onChangeCardAndRun,
@@ -128,7 +128,7 @@ export function CartesianChart(props: VisualizationProps) {
             if (
               hasSelectedTimelineEvents(
                 clickedTimelineEvents,
-                selectedTimelineEventIds,
+                selectedTimelineEventIds ?? [],
               )
             ) {
               onDeselectTimelineEvents?.();
