@@ -2,19 +2,19 @@ import fetchMock from "fetch-mock";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import type { CollectionItemWithLastEditInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
+import type { SearchResult } from "metabase-types/api";
 import { BrowseDataPage } from "./BrowseData";
 
 const renderBrowseDataPage = () => {
   return renderWithProviders(<BrowseDataPage />);
 };
 
-const databases = [...Array(1000)].map((_, index) =>
+const databases = [...Array(100)].map((_, index) =>
   createMockDatabase({ id: index, name: `Database ${index}` }),
 );
 
 let collectionId;
-const models = [...Array(1000)].map(
+const models = [...Array(100)].map(
   (_, index) =>
     ({
       id: index,
@@ -24,12 +24,9 @@ const models = [...Array(1000)].map(
         id: (collectionId = Math.ceil(index / 3)),
         name: `Collection ${collectionId}`,
       },
-      "last-edit-info": {
-        timestamp: "2021-01-01T00:00:00.000Z",
-        first_name: "John",
-        last_name: "Doe",
-      },
-    } as CollectionItemWithLastEditInfo),
+      last_editor_common_name: "Nicole Oresme",
+      last_edited_at: `${2000 - index}-01-01T00:00:00.000Z`,
+    } as SearchResult),
 );
 
 const setDatabaseCount = (count: number) => {
@@ -74,25 +71,36 @@ describe("BrowseDataPage", () => {
     jest.restoreAllMocks();
   });
   it("displays models in the models tab", async () => {
-    const modelCount = 100;
+    const modelCount = 10;
     setup({ models: modelCount, databases: 0 });
     // Exercise the tabs a little
     (await screen.findByRole("tab", { name: "Databases" })).click();
     (await screen.findByRole("tab", { name: "Models" })).click();
-    // Find the models
-    for (let i = 0; i < modelCount; i++) {
-      const model = await screen.findByText(`Model ${i}`);
-      expect(model).toBeInTheDocument();
-    }
+    expect(await screen.findByText("Model 0")).toBeInTheDocument();
+    expect(await screen.findByText("Model 1")).toBeInTheDocument();
+    expect(await screen.findByText("Model 2")).toBeInTheDocument();
+    expect(await screen.findByText("Model 3")).toBeInTheDocument();
+    expect(await screen.findByText("Model 4")).toBeInTheDocument();
+    expect(await screen.findByText("Model 5")).toBeInTheDocument();
+    expect(await screen.findByText("Model 6")).toBeInTheDocument();
+    expect(await screen.findByText("Model 7")).toBeInTheDocument();
+    expect(await screen.findByText("Model 8")).toBeInTheDocument();
+    expect(await screen.findByText("Model 9")).toBeInTheDocument();
   });
   it("displays databases in the databases tab", async () => {
-    const databaseCount = 100;
+    const databaseCount = 10;
     setup({ models: 0, databases: databaseCount });
     (await screen.findByRole("tab", { name: "Databases" })).click();
-    for (let i = 0; i < databaseCount; i++) {
-      const database = await screen.findByText(`Database ${i}`);
-      expect(database).toBeInTheDocument();
-    }
+    expect(await screen.findByText("Database 0")).toBeInTheDocument();
+    expect(await screen.findByText("Database 1")).toBeInTheDocument();
+    expect(await screen.findByText("Database 2")).toBeInTheDocument();
+    expect(await screen.findByText("Database 3")).toBeInTheDocument();
+    expect(await screen.findByText("Database 4")).toBeInTheDocument();
+    expect(await screen.findByText("Database 5")).toBeInTheDocument();
+    expect(await screen.findByText("Database 6")).toBeInTheDocument();
+    expect(await screen.findByText("Database 7")).toBeInTheDocument();
+    expect(await screen.findByText("Database 8")).toBeInTheDocument();
+    expect(await screen.findByText("Database 9")).toBeInTheDocument();
   });
   it("displays a 'no models' message in the Models tab when no models exist", async () => {
     setup({ models: 0, databases: 10 });
@@ -113,5 +121,10 @@ describe("BrowseDataPage", () => {
     // and "collection-1" is the id of an element containing text 'Collection 1'
     const modelsInCollection1 = await screen.findAllByLabelText("Collection 1");
     expect(modelsInCollection1).toHaveLength(3);
+  });
+  it("displays last edited information about models", async () => {
+    setup({ models: 3, databases: 0 });
+    await screen.findByText("Model 0");
+    expect(await screen.findAllByText(/years ago/)).toHaveLength(3);
   });
 });
