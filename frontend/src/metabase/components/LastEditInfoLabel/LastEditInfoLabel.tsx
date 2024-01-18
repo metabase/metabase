@@ -65,7 +65,7 @@ function LastEditInfoLabel({
   fullName ||= formatEditorName(lastEditInfo) || null;
   const editorFullName = editorId === user.id ? t`you` : fullName;
 
-  return children ? (
+  return (
     <Tooltip
       label={timestamp ? <DateTime value={timestamp} /> : null}
       disabled={!timeLabel}
@@ -85,7 +85,7 @@ function LastEditInfoLabel({
         )}
       </TextButton>
     </Tooltip>
-  ) : null;
+  );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
