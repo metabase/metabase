@@ -468,6 +468,8 @@
 
 (def ^:private ^:dynamic *disable-cache* false)
 
+(def ^:private ^:dynamic *disable-init* false)
+
 (declare set!)
 
 (defn- call-me-maybe [f] (when f (f)))
@@ -564,7 +566,9 @@
          source-fns [user-local-value
                      database-local-value
                      env-var-value
-                     db-or-cache-or-init-value
+                     (if *disable-init*
+                       db-or-cache-value
+                       db-or-cache-or-init-value)
                      default-value]]
      (loop [[f & more] source-fns]
        (let [v (f setting)]

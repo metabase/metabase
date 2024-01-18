@@ -399,7 +399,7 @@
   is thrown if the `setting-k` already exists.
 
   Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
-  [setting-k value thunk & {:keys [raw-setting?]}]
+  [setting-k value thunk & {:keys [raw-setting? skip-init?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (mb.hawk.parallel/assert-test-is-not-parallel "do-with-temporary-setting-value")
   (initialize/initialize-if-needed! :db :plugins)
@@ -413,7 +413,8 @@
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
-                             (#'setting/get setting-k))]
+                             (binding [setting/*disable-init* skip-init?]
+                               (#'setting/get setting-k)))]
         (try
           (try
             (if raw-setting?
@@ -479,7 +480,9 @@
   ((reduce
     (fn [thunk setting-k]
       (fn []
-        (do-with-temporary-setting-value setting-k (setting/get setting-k) thunk)))
+        (let [value (binding [setting/*disable-init* true]
+                      (setting/get setting-k))]
+          (do-with-temporary-setting-value setting-k value thunk :skip-init? true))))
     thunk
     settings)))
 
