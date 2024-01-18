@@ -105,6 +105,13 @@ BarBreakoutWithLineSeriesStackedRightAxisOnly.args = {
   renderingContext,
 };
 
+export const BarsBreakoutSortedWithNegativeValuesPowerYAxis = Template.bind({});
+BarsBreakoutSortedWithNegativeValuesPowerYAxis.args = {
+  rawSeries: data.barsBreakoutSortedWithNegativeValuesPowerYAxis as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SplitYAxis = Template.bind({});
 SplitYAxis.args = {
   rawSeries: data.autoYSplit as any,

@@ -25,6 +25,7 @@ import trendCombo from "./trend-combo.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendComboLog from "./trend-combo-log.json";
 import combinedBarTimeSeriesDifferentGranularityWithBreakout from "./combined-bar-timeseries-different-granularity-with-breakout.json";
+import barsBreakoutSortedWithNegativeValuesPowerYAxis from "./bars-breakout-sorted-with-negative-values-power-y-axis.json";
 
 export const data = {
   lineLinearXScale,
@@ -38,6 +39,7 @@ export const data = {
   barTwoAxesStackedWithNegativeValues,
   barBreakoutWithLineSeriesStackedRightAxisOnly,
   barStackedTotalFormattedValues,
+  barsBreakoutSortedWithNegativeValuesPowerYAxis,
   autoYSplit,
   messedUpAxis,
   trendSingleSeriesLine,
