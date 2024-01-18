@@ -11,12 +11,12 @@ import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type { TimelineEventId } from "metabase-types/api";
-import { getGoalLineSeriesOption } from "./goal-line";
-import { getTrendLineOptionsAndDatasets } from "./trend-line";
 import {
   NEGATIVE_STACK_TOTAL_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import { getGoalLineSeriesOption } from "./goal-line";
+import { getTrendLineOptionsAndDatasets } from "./trend-line";
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
@@ -24,7 +24,6 @@ export const getCartesianChartOption = (
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -78,7 +77,8 @@ export const getCartesianChartOption = (
   ];
 
   return {
-    animation: isAnimated,
+    animation: true,
+    animationDuration: 0,
     toolbox: {
       show: false,
     },
