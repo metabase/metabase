@@ -8,13 +8,15 @@
   system."
   (:require
    [medley.core :as m]
+   [metabase.api.permission-graph :as api.permission-graph]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(def ^:private db->api-keys
+;; See also: [[data-perms/Permissions]]
+(def ^:private ->api-keys
   {:data-access           :data
    :download-results      :download
    :manage-table-metadata :data-model
@@ -23,27 +25,27 @@
    :native-downloads      :native
    :manage-database       :details})
 
-(def ^:private db->api-vals
+(def ^:private ->api-vals
   {:data-access           {:unrestricted    :all
                            :no-self-service nil
                            :block           :block}
-   :download-results      {:one-million-rows,  :full
-                           :ten-thousand-rows, :partial
-                           :no,                nil}
-   :manage-table-metadata {:yes :all, :no nil}
-   :native-query-editing  {:yes :full, :no nil}
-   :native-downloads      {:yes :write, :no nil}
-   :manage-database       {:yes :yes, :no :no}})
+   :download-results      {:one-million-rows  :full
+                           :ten-thousand-rows :partial
+                           :no                nil}
+   :manage-table-metadata {:yes :all :no nil}
+   :native-query-editing  {:yes :full :no nil}
+   :native-downloads      {:yes :write :no nil}
+   :manage-database       {:yes :yes :no :no}})
 
 (defn- rename-or-ellide-kv
   "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
   [[k v]]
   (when-not (= (data-perms/most-permissive-value k) v)
-    [(db->api-keys k) ((db->api-vals k) v)]))
+    [(->api-keys k) ((->api-vals k) v)]))
 
 (mu/defn ^:private api-table-perms
   "Helper to transform a 'leaf' value with table-level schemas in the data permissions graph into an API-style data permissions value."
-  [k :- (into [:enum] (keys db->api-keys))
+  [k :- data-perms/Type
    schema->table-id->api-val]
   (update-vals schema->table-id->api-val
                (fn [table-id->api-val]
@@ -51,7 +53,7 @@
                       (keep
                        (fn [[table-id perm-val]]
                          (when-not (= (data-perms/most-permissive-value k) perm-val)
-                           [table-id ((db->api-vals k) perm-val)])))
+                           [table-id ((->api-vals k) perm-val)])))
                       (into {})))))
 
 (defn- granular-perm-rename [perm-key perm-value legacy-path]
@@ -60,7 +62,7 @@
       (map? perm-value)
       (assoc-in {} legacy-path (api-table-perms perm-key perm-value))
       (not= (data-perms/most-permissive-value perm-key) perm-value)
-      (assoc-in {} legacy-path ((db->api-vals perm-key) perm-value))
+      (assoc-in {} legacy-path ((->api-vals perm-key) perm-value))
       :else {})))
 
 (defn- rename-perm
@@ -74,7 +76,7 @@
      (granular-perm-rename :native-query-editing native-query-editing [:data :native])
      (granular-perm-rename :data-access data-access [:data :schemas])
      (granular-perm-rename :download-results download-results [:download :schemas])
-     (granular-perm-rename :manage-table-metadata manage-table-metadata [:data-model]))))
+     (granular-perm-rename :manage-table-metadata manage-table-metadata [:data-model :schemas]))))
 
 (defn- rename-perms [graph]
   (update-vals graph
@@ -96,19 +98,23 @@
            admin-group-id
            (zipmap dbs (repeat legacy-admin-perms)))))
 
-(defn db-graph->api-graph
+(mu/defn db-graph->api-graph :- api.permission-graph/StrictData
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
 
-  1. Convert DB key names to API key names
-  2. Nest table-level perms under :native and :schemas keys
-  3. Convert values to API values
-  TODO: Add sandboxed entries to graph
+  - Converts DB key names to API key names
+  - Converts DB value names to API value names
+  - Nests
+    :native-query-editing -> [:data :native]
+    :data-access -> [:data :schemas]
+    :download-results -> [:download :schemas]
+    :manage-table-metadata -> [:data-model]
+
+  TODO: Add sandboxed entries to graph(?)
   "
   [graph]
-  (let [groups (-> graph rename-perms add-admin-group-perms)]
-    {:groups groups
-     :revision (perms-revision/latest-id)}))
+  {:groups (-> graph rename-perms add-admin-group-perms)
+   :revision (perms-revision/latest-id)})
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 

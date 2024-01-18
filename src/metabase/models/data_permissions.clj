@@ -42,12 +42,12 @@
    :perms/native-query-editing  {:model :model/Database :values [:yes :no]}
    :perms/manage-database       {:model :model/Database :values [:yes :no]}})
 
-(def PermissionType
+(def Type
   "Malli spec for valid permission types."
   (into [:enum {:error/message "Invalid permission type"}]
         (keys Permissions)))
 
-(def PermissionValue
+(def Value
   "Malli spec for a keyword that matches any value in [[Permissions]]."
   (into [:enum {:error/message "Invalid permission value"}]
         (distinct (mapcat :values (vals Permissions)))))
@@ -97,7 +97,7 @@
   (let [ordered-values (-> Permissions perm-type :values)]
     (first (filter (set perm-values) ordered-values))))
 
-(mu/defn database-permission-for-user :- PermissionValue
+(mu/defn database-permission-for-user :- Value
   "Returns the effective permission value for a given user, permission type, and database ID. If the user has
   multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id]
@@ -119,7 +119,7 @@
       (or (coalesce perm-type perm-values)
           (least-permissive-value perm-type)))))
 
-(mu/defn table-permission-for-user :- PermissionValue
+(mu/defn table-permission-for-user :- Value
   "Returns the effective permission value for a given user, permission type, and database ID, and table ID. If the user
   has multiple permissions for the given type in different groups, they are coalesced into a single value."
   [user-id perm-type database-id table-id]
@@ -148,7 +148,7 @@
 ;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
 
 (comment
-  ;; General hierarchy of the data access permissions graph
+  ;; General hierarchy of the data access permissions graph (Which gets turned into the api perm graph in [[data-permissions.graph/db-graph->api-graph]])
   {#_:group-id 1
    {#_:db-id 1
     {#_:perm-type :perms/data-access

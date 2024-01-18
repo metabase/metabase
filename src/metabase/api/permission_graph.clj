@@ -54,11 +54,12 @@
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
 (def ^:private TablePerms
-  [:or
-   [:enum :all :segmented :none :full :limited]
-   [:map
-    [:read {:optional true} [:enum :all :none]]
-    [:query {:optional true} [:enum :all :none :segmented]]]])
+  [:maybe
+   [:or
+    [:enum :all :segmented :none :full :limited]
+    [:map
+     [:read {:optional true} [:enum :all :none]]
+     [:query {:optional true} [:enum :all :none :segmented]]]]])
 
 (def ^:private SchemaPerms
   [:or
@@ -71,9 +72,10 @@
    SchemaPerms])
 
 (def ^:private Schemas
-  [:or
-   [:enum :all :segmented :none :block :full :limited :impersonated]
-   SchemaGraph])
+  [:maybe
+   [:or
+    [:enum :all :segmented :none :block :full :limited :impersonated]
+    SchemaGraph]])
 
 (def ^:private DataPerms
   [:map
@@ -85,9 +87,12 @@
   If you have write access for native queries, you must have data access to all schemas."
   [:and
    DataPerms
-   [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+   [:fn {:error/fn (fn [_ _]
+                     (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
     (fn [{:keys [native schemas]}]
-      (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
+      (not (and (= native :write)
+                schemas
+                (not (contains? #{:all :impersonated} schemas)))))]])
 
 (def ^:private DbGraph
   [:schema {:registry {"DataPerms" DataPerms}}
@@ -104,7 +109,7 @@
      [:execute {:optional true} [:enum :all :none]]]]])
 
 (def StrictDbGraph
-  "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
+  "like db-graph, but if there is write access for native queries, then there must be data access to all schemas."
   [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
    [:map-of
     Id
@@ -120,7 +125,11 @@
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
-  [:map [:groups [:map-of GroupId [:maybe DbGraph]]]])
+  [:map
+   [:revision :int]
+   [:groups [:map-of
+             GroupId
+             [:maybe DbGraph]]]])
 
 (def StrictData
   "Top level strict data graph schema"
