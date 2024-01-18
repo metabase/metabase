@@ -65,9 +65,9 @@ export const BrowseModels = ({
     );
   }
 
-  const { cells } = gridOptions;
+  const { cells = [] } = gridOptions;
 
-  return cells ? (
+  return cells.length ? (
     <GridContainer>{cells}</GridContainer>
   ) : (
     <CenteredEmptyState
@@ -132,13 +132,18 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
   );
 };
 
-/** Sort models by (in descending order of priority): collection name, collection id, model name, model id. */
+/** Sort models firstly by collection name,
+ * secondly by collection id,
+ * thirdly by model name, and
+ * lastly by model id. */
 const sortModels = (a: Model, b: Model) => {
   const fallbackSortValue = Number.MAX_SAFE_INTEGER;
 
   // Sort first on the name of the model's parent collection, case insensitive
-  const collectionNameA = a.collection?.name.toLowerCase() || fallbackSortValue;
-  const collectionNameB = b.collection?.name.toLowerCase() || fallbackSortValue;
+  const collectionNameA =
+    a.collection?.name?.toLowerCase() || fallbackSortValue;
+  const collectionNameB =
+    b.collection?.name?.toLowerCase() || fallbackSortValue;
 
   if (collectionNameA < collectionNameB) {
     return -1;
