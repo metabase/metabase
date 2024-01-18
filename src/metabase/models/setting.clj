@@ -472,22 +472,11 @@
 
 (def ^:private ^:dynamic *disable-init* false)
 
+(declare get)
+
 (declare set!)
 
 (defn- call-me-maybe [f] (when f (f)))
-
-;(defn get-or-init!
-;  "Fetch the value of `setting-definition-or-name`. If the value is not set, initialize it using the :init hook."
-;  [setting-definition-or-name]
-;  (let [setting (resolve-setting setting-definition-or-name)]
-;    (u/or-with some?
-;      (get setting)
-;      (when-let [init-value (call-me-maybe (:init setting))]
-;        (when (not (setting.cache/cache))
-;          (throw (ex-info "The setting cache must be initialized before we can initialize settings"
-;                          {:setting (setting-name setting-definition-or-name)})))
-;        (metabase.models.setting/set! setting init-value)
-;        init-value))))
 
 (defn- db-value [setting-definition-or-name]
   (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name)))
@@ -526,7 +515,8 @@
         (throw (ex-info "Unable to get initialization lock" {:setting setting-definition-or-name}))
         (u/or-with some?
           ;; perhaps another process initialized this setting while we were waiting for the lock
-          (db-or-cache-value setting)
+          (binding [*disable-init* true]
+            (get setting))
           (when-let [init-value (call-me-maybe init)]
             (metabase.models.setting/set! setting init-value :bypass-read-only? true)))))))
 
