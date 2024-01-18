@@ -52,7 +52,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // We must enter a value for a locked parameter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview locked parameters")
+      cy.findByText("Previewing locked parameters")
         .parent()
         .within(() => {
           cy.findByText("Total").click();
@@ -62,7 +62,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findByPlaceholderText("Enter a number").type("0").blur();
       cy.button("Add filter").click();
 
-      publishChanges(true, ({ request }) => {
+      publishChanges(false, ({ request }) => {
         const actual = request.body.embedding_params;
 
         const expected = {
@@ -292,7 +292,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
 });
 
 function setParameter(name, filter) {
-  cy.findByLabelText("Enable or lock parameters")
+  cy.findByLabelText("Configuring parameters")
     .parent()
     .within(() => {
       cy.findByText(name).siblings("a").click();

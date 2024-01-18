@@ -56,7 +56,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       openStaticEmbeddingModal({ activeTab: "parameters" });
 
-      cy.findByLabelText("Enable or lock parameters").as("allParameters");
+      cy.findByLabelText("Configuring parameters").as("allParameters");
 
       cy.get("@allParameters").within(() => {
         // verify that all the parameters on the dashboard are defaulted to disabled
@@ -82,7 +82,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
 
       modal().within(() => {
         // set the locked parameter's value
-        cy.findByText("Preview locked parameters")
+        cy.findByText("Previewing locked parameters")
           .parent()
           .findByText("Id")
           .click();
@@ -97,7 +97,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       // publish the embedded dashboard so that we can directly navigate to its url
-      publishChanges(({ request }) => {
+      publishChanges(false, ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           id: "locked",
           name: "enabled",
@@ -145,7 +145,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get("@allParameters").findByText("Editable").click();
       popover().contains("Disabled").click();
 
-      publishChanges(({ request }) => {
+      publishChanges(true, ({ request }) => {
         assert.deepEqual(request.body.embedding_params, {
           name: "disabled",
           id: "disabled",
@@ -407,7 +407,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     // ID param is disabled by default
     setParameter("Name", "Editable");
     setParameter("Source", "Locked");
-    publishChanges(({ request }) => {
+    publishChanges(false, ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",
@@ -427,10 +427,10 @@ function openFilterOptions(name) {
   filterWidget().contains(name).click();
 }
 
-function publishChanges(callback) {
+function publishChanges(hasChanges, callback) {
   cy.intercept("PUT", "/api/dashboard/*").as("publishChanges");
 
-  cy.button("Publish changes").click();
+  cy.button(hasChanges ? "Publish changes" : "Publish").click();
 
   cy.wait(["@publishChanges", "@publishChanges"]).then(xhrs => {
     // Unfortunately, the order of requests is not always the same.
@@ -443,7 +443,7 @@ function publishChanges(callback) {
 }
 
 function setParameter(name, filter) {
-  cy.findByLabelText("Enable or lock parameters")
+  cy.findByLabelText("Configuring parameters")
     .parent()
     .findByText(name)
     .siblings("a")

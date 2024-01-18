@@ -12,10 +12,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import {
-  getEmbeddingJsCode,
-  getEmbeddingIframeAppearanceCodeDiff,
-} from "./shared/embedding-snippets";
+import { getEmbeddingJsCode } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
@@ -61,7 +58,7 @@ features.forEach(feature => {
 
       modal().within(() => {
         cy.findAllByTestId("embed-frontend-select-button")
-          .should("contain", "Mustache")
+          .should("contain", "Pug / Jade")
           .click();
       });
 
@@ -81,8 +78,9 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            getEmbeddingIframeAppearanceCodeDiff({
+            getEmbeddingJsCode({
               type: "dashboard",
+              id: ORDERS_DASHBOARD_ID,
               theme: "transparent",
             }),
           );
@@ -118,8 +116,9 @@ features.forEach(feature => {
           .invoke("text")
           .should(
             "match",
-            getEmbeddingIframeAppearanceCodeDiff({
+            getEmbeddingJsCode({
               type: "question",
+              id: ORDERS_QUESTION_ID,
               theme: "transparent",
             }),
           );
@@ -135,7 +134,7 @@ features.forEach(feature => {
             .invoke("text")
             .should(
               "match",
-              getEmbeddingIframeAppearanceCodeDiff({
+              getEmbeddingJsCode({
                 type: "question",
                 theme: "transparent",
                 hideDownloadButton: true,
