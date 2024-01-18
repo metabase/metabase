@@ -22,8 +22,8 @@ export function useModelsAndOption({
   card,
   fontFamily,
   width,
-  timelineEvents = [],
-  selectedTimelineEventIds = [],
+  timelineEvents,
+  selectedTimelineEventIds,
 }: VisualizationProps) {
   const seriesToRender = useMemo(
     () => (isPlaceholder ? transformedSeries : rawSeries),
@@ -61,7 +61,7 @@ export function useModelsAndOption({
     () =>
       getTimelineEventsModel(
         chartModel,
-        timelineEvents,
+        timelineEvents ?? [],
         settings,
         width,
         renderingContext,
@@ -75,20 +75,18 @@ export function useModelsAndOption({
         return getWaterfallOption(
           checkWaterfallChartModel(chartModel),
           timelineEventsModel,
-          selectedTimelineEventIds,
+          selectedTimelineEventIds ?? [],
           settings,
           width,
-          true,
           renderingContext,
         );
       default:
         return getCartesianChartOption(
           chartModel,
           timelineEventsModel,
-          selectedTimelineEventIds,
+          selectedTimelineEventIds ?? [],
           settings,
           width,
-          true,
           renderingContext,
         );
     }
