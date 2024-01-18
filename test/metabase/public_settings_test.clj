@@ -372,8 +372,7 @@
         (is (= true (public-settings/show-metabase-links)))))))
 
 (setting/defsetting test-uuid-nonce "nonce sequitur"
-  :type :string
-  :init public-settings/random-uuid-str)
+  :type :alias/uuid-nonce)
 
 (def test-setting (setting/resolve-setting :test-uuid-nonce))
 

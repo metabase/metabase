@@ -479,12 +479,12 @@
 (defn read-setting
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
-  if any."
+  if any.
+
+  Note: This will bypass initialization, i.e. it could return nil for a nonce"
   [setting-definition-or-name]
   (binding [*disable-init* true]
     (get setting-definition-or-name)))
-
-(defn- call-me-maybe [f] (when f (f)))
 
 (defn- db-value [setting-definition-or-name]
   (t2/select-one-fn :value Setting :key (setting-name setting-definition-or-name)))
@@ -515,7 +515,8 @@
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
 (defn- init! [setting-definition-or-name]
-  (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)]
+  (let [{:keys [init] :as setting} (resolve-setting setting-definition-or-name)
+        call-me-maybe              (fn [f] (when f (f)))]
     (when init
       (when (not (db-is-set-up?))
         (throw (ex-info "Cannot initialize setting before the db is set up" {:setting setting})))
@@ -619,6 +620,16 @@
       "false" false
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
+
+(defn- random-uuid-str []
+  (str (random-uuid)))
+
+;; This map allows the bundling of a number of attributes together. In some sense it is defining a sub-type.
+;; For now this is mechanism is not open to extension, but if we find a need for further types it could explored.
+(def ^:private type-aliases
+  {:alias/uuid-nonce {:type   :string
+                      :setter :none
+                      :init   random-uuid-str}})
 
 ;; Strings are parsed as follows:
 ;;
@@ -1176,7 +1187,11 @@
          ;; don't put exclamation points in your Setting names. We don't want functions like `exciting!` for the getter
          ;; and `exciting!!` for the setter.
          (not (str/includes? (name setting-symbol) "!"))]}
-  (let [description               (if (or (= (:visibility options) :internal)
+  (let [options                   (if-let [alias-setting (core/get type-aliases (:type options))]
+                                    ;; allow the explicit options to override anything in the alias
+                                    (merge alias-setting options {:type (:type alias-setting)})
+                                    options)
+        description               (if (or (= (:visibility options) :internal)
                                           (= (:setter options) :none)
                                           (in-test?))
                                     description
