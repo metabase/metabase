@@ -98,7 +98,9 @@
                   {:leeway 60})
       ;; if `jwt/unsign` throws an Exception rethrow it in a format that's friendlier to our API
       (catch Throwable e
-        (throw (ex-info (.getMessage e) {:status-code 400}))))))
+        (if (str/starts-with? (ex-message e) "Token is expired")
+          (throw (ex-info "Token is expired" {:status-code 403}))
+          (throw (ex-info (.getMessage e) {:status-code 400})))))))
 
 (defn get-in-unsigned-token-or-throw
   "Find `keyseq` in the `unsigned-token` (a JWT token decoded by `unsign`) or throw a 400."
