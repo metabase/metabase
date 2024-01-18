@@ -94,7 +94,10 @@ class ParameterValueWidget extends Component {
 
     if (this.value != null) {
       return (
-        <WidgetStatusIcon name="close" onClick={() => this.setValue(null)} />
+        <WidgetStatusIcon
+          name="close"
+          onClick={() => this.props.setValue(null)}
+        />
       );
     }
 
@@ -120,8 +123,6 @@ class ParameterValueWidget extends Component {
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
-    const widgetStatusIcon = this.getWidgetStatusIcon();
-
     if (noPopover) {
       return (
         <div
@@ -143,7 +144,7 @@ class ParameterValueWidget extends Component {
             onFocusChanged={this.onFocusChanged}
             onPopoverClose={this.onPopoverClose}
           />
-          {widgetStatusIcon}
+          {this.getWidgetStatusIcon()}
         </div>
       );
     } else {
@@ -180,7 +181,7 @@ class ParameterValueWidget extends Component {
                   placeholder={placeholderText}
                 />
               </div>
-              {widgetStatusIcon}
+              {this.getWidgetStatusIcon()}
             </div>
           }
           target={this.getTargetRef}
