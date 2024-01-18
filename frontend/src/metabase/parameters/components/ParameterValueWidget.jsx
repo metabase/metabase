@@ -58,7 +58,6 @@ class ParameterValueWidget extends Component {
     className: PropTypes.string,
     parameters: PropTypes.array,
     dashboard: PropTypes.object,
-    setQBDefaultParameterValue: PropTypes.func,
   };
 
   state = { isFocused: false };
@@ -117,10 +116,6 @@ class ParameterValueWidget extends Component {
     const noPopover = hasNoPopover(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
-    const showReset =
-      parameter.required && parameter.default && value !== parameter.default;
-    const showClear = !parameter.required;
-    const resetToDefault = () => setQBDefaultParameterValue(parameter.id);
 
     if (noPopover) {
       return (
