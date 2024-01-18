@@ -506,11 +506,11 @@
         (if *disable-cache*
           (db-value setting)
           (do
+            ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
             (setting.cache/restore-cache-if-needed!)
             (let [cache (setting.cache/cache)]
               (if (nil? cache)
-                ;; If another thread is populating the cache for the first time, we will have a nil value for
-                ;; the cache and must hit the db while the cache populates
+                ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
                 (db-value setting)
                 (core/get cache (setting-name setting-definition-or-name))))))))))
 
