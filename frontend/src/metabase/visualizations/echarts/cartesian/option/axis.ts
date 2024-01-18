@@ -163,7 +163,7 @@ export const buildDimensionAxis = (
     axisLine: {
       show: !!settings["graph.x_axis.axis_enabled"],
       lineStyle: {
-        color: getColor("text-dark"),
+        color: getColor("border"),
       },
     },
   };
@@ -174,6 +174,7 @@ export const buildMetricAxis = (
   ticksWidth: number,
   settings: ComputedVisualizationSettings,
   position: "left" | "right",
+  hasSplitLine: boolean,
   renderingContext: RenderingContext,
 ): CartesianAxisOption => {
   const shouldFlipAxisName = position === "right";
@@ -191,12 +192,14 @@ export const buildMetricAxis = (
       axisModel.label,
       shouldFlipAxisName ? -90 : undefined,
     ),
-    splitLine: {
-      lineStyle: {
-        type: 5,
-        color: renderingContext.getColor("border"),
-      },
-    },
+    splitLine: hasSplitLine
+      ? {
+          lineStyle: {
+            type: 5,
+            color: renderingContext.getColor("border"),
+          },
+        }
+      : undefined,
     position,
     axisLine: {
       show: false,
@@ -229,18 +232,21 @@ const buildMetricsAxes = (
         chartMeasurements.ticksDimensions.yTicksWidthLeft,
         settings,
         "left",
+        true,
         renderingContext,
       ),
     );
   }
 
   if (chartModel.rightAxisModel != null) {
+    const isOnlyAxis = chartModel.leftAxisModel == null;
     axes.push(
       buildMetricAxis(
         chartModel.rightAxisModel,
         chartMeasurements.ticksDimensions.yTicksWidthRight,
         settings,
         "right",
+        isOnlyAxis,
         renderingContext,
       ),
     );
