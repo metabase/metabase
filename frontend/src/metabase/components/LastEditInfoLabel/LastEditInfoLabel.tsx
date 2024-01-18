@@ -26,9 +26,11 @@ export type CollectionItemWithLastEditInfo = CollectionItem & {
 
 export const getHowLongAgo = (timestamp: string) => {
   const date = dayjs(timestamp);
-  const howLongAgo =
-    timestamp && date.isValid() ? date.fromNow() : t`(invalid date)`;
-  return howLongAgo;
+  if (timestamp && date.isValid()) {
+    return date.fromNow();
+  } else {
+    return t`(invalid date)`;
+  }
 };
 
 function mapStateToProps(state: any, props: any) {
@@ -42,6 +44,7 @@ function formatEditorName(lastEditInfo: NamedUser) {
   const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }
+
 function LastEditInfoLabel({
   item,
   user,

@@ -100,7 +100,8 @@ const BrowseDatabases = ({
 }: ReturnType<typeof useDatabaseListQuery>) => {
   if (error) {
     return <LoadingAndErrorWrapper error />;
-  } else if (isLoading) {
+  }
+  if (isLoading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
