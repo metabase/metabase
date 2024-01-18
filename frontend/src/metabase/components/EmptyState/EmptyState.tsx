@@ -45,7 +45,7 @@ type EmptyStateProps = {
   illustrationElement?: React.ReactNode;
   onActionClick?: () => void;
   className?: string;
-  icon?: IconName;
+  icon?: IconName | string;
   image?: string;
 };
 
