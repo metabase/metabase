@@ -44,12 +44,6 @@
                 :expected-perms   (fn []
                                     {:schemas {:PUBLIC {(mt/id :users) "all"}}})}
 
-               "when revoking segmented query permissions for Table"
-               {:updated-db-perms (fn []
-                                    {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:read :all}}}})
-                :expected-perms   (fn []
-                                    {:schemas {:PUBLIC {(mt/id :venues) {:read "all"}}}})}
-
                "when changing permissions for DB to unrestricted access"
                {:updated-db-perms (constantly {:native :none, :schemas :all})
                 :expected-perms   (constantly {:schemas "all"})}
@@ -67,7 +61,7 @@
           (testing message
             (testing "sanity check"
               (testing "perms graph endpoint should return segmented perms for Venues table"
-                (is (= {:query "segmented"}
+                (is (= {:read "all" :query "segmented"}
                        (get-in (mt/user-http-request :crowberto :get 200 "permissions/graph")
                                (venues-perms-graph-keypath &group)))))
               (testing "GTAP should exist in application DB"
