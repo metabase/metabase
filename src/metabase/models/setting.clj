@@ -655,6 +655,9 @@
     (u/or-with some?
       (get setting)
       (when-let [init-value (call-me-maybe (:init setting))]
+        (when (not (setting.cache/cache))
+          (throw (ex-info "The setting cache must be initialized before we can initialize settings"
+                          {:setting (setting-name setting-definition-or-name)})))
         (metabase.models.setting/set! setting init-value)
         init-value))))
 
@@ -753,7 +756,7 @@
               (set-new-setting! setting-name new-value))
             ;; update cached value
             (setting.cache/update-cache! setting-name new-value)
-            ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
+            ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
             ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
             ;; cause other instances to do needless reloading of the cache from the DB)
             (when-not *disable-cache*

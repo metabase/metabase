@@ -69,7 +69,7 @@
 (defsetting test-setting-custom-init
   "Test setting - this only shows up in dev (0)"
   :type       :string
-  :init       (constantly "truly-random"))
+  :init       (comp str random-uuid))
 
 (def ^:private ^:dynamic *enabled?* false)
 
@@ -180,7 +180,31 @@
   (testing "Validation does not initialize the setting"
     (mt/discard-setting-changes [test-setting-custom-init]
       (setting/validate-settings-formatting!)
-      (is (= nil (setting/get custom-init-setting))))))
+      (is (= nil (setting/get custom-init-setting)))))
+
+  (testing "Initialization will fail if the cache has not been loaded yet"
+    (let [cache (#'setting.cache/cache*)
+          orig-cache @cache]
+      (reset! cache nil)
+      (is (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"The setting cache must be initialized before we can initialize settings"
+            (test-setting-custom-init)))
+      (try
+        (finally
+          (reset! cache orig-cache)))))
+
+  (testing "Initialized value is stored in the database"
+    (mt/discard-setting-changes [test-setting-custom-init]
+      (is (= nil (setting/get custom-init-setting)))
+      (let [orig-uuid (setting/get-or-init! custom-init-setting)]
+        (is (some? orig-uuid))
+        (testing "We can clear the value by erasing the cache"
+          (swap! (#'setting.cache/cache*) dissoc "test-setting-custom-init")
+          (is (= nil (setting/get custom-init-setting))))
+        (testing "Reloading the cache from the database restores the original value"
+          (setting.cache/restore-cache!)
+          (is (= orig-uuid (setting/get custom-init-setting))))))))
 
 (deftest defsetting-setter-fn-test
   (test-setting-2! "FANCY NEW VALUE <3")
