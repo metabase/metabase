@@ -18,6 +18,8 @@ export interface ChartMeasurements {
   ticksDimensions: TicksDimensions;
 }
 
+export type XAxisType = "time" | "value" | "log" | "category";
+
 export type EChartsSeriesOption =
   | RegisteredSeriesOption["line"]
   | RegisteredSeriesOption["bar"]

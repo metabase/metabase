@@ -9,6 +9,7 @@ import type {
   SeriesModel,
   XAxisModel,
   YAxisModel,
+  DimensionModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type {
   ComputedVisualizationSettings,
@@ -448,15 +449,35 @@ export function getYAxesModels(
   };
 }
 
+function getXAxisExtent(
+  dataset: ChartDataset,
+  dimensionDataKey: string,
+): Extent {
+  let min = Infinity;
+  let max = -Infinity;
+
+  dataset.forEach(datum => {
+    const value = datum[dimensionDataKey];
+    if (typeof value === "number") {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+  });
+
+  if (min === Infinity || max === -Infinity) {
+    return [0, 0];
+  }
+
+  return [min, max];
+}
+
 export function getXAxisModel(
-  column: DatasetColumn,
+  dataset: ChartDataset,
+  dimensionModel: DimensionModel,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): XAxisModel {
-  const label = settings["graph.x_axis.labels_enabled"]
-    ? settings["graph.x_axis.title_text"]
-    : undefined;
-
+  const column = dimensionModel.column;
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
 
   const formatter = (value: RowValue) =>
@@ -466,8 +487,15 @@ export function getXAxisModel(
       noRange: isHistogram,
     });
 
+  const label = settings["graph.x_axis.labels_enabled"]
+    ? settings["graph.x_axis.title_text"]
+    : undefined;
+
+  const extent = getXAxisExtent(dataset, dimensionModel.dataKey);
+
   return {
     formatter,
     label,
+    extent,
   };
 }
