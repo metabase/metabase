@@ -1122,3 +1122,79 @@
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-3 :group_id group-id))))))))
+
+
+(deftest manage-table-metadata-permissions-schema-migration-test
+  (testing "Manage table metadata permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:33" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id   (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "Manage table metadata access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))
+
+        (testing "No manage table metadata access for a DB"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))
+
+        (testing "Manage table metadata access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/data-model/db/%d/schema/PUBLIC/table/%d/" db-id table-id)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "manage-table-metadata")))
+          (is (= "yes"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id :group_id group-id :perm_type "manage-table-metadata"))))))))
+
+(deftest manage-database-permissions-schema-migration-test
+  (testing "Manage database permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:34" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))]
+        (testing "Manage database permission"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/details/db/%d/" db-id)})
+          (migrate!)
+          (is (= "yes" (t2/select-one-fn :perm_value
+                                         (t2/table-name :model/DataPermissions)
+                                         :db_id db-id :group_id group-id :perm_type "manage-database"))))
+
+        (testing "No manage database permission"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :group_id group-id :perm_type "manage-database"))))))))

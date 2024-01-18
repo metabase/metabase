@@ -93,7 +93,7 @@ WHERE pg.name != 'Administrators'
      WHERE dp.group_id = pg.id
        AND dp.db_id = mt.db_id
        AND dp.table_id = mt.id
-       AND dp.perm_type = 'download-results' )
+       AND dp.perm_type = 'download-results')
   AND NOT EXISTS
     (SELECT 1
      FROM data_permissions dp
