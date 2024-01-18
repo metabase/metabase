@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import type { CollectionItemWithLastEditedInfo } from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
+import {
+  getHowLongAgo,
+  type CollectionItemWithLastEditInfo,
+} from "metabase/components/LastEditInfoLabel/LastEditInfoLabel";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
@@ -82,6 +85,10 @@ interface ModelCellProps {
 
 const ModelCell = ({ model, style }: ModelCellProps) => {
   const modelWithHistory = addLastEditInfo(model);
+  const lastEdit = modelWithHistory["last-edit-info"];
+  const lastEditorName = lastEdit.full_name;
+  const howLongAgo = getHowLongAgo(lastEdit.timestamp);
+
   return (
     <Link
       key={model.id}
@@ -107,21 +114,14 @@ const ModelCell = ({ model, style }: ModelCellProps) => {
           item={modelWithHistory}
           fullName={modelWithHistory["last-edit-info"].full_name}
           className={"last-edit-info-label-button"}
-          // TODO: Simplify the formatLabel prop
-          formatLabel={(
-            // TODO: Use first name and last initial
-            fullName: string | undefined = "",
-            timeLabel: string,
-          ) => (
-            <>
-              {fullName}
-              {fullName && timeLabel ? (
-                <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
-              ) : null}
-              {timeLabel}
-            </>
-          )}
-        />
+          // TODO: Use first name and last initial
+        >
+          {lastEditorName}
+          {lastEditorName && howLongAgo ? (
+            <LastEditedInfoSeparator>•</LastEditedInfoSeparator>
+          ) : null}
+          {howLongAgo}
+        </LastEditInfoLabel>
       </ModelCard>
     </Link>
   );
@@ -236,7 +236,7 @@ const getGridOptions = (models: Model[]) => {
   return { cells };
 };
 
-const addLastEditInfo = (model: Model): CollectionItemWithLastEditedInfo => ({
+const addLastEditInfo = (model: Model): CollectionItemWithLastEditInfo => ({
   ...model,
   "last-edit-info": {
     full_name: model.last_editor_common_name ?? model.creator_common_name,

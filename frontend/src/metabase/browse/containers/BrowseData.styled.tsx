@@ -37,7 +37,6 @@ export const DatabaseGridItem = styled(GridItem)`
 
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
-  margin-right: 16px;
 
   &:hover {
     color: ${color("brand")};

@@ -15,6 +15,13 @@ import type { CollectionItem, User } from "metabase-types/api";
 
 dayjs.extend(relativeTime);
 
+export const getHowLongAgo = (timestamp: string) => {
+  const date = dayjs(timestamp);
+  const howLongAgo =
+    timestamp && date.isValid() ? date.fromNow() : t`(invalid date)`;
+  return howLongAgo;
+};
+
 function mapStateToProps(state: any, props: any) {
   return {
     ...props,
@@ -45,7 +52,7 @@ function formatEditorName(lastEditInfo: NamedUser) {
   return name || lastEditInfo.email;
 }
 
-export type CollectionItemWithLastEditedInfo = CollectionItem & {
+export type CollectionItemWithLastEditInfo = CollectionItem & {
   "last-edit-info": {
     id?: number;
     timestamp: string;
@@ -55,46 +62,30 @@ export type CollectionItemWithLastEditedInfo = CollectionItem & {
   };
 };
 
-const defaultLabelFormatter = (
-  nameOfLastEditor: string | null | undefined,
-  howLongAgo: string,
-) => (
-  <>
-    {nameOfLastEditor ? t`Edited ${howLongAgo} by ${nameOfLastEditor}` : null}
-  </>
-);
-
 function LastEditInfoLabel({
   item,
   user,
   onClick,
   className,
   fullName = null,
-  formatLabel = defaultLabelFormatter,
+  children,
 }: {
-  item: CollectionItemWithLastEditedInfo;
+  item: CollectionItemWithLastEditInfo;
   user: User;
   onClick: MouseEventHandler<HTMLButtonElement>;
   className: string;
   fullName: string | null;
-  formatLabel: (
-    nameOfLastEditor: string | null | undefined,
-    howLongAgo: string,
-  ) => JSX.Element;
+  children?: React.ReactNode;
 }) {
   const lastEditInfo = item["last-edit-info"];
   const editorId = lastEditInfo?.id;
   const timestamp = lastEditInfo?.timestamp;
-
-  const date = dayjs(timestamp);
-  const timeLabel =
-    timestamp && date.isValid() ? date.fromNow() : t`(invalid date)`;
+  const timeLabel = getHowLongAgo(timestamp);
 
   fullName ||= formatEditorName(lastEditInfo) || null;
   const editorFullName = editorId === user.id ? t`you` : fullName;
-  const label = formatLabel(editorFullName, timeLabel);
 
-  return label ? (
+  return children ? (
     <Tooltip
       label={timestamp ? <DateTime value={timestamp} /> : null}
       disabled={!timeLabel}
@@ -105,7 +96,13 @@ function LastEditInfoLabel({
         onClick={onClick}
         data-testid="revision-history-button"
       >
-        {label}
+        {children || (
+          <>
+            {editorFullName
+              ? t`Edited ${timeLabel} by ${editorFullName}`
+              : null}
+          </>
+        )}
       </TextButton>
     </Tooltip>
   ) : null;
