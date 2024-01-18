@@ -153,7 +153,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   _pauseAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(props: DashboardGridProps, context: any) {
+  constructor(props: DashboardGridProps, context: unknown) {
     super(props, context);
 
     const visibleCardIds = getVisibleCardIds(
