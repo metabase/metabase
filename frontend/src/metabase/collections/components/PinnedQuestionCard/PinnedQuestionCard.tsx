@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import {
-  isFullyParametrized,
+  isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -98,7 +98,7 @@ const PinnedQuestionCard = ({
 };
 
 const getSkeletonTooltip = (item: CollectionItem) => {
-  if (!isFullyParametrized(item)) {
+  if (!isFullyParameterized(item)) {
     return t`Open this question and fill in its variables to see it.`;
   } else {
     return undefined;
