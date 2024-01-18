@@ -18,6 +18,7 @@ export function getWaterfallOption(
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
+  chartWidth: number,
   isAnimated: boolean,
   renderingContext: RenderingContext,
 ): EChartsOption {
@@ -26,6 +27,7 @@ export function getWaterfallOption(
     timelineEventsModel,
     selectedTimelineEventsIds,
     settings,
+    chartWidth,
     isAnimated,
     renderingContext,
   );
