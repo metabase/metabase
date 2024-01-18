@@ -5340,6 +5340,16 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
 
+  # - changeSet:
+  #     id: v49.2024-01-10T03:27:33
+  #     author: noahmoss
+  #     comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+  #     changes:
+  #       - sqlFile:
+  #           path: permissions/manage_table_metadata.sql
+  #           relativeToChangelogFile: true
+  #     rollback:
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

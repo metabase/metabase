@@ -49,12 +49,20 @@ WHERE pg.name != 'Administrators'
                  (SELECT 1
                   FROM permissions p
                   WHERE p.group_id = pg.id
-                    AND p.object LIKE concat('/db/', md.id, '/%') ) THEN TRUE
+                    AND p.object LIKE concat('/db/', md.id, '/schema/%') ) THEN TRUE
           ELSE FALSE
       END;
 
 -- Insert table-level permissions only where no DB-level permissions exist
 
+WITH escaped_schema_table AS (
+    SELECT
+    id,
+    db_id,
+    schema,
+    REPLACE(REPLACE(schema, '\', '\\'), '/', '\/') AS escaped_schema
+    FROM metabase_table
+)
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
        'data-access' AS perm_type,
@@ -66,14 +74,14 @@ SELECT pg.id AS group_id,
                   (SELECT 1
                    FROM permissions p
                    WHERE p.group_id = pg.id
-                     AND (p.object = concat('/db/', mt.db_id, '/schema/', mt.schema, '/')
-                          OR p.object = concat('/db/', mt.db_id, '/schema/', mt.schema, '/table/', mt.id, '/')
-                          OR p.object = concat('/db/', mt.db_id, '/schema/', mt.schema, '/table/', mt.id, '/query/')
-                          OR p.object = concat('/db/', mt.db_id, '/schema/', mt.schema, '/table/', mt.id, '/query/segmented/')) ) THEN 'unrestricted'
+                     AND (p.object = concat('/db/', mt.db_id, '/schema/', mt.escaped_schema, '/')
+                          OR p.object = concat('/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/')
+                          OR p.object = concat('/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/query/')
+                          OR p.object = concat('/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/query/segmented/')) ) THEN 'unrestricted'
            ELSE 'no-self-service'
        END AS perm_value
 FROM permissions_group pg
-CROSS JOIN metabase_table mt
+CROSS JOIN escaped_schema_table mt
 WHERE pg.name != 'Administrators'
   AND NOT EXISTS
     (SELECT 1

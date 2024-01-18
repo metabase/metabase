@@ -822,7 +822,7 @@
                                                                                :name       "Table 2"
                                                                                :created_at :%now
                                                                                :updated_at :%now
-                                                                               :schema     "PUBLIC"
+                                                                               :schema     "PUBLIC/with\\slash"
                                                                                :active     true}))]
         (testing "Unrestricted data access for a DB"
           (clear-permissions!)
@@ -915,7 +915,7 @@
         (testing "Granular table permissions"
           (clear-permissions!)
           (t2/insert! (t2/table-name Permissions) {:group_id group-id
-                                                   :object   (format "/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)})
+                                                   :object   (format "/db/%d/schema/PUBLIC\\/with\\\\slash/table/%d/" db-id table-id-2)})
           (migrate!)
           (is (nil?
                (t2/select-one-fn :perm_value

@@ -23,8 +23,8 @@ SELECT pg.id AS group_id,
                   (SELECT 1
                    FROM permissions p
                    WHERE p.group_id = pg.id
-                     AND (p.object like concat('/download/db/', md.id, '/%')
-                          OR p.object like concat('/download/limited/db/', md.id, '/%'))) THEN 'no'
+                     AND (p.object like concat('/download/db/', md.id, '/schema/%')
+                          OR p.object like concat('/download/limited/db/', md.id, '/schema/%'))) THEN 'no'
        END AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_database md
@@ -48,13 +48,21 @@ WHERE pg.name != 'Administrators'
                  (SELECT 1
                   FROM permissions p
                   WHERE p.group_id = pg.id
-                    AND (p.object like concat('/download/db/', md.id, '/%')
-                         OR p.object like concat('/download/limited/db/', md.id, '/%'))) THEN TRUE
+                    AND (p.object like concat('/download/db/', md.id, '/schema/%')
+                         OR p.object like concat('/download/limited/db/', md.id, '/schema/%'))) THEN TRUE
           ELSE FALSE
       END;
 
 -- Insert table-level permissions only where no DB-level permissions exist
 
+WITH escaped_schema_table AS (
+    SELECT
+    id,
+    db_id,
+    schema,
+    REPLACE(REPLACE(schema, '\', '\\'), '/', '\/') AS escaped_schema
+    FROM metabase_table
+)
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
        'download-results' AS perm_type,
@@ -66,18 +74,18 @@ SELECT pg.id AS group_id,
                   (SELECT 1
                    FROM permissions p
                    WHERE p.group_id = pg.id
-                     AND (p.object = concat('/download/db/', mt.db_id, '/schema/', mt.schema, '/')
-                          OR p.object = concat('/download/db/', mt.db_id, '/schema/', mt.schema, '/table/', mt.id, '/'))) THEN 'one-million-rows'
+                     AND (p.object = concat('/download/db/', mt.db_id, '/schema/', mt.escaped_schema, '/')
+                          OR p.object = concat('/download/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/'))) THEN 'one-million-rows'
            WHEN EXISTS
                   (SELECT 1
                    FROM permissions p
                    WHERE p.group_id = pg.id
-                     AND (p.object = concat('/download/limited/db/', mt.db_id, '/schema/', mt.schema, '/')
-                          OR p.object = concat('/download/limited/db/', mt.db_id, '/schema/', mt.schema, '/table/', mt.id, '/'))) THEN 'ten-thousand-rows'
+                     AND (p.object = concat('/download/limited/db/', mt.db_id, '/schema/', mt.escaped_schema, '/')
+                          OR p.object = concat('/download/limited/db/', mt.db_id, '/schema/', mt.escaped_schema, '/table/', mt.id, '/'))) THEN 'ten-thousand-rows'
            ELSE 'no'
        END AS perm_value
 FROM permissions_group pg
-CROSS JOIN metabase_table mt
+CROSS JOIN escaped_schema_table mt
 WHERE pg.name != 'Administrators'
   AND NOT EXISTS
     (SELECT 1
