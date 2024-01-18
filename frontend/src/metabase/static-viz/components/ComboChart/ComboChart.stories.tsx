@@ -70,9 +70,23 @@ BarLinearXScale.args = {
   renderingContext,
 };
 
+export const BarLinearXScaleUneven = Template.bind({});
+BarLinearXScaleUneven.args = {
+  rawSeries: data.barLinearXScaleUneven as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarLinearXScaleStacked = Template.bind({});
 BarLinearXScaleStacked.args = {
   rawSeries: data.barLinearXScaleStacked as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const BarLinearXScaleNormalizedStacked = Template.bind({});
+BarLinearXScaleNormalizedStacked.args = {
+  rawSeries: data.barLinearXScaleNormalizedStacked as any,
   dashcardSettings: {},
   renderingContext,
 };

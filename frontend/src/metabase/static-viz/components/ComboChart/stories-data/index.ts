@@ -4,7 +4,9 @@ import lineShowDotsAuto from "./line-show-dots-auto.json";
 import lineShowDotsOn from "./line-show-dots-on.json";
 import lineShowDotsOff from "./line-show-dots-off.json";
 import barLinearXScale from "./bar-linear-x-scale.json";
+import barLinearXScaleUneven from "./bar-linear-x-scale-uneven.json";
 import barLinearXScaleStacked from "./bar-linear-x-scale-stacked.json";
+import barLinearXScaleNormalizedStacked from "./bar-linear-x-scale-normalized-stacked.json";
 import barHistogramXScale from "./bar-histogram-x-scale.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
@@ -36,7 +38,9 @@ export const data = {
   lineShowDotsOn,
   lineShowDotsOff,
   barLinearXScale,
+  barLinearXScaleUneven,
   barLinearXScaleStacked,
+  barLinearXScaleNormalizedStacked,
   barHistogramXScale,
   barOrdinalXScale,
   barTwoAxesStackedWithNegativeValues,
