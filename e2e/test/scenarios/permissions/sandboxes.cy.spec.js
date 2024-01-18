@@ -179,7 +179,7 @@ describeEE("formatting > sandboxes", () => {
       });
     });
 
-    describe("table sandboxed on a saved parametrized SQL question", () => {
+    describe("table sandboxed on a saved parameterized SQL question", () => {
       it("should show filtered categories", () => {
         openPeopleTable();
         cy.get(".TableInteractive-headerCellData").should("have.length", 4);
