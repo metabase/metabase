@@ -9,11 +9,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 
 import type { GridCellProps } from "react-virtualized";
 
-import {
-  Grid as VirtualizedGrid,
-  WindowScroller,
-  AutoSizer,
-} from "react-virtualized";
+import { Grid as VirtualizedGrid, AutoSizer } from "react-virtualized";
 import type { Card, Collection, SearchResult } from "metabase-types/api";
 import * as Urls from "metabase/lib/urls";
 
@@ -26,6 +22,8 @@ import { Box, Group, Icon, Text, Title, Tooltip } from "metabase/ui";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { sortModels } from "metabase/browse/utils";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { getPageWidth } from "./utils";
+
 import { space } from "metabase/styled-components/theme";
 import {
   CenteredEmptyState,
@@ -96,6 +94,7 @@ dayjs.updateLocale(dayjs.locale(), { relativeTime: relativeTimeConfig });
 //   };
 // });
 
+
 type RenderItemFunction = (
   props: GridCellProps & {
     columnCount: number;
@@ -104,7 +103,6 @@ type RenderItemFunction = (
     cells: Cell[];
   },
 ) => JSX.Element | null;
-
 const emptyArray: SearchResult[] = [];
 
 export const BrowseModels = ({
@@ -178,29 +176,24 @@ export const BrowseModels = ({
   if (cells.length && contentViewport) {
     return (
       <GridContainer role="grid">
-        <WindowScroller scrollElement={contentViewport}>
-          {({ height, isScrolling, onChildScroll, scrollTop }) => (
-            <AutoSizer disableHeight>
-              {() => (
-                <VirtualizedGrid
-                  data-testid="model-browser"
-                  columnCount={gridOptions.columnCount}
-                  rowCount={gridOptions.rowCount}
-                  width={gridOptions.width}
-                  columnWidth={gridOptions.columnWidth}
-                  gap={gridGapSize}
-                  autoHeight
-                  height={height}
-                  isScrolling={isScrolling}
-                  scrollTop={scrollTop}
-                  onScroll={onChildScroll}
-                  rowHeight={getRowHeight}
-                  cellRenderer={cellRenderer}
-                />
-              )}
-            </AutoSizer>
-          )}
-        </WindowScroller>
+        {({ height }: { height: number }) => (
+          <AutoSizer disableHeight>
+            {() => (
+              <VirtualizedGrid
+                data-testid="model-browser"
+                columnCount={gridOptions.columnCount}
+                rowCount={gridOptions.rowCount}
+                width={gridOptions.width}
+                columnWidth={gridOptions.columnWidth}
+                gap={gridGapSize}
+                autoHeight
+                height={height}
+                rowHeight={getRowHeight}
+                cellRenderer={cellRenderer}
+              />
+            )}
+          </AutoSizer>
+        )}
       </GridContainer>
     );
   }
@@ -397,8 +390,7 @@ const getGridOptions = (
   itemMinWidth: number,
   contentViewport: HTMLElement,
 ) => {
-  const browseAppRoot = contentViewport.children[0];
-  const width = browseAppRoot.clientWidth - gridGapSize;
+  const width = getPageWidth(contentViewport, gridGapSize);
 
   const calculateColumnCount = (width: number) => {
     return Math.floor((width + gridGapSize) / (itemMinWidth + gridGapSize));

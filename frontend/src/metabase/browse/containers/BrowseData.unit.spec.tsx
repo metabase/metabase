@@ -3,10 +3,24 @@ import { createMockDatabase } from "metabase-types/api/mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import type { SearchResult } from "metabase-types/api";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import { BrowseDataPage } from "./BrowseData";
 
+jest.mock("./utils", () => ({
+  ...jest.requireActual("./utils"),
+  getPageWidth: jest.fn().mockReturnValue(800),
+}));
+
+// To make virtualization work, there needs to be a <main> element, provided
+// via a useContext hook, which has a child with a certain width and height
+const mockViewport = document.createElement("main");
+
 const renderBrowseDataPage = () => {
-  return renderWithProviders(<BrowseDataPage />);
+  return renderWithProviders(
+    <ContentViewportContext.Provider value={mockViewport}>
+      <BrowseDataPage />,
+    </ContentViewportContext.Provider>,
+  );
 };
 
 const databases = [...Array(100)].map((_, index) =>
@@ -66,8 +80,39 @@ const setup = ({
 };
 
 describe("BrowseDataPage", () => {
-  afterEach(() => {
-    jest.restoreAllMocks();
+  // we need to mock offsetHeight and offsetWidth to make react-virtualized work with react-dom
+  // https://github.com/bvaughn/react-virtualized/issues/493#issuecomment-447014986
+  const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetHeight",
+  ) as number;
+  const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetWidth",
+  ) as number;
+
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      value: 500,
+    });
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      value: 500,
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetHeight",
+      originalOffsetHeight,
+    );
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetWidth",
+      originalOffsetWidth,
+    );
   });
   it("has the models tab selected by default", async () => {
     setup({ models: 1, databases: 0 });
@@ -75,6 +120,7 @@ describe("BrowseDataPage", () => {
       await screen.findByRole("tab", { name: "Models", selected: true }),
     ).toBeInTheDocument();
   });
+
   it("displays models in the models tab", async () => {
     const modelCount = 10;
     setup({ models: modelCount, databases: 0 });
