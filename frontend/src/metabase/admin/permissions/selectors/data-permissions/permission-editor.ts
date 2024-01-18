@@ -149,8 +149,6 @@ export const getDatabasesPermissionEditor = createSelector(
   ) => {
     const { groupId, databaseId, schemaName } = params;
 
-    // console.log(schemaName)
-
     if (isLoading || !permissions || groupId == null || !group) {
       return null;
     }
@@ -161,12 +159,10 @@ export const getDatabasesPermissionEditor = createSelector(
     if (!defaultGroup) {
       throw new Error("No default group found");
     }
- 
+
     const hasSingleSchema =
       databaseId != null &&
       metadata.database(databaseId)?.getSchemas().length === 1;
-
-    // console.log(hasSingleSchema)
 
     const permissionSubject = getPermissionSubject(
       { databaseId, schemaName },
@@ -182,8 +178,6 @@ export const getDatabasesPermissionEditor = createSelector(
     let entities: any = [];
 
     const database = metadata?.database(databaseId);
-
-    
 
     if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
