@@ -20,13 +20,6 @@ Cypress.Commands.add(
       const attr = Object.keys(attribute_remappings).join(", "); // Account for the possiblity of passing multiple user attributes
 
       cy.log(`Sandbox "${name}" table on "${attr}"`);
-      cy.request("POST", "/api/mt/gtap", {
-        attribute_remappings,
-        card_id,
-        group_id,
-        table_id,
-      });
-
       cy.updatePermissionsSchemas({
         schemas: {
           [schema]: {
@@ -35,6 +28,12 @@ Cypress.Commands.add(
         },
         user_group: group_id,
         database_id: db_id,
+      });
+      cy.request("POST", "/api/mt/gtap", {
+        attribute_remappings,
+        card_id,
+        group_id,
+        table_id,
       });
     });
   },
