@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext, cloneElement } from "react";
+import { cloneElement, useContext, useEffect, useState } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -362,6 +362,7 @@ const makeCells = (models: SearchResult[], columnCount: number): Cell[] => {
           id={collectionHtmlId}
         />
       );
+
       // So that the collection header appears at the start of the row,
       // add zero or more blank items to fill in the rest of the previous row
       if (columnIndex > 0) {
@@ -426,9 +427,6 @@ const getGridOptions = (
   };
 };
 
-const isCellInHeaderRow = (item: Cell) =>
-  item?.type === CollectionHeader || item?.type === BlankCellInHeader;
-
 const renderItem: RenderItemFunction = ({
   columnCount,
   columnIndex,
@@ -443,3 +441,6 @@ const renderItem: RenderItemFunction = ({
       cloneElement(cell as React.ReactElement, { style })
     : null;
 };
+
+const isCellInHeaderRow = (item: Cell) =>
+  item?.type === CollectionHeader || item?.type === BlankCellInHeader;
