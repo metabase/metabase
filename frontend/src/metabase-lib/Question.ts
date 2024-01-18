@@ -490,7 +490,6 @@ class Question {
   }
 
   supportsImplicitActions(): boolean {
-    const legacyQuery = this.legacyQuery({ useStructuredQuery: true });
     const query = this.query();
 
     // we want to check the metadata for the underlying table, not the model
@@ -500,7 +499,7 @@ class Question {
     const hasSinglePk =
       table?.fields?.filter(field => field.isPK())?.length === 1;
 
-    return this.isStructured() && !legacyQuery.hasAnyClauses() && hasSinglePk;
+    return this.isStructured() && !Lib.hasClauses(query, -1) && hasSinglePk;
   }
 
   canAutoRun(): boolean {
