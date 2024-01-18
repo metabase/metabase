@@ -813,13 +813,13 @@
                                                                                   :updated_at :%now
                                                                                   :details    "{}"}))
             table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 2"
+                                                                               :name       "Table 1"
                                                                                :created_at :%now
                                                                                :updated_at :%now
                                                                                :schema     "PUBLIC"
                                                                                :active     true}))
             table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                               :name       "Table 1"
+                                                                               :name       "Table 2"
                                                                                :created_at :%now
                                                                                :updated_at :%now
                                                                                :schema     "PUBLIC"
@@ -828,6 +828,18 @@
           (clear-permissions!)
           (t2/insert! (t2/table-name Permissions) {:group_id group-id
                                                    :object   (format "/db/%d/" db-id)})
+          (migrate!)
+          (is (= "unrestricted" (t2/select-one-fn :perm_value
+                                                  (t2/table-name :model/DataPermissions)
+                                                  :db_id db-id :table_id nil :group_id group-id)))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id))))
+
+        (testing "Unrestricted not-native data access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/db/%d/schema/" db-id)})
           (migrate!)
           (is (= "unrestricted" (t2/select-one-fn :perm_value
                                                   (t2/table-name :model/DataPermissions)
@@ -963,3 +975,150 @@
           (is (= "no" (t2/select-one-fn :perm_value
                                         (t2/table-name :model/DataPermissions)
                                         :db_id db-id :table_id nil :group_id group-id :perm_type "native-query-editing"))))))))
+
+(deftest download-results-permissions-schema-migration-test
+  (testing "Download results permissions are correctly migrated from `permissions` to `permissions_v2`"
+    (impl/test-migrations "v49.2024-01-10T03:27:32" [migrate!]
+      (let [group-id   (first (t2/insert-returning-pks! (t2/table-name PermissionsGroup) {:name "Test Group"}))
+            db-id      (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
+                                                                                  :engine     "postgres"
+                                                                                  :created_at :%now
+                                                                                  :updated_at :%now
+                                                                                  :details    "{}"}))
+            table-id-1 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 1"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-2 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 2"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))
+            table-id-3 (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
+                                                                               :name       "Table 3"
+                                                                               :created_at :%now
+                                                                               :updated_at :%now
+                                                                               :schema     "PUBLIC"
+                                                                               :active     true}))]
+        (testing "One-million-rows download access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/" db-id)})
+          (migrate!)
+          (is (= "one-million-rows" (t2/select-one-fn :perm_value
+                                                      (t2/table-name :model/DataPermissions)
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results")))
+
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "one-million-rows" (t2/select-one-fn :perm_value
+                                                      (t2/table-name :model/DataPermissions)
+                                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "Ten-thousand-rows download access for a DB"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/" db-id)})
+          (migrate!)
+          (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
+                                                       (t2/table-name :model/DataPermissions)
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results")))
+
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/schema/" db-id)})
+          (migrate!)
+          (is (= "ten-thousand-rows" (t2/select-one-fn :perm_value
+                                                       (t2/table-name :model/DataPermissions)
+                                                       :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "No download access for a DB"
+          (clear-permissions!)
+          (migrate!)
+          (is (= "no" (t2/select-one-fn :perm_value
+                                        (t2/table-name :model/DataPermissions)
+                                        :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+
+        (testing "One-million-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "One-million-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "Ten-thousand-rows download access for a table"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) {:group_id group-id
+                                                   :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)})
+          (migrate!)
+          (is (nil? (t2/select-one-fn :perm_value
+                                      (t2/table-name :model/DataPermissions)
+                                      :db_id db-id :table_id nil :group_id group-id :perm_type "download-results")))
+          (is (= "ten-thousand-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "download-results"))))
+
+        (testing "Granular table permissions"
+          (clear-permissions!)
+          (t2/insert! (t2/table-name Permissions) [{:group_id group-id
+                                                    :object   (format "/download/db/%d/schema/PUBLIC/table/%d/" db-id table-id-1)}
+                                                   {:group_id group-id
+                                                    :object   (format "/download/limited/db/%d/schema/PUBLIC/table/%d/" db-id table-id-2)}])
+          (migrate!)
+          (is (nil?
+               (t2/select-one-fn :perm_value
+                                 (t2/table-name :model/DataPermissions)
+                                 :db_id db-id :table_id nil :group_id group-id)))
+          (is (= "one-million-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-1 :group_id group-id)))
+          (is (= "ten-thousand-rows"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-2 :group_id group-id)))
+          (is (= "no"
+                 (t2/select-one-fn :perm_value
+                                   (t2/table-name :model/DataPermissions)
+                                   :db_id db-id :table_id table-id-3 :group_id group-id))))))))
