@@ -387,8 +387,8 @@
     (let [[t value-type] (iso-8601->moment+type t)
           t              (truncate t unit)]
       (moment+type->iso-8601 [t value-type]))
-    (let [t (->moment t)]
-      (.startOf ^moment/Moment t (name unit)))))
+    (let [^moment/Moment t (->moment t)]
+      (.startOf t (name unit)))))
 
 (defn add
   "ClojureScript implementation of [[metabase.shared.util.time/add]]; supports both Moment.js instances and ISO-8601 strings."
@@ -397,8 +397,8 @@
     (let [[t value-type] (iso-8601->moment+type t)
           t              (add t unit amount)]
       (moment+type->iso-8601 [t value-type]))
-    (let [t (->moment t)]
-      (.add ^moment/Moment t amount (name unit)))))
+    (let [^moment/Moment t (->moment t)]
+      (.add t amount (name unit)))))
 
 (defn format-for-base-type
   "ClojureScript implementation of [[metabase.shared.util.time/format-for-base-type]]; format a temporal value as an
