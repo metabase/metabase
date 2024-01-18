@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { Link } from "react-router";
-import { Button } from "metabase/ui";
+import { Button, Anchor, Text } from "metabase/ui";
 import { isNotNull } from "metabase/lib/types";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import type { SettingDefinition } from "metabase-types/api";
+import { getEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import {
   CardBadge,
   CardDescription,
@@ -59,14 +60,24 @@ const AuthCard = ({
     handleClose();
   }, [onDeactivate, handleClose]);
 
+  const footer = isEnvSetting ? (
+    <Text>
+      Set with env var{" "}
+      <Anchor
+        href={getEnvVarDocsUrl(setting.env_name)}
+        target="_blank"
+      >{`$${setting.env_name}`}</Anchor>
+    </Text>
+  ) : null;
+
   return (
     <AuthCardBody
       type={type}
       title={title}
       description={description}
       isEnabled={isEnabled}
-      isConfigured={isConfigured}
-      setting={setting}
+      isConfigured={isConfigured && !isEnvSetting}
+      footer={footer}
     >
       {isConfigured && !isEnvSetting && (
         <AuthCardMenu
@@ -94,7 +105,8 @@ interface AuthCardBodyProps {
   isConfigured: boolean;
   badgeText?: string;
   buttonText?: string;
-  setting: AuthSetting;
+  buttonEnabled?: boolean;
+  footer?: ReactNode;
   children?: ReactNode;
 }
 
@@ -106,12 +118,11 @@ export const AuthCardBody = ({
   isConfigured,
   badgeText,
   buttonText,
-  setting,
+  footer,
   children,
 }: AuthCardBodyProps) => {
   const badgeContent = badgeText ?? (isEnabled ? t`Active` : t`Paused`);
   const buttonLabel = buttonText ?? (isConfigured ? t`Edit` : t`Set up`);
-  const { is_env_setting: isEnvSetting, env_name } = setting;
 
   return (
     <CardRoot>
@@ -122,15 +133,16 @@ export const AuthCardBody = ({
             {badgeContent}
           </CardBadge>
         )}
-        {isEnvSetting && (
-          <CardBadge isEnabled>{t`Set with env var $${env_name}`}</CardBadge>
-        )}
         {children}
       </CardHeader>
       <CardDescription>{description}</CardDescription>
-      <Link to={`/admin/settings/authentication/${type}`}>
-        <Button>{buttonLabel}</Button>
-      </Link>
+      {footer ? (
+        footer
+      ) : (
+        <Link to={`/admin/settings/authentication/${type}`}>
+          <Button>{buttonLabel}</Button>
+        </Link>
+      )}
     </CardRoot>
   );
 };

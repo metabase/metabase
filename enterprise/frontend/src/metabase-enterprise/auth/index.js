@@ -46,6 +46,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
         noHeader: true,
         widget: JwtAuthCard,
         getHidden: () => !hasPremiumFeature("sso_jwt"),
+        forceRenderWidget: true,
       },
       ...apiKeySettings,
       {
