@@ -116,7 +116,6 @@ interface OwnProps {
       preserveParameters?: boolean;
     };
   }) => Promise<void>;
-  fetchPulseFormInput: () => void;
   setDashboardAttribute: <Key extends keyof Dashboard>(
     key: Key,
     value: Dashboard[Key],
@@ -153,6 +152,7 @@ interface StateProps {
 interface DispatchProps {
   createBookmark: (args: { id: DashboardId }) => void;
   deleteBookmark: (args: { id: DashboardId }) => void;
+  fetchPulseFormInput: () => void;
   toggleSidebar: (sidebarName: DashboardSidebarName) => void;
   onChangeLocation: (location: Location) => void;
   addActionToDashboard: (
