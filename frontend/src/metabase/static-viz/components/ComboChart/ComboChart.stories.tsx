@@ -133,6 +133,13 @@ BarsBreakoutSortedWithNegativeValuesPowerYAxis.args = {
   renderingContext,
 };
 
+export const ComboLinearXScale = Template.bind({});
+ComboLinearXScale.args = {
+  rawSeries: data.comboLinearXScale as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SplitYAxis = Template.bind({});
 SplitYAxis.args = {
   rawSeries: data.autoYSplit as any,

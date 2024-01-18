@@ -12,6 +12,7 @@ import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barTwoAxesStackedWithNegativeValues from "./bar-two-axes-stacked-with-negative-values.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
 import barStackedTotalFormattedValues from "./bar-stacked-total-formatted-values.json";
+import comboLinearXScale from "./combo-linear-x-scale.json";
 import autoYSplit from "./auto-y-split.json";
 import messedUpAxis from "./messed-up-axis.json";
 import trendSingleSeriesLine from "./trend-single-series-line.json";
@@ -47,6 +48,7 @@ export const data = {
   barBreakoutWithLineSeriesStackedRightAxisOnly,
   barStackedTotalFormattedValues,
   barsBreakoutSortedWithNegativeValuesPowerYAxis,
+  comboLinearXScale,
   autoYSplit,
   messedUpAxis,
   trendSingleSeriesLine,
