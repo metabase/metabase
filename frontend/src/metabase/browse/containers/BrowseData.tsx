@@ -19,6 +19,7 @@ import {
 import { ANALYTICS_CONTEXT } from "metabase/browse/constants";
 
 import NoResults from "assets/img/no_results.svg";
+import type { SearchResult } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import BrowseHeader from "../components/BrowseHeader";
 import {
@@ -39,19 +40,14 @@ interface BrowseDataTab {
 export const BrowseDataPage = () => {
   const [currentTabId, setTabId] = useState<string | null>("models");
 
-  const models = useSearchListQuery({
+  const models = useSearchListQuery<SearchResult>({
     query: {
       models: ["dataset"],
       filter_items_in_personal_collection: "exclude",
     },
-    reload: true,
   });
 
-  const databases = useDatabaseListQuery({
-    reload: true,
-  });
-
-  // NOTE: Should I poll these endpoints until it's clear we have loaded all the data?
+  const databases = useDatabaseListQuery();
 
   const tabs: Record<string, BrowseDataTab> = {
     models: {
