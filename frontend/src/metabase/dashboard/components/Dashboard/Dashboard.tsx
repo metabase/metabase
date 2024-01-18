@@ -275,9 +275,8 @@ class DashboardInner extends Component<DashboardProps, DashboardState> {
           tabId: this.props.dashboard.tabs?.[0]?.id ?? null,
         });
       }
-    } catch (err) {
-      const error = err as any;
-      if (error.status === 404) {
+    } catch (error) {
+      if (error instanceof Response && error.status === 404) {
         setErrorPage({ ...error, context: "dashboard" });
       } else {
         console.error(error);
