@@ -152,7 +152,6 @@ export default class TextEditor extends Component {
       highlightGutterLine: false,
       showLineNumbers: true,
       showFoldWidgets: false,
-      wrap: true,
     });
     this._editor.renderer.setScrollMargin(SCROLL_MARGIN, SCROLL_MARGIN);
 

@@ -34,9 +34,8 @@ var payload = {
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${node.getIframeQuerySource(
-      displayOptions,
-    )};`,
+var iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
+  ${node.getIframeQuerySource(displayOptions)};`,
 };
 
 export const python = {
@@ -73,9 +72,8 @@ payload = {
 }
 token = jwt.encode(payload, METABASE_SECRET_KEY, algorithm="HS256")
 
-iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${python.getIframeQuerySource(
-      displayOptions,
-    )}`,
+iframeUrl = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
+  ${python.getIframeQuerySource(displayOptions)}`,
 };
 
 export const ruby = {
@@ -116,9 +114,8 @@ payload = {
 }
 token = JWT.encode payload, METABASE_SECRET_KEY
 
-iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token + ${ruby.getIframeQuerySource(
-      displayOptions,
-    )}`,
+iframe_url = METABASE_SITE_URL + "/embed/${resourceType}/" + token +
+  ${ruby.getIframeQuerySource(displayOptions)}`,
 };
 
 export const closure = {
@@ -150,9 +147,8 @@ export const closure = {
 
 (def token (jwt/sign payload metabase-secret-key))
 
-(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token ${closure.getIframeQuerySource(
-      displayOptions,
-    )}))`,
+(def iframe-url (str metabase-site-url "/embed/${resourceType}/" token
+  ${closure.getIframeQuerySource(displayOptions)}))`,
 };
 
 export const getHtmlSource = ({ iframeUrl }: { iframeUrl: string }) =>

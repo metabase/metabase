@@ -12,7 +12,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-import { getEmbeddingJsCode } from "./shared/embedding-snippets";
+import { getEmbeddingJsCode, IFRAME_CODE } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
@@ -56,11 +56,12 @@ features.forEach(feature => {
         .and("contain", "Python")
         .and("contain", "Clojure");
 
-      modal().within(() => {
-        cy.findAllByTestId("embed-frontend-select-button")
-          .should("contain", "Pug / Jade")
-          .click();
-      });
+      cy.get(".ace_content").last().should("have.text", IFRAME_CODE);
+
+      modal()
+        .findAllByTestId("embed-frontend-select-button")
+        .should("contain", "Pug / Jade")
+        .click();
 
       popover()
         .should("contain", "Mustache")
@@ -70,6 +71,11 @@ features.forEach(feature => {
 
       modal().within(() => {
         cy.findByRole("tab", { name: "Appearance" }).click();
+
+        // No download button for dashboards even for pro/enterprise users metabase#23477
+        cy.findByLabelText(
+          "Enable users to download data from this embed",
+        ).should("not.exist");
 
         // set transparent background metabase#23477
         cy.findByText("Transparent").click();
@@ -126,7 +132,7 @@ features.forEach(feature => {
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
           cy.findByText(
-            "Enable users to download data from this embed?",
+            "Enable users to download data from this embed",
           ).click();
 
           cy.get(".ace_content")
@@ -136,6 +142,7 @@ features.forEach(feature => {
               "match",
               getEmbeddingJsCode({
                 type: "question",
+                id: ORDERS_QUESTION_ID,
                 theme: "transparent",
                 hideDownloadButton: true,
               }),

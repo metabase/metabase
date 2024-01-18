@@ -272,7 +272,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
     // Note: ID is disabled
     setParameter("Source", "Locked");
     setParameter("Name", "Editable");
-    publishChanges(true, ({ request }) => {
+    publishChanges(false, ({ request }) => {
       assert.deepEqual(request.body.embedding_params, {
         source: "locked",
         name: "enabled",

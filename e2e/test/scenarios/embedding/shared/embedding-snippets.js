@@ -13,9 +13,10 @@ var payload = {
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
-      theme,
-    )}bordered=true&titled=true${getParameter({ hideDownloadButton })}";`
+var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token +
+  "#${getThemeParameter(theme)}bordered=true&titled=true${getParameter({
+      hideDownloadButton,
+    })}";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
@@ -24,30 +25,13 @@ var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemePara
   );
 };
 
-export const getEmbeddingIframeAppearanceCodeDiff = ({
-  type,
-  hideDownloadButton,
-  theme,
-}) => {
-  return new RegExp(
-    `var iframeUrl = METABASE_SITE_URL + "/embed/${type}/" + token + "#${getThemeParameter(
-      theme,
-    )}bordered=true&titled=true${getParameter({ hideDownloadButton })}";`
-      .split("\n")
-      .join("")
-      .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
-      .replace("KEYKEYKEY", ".*")
-      .replace("PORTPORTPORT", ".*"),
-  );
-};
-
-export const getEmbeddingIframeCode = `<iframe
-    src="{{iframeUrl}}"
+export const IFRAME_CODE = `iframe(
+    src=iframeUrl
     frameborder="0"
     width="800"
     height="600"
     allowtransparency
-></iframe>`
+)`
   .split("\n")
   .join("");
 
