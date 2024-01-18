@@ -4195,6 +4195,8 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'Hash of normalized query, calculated in middleware.cache'
 
+  # this index was added in migration 95, but during our split migration work in #34400 we didn't include this index
+  # in the sql initialization, so we need to recreate one here for new instances running 48+
   - changeSet:
       id: v48.00-067
       author: qnkhuat
