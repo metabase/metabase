@@ -13,7 +13,10 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getVisualizationRaw } from "metabase/visualizations";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-import { getVisibleCardIds } from "metabase/dashboard/utils";
+import {
+  isDashCardWithQuery,
+  getVisibleCardIds,
+} from "metabase/dashboard/utils";
 
 import {
   GRID_WIDTH,
@@ -65,6 +68,9 @@ type LayoutItem = {
   y: number;
   w: number;
   h: number;
+  minW: number;
+  minH: number;
+  dashcard: BaseDashboardCard;
 };
 
 type DashboardChangeItem = {
@@ -139,9 +145,9 @@ interface DashboardGridProps {
 interface DashboardGridState {
   visibleCardIds: Set<number>;
   initialCardSizes: { [key: string]: { w: number; h: number } };
-  layouts: { desktop: any[]; mobile: any[] };
-  addSeriesModalDashCard: any;
-  replaceCardModalDashCard: any;
+  layouts: { desktop: LayoutItem[]; mobile: LayoutItem[] };
+  addSeriesModalDashCard: BaseDashboardCard | null;
+  replaceCardModalDashCard: BaseDashboardCard | null;
   isDragging: boolean;
   isAnimationPaused: boolean;
 }
@@ -363,7 +369,9 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
   renderAddSeriesModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const isOpen = this.state.addSeriesModalDashCard != null;
+    const { addSeriesModalDashCard } = this.state;
+    const isOpen =
+      !!addSeriesModalDashCard && isDashCardWithQuery(addSeriesModalDashCard);
     return (
       <Modal
         className="Modal AddSeriesModal"
@@ -372,7 +380,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       >
         {isOpen && (
           <AddSeriesModal
-            dashcard={this.state.addSeriesModalDashCard}
+            dashcard={addSeriesModalDashCard}
             dashcardData={this.props.dashcardData}
             fetchCardData={this.props.fetchCardData}
             setDashCardAttributes={this.props.setDashCardAttributes}
@@ -387,9 +395,15 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
     const { addUndo, replaceCard, setDashCardAttributes } = this.props;
     const { replaceCardModalDashCard } = this.state;
 
-    const isOpen = replaceCardModalDashCard != null;
+    const hasValidDashCard =
+      !!replaceCardModalDashCard &&
+      isDashCardWithQuery(replaceCardModalDashCard);
 
     const handleSelect = (nextCardId: CardId) => {
+      if (!hasValidDashCard) {
+        return;
+      }
+
       replaceCard({ dashcardId: replaceCardModalDashCard.id, nextCardId });
 
       const hadModelCard = replaceCardModalDashCard.card.dataset;
@@ -410,7 +424,7 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     return (
       <QuestionPickerModal
-        opened={isOpen}
+        opened={hasValidDashCard}
         onSelect={handleSelect}
         onClose={handleClose}
       />

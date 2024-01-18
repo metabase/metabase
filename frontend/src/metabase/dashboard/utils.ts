@@ -78,6 +78,12 @@ export function expandInlineCard(card?: Card) {
   };
 }
 
+export function isDashCardWithQuery(
+  dashcard: BaseDashboardCard,
+): dashcard is DashboardCard {
+  return "card_id" in dashcard && "card" in dashcard;
+}
+
 export function isVirtualDashCard(dashcard: BaseDashboardCard) {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
