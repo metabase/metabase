@@ -216,8 +216,10 @@
           legacy-expr' (lib.js/legacy-expression-for-expression-clause query 0 expr)
           query-with-expr (lib/expression query 0 "expr" expr)
           expr-from-query (first (lib/expressions query-with-expr 0))
-          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)]
-      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query)))))
+          legacy-expr-from-query (lib.js/legacy-expression-for-expression-clause query-with-expr 0 expr-from-query)
+          named-expr (lib/with-expression-name expr "named")]
+      (is (= legacy-expr expr legacy-expr' legacy-expr-from-query))
+      (is (= "named" (lib/display-name query named-expr))))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
