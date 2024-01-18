@@ -42,6 +42,27 @@ LineLinearXScaleUnsorted.args = {
   renderingContext,
 };
 
+export const LineShowDotsAuto = Template.bind({});
+LineShowDotsAuto.args = {
+  rawSeries: data.lineShowDotsAuto as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const LineShowDotsOn = Template.bind({});
+LineShowDotsOn.args = {
+  rawSeries: data.lineShowDotsOn as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const LineShowDotsOff = Template.bind({});
+LineShowDotsOff.args = {
+  rawSeries: data.lineShowDotsOff as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const BarLinearXScale = Template.bind({});
 BarLinearXScale.args = {
   rawSeries: data.barLinearXScale as any,
