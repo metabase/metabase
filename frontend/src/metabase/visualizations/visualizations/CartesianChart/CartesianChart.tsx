@@ -26,6 +26,7 @@ import type {
 } from "metabase/visualizations/echarts/types";
 import { getSeriesIdFromECharts } from "metabase/visualizations/echarts/cartesian/utils/id";
 import { useModelsAndOption } from "./use-models-and-option";
+import { useChartDebug } from "./use-chart-debug";
 
 export function CartesianChart(props: VisualizationProps) {
   const {
@@ -49,6 +50,7 @@ export function CartesianChart(props: VisualizationProps) {
     onOpenTimelines,
   } = props;
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(props);
+  useChartDebug({ isQueryBuilder, rawSeries, option });
 
   const isBrushing = useRef<boolean>();
   const chartRef = useRef<EChartsType>();
