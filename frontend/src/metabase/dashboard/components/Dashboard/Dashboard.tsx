@@ -238,6 +238,9 @@ function DashboardInner(props: DashboardProps) {
     if (!Array.isArray(dashboard?.dashcards)) {
       return false;
     }
+    if (!selectedTabId) {
+      return dashboard.dashcards.length > 0;
+    }
     const tabDashCards = dashboard.dashcards.filter(
       dc => dc.dashboard_tab_id === selectedTabId,
     );
