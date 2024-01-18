@@ -5,6 +5,7 @@ import Search from "metabase/entities/search";
 import EmptyState from "metabase/components/EmptyState";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 import type { Collection, CollectionItem } from "metabase-types/api";
+import NoResults from "assets/img/no_results.svg";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 import {
@@ -29,7 +30,10 @@ const SavedQuestionList = ({
 }: SavedQuestionListProps): JSX.Element => {
   const emptyState = (
     <SavedQuestionListEmptyState>
-      <EmptyState message={t`Nothing here`} icon="all" />
+      <EmptyState
+        title={t`Nothing here`}
+        illustrationElement={<img src={NoResults} />}
+      />
     </SavedQuestionListEmptyState>
   );
 
