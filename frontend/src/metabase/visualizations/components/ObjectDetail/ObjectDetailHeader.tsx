@@ -73,7 +73,6 @@ export function ObjectDetailHeader({
 
           {actionItems.length > 0 && (
             <EntityMenu
-              horizontalAttachments={["right", "left"]}
               items={actionItems}
               triggerIcon="ellipsis"
               triggerProps={{
